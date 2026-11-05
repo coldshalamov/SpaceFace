@@ -88,6 +88,8 @@ import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
 import { TURRET_RING_OUTPUT, WEAPONS, shoveMetricValue } from '../../../data/weapons.js';
 import { admitModuleMetric, liveDamageRate } from '../moduleCardMetrics.js';
 import { escapeHtml } from '../../comms.js';
+import { CAL_DAY_S } from '../../../data/worldCalendar.js';
+import { GRAFFITI } from '../../../data/narrative.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm, focusNamedStationControl, isOutfittingSpendDanger, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
@@ -902,6 +904,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let stageShown = false;
   let chooserEpoch = 0;
   let unfitPending = false;
+  let fitPending = null;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -1506,6 +1509,36 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ).join('');
   }
 
+  // special-500 batch 18 — the hull margin notes: the four counter legs that read as dressing
+  // rows on THE SHIP's condition band. Each is a plain-named story flag written once by the
+  // counter leg that owns the moment; a hull without the stamp shows nothing here.
+  //   SP2-007  hull_held_15     — "BULKHEAD 3 LOG — SHE HELD TOGETHER. WE DIDN'T." (GRAFFITI
+  //                              corpus; the handwriting is not the player's)
+  //   SPX-B-02 rack_mark_done   — the launch rack's scored line: "rack mark, {date}"
+  //   SP2-120  rubric_signed    — the stencil "HM-11 ✕ [callsign]", dated the first sighting
+  //   SP2-035  wren_buoy_found  — the hull note the buoy tag files: "she pulls left"
+  function hullMarginNotesFor(state) {
+    const flags = state && state.story && state.story.flags;
+    if (!flags || typeof flags !== 'object') return [];
+    const notes = [];
+    if (flags.hull_held_15 != null) {
+      notes.push({ id: 'bulkhead_log', label: 'BULKHEAD 3 LOG', value: GRAFFITI.GANG_SHE_HELD });
+    }
+    const scar = flags.first_hull_damage;
+    if (flags.rack_mark_done != null && scar && Number.isFinite(Number(scar.day))) {
+      notes.push({ id: 'rack_mark', label: 'Rack mark', value: `rack mark, day ${Math.max(0, Math.floor(Number(scar.day)))}` });
+    }
+    const signed = flags.rubric_signed;
+    if (signed && typeof signed === 'object' && Number.isFinite(Number(signed.firstSighting))) {
+      const day = Math.max(0, Math.floor(Number(signed.firstSighting) / CAL_DAY_S));
+      notes.push({ id: 'rubric_stencil', label: 'HM-11 \u2715', value: `stencil dated day ${day}` });
+    }
+    if (flags.wren_buoy_found != null) {
+      notes.push({ id: 'wren_buoy', label: 'Hull notes', value: '"she pulls left"' });
+    }
+    return notes;
+  }
+
   function deriveBandModel(previewCtx) {
     if (!previewCtx) return null;
     const def = SHIP_BY_ID.get(previewCtx.defId);
@@ -1542,6 +1575,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const history = mode === 'fleet'
       ? { trinkets: livingHullTrinkets(viewedLivingHullForModel()), dead: historyWearDead(ctx.state) }
       : null;
+    // special-500 batch 18 — the hull's own margin notes (counter-family readers). Each row
+    // reads one plain-named story flag its counter leg wrote; an unstamped hull shows none.
+    const hullNotes = mode === 'fleet' ? hullMarginNotesFor(ctx.state) : null;
     const availability = shipworksActionAvailability(ctx.state);
     const slots = buildSlotList(def);
     const fittedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
@@ -1582,6 +1618,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       hullName,
       identity,
       variantRows,
+      hullNotes,
     };
   }
 
@@ -1921,6 +1958,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const named = latest && latest.name ? ` — last: ${latest.name}` : '';
         const yours = dead.filter((d) => d && d.byPlayer === true).length;
         rows.push(staticRow('Memorial', escapeHtml(`${dead.length} named${yours ? ` (${yours} by this hull)` : ''}${named}`)));
+      }
+      // The hull margin notes (special-500 batch 18): each counter leg's dressing row, in the
+      // band's own row grammar. An unstamped hull adds nothing — the band never apologizes.
+      const notes = Array.isArray(model.hullNotes) ? model.hullNotes : [];
+      for (const note of notes) {
+        rows.push(staticRow(escapeHtml(note.label), escapeHtml(note.value)));
       }
       return (
         `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +
@@ -4491,6 +4534,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
     chooserEpoch++;
+    cancelFitPending();
     clearSableDemo(); sableSelection = null;
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
@@ -4730,6 +4774,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    if (eventName === 'ui:fitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('fit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          if (fitPending?.operationId === operationId) fitPending = null;
+          resolve(result);
+        };
+        fitPending = { operationId, cancel: () => finish(null) };
+        offAccepted = ctx.bus.on('module:equipped', (event) => {
+          if (event?.operationId === operationId && event.instanceId === payload.instanceId
+              && event.slotIndex === payload.slotIndex) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish({ reason: event.reason });
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
     if (eventName === 'ui:unfitModule' && laneCommandSink()) {
       if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
       const operationId = nextLaneToken('unfit');
@@ -4761,8 +4831,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return !refused;
   }
 
+  function cancelFitPending() {
+    fitPending?.cancel();
+  }
+
   function closeChooser(opts = {}) {
     chooserEpoch++;
+    cancelFitPending();
     clearSableDemo(); sableSelection = null;
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
@@ -4794,6 +4869,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // list in place of the hulls; Back returns them. Every verb is an intent — the bombs
   // system owns the rack and the economy owner debits the credits; this screen only asks.
   function openPayloadChooser(socketIndex, anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
     const rack = bombRackModel();
     if (!Number.isInteger(socketIndex) || socketIndex < 0 || socketIndex >= rack.sockets) return;
     emitUiCue(UI_SWITCH_DETENT_CUE);
@@ -4958,6 +5035,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function openPaintChooser(anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
     emitUiCue(UI_SWITCH_DETENT_CUE);
     selectedSlot = -1;
     payloadSocket = -1;
@@ -5947,14 +6026,25 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // hull's index — the chooser outfits the ship on screen, not always the active one.
     const fi = ev.target.closest('[data-fit-inv]');
     if (fi && !fi.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      if (fitPending) return;
       if (ctx.bus) {
+        const epoch = chooserEpoch;
         const accepted = emitFitIntent('ui:fitModule', {
           shipIndex: viewIdx,
           slotIndex: Number(fi.getAttribute('data-fit-inv-slot')),
           instanceId: fi.getAttribute('data-fit-inv'),
         });
-        if (!accepted) {
-          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        const asynchronous = accepted && typeof accepted.then === 'function';
+        if (asynchronous) fi.disabled = true;
+        const confirmed = asynchronous ? await accepted : accepted;
+        if (asynchronous) fi.disabled = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Fit could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
+          else {
+            if (asynchronous && confirmed?.reason !== 'station_unavailable') ctx.bus.emit('toast', { text: 'Fit unavailable. Check the module and try again.', kind: 'warn', ttl: 4 });
+            ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          }
           if (typeof fi.focus === 'function') fi.focus({ preventScroll: true });
           return;
         }
@@ -6083,6 +6173,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       closeLotDesk(false);
       stageShown = false;
       chooserEpoch++;
+      cancelFitPending();
       pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
@@ -6095,6 +6186,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     dispose() {
       closeLotDesk(false);
       stageShown = false;
+      chooserEpoch++;
+      cancelFitPending();
       finishLotDeskPending(null);
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);

@@ -287,24 +287,62 @@ function collisionCause(surface) {
   return 'generic';
 }
 
+/**
+ * The kill cause the room's own physics ends carry. `swarmKillCauseWord`'s law (row 481) says
+ * MINED is "an explosive end (mine, charge, cookoff)" and each arena names the end — but only
+ * authored WEAPON packets ever reached a cause, so a hull a mine, a drift bomb, a sympathetic
+ * cookoff or the crusher's jaws took stamped 'generic' and read — popup word and style family
+ * alike — as a gun kill. The crusher's own damage owner calls its verdict a terrain-crumple
+ * reading (survivalArena._crushBody routes terrainCrumpleDamage), so its end is terrain.
+ * A player-attributed explosive end therefore pays the documented PQ-174.02 physics rate,
+ * which is the first time that rate is reachable by the ends its law names.
+ */
+const ROOM_END_CAUSES = Object.freeze({
+  mine: KillCause.EXPLOSIVE,
+  bomb: KillCause.EXPLOSIVE,
+  light_cookoff: KillCause.EXPLOSIVE,
+  crusher_jaws: KillCause.TERRAIN_COLLISION,
+});
+
+function roomEndCause(lethal, packet) {
+  const kind = (lethal && lethal.origin && lethal.origin.kind)
+    || (packet && packet.source && packet.source.kind);
+  return Object.prototype.hasOwnProperty.call(ROOM_END_CAUSES, kind)
+    ? ROOM_END_CAUSES[kind]
+    : null;
+}
+
 function weaponKillCause(lethal, packet) {
   const origin = lethal && lethal.origin;
   const source = packet && packet.source;
   const authoredOrigin = origin && origin.kind === 'weapon';
   const authoredPacket = source && source.kind === 'weapon';
-  if (!authoredOrigin && !authoredPacket) return 'generic';
+  if (!authoredOrigin && !authoredPacket) return roomEndCause(lethal, packet) || 'generic';
   const weaponId = authoredOrigin
     ? (origin.weaponId ?? origin.id ?? (source && source.weaponId))
     : source.weaponId;
   const definition = weaponId == null ? null : WPN.get(weaponId);
-  if (!definition) return 'generic';
+  if (!definition) return roomEndCause(lethal, packet) || 'generic';
   if (definition.damageType === 'kinetic') return 'kinetic';
   if (definition.damageType === 'explosive') return 'explosive';
-  return 'generic';
+  return roomEndCause(lethal, packet) || 'generic';
 }
 
 function normalizeKillSurface(value) {
   return KILL_PRESENTATION_SURFACES.has(value) ? value : null;
+}
+
+/**
+ * The kill-END label a damage-over-time end carries. A hull the burn or the tar corroded
+ * through stamped 'generic' — the honest canonical cause for an attrition end — and the kill
+ * popup then read it as a gun kill (SHREDDED/PUNCHED). The label rides the payload next to
+ * the massline_whip precedent; the room-grammar owner (swarmKillCauseWord) speaks it, while
+ * styleCauseFromKill keeps it out of the style families, so a torch burn pays gun rate — an
+ * attrition end is not a physics play, and must not reach the force-table ratio.
+ */
+export function killEndLabelFor(lethal) {
+  const kind = lethal && lethal.origin && lethal.origin.kind;
+  return kind === 'status' ? 'wasted' : null;
 }
 
 function freezeKillPoint(value) {
@@ -788,10 +826,14 @@ export const combat = {
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       baseKind: d.baseKind || null,
-      // A lethal whip need not leave an impulse record; keep its damage-owned cause.
-      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
+      // A lethal whip need not leave an impulse record; keep its damage-owned cause. A DoT end
+      // carries its own attrition label so the room can say the end honestly (killEndLabelFor).
+      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' }
+        : killEndLabelFor(lethal) ? { cause: killEndLabelFor(lethal) } : {}),
       // The collision partner — law's witness sightline must not let it occlude its own kill.
       impactorId: killImpactorId(lethal),
+      ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
+        ? { chainWitness: lethal.packet.source.chainWitness } : {}),
       presentation,
     });
     // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying

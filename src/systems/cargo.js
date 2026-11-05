@@ -1,3 +1,4 @@
+import { receiveCinderglassPod } from '../features/cinderglassJob/ownerSeams.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 // Cargo system (ARCHITECTURE §0.6 single-writer, §0.12/§0.13 cargo shape, spec 02-mining-ores-cargo).
 // Owns state.player.cargo = { items:{[cmdtyId]:qty}, usedVolume, usedMass, capVolume, capMass }.
@@ -16,6 +17,7 @@ import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
 import { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
 import { isBlackFlagAdventure } from '../shipjack/model.js';
+import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   acceptDeadDropLoad,
   collectDeadDropLoads,
@@ -60,6 +62,110 @@ export function deliverTallyThreeCrate(state,quote,registry) {
   registry.get('combat')?.kernel?.attachments?.breakAttachment(line,'accepted_delivery',state.playerId);
   const paid=economy.settleTallyThreeDelivery(settled.receipt);
   return paid.ok?paid:{...paid,custodyAccepted:true,paymentPending:true,receiptId:receipt.receiptId,qty:receipt.qty};
+}
+
+// Three authored opening shipments, not a general receipt/inventory service. The existing
+// economy journal saves these fixed slots; traffic remains the manifest writer.
+const BREAKWATER_FREIGHT_KINDS = new Set(['consignment', 'supply', 'defended_unload']);
+const BREAKWATER_SECTOR = 'sector_ceres_belt';
+const BREAKWATER_SITE = 'site_breakwater_spur';
+const breakwaterFreightKey = kind => 'breakwater-cargo:' + kind;
+const finiteFreightPose = e => [e?.pos?.x, e?.pos?.z, e?.vel?.x, e?.vel?.z].every(Number.isFinite);
+
+function uniqueFreightOriginal(state, entity) {
+  if (!entity || entity.alive !== true || entity.destroyed === true || !(entity.hull > 0)
+    || !Number.isSafeInteger(entity.occupantGeneration) || entity.occupantGeneration < 1
+    || state.entities?.get(entity.id) !== entity || !finiteFreightPose(entity)) return false;
+  const id = entity.data?.worldRecordId;
+  return !id || ![...new Set([...(state.entityList || []), ...state.entities.values()])]
+    .some(other => other !== entity && other.alive !== false && other.data?.worldRecordId === id);
+}
+
+function breakwaterFreightContext(owner, request) {
+  const state = owner.state, { kind } = request;
+  const row = state.world?.breakwaterSpur;
+  if (!BREAKWATER_FREIGHT_KINDS.has(kind) || typeof request.worldRecordId !== 'string'
+    || !request.worldRecordId.startsWith('breakwater:' + BREAKWATER_SITE + ':') || request.worldRecordId.length > 200
+    || state.world?.currentSectorId !== BREAKWATER_SECTOR
+    || row?.commission?.status !== 'paid' || ['failed', 'degraded'].includes(row.phase)) return null;
+  const consignment = kind === 'consignment', loose = kind !== 'defended_unload';
+  const original = loose ? row.looseLoad : row.freight?.hauler;
+  if (!original || original.entityId !== request.entityId || original.generation !== request.generation
+    || original.worldRecordId !== request.worldRecordId) return null;
+  if (consignment ? row.charter !== 'bonded' || row.bonded?.bond?.status !== 'posted'
+    || row.bonded?.job?.status !== 'open' || original.kind !== 'consignment' || original.status !== 'in_transit'
+    : kind === 'supply' ? row.charter !== 'cooperative' || row.coop?.jobs?.supply?.status !== 'open'
+      || original.kind !== 'supply' || !['waiting', 'in_transit'].includes(original.status)
+    : row.charter !== 'cooperative' || row.coop?.jobs?.defend?.status !== 'scheduled'
+      || original.purpose !== 'defended_unload' || original.phase !== 'approach') return null;
+  const entity = state.entities?.get(request.entityId), receiver = state.entities?.get(request.receiverId);
+  if (!uniqueFreightOriginal(state, entity) || !uniqueFreightOriginal(state, receiver)
+    || entity === receiver || entity.data?.worldRecordId !== request.worldRecordId
+    || entity.data.persistenceOwner !== (loose ? 'breakwaterSpur' : 'worldRecords')
+    || entity.occupantGeneration !== request.generation
+    || receiver.occupantGeneration !== request.receiverGeneration) return null;
+  const record = state.world.records?.byId?.[request.worldRecordId];
+  if (record && (record.alive === false || ['destroyed', 'defeated'].includes(record.outcome))) return null;
+  const destinationId = consignment ? 'station_beltout' : BREAKWATER_SITE;
+  if (consignment ? receiver.type !== 'station' || receiver.data?.stationId !== destinationId
+    : receiver.data?.siteId !== destinationId || receiver.data?.siteRole !== 'freight_receiver') return null;
+  const manifest = entity.data.cargoManifest, line = manifest?.lines?.[0];
+  const manifestId = `breakwater:${kind}:${request.worldRecordId}`;
+  if (manifest?.manifestId !== manifestId || manifest.lotId !== manifestId
+    || manifest.destinationId !== destinationId || manifest.custody?.holderId !== request.worldRecordId
+    || manifest.acceptedReceiptId || !Array.isArray(manifest.lines) || manifest.lines.length !== 1
+    || !line || !Object.hasOwn(VOL, line.commodityId) || !Number.isSafeInteger(line.qty)
+    || line.qty < 1 || line.qty > 100000 || manifest.totalQty !== line.qty) return null;
+  const rows = (state.traffic?.freighters || []).filter(r => r?.id === entity.id || r?.worldRecordId === request.worldRecordId);
+  if (rows.length > 1 || rows[0] && (rows[0].id !== entity.id
+    || rows[0].worldRecordId !== request.worldRecordId || rows[0].manifest !== manifest)) return null;
+  const native = owner.registry?.get('physics')?._sg02;
+  if (native?.records?.get(entity.id)?.entity !== entity || native.records.get(receiver.id)?.entity !== receiver
+    || native.records.get(receiver.id).body?.isFixed() !== true) return null;
+  const links = Object.values(state.combat?.attachments?.byId || {})
+    .filter(a => a?.state === 'active' && (a.targetId === entity.id || a.ownerId === entity.id));
+  if (loose) {
+    const link = links[0], joint = link && native.attachments?.get(String(link.id));
+    if (links.length !== 1 || !['tether_standard', 'attachment_transport_clamp', 'attachment_salvage_clamp'].includes(link?.defId)
+      || link.ownerId !== receiver.id || link.targetId !== entity.id || link.controllerId != null
+      || link.ownerGeneration !== receiver.occupantGeneration || link.targetGeneration !== entity.occupantGeneration
+      || !joint || joint.ownerEntity !== receiver || joint.targetEntity !== entity
+      || joint.ownerLife !== receiver.occupantGeneration || joint.targetLife !== entity.occupantGeneration
+      || !native.getAttachmentTelemetry({ attachmentId: link.id, physicsHandle: link.physicsHandle })) return null;
+  } else {
+    const entry = state.npcJobs?.byId?.[request.jobId], job = entry?.job;
+    const waypoint = job?.route?.[job.routeIndex];
+    if (links.length || entity.type !== 'ship' || !request.jobId || original.jobId !== request.jobId
+      || row.coop.jobs.defend.haulerJobId !== request.jobId || entity.data.jobId !== request.jobId
+      || entry?.entityId !== entity.id || entry.entityRef !== entity || entry.worldRecordId !== request.worldRecordId
+      || entry.sectorId !== BREAKWATER_SECTOR || entry.control || job?.id !== request.jobId
+      || job.kind !== 'hauler' || job.corrupt || job.materialized !== true || job.phase !== 'unload'
+      || job.routeIndex !== job.route.length - 1 || waypoint?.id !== 'dest:' + BREAKWATER_SITE
+      || !Number.isFinite(waypoint.pos?.x) || !Number.isFinite(waypoint.pos?.z)
+      || Math.hypot(waypoint.pos.x - (receiver.pos.x - Math.sin(receiver.rot || 0) * 38), waypoint.pos.z - (receiver.pos.z - Math.cos(receiver.rot || 0) * 38)) > 1) return null;
+  }
+  // Real custody/job authority is required above; reach alone never completes a shipment.
+  const reach = consignment ? Math.min(90, Math.max(0, Number(receiver.data?.dockRadius) || 0) + 20) : kind === 'defended_unload' ? 60 : 40;
+  if (!(entity.radius > 0) || Math.hypot(entity.pos.x - receiver.pos.x, entity.pos.z - receiver.pos.z) + entity.radius > reach
+    || Math.hypot(entity.vel.x - receiver.vel.x, entity.vel.z - receiver.vel.z) > 4) return null;
+  return { row, original, entity, receiver, manifest, rec: rows[0] || null, destinationId,
+    commodityId: line.commodityId, qty: line.qty };
+}
+
+// Fixed Breakwater draws also commit the exact authored receiving state. An arbitrary
+// callback here would reopen the half-draw/Save boundary this transaction eliminates.
+const BREAKWATER_MATERIALS = Object.freeze({
+  commission: Object.freeze([{ commodityId: 'cmdty_scrap_metal', qty: 4 },
+    { commodityId: 'cmdty_salvage_electronics', qty: 1 }]),
+  scrap: Object.freeze([{ commodityId: 'cmdty_scrap_metal', qty: 8 }]),
+});
+
+function writableFreightFields(object, fields) {
+  if (!object || ![Object.prototype, null].includes(Object.getPrototypeOf(object))) return false;
+  return fields.every(key => {
+    const d = Object.getOwnPropertyDescriptor(object, key);
+    return d ? 'value' in d && d.writable : Object.isExtensible(object);
+  });
 }
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
@@ -629,6 +735,7 @@ export function removeCargo(state, commodityId, qty) {
 
 export const cargo = {
   name: 'cargo',
+  receiveCinderglassPod,
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -1328,6 +1435,159 @@ export const cargo = {
       manifestId: manifest.manifestId || null, at: state.simTime || 0 };
     this.bus.emit('cargo:vesselFreightReleased', receipt);
     return receipt;
+  },
+
+  /** Two finite material jobs; all cargo + accepted feature writes precede one notification. */
+  acceptBreakwaterMaterials(kind) {
+    const state = this.state, recipe = Object.hasOwn(BREAKWATER_MATERIALS, kind) && BREAKWATER_MATERIALS[kind];
+    const refuse = reason => ({ ok: false, reason });
+    if (!recipe) return refuse('invalid_kind');
+    const key = 'breakwater-materials:' + kind;
+    if (state.economy?.committedIntents && Object.hasOwn(state.economy.committedIntents, key))
+      return refuse('already_accepted');
+    const row = state.world?.breakwaterSpur, stock = row?.coop?.stock, job = row?.coop?.jobs?.scrap;
+    if (state.world?.currentSectorId !== BREAKWATER_SECTOR || !row || ['failed', 'degraded'].includes(row.phase)
+      || !stock || !Number.isFinite(stock.repair) || stock.repair < 0 || stock.repair > 60
+      || !Number.isFinite(stock.fuel) || stock.fuel < 0 || stock.fuel > 40) return refuse('receiver_unavailable');
+    if (kind === 'commission' ? row.commission?.status !== 'none'
+      || !['drive', 'drum'].every(role => row.sockets?.[role]?.status === 'seated')
+      : row.charter !== 'cooperative' || row.commission?.status !== 'paid' || job?.status !== 'open')
+      return refuse('job_closed');
+    const hold = state.player?.cargo, items = hold?.items;
+    if (!hold || !Number.isFinite(hold.usedVolume) || !Number.isFinite(hold.usedMass)
+      || !writableFreightFields(hold, ['usedVolume', 'usedMass', 'richLots'])
+      || !writableFreightFields(items, recipe.map(line => line.commodityId))
+      || !writableFreightFields(stock, ['repair', 'fuel'])
+      || (kind === 'commission' ? !writableFreightFields(row.commission, ['status', 'paidAt'])
+        : !writableFreightFields(job, ['status']) || !writableFreightFields(row, ['pendingPayouts'])))
+      return refuse('cargo_unavailable');
+    const plan = [];
+    let volume = 0, mass = 0;
+    for (const { commodityId, qty } of recipe) {
+      const have = items[commodityId], def = defOf(state, commodityId);
+      if (!def || !Number.isSafeInteger(have) || have < qty || sellableCargoQuantity(state, commodityId) < qty)
+        return refuse('insufficient_materials');
+      if (have === qty && Object.getOwnPropertyDescriptor(items, commodityId)?.configurable !== true)
+        return refuse('cargo_unavailable');
+      const vol = volumePerUnit(def);
+      if (!Number.isFinite(vol) || vol < 0 || !Number.isFinite(def.mass) || def.mass < 0) return refuse('cargo_unavailable');
+      plan.push({ commodityId, qty, left: have - qty });
+      volume += qty * vol; mass += qty * def.mass;
+    }
+    // Prepare canonical provenance changes without mutating the live metadata yet.
+    const next = { richLots: Array.isArray(hold.richLots) ? hold.richLots.map(lot => lot && { ...lot }) : undefined };
+    for (const line of plan) decrementRichLots(next, line.commodityId, line.qty);
+    const journal = ensureCommittedIntents(state);
+    if (!journal || !writableFreightFields(journal, [key])) return refuse('owner_unavailable');
+    const receipt = { receiptId: key, kind, lines: recipe.map(line => ({ ...line })), tick: state.tick };
+    const pendingPayouts = kind === 'scrap'
+      ? { ...row.pendingPayouts, scrap: { sourceId: 'breakwater:coop:scrap' } } : null;
+    // Only prepared plain writable data fields follow: no callback, observer or Save boundary.
+    for (const line of plan) {
+      if (line.left) items[line.commodityId] = line.left;
+      else delete items[line.commodityId];
+    }
+    hold.usedVolume = Math.max(0, hold.usedVolume - volume);
+    hold.usedMass = Math.max(0, hold.usedMass - mass);
+    if (next.richLots) hold.richLots = next.richLots;
+    if (kind === 'commission') {
+      row.commission.status = 'paid'; row.commission.paidAt = state.simTime;
+      stock.repair = 10; stock.fuel = 8;
+    } else {
+      job.status = 'accepted';
+      row.pendingPayouts = pendingPayouts;
+      stock.repair = Math.min(60, stock.repair + 12);
+    }
+    journal[key] = { receipt, result: { ok: true } };
+    emitChanged(state, hold);
+    return { ok: true, receipt: { ...receipt, lines: receipt.lines.map(line => ({ ...line })) } };
+  },
+
+  /** Read the canonical fact, never a feature-supplied success event. Fixed three-slot bound. */
+  getBreakwaterFreightReceipt(kind) {
+    if (!BREAKWATER_FREIGHT_KINDS.has(kind)) return null;
+    const entry = this.state.economy?.committedIntents?.[breakwaterFreightKey(kind)];
+    const r = entry?.receipt;
+    if (entry?.result?.ok !== true || r?.kind !== kind || r.receiptId !== breakwaterFreightKey(kind)
+      || typeof r.worldRecordId !== 'string' || !r.worldRecordId.startsWith('breakwater:' + BREAKWATER_SITE + ':')
+      || r.manifestId !== `breakwater:${kind}:${r.worldRecordId}` || r.lotId !== r.manifestId
+      || !Number.isSafeInteger(r.generation) || r.generation < 1 || !Number.isSafeInteger(r.receiverGeneration)
+      || r.receiverGeneration < 1 || !Object.hasOwn(VOL, r.commodityId) || !Number.isSafeInteger(r.qty)
+      || r.qty < 1 || r.qty > 100000 || entry.result.qty !== r.qty) return null;
+    return { ...r };
+  },
+
+  /** Consume one actual opening shipment. No wallet/feature-stock writer or intent listener. */
+  acceptBreakwaterFreight(request = {}) {
+    const kind = request?.kind, key = breakwaterFreightKey(kind), state = this.state;
+    const refuse = reason => ({ ok: false, reason });
+    if (!BREAKWATER_FREIGHT_KINDS.has(kind)) return refuse('invalid_kind');
+    const existing = state.economy?.committedIntents;
+    if (existing && Object.hasOwn(existing, key)) {
+      const r = this.getBreakwaterFreightReceipt(kind);
+      return refuse(r && r.worldRecordId === request.worldRecordId && r.entityId === request.entityId
+        && r.generation === request.generation && r.receiverId === request.receiverId
+        && r.receiverGeneration === request.receiverGeneration && r.jobId === (request.jobId || null)
+        ? 'already_accepted' : 'receipt_conflict');
+    }
+    const context = breakwaterFreightContext(this, request);
+    if (!context) return refuse('unaccepted_freight');
+    const traffic = this.registry?.get('traffic'), economy = this.registry?.get('economy');
+    if (typeof traffic?._setTrafficManifest !== 'function'
+      || kind === 'consignment' && typeof economy?.applyFreightDelivery !== 'function') return refuse('owner_unavailable');
+    const journal = ensureCommittedIntents(state);
+    if (!journal) return refuse('owner_unavailable');
+    // A foreign/matching economy fact without this physical owner's commit cannot authorize
+    // another debit or launder an anonymous delivery into a physical receipt.
+    if (Object.hasOwn(journal, 'freight:' + key)) return refuse('receipt_conflict');
+    const { entity, receiver, manifest, rec, commodityId, qty, destinationId } = context;
+    const offered = JSON.stringify(manifest);
+    const receipt = { receiptId: key, kind, entityId: entity.id, worldRecordId: request.worldRecordId,
+      generation: entity.occupantGeneration, receiverId: receiver.id,
+      receiverGeneration: receiver.occupantGeneration, destinationId, jobId: request.jobId || null,
+      manifestId: manifest.manifestId, lotId: manifest.lotId, commodityId, qty, tick: state.tick };
+    let committed = false;
+    const commitCustody = result => {
+      const current = breakwaterFreightContext(this, request);
+      if (committed || state.economy?.committedIntents !== journal || journal[key] || !current
+        || current.row !== context.row || current.original !== context.original
+        || current.entity !== entity || current.receiver !== receiver || current.manifest !== manifest
+        || current.rec !== rec || JSON.stringify(manifest) !== offered
+        || result?.ok !== true || result.receiptId !== key || result.commodityId !== commodityId
+        || kind === 'consignment' && result.stationId !== destinationId
+        || result.qty !== qty || result.acceptedLines?.length !== 1
+        || result.acceptedLines[0].commodityId !== commodityId || result.acceptedLines[0].qty !== qty) return false;
+      const next = { ...manifest, lines: [], totalQty: 0, totalValue: 0, acceptedReceiptId: key,
+        custody: { ...manifest.custody, holderId: destinationId, holderKind: 'receiver' } };
+      // The production setter is callback-free and updates both current manifestations of
+      // the same lot. No notification/Save boundary exists between debit and journal commit.
+      try {
+        if (traffic._setTrafficManifest(entity, rec, next) !== true) throw new Error('manifest_refused');
+      } catch {
+        entity.data.cargoManifest = manifest;
+        if (rec) rec.manifest = manifest;
+        return false;
+      }
+      journal[key] = { receipt: { ...receipt }, result: { ok: true, qty } };
+      committed = true;
+      return true;
+    };
+    if (kind === 'consignment') {
+      try {
+        const result = economy.applyFreightDelivery({ receiptId: key, stationId: destinationId,
+          commodityId, qty, commitCustody });
+        if (!committed) return refuse(result?.reason || 'custody_not_committed');
+      } catch (error) {
+        if (!committed) throw error;
+        // An observer may throw after the durable economy/custody commit. Never resurrect it.
+      }
+    } else if (!commitCustody({ ok: true, receiptId: key, commodityId, qty,
+      acceptedLines: [{ commodityId, qty }] })) return refuse('custody_not_committed');
+    // World capture also reads the live hold during a reentrant Save; refresh its retained
+    // record now when available. Failure here cannot reverse committed cargo/stock.
+    try { this.registry?.get('world')?.upsertWorldRecord?.(entity); } catch { /* live capture retries */ }
+    this.bus.emit('cargo:breakwaterFreightAccepted', { ...receipt });
+    return { ok: true, receipt: { ...receipt } };
   },
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */

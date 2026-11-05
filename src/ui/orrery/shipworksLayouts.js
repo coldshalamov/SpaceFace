@@ -210,6 +210,9 @@ ${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !im
 }
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
+/* Keep the focused bid field's outline clear of its label on narrow station panes. */
+${W} .sx-sw-lotdesk__bid label { display:inline-flex; align-items:center; gap:8px; }
+${W} .sx-sw-lotdesk__bid input { width:120px; max-width:100%; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -265,6 +268,15 @@ ${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; padding:0 !important; }
+/* The phone station body is the scroller; the chooser list must not collapse inside it. */
+@media (max-width:960px) {
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__panel,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__list {
+    flex:none !important; height:auto !important; max-height:none !important; overflow:visible !important;
+  }
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser { padding-bottom:0 !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
 ${W} .sx-modrow { ${PLAIN} display:block !important; position:relative; padding:9px 0 11px 26px !important; min-height:0 !important; height:auto !important; cursor:pointer; }
 ${W} .sx-modrow::after { display:none !important; }
 ${W} .sx-modrow::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:17px !important; width:8px !important; height:1px !important;
@@ -1316,6 +1328,15 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 @media (min-width:1001px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
   ${W}.orr-sw--jig > .sx-sw__side { max-width:none !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+}
+/* Short desktop fleet: give the roster and the independently scrollable readings
+   separate seats, and make the pinned Save Fit band cover readings passing behind it. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
 }
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */

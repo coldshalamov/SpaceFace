@@ -49,6 +49,10 @@ ${CX} .cx-search .sf-codex-search:focus { outline:none !important;
     repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
 ${CX} .cx-search:focus-within::before { box-shadow:inset 0 0 0 2px rgb(252 250 244 / .95); }
 ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
+/* Keep the archive action above the reading fade in short windows. */
+@media (max-height:600px) {
+  ${CX} .sf-codex-entry > .cx-play { margin-top:6px !important; }
+}
 /* 5 — each unlock count is a hairline card sized to its label; the bar runs along its foot */
 @media (min-width:761px) {
   ${CX} .cx-index__list { gap:0 clamp(6px, .6vw, 10px) !important; }

@@ -41,9 +41,11 @@ test('LINE BROKE is a failure, and a razor release stays a grade', () => {
 
 test('seed 4242: an overload snap paints LINE BROKE; a deliberate cut does not', () => {
   const rock = {
-    id: 7, type: 'asteroid', alive: true, mass: 5200,
+    id: 7, occupantGeneration: 107, type: 'asteroid', alive: true, mass: 5200,
     pos: { x: 120, z: 60 }, vel: { x: 0, z: 0 },
   };
+  const receiptFacts = { targetGeneration: rock.occupantGeneration, targetX: rock.pos.x, targetZ: rock.pos.z,
+    tonnageU: rock.mass, load: 0.55, receiptStrain: 0.14 };
   const player = { id: 1, type: 'ship', alive: true, mass: 200, pos: { x: 0, z: 0 } };
   const state = {
     seed: SEED,
@@ -64,7 +66,7 @@ test('seed 4242: an overload snap paints LINE BROKE; a deliberate cut does not',
   assert.equal(state.masslineReleaseVerdict, null, 'an accepted handoff is not a break');
 
   bus.emit('tether:releaseRated', {
-    targetId: rock.id, classification: 'clean', technique: 'swing', deliberate: true,
+    targetId: rock.id, classification: 'clean', technique: 'swing', deliberate: true, ...receiptFacts,
   });
   assert.equal(state.masslineReleaseVerdict.classification, 'clean');
   assert.notEqual(state.masslineReleaseVerdict.broke, true);
@@ -82,9 +84,17 @@ test('seed 4242: an overload snap paints LINE BROKE; a deliberate cut does not',
 
   bus.emit('tether:broken', { actorId: 1, targetId: rock.id, reason: 'threshold', tension: 92 });
   assert.equal(state.masslineReleaseVerdict.broke, true);
+  assert.equal(state.masslineReleaseVerdict.targetGeneration, null, 'the immediate legacy break has no stamped life');
+  assert.equal(state.masslineReleaseVerdict.atX, null, 'the immediate legacy break does not borrow a body position');
+  // The native owner follows its immediate authority break with a rated break receipt.
+  bus.emit('tether:releaseRated', {
+    sourceId: player.id, targetId: rock.id, deliberate: false, breakReason: 'threshold', ...receiptFacts,
+  });
   assert.equal(releaseVerdictCopy(state.masslineReleaseVerdict), 'LINE BROKE');
   assert.equal(state.masslineReleaseVerdict.targetId, rock.id);
+  assert.equal(state.masslineReleaseVerdict.targetGeneration, rock.occupantGeneration);
   assert.equal(state.masslineReleaseVerdict.atX, 120);
+  assert.equal(state.masslineReleaseVerdict.atZ, 60);
   assert.ok(state.masslineReleaseVerdict.untilSimTime > state.simTime);
 
   bus.emit('tether:broken', { actorId: 4, targetId: 8, reason: 'integrity-failure' });

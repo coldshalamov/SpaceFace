@@ -692,6 +692,10 @@ ${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .85) !important; 
 ${T} .sx-fab-in.is-missing .sx-fab-in__source { order:3; }
 ${T} .sx-fab-notes { margin-top:4px !important; }
 ${T} .sx-fab-status { margin-top:8px !important; }
+/* System reduced motion can disable the entrance animation without setting the in-game class. */
+@media (prefers-reduced-motion: reduce) {
+  ${T} .orr-ind-chain .orr-chain__rise { animation:none !important; opacity:1 !important; }
+}
 ${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
 /* the ladder: the reason only on the chosen row; the tier alone on the rest */
 ${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
@@ -1580,7 +1584,10 @@ ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:cl
    same narrow stage. Lift the chain and its key together so the reason, disabled explanation,
    and action remain visible without changing the button's live/disabled semantics. */
 @media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
-  ${T} .orr-ind-chain { margin-top:-8px !important; }
+  /* Keep the dial compact and reserve real flow space for its action and live queue status. */
+  ${T} .sx-fab { display:block !important; height:auto !important; }
+  ${T} .orr-ind-chain { height:max(180px, calc(var(--orr-chain-input-count, 1) * 70px + 40px)) !important; margin:0 0 28px !important; }
+  ${T} .sx-fab > .sx-fab-foot { position:static !important; transform:none !important; margin:12px 0 0 !important; }
 }
 /* the block note under the reason; the disabled key's outline is enough */
 ${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }

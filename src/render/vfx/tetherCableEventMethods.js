@@ -1,4 +1,7 @@
 // Tether cable event pictures. VFX retains the cable pools, event wiring, and frame lifecycle.
+import { addShieldContact } from '../weapons/shieldContacts.js';
+import { LINE_SHIELD_BREAK_STRENGTH, resolveLatchShieldBite } from './lineShieldBite.js';
+
 export function createTetherCableEventMethods({
   SPR_FLASH,
   SPR_RING,
@@ -59,6 +62,17 @@ export function createTetherCableEventMethods({
 
       const source = this._ent(cable.lastSourceId);
       const target = this._ent(cable.lastTargetId);
+      // The membrane feels the line let go hardest at the break (inf-line-shield-bite): one
+      // full-strength bite as the cable tears free of a shielded hull. A clean release is a
+      // deliberate let-go — the shell closing is the shell's own business, no break bite.
+      if (target && source && source.pos) {
+        const breakBite = resolveLatchShieldBite(
+          target, source.pos.x, source.pos.z,
+          this._lineShieldBiteScratch || (this._lineShieldBiteScratch = {}),
+          LINE_SHIELD_BREAK_STRENGTH,
+        );
+        if (breakBite.live) addShieldContact(target.id, breakBite.dirX, 0.12, breakBite.dirZ, breakBite.strength);
+      }
       const endpoints = cable.endpointScratch || (cable.endpointScratch = {});
       const hasEndpoints = !!(source && target
         && writeTetherVisualEndpoints(source, target, cable.lastRemote, endpoints));
@@ -394,6 +408,17 @@ export function createTetherCableEventMethods({
       }
       if (!anchor) return;
       const ship = ends[0];
+      // The Line bites a shielded hull and the membrane answers (inf-line-shield-bite): one
+      // full-strength contact where the cable meets the shell, aimed at the biting hull — the
+      // same wire, and the same contact-aims-at-the-attacker convention, projectile hits use.
+      // A fresh hitch resets the sustain clock so the first strain re-assert is clean.
+      if (target) {
+        const bite = resolveLatchShieldBite(target, ship.x, ship.z, this._lineShieldBiteScratch || (this._lineShieldBiteScratch = {}));
+        if (bite.live) {
+          addShieldContact(target.id, bite.dirX, 0.12, bite.dirZ, bite.strength);
+          this._lineShieldBiteAt = this._causeNow();
+        }
+      }
       let dirX = anchor.x - ship.x;
       let dirZ = anchor.z - ship.z;
       const chord = Math.hypot(dirX, dirZ);

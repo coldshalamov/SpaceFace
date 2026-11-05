@@ -1,6 +1,6 @@
 import {ballisticDrift} from '../world/worldCatchup.js';
 import {SIM_TIER} from '../world/activityClassification.js';
-import {resolveCraftProportions} from '../core/sg02DynamicBodyOwner.js';
+import {resolveCraftProportions} from '../core/craftProportions.js';
 import {articulatedColliderRadius} from '../core/articulatedColliderBounds.js';
 import {resolveCollisionProxyManifest,proxyOuterRadiusWu,proxyScaleFor} from '../data/collisionProxyManifests.js';
 // Bounded source-specific route planning/query only. The existing job owns commands and custody.

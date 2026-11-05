@@ -1,3 +1,5 @@
+import { validateCinderglassJob } from '../features/cinderglassJob/persistence.js';
+import { cinderglassJobFlagsForSave } from '../features/cinderglassJob/physical.js';
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import {
   compareOccupiedSlotNewestFirst,
@@ -1165,6 +1167,7 @@ export const save = {
       ['nemesis', () => this._callSerialize('nemesis') || clonePlain(state.nemesis || null)],
       ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
       ['enemyMind', () => clonePlain(state.enemyMind || null)],
+      ['tacticalAI', () => this._callSerialize('tacticalAI')],
       // The plan must walk keys in exactly _serializeDataSteps order — the chunked/worker
       // lane assembles `data` in this order and the envelope checksum is insertion-order
       // sensitive, so a plan that drifts from serializeData yields a different byte layout
@@ -1389,6 +1392,7 @@ export const save = {
     data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
     yield 'serialize:nemesisDeployment';
     data.enemyMind = clonePlain(state.enemyMind || null);
+    data.tacticalAI = this._callSerialize('tacticalAI');
     data.latchNine = this._callSerialize('latchNine');
     yield 'serialize:latchNine';
     data.scissorwake = this._callSerialize('scissorwake');
@@ -1875,7 +1879,8 @@ export const save = {
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
       const finiteRef = !isPlayer && ceresWorkfleetEntityRef(e);
       if (finiteRef) {
-        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id), ref: finiteRef });
+        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id),
+          saveEntityId: e.id, occupantGeneration: e.occupantGeneration ?? null, ref: finiteRef });
         continue;
       }
       // Live projectiles ride the persistent list without being flagged persistent: the
@@ -1890,7 +1895,8 @@ export const save = {
       // interrupt the beam — the snagged body resumes its authored life on continue.)
       const gyreBall = !!(e.data && e.data.gyreLaunched);
       if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
-      out.push(plainEntity(e, isPlayer));
+      // Validation metadata for dependent saved cognition, never authority to reuse a live life.
+      out.push({ ...plainEntity(e, isPlayer), occupantGeneration: e.occupantGeneration ?? null });
     }
     for (const entry of this._ceresEntityReferenceRestore?.pending?.values() || []) {
       const key = ceresWorkfleetRefKey(entry.ref);
@@ -4126,9 +4132,17 @@ export const save = {
     }
 
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
+    let plan;
+    try { plan = this._saveCapturePlan(); }
+    catch (error) { return this._failAutosave(job, 'invalid_capture_plan', null); }
+    // Adapters must preserve the indexed [key, reader] array contract. A generator
+    // has no length and would skip every reader, encoding checksum-valid empty data.
+    if (!Array.isArray(plan) || plan.length === 0 || plan.some((row) => (
+      !Array.isArray(row) || typeof row[0] !== 'string' || !row[0] || typeof row[1] !== 'function'
+    ))) return this._failAutosave(job, 'invalid_capture_plan', null);
     const descriptor = this._autosaveDescriptor();
     const capture = {
-      plan: this._saveCapturePlan(),
+      plan,
       data: {},
       index: 0,
       tick: this.state.tick,
@@ -6018,14 +6032,20 @@ export const save = {
     return data || null;
   },
 
-  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
-  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
-  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
-  // failure so the caller can run its identical sync tail.
+  // The slot fill's card payload — canonical gzip decode + small projection only (no
+  // migration/normalize: the portrait reads the stored shape verbatim). The parse normally
+  // runs on the save worker; an unavailable/failed worker uses the same decoder locally.
+  // World tables and thumbnail stay off postMessage; malformed data resolves null.
   peekSaveCardData(raw) {
     if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    const readWithoutWorker = async () => {
+      try {
+        const decoded = await decodeSaveEnvelopeText(raw);
+        return decoded.ok ? cardDataFromEnvelope(JSON.parse(decoded.text)) : null;
+      } catch (_) { return null; }
+    };
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
-      return Promise.resolve(null);
+      return readWithoutWorker();
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -6042,7 +6062,7 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
       ? prepared.cardData
-      : null));
+      : readWithoutWorker()));
   },
 
   _prepareEnvelopeStringAsync(raw) {
@@ -7658,6 +7678,23 @@ export const save = {
         // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
+        tacticalAI: data.tacticalAI || null,
+        // Fresh canonical spawns receive fresh life tokens. Receipt the exact save-id bridge;
+        // tactical memory must never infer that an arbitrary same-id occupant is the saved actor.
+        tacticalAIEntityBindings: (() => {
+          const savedRows = [data.entities?.player, ...(data.entities?.persistent || []),
+            ...(data.entities?.ceresWorkfleetRefs || []).map((row) => ({ ...row, id: row.saveEntityId }))];
+          const savedById = new Map(savedRows.filter(Boolean).map((row) => [row.id, row]));
+          return (Array.isArray(data.tacticalAI?.bindings) ? data.tacticalAI.bindings : []).flatMap((binding) => {
+            if (!binding || !['number', 'string'].includes(typeof binding.id)) return [];
+            const saved = savedById.get(binding.id);
+            if (!saved || saved.occupantGeneration == null || saved.occupantGeneration !== binding.generation) return [];
+            const id = entityIdRemap.get(String(saved.id));
+            const entity = id == null ? null : this.state.entities.get(id);
+            return entity ? [{ saveId: saved.id, savedGeneration: saved.occupantGeneration,
+              entityId: entity.id, generation: entity.occupantGeneration ?? null }] : [];
+          });
+        })(),
       });
       // Time-aware drain: a fixed batch of 12 listeners could stack several heavy reconciles
       // into one over-frame slice. Drain small batches and hand a yield back whenever a slice's
@@ -9081,6 +9118,7 @@ export function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
 // Returns false if a migration throws (caller aborts the load without touching live state).
 // Exported for the migration-ladder proof.
 export function runMigrations(data, fromVer) {
+  if (!validateCinderglassJob(data?.world?.cinderglassJob)) throw new Error('cinderglass_invalid_save');
   let v = fromVer | 0;
   let guard = 0;
   while (v < CURRENT_VERSION && guard++ < 64) {
@@ -9432,7 +9470,7 @@ function plainEntity(e, isPlayer) {
     if (shouldSkipEntitySaveKey(k)) continue;
     const v = e[k];
     if (k === 'flags') {
-      const flags = sanitizeEntityFlagsForSave(v, isPlayer);
+      const flags = sanitizeEntityFlagsForSave(cinderglassJobFlagsForSave(e), isPlayer);
       if (Object.keys(flags).length) out.flags = flags;
     } else if (k === 'boost') {
       const boost = sanitizeBoostForSave(v);

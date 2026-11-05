@@ -4,6 +4,32 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
+- **#840, Lantern Ward:** pinned at `e4363226c1c9`. The useful new Ward service/harbor-life code is
+  being adapted through31 current owner paths and17 tests; schema22→23 adds optional defaults,
+  without grants. Component/projection and real async-save checks pass62 cases; native work and
+  ordinary arrival remain open. Two independent existing defects are already ported and repaired:
+  `1220bfd9925f` preserves full Counterweight autosave capture, and `6794833bc886` prevents packaged
+  beacon double scaling. Stronger local Import/Load/Continue and seed/scar fixes are retained.
+  No broad old-branch replacement, reference-budget rebinding or binary asset port is involved.
+
+- **#835/#838/#839, compact station and Help:** merged with `origin/master90beba0230f1` in
+  `03b9e46336f7`. The scoped source/DOM/breakpoint review found the vitals row, footer rail and
+  Ores reading selectors consistent. Integrated ordinary looks remain open. Both historical
+  reference files retain their exact authentic October30 blobs; incoming hash-only rebindings
+  were excluded.
+
+- **#836, progressing slow-GL admission:** reviewed and corrected in the same merge. Its relative
+  timers accepted a picture at105ms despite a20ms base plus20ms cap. The owner now captures time
+  before work, uses an absolute hard deadline, accounts for delayed callbacks and refuses late
+  success while preserving typed driver errors. The20 affected first-picture/recovery cases pass.
+  This is bounded admission behavior, not physical iPhone or actual-picture acceptance.
+
+- **#837, patrol arrival and wreck momentum:** integrated in `8d241e2be007`. The patrol stages at
+  its valid jurisdiction arrival. The corrected native scenario observes the original death and
+  admitted wreck rather than a nearby unrelated hull; clear-coast momentum retains100.9% after2s,
+  while real populated-bay contacts may destroy the wreck. No runtime momentum injection,
+  collision suppression or golden refresh was made. Publication and ordinary arrival look remain open.
+
 - **#819, Forge and current trade integration:** selectively ported useful current source in `5a2e6e7fbd3e` and `a5610244d72d`; the old branch's broad deletions, duplicate documents and stale benchmark metadata were excluded. Forge's named berth, global Slate position, ordered handoff, truthful furnace settlement and finite native Maw/slag work now share the campaign owners. The worker carries the real Maw radius into its visual. Market confirmation uses one execution transport, exact intent/receipt identity and a same-ID unknown-result retry. Review reproduced a warm-ledger partial-fill explanation loss; the local receipt fix now preserves the real six-of-ten result before the ledger leaf arrives. Focused native/worker/story/trade checks pass; ordinary Forge/Maw/Market route acceptance remains open.
 
 - **#817 and #820–#823, compact controls:** ported in `88f53902ab90` without stale reference metadata. Back controls retain their label/keycap typography, New Game rear names clear the ring, stake economics wrap, and compact Crucible mode choices remain together. Software-mounted New Game and Crucible views were opened at their affected desktop sizes; this does not establish ordinary mode play or mobile flight.
@@ -81,18 +107,28 @@ Opening a screen alone did not establish these visual outcomes.
 | [#531](https://github.com/coldshalamov/SpaceFace/pull/531) `dot/rhea-shift-radio-20261023` | Rhea gives a local shift recap using the existing broadcast and voice queue. | Already integrated in current source (`95aca47c66fb`); no remaining code port identified. The focused owner suite passes, including Save/Continue across return, replacement, and final loss with no casualty revival. The projection is read-only; ordinary public return/restore route and duplicate-reward behavior in a live route remain unverified. |
 | [#486](https://github.com/coldshalamov/SpaceFace/pull/486) `dot/charon-colony-approach-20261022` | A real 750–500 WU approach reveals the existing Charon supply worker through a quiet Hail → SUPPLY ROUTE cue. | Already integrated in current source (`26f29b748d44`); no remaining code port identified. Focused owner tests pass for crossing/cooldown, unchanged custody, public Hail offer availability, and no approach-triggered stock mutation. Ordinary flight approach and completed public Hail interaction remain unverified. |
 
-## Remaining direct checks, in priority order
+## Current follow-through
 
-An earlier `a0d2b3c9e10d4729` public route ended before `run:resultsReady` and remains INCOMPLETE; do not repeat it unchanged. The 2026-11-03 controller override is the current status source. No player route below is closed by a source port or owner test alone.
+Use [INTEGRATION_COVERAGE](./INTEGRATION_COVERAGE.md), the three lane boards and [NOW](../NOW.md)
+for current outcomes and exact writers. The PR entries above retain their source-port history;
+the old numbered execution queue is superseded by the current Finish integration campaign.
 
-1. **Current source integration — complete:** `0a046adf1e09` integrates M8/save repairs; `5ba03b01ca9f` integrates safe partial/refused salvage; `d87c999ea10d` integrates the garden delta. The English inventory is refreshed and its readiness check passes (15,696 surfaces, zero unresolved).
-2. **Next package:** the merged17-check baseline passes in50seconds within90seconds; do not repeat it unchanged. The next release still needs one coherent bundle from the final shipping input set and an unpromoted deployment. The public alias is still C9.
-3. **Mobile presentation/release:** compare the bright advancing canvas with the black WebKit page image through an actual visible-window capture when authorized; preserve the passed9.082-second rotation gate. Physical iPhone14 and public C9 release remain UNKNOWN/unpromoted.
-4. **Remaining UI looks:** run the six non-default legacy alias cells and mounted chart-cost cell; inspect the new #808–#815 Pause, Save/Records, Motion Ask, narrow Launch and mobile flight changes. Keep the canonical matrix and its existing cost failures open until actually checked.
-5. **Hero and authored visuals:** complete the composed in-world hero/plume/marking look. Preserve the earlier zero-draw Kestrel failure; do not substitute isolated asset previews for world placement.
-6. **Foundry/Kraken:** the first-ten attempt reached wave9 at its45-minute cap, with wave10/Kraken unreached. Choose a material route/source adjustment before another attempt, then observe the actual boss, targeting and tells.
-7. **Ordinary gameplay routes:** run the changed Ceres12 path after the partial/refusal source is integrated; finish Last Shift's75-minute route, Tethys stealth, earned Compost first growth, PQ024H1, and visible liner/tug yield/resume. Preserve the distinct native/fixture results already recorded.
-8. **Stability and performance:** complete the existing30-minute M8 context-loss soak after its64/64 contract checks and integrated save fixes; address the6MB loading and sim/frame bars with matched relevant measurements. The Foundry samples are not a performance pass.
-9. **Provider-blocked and closing work:** Pro creation remains blocked by the “Usage limit reached” state through the Nov4 window; no briefs have been dispatched. Finish build-map leftovers and the requested last-300-commit review only after the gameplay, mobile, UI and soak work above.
-
-The physical Escape stopped the planned Windows capture before any app input or image was captured. Do not describe a visible-window result from that interrupted check. The source-coverage inventory and completed PR/source reviews remain historical evidence, not a substitute for the listed direct routes.
+- Source ports and corrected native/worker/save behavior are separate from ordinary route acceptance.
+  The earned Cinderglass original return, exact450CR settlement and cold Continue now pass. Six actual
+  Swarm rounds reached Kraken before the repaired frozen-clock failure; boss completion remains open.
+- Current mobile source fixes radar input, Photo framing/capture/controls and compact layouts. Physical
+  iPhone14 remains unknown. The old FCC stage reaches flight in desktop WebKit, then becomes unresponsive;
+  the new immutablea704 stage responds through Powers/Pause/Resume with no first control failure.
+  Touch capability mismatch and missing captured overlay controls remain open; the visual cause is
+  being diagnosed separately from the earlier stall.
+  No newer public-alias promotion is claimed.
+- The current performance bars remain missed. Rejected native/AI/field/binding experiments stay rejected;
+  aggregates confounded by host load do not establish a gain. Use a named changed candidate and matched
+  observation rather than another unchanged timeout or endurance quota.
+- Finish the remaining ordinary worksite/campaign/Circuit/boss journeys and actual audio/asset/UI looks.
+  Incoming content is connected only with its canonical save, custody, event and player-facing readers;
+  the new Weir repair also preserves captured ships. Six further authored rows are connected with canonical
+  lifecycle, dock hand-in and actual Eris bar readers in494b; ordinary journeys remain open. Pro creation remains usage-locked and unsent.
+- Run the requested final build-map and last300-commit review at the end, then the owner's three successive
+  independent release reviews of a genuinely ready coherent candidate. Those reviews have not begun;
+  source coverage and reviewer counts cannot independently establish completion or competitiveness.

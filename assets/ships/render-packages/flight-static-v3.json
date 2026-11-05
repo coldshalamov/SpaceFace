@@ -2,6 +2,8 @@
   "schema": "spaceface.flightRenderPackagePilots.v1",
   "packages": [
     "helios-trade-hub",
+    "crusher-module",
+    "ore-sorter",
     "aftermath-aft-cockpit-section",
     "aftermath-aft-engine-section",
     "aftermath-aft-cargo-module",

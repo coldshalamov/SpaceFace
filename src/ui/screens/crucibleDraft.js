@@ -306,7 +306,7 @@ export function rememberedSpareChoice(options, remembered) {
 }
 
 /**
- * How many of the drawn shop cards the wallet can still buy: available (the owner already folds
+ * How many of the current shop offers the wallet can still buy: available (the owner already folds
  * affordability and slot legality into it), not yet fitted, not the hull being flown, and not a
  * hull already on the manifest (a free switch, not a sale). Pure so a check can pin the count
  * the Escape guard reads without a DOM.
@@ -1278,7 +1278,7 @@ export const crucibleDraftScreen = {
 
   /**
    * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one drawn card is
+   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
    * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
    * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
    * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
@@ -1390,7 +1390,9 @@ export const crucibleDraftScreen = {
       this._launchWarned = false;
       return false;
     }
-    const count = affordableOfferCount(this._drawnOffers);
+    // Search and category filters only change the view. An empty shelf must not turn Cancel
+    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
     if (count < 1) return false;
     this._launchWarned = true;
     const text = launchGuardLine(count);
@@ -1581,12 +1583,14 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
 
-    if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      // The Hulls shelf is empty at the opening stop by design (the door's pick is being
-      // fitted, not re-sold) — it says where the hulls are instead of reading as broken.
-      const hullPause = this._category === 'Hulls' && !this._query && wave === 0;
+    if (shop && !visibleOffers.length && !recommended.length
+        && typeof document.createElementNS === 'function') {
+      // The Ships shelf is empty at the opening stop by design: the player's launch hull is
+      // already selected. Say what to do next without promising hulls will unlock after round 1;
+      // One Hull contracts intentionally keep that shelf empty for the whole run.
+      const hullPause = this._category === 'Ships' && !this._query && wave === 0;
       const empty = el('div', 'orr-armory-empty', hullPause
-        ? 'New hulls go on sale after round 1 — this stop fits the ship you chose.'
+        ? 'Your launch hull is already selected. Fit it from the other shelves.'
         : 'No equipment matches this search.');
       const clear = el('button', 'orr-armory-clear', hullPause ? 'Back to all fittings' : 'Clear filters');
       clear.type = 'button';
@@ -1598,8 +1602,6 @@ export const crucibleDraftScreen = {
     }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
-    // What the shelf shows right now, for the Escape guard (the Gauntlet never reads it).
-    this._drawnOffers = shop ? [...recommended, ...visibleOffers] : [];
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
       this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);

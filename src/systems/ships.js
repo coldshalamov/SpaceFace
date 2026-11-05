@@ -2044,7 +2044,12 @@ export const ships = {
       const shipIndex = p && p.shipIndex;
       const slotIndex = p && p.slotIndex;
       const instanceId = p && typeof p.instanceId === 'string' && p.instanceId ? p.instanceId : null;
-      return this.fitModule({ shipIndex, slotIndex, instanceId });
+      return this.fitModule({ shipIndex, slotIndex, instanceId, operationId: p.operationId });
+    }, (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, instanceId: p.instanceId,
+        operationId: p.operationId, reason: 'station_unavailable',
+      });
     }));
     bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p), (p) => {
       if (p.operationId) this.bus.emit('module:fitRefused', {
@@ -3279,7 +3284,7 @@ export const ships = {
 
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
-  fitModule({ shipIndex, slotIndex, instanceId, defId }) {
+  fitModule({ shipIndex, slotIndex, instanceId, defId, operationId }) {
     const refuse = (reason) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -3287,6 +3292,7 @@ export const ships = {
         defId,
         instanceId,
         reason: reason || 'refused',
+        ...(operationId ? { operationId } : {}),
       });
       return false;
     };
@@ -3343,7 +3349,8 @@ export const ships = {
     // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
     if (displaced) p.moduleInventory.push({ ...displaced });
 
-    this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+    this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId, instanceId } : {}) });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;
   },

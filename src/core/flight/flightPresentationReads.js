@@ -9,6 +9,7 @@ import {
   resolveDockAnchor,
 } from '../../data/collisionProxyManifests.js';
 import { resolveEntitySelection } from '../../ui/sim/stableSelection.js';
+import { resolveContract47aRecoveryTarget } from '../../ui/navigationWaypoint.js';
 
 export const AUTOPILOT_ARRIVAL_RADIUS = 38;
 const AUTO_TARGET_HELM_MULT = 1.5;
@@ -64,6 +65,10 @@ export function resolveAutopilotTarget(state, autopilot) {
       const numeric = Number(id);
       if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
     }
+  }
+  if (autopilot.recoverySource) {
+    const source = resolveContract47aRecoveryTarget(state, autopilot.missionId, autopilot.recoverySource);
+    if (!source || entity !== source) return null;
   }
   if (entity && entity.alive !== false && entity.pos
       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {

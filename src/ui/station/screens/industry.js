@@ -307,7 +307,8 @@ export function createIndustryScreen(ctx) {
     // the reason lives on the instrument and on the ladder; the sentence stays only for a running line or a note
     // — and never restates what the chain's blocked plate already says (one fact, one carrier)
     const blocker = !queue ? industryBlocker(bp, r) : null;
-    const showStatus = !!queue || (notes.length > 0 && !blocker);
+    const showStatus = !!queue;
+    const action = bp.category === 'refine' ? 'Refine' : 'Fabricate';
 
     stageEl.innerHTML =
       `<div class="sx-fab">` +
@@ -324,8 +325,8 @@ export function createIndustryScreen(ctx) {
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : ''} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
         (showStatus ? `<p class="k-sentence sx-fab-status">${status}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
-          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="Fabricate: hold to run"` : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(lineHolds && r.state === 'ready' ? 'Line occupied' : r.label)}"`}>` +
-            `${lineHolds && r.state === 'ready' ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
+          `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="${action}: hold to run"` : ` disabled aria-disabled="true" aria-label="${action}: ${escapeHtml(lineHolds && r.state === 'ready' ? 'Line occupied' : r.label)}"`}>` +
+            `${lineHolds && r.state === 'ready' ? 'Line occupied' : action}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
           `</button>` +
         `</li>` +
         (ownedFitting ? `<li><button type="button" ${stationControlAttrs('shipworks')} class="k-word k-word--fine" data-ind-shipworks="1">Fit owned in Shipworks</button></li>` : '') +
@@ -375,7 +376,7 @@ export function createIndustryScreen(ctx) {
       }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: buildDuration(bp) ? `${buildDuration(bp)} s` : 'instant',
-      output: { qty: bp.outputs.qty || 1, unit: 'per run', glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
+      output: { qty: bp.outputs.qty || 1, unit: `${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))} · per run`, glyph: glyphFor(bp.outputs.id, bp.outputs.kind) },
       live: !!canBuild,
       // the station's own lack (no refinery, no slot) is drawn on the ring; a shortfall of inputs is already on the nodes
       blocked: blocker ? { reason: escapeHtml(blocker.reason), verbHtml: `<span class="orr-chain__blocknote">${escapeHtml(blocker.note)}</span><button type="button" ${stationControlAttrs(blocker.controlId)} class="orr-chain__wayout" data-ind-${blocker.verb}="1">${escapeHtml(blocker.verbLabel)}</button>` } : null,

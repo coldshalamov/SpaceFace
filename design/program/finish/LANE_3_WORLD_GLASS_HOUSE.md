@@ -12,9 +12,29 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Claimed paths (beyond README §3)
 
+**November5 source integration:** c4b88c85acd4 connects canonical course momentum/receiver guidance,
+seven briefings and earned-result comparisons, and prioritizes the real current course objective.
+Compressed Load cards now retain scar truth; restored seed identity arrives with the actual worker
+receipt. The Counterweight adapter now preserves the full110-reader autosave capture, and invalid
+plans refuse before encoding. Focused integration checks pass; actual flown courses remain open.
+The genuine Ring pilot's latest414u approach/eleven-scar/grudge save is preserved for the repaired
+candidate. Lantern Ward PR840 is a separate active31-path integration, with native/ordinary work
+still pending; it is not covered by the c4b88 baseline. See NOW for exact live writers.
+
+**Active connected batch,2026-11-03:** ordinary Adventure exposed47-A's missing recovery marker
+and false delivery focus. Source now binds the actual field/slot, publishes the recovery/delivery
+phase through the worker, and makes first-pull teaching optional without stealing a manual course
+or losing a physically carried training body. The real mining producer handoff passes. Mounted
+chart review found the separate source marker sharing manual-course identity; correction is active.
+The earned sample/delivery/workshop journey remains open. Last Shift's bounded filed account,
+Borrowed Voice's actual global anchor, and the physical Warm Freighter/attached growth/deliberate
+standby scene are source-ready, with ordinary connected-world play still required.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
-- 2026-11-03 first shift: a new completed player-only Second Measure long-plate brace pays400cr once through Economy's existing saved committed-intent owner. Partial/copied/stale/replayed/legacy work does not pay; production host/main checks publish the wallet before the paid yard line. Kessler offers the real Ceres lead and distinguishes brace, loss and actual cradle retention. Mounted Bar choice/reply/focus and a short-window facility/Comms/Help/Undock overlap are fixed and directly checked at1280/844. Ordinary paid shift is the next route; no full lift is claimed.
+**Current November3 checkpoint:** public `89ddfe4830e2` includes the repaired arcade Exit/Adventure autosave boundary. Ordinary purchase/save/Swarm/Exit/Continue returns to flight with exact4,962 credits, cargo and sector. The actual Ceres plate brace pays400 once,4,806→5,206, followed by crew cutter release; full physical receiving remains open. Connected mining/refining/crafting/fitting and Last Shift are the next ordinary journeys. Earlier source/fixture receipts below do not imply those routes are accepted.
+
+- 2026-11-03 first shift: a new completed player-only Second Measure long-plate brace pays400cr once through Economy's existing saved committed-intent owner. Partial/copied/stale/replayed/legacy work does not pay; production host/main checks publish the wallet before the paid yard line. Kessler offers the real Ceres lead and distinguishes brace, loss and actual cradle retention. Mounted Bar choice/reply/focus and a short-window facility/Comms/Help/Undock overlap are fixed and directly checked at1280/844. The ordinary paid brace and subsequent cutter release now pass; no full lift or paid-shift Continue is claimed.
 
 - 2026-11-03 working fleet: newly commissioned Prospectors physically reach/face a real seam and report dated field depletion/location through existing Hail Status, with no ore/reward/discovery grant. Same-job Continue binds the exact persisted resource identity; active-job references protect it during bounded compaction and release removes that protection. Focused physical/Hail/Continue/pressure and existing compaction checks pass; natural encounter/look remain open. Rescue standby now yields to a real unattended survivor pod, preserving player lines/other lifters/active approaches. Root caught and removed the new broad per-tick search; indexed standby visits only payloads. The existing sweeper shift was already complete and was not duplicated.
 
@@ -761,6 +781,73 @@ route outcomes remain distinct from these owner and layout checks):
 - inf-market-receipt-lane (WF-14 repair): the station's receipt line — sales, tolls, services,
   the PA — is readable on the market at 1280×720 instead of painting off the top of the glass;
   layout probe 17 findings → 0 (d9f10637f688).
+
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, recorded
+in `design/program/inference-memory.json`):
+- inf-radio-kill (WF-13, wave 2): the radio mentions the hostile wing you downed yourself —
+  The Margin airs the receipt over the band (b414436038b1).
+- inf-wreck-history (WF-16, wave 2): a scanned battlefield wreck reads as a history — the
+  black box names how it died, what it carried, how long it has been dead (ca1f422ec8b0).
+- inf-bar-regular (WF-09, wave 2): a bar regular whose story advances every visit —
+  recognition names your last exchange instead of one bark forever (c0f7eb02056b).
+- inf-berth-remembers (WF-04, wave 3, direct): docking at a station you berthed at before
+  reads one keeper line — days since your last visit — from persisted dock-provenance
+  stamps (visitedAt/priorVisitAt on the market-memory row); surveys and uplink refreshes
+  are knowledge, never presence, so the memory never lies about a hull in the bay
+  (8905cfb8f385).
+- inf-quiet-berth (WF-14, wave 3, direct): a berth with nothing happening reads one honest
+  quiet line — whether its boards have moved since you last read them — instead of a dead
+  card; never spoken over louder voices, never invented movement (41729f77ea5a).
+Verified already deep, wave 3 reconciliation, no unit taken: a hail that carries the ship's
+name and captain (src/data/shipRegistry.js mints the painted hull name + manifest captain
+per save seed; contactHail's callsign read already answers with it).
+
+Inbox (Lane 3, noticed 2026-11-04): ceres-workfleet-recovery/production-cycle suites fail on
+the current working tree (bodies.length/service-state assertions in restore()); the fixture
+imports src/systems/world.js, which has large uncommitted edits from the active integration
+thread — flagging so the thread lands or repairs it with its wave.
+Inbox (Lane 3, noticed 2026-11-04, second): test/tier2-why.test.mjs section 7 crashes in
+Node — contracts.js (Cinderglass thread commit 8ba645d79394) transitively imports
+src/localization/sourceText.js, which writes documentElement.dataset.locale at module load
+under the suite's DOM stub. Next step: guard sourceText's boot write or lazy-import in
+contracts.js; owning thread holds the contracts screens.
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-pa-market-desk (WF-13): docked, the station PA airs what its own market just did — an
+  active shortage first, else the biggest listing move against a watch-old mid (credits
+  floor + 8% fraction gate so drift never reads as news), once per watch, with an authored
+  desk-chime recipe and caption (ac5f3d86d1c3).
+- inf-wreck-captain (WF-09 integration): a scanned wreck now tells you who was aboard — the
+  aftermath owner stamps the registry identity at record time (same law as killerLabel) and
+  the scan adds "CAPT. <name> of the <ship>"; authored hulls never mint, legacy restores
+  honestly to nobody (a8015cf28f34).
+- inf-cause-your-kill (WF-06 repair): selling the freight you took off the hull you downed
+  tightens the destination's book — the why-tooltip names that cause instead of leaving the
+  player's biggest economy move a mystery (6b392b33409c).
+Verified already deep, wave 4: giver-voice offers (443fb963cf7a), ship name + captain on
+hail (shipRegistry, re-verified through the registry refactor).
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-challenge (WF-16): carrying heat, the ambient patrol that finds you cuts its
+  station orbit, holds a 220-WU standoff off your beam, and names the sheet on the band once
+  per heat episode — long before any scan cone or seeded hunter; challenged hulls stay
+  passive; law writes the fact, traffic only flies it (56acd9157562).
+- inf-fine-why (WF-14): the law desk's fine card names what the fine is made of — base plus
+  one step per heat band, your live step named — and the conviction it answers for, via the
+  same no-false-witness trace as the flight alert; suspicion without a receipt renders
+  nothing (63723f81ce70 + dad25ea2f40d hardening).
+- inf-defeat-situation (WF-09): the after-action sheet names the hunt you died in — the
+  wanted band, the escape clock, and on a real receipt the convicting incident it traced to;
+  heat freezes over the open sheet so the clause reads the situation at death (e4f279764227).
+Verified already deep, wave 5: traffic registry continuity (durable worldRecordId +
+identityKey stamps at spawn; replacement hulls minting fresh names is the by-design per-hull
+law), defeat receipt depth (killer/weapon/strike/vitals/Range teaching already present).
+Inbox addition: test/infer-p05-patrol-hostility-live.test.mjs fails on the current tree
+("0 shots") — the rig loads combatDoctrine.js/physics.js, both carrying large uncommitted
+edits from the active integration thread; left for the owning thread (same pattern as the
+two Inbox lines above).
 
 ## Traps
 

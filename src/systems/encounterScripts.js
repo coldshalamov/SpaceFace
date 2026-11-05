@@ -35,6 +35,7 @@ import {
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
+import { weirAmbush } from './encounterScripts/weirAmbush.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from './mines.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
@@ -4192,4 +4193,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
   uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
   uniqueWreckCeresRefineryTender: withShapeMeter(uniqueWreckCeresRefineryTender),
+  weirAmbush: withShapeMeter(weirAmbush),
 });

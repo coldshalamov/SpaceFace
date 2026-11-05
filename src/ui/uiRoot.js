@@ -1679,13 +1679,10 @@ export const ui = {
     // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
     // victory (a terminal phase transition, which emits no run:ended).
     this.bus.on('run:resultsReady', (payload) => {
-      // An abort is the player walking out through the pause menu, which closes every screen and
-      // replaces them with the main menu in the same handler chain — so a results plate pushed here
-      // is built and destroyed in one breath. They chose to leave; do not flash a scoreboard at them.
-      // Exception: the arena failing to build a wave also publishes 'aborted' (stopReason
-      // 'wave_plan_failed'), and that one MUST open the plate — it is the loud end of the run that
-      // explains the stop, and without it the player sits in an empty arena with no message.
-      if (payload && payload.outcome === 'aborted' && payload.stopReason !== 'wave_plan_failed') return;
+      // A direct Main Menu abort still leaves immediately. Explicit End run waits for this
+      // authoritative debrief, as does a wave-build failure that needs a visible explanation.
+      if (payload && payload.outcome === 'aborted'
+        && !['wave_plan_failed', 'player_retired'].includes(payload.stopReason)) return;
       if (this._crucibleResultsShown) return;
       this._crucibleResultsShown = true;
       this._pushScreenWhenRegistered('crucibleResults', 60);

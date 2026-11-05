@@ -287,6 +287,10 @@ export function createCeresWorkfleetPlumeBatch(plume, Vector3) {
           // Production shader extends along -axis, so submit the reaction-force axis.
           out.ax=-slot.axis.x;out.ay=-slot.axis.y;out.az=-slot.axis.z;
           slot.signals.throttle=sample.level;
+          slot.signals.entityId=entity.id;
+          slot.signals.hullFrac=Number.isFinite(entity.hull) && Number.isFinite(entity.hullMax) && entity.hullMax>0
+            ? entity.hull/entity.hullMax : 1;
+          slot.signals.sputterPhase=Number.isFinite(state.simTime) ? state.simTime : 0;
           // The receipt is already the final actuator response, so there is no
           // second spring between zero/opposed force and the nozzle's brightness.
           slot.driveState.plumeDrive=sample.level;

@@ -23,6 +23,12 @@ test('every bench shot id is unique and resolves to a screen', () => {
   assert.equal(resolveShot('station-market').tab, 'market');
   assert.equal(resolveShot('comms-radial').overlay, 'comms');
   assert.equal(resolveShot('chart-galaxy').focus, 'galaxy');
+  for (const [id, mapAlias] of [['localmap', 'localmap'], ['localmap-legacy', 'localmap'],
+    ['starmap', 'starmap'], ['starmap-legacy', 'starmap']]) {
+    const shot = resolveShot(id);
+    assert.deepEqual({ screen: shot.screen, chart: shot.chart, backdrop: shot.backdrop, mapAlias: shot.mapAlias },
+      { screen: 'galaxyMap', chart: 'seeded', backdrop: 'space', mapAlias }, id);
+  }
   assert.equal(resolveShot('missing'), null);
 });
 

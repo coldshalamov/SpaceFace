@@ -292,7 +292,11 @@ export function waveOpeningLine(wave, plan) {
       return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${pressure}${wall}${actLine} ${closing}`;
+    // LW-05: a scheduled recurring character is named before contact, same as the debut it
+    // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
+    const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name
+      ? ` ${swarm.character.name} is inbound.` : '';
+    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${character}${pressure}${wall}${actLine} ${closing}`;
   }
 
   let bodies = 0;

@@ -1074,7 +1074,9 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.crusher-module",
-    "expectedContentHash": "ebebaf3775a5bc518dbf00a5cf001f6805e23b2aaf4586a108db749497c04cfd",
+    "expectedContentHash": "2c1d2ab0ff48b0b2745936fac9bfcc806a53b7f467764e938c33aa099c498671",
+    "expectedRuntimeHash": "fa009406979b22891cab024b60b8100bf8520761ec8190e2958fa6d148601da2",
+    "flightStaticV3": true,
     "key": "crusher-module",
     "metadataUrl": "assets/ships/release/render-packages/crusher-module/render-package.json",
     "runtimeAssetId": "place_crusher_module",
@@ -1603,6 +1605,16 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "9da74aba5f9d92f7c4f66dcc7cab536cdb95e62dc7d845e4b1a5465cb4613b9f",
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb"
+  },
+  {
+    "assetId": "sf.render.hornet-scn-customs-cutter",
+    "expectedContentHash": "8fbe4870d59fb97bcac71ce8df81724790b664b9b7ddb0446a017f00c8c211ed",
+    "key": "hornet-scn-customs-cutter",
+    "metadataUrl": "assets/ships/release/render-packages/hornet-scn-customs-cutter/render-package.json",
+    "runtimeAssetId": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+    "slot": "hull",
+    "sourceSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+    "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb"
   },
   {
     "assetId": "sf.render.hull-capital",
@@ -2236,7 +2248,9 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-sorter",
-    "expectedContentHash": "f43755691c1021e3d04da0f0f63dc022d916fc321ffec79f8c5293f77e02527f",
+    "expectedContentHash": "4d14d6a054df5605c92c67f55e46d634fc7c44e473c92dc60da48fba662213cf",
+    "expectedRuntimeHash": "429df3606bb1d7d247687344cc0cab7ec91bd47b976b9ce8bbdc402693cb0e2a",
+    "flightStaticV3": true,
     "key": "ore-sorter",
     "metadataUrl": "assets/ships/release/render-packages/ore-sorter/render-package.json",
     "runtimeAssetId": "place_ore_sorter",

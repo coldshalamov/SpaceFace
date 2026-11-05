@@ -1,3 +1,4 @@
+import { settleCinderglassResult } from '../features/cinderglassJob/ownerSeams.js';
 import { winnowCarrierHandoffReady } from '../world/vestaWinnowRecovery.js';
 // economy system — stock-based market economy + SOLE writer of state.player.credits.
 // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
@@ -1255,6 +1256,14 @@ function normalizeCargoKillChain(raw) {
     const qty = Math.max(0, Math.floor(Number(redeemedSource[id]) || 0));
     if (qty > 0) redeemed[id] = qty;
   }
+  const pressureReceipts = {};
+  for (const [id, fact] of Object.entries(raw.pressureReceipts || {})) {
+    if (!fact || typeof fact.receiptId !== 'string' || typeof fact.stationId !== 'string'
+      || typeof fact.saleStationId !== 'string' || !Number.isFinite(fact.seenAt)
+      || !(Number(fact.qty) > 0) || !redeemed[id]) continue;
+    pressureReceipts[id] = { receiptId: fact.receiptId, stationId: fact.stationId,
+      saleStationId: fact.saleStationId, seenAt: fact.seenAt, qty: Math.floor(fact.qty) };
+  }
   return {
     id: String(raw.id),
     victimId: raw.victimId,
@@ -1271,6 +1280,7 @@ function normalizeCargoKillChain(raw) {
     originStationId: typeof raw.originStationId === 'string' ? raw.originStationId : null,
     salvaged,
     redeemed,
+    pressureReceipts,
     closed: raw.closed === true,
     saleStationId: typeof raw.saleStationId === 'string' ? raw.saleStationId : null,
   };
@@ -1822,7 +1832,7 @@ export const economy = {
         this._lastDockedStation = p.stationId;
         this._stationServiceBerth = p.stationId;
         this.ensureStationMarkets(p.stationId);
-        this.snapshotIntel(p.stationId);
+        this.snapshotIntel(p.stationId, { arrival: true });
         this._runDockedCustomsPost(p.stationId);
         // FB-124: a cargo policy covers one trip. Docking under your own power ends it — a
         // defeat claim was already priced into the recovery plan before the rescue berth.
@@ -2593,6 +2603,29 @@ export const economy = {
     const record = { snapshot, seenAtT: state.simTime };
     if (source) record.source = source;
     state.economy.marketIntel[stationId] = record;
+    if (options?.arrival) {
+      const memory = state.player.berthMemory ||= {};
+      const row = memory[stationId] || (memory[stationId] = {});
+      const now = Math.max(0, Number(state.simTime) || 0);
+      const previous = Number.isFinite(row.visitedAt) ? row.visitedAt : null;
+      const quotes = row.berthQuotes;
+      let compared = 0, moved = false;
+      if (quotes && typeof quotes === 'object') {
+        for (const [cid, quote] of Object.entries(quotes)) {
+          const current = snapshot[cid];
+          if (!current || !quote || !Number.isFinite(current.buy) || !Number.isFinite(current.sell)
+            || !Number.isFinite(quote.buy) || !Number.isFinite(quote.sell)) continue;
+          compared++;
+          if (Math.round(current.buy) !== quote.buy || Math.round(current.sell) !== quote.sell) moved = true;
+        }
+      }
+      row.priorVisitAt = previous;
+      row.visitedAt = now;
+      row.berthBoard = compared && previous != null ? { moved, observedAt: previous, arrivalAt: now } : null;
+      row.berthQuotes = Object.fromEntries(Object.entries(snapshot).filter(([, quote]) =>
+        Number.isFinite(quote.buy) && Number.isFinite(quote.sell)).map(([cid, quote]) => [cid,
+        { buy: Math.round(quote.buy), sell: Math.round(quote.sell) }]));
+    }
     this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
   },
 
@@ -3201,7 +3234,7 @@ export const economy = {
         commodityId,
       });
     }
-    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty);
+    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty, receipt);
     return receipt;
   },
 
@@ -3297,7 +3330,7 @@ export const economy = {
    * chain's own salvaged units of the sold good are consumed: an ordinary hold sale that shares
    * the commodity id debits the count it actually redeems, it does not settle the chain early.
    */
-  _closeCargoKillChain(saleStationId, commodityId, qty) {
+  _closeCargoKillChain(saleStationId, commodityId, qty, receipt = null) {
     const state = this.state;
     const chains = state && state.economy && state.economy.cargoKillChains;
     if (!Array.isArray(chains) || !commodityId) return null;
@@ -3345,6 +3378,12 @@ export const economy = {
           }
           midAfter = entry.lastMid;
         }
+      }
+      if (receipt && receipt.receiptId && receipt.side === 'sell' && receipt.stationId === saleStationId
+        && receipt.commodityId === commodityId && midBefore != null && midAfter > midBefore) {
+        const receipts = chain.pressureReceipts || (chain.pressureReceipts = {});
+        receipts[commodityId] = { receiptId: receipt.receiptId, stationId: priceStationId,
+          saleStationId, seenAt: receipt.seenAt, qty: consumed };
       }
       const fact = {
         kind: 'price_move',
@@ -4233,6 +4272,41 @@ export const economy = {
     return { ok: true, duplicate: false, ...result };
   },
 
+  // Circuit awards are authorised by the live feature owner, never by a caller-supplied amount.
+  // The wallet, accepted receipt and feature record settle synchronously before outward events.
+  settleCinderglassResult,
+
+  settleCounterweightResult(eventId, attemptId) {
+    const owner = this.registryGet('counterweightCircuit');
+    const intents = ensureCommittedIntents(this.state);
+    const key = typeof eventId === 'string' ? `counterweight:first-completion:${eventId}` : '';
+    const prior = intents?.[key];
+    if (prior?.result?.eventId === eventId && prior.result.attemptId === attemptId
+      && owner?.payoutAlreadyAccepted?.(eventId)) return { ok: true, duplicate: true, ...prior.result };
+    const auth = owner?.payoutAuthorization?.(eventId, attemptId);
+    if (!auth || !Number.isSafeInteger(auth.amount) || auth.amount <= 0) return { ok: false, reason: 'unaccepted_result' };
+    if (!intents || !this.state.player) return { ok: false, reason: 'economy_unavailable' };
+    if (prior) {
+      if (prior.result?.eventId !== eventId || prior.result?.attemptId !== attemptId
+        || prior.result?.creditedCr !== auth.amount || !owner.acceptPayout(eventId, attemptId, prior.result.creditedCr)) {
+        return { ok: false, reason: 'receipt_mismatch' };
+      }
+      return { ok: true, duplicate: true, ...prior.result };
+    }
+    const player = this.state.player, before = normalizeCredits(player.credits);
+    if (normalizeCredits(before + auth.amount) - before !== auth.amount) return { ok: false, reason: 'wallet_full' };
+    const result = { eventId, attemptId, creditedCr: auth.amount, key: auth.key };
+    // No callbacks occur between these owner writes; a later credits listener can save or retry
+    // and will see both the accepted receipt and the updated wallet/feature record.
+    player.credits = before + auth.amount;
+    intents[auth.key] = { result };
+    owner.acceptPayout(eventId, attemptId, auth.amount);
+    recordEconomyCash(this.state.economy, this.state.simTime, auth.amount, auth.key);
+    if (player.stats) player.stats.creditsEarned = (player.stats.creditsEarned || 0) + auth.amount;
+    this.bus.emit('credits:changed', { delta: auth.amount, reason: auth.key, total: player.credits });
+    return { ok: true, duplicate: false, ...result };
+  },
+
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
@@ -4247,6 +4321,39 @@ export const economy = {
     this.grantCredits(receipt.quoteCr,'salvage:tally-three-return');
     this.applyStockPressure(receipt.stationId,receipt.commodityId,'sell',receipt.qty);
     this.bus.emit('cargo:tallyThreeDelivered',{...result,worldRecordId:receipt.worldRecordId});
+    return {ok:true,duplicate:false,...result};
+  },
+
+  // Breakwater's finite authored awards settle only against the live feature
+  // owner's pending accepted custody/work receipt. No caller chooses an amount.
+  settleBreakwaterReceipt(kind, sourceId) {
+    const amounts = { scrap:90, supply:160, defend:180, bonded:220, bond_refund:100 };
+    const amount = Object.hasOwn(amounts, kind) ? amounts[kind] : 0;
+    const owner = this.registryGet('breakwaterSpur');
+    if (!amount || typeof sourceId !== 'string' || !sourceId) return {ok:false,reason:'invalid_receipt'};
+    const key = `breakwater:first:${kind}`;
+    const intents = ensureCommittedIntents(this.state), prior = intents?.[key];
+    if (!intents || !this.state.player) return {ok:false,reason:'economy_unavailable'};
+    if (prior) {
+      if (prior.result?.kind !== kind || prior.result?.sourceId !== sourceId
+        || prior.result?.creditedCr !== amount) return {ok:false,reason:'receipt_mismatch'};
+      if (!owner?.payoutAlreadyAccepted?.(kind,sourceId)
+        && !owner?.acceptPayout?.(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+      return {ok:true,duplicate:true,...prior.result};
+    }
+    const auth = owner?.payoutAuthorization?.(kind,sourceId);
+    if (!auth || auth.key !== key || auth.amount !== amount || auth.sourceId !== sourceId)
+      return {ok:false,reason:'unaccepted_receipt'};
+    const player=this.state.player, before=normalizeCredits(player.credits);
+    if (normalizeCredits(before+amount)-before !== amount) return {ok:false,reason:'wallet_full'};
+    const result={kind,sourceId,creditedCr:amount,key};
+    if (!owner.acceptPayout(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+    // All three owner writes precede any outward event or reentrant save.
+    player.credits=before+amount;
+    intents[key]={result};
+    recordEconomyCash(this.state.economy,this.state.simTime,amount,key);
+    if (player.stats) player.stats.creditsEarned=(player.stats.creditsEarned||0)+amount;
+    this.bus.emit('credits:changed',{delta:amount,reason:key,total:player.credits});
     return {ok:true,duplicate:false,...result};
   },
 

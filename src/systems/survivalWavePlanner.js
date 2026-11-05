@@ -600,6 +600,12 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       rounds: SWARM_ACT_ROUNDS,
       question: act.question,
     };
+    // LW-04 — an act may author a finite simultaneous-fire budget: the wave owner clears
+    // at most this many cohort hulls to fire at once (see _shapeSwarmFire), instead of the
+    // wave table's number. Absent or non-positive is the legacy cap, byte-identical.
+    if (Number.isInteger(act.shooterCap) && act.shooterCap > 0) {
+      swarm.shooterCap = act.shooterCap;
+    }
   }
   // The ammunition bend is not only the wall's: a boss round's stream keeps feeding light
   // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist —

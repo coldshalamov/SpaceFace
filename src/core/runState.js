@@ -132,6 +132,7 @@ export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } 
     seed: seed >>> 0,
     arenaId: null,
     phase: 'inactive',
+    retireToken: null,
     wave: 0,
     block: 0,
     act: 0,
@@ -174,7 +175,7 @@ function validateRunStateInner(run) {
   const requiredKeys = Object.keys(createRunState());
   const requiredSet = new Set(requiredKeys);
   for (const key of requiredKeys) {
-    if (!Object.prototype.hasOwnProperty.call(run, key)) {
+    if (key !== 'retireToken' && !Object.prototype.hasOwnProperty.call(run, key)) {
       issues.push(`${key}: missing`);
     }
   }
@@ -194,6 +195,10 @@ function validateRunStateInner(run) {
   }
   if (Object.prototype.hasOwnProperty.call(run, 'seed') && !Number.isInteger(run.seed)) {
     issues.push('seed: non-integer');
+  }
+  if (Object.prototype.hasOwnProperty.call(run, 'retireToken')
+    && run.retireToken !== null && (!Number.isSafeInteger(run.retireToken) || run.retireToken < 1)) {
+    issues.push('retireToken: expected positive integer or null');
   }
   for (const key of INTEGER_KEYS) {
     if (!Object.prototype.hasOwnProperty.call(run, key)) continue;

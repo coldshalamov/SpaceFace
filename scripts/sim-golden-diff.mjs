@@ -65,7 +65,7 @@ const seed = Number(readOption('--seed') || 47);
 const asJson = argv.includes('--json');
 const keep = argv.includes('--keep');
 const expectedPath = flightSystem === 'v3'
-  ? 'test/47a.telemetry.v3.expected.json'
+  ? 'test/47a.telemetry.v3.native-contact.expected.json'
   : 'test/47a.telemetry.expected.json';
 
 // Motion is the thing that must not move silently. Everything else in the snapshot is content:

@@ -65,6 +65,11 @@ async function shoot(page, id, outDir, base) {
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file, timeout: args.timeoutMs });
   const report = await page.evaluate(() => window.BENCH.report());
+  const effectiveMode = await page.evaluate(() => ({
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    forcedColors: matchMedia('(forced-colors: active)').matches,
+    locale: document.documentElement.dataset.locale || document.documentElement.lang,
+  }));
   console.log(`\n${id}  ${path.relative(ROOT, file)}  ${((Date.now() - started) / 1000).toFixed(1)}s`);
   if (report.broken) {
     console.log(`  NOT MOUNTABLE  ${report.broken}\n  Live route: node scripts/ui-look.mjs --only=${id}`);
@@ -76,7 +81,7 @@ async function shoot(page, id, outDir, base) {
   if (args.probe) await probe(page, args.probe);
   const walked = args.walk ? await walk(page, id, outDir) : null;
   findingCount += walked?.actions.reduce((n, row) => n + (row.controlReachability?.length || 0), 0) || 0;
-  return { ok: !walked || walked.complete, report, findingCount, file: path.relative(ROOT, file), walk: walked,
+  return { ok: !walked || walked.complete, report, effectiveMode, findingCount, file: path.relative(ROOT, file), walk: walked,
     visualReview: 'required; empty geometry findings do not prove a good picture' };
 }
 

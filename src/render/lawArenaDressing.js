@@ -1235,6 +1235,111 @@ function buildAffixHasted(r, sink) {
   };
 }
 
+/** Rider: a dropped keel that reads the room current — cold plate, one lit leading edge,
+ *  and an aft needle vane that swings to the water it rides. The drive-cut trick made metal. */
+function buildAffixRider(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-rider';
+  const keel = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-rider-keel');
+  keel.scale.set(r * 0.34, r * 0.03, r * 0.04);
+  group.add(keel);
+  const edge = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-rider-edge');
+  edge.scale.set(r * 0.34, r * 0.012, r * 0.012);
+  edge.position.y = -r * 0.02; // the leading edge the current presses on
+  group.add(edge);
+  const needle = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-rider-needle');
+  needle.scale.set(r * 0.03, r * 0.025, r * 0.22);
+  needle.position.z = -r * 0.24; // aft, reading the water the hull just left
+  group.add(needle);
+  // A steady V opens only during the drive-cut window, so the actionable state remains
+  // distinguishable with reduced motion or flashing disabled.
+  const current = new THREE.Group();
+  current.name = 'sf-swarm-threat-affix-rider-current';
+  current.visible = false;
+  for (const side of [-1, 1]) {
+    const rail = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-rider-current-rail');
+    rail.scale.set(r * 0.24, r * 0.025, r * 0.035);
+    rail.position.set(-r * 0.22, r * 0.04, side * r * 0.19);
+    rail.rotation.y = side * 0.55;
+    current.add(rail);
+  }
+  group.add(current);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced, active) {
+      current.visible = active === true;
+      // The needle swings across the keel line, slow — the hull is reading, not racing.
+      const swing = reduced ? 0.3 : 0.3 + Math.sin(simTime * 1.9) * 0.22;
+      needle.rotation.y = swing;
+    },
+  };
+}
+
+/** Coverseek: a broad hug-plate hung low on one side with a peek notch — the hull pressed
+ *  against its stone. The plate's seam edge lights only while a hold is actually live, so the
+ *  actionable state survives reduced motion. */
+function buildAffixCover(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-cover';
+  const plate = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-cover-plate');
+  plate.scale.set(r * 0.09, r * 0.035, r * 0.4);
+  plate.position.z = r * 0.3; // hung off one flank — the side the stone sits on
+  group.add(plate);
+  const notch = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-cover-notch');
+  notch.scale.set(r * 0.045, r * 0.2, r * 0.06);
+  notch.position.set(0, r * 0.06, r * 0.16); // the peek slot the hull aims around
+  group.add(notch);
+  const lip = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-cover-lip');
+  lip.scale.set(r * 0.095, r * 0.012, r * 0.03);
+  lip.position.set(0, 0, r * 0.5); // the lit edge a muzzle peeks past
+  plate.add(lip);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced, active) {
+      lip.visible = active === true;
+      const lean = reduced ? 0.34 : 0.34 + Math.sin(simTime * 1.3) * 0.08;
+      plate.rotation.x = lean; // settled low — a hull leaning on its stone
+    },
+  };
+}
+
+/** Diver: a committed bow — two swept chines meeting forward at a lit nose point the pull
+ *  will bend, and an aft vane holding the dive bearing. The nose lights only while a commit
+ *  is live, so the actionable state survives reduced motion or flashing disabled. */
+function buildAffixDiver(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-diver';
+  for (const side of [-1, 1]) {
+    const chine = mesh(shared.boxGeo, shared.metalMat, `sf-swarm-threat-affix-diver-chine-${side > 0 ? 'stb' : 'pt'}`);
+    chine.scale.set(r * 0.03, r * 0.02, r * 0.3);
+    chine.position.set(side * r * 0.1, 0, r * 0.18);
+    chine.rotation.y = side * -0.42; // swept forward to the point
+    group.add(chine);
+  }
+  const vane = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-diver-vane');
+  vane.scale.set(r * 0.02, r * 0.16, r * 0.05);
+  vane.position.z = -r * 0.26; // aft, holding the committed bearing
+  group.add(vane);
+  const nose = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-diver-nose');
+  nose.scale.set(r * 0.035, r * 0.014, r * 0.06);
+  nose.position.z = r * 0.36; // the lit point the well bends
+  group.add(nose);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced, active) {
+      nose.visible = active === true;
+      const hold = reduced ? 0.1 : 0.1 + Math.sin(simTime * 2.4) * 0.05;
+      vane.rotation.x = hold;
+    },
+  };
+}
+
 // Per-affix builder + the seam's breath cadence (rad·s⁻¹). Volatile races; commander is the
 // slow steady heartbeat the cohort flies on.
 const AFFIX_MARKS = Object.freeze({
@@ -1244,6 +1349,9 @@ const AFFIX_MARKS = Object.freeze({
   magnetic: Object.freeze({ build: buildAffixMagnetic, pulse: 3.1 }),
   commander: Object.freeze({ build: buildAffixCommander, pulse: 1.5 }),
   hasted: Object.freeze({ build: buildAffixHasted, pulse: 3.9 }),
+  cover: Object.freeze({ build: buildAffixCover, pulse: 1.9 }),
+  diver: Object.freeze({ build: buildAffixDiver, pulse: 2.5 }),
+  rider: Object.freeze({ build: buildAffixRider, pulse: 2.2 }),
 });
 
 export function createLawArenaDressing() {
@@ -1257,6 +1365,109 @@ export function createLawArenaDressing() {
     root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null,
     relayWires: [], pylonPositions: [],
   };
+  let stormCue = null;
+  let stormLatestGeneration = 0;
+  let stormLatestSerial = 0;
+
+  function clearStormCue() {
+    if (!stormCue) return;
+    if (stormCue.root.parent) stormCue.root.parent.remove(stormCue.root);
+    for (const material of stormCue.materials) material.dispose();
+    stormCue = null;
+  }
+
+  // Geometry comes from the simulation's committed walk, never the decorative orbit wires.
+  function handleStormWarning(payload, scene, onPresented) {
+    if (!payload || !scene || !Number.isSafeInteger(payload.wave)
+      || !Number.isSafeInteger(payload.roomGeneration) || payload.roomGeneration < 1
+      || !Number.isSafeInteger(payload.serial) || payload.serial < 1
+      || !Number.isFinite(payload.expiresAtSim) || !Number.isFinite(payload.atSim)
+      || payload.expiresAtSim <= payload.atSim || !Array.isArray(payload.segments)
+      || !Array.isArray(payload.nodes) || payload.segments.length < 1 || payload.segments.length > 8
+      || payload.nodes.length < 1 || payload.nodes.length > 9) return false;
+    if (payload.roomGeneration < stormLatestGeneration
+      || (payload.roomGeneration === stormLatestGeneration && payload.serial <= stormLatestSerial)) return false;
+    if (!payload.segments.every(s => [s.ax, s.az, s.bx, s.bz].every(Number.isFinite))
+      || !payload.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.z)
+        && Number.isFinite(n.radius) && n.radius > 0 && n.radius <= 100)) return false;
+    clearStormCue();
+    stormLatestGeneration = payload.roomGeneration;
+    stormLatestSerial = payload.serial;
+    const shared = sharedAssets(), materials = [];
+    const warning = cloneEmissive(shared.amberMat, materials);
+    warning.emissiveIntensity = 1.15;
+    const root = new THREE.Group();
+    const wires = [], rings = [];
+    root.name = 'storm_discharge_warning';
+    for (const segment of payload.segments) {
+      const wire = mesh(shared.boxGeo, warning, 'storm_discharge_warning_segment');
+      wire.scale.set(Math.max(1, Math.hypot(segment.bx - segment.ax, segment.bz - segment.az)), 1.5, 2.5);
+      wire.position.set((segment.ax + segment.bx) / 2, 43, (segment.az + segment.bz) / 2);
+      wire.rotation.y = -Math.atan2(segment.bz - segment.az, segment.bx - segment.ax);
+      root.add(wire);
+      wires.push(wire);
+    }
+    for (const node of payload.nodes) {
+      const ring = mesh(shared.torusGeo, warning, 'storm_discharge_warning_node');
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(node.x, 43, node.z);
+      ring.scale.setScalar(node.radius);
+      root.add(ring);
+      rings.push(ring);
+    }
+    scene.add(root);
+    stormCue = { root, materials, wave: payload.wave, roomGeneration: payload.roomGeneration,
+      serial: payload.serial, expiresAtSim: payload.expiresAtSim, onPresented, presented: false, wires, rings };
+    return true;
+  }
+
+  function handleStormEnd(payload) {
+    if (!stormCue || !payload || payload.wave !== stormCue.wave
+      || payload.roomGeneration !== stormCue.roomGeneration || payload.serial !== stormCue.serial) return false;
+    clearStormCue();
+    return true;
+  }
+
+  function handleStormResolve(payload) {
+    if (!stormCue || !payload || payload.wave !== stormCue.wave
+      || payload.roomGeneration !== stormCue.roomGeneration || payload.serial !== stormCue.serial) return false;
+    if (!Number.isFinite(payload.atSim) || !Array.isArray(payload.segments) || !Array.isArray(payload.nodes)
+      || payload.segments.length > stormCue.wires.length || payload.nodes.length > stormCue.rings.length
+      || !payload.segments.every(s => [s.ax, s.az, s.bx, s.bz].every(Number.isFinite))
+      || !payload.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.z))) {
+      clearStormCue(); return false;
+    }
+    if (!payload.nodes.length) { clearStormCue(); return true; }
+    for (let i = 0; i < stormCue.wires.length; i++) {
+      const wire = stormCue.wires[i], segment = payload.segments[i];
+      wire.visible = !!segment;
+      if (!segment) continue;
+      wire.scale.set(Math.max(1, Math.hypot(segment.bx - segment.ax, segment.bz - segment.az)), 2, 3.5);
+      wire.position.set((segment.ax + segment.bx) / 2, 43, (segment.az + segment.bz) / 2);
+      wire.rotation.y = -Math.atan2(segment.bz - segment.az, segment.bx - segment.ax);
+    }
+    for (let i = 0; i < stormCue.rings.length; i++) {
+      const ring = stormCue.rings[i], node = payload.nodes[i];
+      ring.visible = !!node;
+      if (node) ring.position.set(node.x, 43, node.z);
+    }
+    stormCue.root.name = 'storm_discharge_arc';
+    stormCue.expiresAtSim = payload.atSim + 0.3;
+    return true;
+  }
+
+  function resetStormPresentation() {
+    clearStormCue();
+    stormLatestGeneration = 0;
+    stormLatestSerial = 0;
+  }
+
+  function invalidateStormPresentation() {
+    if (!stormCue) return;
+    const { wave, roomGeneration, serial, onPresented } = stormCue;
+    clearStormCue();
+    if (typeof onPresented === 'function') onPresented({ wave, roomGeneration, serial, available: false });
+  }
 
   function releaseRoom() {
     if (room.root && room.root.parent) room.root.parent.remove(room.root);
@@ -1270,6 +1481,7 @@ export function createLawArenaDressing() {
   }
 
   function handleInstall(payload, scene) {
+    clearStormCue();
     releaseRoom();
     if (!payload || !scene) return;
     const arenaId = payload.arenaId;
@@ -1384,10 +1596,19 @@ export function createLawArenaDressing() {
   }
 
   function handleReleased() {
+    clearStormCue();
     releaseRoom();
   }
 
   function updateRoom(simTime, frameDt, options) {
+    if (stormCue) {
+      if (Number.isFinite(simTime) && simTime >= stormCue.expiresAtSim) clearStormCue();
+      else if (!stormCue.presented) {
+        stormCue.presented = true;
+        if (typeof stormCue.onPresented === 'function') stormCue.onPresented({ wave: stormCue.wave,
+          roomGeneration: stormCue.roomGeneration, serial: stormCue.serial });
+      }
+    }
     if (!room.root) return;
     const dt = Math.max(0, frameDt || 0);
     const reduced = !!(options && options.reducedMotion);
@@ -1529,6 +1750,14 @@ export function createLawArenaDressing() {
 
     const reduced = !!(options && options.motionReduce);
     const calmFlash = !!(options && options.flashReduce);
+    const life = entity.occupantGeneration ?? null;
+    const rideActive = entity.alive !== false && (data?.swarmRideTellLife != null
+      ? data.swarmRideTellLife === life && data.swarmRideActive === true
+      : !!data?.swarmRide && data.swarmRide.life === life);
+    const coverActive = entity.alive !== false && !!data?.swarmCover
+      && data.swarmCover.life === life;
+    const diveActive = entity.alive !== false && !!data?.swarmDive
+      && data.swarmDive.life === life;
     const dt = Math.max(0, frameDt || 0);
     const simNow = Number.isFinite(simTime) ? simTime : 0;
     rec.clock += dt;
@@ -1542,7 +1771,9 @@ export function createLawArenaDressing() {
       rec.group.scale.setScalar(Math.max(0.0001, easeOutCubic(buildT)));
       for (let i = 0; i < rec.marks.length; i++) {
         const mark = rec.marks[i];
-        if (mark.tick) mark.tick(mark, simNow, dt, reduced);
+        if (mark.tick) mark.tick(mark, simNow, dt, reduced,
+          (mark.id === 'rider' && rideActive) || (mark.id === 'cover' && coverActive)
+          || (mark.id === 'diver' && diveActive));
         for (const mat of mark.mats) {
           mat.emissiveIntensity = calmFlash
             ? 0.7
@@ -1722,7 +1953,8 @@ export function createLawArenaDressing() {
   }
 
   return {
-    handleInstall, handleReleased, updateRoom,
+    handleInstall, handleReleased, handleStormWarning, handleStormResolve, handleStormEnd,
+    resetStormPresentation, invalidateStormPresentation, updateRoom,
     updateBossDressing, releaseEntityMesh, releaseMesh, releaseMeshSet, prune,
     peekRoom, peekBoss, peekAffix,
   };

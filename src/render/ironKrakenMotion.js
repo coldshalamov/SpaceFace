@@ -99,8 +99,15 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   // yaw separates their sleeve lips; an early roll clears the tiny tip during coil release.
   // Both vanish in holding, and the jet's target pose removes them completely.
   const rakeYawClearance = index === 2 ? rake * 0.05 : 0;
-  const rakeRollClearance = index === 1 ? 0.06 * smooth(rake / 0.12)
-    * (1 - smooth((rake - 0.40) / 0.30)) : 0;
+  // Arm index 6 shares that early-roll window: its releasing tip crosses index 5's sweep
+  // plane at depth, and the twisted tip is the last surface to clear the neighbor chain.
+  const rakeRollClearance = (index === 1 ? 0.06 : index === 6 ? 0.12 : 0)
+    * smooth(rake / 0.12) * (1 - smooth((rake - 0.40) / 0.30));
+  // Index 5 also drops its sweeping middle below the pocket index 6's chain re-curls into.
+  // The arc-positioned hump peaks at half the chain and fades at both ends, so the authored
+  // reach and the rest silhouette are untouched; folding it into `bend` lets the jet's
+  // stream pose supersede it like every other rake term.
+  const rakeMidClearance = index === 5 ? -0.40 : 0;
   const yaw = angle + (SWEEP[index] + reachDrift * 0.065 + rakeYawClearance) * (1 - jet);
   const totalLength = IRON_KRAKEN_ARM_MOTION.chainLength * LENGTH[index];
   const proximalCount = Math.min(PROXIMAL_LENGTHS.length, links);
@@ -145,7 +152,8 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
     // A rake opens a broad arc within the authored reach rather than extending the whole
     // 4.7-radius chain into a rigid spear. The flank curl plane turns toward the sweep plane.
     const rakeBend = 0.20 - 2.90 * arc;
-    const bend = idleBend + (rakeBend - idleBend) * rakeWeight;
+    const bend = idleBend + (rakeBend - idleBend) * rakeWeight
+      + rakeMidClearance * rake * 4 * arc * (1 - arc);
     const twist = (0.26 + 0.14 * rollDrift) * smooth(coil) * Math.sin(coil * Math.PI + PHASE[index]);
     const plane = Math.max(-1.05, Math.min(1.05,
       planeBase + twist + Math.sign(planeBase || 1) * rakeWeight * 0.70));

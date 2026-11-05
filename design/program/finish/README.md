@@ -8,6 +8,15 @@ references (a lane board names a build-map row; the row's prose in `build_map.md
 
 **Current execution.** The controller owns integration of the working tree, plans and open PRs. The latest owner direction calls for 5–10 useful GPT-6.1 Terra/Sol departments, using terminal workers alongside the three available native worker slots. Assign substantial, disjoint work and preserve concurrent edits under §5. Keep the owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work or another model.
 
+**Final release review, owner direction November4.** After finishing the product outcomes and
+incorporating the three additional commissions, obtain three successive independent subagent
+release-readiness approvals of the coherent candidate. Each reviewer must assess the actual
+player experience against this program, report concrete shortcomings, and withhold approval for
+material unfinished work. Fix those findings before restarting the approval sequence; material
+candidate changes invalidate prior approvals. Keep the reviews blind to earlier verdicts where
+practical. This is the owner's final review requirement, not a recurring gate for every patch;
+reviewer agreement does not itself prove correctness, literal perfection or market competitiveness.
+
 | File | What it is |
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |

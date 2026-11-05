@@ -275,6 +275,7 @@ const VITAL_FIELDS = [
 ];
 const VITAL_ROT_INDEX = VITAL_FIELDS.indexOf('rot');
 const SWARM_SHADOW_INDEX = VITAL_FIELDS.length + 7;
+const RIDER_SHADOW_INDEX = SWARM_SHADOW_INDEX + 1;
 const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
 
 // Native effects are replaced on deployment; their wire identity must survive clones.
@@ -311,7 +312,7 @@ function mawPresentationRadius(e) {
   return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
 
-export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -330,11 +331,24 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+    fields.seekerTargetId = e.data.targetId ?? null;
+    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    fields.seekerDiverted = e.data.diverted === true;
+    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  }
   const specialistFrame = swarmSpecialistFrameValue(e);
   if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+  const riderTell = riderTellValue(e, state);
+  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
   if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
+  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
+    fields.dataBeaconExpireAt = e.data.expireAt;
+  }
   const ecology = e.data && e.data.ecology;
   if (ecology) {
     fields.ecologyName = e.data.name ?? null;
@@ -401,6 +415,21 @@ function swarmSpecialistFrameValue(e) {
   return swarmSpecialistPresentationFrame(data?.swarmSpecialist);
 }
 
+// Signed occupant generation is one bounded scalar: positive while riding, negative while
+// idle. It identifies the life whose mark may consume the update across the worker boundary.
+function riderTellValue(e, state) {
+  const data = e?.data;
+  const life = e?.occupantGeneration;
+  if ((data?.swarmAffix !== 'rider' && data?.swarmAffix2 !== 'rider')
+    || !Number.isSafeInteger(life) || life < 1) return VITAL_SHADOW_MISSING;
+  const ride = data.swarmRide;
+  const run = state?.run;
+  return e.alive !== false && state?.entities?.get(e.id) === e && e.id !== state.playerId
+    && ride?.life === life && state.tick < ride.until
+    && run?.kind === 'survival' && run.ruleset === 'swarm'
+    && (run.phase === 'active' || run.phase === 'cleanup') ? life : -life;
+}
+
 function vitalShadowValue(value) {
   if (value === undefined) return VITAL_SHADOW_MISSING;
   if (value === null || (typeof value === 'number' && !Number.isFinite(value))) {
@@ -430,8 +459,17 @@ function krakenMotionFrame(state, e) {
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
 
-function vitalShadowMatches(e, shadow, krakenFrame) {
+function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    const data = e.data;
+    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
+      || shadow.seekerTargetId !== (data.targetId ?? null)
+      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
+      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
+      || shadow.seekerDiverted !== (data.diverted === true)
+      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
   // Moving actors commonly change velocity or heading each publish. Check those same
   // canonical scalar tokens first; unchanged actors still compare every field below.
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -452,8 +490,11 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
+  if (riderTellValue(e, state) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
   if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -485,7 +526,20 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   return true;
 }
 
-function writeVitalShadow(e, shadow, krakenFrame) {
+function writeVitalShadow(e, shadow, krakenFrame, state) {
+  // Named runtime-only slots preserve every existing positional/tail vital index.
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
+    shadow.seekerTargetId = e.data.targetId ?? null;
+    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    shadow.seekerDiverted = e.data.diverted === true;
+    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
+    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
+    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
+    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
+  }
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -499,8 +553,11 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
   shadow[i++] = swarmSpecialistFrameValue(e);
+  shadow[i++] = riderTellValue(e, state);
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;
   shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
@@ -580,7 +637,7 @@ function entityInfoBlock(state, entityId, host) {
     ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
       ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
     } : {}),
-    vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e), state),
     data: canonicalClone(data),
   };
 }
@@ -631,18 +688,23 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
     const krakenFrame = krakenMotionFrame(state, e);
-    if (!vitalShadowMatches(e, previous, krakenFrame)) {
+    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
       const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
       const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
       const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow, krakenFrame);
+      writeVitalShadow(e, shadow, krakenFrame, state);
       vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
       if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
+      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+        fields.swarmRideTell = -e.occupantGeneration;
+      }
       if (retiredMawRadius) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
@@ -680,6 +742,7 @@ const AUX_FAMILIES = [
 
 function auxRowBlock(kind, row) {
   const data = row && row.data && typeof row.data === 'object' ? row.data : {};
+  const pose = kind === 'dressing' && data.warmFreighterHostMarkerId && data.warmFreighterVisualPose;
   return {
     v: 1,
     kind,
@@ -698,12 +761,15 @@ function auxRowBlock(kind, row) {
     sectorId: typeof row.sectorId === 'string' ? row.sectorId
       : (typeof row.homeSectorId === 'string' ? row.homeSectorId
         : (typeof data.sectorId === 'string' ? data.sectorId : null)),
+    ...(pose && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)
+      ? { warmFreighterPose: { height: pose.height, bank: pose.bank, pitch: pose.pitch, localYaw: pose.localYaw } } : {}),
   };
 }
 
 function auxSignature(b) {
   return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
-    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`;
+    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`
+    + (b.warmFreighterPose ? `|${b.warmFreighterPose.height}|${b.warmFreighterPose.bank}|${b.warmFreighterPose.pitch}|${b.warmFreighterPose.localYaw}` : '');
 }
 
 const _collectOrigin = { x: 0, z: 0 };
@@ -748,7 +814,10 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
-  'automation:fleetChanged',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
+  'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
+  'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
+  'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {
@@ -1183,6 +1252,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       'run:draftPickRejected',
       'run:draftRerollRejected',
       'run:refitChanged',       // fit, strip, or sell receipt (including refusal)
+      'swarm:fortifyBuildResolved', // paused construction/service receipt updates the same run purse
     ];
     const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
       if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
@@ -1215,6 +1285,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     // those retain their normal cold root cadence and existing hot active-mission mirror.
     const offBoardUpdate = bus.on('mission:updated', (payload) => {
       if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+      else if ((payload.objectiveProgress != null || payload.sourceFix === true) && (host.state?.missions?.active || []).some((m) =>
+        m.id === payload.missionId && m.storyTag === 'campaign47a:b0:recovery')) {
+        host.domainDiffer.invalidateLeaf('missions.active');
+      }
     });
     const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
     // Terminal settlement mutates the receipt/history root before its canonical event;
@@ -1233,7 +1307,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
-    const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
+    const offLedgerLoad = bus.on('save:loaded', () => {
+      host.domainDiffer.invalidateLeaf('shipLedger.board');
+      // Restore identity must accompany its receipt, including paused Import/Continue.
+      // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
+      host.domainDiffer.invalidateLeaf('meta.seed');
+    });
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
@@ -1304,7 +1383,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       return;
     }
     for (const type of BRIDGE_EVENTS) {
-      bus.on(type, (payload) => recordBridgeEvent(type, payload));
+      bus.on(type, (payload) => {
+        if (type === 'comms:log') {
+          if (payload?.kind !== 'chainKill') return;
+          recordBridgeEvent(type, {kind:'chainKill', speaker:String(payload.speaker || '').slice(0,64), text:String(payload.text || '').slice(0,256)});
+        } else recordBridgeEvent(type, payload);
+      });
     }
   }
 
@@ -1366,11 +1450,30 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           const entry = market[args.commodityId];
           return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
         }
-        const histories = {};
-        for (const cid of Object.keys(market)) {
-          histories[cid] = (market[cid] && market[cid].history) || null;
+        const result = { stationId: args.stationId };
+        if (args.includeObservedComparisons !== true) {
+          const histories = {};
+          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          result.histories = histories;
         }
-        return { stationId: args.stationId, histories };
+        if (args.includeObservedComparisons === true && state.ui?.docked
+          && state.ui.dockedStationId === args.stationId) {
+          const now = Number(state.simTime) || 0;
+          const comparisons = {};
+          for (const [cid, entry] of Object.entries(market)) {
+            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+            let reference = null;
+            for (const point of entry.history) {
+              if (point?.origin !== 'observed' || !Number.isFinite(point.t)
+                || !Number.isFinite(point.mid) || now - point.t < 120) continue;
+              if (!reference || point.t > reference.t) reference = point;
+            }
+            if (reference) comparisons[cid] = { reference: reference.mid,
+              observedAt: reference.t, current: entry.lastMid };
+          }
+          result.observedComparisons = { stationId: args.stationId, asOf: now, comparisons };
+        }
+        return result;
       }],
       ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
       // Sandbox/lab ops converted off the direct-call surface. Each replays the
@@ -1515,10 +1618,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
-      ['saveLoad', (args) => {
+      ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.load((args && args.slot) || undefined) };
+        const result = await s.load((args && args.slot) || undefined);
+        return { ok: result === true, result };
       }],
       ['saveDelete', (args) => {
         const s = registry.get('save');
@@ -1705,12 +1809,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
       // routes the envelope here so the worker's save system loads it).
-      ['saveImport', (args) => {
+      ['saveImport', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
         const json = args && typeof args.json === 'string' ? args.json : null;
         if (!json) return { ok: false, reason: 'import-empty' };
-        const result = s.importString(json, (args && args.slot) || 'quick');
+        // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
+        // drain before publishing a verdict; a nested Promise cannot cross postMessage.
+        const result = await s.importString(json, (args && args.slot) || 'quick');
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
       }],
@@ -2540,7 +2646,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const entity of state.entityList || []) {
         const role = ceresWorkfleetRoleForEntity(entity);
         if (role !== 'cradle' && role !== 'breaker' && role !== 'cutterHead') continue;
-        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity));
+        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity), state);
         if (role === 'cradle') {
           current.add(entity.id);
           fields.ceresCradlePublic = {
@@ -2563,7 +2669,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const id of host.ceresCradleIds) if (!current.has(id) && state.entities.has(id)) {
         const existing = entityVitals.findIndex(entry => entry[0] === id);
         const fields = existing >= 0 ? entityVitals[existing][1]
-          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
         fields.ceresCradlePublic = { receipt: null };
         if (existing >= 0) entityVitals[existing] = [id, fields];
         else entityVitals.push([id, fields]);
@@ -2572,7 +2678,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const id of host.ceresActuationIds) if (!actuationCurrent.has(id) && state.entities.has(id)) {
         const existing = entityVitals.findIndex(entry => entry[0] === id);
         const fields = existing >= 0 ? entityVitals[existing][1]
-          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
         fields.ceresWorkfleetPublic = { receipt: null };
         if (existing >= 0) entityVitals[existing] = [id, fields];
         else entityVitals.push([id, fields]);

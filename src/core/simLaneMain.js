@@ -613,6 +613,7 @@ export function createSimLaneRuntime({
   // replies. Keep a separate identity so a delayed confirmation for an old
   // command cannot close or invalidate its replacement.
   let workerClockCommandFlight = null;
+  let workerClockLatestCommandFlight = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
@@ -741,7 +742,16 @@ export function createSimLaneRuntime({
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;
     }
+    // An older ACK releases only the watched fence. Keep a newer live batch's
+    // original sent-time budget instead of declaring all controls complete.
+    const latest = workerClockLatestCommandFlight;
+    if (latest && appliedCommandSequence < latest.commandSequence) {
+      workerClockCommandFlight = latest;
+      watchFlight(latest);
+      return false;
+    }
     workerClockCommandFlight = null;
+    workerClockLatestCommandFlight = null;
     workerClockCommandInFlight = false;
     workerClockCommandInFlightSequence = 0;
     return true;
@@ -836,6 +846,9 @@ export function createSimLaneRuntime({
   const cursorNdc = { x: 0, y: 0 };
   const cursorHit = { x: 0, z: 0 };
   let cursorProjectionPending = false;
+  let lastGamepadFrame = null, lastGamepadPrompt = null, lastGamepadGeneration = -1;
+  let lastCursorX = null, lastCursorZ = null, lastCursorGeneration = -1;
+  let lastCameraFrame = null, lastCameraGeneration = -1;
   // The sink's return value is what the caller receives — for rpc descriptors
   // that is a promise resolved/rejected off the wire ack (laneRpc callers
   // like startNewGame await it), for everything else the ring's push result.
@@ -1334,6 +1347,10 @@ export function createSimLaneRuntime({
       // A delayed watchdog callback documents unavailable dispatch time. Neither it nor a
       // worker message can run during that interval; do not charge it to worker silence.
       flight.mainThreadDelayedMs += Math.max(0, observedMs - dueMs);
+      const latest = flight.kind === 'clockCommand' ? workerClockLatestCommandFlight : null;
+      if (latest && latest !== flight) {
+        latest.mainThreadDelayedMs += Math.max(0, observedMs - Math.max(dueMs, latest.sentMs));
+      }
       drainSabRepliesNow();
       if (laneClosed || !isCurrentFlight(flight)) return;
       const responsiveMs = observedMs - flight.sentMs - flight.mainThreadDelayedMs;
@@ -1356,15 +1373,40 @@ export function createSimLaneRuntime({
   }
 
   function appendGamepadFrame(commands) {
+    // The reducer retains this physical sample and advances held controls on sim
+    // ticks; unchanged rAF samples are not a heartbeat or a new command.
+    const frame = sampleGamepadFrame(!!getGamepadCaptureHandler());
+    const promptDevice = getPromptDevice();
+    if (lastGamepadGeneration === lifecycleGeneration && lastGamepadPrompt === promptDevice
+        && sameGamepadFrame(lastGamepadFrame, frame)) return;
     pushLaneCommand(envelopeRing, {
       kind: 'domEvent',
       d: {
         type: 'gamepadFrame',
-        frame: sampleGamepadFrame(!!getGamepadCaptureHandler()),
-        promptDevice: getPromptDevice(),
+        frame,
+        promptDevice,
       },
     });
     commands.push(...envelopeRing.drain());
+    lastGamepadFrame = frame; lastGamepadPrompt = promptDevice;
+    lastGamepadGeneration = lifecycleGeneration;
+  }
+
+  function sameGamepadFrame(a, b) {
+    if (!a || a.captureMode !== b.captureMode || a.pads.length !== b.pads.length) return false;
+    for (let i = 0; i < a.pads.length; i++) {
+      const left = a.pads[i], right = b.pads[i];
+      if (!left || !right) { if (left !== right) return false; else continue; }
+      if (left.id !== right.id || left.index !== right.index || left.mapping !== right.mapping
+          || left.connected !== right.connected || left.axes.length !== right.axes.length
+          || left.buttons.length !== right.buttons.length) return false;
+      for (let j = 0; j < left.axes.length; j++) if (left.axes[j] !== right.axes[j]) return false;
+      for (let j = 0; j < left.buttons.length; j++) {
+        if (left.buttons[j].pressed !== right.buttons[j].pressed
+            || left.buttons[j].value !== right.buttons[j].value) return false;
+      }
+    }
+    return true;
   }
 
   // The worker's visibility projector (tableChaseFraming → helpers.worldToScreen)
@@ -1377,22 +1419,35 @@ export function createSimLaneRuntime({
   // the envelope now also carries the displayed pose (eye, orientation, view
   // kind, displayed fov/near/far) and the frame origin those locals belong to,
   // so a floating-origin hop and the racing stern rig both project honestly.
-  function appendCameraFrame(commands) {
+  function sampleCameraFrame() {
     const cam = state && state.camera;
-    if (!cam) return;
+    if (!cam) return null;
     const size = viewportSize();
     const aspect = size.w > 0 && size.h > 0 ? size.w / size.h : null;
-    pushLaneCommand(envelopeRing, {
-      kind: 'camera',
-      p: laneCameraFramePayload(cam, aspect),
-    });
-    commands.push(...envelopeRing.drain());
+    return laneCameraFramePayload(cam, aspect);
   }
 
-  function appendCursorProjection(commands) {
+  function cameraFrameChanged(frame) {
+    if (!frame) return false;
+    if (lastCameraGeneration !== lifecycleGeneration || !lastCameraFrame) return true;
+    for (const key in frame) if (frame[key] !== lastCameraFrame[key]) return true;
+    return false;
+  }
+
+  function appendCameraFrame(commands, frame = sampleCameraFrame()) {
+    if (!frame) return;
+    pushLaneCommand(envelopeRing, {
+      kind: 'camera',
+      p: frame,
+    });
+    commands.push(...envelopeRing.drain());
+    lastCameraFrame = frame; lastCameraGeneration = lifecycleGeneration;
+  }
+
+  function appendCursorProjection(commands, force = false) {
     // Camera/galactic-origin geometry belongs to presentation. The worker has
-    // no renderer raycast helper: project on main for every batch, even when
-    // the cursor has not moved.
+    // no renderer raycast helper: recompute at every presentation/input boundary,
+    // even when the cursor has not moved, and ship changed world coordinates.
     if (!helpers || typeof helpers.raycastToPlane !== 'function') return;
     const size = viewportSize();
     const mouse = state.settings?.controls?.mouse || {};
@@ -1402,8 +1457,10 @@ export function createSimLaneRuntime({
     cursorNdc.y = centered || size.h <= 0 ? 0 : (1 - cursorScreen.y / size.h * 2) * sensitivity * (mouse.invertY ? -1 : 1);
     const hit = helpers.raycastToPlane(cursorNdc, cursorHit);
     if (hit && Number.isFinite(hit.x) && Number.isFinite(hit.z)) {
+      if (!force && lastCursorGeneration === lifecycleGeneration && lastCursorX === hit.x && lastCursorZ === hit.z) return;
       pushLaneCommand(envelopeRing, { kind: 'domEvent', d: { type: 'cursorProjection', x: hit.x, z: hit.z } });
       commands.push(...envelopeRing.drain());
+      lastCursorX = hit.x; lastCursorZ = hit.z; lastCursorGeneration = lifecycleGeneration;
     }
   }
 
@@ -1415,7 +1472,11 @@ export function createSimLaneRuntime({
     // sequence) but still needs an ACK; withholding that ACK while the command
     // is in flight deadlocks the worker's coalesced reply and leaves every later
     // RPC buffered. ACKs are safe to send alone; commands remain FIFO below.
-    if (workerClockCommandInFlight) {
+    // The advancing worker can accept ordered controls before main receives an
+    // older reply. Otherwise a render task can strand a readiness/key-release
+    // event while its simulation deadline passes. Frozen routes keep coalescing.
+    const advancingFlight = workerClockRequested && state.mode === 'flight' && state.timeScale > 0;
+    if (workerClockCommandInFlight && !advancingFlight) {
       if (workerClockAckPending) postWorkerClockAck();
       return;
     }
@@ -1424,27 +1485,33 @@ export function createSimLaneRuntime({
     // boundary. Projecting the cursor here turns a real raycast helper into a
     // synthetic cursorProjection command on every reply, which schedules the
     // next reply indefinitely. Reproject only at rAF or input boundaries.
-    if (projectCursor || cursorProjectionPending) {
+    const samplePresentation = projectCursor || cursorProjectionPending;
+    if (samplePresentation) {
+      // A real DOM input boundary must refresh the worker's projection even
+      // when an earlier lifecycle/input reset retained identical coordinates.
+      const hasDomInput = commands.some(command => command.t === 'dom');
       appendGamepadFrame(commands);
-      appendCursorProjection(commands);
+      appendCursorProjection(commands, hasDomInput);
       cursorProjectionPending = false;
     }
+    const cameraFrame = samplePresentation ? sampleCameraFrame() : null;
+    const hasCameraChange = cameraFrameChanged(cameraFrame);
     const hasJournalAck = pendingAckEnd > 0;
     const hasClockAck = !!workerClockAckPending;
-    if (commands.length === 0 && pendingSteps <= 0 && !hasJournalAck && !hasClockAck) return;
+    if (commands.length === 0 && pendingSteps <= 0 && !hasJournalAck && !hasClockAck && !hasCameraChange) return;
 
     // A pure presentation acknowledgement does not need a synthetic sim tick.
     // The worker consumes it on its serial chain and only emits a reply when a
     // coalesced snapshot is waiting; command and journal acknowledgements ride
     // a clockCommand so their ordering stays before the next fixed step.
-    if (commands.length === 0 && !hasJournalAck && hasClockAck) {
+    if (commands.length === 0 && !hasJournalAck && hasClockAck && !hasCameraChange) {
       postWorkerClockAck();
       return;
     }
 
     // Same displayed-camera transport as the main-clock flush: only real
     // command batches carry it — a bare clock ack never forces one into being.
-    appendCameraFrame(commands);
+    appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
     const ack = workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
@@ -1482,12 +1549,17 @@ export function createSimLaneRuntime({
       sentMs: nowMs(),
       mainThreadDelayedMs: 0,
     };
-    workerClockCommandFlight = commandFlight;
+    workerClockLatestCommandFlight = commandFlight;
     postedDirectives++;
     // Local-clock commands are RPC-like transport boundaries even though the
     // worker reply is unsolicited. Watch them with the same responsive-dispatch
     // budget as directive-driven tick replies.
-    watchFlight(commandFlight);
+    // New input must not renew a dead worker's timer. Keep the watched fence
+    // until genuine cumulative ACK progress permits its budget to hand off.
+    if (!workerClockCommandFlight) {
+      workerClockCommandFlight = commandFlight;
+      watchFlight(commandFlight);
+    }
     postLaneDirective(msg);
   }
 
@@ -2100,6 +2172,7 @@ export function createSimLaneRuntime({
       stallWatchdogTimer = null;
     }
     workerClockCommandFlight = null;
+    workerClockLatestCommandFlight = null;
     workerClockCommandInFlight = false;
     workerClockCommandInFlightSequence = 0;
     try { uninstallSink(); } catch (_) {}

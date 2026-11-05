@@ -55,6 +55,11 @@ import {
   ORRIN_WITNESS_STATION_ID,
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
+// special-500 Phase 2 bar residents: the corridor's shroud painter (SP1-193) and the depot
+// bar's censer sommelier (SP2-065). Their settlements live in the sim legs; this module reads
+// the authored specs for the canonical rows and the reply branches.
+import { PORTRAIT_PAINTER } from '../../data/special500/portraitBuoyLine.js';
+import { SOMMELIER } from '../../data/special500/sommelier.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
@@ -234,6 +239,7 @@ function oreLotRumorForReply(state) {
 
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
+  if (payload.stationId === 'station_eris_margin' && payload.choiceId === 'eris_silence') return null;
   if (isKurtzDeskChoice(payload)) {
     bus.emit('ui:kurtzInteract', {
       action: payload.choiceId,
@@ -580,6 +586,50 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_fulfillment',
     line: 'Your order has always been important to us.',
   },
+  // SP2-041 "The Previous Tenant's Mail": the cushion letter's author, drinking at Quinn's
+  // under the same management. Six owners is the hull's count, not Rets's patience.
+  {
+    key: 'rets',
+    stationIds: ['station_smuggler'],
+    name: 'Rets',
+    role: 'pilot',
+    roleLabel: 'Retired Watch Regular',
+    factionId: 'faction_quiet',
+    line: '"You are sitting in the chair. The cushion before yours held better arguments than most crews."',
+  },
+  // SP1-193 "The Portrait Buoys": the corridor's shroud painter, findable at Reach Station.
+  // The buoy line (src/data/special500/portraitBuoyLine.js) hangs her work; she takes
+  // commissions and refuses payment in anything but a good story (settled by
+  // src/systems/special500PortraitBuoys.js on ui:talkContact).
+  {
+    key: 'painter',
+    stationIds: ['station_reach'],
+    name: 'Vesper',
+    role: 'pilot',
+    roleLabel: 'Shroud Painter',
+    factionId: 'faction_free',
+    line: 'Your hull is the newest frame on the corridor line. It is not finished. It will be, if the story is worth the canvas.',
+    choices: [
+      { id: 'commission', label: 'Commission the portrait — pay in a story.' },
+      { id: 'ask_paint', label: 'Ask why nobody signs them.' },
+    ],
+  },
+  // SP2-065 "The Sommelier of Coolant": the depot bar's retired Choir censer machine, which
+  // has rebranded its incense burn as "beverage temperature control" (settled by
+  // src/systems/special500Sommelier.js on ui:talkContact).
+  {
+    key: 'sommelier',
+    stationIds: ['station_depot3'],
+    name: 'The Sommelier of Coolant',
+    role: 'barkeep',
+    roleLabel: 'Retired Censer',
+    factionId: 'faction_choir',
+    line: 'This cell — cast on a Thursday. You will taste the Thursday.',
+    choices: [
+      { id: 'the_thursday', label: 'Buy "the Thursday" — 12 cr.' },
+      { id: 'ask_vintages', label: 'Ask what else is on the rail.' },
+    ],
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
@@ -825,8 +875,18 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
   const sori = soriComparisonContact(state, stationId);
+  const erisChair = stationId === 'station_eris_margin'
+    && state?.story?.flags?.eris_choir_chair_claimed != null ? [{
+      id: 'contact_eris_choir_chair', canonicalKey: 'eris_choir_chair',
+      name: 'The Choir Chair', role: 'barkeep', roleLabel: 'Reserved chair',
+      factionId: 'faction_choir',
+      line: 'The chair at the window is yours. The room stands as you approach.',
+      approach: 'The barkeep waits beside your chair.',
+      erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
+        && state.story.flags.eris_choir_bar_service.served === true,
+    }] : [];
   const listed = [
-    ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -835,6 +895,21 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  stampCollectiveHours(listed, stationId, state);
+  stampQuinnsStool(listed, stationId, state);
+  // The wake silences this room's ambient patrons, not its mission and service contacts.
+  const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
+  if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
+      && erisSilentUntil > (Number(state?.simTime) || 0)) {
+    for (const contact of contacts) {
+      if (!contact.id.startsWith('contact_station_eris_margin_')) continue;
+      contact.erisChoirSilent = true;
+      contact.line = 'The room falls silent as you enter.';
+      contact.approach = 'The room stays silent.';
+      // A muted opener cannot consume a deed that nobody actually told.
+      delete contact.deedId;
+    }
+  }
   return listed;
 }
 
@@ -947,6 +1022,35 @@ function stampHeliosBay7Rumor(contacts, stationId, state) {
   kessler.bay7Rumor = true;
 }
 
+// SP1-173 "The Hours": the stamped ledger number persists, and the Collective's host at the
+// Ceres refinery references it with respect proportional to its size. No stamp, no change —
+// the host does not ask about hours nobody filed.
+function stampCollectiveHours(contacts, stationId, state) {
+  if (stationId !== 'station_ceres') return;
+  const flags = state && state.story && state.story.flags;
+  const hours = flags ? Math.floor(Number(flags.collective_credit_hours)) || 0 : 0;
+  if (hours <= 0) return;
+  const host = contacts.find((contact) => contact
+    && contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.collectiveHours = hours;
+  host.line = hours >= 75
+    ? `The host reads your stamped ledger — ${hours} credit hours — and stands to pour. Nobody stands to pour.`
+    : hours >= 30
+      ? `"${hours} credit hours," the host says, and checks the tally twice. Belt crews do not check numbers that low twice.`
+      : `The host nods at the stamp on your ledger. ${hours} credit hours. Everyone starts somewhere; most stay there.`;
+}
+
+// SP2-053 "The Third Stool's Letter": after the stool letter, Quinn's greeting is permanent.
+function stampQuinnsStool(contacts, stationId, state) {
+  const flags = state && state.story && state.story.flags;
+  if (!flags || flags.quinns_stool == null) return;
+  const quinn = contacts.find((contact) => contact && contact.canonicalKey === 'quinn');
+  if (!quinn) return;
+  quinn.line = 'Your stool. Same one.';
+  quinn.stoolRegular = true;
+}
+
 // U6 — the plated derelicts have first contact on the glass, but the bar — the place that
 // sells directions — did not know any of them. One authored line per site at its home
 // berth, spoken until the pilot's own scan unlocks the plate: the discovery record retires
@@ -1031,6 +1135,10 @@ function stampAceRouteRumor(contacts, stationId, state) {
 /* ── dialog option builders (per role) ────────────────────────────── */
 
 export function getChoices(role, contact = null) {
+  if (contact?.erisChoirSilent) return [{ id: 'eris_silence', label: 'Leave them in peace.' }];
+  if (contact?.canonicalKey === 'eris_choir_chair') return contact.erisChoirServed
+    ? [{ id: 'free_drink', label: 'Served this visit', disabled: true, reason: 'Your free drink has already been served this visit.' }]
+    : [{ id: 'free_drink', label: 'Take your free drink.' }];
   if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
@@ -1404,6 +1512,7 @@ const REGULAR_SUBJECT_WORDS = Object.freeze({
 });
 
 export function barRegularStoryLine(contact = {}, state = {}, stationId = '') {
+  if (contact.erisChoirSilent) return contact.line;
   const memory = stationContactMemoryFor(state, contact.id);
   if (!memory || !memory.met || memory.talkCount < 1) return null;
   const firstName = String(contact.name || '').trim().split(/\s+/)[0] || 'The regular';
@@ -1511,6 +1620,19 @@ function bestTradeRoute(state, currentStationId) {
  * Returns { text, missionOffer? }.
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (stationId === 'station_eris_margin' && contact?.canonicalKey === 'eris_choir_chair'
+      && choiceId === 'free_drink') {
+    const service = ctx?.state?.story?.flags?.eris_choir_bar_service;
+    if (!service?.active || !Number.isSafeInteger(service.visitId)) {
+      return { text: 'The barkeep checks your seat. One moment.' };
+    }
+    return { text: service?.active && service.served
+      ? 'Your drink for this visit has been served.'
+      : 'The barkeep checks your seat. One moment.' };
+  }
+  if (contact?.erisChoirSilent && stationId === 'station_eris_margin') {
+    return { text: 'The room stays silent.' };
+  }
   if (contact && contact.endgameChoice === 'E') {
     if (choiceId === 'accept_next_run') {
       if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
@@ -1973,6 +2095,47 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
         return { text: 'The board says balanced. My ledger says the same manifest weighs less after every handoff. Both records are official if the right clerk initials them.' };
       }
       if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
+      return null;
+    }
+
+    // SP1-193 "The Portrait Buoys": the shroud painter's commission verb. The bar reply is the
+    // read; the settlement (the story taken, the flag written) is the sim leg's on ui:talkContact.
+    case 'painter': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'commission') {
+        if (flags[PORTRAIT_PAINTER.commissionFlag]) {
+          return { text: 'The frame came down and went back up finished. You have seen it. The rest is weather now — the same weather as everyone\'s.' };
+        }
+        const record = peekDeedRecord(state);
+        if (!record || !record.deeds || !record.deeds.length) {
+          return { text: 'Nothing yet worth the canvas. Fly something first. I do not paint intentions, and I do not paint on credit.' };
+        }
+        return {
+          text: 'Vesper listens all the way through the best story in your record — the parts you did not say, too. Payment accepted, in the only currency she takes. Come back after the next pass; the frame finishes in the cold.',
+        };
+      }
+      if (choiceId === 'ask_paint') {
+        return { text: 'Because the paint is the signature. You put a name on a shroud and it stops being everyone\'s, and then it starts being somebody\'s to argue about.' };
+      }
+      return null;
+    }
+
+    // SP2-065 "The Sommelier of Coolant": the depot bar's censer machine and its vintage rail.
+    // The purchase settles in the sim leg (src/systems/special500Sommelier.js); this reply is
+    // the liturgy.
+    case 'sommelier': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'the_thursday') {
+        if (flags[SOMMELIER.pourFlag]) {
+          return { text: 'The Thursday is poured, and it was drunk at the correct temperature. There will not be another Thursday this cycle. The censer remembers patronage; it does not repeat it.' };
+        }
+        return {
+          text: 'The censer hums its incense burn down to beverage temperature and sets the vintage on the rail. "Cast on a Thursday. You will taste the Thursday." 12 cr, and two cells for the road — poured, not sold. The Choir remembers patronage.',
+        };
+      }
+      if (choiceId === 'ask_vintages') {
+        return { text: 'The rail holds Monday, which is sharp and industrial; Wednesday, which is apologetic; and the Thursday. The Thursday is the only one with a congregation.' };
+      }
       return null;
     }
 

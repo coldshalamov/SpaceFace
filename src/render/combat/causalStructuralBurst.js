@@ -15,6 +15,25 @@ import { resolveImpactPresentation } from '../../presentation/causalVfxGrammar.j
 /** A ring beat stays on the body it marks. Arc length never exceeds this multiple of the victim radius. */
 export const ARC_BODY_LENGTH_SCALE = 1.15;
 
+/**
+ * Mix two 0xRRGGBB colors channel-wise, `t` toward `b`. The breach-heat shard start is the
+ * authored cold metal pulled toward the wound's heat by the wound's remaining gain — a
+ * half-cooled tear reads as half-cooled metal. Pure; used by the shard start and by tests.
+ */
+export function mixHexGain(coldHex, heatHex, t) {
+  const u = Math.max(0, Math.min(1, Number(t) || 0));
+  const cr = (coldHex >> 16) & 0xff;
+  const cg = (coldHex >> 8) & 0xff;
+  const cb = coldHex & 0xff;
+  const hr = (heatHex >> 16) & 0xff;
+  const hg = (heatHex >> 8) & 0xff;
+  const hb = heatHex & 0xff;
+  const ri = Math.round(cr + (hr - cr) * u);
+  const gi = Math.round(cg + (hg - cg) * u);
+  const bi = Math.round(cb + (hb - cb) * u);
+  return (ri << 16) | (gi << 8) | bi;
+}
+
 export function fitArcLengthToBody(length, radius) {
   const cap = Math.max(0.2, Number(radius) || 0) * ARC_BODY_LENGTH_SCALE;
   const n = Number(length);
@@ -42,6 +61,7 @@ export function spawnCausalStructuralBurst({
   reduced,
   pattern01,
   patternSigned,
+  breachHeat,
 }) {
   if (!fx || !presentation) return 0;
   const y = Number.isFinite(ly) ? ly : 0.45;
@@ -52,7 +72,16 @@ export function spawnCausalStructuralBurst({
   // Semantic colour belongs to the force cue. These opaque fragments are material torn
   // from a surface, so a player's kill must not turn its hull into giant turquoise glass.
   const mineral = presentation.family === 'terrain';
-  const shardColour = presentation.forcedColors ? 0xb8b8b8 : mineral ? 0x8d7b60 : 0x94897b;
+  // Breach heat (inf-debris-wound-heat): a fragment torn out of a FRESH named wound starts at
+  // that wound's own heated-metal color and cools on the authored dark track below — the wreck
+  // remembers what killed it for a beat, without ever wearing the cue's semantic paint. Forced
+  // colors and mineral terrain keep their exact authored greys and ores.
+  const heat = (!presentation.forcedColors && !mineral
+    && breachHeat && Number.isFinite(breachHeat.gain01) && breachHeat.gain01 > 0
+    && Number.isFinite(breachHeat.colorHex)) ? breachHeat : null;
+  const shardColour = heat
+    ? mixHexGain(0x94897b, heat.colorHex, Math.min(1, breachHeat.gain01))
+    : presentation.forcedColors ? 0xb8b8b8 : mineral ? 0x8d7b60 : 0x94897b;
   const shardEndColour = presentation.forcedColors ? 0x555555 : mineral ? 0x383126 : 0x30353d;
   const layout = presentation.layout;
   let spawned = 0;

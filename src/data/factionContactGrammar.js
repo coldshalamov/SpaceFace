@@ -5,6 +5,7 @@
 import { FACTION_DOCTRINES } from './factionDoctrines.js';
 import { ENEMY_TYPES } from './enemies.js';
 import { BARKS, barkFor } from './barks.js';
+import { conflictPairsForSector } from './conflictZones.js';
 
 /**
  * Authored contact grammar profiles. Values align with live systems:
@@ -299,6 +300,32 @@ export const PRESSURE_FACTION_IDS = Object.freeze([
 
 export function contactGrammarFor(factionId) {
   return FACTION_CONTACT_GRAMMAR[factionId] || null;
+}
+
+// Only these factions have an intervention voice and a matching local patrol role.
+const PATROL_RESPONDERS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
+const PATROL_ZONES = new Set([
+  'civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint',
+  'refinery_approach', 'mining_belt', 'colony',
+]);
+
+export function isLawfulPatrolResponder(factionId) {
+  return PATROL_RESPONDERS.has(factionId);
+}
+
+/** Local jurisdiction only when live ownership, influence and the local zone agree. */
+export function patrolJurisdictionFor(state, sectorId, zone) {
+  const sector = sectorId && state?.world?.sectors?.[sectorId];
+  const owner = sector?.owner;
+  if (!isLawfulPatrolResponder(owner) || !zone || zone.factionId !== owner
+      || !PATROL_ZONES.has(zone.type)) return null;
+  if (conflictPairsForSector(sectorId).some((key) => state.conflicts?.[key]?.state === 'war')) return null;
+  const node = state.sectorSim?.field?.nodes?.[sectorId];
+  if (node && (!Number.isFinite(node.contestMargin) || node.contestMargin < 0.12
+      || node.driver?.influence === 'contested_influence'
+      || node.driver?.danger === 'contested_space'
+      || node.dominantFactionId !== owner)) return null;
+  return owner;
 }
 
 /** Live doctrine + grammar snapshot used by tests and any future director. */

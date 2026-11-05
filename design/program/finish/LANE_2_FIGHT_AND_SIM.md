@@ -12,7 +12,18 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Claimed paths (beyond README §3)
 
+**Active connected batch,2026-11-03:** fifteen exact whole-hulk releases use existing measured
+outlines, native convex decompositions and uniform-area inertia at unchanged operational mass.
+Old capsule native-save caches correctly decline exact continuation and rebuild the fitted body;
+pose, motion, remaining salvage and custody survive the selected restore check. Normal impact
+behavior and the ordinary encounter remain separate checks. Swarm arena pursuit now retains its
+existing wounded-tail commitment; the Fortify same-reply mirror includes the charged purse.
+The changed ordinary Bank7/boss journey remains open. One batch baseline passes17/17 in80,529ms,
+within90,000ms; the in-flight ecology attachment hunk has its own affected check.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
+
+**Current November3 checkpoint:** published `89ddfe4830e2` fixes arcade Exit overwriting Adventure autosave; the ordinary buy/save/Swarm/Exit/Continue route preserves4,962 credits, cargo and sector. Final29 isolation and13 affected Racing/export cases pass. The newer1347 Swarm attempt lost at wave4 with significant pilot/operator movement limitations; a corrected moving pilot is now exercising repair/Fortify and natural Bank/boss progression. This is not yet a balance defect or mode acceptance. Ceres's paid player brace and crew cutter release pass; full same-plate tow/receiving is still being completed. Earlier inbox receipts below retain their original scope.
 
 - 2026-11-03 ordinary Intel Swarm8ea: actual fitted fire and a six-ton shard latch/move clear round1 to the Armory,15/15 resolved, score1385/cr946/hull260. Shard impact is not established. Headed Chrome reports Intel Graphics/D3D11, driver32.0.101.8860; no valid active-window FPS was retained. Wave7/first boss remain open. Next operator uses interruptible30-second public-input combat segments rather than long wall time between tiny simulation pulses.
 
@@ -214,6 +225,71 @@ encounter progression remains distinct from these owner checks):
 Verified already deep, no unit taken: formations break when their leader is pinned
 (squadFrame.js pinned-commander succession), the near miss rewarded (stunt closeShave → witness
 barks → rep/salvage pay), creatures react to Massline vibration (alienEcology AE-051/F5).
+
+Implemented and focused-tested, wave 2 (INFERENCE 100 program — one commit each unless noted,
+recorded in `design/program/inference-memory.json`):
+- inf-throw-carries (WF-02): the rock you threw keeps its speed into the next round and the
+  room says so, instead of forgetting the carry (e08c9b664dd8).
+- inf-wing-casualty-fold (WF-02): pick off a wingman and the enemy wing visibly folds in around
+  the gap instead of flying a leaderless line; bundled with inf-scar-history and
+  inf-mine-lane-drift in one commit (f8b04d2c3ca3 — deviation from one-commit-per-unit, noted).
+- inf-mine-lane-drift (WF-02): a jackal's telegraphed mine seed is placed on the drifting
+  rock's live pose with its current motion (same bundled commit).
+
+Verified already deep, wave 3 reconciliation, no unit taken: chain kills ("a kill that
+ricochets into a second kill and the game noticing") are fully built and registered —
+src/combat/chainKills.js witnesses the wreck that carried the contact, holds a bounded
+corpse ring, and the wire says one line per link (registered in the authoritative manifest).
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-bait (WF-02): a hurt Reach raider squad spoofs Concord's voice — a Meridian
+  screen hears a tithe at gunpoint, the patrol hears a rogue screen, and both stamp the
+  canonical hostility fields, so the cross-fire flies through isHostileForAI while raiders
+  hang wide with cold guns; a scanner pulse burns the mask (9f332bd9e1db).
+- inf-current-rider (WF-02): a marked Crucible elite cuts its drive and lets the room current
+  carry it — the same field-kernel acceleration every body feels slings it around the seam;
+  one hit knocks it off and the authored thrust returns (72661896ebfb).
+- inf-wing-gap-press (WF-16): a wingman's death names him on the band from the seat beside
+  and carries a bounded grief press — attack_run at the killer, weapons free, leashed to the
+  player; the player's fresh order cancels it (821b2b834e56).
+Verified already deep, wave 4: Massline fauna vibration (alienEcology AE-051/059),
+cross-run grudges (aceMemory New Run+ tiers + moral memory + defeat-streak mercy), Crucible
+signature moments (six authored room laws + round events), formation-half of the wingman gap
+(squadFrame sockets + wingMorale).
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-coverseek (WF-02): a marked elite swings until a rock sits between it and you, then
+  holds and coasts its orbit there; flank, hit, or the 5 s window restores the closing intent;
+  the mark's lit lip shows only while a hold is live (6869b4f0b4dd).
+- inf-room-end-cause (WF-16 repair): a hull a mine, drift bomb, sympathetic cookoff or the
+  crusher jaws took reads MINED/MILLED and pays the documented PQ-174.02 physics rate when
+  player-attributed, instead of reading as a gun kill (fe9b97714a9a).
+- inf-dot-end-word (WF-16 repair): a hull the burn or tar corroded down reads WASTED in each
+  arena's own language (TEMPERED/SOLDERED/SINGED/THAWED/SURGED/SLAGGED/SCALDED) instead of
+  the gun word; attrition pays gun rate, never the force-table ratio (0aa2bdac25c4).
+Verified already deep, wave 5: patrol intervention breadth (20182af972c4 —
+patrolJurisdictionFor over four lawful responders; the board's "Concord-only" seam note was
+stale), ricochet/bounce causality (collisionConsequences provenance + chainKills), DoT kill
+credit (status periodic routes the applier as attackerId). Named skip: well dives (same
+kind/subject family as coverseek — rotation reserves it).
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-well-dive (WF-02): a marked Crucible elite dives THROUGH a gravity well to reach you —
+  full thrust bent through the pull, guns live — instead of holding behind a rock; a hit
+  breaks the commit; law-identical window/stagger/cooldown to the rider (392426e9c689).
+- inf-plow-turn (WF-05 repair): shoving an enemy mine fence with your own plow turns it into
+  your grenade — it trips on the pack that laid it, pays your credit, and the band says the
+  shove took; NPC fields never turn NPC mines; your own mines never turn (8c77b0ed9119).
+- inf-lance-aim (WF-15 repair): the Orbital Lance paints and strikes exactly where the
+  crosshair points instead of a quarter-turn off it, and the thrown decoy drops ahead of the
+  nose line (47209b767a46).
+Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/guidance-lost
+all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
+left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
+before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
 
 ## Traps
 

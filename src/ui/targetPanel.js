@@ -25,6 +25,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { localizeText } from '../localization/sourceText.js';
+import { CAPTAIN_HONORIFIC_COPY } from '../data/shipRegistry.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
@@ -849,6 +850,18 @@ export function objectInfoLine(t, state, p, dist) {
       const evidence = d.causeContract && typeof d.causeContract.evidence === 'string'
         ? d.causeContract.evidence.trim() : '';
       if (evidence) facts.push(localizeText('Black box: {how}', { how: evidence }));
+      // The person the history was missing (inf-wreck-captain): the registry captain the
+      // aftermath owner captured at kill time, named with the hull they commanded. Only a
+      // minted hull carries one — an authored hull's scan already says who it was.
+      const registry = d.provenance && d.provenance.victimRegistry;
+      const captain = registry && typeof registry.captain === 'string'
+        ? registry.captain.trim() : '';
+      const shipName = registry && typeof registry.shipName === 'string'
+        ? registry.shipName.trim() : '';
+      if (captain && shipName) {
+        const honorific = String(CAPTAIN_HONORIFIC_COPY.text).replace('{name}', captain);
+        facts.push(localizeText('{line} of the {ship}', { line: honorific, ship: shipName }));
+      }
       const manifestId = d.provenance && d.provenance.freightIdentity
         && typeof d.provenance.freightIdentity.manifestId === 'string'
         ? d.provenance.freightIdentity.manifestId.trim() : '';

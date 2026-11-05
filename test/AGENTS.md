@@ -12,9 +12,10 @@ regression fixtures.
 - Test public behavior and ownership seams rather than incidental formatting or file-size/count facts.
 - Keep adversarial coverage for duplicate events, stale saves, missing assets, unordered payloads,
   pause/resume, and repeated initialization when relevant.
-- Preserve foreign fixture changes in the shared working tree. Add new files with `git add -N`.
+- Preserve foreign fixture changes in the shared working tree. Leave new files untracked until
+  exact-path staging; intent-to-add entries can prevent a concurrent merge from preserving its state.
 - UI/render claims still need a representative runtime probe or screenshot when feasible; DOM/source
   assertions alone are not visual acceptance.
-- Gameplay changes also attach the player-truth verdict and contact sheet
-  (`npm run player-truth -- --mode=<mode> --gate`); a FAIL blocks landing. UNKNOWN on a core
-  check is a FAIL. Its checks are covered by `test/player-truth-*.test.mjs` fixtures.
+- Follow the active Finish Program's claim-specific direct verification rule for gameplay changes.
+  Use the ordinary player route for player-facing claims; the player-truth harness is available
+  when it answers that claim. Record failed or unverified outcomes honestly and fix material failures.

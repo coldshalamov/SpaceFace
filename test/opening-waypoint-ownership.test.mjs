@@ -32,6 +32,8 @@ import { world as worldProto } from '../src/systems/world.js';
 function harness({ tutorialHints = true, seed = 47 } = {}) {
   const state = createGameState(seed);
   state.mode = 'flight';
+  // Recovery may select only a body in the contract's actual sector.
+  state.world.currentSectorId = 'sector_helios_prime';
   state.simTime = 0;
   state.playerId = 1;
   state.settings.gameplay.tutorialHints = tutorialHints;

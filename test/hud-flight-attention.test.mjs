@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
+import { runInNewContext as runOwnerInNewContext } from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { parse } from '@babel/parser';
 
@@ -45,6 +45,29 @@ const CSS_SRC = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8
 const COMMS_SRC = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
 const LAW_SRC = readFileSync(new URL('../src/ui/sectorLawPresenter.js', import.meta.url), 'utf8');
 const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.meta.url), 'utf8');
+
+// Isolated nested-owner checks share the real receipt geometry helpers, just as createHud's
+// closure does. No cross-call cache is active here; the dedicated receipt test drives flushes.
+const receiptHelperNames = new Set(['readReceiptRect', 'setReceiptStyle',
+  'prepareReceiptLaneSize', 'prepareReceiptCaptionSize']);
+const receiptHelperOwners = [];
+function collectReceiptHelpers(node) {
+  if (!node || typeof node !== 'object') return;
+  if (node.type === 'FunctionDeclaration' && receiptHelperNames.has(node.id?.name)) {
+    receiptHelperOwners.push(HUD_SRC.slice(node.start, node.end));
+    return;
+  }
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) value.forEach(collectReceiptHelpers);
+    else if (value && typeof value === 'object') collectReceiptHelpers(value);
+  }
+}
+collectReceiptHelpers(parse(HUD_SRC, { sourceType: 'module' }));
+assert.equal(receiptHelperOwners.length, receiptHelperNames.size);
+function runInNewContext(code, context) {
+  return runOwnerInNewContext(`var receiptPlacementMode = 'shared'; var receiptGeometryRects = null;
+    ${receiptHelperOwners.join('\n')};\n${code}`, context);
+}
 
 function installToastDom() {
   const byId = new Map();

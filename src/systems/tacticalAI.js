@@ -9,6 +9,7 @@ import {
   capitalBossOrder,
 } from '../ai/capitalBossOrders.js';
 import { AIInspectionEndpoint } from '../ai/inspection.js';
+import { captureTacticalRuntime, restoreTacticalRuntime } from '../ai/tacticalRuntimeSave.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
 import { kilnbackDecision } from '../ai/kilnback.js';
@@ -341,6 +342,9 @@ export function createTacticalAISystem({
   let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
   const lastDecisionEntityRefs = new Map();
+  // Presentation-only: a sent lane cue needs one cancellation if its doctrine disappears
+  // without a phaseChanged receipt (notably when the target leaves sensor coverage).
+  let committedLaneCues = new WeakMap();
   const bodyLaunchRt = new Map();
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
@@ -428,6 +432,7 @@ export function createTacticalAISystem({
 
   function resetRuntime() {
     bodyLaunchRt.clear();
+    committedLaneCues = new WeakMap();
     stack = null;
     inspection = null;
     lastDecisionTick = -Infinity;
@@ -437,6 +442,27 @@ export function createTacticalAISystem({
     quietLatch = null;
     counterplayBindingVersion = -1;
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
+  }
+
+  function restoreRuntime(payload) {
+    resetRuntime();
+    if (!payload?.tacticalAI || !ctxRef?.state) return;
+    const state = ctxRef.state;
+    const liveStack = ensureStack(state);
+    const saved = restoreTacticalRuntime(liveStack, state, payload.tacticalAI, payload.tacticalAIEntityBindings);
+    if (!saved) { resetRuntime(); return; }
+    lastDecisionTick = saved.lastDecisionTick;
+    lastOwnershipRefreshTick = saved.lastOwnershipRefreshTick;
+    lastManeuverRequests = saved.lastManeuverRequests;
+    for (const decision of liveStack.lastResult?.decisions || []) {
+      const entity = state.entities.get(decision.entityId);
+      if (entity) lastDecisionEntityRefs.set(entity.id, entity);
+    }
+    for (const [id, row] of saved.bodyLaunches) {
+      const actor = state.entities.get(id);
+      if (actor) bodyLaunchRt.set(id, { ...row, actor });
+    }
+    refreshFirstSessionAttackerOwnership(state, liveStack.lastResult?.decisions || []);
   }
 
   function detachLifecycleListeners() {
@@ -541,7 +567,7 @@ export function createTacticalAISystem({
           if (ctxRef && ctxRef.state) delete ctxRef.state.enemyMind;
           resetRuntime();
         });
-        listenLifecycle(ctx.bus, 'save:loaded', resetRuntime);
+        listenLifecycle(ctx.bus, 'save:loaded', restoreRuntime);
         listenLifecycle(ctx.bus, 'game:new', () => clearCounterplayAdventure(ctxRef));
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
@@ -553,6 +579,14 @@ export function createTacticalAISystem({
       detachLifecycleListeners();
       resetRuntime();
       ctxRef = null;
+    },
+
+    serialize() {
+      if (!stack || !ctxRef?.state) return null;
+      return captureTacticalRuntime(stack, ctxRef.state, {
+        lastDecisionTick, lastOwnershipRefreshTick, lastManeuverRequests,
+        bodyLaunches: new Map([...bodyLaunchRt].map(([id, { actor, ...row }]) => [id, row])),
+      });
     },
 
     update(_dt, state) {
@@ -651,6 +685,25 @@ export function createTacticalAISystem({
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
         const doctrine = decision && decision.combatDoctrine;
+        const priorLane = entity && committedLaneCues.get(entity);
+        const aim = doctrine?.aimCommit;
+        const targetGeneration = state.entities?.get?.(doctrine?.targetId)?.occupantGeneration;
+        const sameLane = priorLane && aim && priorLane.sourceGeneration === entity.occupantGeneration
+          && priorLane.doctrineId === doctrine.doctrineId && priorLane.targetId === doctrine.targetId
+          && priorLane.targetGeneration === targetGeneration
+          && priorLane.untilTick === aim.untilTick && priorLane.bearing === aim.bearing;
+        if (priorLane && !sameLane) {
+          // Only this lane's own changed phase carries its generation below. A forgotten
+          // or replaced doctrine needs one cancellation through the existing receipt.
+          const phaseWillCancel = doctrine?.phaseChanged && doctrine.doctrineId === priorLane.doctrineId
+            && entity.occupantGeneration === priorLane.sourceGeneration;
+          if (!phaseWillCancel && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+            ctxRef.bus.emit('ai:doctrinePhase', { entityId: decision.entityId, targetId: null,
+              doctrineId: priorLane.doctrineId, phase: 'cancelled', aimCommit: null,
+              sourceGeneration: priorLane.sourceGeneration, targetGeneration: priorLane.targetGeneration, tick });
+          }
+          committedLaneCues.delete(entity);
+        }
         // Authored capital scores own their presentation; stock boss telegraphs would double-report.
         if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:telegraph', {
@@ -661,11 +714,19 @@ export function createTacticalAISystem({
             kind: doctrine.telegraph.kind,
             durationTicks: doctrine.telegraph.durationTicks,
             attackLine: doctrine.attackLine || null,
+            ...((doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')
+              && doctrine.aimCommit ? { aimCommit: doctrine.aimCommit, sourceGeneration: entity?.occupantGeneration, targetGeneration } : {}),
             // FB-020: stage/edge so the listener can tell a mount-loss beat from a generic cue.
             bossStage: doctrine.bossStage || 0,
             turretEdge: doctrine.turretEdge || 0,
             tick,
           });
+          if (entity && aim && Number.isSafeInteger(entity.occupantGeneration)
+              && (doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')) {
+            committedLaneCues.set(entity, { sourceGeneration: entity.occupantGeneration,
+              doctrineId: doctrine.doctrineId, targetId: doctrine.targetId, targetGeneration,
+              untilTick: aim.untilTick, bearing: aim.bearing });
+          }
         }
         if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:doctrinePhase', {
@@ -677,6 +738,8 @@ export function createTacticalAISystem({
             fireWindow: doctrine.fireWindow,
             maneuverKind: doctrine.maneuverKind,
             attackLine: doctrine.attackLine || null,
+            ...((doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')
+              ? { aimCommit: doctrine.aimCommit || null, sourceGeneration: entity?.occupantGeneration, targetGeneration } : {}),
             bossStage: doctrine.bossStage || 0,
             turretEdge: doctrine.turretEdge || 0,
             tick,

@@ -1,3 +1,4 @@
+import { wholeHulkVisualForEntity } from '../data/wholeShipVisualIdentity.js';
 import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
@@ -113,6 +114,7 @@ import { foundryFurnitureShape } from '../data/foundryFurniture.js';
 import { createFoundryBankSurface } from './foundryBankSurface.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
+import { ENEMY_ROLE_VARIANT_BUILDERS } from './enemyRoleVariants.js';
 import { SWARM_BROOD_FAMILIES, swarmBroodFamily } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, swarmBroodLateFamily } from '../data/swarmBroodLate.js';
 
@@ -1839,6 +1841,8 @@ const ENEMY_FAMILY_BUILDERS = {
   kilnback: buildBruiserArmor,
   mothlight: buildSniperLance,
   pallet_jack: buildTraderHaul,
+  // Specialist recovery art only: production admits the selected authored whole ship.
+  ...ENEMY_ROLE_VARIANT_BUILDERS,
 };
 
 const FAMILY_BUILDERS = {
@@ -4048,16 +4052,7 @@ function fractureFragmentFitRadius(entity) {
 // aftermath piece below.
 function hulkPackagedFileForEntity(e) {
   if (ironKrakenWreckProfileFor(e)) return null;
-  const data = e && e.data || {};
-  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
-    ? data.hulkVisual
-    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
-  if (!visual) return null;
-  const selection = wholeShipVisualForEntity(
-    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
-    { requiredWholeShip: true },
-  );
-  return selection && selection.file || null;
+  return wholeHulkVisualForEntity(e, wholeShipVisualForEntity)?.file || null;
 }
 
 // Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated

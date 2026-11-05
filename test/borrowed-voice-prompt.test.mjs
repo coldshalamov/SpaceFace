@@ -1,3 +1,4 @@
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
@@ -8,6 +9,7 @@ import { setPromptDeck } from '../src/ui/promptDeck.js';
 import { BORROWED_VOICE as C } from '../src/data/borrowedVoice.js';
 import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 
+const WORLD_CENTER=sectorLocalToGlobalForSector(C.center,C.sectorId);
 function fixture(saved = null) {
   const sim = createSimulation({ seed: 816, systems: [economy, borrowedVoice] });
   const state = sim.state;
@@ -18,7 +20,7 @@ function fixture(saved = null) {
   state.settings.gameplay.physicsBackend = 'legacy';
   ensureAlienEcologyState(state).revelation = 2;
   const player = sim.spawn({ type: 'ship', hull: 100, mass: 28, radius: 8, collides: false,
-    pos: { x: C.center.x + 70, z: C.center.z + 40 } });
+    pos: { x: WORLD_CENTER.x + 70, z: WORLD_CENTER.z + 40 } });
   state.playerId = player.id;
   if (saved) sim.registry.get('borrowedVoice').deserialize(saved);
   sim.step(.2);
@@ -41,8 +43,8 @@ test('recorder loss refreshes stale disposition choices without losing partial e
   borrowedVoicePrompt.init({ bus: h.sim.bus });
   try {
     const a = h.owner._find('a');
-    a.pos.x = C.center.x + 8;
-    a.pos.z = C.center.z;
+    a.pos.x = WORLD_CENTER.x + 8;
+    a.pos.z = WORLD_CENTER.z;
     a.rot = Math.PI;
     for (let i = 0; i < 8; i++) h.sim.step(.2);
     assert.equal(h.owner.inspect(a.id).recovered, true);
@@ -143,7 +145,7 @@ function promptHarness(sim) {
 
 function recoverA(h) {
   const a = h.owner._find('a');
-  a.pos.x = C.center.x + 8; a.pos.z = C.center.z; a.rot = Math.PI;
+  a.pos.x = WORLD_CENTER.x + 8; a.pos.z = WORLD_CENTER.z; a.rot = Math.PI;
   for (let i = 0; i < 8; i++) h.sim.step(.2);
   assert.equal(h.owner.inspect(a.id).recovered, true);
 }
@@ -182,7 +184,7 @@ test('stale choices do not reopen after leaving the site, sector, docking, or sa
       loseRecorder(h, 'b');
       const originalOfferCount = ui.offers.length;
 
-      if (boundary === 'site') h.player.pos.x = C.center.x + C.siteRange + 1;
+      if (boundary === 'site') h.player.pos.x = WORLD_CENTER.x + C.siteRange + 1;
       if (boundary === 'sector') {
         h.state.world.currentSectorId = 'elsewhere';
         h.sim.bus.emit('sector:exit');

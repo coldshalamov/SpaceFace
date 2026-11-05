@@ -10,6 +10,7 @@ const colors = {
   repulsor_pylon: 0xe2ad57,
   tesla_pair: 0x8acbd1,
   kinetic_turret: 0xd8c8a2,
+  reflector_fin: 0x9fd3e8,
 };
 
 function shared(resource) {
@@ -47,46 +48,58 @@ function makeHardware(deviceId) {
     groups[family].push(part);
     if (part !== geometry) geometry.dispose();
   };
-  add(0, plate(0.58, 0.2), 0, 0.02);
-  add(1, new THREE.CylinderGeometry(0.29, 0.36, 0.24, 12), 0, 0.24);
-  const legCount = deviceId === 'gravity_beacon' ? 3 : 4;
-  for (let i = 0; i < legCount; i++) {
-    const a = i * Math.PI * 2 / legCount;
-    add(0, new THREE.BoxGeometry(0.56, 0.13, 0.2), Math.cos(a) * 0.58, -0.04, Math.sin(a) * 0.58, -a);
-    add(1, plate(0.15, 0.08), Math.cos(a) * 0.83, -0.11, Math.sin(a) * 0.83);
-  }
-
-  if (deviceId === 'gravity_beacon') {
-    // A horizontal lens held inside a three-point induction cradle: a trap, not a route mast.
-    add(2, new THREE.TorusGeometry(0.43, 0.055, 6, 24).rotateX(Math.PI / 2), 0, 0.51);
-    add(1, new THREE.SphereGeometry(0.24, 12, 8).scale(1, 0.52, 1), 0, 0.43);
-    for (let i = 0; i < 3; i++) {
-      const a = i * Math.PI * 2 / 3;
-      add(0, new THREE.BoxGeometry(0.13, 0.36, 0.15), Math.cos(a) * 0.43, 0.36, Math.sin(a) * 0.43, -a);
-    }
-  } else if (deviceId === 'repulsor_pylon') {
-    // Four outward-facing pressure shoes and a braced vertical coil.
-    add(0, new THREE.CylinderGeometry(0.19, 0.27, 0.67, 8), 0, 0.58);
-    for (let i = 0; i < 4; i++) {
-      const a = i * Math.PI / 2;
-      add(1, new THREE.BoxGeometry(0.23, 0.58, 0.32), Math.cos(a) * 0.43, 0.61, Math.sin(a) * 0.43, -a);
-      add(2, new THREE.BoxGeometry(0.06, 0.39, 0.23), Math.cos(a) * 0.56, 0.64, Math.sin(a) * 0.56, -a);
-    }
-  } else if (deviceId === 'tesla_pair') {
-    // Each physical endpoint is an open fork, leaving a clear line between the paired electrodes.
+  if (deviceId === 'reflector_fin') {
+    // The whole collider is the slab: an armored plate on braced feet, its +Z face
+    // a bright mirror strip — the same face the bank-plate proxy banks shots off.
+    add(0, new THREE.BoxGeometry(1.86, 0.3, 0.62), 0, 0.22);
+    add(2, new THREE.BoxGeometry(1.78, 0.24, 0.05), 0, 0.24, 0.315);
+    add(0, new THREE.BoxGeometry(1.7, 0.06, 0.1), 0, 0.42, -0.27);
     for (const side of [-1, 1]) {
-      add(0, new THREE.BoxGeometry(0.14, 0.69, 0.24), 0, 0.64, side * 0.31);
-      add(2, new THREE.CylinderGeometry(0.15, 0.12, 0.2, 8), 0, 1.04, side * 0.31);
+      add(1, new THREE.BoxGeometry(0.12, 0.4, 0.4), side * 0.72, 0.02);
+      add(1, new THREE.BoxGeometry(0.34, 0.06, 0.5), side * 0.72, -0.18);
     }
-    add(1, new THREE.BoxGeometry(0.34, 0.16, 0.79), 0, 0.94);
   } else {
-    // Counterweighted gun cradle, twin feed drums and a supported forward barrel.
-    add(0, new THREE.BoxGeometry(0.7, 0.35, 0.54), -0.07, 0.55);
-    add(1, new THREE.CylinderGeometry(0.095, 0.12, 0.68, 10).rotateZ(-Math.PI / 2), 0.57, 0.59);
-    for (const side of [-1, 1]) {
-      add(1, new THREE.CylinderGeometry(0.2, 0.2, 0.2, 10).rotateX(Math.PI / 2), -0.16, 0.56, side * 0.35);
+    add(0, plate(0.58, 0.2), 0, 0.02);
+    add(1, new THREE.CylinderGeometry(0.29, 0.36, 0.24, 12), 0, 0.24);
+    const legCount = deviceId === 'gravity_beacon' ? 3 : 4;
+    for (let i = 0; i < legCount; i++) {
+      const a = i * Math.PI * 2 / legCount;
+      add(0, new THREE.BoxGeometry(0.56, 0.13, 0.2), Math.cos(a) * 0.58, -0.04, Math.sin(a) * 0.58, -a);
+      add(1, plate(0.15, 0.08), Math.cos(a) * 0.83, -0.11, Math.sin(a) * 0.83);
     }
-    add(2, new THREE.BoxGeometry(0.32, 0.04, 0.18), -0.17, 0.75);
+
+    if (deviceId === 'gravity_beacon') {
+      // A horizontal lens held inside a three-point induction cradle: a trap, not a route mast.
+      add(2, new THREE.TorusGeometry(0.43, 0.055, 6, 24).rotateX(Math.PI / 2), 0, 0.51);
+      add(1, new THREE.SphereGeometry(0.24, 12, 8).scale(1, 0.52, 1), 0, 0.43);
+      for (let i = 0; i < 3; i++) {
+        const a = i * Math.PI * 2 / 3;
+        add(0, new THREE.BoxGeometry(0.13, 0.36, 0.15), Math.cos(a) * 0.43, 0.36, Math.sin(a) * 0.43, -a);
+      }
+    } else if (deviceId === 'repulsor_pylon') {
+      // Four outward-facing pressure shoes and a braced vertical coil.
+      add(0, new THREE.CylinderGeometry(0.19, 0.27, 0.67, 8), 0, 0.58);
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        add(1, new THREE.BoxGeometry(0.23, 0.58, 0.32), Math.cos(a) * 0.43, 0.61, Math.sin(a) * 0.43, -a);
+        add(2, new THREE.BoxGeometry(0.06, 0.39, 0.23), Math.cos(a) * 0.56, 0.64, Math.sin(a) * 0.56, -a);
+      }
+    } else if (deviceId === 'tesla_pair') {
+      // Each physical endpoint is an open fork, leaving a clear line between the paired electrodes.
+      for (const side of [-1, 1]) {
+        add(0, new THREE.BoxGeometry(0.14, 0.69, 0.24), 0, 0.64, side * 0.31);
+        add(2, new THREE.CylinderGeometry(0.15, 0.12, 0.2, 8), 0, 1.04, side * 0.31);
+      }
+      add(1, new THREE.BoxGeometry(0.34, 0.16, 0.79), 0, 0.94);
+    } else {
+      // Counterweighted gun cradle, twin feed drums and a supported forward barrel.
+      add(0, new THREE.BoxGeometry(0.7, 0.35, 0.54), -0.07, 0.55);
+      add(1, new THREE.CylinderGeometry(0.095, 0.12, 0.68, 10).rotateZ(-Math.PI / 2), 0.57, 0.59);
+      for (const side of [-1, 1]) {
+        add(1, new THREE.CylinderGeometry(0.2, 0.2, 0.2, 10).rotateX(Math.PI / 2), -0.16, 0.56, side * 0.35);
+      }
+      add(2, new THREE.BoxGeometry(0.32, 0.04, 0.18), -0.17, 0.75);
+    }
   }
 
   const geometries = groups.map(parts => {

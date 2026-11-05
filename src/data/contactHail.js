@@ -28,6 +28,8 @@ import {
   isPriorityCourierItinerary,
   PASSENGER_LINER_SERVICE,
 } from './laneContacts.js';
+import { TRAFFIC_ROLES } from './trafficPresentationReads.js';
+import { hailRegistrySlot } from './shipRegistry.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { DEED_KINDS, notorietyIn, pickDeedToTell } from '../systems/deedRecord.js';
 import { deedLine } from './deedPhrases.js';
@@ -483,10 +485,30 @@ export function ceresDisabledHaulerTruth(state, entity) {
   });
 }
 
-function callsign(entity) {
+// The plain role labels traffic.js stamps at spawn — the only traffic labels that read as
+// anonymous. A hull wearing one (or none) mints its registry name; a hull wearing an authored
+// line (a route hook, a scanLabel, a writer's callsign) keeps exactly what was written.
+// Keys stay in sync with TRAFFIC_ROLES (trafficPresentationReads.js), which is read directly.
+export const GENERIC_ROLE_LABELS = new Set(
+  Object.values(TRAFFIC_ROLES).map((role) => role && role.label).filter(Boolean),
+);
+
+function saveSeedOf(state) {
+  return state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+}
+
+function callsign(entity, seed = 0) {
   const data = entity && entity.data || {};
   const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
-  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || aceBoss || 'UNIDENTIFIED VESSEL')
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
+  if (authored) {
+    return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+  // Contacts stop being anonymous: an unnamed hull answers with the name painted on it and
+  // the captain who signs the manifest (src/data/shipRegistry.js, deterministic per hull).
+  const registry = hailRegistrySlot(entity, seed, GENERIC_ROLE_LABELS);
+  if (registry) return String(registry).replace(/\s+/g, ' ').trim().toUpperCase();
+  return String(data.trafficLabel || 'UNIDENTIFIED VESSEL')
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
@@ -679,7 +701,7 @@ export function contactHailAvailability(state) {
     reason: null,
     targetId: target.id,
     kind: classification.kind,
-    label: `HAIL ${callsign(target)}`,
+    label: `HAIL ${callsign(target, saveSeedOf(state))}`,
     distance,
     entity: target,
     parley: classification.parley,
@@ -1046,7 +1068,7 @@ function aceHailIdentifyText(state, entity) {
   const found = aceHailRecord(state, entity);
   const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
   const tier = found && found.rec.returnTier | 0;
-  return `${callsign(entity)}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
+  return `${callsign(entity, saveSeedOf(state))}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
 }
 
 // THE WORLD REMEMBERS (U-E): a lawful patrol hailing a pilot this loud in this sector opens with
@@ -1126,7 +1148,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   }
 
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
-  const name = callsign(availability.entity) + titleSegment(availability.entity);
+  const name = callsign(availability.entity, saveSeedOf(state)) + titleSegment(availability.entity);
   const voice = hailVoiceLine(state, availability.entity);
   if (availability.kind === 'ace') {
     const found = aceHailRecord(state, availability.entity);
@@ -1849,14 +1871,14 @@ function salvorSourceTruth(state, target) {
   return null;
 }
 
-function workerIdentifyText(target) {
+function workerIdentifyText(target, seed = 0) {
   const data = target && target.data || {};
   const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
   const eventId = data.ceresCausalEventId
     ? String(data.ceresCausalEventId).replace(/^ev_/, '').replace(/_/g, ' ').toUpperCase()
     : null;
   const eventBit = eventId ? ` · CHAIN ${eventId}` : '';
-  return `${callsign(target)}${titleSegment(target)} · ${role}${eventBit}`;
+  return `${callsign(target, seed)}${titleSegment(target)} · ${role}${eventBit}`;
 }
 
 function routeText(state, target) {
@@ -1948,7 +1970,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
-    line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
+    line = `${callsign(target, saveSeedOf(state))}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
     const charon = charonSupplyPresentation(state, target, { detailed: false });
@@ -1964,7 +1986,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     const guidance = orchardReceiverRepairGuidance(state, target);
     if (status) { line = `ROUTE · ${status}`; detailLines = guidance ? [line, guidance] : [line]; }
   } else if (offer.kind === 'worker' && id === 'identify') {
-    line = workerIdentifyText(target);
+    line = workerIdentifyText(target, saveSeedOf(state));
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
     const available = richSeamHelpAvailable(state, target, 'worker');
     const entities = state.entities && typeof state.entities.values === 'function'

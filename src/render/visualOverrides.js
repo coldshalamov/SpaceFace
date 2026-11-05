@@ -1,3 +1,4 @@
+import { cinderglassJobLatchPaint } from '../features/cinderglassJob/physical.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
@@ -1150,6 +1151,16 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   if (root.userData.visualBuildFailed || root.userData.authoredAdmissionSubstrate) return root;
   const spec = packagedPropSpec(entity);
   if (!spec || !spec.file) return root;
+  // Keep the procedural graph's existing scale off authored world-unit children.
+  if (root.scale.x !== 1 || root.scale.y !== 1 || root.scale.z !== 1) {
+    const proceduralFrame = new THREE.Group();
+    proceduralFrame.name = 'ProceduralPropScaleFrame';
+    proceduralFrame.scale.copy(root.scale);
+    while (root.children.length) proceduralFrame.add(root.children[0]);
+    root.scale.set(1, 1, 1);
+    root.updateMatrix();
+    root.add(proceduralFrame);
+  }
   const url = packagedPartUrl(spec.file);
   // Two pending families, two doctrines. hideImmediately specs (rescue hardware, explicit
   // packagedPropFile/assetRef mappings) keep the procedural form hidden for the whole
@@ -1293,6 +1304,17 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
+      // One released latch's painted shell; clone before tinting so shared steel and
+      // every other salvage clamp retain their authored materials.
+      if (liveEntity?.data?.cinderglassRole === 'latch') packaged.traverse(object => {
+        if (!object.isMesh) return;
+        const paint = material => {
+          const color = cinderglassJobLatchPaint(liveEntity, material?.name);
+          if (color == null) return material;
+          const next = material.clone(); next.color.setHex(color); return next;
+        };
+        object.material = Array.isArray(object.material) ? object.material.map(paint) : paint(object.material);
+      });
       if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return false;
@@ -1394,6 +1416,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
+      if (liveEntity?.data?.runtimeOwner === 'cinderglassJob'
+        && ['latch', 'cradle', 'broker', 'layby'].includes(liveEntity.data.cinderglassRole)) {
+        setPresentationAdmission(liveEntity, PRESENTATION_ADMISSION.ready);
+      }
       // The resolving marker's envelope stamp was only correct while pending: the committed
       // body is bigger or smaller than [r*3.4, r*0.6, r*1.7], so cull grading must fall back
       // to measurement like the ship commit path (which deletes its stamp here too).
@@ -1589,7 +1615,9 @@ export function installVisualOverrides(factory, options = {}) {
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
     const lastShiftRecorder = lastShiftRecorderPackagedPropSpec(entity);
-    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder
+    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck')
+      && typeof entity.data?.packagedPropFile === 'string' && packagedPropSpec(entity);
+    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder || explicitPackagedProp
       ? null
       : build47aScenarioProp(entity);
     if (lastShiftRecorder) {
@@ -1690,6 +1718,13 @@ export function installVisualOverrides(factory, options = {}) {
       }
     }
 
+    if (!visual && explicitPackagedProp) {
+      // Generic drone/wreck builders already arm a type-selected package. An explicit
+      // recipe needs a clean boundary or that stamp suppresses its authored identity.
+      visual = new THREE.Group();
+      visual.name = 'ExplicitPackagedProp_AuthoredBoundary';
+      visual.userData.kind = entity.type;
+    }
     if (!visual) visual = fallbackBuild(entity);
     visual = attachPackagedScenarioProp(visual, entity, options);
     assertReleaseHeroVisual(entity, visual, releaseMode);

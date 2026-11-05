@@ -1887,7 +1887,17 @@ export const archiveRedaction = {
   },
 
   update(dt, state) {
-    ensureArchiveState(state);
+    const a = ensureArchiveState(state);
+    // Survival keeps the owner/listeners, but an empty book must not start an
+    // Adventure field cast. Actual heads, desks and unfinished work still tick.
+    if (state.run?.kind === 'survival' && !a.redaction
+        && !a.copiedLogs.length && !a.marks.length && !a.errands.open.length
+        && !a.desk.offer && !a.annotatedUntil && !a.expungedUntil && !this._expungedWas
+        && a.traffic.nextSpawnAt < 0 && a.traffic.nextFieldAt < 0
+        && !Object.keys(a.traffic.live).length
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (e.data?.lineHeadId === ARCHIVE_INDEX_HEAD.id || e.data?.pageDrone || e.data?.archiveFieldCast === true
+            || e.data?.redacted === true || e.data?.enginesDark === true || this._deskKind(e)))) return;
     this._tickCensors(state);
     this._tickPageDrones(state, dt);
     this._indexHead(state, dt);

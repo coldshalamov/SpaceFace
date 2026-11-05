@@ -355,6 +355,11 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
 }
 /* the foot keeps the stage's width on an ultrawide, like the header and the stage above it */
 ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
+/* The deck must fit its allocated foot track; end alignment otherwise lets six rows grow
+   upward across the inspector. The table keeps every route in its own scroll region. */
+${C} .gm-apron .gm-deck { align-self:stretch; max-height:100%; overflow:hidden; }
+${C} .gm-deck-table { flex:1 1 auto; overscroll-behavior:contain; }
+${C} .gm-apron:has(.gm-deck:not([hidden])) { height:var(--gm-apron-h); }
 /* the dock: one spine of icon beads; the words open over the map on pointer or focus */
 @media (min-height: 1px) {
   ${C}[data-layout="wide"] { --gm-rail-w:52px; }
@@ -422,9 +427,28 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-frame-group { flex-wrap:nowrap !important; gap:0 18px !important; }
   ${C} .gm-frame-group .gm-frame-btn { min-height:26px !important; }
   ${C} .gm-inspector-actions { gap:2px !important; }
+  ${C} .gm-inspector-actions > * { flex-shrink:0; }
   ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
+  ${C} :is(#gm-set-course-btn, .gm-plot-btn) { min-height:calc(1.4em + 6px) !important; }
   ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
   ${C} .gm-place-actions { gap:0 14px !important; }
+}
+
+/* A populated deck needs a real row below the short desktop chart, not a floating table.
+   Keep the stage usable and let the frame scroll instead of compressing its action words. */
+@media (max-height:819px) and (min-width:761px) and (max-width:1179px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="compact"]:has(.gm-deck:not([hidden])) {
+    grid-template-rows:max-content minmax(320px, 1fr) max-content !important;
+    overflow-y:auto !important;
+  }
+  ${C}[data-layout="compact"] .gm-deck-row {
+    grid-template-columns:minmax(0, 1fr) auto !important; row-gap:3px; padding-block:6px;
+  }
+  ${C}[data-layout="compact"] .gm-deck-commodity { grid-column:1; grid-row:1; }
+  ${C}[data-layout="compact"] .gm-deck-risk { grid-column:2; grid-row:1; }
+  ${C}[data-layout="compact"] :is(.gm-deck-lane, .gm-deck-metric) {
+    display:block !important; grid-column:1 / -1; white-space:normal; overflow-wrap:anywhere;
+  }
 }
 
 /* a short wide window (1280x540): the collapsed dock's ten beads ran 374 px and the last lens
@@ -467,6 +491,13 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
 
 @media (forced-colors:active) {
   ${C} .gm-left-rail, ${C} .gm-navfoot { background:none !important; }
+  /* Icon-only controls sit over authored canvas pixels, which the system palette cannot recolor. */
+  ${C} :is(.gm-layer-btn.k-word, .gmh-tool) {
+    color:CanvasText !important; background:Canvas !important; border:1px solid CanvasText !important;
+  }
+  ${C} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) { color:HighlightText !important; background:Highlight !important; }
+  ${C} .gm-layer-ico { color:inherit !important; filter:none !important; }
+  ${C} :is(.gm-layer-btn.k-word, .gmh-tool):focus-visible { outline:2px solid Highlight !important; outline-offset:2px !important; }
   ${C} .gm-layer-state, ${C} .gm-navfoot .gm-nav-row::before { background:Highlight !important; box-shadow:none !important; }
   ${C} .orr-chart-lever, ${C} .orr-chart-tabscale { display:none; }
 }

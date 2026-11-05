@@ -201,11 +201,39 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:16px; }
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.25; }
 @media (max-height:599px) and (min-aspect-ratio:1/1) {
- #sf-touch-overlay .mf-wheel-top { top:calc(10px + var(--sf-safe-top,0px)); left:calc(212px + var(--sf-safe-left,0px)); right:calc(270px + var(--sf-safe-right,0px)); width:auto; transform:none; }
+ /* The caption and bank tabs use the clear column opposite the half-orbit, below status. */
+ #sf-touch-overlay .mf-wheel-top {
+   top:calc(112px + var(--sf-safe-top,0px)); left:calc(12px + var(--sf-safe-left,0px)); right:auto;
+   width:min(200px,calc(100vw - 2 * var(--mf-wheel-r,150px) - 28px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+   max-height:calc(100dvh - 124px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px));
+   transform:none; gap:8px; grid-template-rows:auto minmax(0,1fr);
+ }
+ #sf-touch-overlay[data-lefty="1"] .mf-wheel-top { left:auto; right:calc(12px + var(--sf-safe-right,0px)); }
+ #sf-touch-overlay .mf-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); overflow-wrap:anywhere; }
  #sf-touch-overlay .mf-tab { font-size:12px; font-stretch:90%; letter-spacing:0; }
- #sf-touch-overlay .mf-pick { box-sizing:border-box; width:176px; max-width:100%; padding:6px 10px; justify-self:start; }
+ #sf-touch-overlay .mf-pick {
+   box-sizing:border-box; width:100%; min-height:0; max-width:100%; padding:6px 10px; justify-self:start;
+   overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; pointer-events:auto;
+ }
  #sf-touch-overlay .mf-pick-name { font-size:14px; }
  #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
+ /* An active authority notice shares the clear column with the wheel caption. Reserve two
+    bounded, scrollable rows below the tabs; neither the warning nor its copy is suppressed. */
+ :root[data-sf-mobile-wheel="1"]:has(#sf-sector-law[data-flight-critical="true"]:not([hidden])) #sf-touch-overlay .mf-wheel-top {
+   max-height:calc(96px + max(44px,(100dvh - 228px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)) / 2));
+ }
+ :root[data-sf-mobile-wheel="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
+   top:auto!important; bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
+   left:calc(12px + var(--sf-safe-left,0px))!important; right:auto!important;
+   width:min(200px,calc(50vw - 124px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+   max-width:min(200px,calc(50vw - 124px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+   max-height:max(44px,calc((100dvh - 228px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)) / 2))!important;
+   overflow-y:auto!important; overscroll-behavior:contain; touch-action:pan-y;
+   pointer-events:auto!important; visibility:visible!important; opacity:1!important; transform:none!important; text-align:left!important;
+ }
+ :root[data-sf-mobile-wheel="1"][data-sf-mobile-lefty="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
+   left:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important;
+ }
 }
 /* ---- toast, guide pill, guide dialog ---- */
 /* the deck's own feedback sits in the clear lane above the key cluster and below the wheel's orbit:
@@ -371,15 +399,13 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
  :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }
- /* Fallback lane only: the HUD's measured allocator writes live positions inline after each
-     receipt and layout change. Keep these dimensions and readable two-row information receipts
-     when that owner has not measured a lane yet. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto; left:calc(14px + var(--sf-safe-left,0px)); top:auto; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px)); width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); max-width:none; }
+ /* Placement is owned by mobileFlightLayouts. Information keeps its full polite announcement;
+    only a receipt's explicit action captures touch, never its text or its empty lane. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info .sf-toast__text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
  /* Receipts remain information, so a touch through their text still starts the flight stick. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto; right:calc(14px + var(--sf-safe-right,0px)); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast__action { pointer-events:auto!important; min-width:44px; min-height:44px; padding:4px 8px; font-size:12px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
  /* The tape hangs from the foot of the objective plate (its height changes with the line and the DETAILS key), so the
@@ -402,13 +428,12 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile-wheel="1"] #hud .sf-radar-wrap { display:none!important; }
  /* with the wheel up, every HUD readout that would print through its glass stands down: the tape and
     alarms already do; the objective tracker and the doctrine tells (FLYBY) printed through the pick panel */
- :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts,#hud .sf-mission-tracker,#hud .sf-tells) { opacity:0!important; }
+ :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts,#hud .sf-mission-tracker,#hud .sf-tells,#sf-ml2,#toasts) { opacity:0!important; }
 @media (max-width:600px) {
  :root[data-sf-mobile="1"] :is(.of-title,.of-pause) { grid-template-columns:1fr!important; grid-template-rows:auto 1fr!important; gap:18px; }
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }
 }
 @media (max-height:500px) {
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px)); }
  /* landscape has the width: the HUD allocator owns the alert lane; the mobile layout supplies
     only a pre-HUD fallback seat. The right dock sits left of the pause key. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
@@ -417,24 +442,17 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(172px + var(--sf-safe-top,0px)); left:14px; right:14px; max-height:calc(100dvh - 372px); }
 }
 
-/* Mobile flight lanes: explicit dimensions, not a scaled desktop instrument. These scoped
-   rules win in either stylesheet injection order. Fixed children must not inherit the
-   desktop dock's containment/transform containing block. SVG labels retain >= 9px ink:
-   24 * 96 / 208 = 11.08px compact; 32 * 96 / 290 = 10.59px expanded.
-   Details are deliberately scrollable only after the player expands the existing radar. */
+/* Mobile flight lanes use native radar metrics and explicit placement. Fixed children must
+   not inherit the desktop dock's containment/transform containing block. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] {
  --sf-mobile-edge: max(90px, calc(20px + var(--mf-cluster-w,196px) * .266));
 }
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:124px; }
-}
 /* The Massline cadence card replaces the mission context while it shows (the context fades out under it),
    so it takes the context lane's seat and width in every orientation instead of the old 272px column. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { top:calc(132px + var(--sf-safe-top,0px))!important; width:140px!important; }
 :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
 @media (max-height:500px) and (orientation:landscape) {
- /* Fallback for short landscape; the HUD's measured inline lane takes over once its geometry is
-    available. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px)); bottom:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { top:calc(158px + var(--sf-safe-top,0px))!important; width:min(280px,calc(50vw - 40px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { left:calc(80px + var(--sf-safe-left,0px))!important; right:auto!important; width:min(280px,calc(50vw - 120px))!important; }
 }
@@ -442,7 +460,8 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { top:calc(188px + var(--sf-safe-top,0px))!important; width:calc(100vw - 28px - var(--sf-mobile-edge))!important; }
 }
 /* Opacity alone leaves invisible controls intercepting flight/wheel taps. */
-:root[data-sf-mobile-wheel="1"] :is(#alerts,#hud > .sf-leftcontext) { visibility:hidden!important; pointer-events:none!important; }
+:root[data-sf-mobile-wheel="1"] :is(#alerts,#hud > .sf-leftcontext,#sf-ml2,#toasts) { visibility:hidden!important; pointer-events:none!important; }
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-wheel="1"] #toasts .sf-toast__action { pointer-events:none!important; }
 :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { visibility:hidden!important; pointer-events:none!important; }
 :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock * { pointer-events:none!important; }
 

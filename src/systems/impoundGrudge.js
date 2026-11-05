@@ -297,6 +297,7 @@ function ensureShadow(shadow, now) {
   if (typeof shadow.resolved !== 'string') shadow.resolved = null;
   if (!Number.isFinite(shadow.resolvedAt)) shadow.resolvedAt = null;
   if (typeof shadow.cursed !== 'boolean') shadow.cursed = false;
+  if (typeof shadow.namedPublic !== 'boolean') shadow.namedPublic = false;
   if (!Number.isFinite(shadow.spawnedAt)) shadow.spawnedAt = null;
   if (!Number.isFinite(shadow.lastTickAt)) shadow.lastTickAt = null;
   return shadow;
@@ -436,7 +437,10 @@ function nemesisLevel(shadow, mode) {
   let level = LEVEL_BASE + LEVEL_PER_DEATH * (shadow.deaths | 0);
   if (shadow.learning && shadow.learning.fastKills >= 2) level += LEVEL_FAST_KILL_BONUS;
   if (mode === 'duel') level += LEVEL_DUEL_BONUS;
-  return level;
+  // SP2-098 — the grudge was named in public once (the airlock crossword read IT IS
+  // GRUDGES out loud); it comes one degree cooler ever after. Being known costs it.
+  if (shadow.namedPublic === true) level -= 1;
+  return Math.max(1, level);
 }
 
 /** What this surfacing wants to be. Deterministic off the papers. */
@@ -1087,6 +1091,19 @@ export function tickImpoundGrudge(state, ctx) {
   const now = Number(state.simTime) || 0;
   ensureShadow(shadow, now);
   if (shadow.resolved) return;
+  // SP2-098 — "the grudge was named in public": the airlock crossword flag (written by the
+  // special500 dock counter leg) eases this grudge exactly once, here, where the shadow's
+  // own normalization latches it. A named grudge comes one degree cooler (nemesisLevel).
+  if (!shadow.namedPublic && state.story && state.story.flags
+    && state.story.flags.airlock_crossword != null) {
+    shadow.namedPublic = true;
+    ctx.emit('comms:log', {
+      from: shadow.grudgeCallsign || 'the grudge',
+      text: 'Someone pinned your papers to an airlock wall and named what the clamps '
+        + 'remember. The next pass will be cooler for it. Being known is a cost.',
+      kind: 'special500',
+    });
+  }
   const dt = tickDt(shadow, now);
   shadow.lastTickAt = now;
 

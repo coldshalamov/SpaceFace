@@ -534,7 +534,8 @@ export const tetherGameplay = {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
         this.bus.emit('tether:broke', { targetId: this._active.targetId, reason: 'target_lost' });
-        this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId));
+        this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId,
+          { targetGeneration: boundAttachment?.targetGeneration ?? null }));
         this._active = null;
         this._pendingCut = null;
         this._ignoreReleaseCutUntilReelIdle = false;
@@ -1454,6 +1455,8 @@ export const tetherGameplay = {
     if (attachment && attachment.state === 'active') return;
     const targetId = this._active.targetId;
     const reason = attachment && attachment.breakReason;
+    const receiptOptions = { targetGeneration: attachment?.targetGeneration ?? null, breakReason: reason ?? null,
+      deliberate: reason === 'tether_cut' };
     this._cancelDrillApproach(reason || 'attachment_missing');
     this._active = null;
     this._pendingCut = null;
@@ -1470,19 +1473,18 @@ export const tetherGameplay = {
       this._deferredLineEcho = {
         targetId,
         reason,
-        releaseRated: rateRelease(state, targetId,
-          reason === 'tether_cut' ? { deliberate: true } : null),
+        releaseRated: rateRelease(state, targetId, receiptOptions),
       };
     } else if (reason === 'tether_cut') {
       this.bus.emit('tether:released', { targetId });
       // A cut that lands through reconcile (e.g. the self-sling manual cut) is still the
       // player's deliberate release — the apex read applies to it.
-      this.bus.emit('tether:releaseRated', rateRelease(state, targetId, { deliberate: true }));
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId, receiptOptions));
     } else {
       // The reason travels with the receipt so presentation can honor the same quiet law
       // tether:broken already follows (accepted handoffs and boundary breaks stay silent).
       this.bus.emit('tether:broke', { targetId, reason });
-      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId, receiptOptions));
     }
     this._lastStrainT = -Infinity;
     this._resetPhaseMirror();
@@ -2113,7 +2115,8 @@ export const tetherGameplay = {
     if (!this._active) return false;
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
-    const releaseRating = rateRelease(state, targetId, { deliberate: true });
+    const releaseRating = rateRelease(state, targetId, { deliberate: true,
+      targetGeneration: attachments.get?.(this._active.attachmentId)?.targetGeneration ?? null });
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
     if (!result || !result.ok) {
       this._pendingCut = null;
@@ -3764,6 +3767,12 @@ export function rateRelease(state, targetId, opts) {
   const tether = state && state.player && state.player.tether;
   const owner = state && state.entities && state.entities.get && state.entities.get(state.playerId);
   const payload = state && state.entities && state.entities.get && state.entities.get(targetId);
+  // Receipt facts are captured before the line mirror is cleared. An attachment's generation
+  // wins over an ID lookup, which might already name a replacement body.
+  const targetGeneration = opts && Object.hasOwn(opts, 'targetGeneration')
+    ? opts.targetGeneration : occupantGenerationOf(payload);
+  const receiptTarget = payload && targetGeneration != null
+    && occupantGenerationOf(payload) === targetGeneration ? payload : null;
   const restLength = finite(tether && tether.restLength, finite(telemetry && telemetry.restLength));
   const pair = readCadencePair(owner, payload, restLength);
   const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
@@ -3784,6 +3793,13 @@ export function rateRelease(state, targetId, opts) {
     : null;
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
+    targetGeneration,
+    targetX: Number.isFinite(receiptTarget?.pos?.x) ? receiptTarget.pos.x : null,
+    targetZ: Number.isFinite(receiptTarget?.pos?.z) ? receiptTarget.pos.z : null,
+    tonnageU: Number.isFinite(receiptTarget?.mass) ? receiptTarget.mass : null,
+    load: tether?.targetId === targetId && Number.isFinite(tether.load) ? tether.load : null,
+    receiptStrain: tether?.targetId === targetId && Number.isFinite(tether.strain) ? tether.strain : null,
+    breakReason: opts?.breakReason ?? null,
     // CV-THROW-1: deliberate marks a player release — the grade verdict teaches only
     // intentional cuts; breaks and target loss emit the rating for evidence, not coaching.
     deliberate: !!(opts && opts.deliberate === true),

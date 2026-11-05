@@ -1,3 +1,4 @@
+import { currentSolidDressingRows, physicalObstacleRadius } from '../core/physicalObstacleQuery.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mothlightGunCadence } from '../data/mothlight.js';
 import {
@@ -67,6 +68,7 @@ const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_
 const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
 const ATTACHMENT_DEF_BY_ID = new Map(ATTACHMENT_DEFS.map((row) => [row.id, row]));
 const SOLID_TAGS = Object.freeze(['solid']);
+const COLD_DRESSING_TAGS = Object.freeze(['cold_dressing', 'solid']);
 const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
 const CAPABILITY_DEPENDENCIES = Object.freeze({
   drive: Object.freeze(['drive']),
@@ -427,6 +429,7 @@ export const aiPorts = {
     );
     for (const contact of tetherContacts) contacts.push(contact);
     appendWellObstacles(state, entity, range, contacts, freeze);
+    appendDressingObstacles(state, entity, range, contacts, attachmentIndex, freeze);
     if (freeze !== identity) contacts.sort(contactSort);
     if (live) {
       const frame = options.frameScratch || this._liveSensorFrameScratch;
@@ -1620,6 +1623,21 @@ function appendWellObstacles(state, observer, range, contacts, freeze) {
       tags: WELL_OBSTACLE_TAGS, pos: freeze({ x: center.x, z: center.z }),
       vel: freeze({ x: 0, z: 0 }), radius: well.radius, planarRadius: well.radius,
       alive: true, valid: true, visible: true, hostile: false, threat: 0, confidence: 1, team: null }));
+  }
+}
+
+// Cold fixed dressing is not a combat target or entity-index member. Add only its
+// physical footprint to navigation, keeping threat, cloak and target selection unchanged.
+function appendDressingObstacles(state, observer, range, contacts, attachmentIndex, freeze) {
+  for (const row of currentSolidDressingRows(state)) {
+    if (!row || row.id === observer.id || contacts.some(contact => contact.id === row.id)) continue;
+    const radius = physicalObstacleRadius(row);
+    if (!(radius > 0)) continue;
+    const dx = row.pos.x - observer.pos.x, dz = row.pos.z - observer.pos.z;
+    if (dx * dx + dz * dz > (range + radius) ** 2) continue;
+    const base = buildContactBase(state, row, null, attachmentIndex, ContactKind.HAZARD, freeze, null);
+    contacts.push({ ...base, radius, planarRadius: radius, team: null, targetId: null,
+      objectiveValue: 0, fortifyTarget: false, tags: COLD_DRESSING_TAGS, confidence: 1, threat: 0, hostile: false });
   }
 }
 

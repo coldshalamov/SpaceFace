@@ -134,6 +134,7 @@ export const FIGURES = {
   wraith_kell:   { name: '“Wraith” Kell', org: 'The Quiet, embedded at Customs', role: 'deep-cover manifest clerk' },
   halev_doss:    { name: 'Prof. Halev Doss', org: 'Helios public archive', role: 'university archivist' },
   maera_vols:    { name: 'Captain Maera Vols', org: 'Tessera / The Quiet', role: 'previous captain and hull ghost' },
+  morrow:        { name: 'MORROW / R-07', org: 'Civilian rescue register, lapsed', role: 'momentum-rescue machine' },
 };
 
 // ── Comms popup catalog ──────────────────────────────────────────────────────────────────────

@@ -57,43 +57,158 @@ ${S} .sf-alert.sf-alert--floor, ${S} .sf-alert.sf-alert--dock { position:relativ
 ${S} .sf-alert.sf-alert--floor::before, ${S} .sf-alert.sf-alert--dock::before { ${pool('-12px -36px')} }
 ${S} .sf-alert.sf-alert--floor { color:var(--dp-ink, #e8e2d4); }
 
-/* ---- the band key: an engraved word and a lamp ring, lit only while a channel is tuned ---------- */
-${S} #hud .sf-band-hud__button { position:relative; background:none !important; background-image:none !important; box-shadow:none !important;
-  border:0 !important; padding:4px 0 4px 20px; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px;
-  letter-spacing:.22em; text-transform:uppercase; color:var(--dp-ink-dim, #b7b4a6); ${HALO} }
-${S} #hud .sf-band-hud__button::before { content:""; position:absolute; left:5px; top:50%; width:2px; height:11px; margin-top:-5.5px;
-  background:rgb(232 226 212 / .42); }
-${S} #hud .sf-band-hud__button:not([data-off="true"]) { color:var(--dp-ink, #e8e2d4); }
+/* ---- the band key: a compact instrument pill, lit while a channel is tuned ---------------------- */
+${S} #hud .sf-band-hud__button { position:relative; background:linear-gradient(180deg, rgb(18 22 30 / .90), rgb(11 14 20 / .90)) !important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 8px 20px -6px rgb(0 0 0 / .65) !important;
+  border:1px solid rgb(236 230 216 / .14) !important; border-radius:4px !important;
+  padding:5px 10px 5px 22px; font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:500; font-size:12px;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--dp-ink-dim, #b7b4a6); transition:border-color 120ms ease, color 120ms ease; }
+${S} #hud .sf-band-hud__button::before { content:""; position:absolute; left:9px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%;
+  background:rgb(232 226 212 / .36); }
+${S} #hud .sf-band-hud__button:not([data-off="true"]) { color:var(--dp-ink, #e8e2d4); border-color:rgb(223 238 255 / .28) !important; }
 ${S} #hud .sf-band-hud__button:not([data-off="true"])::before { background:var(--dp-phos, #dfeeff); box-shadow:0 0 8px rgb(223 238 255 / .6); }
-${S} #hud .sf-band-hud__button:hover, ${S} #hud .sf-band-hud__button:focus-visible { color:var(--dp-ink, #e8e2d4); background:none !important; }
+${S} #hud .sf-band-hud__button:hover, ${S} #hud .sf-band-hud__button:focus-visible { color:var(--dp-ink-hi, #f4f1ea); border-color:rgb(236 230 216 / .28) !important; }
 
-/* ---- the objective column: the objective is marked by an amber pin (the objective is one of amber's
-   three jobs), not a 3 px side bar; its sections part by space, not hairlines; the comms tape loses
-   the flight glass that made it a tab strip; the column stands on one pool of shadow ------------- */
-${S} #hud > .sf-leftcontext > *, ${S} #hud > .sf-leftcontext > * + * { border-top:0 !important; }
-${S} #hud > .sf-leftcontext > .sf-mission-tracker::before { top:13px; bottom:auto; left:5px; width:7px; height:7px; border-radius:0;
+/* ---- the objective column: structured dark instrument card with crisp 1px hairline dividers ----- */
+${S} #hud > .sf-leftcontext {
+  background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90)) !important;
+  border:1px solid rgb(236 230 216 / .13) !important;
+  border-radius:4px !important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 12px 28px -8px rgb(0 0 0 / .72) !important;
+  padding:2px 0 !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+}
+${S} #hud > .sf-leftcontext::before { display:none !important; }
+${S} #hud > .sf-leftcontext > * { padding:8px 12px !important; }
+${S} #hud > .sf-leftcontext > * + * { border-top:1px solid rgb(236 230 216 / .08) !important; }
+${S} #hud > .sf-leftcontext > .sf-mission-tracker::before { top:13px; bottom:auto; left:8px; width:6px; height:6px; border-radius:0;
   transform:rotate(45deg); background:var(--dp-hand, #f2b950); box-shadow:0 0 9px rgb(242 185 80 / .55); }
 /* the objective's bearing dial takes the pin's place when there is a bearing to show */
 ${S} #hud .sf-mission-tracker { position:relative; }
 ${S} #hud .sf-mission-tracker:not(.sf-mt--nobearing) { padding-left:52px !important; }
 ${S} #hud .sf-mission-tracker:not(.sf-mt--nobearing)::before { display:none; }
-${S} #hud .sf-mission-tracker .sf-mt-dial { display:block !important; position:absolute; left:2px; top:50%; width:40px; height:40px; margin-top:-20px; overflow:visible; }
+${S} #hud .sf-mission-tracker .sf-mt-dial { display:block !important; position:absolute; left:8px; top:50%; width:36px; height:36px; margin-top:-18px; overflow:visible; }
 ${S} #hud .sf-mission-tracker.sf-mt--nobearing .sf-mt-dial { display:none !important; }
-${S} #hud .sf-mt-dial__ring { fill:rgb(4 6 9 / .55); stroke:rgb(232 226 212 / .5); stroke-width:1; }
-${S} #hud .sf-mt-dial__ticks { stroke:rgb(232 226 212 / .55); stroke-width:1; fill:none; }
+${S} #hud .sf-mt-dial__ring { fill:rgb(4 6 9 / .65); stroke:rgb(232 226 212 / .42); stroke-width:1; }
+${S} #hud .sf-mt-dial__ticks { stroke:rgb(232 226 212 / .48); stroke-width:1; fill:none; }
 ${S} #hud .sf-mt-dial__needle { transform-box:view-box; transform-origin:17px 17px; transition:transform .45s cubic-bezier(.3, 1.3, .5, 1); }
 ${S} #hud .sf-mt-dial__needle path { fill:var(--dp-hand, #f2b950); }
 ${S} #hud .sf-mt-dial__needle circle { fill:rgb(4 6 9); stroke:var(--dp-hand-hot, #ffd98c); stroke-width:1.2; }
 html.sf-reduce-motion ${S} #hud .sf-mt-dial__needle { transition:none; }
+${S} #hud .sf-mt-obj { font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important; font-size:13px !important; font-weight:500 !important;
+  line-height:1.4 !important; letter-spacing:.015em; word-spacing:.08em; color:var(--dp-ink-hi, #f4f1ea) !important; }
+${S} #hud .sf-mt-time { font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important; font-size:12px !important;
+  letter-spacing:.02em; word-spacing:.08em; color:var(--dp-ink-dim, #9ba3b0) !important; }
 ${S} #hud .sf-commtape, html ${S} #hud .sf-commtape { background:none !important; background-color:transparent !important; box-shadow:none !important; border:0 !important; }
-${S} #hud > .sf-leftcontext::before { ${pool('-18px -60px -24px -24px')} }
-${S} #hud > .sf-leftcontext { ${HALO} }
 
-/* ---- the BAND tape: the headline gets its own line instead of the slack beside three words ------ */
-${S} #hud .sf-commtape { flex-wrap:wrap; row-gap:7px; }
-${S} #hud .sf-commtape__news { flex:1 0 100%; order:5; }
+/* ---- the BAND tape: clean pill buttons for COMMS/HAIL and full-width news headline -------------- */
+${S} #hud .sf-commtape { flex-wrap:wrap; row-gap:6px; align-items:center; justify-content:space-between; }
+${S} #hud .sf-commtape__band { font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important; font-variation-settings:normal !important;
+  font-size:12px; font-weight:600; letter-spacing:.05em; color:var(--dp-ink-dim, #9ba3b0) !important; text-shadow:none !important; }
+${S} #hud .sf-commtape .sf-comm-backlog-btn, ${S} #hud .sf-commtape .sf-contact-hail__button {
+  padding:2px 8px !important; border-radius:3px !important; border:1px solid rgb(236 230 216 / .12) !important;
+  background:rgb(255 255 255 / .035) !important; font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-variation-settings:normal !important; font-size:12px !important; font-weight:500 !important;
+  letter-spacing:.03em !important; color:var(--dp-ink, #e8e2d4) !important; text-shadow:none !important;
+  transition:background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+${S} #hud .sf-commtape .sf-comm-backlog-btn:hover, ${S} #hud .sf-commtape .sf-contact-hail__button:hover:not([disabled]) {
+  background:rgb(255 255 255 / .08) !important; border-color:rgb(236 230 216 / .24) !important; color:var(--dp-ink-hi, #f4f1ea) !important;
+}
+${S} #hud .sf-commtape .sf-contact-hail__button[disabled] { opacity:.45; border-color:rgb(236 230 216 / .06) !important; background:transparent !important; }
+${S} #hud .sf-commtape .sf-fx-comms-trace { min-width:36px; opacity:.55; }
+${S} #hud .sf-commtape__news { flex:1 0 100%; order:5; padding-top:4px; border-top:1px solid rgb(236 230 216 / .06); }
+${S} #hud .sf-news-ticker { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; line-height:1.35; color:var(--dp-ink-dim, #b7b4a6); }
 
 /* ---- the radar: its frame is ORRERY light drawn outside the canvas, so the wrap must not clip ---- */
+${S} #hud .sf-target:not([hidden]):not(:empty),
+${S} #hud #sf-sector-law:not([hidden]):not(:empty),
+${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
+  background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90)) !important;
+  border:1px solid rgb(236 230 216 / .13) !important;
+  border-radius:4px !important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 12px 28px -8px rgb(0 0 0 / .72) !important;
+  padding:10px 12px !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+  letter-spacing:.015em;
+  word-spacing:.08em;
+}
+${S} #hud .sf-target { text-align:left !important; gap:6px !important; }
+${S} #hud .sf-target__head { align-items:flex-start !important; justify-content:space-between !important; gap:8px !important; }
+${S} #hud .sf-target__name {
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:13px !important; font-weight:600 !important; line-height:1.3 !important;
+  letter-spacing:.01em !important; word-spacing:.08em !important;
+  color:var(--dp-ink-hi, #f4f1ea) !important; text-shadow:none !important;
+}
+${S} #hud .sf-target__faction {
+  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
+  font-size:12px !important; font-weight:500 !important; letter-spacing:.04em !important;
+}
+${S} #hud .sf-target__threat {
+  padding:0 !important; border:0 !important; background:none !important;
+  gap:6px !important; font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; font-weight:600 !important; letter-spacing:.05em !important;
+}
+${S} #hud .sf-target__rangerow { gap:8px !important; align-items:center !important; margin-top:1px !important; }
+${S} #hud .sf-target__rangebar { height:3px !important; border-radius:1.5px !important; background:rgb(236 230 216 / .16) !important; }
+${S} #hud .sf-target__dist {
+  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
+  font-size:12px !important; font-weight:600 !important; font-variant-numeric:tabular-nums !important;
+  color:var(--dp-phos, #dfeeff) !important;
+}
+${S} #hud .sf-target__closing {
+  display:inline-flex !important; align-items:center !important; gap:4px !important;
+  font-family:var(--dp-face-num, "Spline Sans Mono", monospace) !important;
+  font-size:12px !important; font-variant-numeric:tabular-nums !important;
+}
+${S} #hud .sf-target__engaged {
+  padding:2px 0 2px 8px !important; border:0 !important; border-left:2px solid var(--dp-lamp, #f2b950) !important;
+  border-radius:0 !important; background:none !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; font-weight:600 !important; line-height:1.3 !important;
+  letter-spacing:.02em !important; word-spacing:.08em !important;
+}
+${S} #hud .sf-target__engaged [data-glyph],
+${S} #hud .sf-target__weak [data-glyph],
+${S} #hud .sf-target__component [data-glyph] {
+  display:inline-flex !important; vertical-align:-2px !important; margin-right:5px !important;
+}
+${S} #hud .sf-target__intent {
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; font-weight:500 !important;
+  letter-spacing:.02em !important; word-spacing:.08em !important;
+  color:var(--dp-ink, #e8e2d4) !important;
+}
+${S} #hud .sf-target__meta {
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; letter-spacing:.03em !important; word-spacing:.08em !important;
+  color:var(--dp-ink-dim, #9ba3b0) !important;
+}
+${S} #hud .sf-target__more {
+  margin-top:2px !important; padding-top:5px !important;
+  border-top:1px solid rgb(236 230 216 / .08) !important;
+  justify-content:space-between !important;
+  font-family:var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  font-size:12px !important; font-weight:600 !important; letter-spacing:.06em !important;
+  color:var(--dp-ink-dim, #9ba3b0) !important;
+}
+${S} #hud #sf-ml2 .ml2-pill {
+  padding:4px 10px !important;
+  border-radius:4px !important;
+  border:1px solid rgb(236 230 216 / .13) !important;
+  background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90)) !important;
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .65) !important;
+  font:500 12px/1.3 var(--dp-face-read, "Instrument Sans", sans-serif) !important;
+  letter-spacing:.04em !important;
+  color:var(--dp-ink, #e8e2d4) !important;
+}
+${S} #hud #sf-ml2 .ml2-pill .ml2-fill {
+  width:64px !important;
+  height:3px !important;
+  border-radius:1.5px !important;
+  background:rgb(236 230 216 / .18) !important;
+}
 ${S} #hud .sf-radar-wrap--orrery { position:relative; contain:layout style; overflow:visible; }
 /* the dial stops clipping (its frame lives outside the rim); the canvas keeps its own circle mask */
 ${S} #hud .sf-radar-wrap--orrery .sf-radar { overflow:visible; contain:layout style; }
@@ -103,8 +218,8 @@ ${S} #hud .sf-radar-wrap--orrery .sf-radar::before { content:""; position:absolu
   pointer-events:none; z-index:-1; background:radial-gradient(closest-side, rgb(4 6 9 / .8), rgb(4 6 9 / .62) 58%, rgb(4 6 9 / 0)); }
 /* the kit bezel, face ring and north caret are the old instrument's chrome; the frame replaces them */
 ${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n) { display:none; }
-${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:22px; font-family:var(--dp-face-label); font-stretch:112%;
-  font-weight:600; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
+${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:18px; font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%;
+  font-weight:600; font-size:12px; letter-spacing:.05em; font-variant-numeric:tabular-nums; text-transform:uppercase; color:var(--dp-hand, #f2b950); ${HALO} }
 
 /* ---- the contact roster: a ladder of words on a lit spine, never a plate with row rules ------- */
 ${S} #hud .sf-overview { background:none !important; border:0 !important; box-shadow:none !important; overflow:visible !important; position:relative; isolation:isolate;
