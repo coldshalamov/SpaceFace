@@ -5781,7 +5781,7 @@ export const npcJobsRuntime = {
         || (threat && threat.data && threat.data.isWingman === true);
       const text = shotByPlayer
         ? `${kindLabel} back to work. Watch your fire.`
-        : `${kindLabel} back to work — thanks for the cover.`;
+        : `${kindLabel} back to work.`;
       try {
         this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
       } catch { /* advisory only */ }
