@@ -360,6 +360,11 @@ import {
   STORM_STATIC_REDUCED_CADENCE_HZ,
 } from './hazardStormRead.js';
 import {
+  createStormZoneGeometry,
+  resolveStormZonePlans,
+  writeStormZoneGeometry,
+} from './stormZoneField.js';
+import {
   APRON_FLOOD_MAX_RANGE_WU,
   APRON_FLOOD_STATION_CAP,
   buildApronFloodLayout,
@@ -2002,6 +2007,7 @@ export const vfx = {
     this._masslineLatchRim = null;
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
+    disposeVfxRoot(this._stormZones && this._stormZones.mesh, disposeState);
     disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
     disposeVfxRoot(this._apronFlood && this._apronFlood.mesh, disposeState);
     disposeVfxRoot(this._salvageLamp && this._salvageLamp.mesh, disposeState);
@@ -2129,6 +2135,7 @@ export const vfx = {
     this._salvageLamp = null;
     this._stormPresence = {};
     this._stormStaticLastStep = null;
+    this._stormZones = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -2469,6 +2476,7 @@ export const vfx = {
     this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initDockApproach();
+    this._initStormZones();
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
@@ -8227,6 +8235,90 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // inf-storm-body — a hazard zone's own skin. The sim stamps every live zone (type, center,
+  // radius, intensity) on activeSector.hazards each tick; this adapter binds the pure quad
+  // field to one additive mesh and lets the live intensity own the density, so a boss-defeat
+  // aftermath thins its storm on screen without any event wiring. Reduced motion slows the
+  // churn; the skin stays lit — a hazard you cannot see is worse than one that sits still.
+  // -------------------------------------------------------------------------
+  _initStormZones() {
+    if (!this._scene) return;
+    const scratch = createStormZoneGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-storm-zones';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._stormZones = { mesh, scratch };
+  },
+
+  _updateStormZones() {
+    const sz = this._stormZones;
+    if (!sz) return false;
+    const state = this.state;
+    const hazards = state && state.world && state.world.activeSector
+      && state.world.activeSector.hazards;
+    if (!Array.isArray(hazards) || !hazards.length) {
+      if (sz.mesh.visible) {
+        sz.mesh.visible = false;
+        sz.mesh.material.opacity = 0;
+        sz.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const focus = (state.camera && state.camera.focus) || (player && player.pos) || { x: 0, z: 0 };
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reducedMotion = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const plans = resolveStormZonePlans(hazards, focus, simTime);
+    const geometry = writeStormZoneGeometry(sz.scratch, plans, simTime, reducedMotion, 0.22);
+    if (!(geometry.indexCount > 0)) {
+      if (sz.mesh.visible) {
+        sz.mesh.visible = false;
+        sz.mesh.material.opacity = 0;
+        sz.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = geometry.positions;
+    for (let vertex = 0; vertex < (geometry.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    sz.mesh.geometry.setDrawRange(0, geometry.indexCount);
+    sz.mesh.geometry.attributes.position.needsUpdate = true;
+    sz.mesh.geometry.attributes.color.needsUpdate = true;
+    sz.mesh.material.opacity = Math.min(0.62, 0.5 * accessibility.flashOpacityScale);
+    sz.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
   // Docking approach beacons (inf-dock-approach-beacons): the station's own answer to "where is
   // the dock and is it open", readable from two rings out. One additive mesh, one draw call;
   // the plan is the same dockingCorridor truth the cradle consumes, so the picture never
@@ -10552,6 +10644,8 @@ export const vfx = {
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
     // inf-storm-crossing: sustained hull static while a hazard storm works the hull.
     sub.stormRead = this._updateStormRead(dt) ? 1 : 0;
+    // inf-storm-body: the hazard zones' own skin, density keyed to live intensity.
+    sub.stormZones = this._updateStormZones() ? 1 : 0;
     sub.apronFlood = this._updateApronFlood() ? 1 : 0;
     sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
