@@ -1728,13 +1728,18 @@ function injectTravelTapeStyle() {
   s.id = 'sf-vtape-style';
   s.textContent = `
   .sf-vtape { --vt-brass:var(--k-bone-62); --vt-amber:var(--k-signal); --vt-teal:var(--k-text-live);
-    position:relative; width:min(300px,40vw); margin:0 auto 6px; padding:5px 9px 4px;
-    display:flex; flex-direction:column; gap:3px; pointer-events:none;
+    position:relative; width:min(312px,42vw); margin:0 auto 6px; padding:8px 12px;
+    border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+    background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90));
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 10px 24px -8px rgb(0 0 0 / .68);
+    display:flex; flex-direction:column; gap:4px; pointer-events:none;
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
     opacity:0; visibility:hidden;
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    flex-wrap:wrap; font-family:var(--k-text); font-size:var(--k-fs-data); }
+    flex-wrap:wrap; padding-bottom:5px; border-bottom:1px solid rgb(236 230 216 / .08);
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; letter-spacing:.05em; }
   .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
   .sf-vtape[data-state="braking"] .sf-vtape__state { color:var(--vt-amber); }
@@ -1742,52 +1747,55 @@ function injectTravelTapeStyle() {
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
   /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
      line rather than running over the neighbouring cluster readouts. */
-  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data);
-    min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
+  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px;
+    letter-spacing:.015em; word-spacing:.08em; min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
   /* --- the tape itself: a linear 0..headroom scale --- */
   /* margin-top reserves the caret-label lane: CAP / V-MAX sit between the head row and the
      tape instead of overprinting the state and spool text. */
-  .sf-vtape__track { position:relative; height:2px; margin-top:13px; overflow:visible; background:var(--k-bone-38); }
+  .sf-vtape__track { position:relative; height:3px; border-radius:1.5px; margin-top:20px; overflow:visible; background:rgb(236 230 216 / .20); }
   /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
   .sf-vtape__grat { position:absolute; inset:0;
     display:none; }
-  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%;
+  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%; border-radius:1.5px;
     transform:scaleX(0); transform-origin:left center;
     background:var(--vt-teal);
     transition:transform .1s linear; }
   .sf-vtape[data-state="engaged"] .sf-vtape__fill { background:var(--vt-amber); }
   /* Earned-cap caret: how much of the ceiling the ramp has actually unlocked so far. */
-  .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
+  .sf-vtape__cap { position:absolute; top:-1px; bottom:-1px; width:2px; left:0; transform:translateX(-1px);
     background:var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:var(--k-fs-fine); color:var(--vt-amber); white-space:nowrap; }
+  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 3px); left:50%; transform:translateX(-50%);
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--dp-ink-dim, #9ba3b0); white-space:nowrap; }
   /* The caret labels share one lane above the tape (the track's margin-top reserves it). A CAP
      mark that would run under the V-MAX label anchors left of its caret; one hugging the tape's
      left edge anchors right of it instead of sliding off the instrument. */
-  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 3px); transform:none; }
-  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 3px); transform:none; }
+  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 4px); transform:none; }
+  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 4px); transform:none; }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
-  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
-    font-size:var(--k-fs-fine); color:var(--vt-brass); }
+  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 3px); right:4px; left:auto; text-align:right; white-space:nowrap;
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--vt-brass); }
   /* --- approach row: the stopping arc (W1-9) --- */
-  .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
+  .sf-vtape__approach { display:none; flex-direction:column; gap:5px; margin-top:4px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
-  .sf-vtape__arc { position:relative; height:2px; background:var(--k-bone-38); }
+  .sf-vtape__arc { position:relative; height:3px; border-radius:1.5px; background:rgb(236 230 216 / .20); }
   /* Span from the ship to where it would actually come to rest. */
-  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0;
+  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:1.5px;
     background:var(--vt-teal); transition:width .1s linear; }
   /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
     border-left:1px solid var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__arclabel { font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--k-bone-62); }
+  .sf-vtape__arclabel { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; word-spacing:.08em; color:var(--k-bone-62); }
   .sf-vtape--overshoot .sf-vtape__arcstop { background:var(--k-red); }
   .sf-vtape--overshoot .sf-vtape__arclabel { color:var(--k-red); }
   /* --- BRAKE NOW --- */
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
-    padding:2px 0; font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--vt-amber); }
+    padding:2px 0; font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
   .sf-vtape__brakeglyph { font-size:var(--k-fs-data); display:inline-flex; align-items:center; }
   .sf-vtape__brakeglyph svg { display:block; }
@@ -1795,8 +1803,8 @@ function injectTravelTapeStyle() {
   /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
      visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
      crescent (seen live over the RIG/BAY keys). In ORRERY the tape is re-parented to #hud and
-     takes the cleared bottom-centre band above the receipt lane. */
-  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:86px; margin:0;
+     takes the cleared bottom-centre band below .ml2-meters. */
+  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:20px; margin:0;
     transform:translateX(-50%); }
   /* Below the 1280 floor the band between the Cluster's ordnance crescent and the right dock is
      narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
@@ -1804,6 +1812,9 @@ function injectTravelTapeStyle() {
   @media (max-width: 1279px), (max-height: 719px) {
     #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 236px) + 36px);
       transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .85)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .85)); }
   }
   /* Phone band: the dock-anchored row collapses onto the ORRERY cluster, so the tape
      moves into the open lane directly above the cluster (left-anchored like it).
@@ -1812,6 +1823,9 @@ function injectTravelTapeStyle() {
     #hud[data-hud="orrery"] > .sf-vtape { left:calc(8px + var(--sf-safe-inset-x, 0px)); right:auto;
       bottom:calc(24px + var(--orr-cluster-h, 232px) + 8px); transform:scale(var(--sf-vtape-fit, .62));
       transform-origin:0 100%; max-width:calc(100vw - 16px); }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .62)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .62)); }
   }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
@@ -1822,6 +1836,7 @@ function injectTravelTapeStyle() {
   html.sf-reduce-motion .sf-vtape, html.sf-reduce-motion .sf-vtape__fill, html.sf-reduce-motion .sf-vtape__cap,
   html.sf-reduce-motion .sf-vtape__arcstop, html.sf-reduce-motion .sf-vtape__arcring { transition:none; }
   html.sf-reduce-motion .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  html.sf-reduce-flash .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
      The numeric readout also gains a ⟫ marker, so this is never colour-only. */
   .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }
@@ -5513,7 +5528,7 @@ export function createHud(ctx, alerts) {
     // CAP and V-MAX share the label lane above the tape: the cap label centres on its caret until
     // it would run under the V-MAX label (it moves left of the caret), and near the tape's left
     // edge it anchors right of the caret instead of sliding off the instrument.
-    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 4 && capPct > 8);
+    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 28 && capPct > 8);
     setClass(vt.cap, 'sf-vtape__cap--label-right', capPct <= 8);
 
     if (slow) {
