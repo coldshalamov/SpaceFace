@@ -16,6 +16,7 @@ guardrail instead: *no new per-frame cost without a matched before/after on the 
 | this README | the vision, the diagnosis, the taste bar, owner rulings this supersedes |
 | [`AUDIT.md`](./AUDIT.md) | the configuration audit: every setting I would have set differently, with file, current value, why it was set, proposed value, risk, and how to measure |
 | [`PLANS.md`](./PLANS.md) | the agent plans, in order, each with allowed paths, tests, look checks, and "how you will get this wrong" |
+| [`LANES.md`](./LANES.md) | the two lanes (F — the fight, S — the show), exact file ownership, hand-offs, and both copy-paste agent prompts |
 
 Read all of this README before taking any plan. The taste bar (§4) is the acceptance standard.
 
