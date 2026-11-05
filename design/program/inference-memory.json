@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-gate-quote",
-      "date": "2026-10-25",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The chart quotes a gate hop as no fuel and a three-second align.",
-      "fingerprint": "verb=quote,subject=gate,sector=helios,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "ad1b3ba4acbbcbc1942238efcd14001187121785",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-surveyor-mark",
-      "date": "2026-10-25",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Scanning the seam surveyor points at the mark that ship is working.",
-      "fingerprint": "verb=point,subject=surveyor,sector=ceres,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "c6a40ea73cfb62b135fcb01c43382dbe7dca91b4",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-void-deposit",
-      "date": "2026-10-25",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A voided contract says the deposit came back only when a deposit was charged.",
-      "fingerprint": "verb=void,subject=deposit,sector=any,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "090d61caa576a6f4caaf228defc2422aaf7ac079",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-chart-hold",
       "date": "2026-10-25",
       "wf": "WF-14",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "7752cec23d3d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-rescue-tow-voice",
+      "date": "2026-11-05",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The pod you tow home talks: a grip on the latch, the air clock read aloud once per threshold, silence the moment the cable lets go - each line voiced on the real arbiter floor in the victim's faction register",
+      "fingerprint": "verb=tow,subject=survivor-voice,sector=flight,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "09d54617ae49",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-adrift-confession",
+      "date": "2026-11-05",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A hauler whose drive you shot out confesses on the band - what failed and where it is adrift - while it is still a person with a problem, instead of going silent between the hit and the posthumous distress",
+      "fingerprint": "verb=confess,subject=adrift-hull,sector=flight,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "770aefd940c8",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-completion-standing",
+      "date": "2026-11-05",
+      "wf": "WF-06",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A finished contract now names the standing it bought - '+15 MERIDIAN standing' on the completion toast and the payer's own debrief note - read back from factions' applied receipt, so softened and sealed moves stay honest and no receipt claims nothing",
+      "fingerprint": "verb=settle,subject=completion-standing,sector=station,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "ae276501aa79",
       "verification": "focused_green"
     }
   ],
