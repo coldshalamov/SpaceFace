@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-04",
+  "updated": "2026-11-05",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,32 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-pod-buyer",
-      "date": "2026-10-25",
-      "wf": "WF-06",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Only the fence who buys pods takes a towed mayday pod.",
-      "fingerprint": "verb=sell,subject=mayday-pod,sector=kepler,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "d5067163de58fc190975db363d3bb297eebc50cc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-hunter-dock",
-      "date": "2026-10-25",
-      "wf": "WF-07",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Filing a hunter ledger or finishing a capture only counts at the dock that choice names.",
-      "fingerprint": "verb=file,subject=hunter-ledger,sector=helios,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "edf9aec1f925124f3a71d17644542e67bc24e5b7",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-yard-starved",
       "date": "2026-10-25",
@@ -1689,6 +1663,36 @@
       "references": [],
       "integration": "live",
       "commit": "47209b767a46",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-raid-plate",
+      "date": "2026-11-05",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Opening raid all-raiders-down deposits one Hull Plate into the salvage bay; dock scrap cash-in pays 65 cr. Escape and unpaid endings do not.",
+      "fingerprint": "verb=deposit,subject=raid-plate,sector=helios-corridor,domain=wf-06",
+      "references": [
+        "src/data/encounters/344-opening-hauler-raid.js",
+        "src/systems/cargo.js"
+      ],
+      "integration": "live",
+      "commit": "4ba16c41c77774c33aa78fb0f026bd9a0f93cf0b",
+      "verification": "focused_green",
+      "sector": "sector_helios_prime"
+    },
+    {
+      "id": "inf-distress-assist",
+      "date": "2026-11-05",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Answering a mayday puts the nav mark on the broadcasting hull and the hull answers. A far scan names the range and puts the card back.",
+      "fingerprint": "verb=answer,subject=distress-mayday,sector=flight,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "0a914690b2c657965cb224c155a41e5cf13d0cb5",
       "verification": "focused_green"
     }
   ],
