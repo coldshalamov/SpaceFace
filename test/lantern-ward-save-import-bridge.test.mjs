@@ -19,8 +19,9 @@ test('save import uses the production worker command boundary and save facade', 
   let serial = 0;
   const replies = [];
   const descriptors = [];
-  // Only the browser's byte reader is substituted. RPC dispatch, async settlement,
-  // reply serialization, canonical malformed-save validation and UI verdict are real.
+  // FileReader substitutes for the browser byte reader. Async timing/success/error
+  // cases install controlled save owners below; malformed rejection/default-slot
+  // cases use the canonical importer. RPC dispatch, settlement and cloning are real.
   globalThis.FileReader = class {
     readAsText(file) { this.file = file; readers.push(this); }
   };
