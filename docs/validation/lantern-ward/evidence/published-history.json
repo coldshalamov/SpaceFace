@@ -22,11 +22,12 @@
     "27f4571dc964ee50944622ab33385faba796ec22": "d8cd1c4a696da22d500b361b243c1b9fe4cb2de9",
     "8cf0034e814ef18af14dcc52f26485e637820e57": "74329c72502df3af12696c63687f60f823d3e5fe",
     "07a39eef4d26ce09061d2a430a98726b125527cd": "83211f5d8aa68b4ec0995f68b1f1d62b16d48791",
-    "8c66b48500d475e48518118293b810dab589e4fc": "2cee6f0ad2af9734634f285c201842b02fcda7f0"
+    "8c66b48500d475e48518118293b810dab589e4fc": "2cee6f0ad2af9734634f285c201842b02fcda7f0",
+    "f3d8cc3cbd2724107b4070d945027e28508fcfcc": "51a6cd52d4675ded81ffdfa0e6558e4ca2431ae1"
   },
-  "sourceTip": "2cee6f0ad2af9734634f285c201842b02fcda7f0",
-  "sourceTree": "b94f35023dcce270a1938fc904b4db815399bd2a",
-  "fetchVerification": "Ordinary git fetch of both master and the published feature branch verified published74329c72502df3af12696c63687f60f823d3e5fe^{tree} equals local8cf0034e814ef18af14dcc52f26485e637820e57^{tree}:33f509a5c4012d36e7261befce58c216a2930d37. The published branch retains current controller masterf71edbfcbccb33c2fbc424116c6684b4ed7596ad as an ancestor through the ordinary merge.",
+  "sourceTip": "51a6cd52d4675ded81ffdfa0e6558e4ca2431ae1",
+  "sourceTree": "d1cf7db77a7581d9d9216dfeb4f72c2b599fc7a5",
+  "fetchVerification": "Ordinary git fetch after publication verifies the complete published51a6cd52d4675ded81ffdfa0e6558e4ca2431ae1 tree equals localf3d8cc3cbd2724107b4070d945027e28508fcfcc: d1cf7db77a7581d9d9216dfeb4f72c2b599fc7a5. Current controller master f71edbfcbccb33c2fbc424116c6684b4ed7596ad remains an ancestor.",
   "integration": {
     "upstream": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad",
     "localMerge": "27f4571dc964ee50944622ab33385faba796ec22",
@@ -34,5 +35,7 @@
     "additionalParent": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad"
   },
   "sourceCandidate": "8c66b48500d475e48518118293b810dab589e4fc",
-  "runtimeCandidate": "8cf0034e814ef18af14dcc52f26485e637820e57"
+  "runtimeCandidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+  "publishedEvidenceCommit": "f3d8cc3cbd2724107b4070d945027e28508fcfcc",
+  "coverage": "This manifest records aliases through the preceding evidence commit f3d8cc3c. Later receipt-only publication records its local source commit and complete tree in the Git commit's Local-Source-Commit and Source-Tree trailers; the draft PR head identifies that publication. A manifest cannot contain its own Git commit hash."
 }

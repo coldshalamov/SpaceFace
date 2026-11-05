@@ -20,6 +20,13 @@ These are original browser screenshots. Source snapshots, native results and pub
 | 18 | Failed PAUSED-menu frame. Its filename does not make it ordinary-gameplay evidence. |
 | 19 | Clean unpaused Overhead view after public fixed Balanced selection. Sharper than Automatic, but family fittings remain small near the upper edge; visual acceptance remains open. |
 | 20–21 | One actual public tracked return approach. It did not arrive: final trio centers are outside the left viewport, with active Navy interception. This is insufficient subject evidence, not proof of a corrected-object shape defect. |
+| 30 | Fresh public seed7421 launch preparation. Excluded from gameplay acceptance. |
+| 31 | No file: two45000ms capture attempts timed out. No frame is claimed. |
+| 32 | Fresh ordinary map-track arrival at the Apron,2–3u and full hull. Clean visible Overhead view; work identities are not unambiguous. |
+| 33 | Clean active Chase view after public Backslash and two Minus presses. The filename's overhead label is incorrect; the memorial, separate work platform and transport-scale machine are legible together. |
+| 34 | Wider ordinary Overhead view. Nearby traffic and fixtures are visible, but the work pocket is poorly framed. |
+| 35 | Wider active Chase, real impact218, hull100 and4u/s. Work forms are clearer, with normal HUD overlap; no native object identity is assigned from pixels. |
+| 36 | Final clean active Chase, full hull,0u/s and Apron31u. Stronger memorial/work-face scale and composition, but finite-lamp identity, matching household marks and work phase remain unproven. |
 
 The source manifest `post-motion-source-7407.json` was captured before the latest public Quick Continue. `post-motion-public-continue-7407.json` records exact observed original identities, receiver custody, light, empty cradle, returning Nessa and the absence of player reward, with its capture limitation.
 
@@ -57,3 +64,21 @@ Runtime occupant generations renew on restore; original world records, IDs
 and serials persist. This is unassisted attended completion, not the timed-ignore
 branch and not a newly repeated completed-state reload. Both independent
 hostile reports keep the separate visual criterion open.
+
+## Final fresh arrival
+
+[root-fresh-arrival.json](root-fresh-arrival.json) preserves48 raw result events,
+the harness source, six hashes, actual public choices and all failed calls.
+The pilot used normal New Game/Standard/Hitch and entered7421 in the public
+seed field, selected Balanced through Video, and kept full motion. The public
+local map tracked the original cradle and set the clear Apron approach.
+There was one public Massline tap en route and a later traffic impact; no
+untouched, ignored or help-history claim is made.
+
+The final36 capture preceded Escape/Pause. Two bounded read-only native/settings
+observations then timed out, so this cell has no final native identity/phase
+snapshot. No subsequent piloting used private state. The owned session quit
+normally. The independent reviewer credits the improved Chase composition and
+credible scale, while retaining the unproved identity, shared-mark and
+interrupted-work clauses. This is partial visual evidence, not a full acceptance
+or a native-GPU performance result.

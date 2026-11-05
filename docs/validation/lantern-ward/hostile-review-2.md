@@ -498,3 +498,50 @@ Frames16/17 used Automatic quality with a stored scale1 and the adaptive-resolut
 The prior giant cargo-package and rescue-beacon surfaces are absent from the inspected visible regions. However, a recognizable memorial and a valid installed-state record are separate from a readable view of this particular family work scene. **R2-02 therefore stays open on the released frames16–21.** The separate new-save arrival capture requested by the integration owner is not presumed successful before its pixels are available.
 
 No owner-GPU or60fps qualification follows from this software-rendered session. Reviewer1's ordinary quit receipt closes only its own session44212; I took no process action. This pass appended only this report.
+
+
+## G6 final fresh-arrival pixel review — public seed7421, runtime `8cf0034e`
+
+**Narrow visual progress is established: an ordinary fresh arrival is reachable, and the Chase views now communicate a small work area in front of the large memorial at credible ship scale. R2-02 remains OPEN for the required finite-lamp/cradle/receiver relationship and clear-versus-carry choice. Overall visual acceptance remains REJECT because those clauses are unproved, not because these new pictures establish another geometry defect.** The prior public import/F5/F9 closure, R2-06, is unchanged.
+
+### Verified provenance and route limits
+
+I independently opened the actual five gameplay PNGs32–36 and reviewed the integration owner's [fresh-arrival artifact](evidence/root-fresh-arrival.json): **76442 bytes**, SHA-256 **`77dedbd76ed718a093c898870bbab154da8cdd646e5e04f867407c414dee4286`**. I verified all **six** recorded PNG hashes and byte counts, including the excluded launch image30; the embedded harness source and actual harness file both match their recorded hash, and the referenced final-source manifest matches its recorded hash. Requested image31 does not exist, consistent with both recorded screenshot timeouts.
+
+This browser execution belongs to **root/session8971**. The recorded runtime is **8cf0034e814ef18af14dcc52f26485e637820e57**, published equivalent74329c72. The artifact records source checkout **f3d8cc3cbd2724107b4070d945027e28508fcfcc**. I independently checked that its production `src`/`scripts/lib` diff from8cf is empty; the different documentation/publication commits are not relabeled as new runtime executions.
+
+The **48 unaltered tool-result events** record ordinary New Game with **7421** entered through the public Universe Seed field, **Standard/Hitch**, and **I've Flown Before**. They also record the normal Video-page **Balanced** selection before launch and visible **Full** motion wording. The harness uses Chromium/ANGLE SwiftShader at **1280×800**, with no game URL flags.
+
+The ordinary local-map search selects the Borrowable Procession Cradle contact. After a locator stability timeout, a DOM read supplies the actual visible, enabled **Track Target** button's rectangle; a normal mouse click inside it produces **Course set: Lantern Ward · Apron approach**. The subsequent gameplay HUD reaches **2 u** in frame32 and **3 u** in the following DOM read, with **100% hull** and **0 U/S**. These are directly supported public-arrival observations.
+
+A public **Space** input and Massline feedback also appear during the route. This is an ordinary-input run, not a certified untouched or ignored-history experiment. No native identity, help flag or work phase was successfully read. The later camera changes use ordinary Backslash/Minus/Equal and the public brake key. Frame36 is followed by Escape and a visible Pause footer reading **SEED7421**. The only subsequent commands are read-only diagnostics and the harness's own normal quit.
+
+Both post-pause diagnostics—the larger Ward/settings projection and the smaller mode/tick/phase read—fail their **10-second** bounds. Final runtime settings, native poses, identity mapping and operation phase are consequently **unknown in this fresh run**. The earlier public Balanced selection is established; a complete final settings or dynamic-resolution snapshot is not. The two failed45-second image31 attempts and the additional DOM-read timeout remain in the raw evidence. No cause is assigned to those host/browser stalls.
+
+### Independent frame judgments
+
+| Frame and actual mode | What now reads from the pixels | Remaining limitation |
+| --- | --- | --- |
+| [32 — Overhead arrival](evidence/32-root-fresh-approach-7421.png) | Clean active flight at the named Apron, full hull, stopped ship, nearby traffic and small fixtures. | The family work trio is not identifiable at this framing. Offscreen or unassigned objects are not evidence of malformed geometry. |
+| [33 — Chase, despite its filename](evidence/33-root-fresh-apron-overhead-7421.png) | The large candle memorial sits behind a distinct pale/brass platform with a cup/pedestal-like upper form. A separate red/amber rail machine lies to its left, with open space between the forms. This is a coherent work-area composition at ordinary ship scale. | The separate finite lamp, current load state and shared household mark cannot be assigned confidently from this picture alone. The bright cylindrical item is visible but remains unassigned. |
+| [34 — wider Overhead](evidence/34-root-fresh-apron-wide-7421.png) | Clean active view, full hull, stopped HUD and Apron10u; nearby ships and scattered fixtures remain visible. | Widening this mode does not retain the useful memorial/work relationship from33. This is a framing limit, not a new shape finding. |
+| [35 — wider Chase](evidence/35-root-fresh-chase-shore-7421.png) | The red twin-rail body and the pale platform/cup form are larger and easier to distinguish. The HUD records impact218,4 U/S and full hull. | The ordinary camera-mode panel and radar overlap the right-hand platform. The image establishes neither the cause of the impact nor the current named work identities. |
+| [36 — final tighter Chase](evidence/36-root-fresh-work-pocket-7421.png) | Clean active flight, **100% hull**, **0 U/S**, Apron**31u**. A small pale/brass work platform sits clearly between the player and the much larger candle memorial; the separate red rail machine remains at left. This is the strongest new context/scale view. | At this low viewing angle the central object's recessed well and the repeated three-stroke household identity are not unambiguous. The original lamp and its relationship to the two seats remain unverified, as does the current blockage or service phase. |
+
+Frame30 is a launch-preparation image and is excluded from gameplay acceptance. Image31 is not claimed. No Pause overlay or Navy-intercept alert covers the final36 gameplay capture; the subsequent public Pause is separate provenance evidence.
+
+### Exact closure boundary
+
+| Visual/public clause | Current independent verdict |
+| --- | --- |
+| Fresh ordinary Adventure route to the named Apron | **PASS for this7421 route.** Public inputs, successful arrival HUD and clean live frames are recorded. |
+| Recognizable memorial context with a smaller distinct work area and credible ship-relative scale | **PASS within Chase frames33/36.** These pictures improve materially on the earlier missing-subject views. |
+| Previously observed screen-covering fallback-package/beacon wall | **Not visible in these inspected regions.** No new repeat of that symptom is established. This is not a new all-root transform or animation audit. |
+| Unambiguous finite family lamp ↔ loaded/empty cradle ↔ destination receiver, with shared household identity | **UNKNOWN / not qualified by these views.** The scene contains plausible work forms, but assigning the exact three bodies or their present state would exceed the pixels and the failed diagnostics. |
+| Visible initial mast obstruction and intelligible clear-versus-carry alternative | **UNKNOWN / not exercised as a verified initial-state view.** No successful contemporaneous phase or identity observation exists. |
+| Current attended contact, clamp/load state, native maintenance, installation, payment or another Continue | **Not established by this fresh capture run.** Earlier independently attributed runtime evidence remains separate and is not reopened or substituted here. |
+| Full-motion registration or target-device performance | **Not newly qualified.** A static screenshot cannot establish an animation time series, and this SwiftShader run supplies no owner-GPU or60fps result. |
+
+I identify **no new narrow geometry defect that can be assigned confidently to a named Ward object from these frames**. The remaining visual acceptance gap is concrete: the ordinary images still do not communicate the exact finite lamp/seat relationship or the original route-choice problem sufficiently to close R2-02. That does not imply every ordinary viewpoint fails, and it does not justify a speculative camera rewrite, relocation or geometry patch.
+
+The raw quit receipt reports **exit0** for root's own session8971. I did not operate or stop a browser, execute a suite, or modify source/fixtures. Only this report was appended. **This bounded review is complete and the report-only claim is released to the integration owner.**

@@ -1,0 +1,886 @@
+{
+  "schemaVersion": 1,
+  "scope": "Fresh ordinary Adventure arrival and gameplay-camera readability; partial visual evidence, not full acceptance",
+  "runtimeSource": "8cf0034e814ef18af14dcc52f26485e637820e57",
+  "runtimePublished": "74329c72502df3af12696c63687f60f823d3e5fe",
+  "sourceHead": "f3d8cc3cbd2724107b4070d945027e28508fcfcc",
+  "controllerBase": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad",
+  "actor": {
+    "owner": "root",
+    "sessionId": 8971,
+    "entry": "http://127.0.0.1:36607/",
+    "gameUrlFlags": [],
+    "seed": 7421,
+    "seedChosenThrough": "normal New Game Universe Seed field",
+    "difficulty": "Standard",
+    "ship": "Hitch",
+    "firstFlight": "I've Flown Before",
+    "cameraControls": "public Backslash, Minus and Equal",
+    "pilotBoundary": "Public UI, visible DOM and keyboard/mouse only before the final screenshot. No native positions, private state, teleport, script mutation or time steering used to navigate."
+  },
+  "renderer": {
+    "engine": "Chromium 153",
+    "backend": "ANGLE SwiftShader",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "qualityChoice": "Balanced selected through ordinary Video settings before launch",
+    "motionChoice": "kept normal/full; First Light dismissed through public Play/Escape",
+    "finalRuntimeSettingsVerified": false,
+    "limitation": "Both bounded post-pause reads timed out. No native GPU, measured performance, 60 fps, complete final render-settings or native identity/phase claim is made from this run."
+  },
+  "result": {
+    "reachedPublicApron": true,
+    "arrivalHudDistance": "2–3 u",
+    "arrivalHull": 100,
+    "finalVisiblePauseSeed": 7421,
+    "finalFlightHudDistance": 31,
+    "finalFlightHull": 100,
+    "missionCompletionExercised": false,
+    "saveContinueExercised": false,
+    "normalQuitExitCode": 0,
+    "visualVerdict": "Independent review required; improved Chase composition, incomplete identity/action/household-cue readability."
+  },
+  "captureNotes": [
+    {
+      "path": "30-root-fresh-launch-7421.png",
+      "use": "Excluded from gameplay acceptance: launch preparation only.",
+      "bytes": 695926,
+      "sha256": "1c9aeeede38e447ff628b15e2a1224d700afcc7886cf80f9bcb5c7c56cc78cd6"
+    },
+    {
+      "path": "32-root-fresh-approach-7421.png",
+      "use": "Clean ordinary arrival, visible Overhead mode; nearby traffic; work hardware not unambiguously identified.",
+      "bytes": 944629,
+      "sha256": "ffc70fcfe51a61a55135bec169a58fcf45704e267aa5ccfb5abd617953b0d20b"
+    },
+    {
+      "path": "33-root-fresh-apron-overhead-7421.png",
+      "use": "Clean active Chase view after Backslash and two Minus presses. Filename records intended shot name; visible mode is Chase. Useful memorial/work-pocket composition.",
+      "bytes": 985826,
+      "sha256": "14b7216c6f3fd87951b5bf171c9496bdcf02152182a0b14abdaec2071aacdf5e"
+    },
+    {
+      "path": "34-root-fresh-apron-wide-7421.png",
+      "use": "Clean active Overhead after Backslash and four Minus presses. Wider traffic/fixtures; work pocket poorly framed.",
+      "bytes": 873606,
+      "sha256": "5cd9b84000d31d5c1c873dc161b8751f78a670b8828a1f4f7e014690adbf17b2"
+    },
+    {
+      "path": "35-root-fresh-chase-shore-7421.png",
+      "use": "Clean active Chase after Backslash at wider zoom. Real impact218 shown; hull100,4 U/S. Work forms larger but partly overlapped by normal HUD. No named native identity inferred.",
+      "bytes": 917351,
+      "sha256": "79b1cc1c9c0cb517a75752de70d7e5aca04fc4d8567438736e712a4cd392b2ca"
+    },
+    {
+      "path": "36-root-fresh-work-pocket-7421.png",
+      "use": "Final clean active Chase after public brake0 and three Equal presses. Memorial and separate pale/brass work platform visible; red rail machine at left. Immediately followed by public Escape pause, no later piloting.",
+      "bytes": 993589,
+      "sha256": "ad1c37701137f7451fa4dfaed72da681d3f6c2aa38aa5562f12cabae391522ab"
+    }
+  ],
+  "failedCapture": "31-root-fresh-public-route-7421.png was requested twice, both 45000 ms screenshot calls timed out; no such file exists and no frame is claimed.",
+  "failedDiagnostics": "After final36 and visible Pause, the nine-body/settings projection read and a smaller mode/tick/phase read each exceeded the harness's 10000 ms bound. Their missing results are not substituted by prior observations.",
+  "sessionBoundary": "A preliminary own non-TTY session47339 lost its stdin before this route. The successful controllable PTY session8971 is separate and exited normally through its own quit command. No foreign process was interrupted.",
+  "events": [
+    {
+      "utc": "2026-11-05T00:34:42.337Z",
+      "input": null,
+      "chunk_id": "9af6df",
+      "wall_time_seconds": 5.000726991,
+      "session_id": 47339,
+      "original_token_count": 21,
+      "output": "{\"http\":404,\"url\":\"http://127.0.0.1:46629/__spaceface_player_store\"}\n{\"ready\":true}\n"
+    },
+    {
+      "utc": "2026-11-05T00:37:10.307Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "b28250",
+      "wall_time_seconds": 5.001355387,
+      "session_id": 8971,
+      "original_token_count": 35,
+      "output": "{\"http\":404,\"url\":\"http://127.0.0.1:36607/__spaceface_player_store\"}\r\n{\"ready\":true,\"rootHarnessPid\":2,\"url\":\"http://127.0.0.1:36607/\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:37:17.637Z",
+      "sessionId": 8971,
+      "input": {
+        "action": "read",
+        "expression": "document.body.innerText.slice(0,12000)"
+      },
+      "chunk_id": "fd8631",
+      "wall_time_seconds": 1.001178622,
+      "session_id": 8971,
+      "original_token_count": 19,
+      "output": "{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(0,12000)\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:37:28.042Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "be9600",
+      "wall_time_seconds": 5.001511077,
+      "session_id": 8971,
+      "original_token_count": 188,
+      "output": "{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nHELIOS SYSTEM · FRONTIER SECTOR\\nDEEP SPACE FLIGHT SYSTEMS\\nSPACEFACE\\nSPACE FLIGHT & EXPLORATION\\nCLICK OR PRESS ANY KEY TO BEGIN\\nBEACON SIGNAL\\nHELIOS TRANSIT\\nALL CHANNELS OPEN\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:37:35.690Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Enter"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(0,12000)"
+        }
+      ],
+      "chunk_id": "97a720",
+      "wall_time_seconds": 1.000944027,
+      "session_id": 8971,
+      "original_token_count": 27,
+      "output": "{\"action\":\"key\",\"key\":\"Enter\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(0,12000)\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:38:18.089Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "55d377",
+      "wall_time_seconds": 5.000801113,
+      "session_id": 8971,
+      "original_token_count": 238,
+      "output": "{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\n\\nFLIGHT SYSTEMS ONLINE\\n\\nSpaceFace\\nORRERY OF THE HELIOS REACH\\nNEW GAME\\nLOAD\\nCRUCIBLE\\nA scored ten-wave survival run\\nSETTINGS\\nHELP\\nARCHIVE\\nAuthored intro reels, in the Codex\\nCIRCUITS\\nLogic circuit sandbox\\nSANDBOX\\nFree flight sandbox\\nPHYSICS CHALLENGES\\nOrbital physics challenges\\nSPACEFACE V0.2.0-BETA.1\\n·\\nCREDITS\\n·\\nACHIEVEMENTS\\nCONFIRM\\nFirst light\\n\\nPlay as-is, or start with calmer motion, reduced flashing, high contrast, larger text and backed captions. Settings > Access has them any time.\\n\\nUSE FIRST LIGHT\\nESC\\nPLAY\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:38:37.538Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "Array.from(document.querySelectorAll('button')).filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({text:e.innerText,aria:e.getAttribute('aria-label'),id:e.id,action:e.getAttribute('data-action'),class:e.className})).slice(-35)"
+        }
+      ],
+      "chunk_id": "fa7fa6",
+      "wall_time_seconds": 10.011944982,
+      "session_id": 8971,
+      "original_token_count": 351,
+      "output": "{\"action\":\"read\",\"expression\":\"Array.from(document.querySelectorAll('button')).filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({text:e.innerText,aria:e.getAttribute('aria-label'),id:e.id,action:e.getAttribute('data-action'),class:e.className})).slice(-35)\"}\r\n{\"done\":\"read\",\"result\":[{\"text\":\"NEW GAME\",\"aria\":null,\"id\":\"\",\"action\":\"newGame\",\"class\":\"dp-lit__item dp-lit__item--primary\"},{\"text\":\"LOAD\",\"aria\":\"Load Game\",\"id\":\"\",\"action\":\"load\",\"class\":\"dp-lit__item\"},{\"text\":\"CRUCIBLE\",\"aria\":null,\"id\":\"\",\"action\":\"crucible\",\"class\":\"dp-lit__item\"},{\"text\":\"SETTINGS\",\"aria\":null,\"id\":\"\",\"action\":\"settings\",\"class\":\"dp-lit__item\"},{\"text\":\"HELP\",\"aria\":\"Help and flight controls\",\"id\":\"\",\"action\":\"help\",\"class\":\"dp-lit__item\"},{\"text\":\"ARCHIVE\",\"aria\":\"Signal Archive\",\"id\":\"\",\"action\":\"archive\",\"class\":\"dp-lit__item\"},{\"text\":\"CIRCUITS\",\"aria\":\"Logic circuit sandbox\",\"id\":\"\",\"action\":\"circuits\",\"class\":\"dp-lit__item\"},{\"text\":\"SANDBOX\",\"aria\":\"Free flight sandbox\",\"id\":\"\",\"action\":\"sandbox\",\"class\":\"dp-lit__item k-38\"},{\"text\":\"PHYSICS CHALLENGES\",\"aria\":\"Orbital physics challenges\",\"id\":\"\",\"action\":\"physics\",\"class\":\"dp-lit__item\"},{\"text\":\"CREDITS\",\"aria\":null,\"id\":\"\",\"action\":\"credits\",\"class\":\"dp-menu__item dp-menu__item--fine\"},{\"text\":\"ACHIEVEMENTS\",\"aria\":null,\"id\":\"\",\"action\":\"achievements\",\"class\":\"dp-menu__item dp-menu__item--fine\"}]}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:41:35.892Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Escape"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4500)"
+        }
+      ],
+      "chunk_id": "3dfcc4",
+      "wall_time_seconds": 10.001927189,
+      "session_id": 8971,
+      "original_token_count": 214,
+      "output": "{\"action\":\"key\",\"key\":\"Escape\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4500)\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\n\\nFLIGHT SYSTEMS ONLINE\\n\\nSpaceFace\\nORRERY OF THE HELIOS REACH\\nNEW GAME\\nLOAD\\nCRUCIBLE\\nA scored ten-wave survival run\\nSETTINGS\\nHELP\\nARCHIVE\\nAuthored intro reels, in the Codex\\nCIRCUITS\\nLogic circuit sandbox\\nSANDBOX\\nFree flight sandbox\\nPHYSICS CHALLENGES\\nOrbital physics challenges\\nSPACEFACE V0.2.0-BETA.1\\n·\\nCREDITS\\n·\\nACHIEVEMENTS\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:41:51.292Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "button[data-action='settings']"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-5500)"
+        }
+      ],
+      "chunk_id": "a73ec9",
+      "wall_time_seconds": 10.001196531,
+      "session_id": 8971,
+      "original_token_count": 259,
+      "output": "{\"action\":\"selector\",\"selector\":\"button[data-action='settings']\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-5500)\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nSETTINGS\\nAUDIO\\nVIDEO\\nGAMEPLAY\\nACCESS\\nCONTROLS\\nMUTE ALL\\nOFF\\nON\\nMUTE WHEN THE WINDOW LOSES FOCUS\\nOFF\\nON\\nMONO AUDIO\\nOFF\\nON\\nNIGHT MODE\\nOFF\\nON\\nMASTER\\n55%\\nSFX\\n70%\\nMUSIC\\n32%\\nENGINE\\n70%\\nAMBIENT\\n70%\\nCOMBAT\\n70%\\nUI\\n70%\\nCOMMS\\n70%\\nVOICE\\n100%\\nRESET THIS PAGE\\nReturns this page to how the game shipped.\\nAUDIO\\nMASTER\\n\\nScales every channel below it.\\n\\n0\\n25\\n50\\n75\\n100\\nMASTER\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n%\\nMASTER · OUT\\nBACK\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:42:06.837Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "#sf-settings-tab-video"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-5500)"
+        }
+      ],
+      "chunk_id": "09c3f6",
+      "wall_time_seconds": 10.001699845,
+      "session_id": 8971,
+      "original_token_count": 527,
+      "output": "{\"action\":\"selector\",\"selector\":\"#sf-settings-tab-video\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-5500)\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nSETTINGS\\nAUDIO\\nVIDEO\\nGAMEPLAY\\nACCESS\\nCONTROLS\\nQUALITY MODE\\nAUTOMATIC\\nHIGH PERFORMANCE\\nBALANCED\\nHIGH QUALITY\\n\\nAutomatic trials resolution bands during visible flight to fit this display’s frame budget, restoring resolution when a lower band does not help. Game content stays in place.\\n\\nHARDWARE PRESET\\nNone\\niGPU 60\\nIntegrated GPU\\nBLOOM\\nOFF\\nON\\nSUN SHADOWS (SHIPS/ROCKS/STATIONS)\\nOFF\\nON\\nCINEMATIC LIGHTING\\nOFF\\nON\\nLOCAL LIGHT SHADOWS\\nOFF\\nON\\nVOLUMETRIC ATMOSPHERE\\nOFF\\nON\\nLIGHTING QUALITY\\nAutomatic\\nPerformance\\nBalanced\\nHigh quality\\nBLOOM STRENGTH\\n40%\\nHDR ENERGY MATERIALS\\nOFF\\nON\\nRENDER GRAPH (GTAO + BLOOM)\\nOFF\\nON\\nRENDER SCALE\\n1.00x\\nADAPTIVE RESOLUTION\\nOFF\\nON\\nFOV\\n50°\\nPARTICLE QUALITY\\nLow\\nMedium\\nHigh\\nENGINE TRAILS\\nOFF\\nON\\nVSYNC\\nOFF\\nON\\nFRAME CAP\\nOff\\n30 fps\\n60 fps\\n120 fps\\nMOTION EFFECTS\\nSet in Access\\nFULL\\nSCREEN SHAKE\\n100%\\nARCADE EFFECTS (SWARM)\\nFull\\nReduced\\nOff\\nHUD SCALE\\n100%\\nHUD OPACITY\\n100%\\n\\nAdvanced video\\n\\nTIGHTER CHASE CAMERA\\nOFF\\nON\\nPOST-PROCESSING\\nOFF\\nON\\nSHARPEN\\nOFF\\nON\\nBLOOM DEPTH\\nTight\\nFull\\nBLOOM THRESHOLD\\n1.00\\nPIXEL RATIO CAP\\n2.00x\\nUI SCALE\\nSet in Access\\n1.00X\\nRESET THIS PAGE\\nReturns this page to how the game shipped.\\nMORE\\nVIDEO\\nBLOOM STRENGTH\\n\\nHow far bright light spills.\\n\\n› HOLD SPACE TO LATCH THE MASSLINE\\n\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n.\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n×\\n−24\\n\\nHELIOS CONTROLHitch, you are clear to undock.\\n\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n0\\n1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n9\\n°\\nFOV\\nBACK\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:42:20.716Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "button[data-action='choice:medium']"
+        },
+        {
+          "action": "key",
+          "key": "Escape"
+        },
+        {
+          "action": "selector",
+          "selector": "button[data-action='newGame']"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-6500)"
+        }
+      ],
+      "chunk_id": "e189c4",
+      "wall_time_seconds": 10.001187464,
+      "session_id": 8971,
+      "original_token_count": 418,
+      "output": "{\"action\":\"selector\",\"selector\":\"button[data-action='choice:medium']\"}\r\n{\"action\":\"key\",\"key\":\"Escape\"}\r\n{\"action\":\"selector\",\"selector\":\"button[data-action='newGame']\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-6500)\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"error\":\"locator.click: Error: strict mode violation: locator('button[data-action=\\\\'newGame\\\\']') resolved to 2 elements:\\n    1) <button title=\\\"\\\" type=\\\"button\\\" tabindex=\\\"-1\\\" aria-current=\\\"true\\\" data-action=\\\"newGame\\\" class=\\\"dp-lit__item dp-lit__item--primary\\\">New Game</button> aka getByRole('button', { name: 'New Game' })\\n    2) <button tabindex=\\\"0\\\" type=\\\"button\\\" data-action=\\\"newGame\\\" class=\\\"k-word k-word--emph k-word--primary orr-lampkey\\\">…</button> aka locator('button').filter({ hasText: /^New game$/ })\\n\\nCall log:\\n\\u001b[2m  - waiting for locator('button[data-action=\\\\'newGame\\\\']')\\u001b[22m\\n\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\n\\nFLIGHT SYSTEMS ONLINE\\n\\nSpaceFace\\nORRERY OF THE HELIOS REACH\\nNEW GAME\\nLOAD\\nCRUCIBLE\\nA scored ten-wave survival run\\nSETTINGS\\nHELP\\nARCHIVE\\nAuthored intro reels, in the Codex\\nCIRCUITS\\nLogic circuit sandbox\\nSANDBOX\\nFree flight sandbox\\nPHYSICS CHALLENGES\\nOrbital physics challenges\\nSPACEFACE V0.2.0-BETA.1\\n·\\nCREDITS\\n·\\nACHIEVEMENTS\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:42:35.245Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "button.dp-lit__item[data-action='newGame']"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-5500)"
+        }
+      ],
+      "chunk_id": "a16d63",
+      "wall_time_seconds": 10.000447536,
+      "session_id": 8971,
+      "original_token_count": 459,
+      "output": "{\"action\":\"selector\",\"selector\":\"button.dp-lit__item[data-action='newGame']\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-5500)\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nNEW GAME\\n\\nChoose your starting ship and pilot credentials.\\n\\nPILOT NAME\\nDIFFICULTY\\nCASUAL\\nSTANDARD\\nVETERAN\\nIRONMAN\\n\\nStandard — Softer hits on you; slightly easier kills.\\n\\nUNIVERSE SEED\\nNEW SEED\\n\\nBlank is a random universe; a seed always deals the same contracts and markets.\\n\\nFIRST FLIGHT\\nTEACH ME\\nI'VE FLOWN BEFORE\\n\\nThe full first flight: stick drills, the rope, the raid, one setup per power.\\n\\nLight and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting. The deck plate under the pilot seat is replacement stock — the first one went out with the crew before yours.\\n\\nHITCH\\nSKATER\\nPELICAN\\nTUG\\nWASP\\nBRAWLER\\nHITCH\\n\\nLight on the line. Quick to bank. Responsive tether agility.\\n\\nLOADOUT\\nPULSE LASER\\nS\\nMINING LASER\\nS\\nION THRUSTER\\nM\\nSHIELD BOOSTER\\nS\\nDRILL AMP\\nFIRST 15 MINUTES\\nWake at the beacon\\nThrust to the beacon. One verb at a time.\\nTether the derelict\\nLatch, winch, cut. The vacuum shows itself.\\nMine the first seam\\nPulse, beam the bright seams, ride the heat.\\nDock and pick work\\nSell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.\\nBACK\\nLAUNCH\\nCasual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:42:51.013Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "Array.from(document.querySelectorAll('input,button')).filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({tag:e.tagName,text:e.innerText,placeholder:e.getAttribute('placeholder'),id:e.id,action:e.getAttribute('data-action'),type:e.type})).slice(-30)"
+        }
+      ],
+      "chunk_id": "9ea3f1",
+      "wall_time_seconds": 10.001426986,
+      "session_id": 8971,
+      "original_token_count": 450,
+      "output": "{\"action\":\"read\",\"expression\":\"Array.from(document.querySelectorAll('input,button')).filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({tag:e.tagName,text:e.innerText,placeholder:e.getAttribute('placeholder'),id:e.id,action:e.getAttribute('data-action'),type:e.type})).slice(-30)\"}\r\n{\"done\":\"read\",\"result\":[{\"tag\":\"INPUT\",\"text\":\"\",\"placeholder\":null,\"id\":\"sf-ng-pilot-name\",\"action\":null,\"type\":\"text\"},{\"tag\":\"BUTTON\",\"text\":\"CASUAL\",\"placeholder\":null,\"id\":\"\",\"action\":\"difficulty:casual\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"STANDARD\",\"placeholder\":null,\"id\":\"\",\"action\":\"difficulty:standard\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"VETERAN\",\"placeholder\":null,\"id\":\"\",\"action\":\"difficulty:veteran\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"IRONMAN\",\"placeholder\":null,\"id\":\"\",\"action\":\"difficulty:ironman\",\"type\":\"button\"},{\"tag\":\"INPUT\",\"text\":\"\",\"placeholder\":\"Random\",\"id\":\"sf-ng-seed\",\"action\":null,\"type\":\"text\"},{\"tag\":\"BUTTON\",\"text\":\"NEW SEED\",\"placeholder\":null,\"id\":\"\",\"action\":\"newSeed\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"TEACH ME\",\"placeholder\":null,\"id\":\"\",\"action\":\"firstFlight:teach\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"I'VE FLOWN BEFORE\",\"placeholder\":null,\"id\":\"\",\"action\":\"firstFlight:flown\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"HITCH\",\"placeholder\":null,\"id\":\"\",\"action\":\"starter:starter_hitch\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"PELICAN\",\"placeholder\":null,\"id\":\"\",\"action\":\"starter:starter_pelican\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"WASP\",\"placeholder\":null,\"id\":\"\",\"action\":\"starter:starter_wasp\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"BACK\",\"placeholder\":null,\"id\":\"\",\"action\":\"back\",\"type\":\"button\"},{\"tag\":\"BUTTON\",\"text\":\"LAUNCH\",\"placeholder\":null,\"id\":\"\",\"action\":\"launch\",\"type\":\"button\"}]}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:43:06.509Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "fill",
+          "selector": "#sf-ng-seed",
+          "value": "7421"
+        },
+        {
+          "action": "selector",
+          "selector": "button[data-action='firstFlight:flown']"
+        },
+        {
+          "action": "selector",
+          "selector": "button[data-action='launch']"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4500)"
+        }
+      ],
+      "chunk_id": "3f5039",
+      "wall_time_seconds": 10.001004977,
+      "session_id": 8971,
+      "original_token_count": 570,
+      "output": "{\"action\":\"fill\",\"selector\":\"#sf-ng-seed\",\"value\":\"7421\"}\r\n{\"action\":\"selector\",\"selector\":\"button[data-action='firstFlight:flown']\"}\r\n{\"action\":\"selector\",\"selector\":\"button[data-action='launch']\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4500)\"}\r\n{\"done\":\"fill\",\"result\":\"filled\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nNEW GAME\\n\\nChoose your starting ship and pilot credentials.\\n\\nPILOT NAME\\nDIFFICULTY\\nCASUAL\\nSTANDARD\\nVETERAN\\nIRONMAN\\n\\nStandard — Softer hits on you; slightly easier kills.\\n\\nUNIVERSE SEED\\nNEW SEED\\n\\nBlank is a random universe; a seed always deals the same contracts and markets.\\n\\nFIRST FLIGHT\\nTEACH ME\\nI'VE FLOWN BEFORE\\n\\nSkips the stick drills and the power setups. The rope, the raid and the Range stay.\\n\\nLight and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting. The deck plate under the pilot seat is replacement stock — the first one went out with the crew before yours.\\n\\nHITCH\\nSKATER\\nPELICAN\\nTUG\\nWASP\\nBRAWLER\\nHITCH\\n\\nLight on the line. Quick to bank. Responsive tether agility.\\n\\n35t\\nMASS\\n100\\nTHRUST\\n5.5ku/s\\nLINE\\nwinch speed\\nLOADOUT\\nPULSE LASER\\nS\\nMINING LASER\\nS\\nION THRUSTER\\nM\\nSHIELD BOOSTER\\nS\\nDRILL AMP\\nFIRST 15 MINUTES\\nWake at the beacon\\nThrust to the beacon. One verb at a time.\\nTether the derelict\\nLatch, winch, cut. The vacuum shows itself.\\nMine the first seam\\nPulse, beam the bright seams, ride the heat.\\nDock and pick work\\nSell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.\\nBACK\\nLAUNCHING...\\nCasual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.\\nSPACEFACE · FLIGHT SYSTEMS\\n00:20\\nSPACEFACE\\nAdventure · Helios Prime\\nPREPARING FLIGHT SYSTEMS\\nInitializing pilot profile and sector data\\nHelios System · Third Shift Arrival\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:43:26.674Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4200)"
+        }
+      ],
+      "chunk_id": "de0b1f",
+      "wall_time_seconds": 10.00109193,
+      "session_id": 8971,
+      "original_token_count": 452,
+      "output": "{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4200)\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nCargo aboard. Manifest [ I ].\\nNEW GAME\\n\\nChoose your starting ship and pilot credentials.\\n\\nPILOT NAME\\nDIFFICULTY\\nCASUAL\\nSTANDARD\\nVETERAN\\nIRONMAN\\n\\nStandard — Softer hits on you; slightly easier kills.\\n\\nUNIVERSE SEED\\nNEW SEED\\n\\nBlank is a random universe; a seed always deals the same contracts and markets.\\n\\nFIRST FLIGHT\\nTEACH ME\\nI'VE FLOWN BEFORE\\n\\nSkips the stick drills and the power setups. The rope, the raid and the Range stay.\\n\\nLight and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting. The deck plate under the pilot seat is replacement stock — the first one went out with the crew before yours.\\n\\nHITCH\\nSKATER\\nPELICAN\\nTUG\\nWASP\\nBRAWLER\\nHITCH\\n\\nLight on the line. Quick to bank. Responsive tether agility.\\n\\n35t\\nMASS\\n100\\nTHRUST\\n5.5ku/s\\nLINE\\nwinch speed\\nLOADOUT\\nPULSE LASER\\nS\\nMINING LASER\\nS\\nION THRUSTER\\nM\\nSHIELD BOOSTER\\nS\\nDRILL AMP\\nFIRST 15 MINUTES\\nWake at the beacon\\nThrust to the beacon. One verb at a time.\\nTether the derelict\\nLatch, winch, cut. The vacuum shows itself.\\nMine the first seam\\nPulse, beam the bright seams, ride the heat.\\nDock and pick work\\nSell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.\\nBACK\\nLAUNCHING...\\nCasual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.\\nSPACEFACE · FLIGHT SYSTEMS\\n06:28\\nSPACEFACE\\nAdventure · Helios Prime\\nBUILDING THE OPENING SCENE\\n&/▘314= *>6▝2 1>< #*3▙▖\\\\▚▟ \\\\ *2 <▗8#▚ 7>150<▚\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:43:45.348Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/30-root-fresh-launch-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4000)"
+        }
+      ],
+      "chunk_id": "97ec09",
+      "wall_time_seconds": 10.000677736,
+      "session_id": 8971,
+      "original_token_count": 42,
+      "output": "{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/30-root-fresh-launch-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4000)\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:43:59.560Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "c36217",
+      "wall_time_seconds": 10.001634398,
+      "session_id": 8971,
+      "original_token_count": 452,
+      "output": "{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/30-root-fresh-launch-7421.png\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nCargo aboard. Manifest [ I ].\\nNEW GAME\\n\\nChoose your starting ship and pilot credentials.\\n\\nPILOT NAME\\nDIFFICULTY\\nCASUAL\\nSTANDARD\\nVETERAN\\nIRONMAN\\n\\nStandard — Softer hits on you; slightly easier kills.\\n\\nUNIVERSE SEED\\nNEW SEED\\n\\nBlank is a random universe; a seed always deals the same contracts and markets.\\n\\nFIRST FLIGHT\\nTEACH ME\\nI'VE FLOWN BEFORE\\n\\nSkips the stick drills and the power setups. The rope, the raid and the Range stay.\\n\\nLight and nimble chassis with versatile starter outfitting. Balanced for salvage, mining, or dogfighting. The deck plate under the pilot seat is replacement stock — the first one went out with the crew before yours.\\n\\nHITCH\\nSKATER\\nPELICAN\\nTUG\\nWASP\\nBRAWLER\\nHITCH\\n\\nLight on the line. Quick to bank. Responsive tether agility.\\n\\n35t\\nMASS\\n100\\nTHRUST\\n5.5ku/s\\nLINE\\nwinch speed\\nLOADOUT\\nPULSE LASER\\nS\\nMINING LASER\\nS\\nION THRUSTER\\nM\\nSHIELD BOOSTER\\nS\\nDRILL AMP\\nFIRST 15 MINUTES\\nWake at the beacon\\nThrust to the beacon. One verb at a time.\\nTether the derelict\\nLatch, winch, cut. The vacuum shows itself.\\nMine the first seam\\nPulse, beam the bright seams, ride the heat.\\nDock and pick work\\nSell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.\\nBACK\\nLAUNCHING...\\nCasual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.\\nSPACEFACE · FLIGHT SYSTEMS\\n07:09\\nSPACEFACE\\nAdventure · Helios Prime\\nPREPARING THE VISUALS\\n874 of 874 resources prepared in this pass\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:44:21.560Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2600)"
+        }
+      ],
+      "chunk_id": "53b322",
+      "wall_time_seconds": 10.00125491,
+      "session_id": 8971,
+      "original_token_count": 153,
+      "output": "{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2600)\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n← 535 u\\nOverhead [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · ROUTE PENDING\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\n45\\nBAND OFF\\nCargo aboard. Manifest [ I ].\\nSPACEFACE · FLIGHT SYSTEMS\\n07:22\\nSPACEFACE\\nAdventure · Helios Prime\\nHANDING OVER FLIGHT CONTROL\\nFinal system checks\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:44:36.086Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "m"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-5200)"
+        }
+      ],
+      "chunk_id": "efa673",
+      "wall_time_seconds": 10.001439413,
+      "session_id": 8971,
+      "original_token_count": 764,
+      "output": "{\"action\":\"key\",\"key\":\"m\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-5200)\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n↓ 90 u\\nContract 47-A: the manifest says one mass — your instruments say another.\\nOverhead [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · 90\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nBAND OFF\\nLicensed bulk moves between Helios Station and the Coalition yard — the core economy's short hop.\\nHelios Freight Spine\\nLicensed bulk moves between Helios Station and the Coalition yard — the core economy's short hop.\\nMASS 220 · WON'T BUDGE\\nHELIOS PRIME\\n\\nSECTOR · CONCORD · YOU ARE HERE\\n\\n/\\nLOCAL\\nSYSTEM\\nGALAXY\\nSCALE LOCAL\\nQUIET\\npressure 0/140\\nCONTROLS\\nCLOSE\\nSERVICES\\nHOLDINGS\\nDISCOVERY\\nROUTE\\nMISSION\\nPRESSURE\\nEVENTS\\nSECURITY\\nFACTION\\nHAZARD\\nOVERVIEW\\nROUTE\\nMISSIONS\\nECONOMY\\nTHREAT\\nCAREERS\\nSERVICES\\nDISCOVERY\\nHISTORY\\nRETURN TO SHIP\\nZOOM: SHIP AND DESTINATION\\nFit your ship and 47-A Recovery Site in one view\\nYOUR SHIP & SECTOR\\nHELIOS PRIME\\nJurisdiction\\nSolar Concord Navy · HIGH SECURITY ●●●\\nLocal zone\\nHelios Freight Spine (Trade Lane · Threat 1)\\nShip fix\\n(0, 0) u · Hdg E · 0 u/s\\nWORKING THIS POCKET\\nHelios Prime · Miner · Hauler · Patrol · Salvor · Tender\\n16 careers on record — the Careers tab lists role, place and each worker.\\nMISSION & WAYPOINT FIX\\nWaypoint pin\\n◆ 47-A Recovery Site\\nMarker type\\nMission Objective · 90 u S\\nRecover the 47-A sample from the marked rock\\nContract 47-A: Mass Variance Sample\\nProceed to the objective\\nObjective area\\nHelios Station (Helios Prime)\\nMARKERS ON CHART & KEY\\n◆ 47-A RECOVERY SITE GOAL\\n90 U · S\\n⬢ HELIOS STATION MARKET\\n1.3K U · E\\n⛨ COALITION HQ MILITARY\\n1.4K U · NW\\n⊂⊃ GATE → CERES BELT GATE\\n2.9K U · NW\\n⊂⊃ GATE → TETHYS JUNCTION GATE\\n2.9K U · NE\\n⊂⊃ GATE → VESTA FORGE GATE\\n2.9K U · N\\n⊙\\nYou\\n◆\\nGoal Pin\\n⬢ ⚒ ⛏ ⚙ ⛨ ◬ ✧\\nStation types\\n▪\\nOther station\\n⊂⊃\\nJump Gate\\n◆\\nHostile\\n➤\\nShip / Drone\\n◇\\nScan / Site\\n▸\\nOff-View Rim\\nDrag from your ship to preview a course; click any marker to inspect or double-click to set course.\\nENGAGE ROUTE\\nClick a destination on the chart, then Plot Course\\nMAP SYMBOLS\\nYOU\\nOBJECTIVE\\nHOSTILE\\nSTATION\\nGATE\\nMISSION POINT\\nSURVEY SITE\\nHOLDING\\nZONE\\nWRECK\\nHover or click anything on the chart and it names itself here and on the mark.\\nPOSITION\\nHELIOS PRIME\\n0 u from origin\\nTRACKING\\n47-A Recovery Site\\n90 u\\nDESTINATION\\nHelios Prime\\nContract destination — in this sector, no jump route to plan\\nNEXT LEG\\nNone\\nIn this sector — follow the marker, no jump leg\\nQUIET · NO FRONTS OR HOT SECTORS\\nLight ships are ammunition. Swing a rock. Keep the speed.\\nLight ships are ammunition. Swing a rock. Keep the speed.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:44:54.589Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "/"
+        },
+        {
+          "action": "read",
+          "expression": "Array.from(document.querySelectorAll('input')).filter(e=>e.getClientRects().length).map(e=>({id:e.id,placeholder:e.getAttribute('placeholder'),type:e.type}))"
+        }
+      ],
+      "chunk_id": "b50cc5",
+      "wall_time_seconds": 10.003050149,
+      "session_id": 8971,
+      "original_token_count": 88,
+      "output": "{\"action\":\"key\",\"key\":\"/\"}\r\n{\"action\":\"read\",\"expression\":\"Array.from(document.querySelectorAll('input')).filter(e=>e.getClientRects().length).map(e=>({id:e.id,placeholder:e.getAttribute('placeholder'),type:e.type}))\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":[{\"id\":\"\",\"placeholder\":\"Search local space… (Press /)\",\"type\":\"text\"}]}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:45:08.559Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "fill",
+          "selector": "input[placeholder='Search local space… (Press /)']",
+          "value": "Lantern Ward"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4600)"
+        }
+      ],
+      "chunk_id": "634150",
+      "wall_time_seconds": 10.001143761,
+      "session_id": 8971,
+      "original_token_count": 764,
+      "output": "{\"action\":\"fill\",\"selector\":\"input[placeholder='Search local space… (Press /)']\",\"value\":\"Lantern Ward\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4600)\"}\r\n{\"done\":\"fill\",\"result\":\"filled\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n↓ 90 u\\nContract 47-A: the manifest says one mass — your instruments say another.\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · 90\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nBAND OFF\\nLicensed bulk moves between Helios Station and the Coalition yard — the core economy's short hop.\\nMASS 220 · WON'T BUDGE\\nHELIOS PRIME\\n\\nSECTOR · CONCORD · YOU ARE HERE\\n\\n/\\nLANTERN WARD · BORROWABLE PROCESSION CRADLE\\nContact · PAYLOAD\\nLOCAL\\nSYSTEM\\nGALAXY\\nSCALE LOCAL\\nQUIET\\npressure 0/140\\nCONTROLS\\nCLOSE\\nSERVICES\\nHOLDINGS\\nDISCOVERY\\nROUTE\\nMISSION\\nPRESSURE\\nEVENTS\\nSECURITY\\nFACTION\\nHAZARD\\nOVERVIEW\\nROUTE\\nMISSIONS\\nECONOMY\\nTHREAT\\nCAREERS\\nSERVICES\\nDISCOVERY\\nHISTORY\\nRETURN TO SHIP\\nZOOM: SHIP AND DESTINATION\\nFit your ship and 47-A Recovery Site in one view\\nYOUR SHIP & SECTOR\\nHELIOS PRIME\\nJurisdiction\\nSolar Concord Navy · HIGH SECURITY ●●●\\nLocal zone\\nHelios Freight Spine (Trade Lane · Threat 1)\\nShip fix\\n(0, 0) u · Hdg E · 0 u/s\\nWORKING THIS POCKET\\nHelios Prime · Miner · Hauler · Patrol · Salvor · Tender\\n16 careers on record — the Careers tab lists role, place and each worker.\\nMISSION & WAYPOINT FIX\\nWaypoint pin\\n◆ 47-A Recovery Site\\nMarker type\\nMission Objective · 90 u S\\nRecover the 47-A sample from the marked rock\\nContract 47-A: Mass Variance Sample\\nProceed to the objective\\nObjective area\\nHelios Station (Helios Prime)\\nMARKERS ON CHART & KEY\\n◆ 47-A RECOVERY SITE GOAL\\n90 U · S\\n⬢ HELIOS STATION MARKET\\n1.3K U · E\\n⛨ COALITION HQ MILITARY\\n1.4K U · NW\\n⊂⊃ GATE → CERES BELT GATE\\n2.9K U · NW\\n⊂⊃ GATE → TETHYS JUNCTION GATE\\n2.9K U · NE\\n⊂⊃ GATE → VESTA FORGE GATE\\n2.9K U · N\\n⊙\\nYou\\n◆\\nGoal Pin\\n⬢ ⚒ ⛏ ⚙ ⛨ ◬ ✧\\nStation types\\n▪\\nOther station\\n⊂⊃\\nJump Gate\\n◆\\nHostile\\n➤\\nShip / Drone\\n◇\\nScan / Site\\n▸\\nOff-View Rim\\nDrag from your ship to preview a course; click any marker to inspect or double-click to set course.\\nENGAGE ROUTE\\nClick a destination on the chart, then Plot Course\\nMAP SYMBOLS\\nYOU\\nOBJECTIVE\\nHOSTILE\\nSTATION\\nGATE\\nMISSION POINT\\nSURVEY SITE\\nHOLDING\\nZONE\\nWRECK\\nHover or click anything on the chart and it names itself here and on the mark.\\nPOSITION\\nHELIOS PRIME\\n0 u from origin\\nTRACKING\\n47-A Recovery Site\\n90 u\\nDESTINATION\\nHelios Prime\\nContract destination — in this sector, no jump route to plan\\nNEXT LEG\\nNone\\nIn this sector — follow the marker, no jump leg\\nQUIET · NO FRONTS OR HOT SECTORS\\nLight ships are ammunition. Swing a rock. Keep the speed.\\nLight ships are ammunition. Swing a rock. Keep the speed.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:45:26.313Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "Array.from(document.querySelectorAll('button,[role=option]')).filter(e=>e.getClientRects().length&&/Lantern Ward/i.test(e.innerText)).map(e=>({tag:e.tagName,text:e.textContent,role:e.getAttribute('role'),id:e.id,action:e.getAttribute('data-action'),class:e.className}))"
+        }
+      ],
+      "chunk_id": "7a6a2a",
+      "wall_time_seconds": 10.001638929,
+      "session_id": 8971,
+      "original_token_count": 84,
+      "output": "{\"action\":\"read\",\"expression\":\"Array.from(document.querySelectorAll('button,[role=option]')).filter(e=>e.getClientRects().length&&/Lantern Ward/i.test(e.innerText)).map(e=>({tag:e.tagName,text:e.textContent,role:e.getAttribute('role'),id:e.id,action:e.getAttribute('data-action'),class:e.className}))\"}\r\n{\"done\":\"read\",\"result\":[]}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:45:43.493Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "text=Lantern Ward · Borrowable Procession Cradle"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-4600)"
+        }
+      ],
+      "chunk_id": "4d5c74",
+      "wall_time_seconds": 10.00141426,
+      "session_id": 8971,
+      "original_token_count": 547,
+      "output": "{\"action\":\"selector\",\"selector\":\"text=Lantern Ward · Borrowable Procession Cradle\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-4600)\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n↓ 90 u\\nContract 47-A: the manifest says one mass — your instruments say another.\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · 90\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nBAND OFF\\nLicensed bulk moves between Helios Station and the Coalition yard — the core economy's short hop.\\nMASS 220 · WON'T BUDGE\\nLANTERN WARD · BORROWABLE PROCESSION CRADLE\\n\\nPAYLOAD · FRONTIER · 1.8K U\\n\\n/\\nLOCAL\\nSYSTEM\\nGALAXY\\nSCALE LOCAL\\nQUIET\\npressure 0/140\\nCONTROLS\\nCLOSE\\nSERVICES\\nHOLDINGS\\nDISCOVERY\\nROUTE\\nMISSION\\nPRESSURE\\nEVENTS\\nSECURITY\\nFACTION\\nHAZARD\\nOVERVIEW\\nROUTE\\nMISSIONS\\nECONOMY\\nTHREAT\\nCAREERS\\nSERVICES\\nDISCOVERY\\nHISTORY\\nRETURN TO SHIP\\nZOOM: SHIP AND DESTINATION\\nFit your ship and 47-A Recovery Site in one view\\nCONTACT RECORD\\nLANTERN WARD · BORROWABLE PROCESSION CRADLE\\nOBJECT CLASS\\nType\\nPAYLOAD\\nFaction\\nFrontier\\nHostile\\nNO\\nDistance\\n1829 u\\nSpeed\\n0 u/s\\nTRACK TARGET\\nENGAGE ROUTE\\nClick a destination on the chart, then Plot Course\\nFRAME\\nOPEN SYSTEM\\nSWEEP SECTOR\\nBOOKMARK\\nNOTE\\nMAP SYMBOLS\\nYOU\\nOBJECTIVE\\nHOSTILE\\nSTATION\\nGATE\\nMISSION POINT\\nSURVEY SITE\\nHOLDING\\nZONE\\nWRECK\\nHover or click anything on the chart and it names itself here and on the mark.\\nPOSITION\\nHELIOS PRIME\\n0 u from origin\\nTRACKING\\n47-A Recovery Site\\n90 u\\nDESTINATION\\nHelios Prime\\nContract destination — in this sector, no jump route to plan\\nNEXT LEG\\nNone\\nIn this sector — follow the marker, no jump leg\\nPAYLOAD\\nLantern Ward · Borrowable Procession Cradle\\nContact · Lantern Ward · Borrowable Procession Cradle · PAYLOAD\\nCLICK INSPECT · 2× TRACK\\nQUIET · NO FRONTS OR HOT SECTORS\\nLight ships are ammunition. Swing a rock. Keep the speed.\\nLight ships are ammunition. Swing a rock. Keep the speed.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:45:58.252Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "selector",
+          "selector": "text=Track Target"
+        },
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/31-root-fresh-public-route-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2100)"
+        }
+      ],
+      "chunk_id": "78e4ed",
+      "wall_time_seconds": 10.001179124,
+      "session_id": 8971,
+      "original_token_count": 57,
+      "output": "{\"action\":\"selector\",\"selector\":\"text=Track Target\"}\r\n{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/31-root-fresh-public-route-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2100)\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:46:13.129Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "752d84",
+      "wall_time_seconds": 10.003729062,
+      "session_id": 8971,
+      "original_token_count": 126,
+      "output": "{\"error\":\"locator.click: Timeout 15000ms exceeded.\\nCall log:\\n\\u001b[2m  - waiting for locator('text=Track Target')\\u001b[22m\\n\\u001b[2m    - locator resolved to <button data-toll=\\\"\\\" type=\\\"button\\\" id=\\\"gm-set-course-btn\\\" data-map-control=\\\"set-course\\\" data-control-label=\\\"Set Waypoint\\\" class=\\\"gm-ins-btn k-word k-word--emph\\\">Track Target</button>\\u001b[22m\\n\\u001b[2m  - attempting click action\\u001b[22m\\n\\u001b[2m    - waiting for element to be visible, enabled and stable\\u001b[22m\\n\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:46:26.732Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "0bbabe",
+      "wall_time_seconds": 10.001055133,
+      "session_id": 8971,
+      "original_token_count": 0,
+      "output": ""
+    },
+    {
+      "utc": "2026-11-05T00:46:42.581Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "96d8ff",
+      "wall_time_seconds": 10.001101882,
+      "session_id": 8971,
+      "original_token_count": 0,
+      "output": ""
+    },
+    {
+      "utc": "2026-11-05T00:47:08.639Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "51cb28",
+      "wall_time_seconds": 10.000648058,
+      "session_id": 8971,
+      "original_token_count": 549,
+      "output": "{\"error\":\"page.screenshot: Timeout 45000ms exceeded.\\nCall log:\\n\\u001b[2m  - taking page screenshot\\u001b[22m\\n\\u001b[2m  - waiting for fonts to load...\\u001b[22m\\n\\u001b[2m  - fonts loaded\\u001b[22m\\n\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n↓ 90 u\\nContract 47-A: the manifest says one mass — your instruments say another.\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · 90\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nBAND OFF\\nLicensed bulk moves between Helios Station and the Coalition yard — the core economy's short hop.\\nMASS 220 · WON'T BUDGE\\nLANTERN WARD · BORROWABLE PROCESSION CRADLE\\n\\nPAYLOAD · FRONTIER · 1.8K U\\n\\n/\\nLOCAL\\nSYSTEM\\nGALAXY\\nSCALE LOCAL\\nQUIET\\npressure 0/140\\nCONTROLS\\nCLOSE\\nSERVICES\\nHOLDINGS\\nDISCOVERY\\nROUTE\\nMISSION\\nPRESSURE\\nEVENTS\\nSECURITY\\nFACTION\\nHAZARD\\nOVERVIEW\\nROUTE\\nMISSIONS\\nECONOMY\\nTHREAT\\nCAREERS\\nSERVICES\\nDISCOVERY\\nHISTORY\\nRETURN TO SHIP\\nZOOM: SHIP AND DESTINATION\\nFit your ship and 47-A Recovery Site in one view\\nCONTACT RECORD\\nLANTERN WARD · BORROWABLE PROCESSION CRADLE\\nOBJECT CLASS\\nType\\nPAYLOAD\\nFaction\\nFrontier\\nHostile\\nNO\\nDistance\\n1829 u\\nSpeed\\n0 u/s\\nTRACK TARGET\\nENGAGE ROUTE\\nClick a destination on the chart, then Plot Course\\nFRAME\\nOPEN SYSTEM\\nSWEEP SECTOR\\nBOOKMARK\\nNOTE\\nMAP SYMBOLS\\nYOU\\nOBJECTIVE\\nHOSTILE\\nSTATION\\nGATE\\nMISSION POINT\\nSURVEY SITE\\nHOLDING\\nZONE\\nWRECK\\nHover or click anything on the chart and it names itself here and on the mark.\\nPOSITION\\nHELIOS PRIME\\n0 u from origin\\nTRACKING\\n47-A Recovery Site\\n90 u\\nDESTINATION\\nHelios Prime\\nContract destination — in this sector, no jump route to plan\\nNEXT LEG\\nNone\\nIn this sector — follow the marker, no jump leg\\nPAYLOAD\\nLantern Ward · Borrowable Procession Cradle\\nContact · Lantern Ward · Borrowable Procession Cradle · PAYLOAD\\nCLICK INSPECT · 2× TRACK\\nQUIET · NO FRONTS OR HOT SECTORS\\nLight ships are ammunition. Swing a rock. Keep the speed.\\nLight ships are ammunition. Swing a rock. Keep the speed.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:47:25.105Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "(()=>{const e=document.querySelector('#gm-set-course-btn');if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {text:e.textContent,disabled:e.disabled,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:s.display,visibility:s.visibility};})()"
+        }
+      ],
+      "chunk_id": "33303c",
+      "wall_time_seconds": 10.001502106,
+      "session_id": 8971,
+      "original_token_count": 120,
+      "output": "{\"action\":\"read\",\"expression\":\"(()=>{const e=document.querySelector('#gm-set-course-btn');if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {text:e.textContent,disabled:e.disabled,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:s.display,visibility:s.visibility};})()\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"Track Target\",\"disabled\":false,\"rect\":{\"x\":912,\"y\":312.625,\"width\":288,\"height\":25.59375},\"display\":\"flex\",\"visibility\":\"visible\"}}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:47:38.754Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "mouse",
+          "x": 1056,
+          "y": 325
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-3000)"
+        }
+      ],
+      "chunk_id": "c88a00",
+      "wall_time_seconds": 10.001171154,
+      "session_id": 8971,
+      "original_token_count": 204,
+      "output": "{\"action\":\"mouse\",\"x\":1056,\"y\":325}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-3000)\"}\r\n{\"done\":\"mouse\",\"result\":\"mouse\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nRecover the 47-A sample from the marked rock · 47-A Recovery Site\\n↓ 90 u\\nContract 47-A: the manifest says one mass — your instruments say another.\\nN\\nRANGE 4.0K\\n◆ HELIOS PRIME · 90\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nBAND OFF\\nCourse set: Lantern Ward · Apron approach\\nCourse set: Lantern Ward · Apron approach\\nMASS 220 · WON'T BUDGE\\nLight ships are ammunition. Swing a rock. Keep the speed.\\nLight ships are ammunition. Swing a rock. Keep the speed.\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:47:58.385Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/31-root-fresh-public-route-7421.png"
+        }
+      ],
+      "chunk_id": "eba9da",
+      "wall_time_seconds": 10.001371124,
+      "session_id": 8971,
+      "original_token_count": 26,
+      "output": "{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/31-root-fresh-public-route-7421.png\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:48:12.961Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "fa8d9b",
+      "wall_time_seconds": 10.001656248,
+      "session_id": 8971,
+      "original_token_count": 0,
+      "output": ""
+    },
+    {
+      "utc": "2026-11-05T00:48:40.184Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "7dbef6",
+      "wall_time_seconds": 10.001619168,
+      "session_id": 8971,
+      "original_token_count": 29,
+      "output": "{\"error\":\"page.screenshot: Timeout 45000ms exceeded.\\nCall log:\\n\\u001b[2m  - taking page screenshot\\u001b[22m\\n\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:48:56.691Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Space"
+        },
+        {
+          "action": "read",
+          "expression": "({visibility:document.visibilityState,focus:document.hasFocus(),text:document.body.innerText.slice(-2200)})"
+        }
+      ],
+      "chunk_id": "a61684",
+      "wall_time_seconds": 10.001189274,
+      "session_id": 8971,
+      "original_token_count": 200,
+      "output": "{\"action\":\"key\",\"key\":\"Space\"}\r\n{\"action\":\"read\",\"expression\":\"({visibility:document.visibilityState,focus:document.hasFocus(),text:document.body.innerText.slice(-2200)})\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":{\"visibility\":\"visible\",\"focus\":true,\"text\":\"RADIO\\nCOMMS\\nHAIL\\nLantern Ward · Apron approach\\n↖ 988 u\\nOverhead [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 988\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n193\\nU/S\\n0\\nTOP\\n195\\n439\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nOfficial channel denies the shipment.\\nBAND OFF\\nSalvor back to work. Watch your fire.\\nBROTHER INDEX: A lost page drifts in the field. The board wants it back.\\nSalvor back to work. Watch your fire.\"}}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:49:13.309Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2400)"
+        }
+      ],
+      "chunk_id": "ee28f9",
+      "wall_time_seconds": 10.000982296,
+      "session_id": 8971,
+      "original_token_count": 127,
+      "output": "{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2400)\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nLantern Ward · Apron approach\\n↘ 546 u · ETA 11s\\nOverhead [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 546\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n89\\nU/S\\n0\\nTOP\\n195\\n439\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline reel.\\nMassline break.\\nBAND OFF\\nConcord Core\\nConcord Core\\nMASS 1000000 · WON'T BUDGE\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:49:29.535Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/32-root-fresh-approach-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2200)"
+        }
+      ],
+      "chunk_id": "84b275",
+      "wall_time_seconds": 10.000869452,
+      "session_id": 8971,
+      "original_token_count": 209,
+      "output": "{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/32-root-fresh-approach-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2200)\"}\r\n{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/32-root-fresh-approach-7421.png\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nLantern Ward · Apron approach\\n↙ 3 u\\nOverhead [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 3\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline reel.\\nMassline break.\\nBAND OFF\\nDiscovery: Pilgrim Mooring · saved to Codex\\nSKIFF · VERSO: A courier skiff walks the stacks. Its desk travels with it.\\nDiscovery: Pilgrim Mooring · saved to Codex\\nMASS 120 · HEAVY HAUL\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:49:53.397Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Backslash"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/33-root-fresh-apron-overhead-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2200)"
+        }
+      ],
+      "chunk_id": "2f4699",
+      "wall_time_seconds": 10.001450772,
+      "session_id": 8971,
+      "original_token_count": 69,
+      "output": "{\"action\":\"key\",\"key\":\"Backslash\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/33-root-fresh-apron-overhead-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2200)\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:50:15.701Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "13e995",
+      "wall_time_seconds": 10.00131291,
+      "session_id": 8971,
+      "original_token_count": 190,
+      "output": "{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/33-root-fresh-apron-overhead-7421.png\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nLantern Ward · Apron approach\\n↘ 8 u\\nChase [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 8\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline reel.\\nMassline break.\\nBAND OFF\\nSurvey: Orange flash on the spar. Not a jump. Looking.\\nLane: I'll play the pin once. Filters or silence.\\n×2\\nSurvey: Orange flash on the spar. Not a jump. Looking.\\nMASS 120 · HEAVY HAUL\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:51:12.393Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Backslash"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "key",
+          "key": "Minus"
+        },
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/34-root-fresh-apron-wide-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-1500)"
+        }
+      ],
+      "chunk_id": "0a522e",
+      "wall_time_seconds": 10.00122296,
+      "session_id": 8971,
+      "original_token_count": 123,
+      "output": "{\"action\":\"key\",\"key\":\"Backslash\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"key\",\"key\":\"Minus\"}\r\n{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/34-root-fresh-apron-wide-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-1500)\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:51:40.978Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "b449ec",
+      "wall_time_seconds": 10.001273758,
+      "session_id": 8971,
+      "original_token_count": 0,
+      "output": ""
+    },
+    {
+      "utc": "2026-11-05T00:52:00.833Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "930938",
+      "wall_time_seconds": 10.001179076,
+      "session_id": 8971,
+      "original_token_count": 25,
+      "output": "{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/34-root-fresh-apron-wide-7421.png\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:52:41.133Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "Backslash"
+        },
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/35-root-fresh-chase-shore-7421.png"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-1700)"
+        }
+      ],
+      "chunk_id": "0a1885",
+      "wall_time_seconds": 10.00119025,
+      "session_id": 8971,
+      "original_token_count": 74,
+      "output": "{\"error\":\"Read-only observation exceeded 10 seconds\"}\r\n{\"action\":\"key\",\"key\":\"Backslash\"}\r\n{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/35-root-fresh-chase-shore-7421.png\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-1700)\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:53:12.891Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "e6f481",
+      "wall_time_seconds": 10.001732066,
+      "session_id": 8971,
+      "original_token_count": 164,
+      "output": "{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/35-root-fresh-chase-shore-7421.png\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nCOMMS\\nHAIL\\nLOG\\nKESSLER\\nKestrel, that pulse is the job. Tag the sealed mass. Do not open it.\\nLantern Ward · Apron approach\\n↙ 21 u\\nChase [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 21\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nH\\nMassline reel.\\nMassline break.\\nBAND OFF\\nCARGO RECOVERY NOTICE: Cargo recovery notice: bounty after the spill.\\nMASS 120 · HEAVY HAUL\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:54:46.678Z",
+      "sessionId": 8971,
+      "input": [
+        {
+          "action": "key",
+          "key": "0"
+        },
+        {
+          "action": "key",
+          "key": "Equal"
+        },
+        {
+          "action": "key",
+          "key": "Equal"
+        },
+        {
+          "action": "key",
+          "key": "Equal"
+        },
+        {
+          "action": "shot",
+          "path": "docs/validation/lantern-ward/evidence/36-root-fresh-work-pocket-7421.png"
+        },
+        {
+          "action": "key",
+          "key": "Escape"
+        },
+        {
+          "action": "read",
+          "expression": "document.body.innerText.slice(-2200)"
+        }
+      ],
+      "chunk_id": "0146ee",
+      "wall_time_seconds": 10.00154248,
+      "session_id": 8971,
+      "original_token_count": 397,
+      "output": "{\"action\":\"key\",\"key\":\"0\"}\r\n{\"action\":\"key\",\"key\":\"Equal\"}\r\n{\"action\":\"key\",\"key\":\"Equal\"}\r\n{\"action\":\"key\",\"key\":\"Equal\"}\r\n{\"action\":\"shot\",\"path\":\"docs/validation/lantern-ward/evidence/36-root-fresh-work-pocket-7421.png\"}\r\n{\"action\":\"key\",\"key\":\"Escape\"}\r\n{\"action\":\"read\",\"expression\":\"document.body.innerText.slice(-2200)\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"shot\",\"result\":\"docs/validation/lantern-ward/evidence/36-root-fresh-work-pocket-7421.png\"}\r\n{\"done\":\"key\",\"result\":\"key\"}\r\n{\"done\":\"read\",\"result\":\"RADIO\\nLantern Ward · Apron approach\\n↓ 32 u\\nChase [ \\\\ ]\\nCircuits\\nN\\nRANGE 4.0K\\n◆ LANTERN WARD · APRON · 32\\nHITCH · STARTER · TIER 0\\nF8\\n1\\n2\\n3\\n4\\n5\\nLINE · HAULSPACE\\n'\\nBOOST\\n0\\nU/S\\n0\\nTOP\\n195\\n439\\nAT REST\\nENERGY\\n80\\nHEAT\\n0%\\n100%\\nHULL\\n100\\nSHIELD\\n0\\nARMOR\\nMassline attached.\\nMassline break.\\nBAND OFF\\nCrew: Kettle's on. The slot can wait one breath.\\nMASS 120 · HEAVY HAUL\\nPAUSED\\nFLIGHT BRIEF\\n\\nUNTRACKED CONTRACT\\nContract 47-A: Mass Variance Sample\\n0%\\n\\nA slam hit you.\\n\\nNext: open Mission Log (J) and Track Nav on a contract.\\n\\nSAVED 2 MIN AGO TO AUTOSAVE.\\n\\nGAME\\nSHIP\\nREFERENCE\\nMEDIA\\nPLAY\\nDEV\\nEXIT\\nRESUME\\nSETTINGS\\nSAVE\\nLOAD\\nMISSION LOG\\nMY SHIP\\nOPERATIONS (AUTOMATION)\\nHELP / CONTROLS\\nCODEX\\nACHIEVEMENTS\\nRECORDS WALL\\nPHOTO\\nREPLAY\\nCLIPS\\nPHYSICS CHALLENGES\\nSANDBOX\\nMAIN MENU\\n\\nEsc\\nRESUME\\nP\\nPHOTO\\nF5\\nQUICK SAVE\\nF9\\nQUICK LOAD\\n↑↓\\nCATEGORY\\n←→\\nITEM\\n\\nSPACEFACE V0.2.0-BETA.1 · SEED 7421\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:55:20.596Z",
+      "sessionId": 8971,
+      "input": {
+        "action": "read",
+        "expression": "(()=>{const s=window.SF.state,r=s.render,c=r.camera,canvas=document.querySelector('#gl-canvas'),rect=canvas.getBoundingClientRect();const bodies=Array.from(s.entities.values()).filter(e=>String(e.data?.worldRecordId||'').startsWith('lantern-ward:')).map(e=>{const root=r.meshes.get(e.id);let projected=null;if(root){const v=root.position.clone().setFromMatrixPosition(root.matrixWorld).project(c);projected={x:rect.left+(v.x+1)*rect.width/2,y:rect.top+(1-v.y)*rect.height/2,ndcZ:v.z,centerInFrustum:Math.abs(v.x)<=1&&Math.abs(v.y)<=1&&v.z>=-1&&v.z<=1};}return{id:e.id,record:e.data.worldRecordId,generation:e.occupantGeneration,name:e.name,rootName:root?.name,rootVisible:root?.visible,scale:root?{x:root.scale.x,y:root.scale.y,z:root.scale.z}:null,rotation:root?{x:root.rotation.x,y:root.rotation.y,z:root.rotation.z}:null,projected,pos:e.pos,vel:e.vel,hull:e.hull,alive:e.alive,serial:e.data?.lanternWardSerial,custody:e.data?.lanternWardCustody,lit:e.data?.lanternWardLit,phase:e.data?.lanternWardPhase};});return{mode:s.mode,tick:s.tick,simTime:s.simTime,seed:s.meta?.seed,credits:s.player?.credits,ward:s.npcJobs?.lanternWard,camera:{viewKind:s.camera?.viewKind,zoom:s.camera?.zoom,displayedZoom:s.camera?.displayedZoom,tilt:s.camera?.tilt,fov:c.fov},viewport:{width:rect.width,height:rect.height,canvasWidth:canvas.width,canvasHeight:canvas.height},video:s.settings?.video,accessibility:s.settings?.accessibility,audio:s.settings?.audio,dynResScale:r.dynResScale,bodies};})()"
+      },
+      "chunk_id": "33b99a",
+      "wall_time_seconds": 10.001610714,
+      "session_id": 8971,
+      "original_token_count": 393,
+      "output": "{\"action\":\"read\",\"expression\":\"(()=>{const s=window.SF.state,r=s.render,c=r.camera,canvas=document.querySelector('#gl-canvas'),rect=canvas.getBoundingClientRect();const bodies=Array.from(s.entities.values()).filter(e=>String(e.data?.worldRecordId||'').startsWith('lantern-ward:')).map(e=>{const root=r.meshes.get(e.id);let projected=null;if(root){const v=root.position.clone().setFromMatrixPosition(root.matrixWorld).project(c);projected={x:rect.left+(v.x+1)*rect.width/2,y:rect.top+(1-v.y)*rect.height/2,ndcZ:v.z,centerInFrustum:Math.abs(v.x)<=1&&Math.abs(v.y)<=1&&v.z>=-1&&v.z<=1};}return{id:e.id,record:e.data.worldRecordId,generation:e.occupantGeneration,name:e.name,rootName:root?.name,rootVisible:root?.visible,scale:root?{x:root.scale.x,y:root.scale.y,z:root.scale.z}:null,rotation:root?{x:root.rotation.x,y:root.rotation.y,z:root.rotation.z}:null,projected,pos:e.pos,vel:e.vel,hull:e.hull,alive:e.alive,serial:e.data?.lanternWardSerial,custody:e.data?.lanternWardCustody,lit:e.data?.lanternWardLit,phase:e.data?.lanternWardPhase};});return{mode:s.mode,tick:s.tick,simTime:s.simTime,seed:s.meta?.seed,credits:s.player?.credits,ward:s.npcJobs?.lanternWard,camera:{viewKind:s.camera?.viewKind,zoom:s.camera?.zoom,displayedZoom:s.camera?.displayedZoom,tilt:s.camera?.tilt,fov:c.fov},viewport:{width:rect.width,height:rect.height,canvasWidth:canvas.width,canvasHeight:canvas.height},video:s.settings?.video,accessibility:s.settings?.accessibility,audio:s.settings?.audio,dynResScale:r.dynResScale,bodies};})()\"}\r\n{\"error\":\"Read-only observation exceeded 10 seconds\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:55:48.592Z",
+      "sessionId": 8971,
+      "input": {
+        "action": "read",
+        "expression": "({mode:window.SF.state.mode,tick:window.SF.state.tick,simTime:window.SF.state.simTime,seed:window.SF.state.meta?.seed,credits:window.SF.state.player?.credits,ward:window.SF.state.npcJobs?.lanternWard})"
+      },
+      "chunk_id": "7a3058",
+      "wall_time_seconds": 10.001439841,
+      "session_id": 8971,
+      "original_token_count": 73,
+      "output": "{\"action\":\"read\",\"expression\":\"({mode:window.SF.state.mode,tick:window.SF.state.tick,simTime:window.SF.state.simTime,seed:window.SF.state.meta?.seed,credits:window.SF.state.player?.credits,ward:window.SF.state.npcJobs?.lanternWard})\"}\r\n{\"error\":\"Read-only observation exceeded 10 seconds\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:56:29.759Z",
+      "sessionId": 8971,
+      "input": {
+        "action": "quit"
+      },
+      "chunk_id": "61ce1a",
+      "wall_time_seconds": 10.001406209,
+      "session_id": 8971,
+      "original_token_count": 5,
+      "output": "{\"action\":\"quit\"}\r\n"
+    },
+    {
+      "utc": "2026-11-05T00:57:00.508Z",
+      "sessionId": 8971,
+      "input": null,
+      "chunk_id": "39adcc",
+      "wall_time_seconds": 3.1222e-05,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    }
+  ],
+  "sourceManifest": {
+    "path": "final-source.json",
+    "sha256": "a0be7e8b47b20c2095c928e0ed47f2e1612b3ec545092e41bd96359fb607d3f1"
+  },
+  "harness": {
+    "path": ".devshots/lantern-ward/root-fresh-arrival-tty-session.mjs",
+    "sha256": "f5b1d251859446265ce9bda4a561052c9e85ca2b79c7ae07e37a1f785c96d8e6",
+    "source": "import { chromium } from 'playwright';\nimport { createRequire } from 'node:module';\nimport { createInterface } from 'node:readline';\nconst require=createRequire(import.meta.url), {createGameServer}=require('../../scripts/lib/gameServer.cjs');\nconst server=createGameServer({root:process.cwd()+'/'});\nawait new Promise(r=>server.listen(0,'127.0.0.1',r));\nconst browser=await chromium.launch({executablePath:'/workspace/scratch/3a00c06b9899/browser-bin/chromium',headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist','--disable-background-timer-throttling']});\nconst context=await browser.newContext({viewport:{width:1280,height:800}});\nlet page=await context.newPage();\npage.on('pageerror', e=>console.log(JSON.stringify({pageError:e.message})));\nlet failures=0;\npage.on('response',r=>{if(r.status()>=400&&failures++<35)console.log(JSON.stringify({http:r.status(),url:r.url()}));});\npage.on('console',m=>{if(m.type()==='error')console.log(JSON.stringify({console:m.text().slice(0,350)}));});\nawait page.goto(`http://127.0.0.1:${server.address().port}/`,{waitUntil:'domcontentloaded',timeout:90000});\nawait page.waitForFunction(()=>!!window.SF?.state,null,{timeout:120000});\nawait page.keyboard.press('Enter');\nconsole.log(JSON.stringify({ready:true,rootHarnessPid:process.pid,url:page.url()}));\nlet pending=Promise.resolve();\nconst input=createInterface({input:process.stdin,crlfDelay:Infinity});\nlet closing=false; const cleanup=async()=>{if(closing)return;closing=true;try{await browser.close();}finally{server.close();process.exit(0);}};\ninput.on('close',()=>{void cleanup();});process.on('SIGTERM',()=>{void cleanup();});process.on('SIGINT',()=>{void cleanup();});\ninput.on('line', line=>{\n  pending=pending.then(async()=>{\n    try {\n      const c=JSON.parse(line);let result;\n      if(c.action==='status')result=await page.evaluate(()=>({mode:window.SF?.state?.mode,paused:window.SF?.state?.paused,text:document.body.innerText.slice(0,7000),player:window.SF?.state?.entities?.get(window.SF?.state?.playerId)?.pos}));\n      else if(c.action==='click') { await page.getByRole('button',{name:c.name,exact:c.exact!==false}).click({timeout:15000});result='clicked'; }\n      else if(c.action==='selector') { await page.locator(c.selector).click({timeout:15000});result='clicked'; }\n      else if(c.action==='key') { await page.keyboard.press(c.key);result='key'; }\n      else if(c.action==='fill') { await page.locator(c.selector).fill(c.value);result='filled'; }\n      else if(c.action==='file') { await page.locator(c.selector).setInputFiles(c.path,{timeout:15000});result='file selected'; }\n      else if(c.action==='pulse') { await page.keyboard.down(c.key);await page.waitForTimeout(Math.min(c.ms||100,5000));await page.keyboard.up(c.key);result='pulse'; }\n      else if(c.action==='drag') { await page.mouse.move(c.x1,c.y1);await page.mouse.down();await page.mouse.move(c.x2,c.y2,{steps:20});await page.mouse.up();result='drag'; }\n      else if(c.action==='double') { await page.mouse.dblclick(c.x,c.y);result='double'; }\n      else if(c.action==='down') { await page.keyboard.down(c.key);result='down'; }\n      else if(c.action==='up') { await page.keyboard.up(c.key);result='up'; }\n      else if(c.action==='mouse') { await page.mouse.click(c.x,c.y,{button:c.button||'left'});result='mouse'; }\n      else if(c.action==='move') { await page.mouse.move(c.x,c.y);result='move'; }\n      else if(c.action==='wheel') { await page.mouse.wheel(c.x||0,c.y);result='wheel'; }\n      else if(c.action==='shot') { await page.screenshot({path:c.path,timeout:45000});result=c.path; }\n      else if(c.action==='read') { let timer; try { result=await Promise.race([page.evaluate(c.expression), new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Read-only observation exceeded 10 seconds')),10000);})]); } finally { clearTimeout(timer); } }\n      else if(c.action==='recover') { const url=page.url(); page=await context.newPage(); await page.goto(url,{waitUntil:'domcontentloaded',timeout:90000}); result='reopened same context'; }\n      else if(c.action==='reload') { await page.reload({waitUntil:'domcontentloaded'}); result='reloaded'; }\n      else if(c.action==='quit') { await browser.close();server.close();process.exit(0); }\n      else throw Error('Unknown action');\n      console.log(JSON.stringify({done:c.action,result}));\n    }catch(e){ console.log(JSON.stringify({error:e.message})); }\n  });\n});\n"
+  }
+}

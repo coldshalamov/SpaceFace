@@ -20,9 +20,43 @@ has been performed.
   The restored unfinished operation subsequently installs the original lamp,
   leaves the original cradle empty and sends Nessa away; the unassisted player
   remains at 5000 credits. Final public artifacts and verdict are in the hostile reports.
-- Visual qualification remains separate: current clean wide frames establish the
-  restored shore but have not yet made the family fittings unambiguous. The
-  independent report owns that decision. No native-GPU or 60 fps qualification.
+- A fresh public New Game, seed7421, reached the safe Apron within3u with full
+  hull. Clean Chase frames33/36 now establish the memorial, separate work face,
+  transport-scale machine and open working gap. The ordinary Overhead arrival
+  frames remain weak. The independent reviewer still cannot assign the finite
+  lamp, shared household markings or interrupted work phase unambiguously from
+  those pixels. Two bounded post-capture observations timed out; they supply no
+  missing identity evidence. **Full visual acceptance remains open.**
+- An independent final audit matches all56 source/test/envelope hashes and the
+  generated save schema. Production `src/` and `scripts/` are unchanged from8cf.
+  No native-GPU, matched hardware performance or60fps qualification is claimed.
+
+### Final fresh arrival boundary
+
+[The fresh-arrival receipt](evidence/root-fresh-arrival.json) contains48 raw
+tool-result events, the exact harness, six image hashes and the failed calls.
+The pilot used ordinary New Game, the public seed field, Standard/Hitch,
+I've Flown Before, fixed Balanced quality and full motion. Local-map search
+selected the real procession cradle; Track Target set the authored Apron
+approach. Public camera/zoom/brake controls produced the later frames. One
+public Massline tap and a later traffic impact are retained, so this is not
+labelled an untouched or ignored operation.
+
+Frame30 is a loader, and31 does not exist because both capture attempts timed
+out. Frames32–36 are active gameplay. Frame33's filename says overhead but its
+visible camera mode is Chase. After36, public Escape opened Pause and displayed
+seed7421. Neither subsequent private observation returned; no further piloting
+followed, and the owned browser session then quit normally with exit0.
+
+This last cell proves an ordinary fresh arrival and improves the composition
+evidence. It does not repeat the earlier installation, reward or Continue
+proofs, nor establish a fresh native phase/identity snapshot. See the final
+addendum in [hostile review2](hostile-review-2.md) for the independent verdict.
+The narrow remaining presentation improvement is to make the blocked cut and
+the family's matching fittings readable together from the normal arrival
+camera, then qualify that view and the changed return on a suitable renderer.
+The implemented loop is published for review; the full commissioned visual
+and device acceptance contract is not signed off.
 
 ## G0 · source and ownership lock
 
