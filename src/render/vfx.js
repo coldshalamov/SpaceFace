@@ -354,6 +354,12 @@ import {
   writeSalvageLampQuads,
 } from './salvageLamp.js';
 import {
+  resolveStormCrossingBeat,
+  stormStaticTickPlan,
+  STORM_STATIC_CADENCE_HZ,
+  STORM_STATIC_REDUCED_CADENCE_HZ,
+} from './hazardStormRead.js';
+import {
   APRON_FLOOD_MAX_RANGE_WU,
   APRON_FLOOD_STATION_CAP,
   buildApronFloodLayout,
@@ -1720,6 +1726,10 @@ export const vfx = {
     this._overlayQuartetTetherPhase = null;
     this._overlayQuartetTetherTargetId = null;
     this._overlayQuartetGhostRef = null;
+    // inf-storm-crossing: live zone families on the player hull (zoneType -> intensity) and
+    // the sustained-static tick latch, both presentation-local scratch.
+    this._stormPresence = {};
+    this._stormStaticLastStep = null;
     this._seamMarkersWereRelevant = false;
     // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
     // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
@@ -2117,6 +2127,8 @@ export const vfx = {
     this._dockApproach = null;
     this._apronFlood = null;
     this._salvageLamp = null;
+    this._stormPresence = {};
+    this._stormStaticLastStep = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -2897,6 +2909,10 @@ export const vfx = {
     add('salvage:cutComplete', (p) => this._onSalvageCutComplete(p));
     add('salvage:completed', (p) => this._onSalvageCompleted(p));
     add('mining:yield', (p) => this._onMiningYield(p));
+    // inf-storm-crossing: the hazard boundary answers on the hull — the sim already publishes
+    // hazard:enter/exit with zone type and intensity; the picture finally reads them.
+    add('hazard:enter', (p) => this._onHazardBoundary(p, true));
+    add('hazard:exit', (p) => this._onHazardBoundary(p, false));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
@@ -8061,9 +8077,12 @@ export const vfx = {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         if (!row || (readout.stationId != null ? row.stationId !== readout.stationId : row.proxyId !== readout.proxyId)) continue;
-        const station = state.entities?.get?.(row.entityId);
-        if (!station || station.alive === false
-          || (row.generation != null && station.occupantGeneration !== row.generation)) continue;
+        // Liveness/generation gating applies only to rows that NAME their station entity — the
+        // same guard shape the capture/berthed readers use. An anonymous diagnostics row must
+        // still bind its pad: a proxy-less readout silently nulls the whole cradle engagement.
+        const station = row.entityId != null ? state.entities?.get?.(row.entityId) : null;
+        if (row.entityId != null && (!station || station.alive === false
+          || (row.generation != null && station.occupantGeneration !== row.generation))) continue;
         proxy = row;
         break;
       }
@@ -8116,6 +8135,94 @@ export const vfx = {
     dc.mesh.geometry.attributes.color.needsUpdate = true;
     dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
     dc.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // inf-storm-crossing — the hazard storm reads on the hull. The sim damages you every tick
+  // inside a zone and publishes hazard:enter/exit plus state.world.hazardPresence; until now
+  // the picture was silent about all of it, so the storm that was killing you was invisible.
+  // Crossing the boundary plays a charge beat around the hull (a pooled event light keyed by
+  // the bite at the line); riding the storm keeps a sparse deterministic static crawling the
+  // hull at the sustained cadence. Colors are per hazard family (radiation chartreuse, nebula
+  // violet, debris slate); reduced motion thins the static and halves the beat, never to zero.
+  // -------------------------------------------------------------------------
+  _onHazardBoundary(p, entering) {
+    const state = this.state;
+    if (!state || !p || p.entityId == null) return;
+    // Only the player's own hull reads the boundary; NPC zone traffic stays unhurried.
+    if (p.entityId !== state.playerId) return;
+    const zoneType = String(p.zoneType || '');
+    if (!zoneType) return;
+    if (!entering) {
+      if (this._stormPresence) delete this._stormPresence[zoneType];
+      return;
+    }
+    const intensity = Math.max(0, Math.min(1, Number(p.intensity) || 0));
+    this._stormPresence = this._stormPresence || {};
+    this._stormPresence[zoneType] = intensity;
+    if (!this._scene) return;
+    const player = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+    if (!player || player.alive === false || !player.pos) return;
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const beat = resolveStormCrossingBeat(p, simTime, reduced);
+    if (!beat) return;
+    const r = Math.max(4, player.radius || 6);
+    for (let k = 0; k < beat.angles.length; k++) {
+      const a = beat.angles[k];
+      const speed = 13 + beat.intensity * 15;
+      this._c0.set(beat.colorHex); this._c1.set(beat.colorHex);
+      this._spawnParticle(
+        player.pos.x + Math.cos(a) * r * 0.9, player.pos.z + Math.sin(a) * r * 0.9,
+        Math.cos(a) * speed, Math.sin(a) * speed,
+        0.28 + beat.intensity * 0.22, 1.7, 0.3, this._c0, this._c1, 2.2, 0.5, 0, a, 2.4,
+      );
+    }
+    if (accessibility.eventLightPeakScale > 0) {
+      this._eventLight({ x: player.pos.x, z: player.pos.z }, 'impact', {
+        severity: beat.lightSeverity,
+        color: beat.colorHex,
+        peakMul: 0.7 + beat.intensity * 0.5,
+      });
+    }
+  },
+
+  _updateStormRead() {
+    const state = this.state;
+    const presence = this._stormPresence;
+    const types = presence ? Object.keys(presence) : [];
+    if (!types.length) {
+      this._stormStaticLastStep = null;
+      return false;
+    }
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || player.alive === false || !player.pos || (player.flags && player.flags.docked)) {
+      return false;
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entry = stormStaticTickPlan(
+      simTime, types, presence,
+      reduced ? STORM_STATIC_REDUCED_CADENCE_HZ : STORM_STATIC_CADENCE_HZ,
+      this._stormStaticLastStep,
+    );
+    if (!entry) return true;
+    this._stormStaticLastStep = entry.step;
+    const plan = entry.plan;
+    const r = Math.max(4, player.radius || 6);
+    for (let k = 0; k < plan.count; k++) {
+      const a = plan.angle + k * 2.4;
+      const jitter = 0.85 + 0.3 * (((plan.seed >>> (k * 5 + 3)) % 16) / 16);
+      this._c0.set(plan.colorHex); this._c1.set(plan.colorHex);
+      this._spawnParticle(
+        player.pos.x + Math.cos(a) * r * jitter, player.pos.z + Math.sin(a) * r * jitter,
+        Math.cos(a) * plan.speed, Math.sin(a) * plan.speed,
+        0.34, 1.15, 0.2, this._c0, this._c1, 1.6, 0.6, 0, a, 1.8,
+      );
+    }
     return true;
   },
 
@@ -10443,6 +10550,8 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    // inf-storm-crossing: sustained hull static while a hazard storm works the hull.
+    sub.stormRead = this._updateStormRead(dt) ? 1 : 0;
     sub.apronFlood = this._updateApronFlood() ? 1 : 0;
     sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
