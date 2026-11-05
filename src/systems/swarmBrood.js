@@ -120,6 +120,7 @@ import {
   swarmBroodPlan,
   swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
+import { HIVE_SAC_PERIOD_S } from './theHiveArena.js';
 import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
@@ -418,6 +419,13 @@ export function createBroodEngine(deps = {}) {
   // share, which is the tide the player cut.
   let hiveMode = false;
   let sacBudget = 0;
+  // The tide's heartbeat: simTime of the last successful sacRelease. A live unspent sac
+  // births every HIVE_SAC_PERIOD_S, so a budget that has been silent for over two full
+  // cadences has no sac left to deliver it — the authored strand, not a pending tide.
+  let sacLastBirthAt = -Infinity;
+  // Two cadences plus a cadence of honest tick jitter: the widest silence a live sac can
+  // produce is one period; anything past this is absence.
+  const SAC_TIDE_SILENCE_S = HIVE_SAC_PERIOD_S * 2 + 2;
   let splitterReserve = 0;
   let motherReserve = 0;
   const birthLeft = new Uint8Array(CAP);
@@ -640,6 +648,7 @@ export function createBroodEngine(deps = {}) {
     headFound = false;
     hiveMode = false;
     sacBudget = 0;
+    sacLastBirthAt = -Infinity;
     splitterReserve = 0;
     motherReserve = 0;
     birthLeft.fill(0);
@@ -697,6 +706,8 @@ export function createBroodEngine(deps = {}) {
     for (const part of pendingPlan) planned += Number.isInteger(part.count) ? part.count : 0;
     sacBudget = swarmBroodSacReserve(planned, run && run.arenaId);
     hiveMode = sacBudget > 0;
+    // A fresh tide is deliverable from install: its sacs' first births are due one period out.
+    sacLastBirthAt = finite(getState()?.simTime);
     immediateQuota = planned - sacBudget;
     // Plan only the immediate share here. Deferred geometry never consumes the Hive reserve.
     let immediateLeft = immediateQuota;
@@ -1123,10 +1134,19 @@ export function createBroodEngine(deps = {}) {
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
     const tendrilWatching = tendrilMode && !tendrilDone;
     // B4 — the sac reserve keeps the step alive too: the Hive's tide may still be held.
+    // But a held tide is deliverable only while a live unspent sac still births on its
+    // cadence. Every sac killed before its share hatches strands that share on purpose
+    // ("the tide the player cut"), and a budget that has stayed silent past two full
+    // cadences has no sac left to deliver it — it must not hold the step's door open.
+    // Without this read, an emptied Hive room whose sacs all died unspent grinds the
+    // whole engine (player/rock/mover caches, the grid, the aura and link passes) on
+    // zero bodies every tick until the wave refit. The budget itself stays accounted:
+    // the strand is the authored tide, now named where the room can read it.
+    const sacTidePending = sacTidePendingAt(finite(state.simTime));
     // B5 — so does an armed late reserve whose drop clock has already been set.
     const reservePending = reserveBudget > 0 && Number.isFinite(reserveReleaseAt);
     if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0 && segAliveCount <= 0
-      && !tendrilWatching && sacBudget <= 0 && !reservePending) { publish(); return false; }
+      && !tendrilWatching && !sacTidePending && !reservePending) { publish(); return false; }
 
     cachePlayer(state);
     cacheRocks(state);
@@ -3568,8 +3588,23 @@ export function createBroodEngine(deps = {}) {
       sacBudget -= 1;
       born += 1;
     }
-    if (born > 0) publish();
+    if (born > 0) {
+      sacLastBirthAt = finite(getState()?.simTime);
+      publish();
+    }
     return born;
+  }
+
+  // The tide is deliverable while some live unspent sac still owes a birth: one heartbeat
+  // (successful sacRelease) within the last SAC_TIDE_SILENCE_S, or a tide fresh from install.
+  function sacTidePendingAt(now) {
+    if (!hiveMode || sacBudget <= 0) return false;
+    return Math.max(0, finite(now) - sacLastBirthAt) <= SAC_TIDE_SILENCE_S;
+  }
+
+  // The authored strand, named: the held share once no sac remains to deliver it.
+  function sacStrandedAt(now) {
+    return (hiveMode && sacBudget > 0 && !sacTidePendingAt(now)) ? sacBudget : 0;
   }
 
   /** A sac's acid drip — the same pool pipeline a spitter splash leaves behind. */
@@ -3626,6 +3661,7 @@ export function createBroodEngine(deps = {}) {
     view.segAliveCount = segAliveCount;
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
+    view.sacStranded = sacStrandedAt(finite(getState()?.simTime));
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
@@ -3725,7 +3761,8 @@ export function createBroodEngine(deps = {}) {
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
-      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget, machineReserve };
+      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget,
+        sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
@@ -3741,7 +3778,8 @@ export function createBroodEngine(deps = {}) {
       return { mode: tendrilMode, headSeen: tendrilHeadSeen, done: tendrilDone, spawned: wormSpawned, headFound };
     },
     _hive() {
-      return { mode: hiveMode, sacBudget, immediateQuota };
+      return { mode: hiveMode, sacBudget, immediateQuota,
+        sacStranded: sacStrandedAt(finite(getState()?.simTime)), lastBirthAt: sacLastBirthAt };
     },
     _splitter() {
       return { reserve: splitterReserve };
