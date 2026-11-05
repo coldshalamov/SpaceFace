@@ -8475,6 +8475,7 @@ export const vfx = {
     // nozzles draw with, so the wash can never burn harder than the bell it belongs to.
     const ships = indexedShipLikeScan(state);
     const candidates = this._engineWashCandidates || (this._engineWashCandidates = []);
+    const drives = this._engineWashDrives || (this._engineWashDrives = new Float64Array(8));
     candidates.length = 0;
     for (const e of ships) {
       if (!e || (e.type !== 'ship' && e.type !== 'drone') || e.alive === false
@@ -8484,12 +8485,23 @@ export const vfx = {
       } else if (e.flags?.docked || !npcPropulsionVisible(state, e, this._scene)) continue;
       const drive = this._engineDriveFor(e, this._engineWashDriveScratch ||= {}).drive;
       if (!(drive > 0.3)) continue; // below the resolver's own floor: skip the surface walk too
+      drives[candidates.length] = drive; // copy now: the drive read refills one shared scratch
       candidates.push(e);
       if (candidates.length >= 8) break;
     }
     if (candidates.length === 0) return false;
     const slots = this._engineWashSlots || (this._engineWashSlots = new Map());
     if (slots.size > 48) slots.clear(); // bounded: an id churn burst resets the cadence book
+    const active = this._engineWashActive || (this._engineWashActive = new Uint8Array(8));
+    let activeCount = 0;
+    for (let c = 0; c < candidates.length; c++) {
+      const shipId = candidates[c].id != null ? candidates[c].id : c;
+      active[c] = slots.get(shipId) !== slot && shouldEmitEngineWash(drives[c], slot, shipId) ? 1 : 0;
+      activeCount += active[c];
+    }
+    // Keep the original first-eight admission order. A ship that already washed must not
+    // be replaced by a ninth ship, but it no longer needs another surface walk this slot.
+    if (activeCount === 0) return false;
     const surfaces = this._engineWashSurface || (this._engineWashSurface = { pos: { x: 0, z: 0 }, radius: 0, kind: 'rock' });
     const contact = this._engineWashContact || (this._engineWashContact = {});
     const payload = this._engineWashPayload || (this._engineWashPayload = {});
@@ -8508,8 +8520,9 @@ export const vfx = {
         if (!ENGINE_WASH_SURFACE_KINDS.includes(kind)) continue;
         const surfR = Math.max(2, Number(surf.radius) || 10);
         for (let c = 0; c < candidates.length; c++) {
+          if (!active[c]) continue;
           const ship = candidates[c];
-          const drive = this._engineDriveFor(ship, this._engineWashDriveScratch ||= {}).drive;
+          const drive = drives[c];
           const dx = surf.pos.x - ship.pos.x, dz = surf.pos.z - ship.pos.z;
           const range = ENGINE_WASH_RANGE_WU + ship.radius * 2;
           if (dx * dx + dz * dz > range * range) continue;
@@ -8518,9 +8531,9 @@ export const vfx = {
           const wash = resolveEngineWashContact(ship, drive, surfaces, contact);
           if (!wash.hit) continue;
           const shipId = ship.id != null ? ship.id : c;
-          if (slots.get(shipId) === slot) continue; // this slot already washed
-          if (!shouldEmitEngineWash(drive, slot, shipId)) continue;
           slots.set(shipId, slot);
+          active[c] = 0;
+          activeCount--;
           engineWashEmitPayload(wash, shipId, slot, payload);
           gas.emitFractureDust({
             ...payload,
@@ -8530,6 +8543,7 @@ export const vfx = {
             occluderRadius: surfR * 0.9,
           });
           emitted += 1;
+          if (activeCount === 0) return true;
         }
       }
     }
