@@ -369,6 +369,10 @@ import {
 import { resolveStormDepartureBeat } from './stormDepartureRead.js';
 import { resolveHullDustWakePlan } from './hullDustWake.js';
 import {
+  gateEmergenceArm,
+  gateEmergenceTickPlan,
+} from './gateEmergenceRead.js';
+import {
   createStormZoneGeometry,
   resolveStormZonePlans,
   writeStormZoneGeometry,
@@ -2930,6 +2934,11 @@ export const vfx = {
     // hazard:enter/exit with zone type and intensity; the picture finally reads them.
     add('hazard:enter', (p) => this._onHazardBoundary(p, true));
     add('hazard:exit', (p) => this._onHazardBoundary(p, false));
+    // inf-gate-emergence: the far gate answers the crossing — the throat you were spat out
+    // of rebounds. A sector enter without a jump clears any stale arm first (jump:arrive
+    // arms after its own enterSector, so the arrival read always wins).
+    add('sector:enter', () => this._resetGateEmergence());
+    add('jump:arrive', (p) => this._onJumpArriveGateEmergence(p));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
@@ -8759,6 +8768,84 @@ export const vfx = {
     return true;
   },
 
+  // inf-gate-emergence — the far gate answers the crossing. jump:arrive only killed the
+  // departure pulse; the gate you emerged from played nothing, so the crossing's far stage
+  // was silent. Now the arrival gate (the nearest data.isGate entity within the emergence
+  // radius of the payload's toPos — a drive jump emerges in open space, no gate answers)
+  // plays a 0.5 s rebound + 1.2 s settle: discharge ring batches shedding outward from the
+  // throat on the door's own ion hue, violet for a wormhole, plus one pooled light at the
+  // rebound. Transform-free: the gate mesh stays owned by infrastructureMotion. Reduced
+  // motion thins the rings, never to zero; a frozen sim freezes the rebound with the world.
+  _onJumpArriveGateEmergence(p) {
+    const state = this.state;
+    if (!state || !p || !p.toPos) { this._resetGateEmergence(); return; }
+    const ents = state.entities;
+    const gates = [];
+    if (ents && typeof ents.forEach === 'function') {
+      ents.forEach((ent) => {
+        if (!ent || !ent.data || ent.data.isGate !== true || !ent.pos
+          || !Number.isFinite(ent.pos.x) || !Number.isFinite(ent.pos.z)) return;
+        if (ent.data.sectorId && p.sectorId && ent.data.sectorId !== p.sectorId) return;
+        gates.push({
+          id: ent.id,
+          pos: ent.pos,
+          wormhole: ent.data.isWormhole === true,
+          throatR: Number.isFinite(ent.data.dockRadius) ? ent.data.dockRadius
+            : (Number.isFinite(ent.radius) ? ent.radius * 2 : 70),
+        });
+      });
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const arm = gateEmergenceArm(
+      p, gates,
+      Number.isFinite(state.simTime) ? state.simTime : 0,
+    );
+    this._gateEmergenceReduced = accessibility.id.includes('motion');
+    this._gateEmergenceLastStep = null;
+    if (!arm) { this._gateEmergence = null; return; }
+    arm.throatR = gates.length ? gates[0].throatR : 70;
+    // Match the arm's gate to its entity throat radius (resolveGateEmergenceGate picked it).
+    for (const g of gates) {
+      if (String(g.id) === arm.gateId) { arm.throatR = g.throatR; break; }
+    }
+    this._gateEmergence = arm;
+    if (this._scene && accessibility.eventLightPeakScale > 0) {
+      this._eventLight({ x: arm.x, z: arm.z }, 'impact', {
+        severity: 'contact',
+        color: arm.hue,
+        peakMul: arm.wormhole ? 1.1 : 0.9,
+      });
+    }
+  },
+
+  _updateGateEmergence() {
+    const arm = this._gateEmergence;
+    if (!arm) return false;
+    const state = this.state;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const plan = gateEmergenceTickPlan(
+      arm, simTime, this._gateEmergenceReduced === true, this._gateEmergenceLastStep,
+    );
+    if (!plan) return false;
+    this._gateEmergenceLastStep = plan.step;
+    const throatR = Number.isFinite(arm.throatR) && arm.throatR > 0 ? arm.throatR : 70;
+    this._c0.set(plan.hue); this._c1.set(plan.hue);
+    const r0 = throatR * plan.radiusU;
+    for (const a of plan.angles) {
+      this._spawnParticle(
+        plan.x + Math.cos(a) * r0, plan.z + Math.sin(a) * r0,
+        Math.cos(a) * plan.radialSpeed, Math.sin(a) * plan.radialSpeed,
+        plan.lifeS, 1.6, 0.3, this._c0, this._c1, 1.1, 0.6, 0, a, 2.0,
+      );
+    }
+    return true;
+  },
+
+  _resetGateEmergence() {
+    this._gateEmergence = null;
+    this._gateEmergenceLastStep = null;
+  },
+
   _updateEngineWash() {
     const gas = this._suppressBreakupGas ? null : this._gas;
     const state = this.state;
@@ -10789,6 +10876,8 @@ export const vfx = {
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
     // inf-hull-dust-wake: the hull combs the drift sheet's dust in cruise, shearing downwind.
     sub.hullDustWake = this._updateHullDustWake() ? 1 : 0;
+    // inf-gate-emergence: the far gate's rebound after a gate arrival.
+    sub.gateEmergence = this._updateGateEmergence() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
