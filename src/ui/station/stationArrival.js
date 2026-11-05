@@ -7,6 +7,7 @@ import { localizeText } from '../../localization/sourceText.js';
 import { hash32 } from '../../core/rng.js';
 import { dockIntentStatus } from '../../core/dockIntent.js';
 import { generateContacts } from './barContacts.js';
+import { FACTION_KITS } from '../../data/factions/index.js';
 
 const RECOGNITION = Object.freeze({
   new: { label: 'New arrival', reaction: 'They look up from the counter.' },
@@ -48,6 +49,30 @@ export function titleGreetingLineFor(state) {
     || (authored.startsWith('title_') ? TITLE_GREETING_STUNT : TITLE_GREETING_FALLBACK);
   return { seenId: record.id, titleId: authored, line: localizeText(template, { title }) };
 }
+
+/**
+ * The desk says the house's own war (inf-war-desk). Docking into a faction whose conflict
+ * record reads war names the rival — the same truth the chart's war front renders, from the
+ * same record, nothing invented. Posture repeats per visit like every recognition band; a
+ * cold or tense pair stays quiet at the desk, and a faction with no record stays wordless.
+ * Pure read.
+ */
+export function stationWarPostureLineFor(state, factionId) {
+  const conflicts = state && state.conflicts;
+  if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+    const pair = String(pairKey).split(':');
+    if (!pair.includes(factionId)) continue;
+    const rival = pair.find((id) => id && id !== factionId);
+    if (!rival) continue;
+    const kit = FACTION_KITS.find((entry) => entry && entry.id === rival);
+    const rivalName = (kit && (kit.short || kit.name)) || String(rival).replace(/^faction_/, '');
+    return localizeText('We are at war with {rival}. You will understand if the welcome is short.', { rival: rivalName });
+  }
+  return null;
+}
 const ANCHOR_MS = 4000;
 const RETRY_MS = 500;
 const CAPTION_MS = 600;
@@ -80,11 +105,14 @@ export function buildStationArrivalGreeting(state, stationId) {
   // One NEW title per visit: the newest un-greeted sighting names itself in the greeting. The
   // stamp waits for actual delivery (finish), so a crowded-out greeting keeps its chance.
   const title = titleGreetingLineFor(state);
-  const text = `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}${title ? ` ${title.line}` : ''}`;
+  // The house's own war rides the same welcome (inf-war-desk): posture repeats per visit.
+  const war = stationWarPostureLineFor(state, host.factionId);
+  const text = `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}${title ? ` ${title.line}` : ''}${war ? ` ${war}` : ''}`;
   return {
     stationId, contactId: host.id, speakerName: host.name, factionId: host.factionId,
     band, text,
     ...(title ? { titleSeenId: title.seenId, titleId: title.titleId } : {}),
+    ...(war ? { warLine: war } : {}),
   };
 }
 
