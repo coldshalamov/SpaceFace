@@ -367,6 +367,7 @@ import {
   STORM_STATIC_REDUCED_CADENCE_HZ,
 } from './hazardStormRead.js';
 import { resolveStormDepartureBeat } from './stormDepartureRead.js';
+import { resolveHullDustWakePlan } from './hullDustWake.js';
 import {
   createStormZoneGeometry,
   resolveStormZonePlans,
@@ -8710,6 +8711,54 @@ export const vfx = {
   _engineWashContact: null,
   _engineWashPayload: null,
 
+  // inf-hull-dust-wake — the drift sheet's dust answers the hull. The sector wind moves the
+  // ambient sheet (inf-belt-wind), but the biggest moving thing in the belt combed nothing:
+  // open the throttle and the world stayed a painting. Now a hull past cruise leaves a wake —
+  // sparse grains in the sector palette's own dust tint, combed off the flanks, trailing the
+  // hull and shearing away downwind on the same wind the sheet rides. Reads the palette the
+  // drift sheet already consumes plus the hull's published vel/maxSpeed; the emission tick
+  // rides floor(simTime * cadence) so frame rate cannot stack grains and a frozen sim freezes
+  // the wake mid-flight. Reduced motion thins the cadence, never to zero.
+  _updateHullDustWake() {
+    const state = this.state;
+    if (!state) return false;
+    const palette = state.render && state.render.sectorPalette;
+    if (!palette) return false;
+    const player = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+    if (!player || player.alive === false || !player.pos || !player.vel) return false;
+    if (player.flags && player.flags.docked) return false;
+    const vx = Number.isFinite(player.vel.x) ? player.vel.x : 0;
+    const vz = Number.isFinite(player.vel.z) ? player.vel.z : 0;
+    if (vx === 0 && vz === 0) return false;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const plan = resolveHullDustWakePlan({
+      velX: vx, velZ: vz,
+      maxSpeed: player.maxSpeed,
+      palette, simTime, reducedMotion: reduced,
+      lastStep: this._hullDustWakeLastStep,
+    });
+    if (!plan) return false;
+    this._hullDustWakeLastStep = plan.step;
+    const r = Math.max(4, player.radius || 6);
+    const heading = Math.atan2(vz, vx);
+    const cosH = Math.cos(heading);
+    const sinH = Math.sin(heading);
+    this._c0.set(plan.dustHex); this._c1.set(plan.dustHex);
+    for (const grain of plan.grains) {
+      // Spawn at the flank (perpendicular to travel), a step behind the nose — the comb.
+      const sx = player.pos.x + (-sinH) * grain.lateral * r * 0.6 - cosH * r * 0.6;
+      const sz = player.pos.z + (cosH) * grain.lateral * r * 0.6 - sinH * r * 0.6;
+      this._spawnParticle(
+        sx, sz,
+        grain.vx * grain.speedMul, grain.vz * grain.speedMul,
+        plan.lifeS, 1.4, 0.25, this._c0, this._c1, 1.2, 0.4, 0, heading, 1.8,
+      );
+    }
+    return true;
+  },
+
   _updateEngineWash() {
     const gas = this._suppressBreakupGas ? null : this._gas;
     const state = this.state;
@@ -10738,6 +10787,8 @@ export const vfx = {
     sub.apronFlood = this._updateApronFlood() ? 1 : 0;
     sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
+    // inf-hull-dust-wake: the hull combs the drift sheet's dust in cruise, shearing downwind.
+    sub.hullDustWake = this._updateHullDustWake() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
