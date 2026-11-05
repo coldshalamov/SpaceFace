@@ -62,10 +62,10 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
   Object.freeze({
     id: 'vx_ring_plaza_gate',
     name: 'Cracker Run — the Mouth',
-    placeId: 'place_transponder_gate',
+    placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 1180, z: -30 }),
-    rot: 2.6, radius: 26,
-    why: 'A survey gate the berth crews re-strung with lane lights; it points at the ribs.',
+    rot: 2.6 + Math.PI, radius: 68,
+    why: 'The berth\'s heavy conveyor cap turns its ochre end toward the entry; round the solid deck to reach the ribs.',
   }),
   // ── The berth ribs: an arc bowed northeast — the outside line is the long way,
   //    the thread through the gaps cuts the corner; one gap is a real needle. ──
@@ -74,8 +74,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Berth Rib — outer post',
     placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 1080, z: 150 }),
-    rot: 0.8, radius: 30,
-    why: 'The first truss of the stripped berth; the wide line bows out northeast of it.',
+    rot: 0.8, radius: 44,
+    why: 'The first heavy rib repeats the Mouth\'s conveyor web; the wide line bows out northeast of its solid span.',
   }),
   Object.freeze({
     id: 'vx_ring_rib_2',
@@ -106,8 +106,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Berth Rib — apron post',
     placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 680, z: 840 }),
-    rot: 0.3, radius: 30,
-    why: 'The last rib before the apron opens west — a wide, forgiving entry.',
+    rot: 0.3, radius: 44,
+    why: 'The last heavy rib closes the stripped berth\'s silhouette before the apron opens west — a wide, forgiving turn.',
   }),
   // ── Apron corner: the west gate of the run ─────────────────────────────────
   Object.freeze({
@@ -115,8 +115,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Apron Mouth',
     placeId: 'place_freight_platform',
     localPos: Object.freeze({ x: 640, z: 1030 }),
-    rot: 0.3, radius: 40,
-    why: 'The freight platform that fed the berth; the run turns west across its face.',
+    rot: 0.3, radius: 60,
+    why: 'The broad freight apron caps the berth; the run turns west across the face of its solid platform.',
   }),
   Object.freeze({
     id: 'vx_ring_hulk_gate',
