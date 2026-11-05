@@ -1367,6 +1367,11 @@ export const saveLoadScreen = {
         shipName: shipDisplayName(ctx, slotShipId(meta, saveData && saveData.player)),
       })
       : null;
+    if (portrait && !saveData && currentSlot !== id) {
+      for (const field of ['scars', 'repairs', 'titles', 'rapSheet', 'grudge']) {
+        portrait[field].line = 'Record not read';
+      }
+    }
     // The ship on the stage: the save's own; on an empty slot mid-run, the ship Save here would
     // file; on an empty slot at the title, none (the page stands beside the unlit save mark).
     const livePlayer = ctx && ctx.state && ctx.state.player;

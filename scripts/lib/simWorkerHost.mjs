@@ -1643,6 +1643,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
+      ['savePeekCardData', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.peekSaveCardData !== 'function') {
+          return { ok: false, reason: 'save-system-unavailable' };
+        }
+        return { ok: true, cardData: await s.peekSaveCardData(args?.raw) };
+      }],
       ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
