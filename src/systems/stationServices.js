@@ -205,6 +205,55 @@ function isProductionDocked(state) {
     && typeof state.ui.dockedStationId === 'string' && state.ui.dockedStationId);
 }
 
+/** Pure: booked-but-undelivered refuel units the paid pump already owns. Same read as the
+ *  pendingPlayerService refuel branch, expressed state-only so the pre-commit quote (which has
+ *  no `this`) and the verb agree by construction. */
+function pendingRefuelUnits(state) {
+  const player = state && state.stationServices && state.stationServices.player;
+  if (!isProductionDocked(state) || !player || player.stationId !== state.ui.dockedStationId) return 0;
+  let units = 0;
+  for (const job of player.jobs || []) {
+    if (!job || job.type !== 'refuel') continue;
+    units += Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));
+  }
+  return units;
+}
+
+/**
+ * Pure pre-commit read (inf-decant-quote): what one Decant press would move, and why it would
+ * refuse. Mirrors decantFuelCells in the same order with the same constants — the verb stays the
+ * only writer and remains authoritative; the dock key reads this so it can name the fuel before
+ * the press (the repair-points law: a verb names what it will do, not only what it did).
+ */
+export function decantQuote(state) {
+  if (!state || !isProductionDocked(state) || state.stationServices?._departedLatch === true) {
+    return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+  }
+  const cargo = state.player && state.player.cargo;
+  const fuel = state.fuel;
+  if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
+  const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
+  if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0, held };
+  const booked = pendingRefuelUnits(state);
+  const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0) - booked);
+  if (room < FUEL_UNITS_PER_CELL) {
+    return {
+      ok: false, reason: booked > 0 ? 'pump_owns_tank' : 'tank_room', cells: 0, units: 0, held,
+      left: Math.max(0, Math.floor((fuel.max || 0) - (fuel.current || 0))),
+      booked: Math.floor(booked),
+      cellUnits: FUEL_UNITS_PER_CELL,
+    };
+  }
+  // The same custody reader as sale, jettison and flight Crack protects sealed manifests.
+  const free = Math.floor(sellableCargoQty(state, 'cmdty_fuel_cells'));
+  if (free <= 0) return { ok: false, reason: 'cells_sealed', cells: 0, units: 0, held };
+  const cells = Math.min(free, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
+  if (cells <= 0) {
+    return { ok: false, reason: 'tank_room', cells: 0, units: 0, held, cellUnits: FUEL_UNITS_PER_CELL };
+  }
+  return { ok: true, reason: 'decanted', cells, units: cells * FUEL_UNITS_PER_CELL, held, cellUnits: FUEL_UNITS_PER_CELL };
+}
+
 /**
  * Units the job actually put aboard — the number the money settles against. `applied` is the
  * WORK meter: it advances at ratePerS whether or not the destination pool had room (a tank
@@ -526,51 +575,37 @@ export const stationServices = {
    */
   decantFuelCells() {
     const state = this.state;
-    // The dock panel remains live until the undock fade ends. Its late self-service
-    // request must obey the same departed-berth latch as a paid yard booking.
-    if (!state || !isProductionDocked(state) || state.stationServices?._departedLatch === true) {
-      return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
-    }
-    const cargo = state.player && state.player.cargo;
-    const fuel = state.fuel;
-    if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
-    // The pump's booked-but-undelivered units own their space: decanting into it would burn
-    // cells for fuel a paid job was already sold to deliver (and the job's tail would then pump
-    // into a full tank — paid units nobody receives). Same booked-unit subtraction
-    // economy.handleService applies before pricing another refuel.
-    const bookedFuel = this.pendingPlayerService('refuel').units;
-    const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0) - bookedFuel);
-    const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
-    if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
-    if (room < FUEL_UNITS_PER_CELL) {
-      // The dock button stays up while the tank shows leftover room that cannot hold a whole
-      // cell, and while a paid pump already owns that room. Say which, or the click is silence.
-      // audio:false — the refusal speaks on the capacity-refusal voice; the toast keeps words.
-      const left = Math.max(0, Math.floor((fuel.max || 0) - (fuel.current || 0)));
-      const booked = Math.floor(bookedFuel);
-      const text = booked > 0
-        ? `The pump already owns ${booked} of this tank — no room to decant a cell.`
-        : `The tank has ${left} left — a fuel cell needs ${FUEL_UNITS_PER_CELL}.`;
+    // One computation for the quote and the verb: the dock key reads decantQuote to name the
+    // fuel before the press; this verb resolves the same quote into the real move.
+    const quote = decantQuote(state);
+    if (quote.ok) {
+      const removed = removeCargo(state, 'cmdty_fuel_cells', quote.cells);
+      if (removed <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
+      const units = removed * FUEL_UNITS_PER_CELL;
+      const fuel = state.fuel;
+      fuel.current = Math.min(fuel.max, (fuel.current || 0) + units);
       if (this.bus) {
-        this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8, audio: false });
-        this.bus.emit('audio:cue', { id: 'service.decantRefused' });
+        this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+        this.bus.emit('service:decanted', { cells: removed, units, stationId: state.ui && state.ui.dockedStationId });
       }
-      return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
+      return { ok: true, reason: 'decanted', cells: removed, units };
     }
-    // The same custody reader as sale, jettison and flight Crack protects sealed manifests.
-    const free = Math.floor(sellableCargoQty(state, 'cmdty_fuel_cells'));
-    if (free <= 0) return { ok: false, reason: 'no_free_cells', cells: 0, units: 0 };
-    const cells = Math.min(free, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
-    if (cells <= 0) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
-    const removed = removeCargo(state, 'cmdty_fuel_cells', cells);
-    if (removed <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
-    const units = removed * FUEL_UNITS_PER_CELL;
-    fuel.current = Math.min(fuel.max, (fuel.current || 0) + units);
+    // Legacy reason words the request listener and harnesses know, mapped from the quote.
+    if (quote.reason === 'not_docked' || quote.reason === 'unavailable' || quote.reason === 'no_cells') {
+      return { ok: false, reason: quote.reason, cells: 0, units: 0 };
+    }
+    if (quote.reason === 'cells_sealed') return { ok: false, reason: 'no_free_cells', cells: 0, units: 0 };
+    // The dock button stays up while the tank shows leftover room that cannot hold a whole
+    // cell, and while a paid pump already owns that room. Say which, or the click is silence.
+    // audio:false — the refusal speaks on the capacity-refusal voice; the toast keeps words.
+    const text = quote.reason === 'pump_owns_tank'
+      ? `The pump already owns ${quote.booked} of this tank — no room to decant a cell.`
+      : `The tank has ${quote.left} left — a fuel cell needs ${quote.cellUnits}.`;
     if (this.bus) {
-      this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-      this.bus.emit('service:decanted', { cells: removed, units, stationId: state.ui && state.ui.dockedStationId });
+      this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8, audio: false });
+      this.bus.emit('audio:cue', { id: 'service.decantRefused' });
     }
-    return { ok: true, reason: 'decanted', cells: removed, units };
+    return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
   },
 
   // ── tick ────────────────────────────────────────────────────────────────────────────────
