@@ -95,6 +95,7 @@ import {
 import {
   fillActiveMassCouplingTargets,
   MAX_MOMENTUM_SINK_OVERLAYS,
+  momentumSinkAttribution,
 } from './momentumSinkOverlay.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -2703,9 +2704,13 @@ export function createHud(ctx, alerts) {
     marker.setAttribute('role', 'img');
     marker.innerHTML = '<div class="sf-momentum-sink__bracket" aria-hidden="true"></div>'
       + '<div class="sf-momentum-sink__axis" aria-hidden="true"></div>'
-      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · YOUR FRAME · <span>0s</span></div>';
+      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · '
+      + '<span class="sf-momentum-sink__src">YOUR FRAME</span> · '
+      + '<span class="sf-momentum-sink__t">0s</span></div>';
     root.appendChild(marker);
-    momentumSinkOverlays.push({ marker, remaining: marker.querySelector('span'), seconds: -1 });
+    momentumSinkOverlays.push({ marker, source: marker.querySelector('.sf-momentum-sink__src'),
+      remaining: marker.querySelector('.sf-momentum-sink__t'), seconds: -1,
+      sourceText: null, hostile: null, aria: null });
   }
 
   function updateMomentumSinkOverlays(player) {
@@ -2729,10 +2734,26 @@ export function createHud(ctx, alerts) {
       const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
       const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
       const seconds = active ? Math.max(0, Math.ceil((active.expiresTick - tick) / 60)) : 0;
-      if (overlay.seconds !== seconds) {
+      // A hostile hauler (the Kraken's wake trawl) writes its own id onto the pilot's frame —
+      // the marker names it and wears the hostile slot instead of claiming YOUR FRAME.
+      const attribution = momentumSinkAttribution(state, active, player.id);
+      if (overlay.sourceText !== attribution.label) {
+        overlay.sourceText = attribution.label;
+        setText(overlay.source, attribution.label);
+      }
+      if (overlay.hostile !== attribution.hostile) {
+        overlay.hostile = attribution.hostile;
+        if (attribution.hostile) overlay.marker.dataset.relation = 'hostile';
+        else overlay.marker.removeAttribute('data-relation');
+      }
+      const aria = attribution.hostile
+        ? `Momentum Sink inbound${attribution.label === 'INBOUND' ? ' from a hostile frame' : ` from ${attribution.label}`}, ${seconds} seconds remaining`
+        : `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`;
+      if (overlay.seconds !== seconds || overlay.aria !== aria) {
         overlay.seconds = seconds;
+        overlay.aria = aria;
         setText(overlay.remaining, `${seconds}s`);
-        overlay.marker.setAttribute('aria-label', `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`);
+        overlay.marker.setAttribute('aria-label', aria);
       }
       stampMarkLive(overlay.marker);
       setClass(overlay.marker, 'visible', true);

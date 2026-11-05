@@ -345,6 +345,9 @@ export function createTacticalAISystem({
   // Presentation-only: a sent lane cue needs one cancellation if its doctrine disappears
   // without a phaseChanged receipt (notably when the target leaves sensor coverage).
   let committedLaneCues = new WeakMap();
+  // Committed-corridor telegraphs suppressed by a live fire hold. entity -> the frozen
+  // doctrine.telegraph object whose emit is still owed; identity expires with the phase.
+  let heldLaneTelegraphs = new WeakMap();
   const bodyLaunchRt = new Map();
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
@@ -433,6 +436,7 @@ export function createTacticalAISystem({
   function resetRuntime() {
     bodyLaunchRt.clear();
     committedLaneCues = new WeakMap();
+    heldLaneTelegraphs = new WeakMap();
     stack = null;
     inspection = null;
     lastDecisionTick = -Infinity;
@@ -705,7 +709,26 @@ export function createTacticalAISystem({
           committedLaneCues.delete(entity);
         }
         // Authored capital scores own their presentation; stock boss telegraphs would double-report.
-        if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+        // A committed-corridor telegraph is the painted promise of a firing lane, so it may
+        // only announce while the same admissions that gate this tick's volley would let a
+        // shot through. A hull whose gun is held (swarm/arrival hold, squad token, mind veto,
+        // nemesis or panic denial, suppressed stock fire) paints nothing rather than lying
+        // about a volley it cannot release; if the hold lifts while that cue is still live,
+        // the deferred emit below lands inside the same announce window instead of stranding
+        // the warning. The ledger keys on the record's own frozen telegraph, so it expires
+        // for free the moment the doctrine leaves the cue phase.
+        const pendingCue = entity && doctrine && doctrine.telegraph
+          && heldLaneTelegraphs.get(entity) === doctrine.telegraph ? doctrine.telegraph : null;
+        if (entity && !pendingCue && heldLaneTelegraphs.has(entity)) heldLaneTelegraphs.delete(entity);
+        const committedCue = !!(doctrine && doctrine.telegraph && doctrine.aimCommit && doctrine.attackLine);
+        const laneHeld = committedCue && (doctrine.telegraphStarted || pendingCue)
+          ? committedLaneFireHeld(entity, decision, state, liveStack)
+          : null;
+        if (laneHeld != null && entity) heldLaneTelegraphs.set(entity, doctrine.telegraph);
+        else if (entity && pendingCue) heldLaneTelegraphs.delete(entity);
+        if (!capitalScoreControls(state, decision.entityId) && doctrine
+            && (doctrine.telegraphStarted || pendingCue) && laneHeld == null
+            && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:telegraph', {
             entityId: decision.entityId,
             targetId: doctrine.targetId,
@@ -963,6 +986,39 @@ export function applyShovePanicFireGate(entity, state) {
   let intent = data.intent;
   if (intent && Object.isFrozen(intent)) intent = data.intent = { ...intent };
   if (intent) clearAIFiringIntent(intent, 'shove_panic');
+}
+
+/**
+ * Lying-paint guard for committed attack lanes. A lane painted at the telegraph promises a
+ * firing corridor, so the emit consults exactly the fields the volley's own gates read:
+ * the wave shaper's holds inside applyAIFiringIntent, the squad director's token that
+ * applySquadTokenFireGate/applyChoreographyFireWindow deny on, the enemy-mind veto inside
+ * applyMindAwareFiringIntent, and the nemesis, shove-panic and capital-score denial gates
+ * applied just after the emit. Denial only — it can never open a door the volley keeps shut;
+ * per-tick aim/geometry admission (engagement authority, friendly and optic lanes, mount
+ * cones) is deliberately not duplicated here because it can release or deny either way.
+ * Returns the holding gate's reason, or null when the painted lane is honestly armed.
+ */
+export function committedLaneFireHeld(entity, decision, state, liveStack) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  const ai = data.ai;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  const swarmHoldUntil = Number(ai && ai.swarmFireHoldUntil);
+  if (Number.isFinite(swarmHoldUntil) && now < swarmHoldUntil) return 'swarm_fire_hold';
+  const arrivalHoldUntil = Number(ai && ai.arrivalHoldUntil);
+  if (Number.isFinite(arrivalHoldUntil) && now < arrivalHoldUntil) return 'arrival_hold';
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (director && recipeIdFromEntity(entity) && typeof director.planFor === 'function') {
+    const plan = director.planFor(entity.id);
+    if (plan && plan.fireAuthorized === false) return 'squad_token';
+  }
+  if (!enemyMindAllowsFire(decision, state && state.simTime)) return 'enemy_mind_hold';
+  if (!nemesisFireAllowed(entity, state)) return 'nemesis_telegraph_or_retreat';
+  if (shovePanicLive(ai, now)) return 'shove_panic';
+  if (capitalBossOrder(state, entity.id)?.suppressStockFire === true) return 'capital_score';
+  return null;
 }
 
 /**

@@ -83,7 +83,7 @@ function body(h, vesselId) {
 
 test('canonical custody remains outside Weir roles, cleanup and cold restore', t => {
   const h = boot(t), live = fire(h);
-  const captures = ['patrol', 'salvor', 'specialist'].map(role => ({ role,
+  const captures = ['patrol', 'salvor', 'thief'].map(role => ({ role,
     ...capture(h, h.director.entsOf(live, role)[0]) }));
   const mid = envelope(h), resumed = cold(t, mid);
   const restored = Object.values(resumed.state.encounterDirector.live).find(l => l.shapeId === SHAPE);
@@ -106,21 +106,38 @@ test('canonical custody remains outside Weir roles, cleanup and cold restore', t
   body(resumed, captures.find(c => c.role === 'patrol').vesselId).pos = { ...hulk.pos };
   tick(resumed);
   assert.equal(resumed.state.story.depthProgramEncounters.weirAmbush.outcome, 'weir_theft');
-  assert.equal(restored.data.specialistSprung, null, 'captured specialist does not spring on outbound run');
+  // The flight springs on its surviving scene member — the captured lead never left the
+  // restored roster (player custody is skipped at bind), so nothing can stamp it: the
+  // mask, the trigger and the target all stay exactly as custody left them.
+  assert.equal(restored.data.thiefSprung, 'ignored_demand', 'the remaining flight springs on the run');
+  const capturedThief = body(resumed, captures.find(c => c.role === 'thief').vesselId);
+  assert.equal(capturedThief.data.ai?.passive, true, 'captured flight hull never comes off the mask');
+  assert.ok(!['explicit_refusal', 'ignored_demand', 'player_attack']
+    .includes(capturedThief.data.ai?.engagementTrigger), 'no spring trigger reaches custody');
+  assert.notEqual(capturedThief.data.ai?.motiveSatisfied, false, 'no spring motive stamp on custody');
+  assert.notEqual(capturedThief.data.combat?.targetId, resumed.state.playerId, 'custody is not targeted');
+  assert.notEqual(capturedThief.data.ai?.activity?.targetId, resumed.state.playerId,
+    'no conflict activity targets the player through custody');
   choose(h, live, 'refuse');
-  const specialist = captures.find(c => c.role === 'specialist');
-  const reactivated = specialist.e.data.ai?.roe === 'weapons_free' && specialist.e.data.combat?.targetId === h.state.playerId;
+  const thief = captures.find(c => c.role === 'thief');
+  const reactivated = thief.e.data.ai?.roe === 'weapons_free' && thief.e.data.combat?.targetId === h.state.playerId;
   const salvorDepartureStamped = Number.isFinite(captures.find(c => c.role === 'salvor').e.data.despawnAt);
-  // Canonical Ships transfer commits the same physical specialist as the player's helm.
+  // Canonical Ships transfer commits the same physical flight hull as the player's helm.
   h.jack.admit(h.state.entities.get(h.state.playerId), { playerOwned: true, ownerId: 'player' });
-  const transfer = h.owner.captureAndTransfer({ targetId: specialist.e.id,
-    targetGeneration: specialist.shipjackGeneration, vesselId: specialist.vesselId,
+  const transfer = h.owner.captureAndTransfer({ targetId: thief.e.id,
+    targetGeneration: thief.shipjackGeneration, vesselId: thief.vesselId,
     operationId: 'weir-boundary:helm' });
   assert.equal(transfer.ok, true, transfer.reason);
-  assert.equal(h.state.entities.get(h.state.playerId), specialist.e, 'original physical hull is piloted');
+  assert.equal(h.state.entities.get(h.state.playerId), thief.e, 'original physical hull is piloted');
+  tick(h);
+  assert.equal(h.state.story.depthProgramEncounters.weirAmbush.outcome, undefined,
+    'the surviving flight member still owns the refusal fight — custody ends nothing by itself');
+  const wing = h.director.entsOf(live, 'thief').find(e => e !== thief.e);
+  assert.ok(wing, 'the masked flight fields a second hull');
+  h.sim.helpers.removeEntity(wing.id, { immediate: true });
   tick(h);
   assert.equal(h.state.story.depthProgramEncounters.weirAmbush.outcome, 'weir_refused',
-    'a captured specialist no longer keeps the refusal fight alive');
+    'a captured flight hull no longer keeps the refusal fight alive');
   const terminal = envelope(h), loaded = cold(t, terminal);
   const result = { midReadopted, reactivated, salvorDepartureStamped,
     terminal: captures.map(c => ({ role: c.role, persistent: c.e.flags.persistent === true,
@@ -148,10 +165,12 @@ test('captured cordon hulls cannot receive the law-assist cargo', t => {
   hulk.pos = { ...patrols[0].e.pos }; hulk.vel = { x: 0, z: 0 };
   const credits = h.state.player.credits;
   tick(h);
-  assert.equal(live.phase, 'task', 'player custody is not a lawful receiver');
-  assert.equal(h.state.player.credits, credits);
-  tick(h, live.data.taskDeadlineAt - h.state.simTime + .01);
-  assert.equal(h.state.story.depthProgramEncounters.weirAmbush.outcome, 'weir_stalled');
+  // The whole cordon sits in player custody — no lawful eye remains to take the hulk,
+  // so the assist voids on the spot with its own receipt instead of idling 320 s into
+  // a "nobody moved the hulk" lie.
+  assert.equal(h.state.story.depthProgramEncounters.weirAmbush.outcome, 'weir_receiver_dead',
+    'player custody is not a lawful receiver — the deal voids immediately');
+  assert.equal(h.state.player.credits, credits, 'no impound fee without a custody transfer');
   for (const c of patrols) {
     assert.equal(c.e.flags.persistent, true);
     assert.equal(c.e.data.despawnAt, undefined);

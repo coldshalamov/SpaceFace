@@ -29,7 +29,7 @@ function makeIronKraken(p) {
       introTicks: 120, transitionTicks: 60, resumeTicks: 120,
       rangeResponse: { minRange: reach * 1.8, beatId: 'siphon_jet' },
       intro: 'IRON KRAKEN: Salvage claim accepted. Please stop being attached to your ship.',
-      lesson: 'Arms spread: leave the flanks. Paint ahead: slip the sector. Arms gather: cross the locked jet. Mantle opens: shoot the red core.',
+      lesson: 'Arms spread: leave the flanks. Wake paint: stay off the stern. Arms gather: cross the locked jet. Mantle opens: shoot the red core.',
       lossLesson: 'Leave the painted shape after it locks. The open mantle is the next clean shot.',
       victory: 'IRON KRAKEN: Customer disassembly… cancelled.',
       escape: 'IRON KRAKEN: Your salvage appointment remains outstanding.',
@@ -48,7 +48,7 @@ function makeIronKraken(p) {
         { id: 'disassembly', title: 'II · EXPRESS DISASSEMBLY', enter: { hullAtMost: 0.6 },
           bark: 'IRON KRAKEN: You have selected express disassembly.',
           doctrine: 'capital_broadside', opening: ['mantle_trawl'], pattern: ['mantle_trawl', 'arm_rake', 'siphon_jet', 'ink_ring'],
-          physicalStory: 'A mantle trawl opens the act — the same locked paint and clear escape; a broken ink ring keeps approach lanes visible.' },
+          physicalStory: 'A wake trawl opens the act — locked paint behind the hull, the same clear escape; a broken ink ring keeps approach lanes visible.' },
         { id: 'complaint', title: 'III · COMPLAINT DEPARTMENT', enter: { hullAtMost: 0.28 },
           bark: 'IRON KRAKEN: Please direct all complaints into the glowing aperture.',
           doctrine: 'capital_broadside', opening: ['siphon_jet'], pattern: ['mantle_trawl', 'siphon_jet', 'arm_rake', 'siphon_jet', 'ink_ring'],
@@ -68,17 +68,20 @@ function makeIronKraken(p) {
           shapes: [lane(0, 0, p.jetLength, r * 2, 0, 'target')],
           packet: packet({ kinetic: colossus ? 30 : 24 }), expose: THROW_WINDOW,
           counter: 'Its arms gather, then a pressure jet fills the locked lane as it lunges. Strafe clear; punish the open mantle after the burst.' }),
-        // The frontal cast: the arms drag a bounded scoop ahead of the hull and haul whatever
-        // they catch toward the braking machine's own frame. No dedicated pose channel — the
-        // generic charge tell plus the painted sector stays honest (a rake pose would promise
-        // flank danger, a jet pose would promise a lunge the braking hull never makes).
-        beat({ id: 'mantle_trawl', title: 'MANTLE TRAWL', cue: 'maw.keel',
+        // The wake trawl: the arms drag a bounded scoop behind the hull and haul whatever
+        // they catch toward the braking machine's own frame. Hull-aimed and stern-facing —
+        // the only beat whose paint is not pointed at the player — so the front hemisphere,
+        // where the open-mantle reward position lives, is genuinely clear while it sweeps.
+        // maw.stern is the shared cue family for threats at the hull's rear (ink_ring uses
+        // it too); the generic charge pose plus the painted sector tells the truth — a keel
+        // cue would promise a lunge the braking hull never makes.
+        beat({ id: 'mantle_trawl', title: 'MANTLE TRAWL', cue: 'maw.stern',
           trackTicks: 24, tellTicks: 120, activeTicks: 60, recoverTicks: recovery,
           motion: { forward: 0, brake: true },
-          shapes: [sector(0, 0.55, r * 0.5, reach * 1.15, 'target')],
-          packet: packet({ kinetic: colossus ? 14 : 8 }, [['status_momentum_sink', 120]]),
+          shapes: [sector(Math.PI, 0.8, r * 0.5, reach * 1.15, 'hull')],
+          packet: packet({ kinetic: colossus ? 14 : 8 }, [['status_momentum_sink', 90]]),
           expose: THROW_WINDOW,
-          counter: 'The front arms trawl the painted sector and haul whatever they catch to a standstill. Slip the paint before it locks; the grip lifts on its own clock.' }),
+          counter: 'The trawl arms sweep their salvage net through the machine\'s wake and haul whatever they catch to a standstill against its frame. Stay off the stern while it drags; the grip lifts on its own clock.' }),
         beat({ id: 'ink_ring', title: 'BROKEN INK RING', cue: 'maw.stern',
           trackTicks: 0, tellTicks: 120, activeTicks: 36, recoverTicks: recovery,
           motion: { forward: 0, brake: true },

@@ -1,5 +1,7 @@
-// LW-06 specialist recovery art. Normal play selects the packaged authored whole ships;
-// these builders are used only when the existing procedural fallback is admitted.
+// LW-06 specialist recovery art. Normal play selects the packaged authored whole ships —
+// all four ids ride REQUIRED_WHOLE_SHIP_DEF_IDS hulls, so admission fails closed and these
+// builders never run on the ordinary route. They are the role-readable body for the
+// dev/test/asset-missing seam: same silhouette language, proven through the live factory.
 // The factory's frame is +X forward, +Y up. Everything here is contained in a child
 // group so canonical hardpoints, engines, weapons and the native body stay untouched.
 import * as THREE from 'three';

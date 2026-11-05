@@ -188,6 +188,10 @@ function packagesOf(plan) {
  */
 function questionClauseFor(wave, plan, arenaId) {
   if (!plan || plan.mode === 'boss_circuit') return null;
+  // Authored act rounds already speak their own question — the derived package line can
+  // misname the mechanic on the field (a bruiser's roster role reads as 'anchor' with no
+  // snare well on wave 33). One question per wave: the act's.
+  if (plan.swarm && plan.swarm.act) return null;
   const derived = Boolean(plan.swarm) || plan.heaviesOnly === true || plan.mode === 'endless'
     || !Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_TEMPLATE_BLOCK;
   const row = derived

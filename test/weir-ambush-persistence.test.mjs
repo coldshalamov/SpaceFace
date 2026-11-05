@@ -102,7 +102,8 @@ test('mid-task real JSON envelope cold-restores the original lot, cast and coord
   hulk.vel = { x: 7.25, z: -3.5 };
   hulk.data.cargo = { items: { cmdty_electronics: 3 }, usedVolume: 3, usedMass: 3 };
   tick(h, 1);
-  assert.ok(live.data.specialistSprung, 'outbound tow has already sprung the real specialist');
+  assert.equal(live.data.thiefSprung, 'ignored_demand',
+    'outbound tow has already sprung the masked thief flight');
   const bodies = [...live.ids, ...live.propIds].map(id => h.state.entities.get(id));
   const expected = bodies.map(e => ({ state: physical(e), generation: e.occupantGeneration }));
   const deadline = live.data.taskDeadlineAt;
@@ -125,6 +126,9 @@ test('mid-task real JSON envelope cold-restores the original lot, cast and coord
     assert.equal(restored.data.gens[matches[0].id], matches[0].occupantGeneration);
   }
   assert.equal(restored.data.hulkId, resumed.state.entityList.find(e => e.data?.stableId === hulk.data.stableId).id);
+  assert.deepEqual(restored.data.minesSeeded, live.data.minesSeeded,
+    'the spring mine-fence bookkeeping rides CONTINUATION_FIELDS');
+  assert.equal(restored.data.visitSig, undefined, 'snapshot internals stay per-live, never persisted');
   assert.equal(resumed.events.some(e => ['economy:grantCredits', 'faction:repDelta', 'encounter:voice',
     'law:reportIncidentReceipt', 'encounter:telegraph'].includes(e.name)), false, 'reconstruction replays no effects');
   const count = resumed.state.entityList.length;
@@ -167,7 +171,7 @@ for (const phase of ['approach', 'offer', 'refusal']) {
     assert.equal(restored.deadlineAt, live.deadlineAt);
     assert.equal(restored.data.approachEndsAt, live.data.approachEndsAt);
     assert.equal(restored.offerConsumed, !!live.offerConsumed);
-    assert.equal(restored.data.specialistSprung, live.data.specialistSprung);
+    assert.equal(restored.data.thiefSprung, live.data.thiefSprung);
     assert.equal(effects(resumed).length, 0);
     assert.equal(resumed.events.some(e => e.name === 'encounter:voice'), false);
     if (phase === 'offer') {
@@ -175,8 +179,11 @@ for (const phase of ['approach', 'offer', 'refusal']) {
       assert.equal(restored.data.task, 'law', 'the restored offer remains actionable');
     }
     if (phase === 'refusal') {
-      const specialist = resumed.director.entsOf(restored, 'specialist')[0];
-      resumed.sim.helpers.removeEntity(specialist.id, { immediate: true });
+      // The refusal fight is owned by the whole masked flight — it closes when no
+      // scene thief remains, not when any single hull drops.
+      for (const thief of resumed.director.entsOf(restored, 'thief')) {
+        resumed.sim.helpers.removeEntity(thief.id, { immediate: true });
+      }
       tick(resumed);
       assertTerminal(resumed, 'weir_refused');
       const terminal = coldContinue(t, envelope(resumed));
@@ -226,18 +233,27 @@ for (const branch of ['assist', 'theft']) {
     tick(h);
     const outcome = branch === 'assist' ? 'weir_lawful_assist' : 'weir_theft';
     assertTerminal(h, outcome);
-    assert.equal(h.state.player.credits, beforeCredits + (branch === 'assist' ? 150 : 200));
-    assert.equal(h.state.factions.faction_scn.rep, beforeRep + (branch === 'assist' ? 8 : -10));
-    assert.equal(effects(h).length, 2);
+    assert.equal(h.state.player.credits, beforeCredits + (branch === 'assist' ? 160 : 260));
+    // Assist logs the SCN impound fee and the standing; the theft mints no rep stamp at
+    // all — the gate's own weir machinery is the single law owner of the crossing.
+    assert.equal(h.state.factions.faction_scn.rep, beforeRep + (branch === 'assist' ? 10 : 0));
+    assert.equal(effects(h).length, branch === 'assist' ? 2 : 1);
     for (const id of [...live.ids, ...live.propIds]) {
       const e = h.state.entities.get(id);
       assert.notEqual(e.flags.persistent, true, 'terminal actors return to the normal straggler lifetime');
       assert.equal(e.data.persistenceOwner, undefined);
     }
     if (branch === 'theft') {
+      // Single law owner, verified head-on: the script mints NO incident receipt for the
+      // run — the gate's own weir machinery (unread exit → weir_bolt; slow transit → the
+      // manifest read and hold scan) owns the crossing's law consequence, and it answers
+      // real physical transits, not this rig's pose rewrite. Any receipt stamped here
+      // would be a second consequence minted for the same act.
       const receipts = h.events.filter(e => e.name === 'law:reportIncidentReceipt');
-      assert.equal(receipts.length, 1, 'real law owner adjudicates the report once');
-      t.diagnostic(`Canonical theft intake: ${JSON.stringify(receipts[0].payload)}`);
+      assert.equal(receipts.length, 0, 'the script mints no incident — the gate owns the crossing');
+      if (receipts.length) {
+        t.diagnostic(`Canonical theft intake: ${JSON.stringify(receipts[0].payload)}`);
+      }
     }
     const saved = envelope(h), terminal = coldContinue(t, saved);
     assertTerminal(terminal, outcome);
@@ -257,9 +273,9 @@ test('an already-completed real envelope rejects a second opportunity after cold
   hulk.pos = { x: patrol.pos.x + 20, z: patrol.pos.z };
   hulk.vel = { x: 0, z: 0 };
   tick(h);
-  assert.equal(h.state.player.credits, 150);
+  assert.equal(h.state.player.credits, 160);
   const cold = coldContinue(t, envelope(h));
-  assert.equal(cold.state.player.credits, 150, 'the saved payout survives exactly once');
+  assert.equal(cold.state.player.credits, 160, 'the saved payout survives exactly once');
   assertTerminal(cold, 'weir_lawful_assist');
   hardReentry(cold);
   assert.equal(effects(cold).length, 0);

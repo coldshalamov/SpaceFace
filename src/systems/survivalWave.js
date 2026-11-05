@@ -54,6 +54,7 @@ import {
   materializeWaveBatch,
 } from './waveMaterialization.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
@@ -1276,10 +1277,21 @@ export const survivalWave = {
     const waveCap = authored != null
       ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], authored)
       : SWARM_SHOOTERS_BY_WAVE[index];
-    // A character's readable move earns breathing room from its henchmen: two other
-    // shooters during the tell/attack, four while the mantle is open. Population is unchanged.
+    // A character's readable move earns breathing room from its henchmen: three cohort
+    // shooters during the tell/attack, five while the mantle is open. Population is unchanged.
+    // LW-05 — a Kraken-sourced momentum sink outlives its cast into that open window: while the
+    // player is still hauled to the boss's frame the wave stays at tell/attack volume through
+    // recovery. Only the character's own boss extends it — a sink from any other attacker, or
+    // one already expired, restores the ordinary recovery budget.
+    const playerRuntime = state.combat && state.combat.entities
+      ? state.combat.entities[state.playerId] : null;
+    const sink = playerRuntime && playerRuntime.statuses
+      ? playerRuntime.statuses[MOMENTUM_SINK_STATUS_ID] : null;
+    const tick = Number.isInteger(state.tick) ? state.tick : Math.floor(now * 60);
+    const krakenGrip = !!sink && !!character && sink.attackerId === character.bossId
+      && (sink.expiresTick | 0) > tick;
     const cap = character && !character.terminal && !character.suspended
-      ? Math.min(waveCap, character.phase === 'recovery' ? 5 : 3)
+      ? Math.min(waveCap, character.phase === 'recovery' && !krakenGrip ? 5 : 3)
       : waveCap;
     rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
     for (let i = 0; i < rank.length; i++) {
