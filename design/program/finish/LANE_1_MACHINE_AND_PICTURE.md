@@ -628,6 +628,29 @@ Verified already true, wave 8: muzzle smoke in vacuum (weaponDischargePool draws
 no smoke card — the honesty read is already authored). Boundary noted: volatile jettison pods
 route to buildVolatilePod and carry the hazard voice, not the claim window.
 
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-brood-aggression-flush (WF-12 repair, the named wave-9 follow-up): shoot the Queen and
+  the pack rushes you burning red — the authored "filaments flush red" now reads, keyed to the
+  sim's published aggression kind, hotter and faster than panic's beat; reduced motion holds
+  a floor; unwired kinds stay bit-identical (c21d734d5545).
+- inf-storm-departure (WF-12 integration): leaving the storm sheds one last flicker of its
+  hue — thinner and slower than the entry charge, release light capped at contact grade,
+  gated on the picture actually seeing the storm ride; no lie about the damage model after
+  the line (4c0eae8a19f2).
+- inf-hull-dust-wake (WF-11 integration): a hull at cruise combs the belt's own dust off its
+  flanks, shearing away downwind with the weather — the biggest moving object in the sky no
+  longer ignores the medium; engages past 55% of the hull's own max speed (0cb50b88811e).
+- inf-gate-emergence (WF-11 integration): the gate you emerged from rebounds — discharge
+  rings shed off the throat, ion blue for gates and violet for wormholes; drive jumps land
+  far past the emergence radius and honestly get no read; transform-free, the gate mesh
+  stays owned (d82ae72db1f5).
+Verified already true, wave 9: wreck-field census (the despawn law IS the census — cap 8,
+farthest retirement with receipts), yard tow (the corridor/cradle family is the committed
+subject; no live yard-tow sim seam found). Defects for owners: `jump:arrive` omits `via`
+(world.js — presentation works around it geometrically); environmental machinery hazard
+boundaries carry no entityId (Cinder Sluice machines stay silent both directions).
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
