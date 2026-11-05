@@ -270,3 +270,165 @@ test('the stock Line actually acquires, moves and releases an admitted 160 t cry
     assert.ok(Math.hypot(target.pos.x - start.x, target.pos.z - start.z) > 5);
   } finally { sim.dispose(); }
 });
+
+// An unknown skin bound forces the optimized peer gate open while leaving the
+// native collider and its exact contactShape implementation unchanged. This is
+// the unconditional exact-query reference, not approximate expected geometry.
+async function fractureSearchResult(rows, configure = () => {}, exactReference = false) {
+  const h = await boot(rows);
+  try {
+    configure(h);
+    let queries = 0, queryRadius;
+    const restore = [];
+    for (const record of h.native.records.values()) for (const collider of record.colliders) {
+      const original = collider.contactShape;
+      collider.contactShape = function (...args) { queries++; queryRadius = args[0].radius; return original.apply(this, args); };
+      restore.push(() => { collider.contactShape = original; });
+      if (exactReference) {
+        const skin = collider.contactSkin;
+        collider.contactSkin = () => NaN;
+        restore.push(() => { collider.contactSkin = skin; });
+      }
+    }
+    const events = [];
+    const emit = h.sim.bus.emit;
+    h.sim.bus.emit = function (name, payload, ...rest) {
+      events.push([name, JSON.stringify(payload)]);
+      return emit.call(this, name, payload, ...rest);
+    };
+    const parent = h.state.entities.get(50);
+    addEnvironmentHeat(h.state, parent, 48);
+    h.materials.update(DT);
+    for (const reset of restore.reverse()) reset();
+    h.native.syncFromEntities(h.state.entityList);
+    const children = h.state.entityList.filter(e => e.data?.materialFragment);
+    return {
+      queries, queryRadius, positions: children.map(e => ({ ...e.pos })),
+      entities: JSON.parse(JSON.stringify(h.state.entityList)), events,
+      reactions: structuredClone(h.state.materialReactions), rng: h.state.rng.getState(),
+      native: Buffer.from(h.native.world.takeSnapshot()).toString('base64'),
+    };
+  } finally { h.sim.dispose(); }
+}
+
+const quietParent = () => crystal({ id: 50, vel: { x: 0, z: 0 }, rot: 0, angVel: 0 });
+const smallPeer = (id, x, z, radius = 2) => ({ entity: {
+  id, type: 'station', pos: { x, z }, radius, mass: 1000, hull: 1000, collides: true,
+  physicsBody: { dynamic: false, shape: 'ball', radius, mass: 1000, useMeasuredSkin: false }, data: {},
+}, generation: id });
+const fractureRows = () => [{ entity: quietParent(), generation: 50 }];
+function assertSearchEquality(actual, reference) {
+  const { queries: _a, queryRadius: _ar, ...a } = actual, { queries: _b, queryRadius: _br, ...b } = reference;
+  assert.deepEqual(a, b, 'exact quartet, entity/native state, events, queue and RNG must match');
+}
+
+test('fracture placement skips irrelevant native geometry without changing the chosen quartet or bodies', async t => {
+  const rows = fractureRows();
+  const clear = await fractureSearchResult([...fractureRows(), smallPeer(80, 0, 0)], undefined, true);
+  const distance = Math.hypot(clear.positions[0].x, clear.positions[0].z) + clear.queryRadius + 2.1;
+  // All peers enter the overall search envelope, but lie well outside the first
+  // child's exact ball. The scalar search still queries each actual native body.
+  for (let i = 0; i < 32; i++) {
+    const angle = i * Math.PI / 16;
+    rows.push(smallPeer(100 + i, Math.cos(angle) * distance, Math.sin(angle) * distance));
+  }
+  const reference = await fractureSearchResult(rows, undefined, true);
+  const actual = await fractureSearchResult(rows);
+  assert.equal(actual.positions.length, 4);
+  assertSearchEquality(actual, reference);
+  assert.ok(reference.queries >= 100, `reference must do real exact geometry work (${reference.queries})`);
+  assert.ok(actual.queries <= reference.queries / 2, `material query reduction: ${reference.queries}→${actual.queries}`);
+  t.diagnostic(`exact native contactShape calls ${reference.queries}→${actual.queries}`);
+});
+
+test('fresh bounds preserve offset rotated compound blockers even with a stale cached radius', async () => {
+  const clear = await fractureSearchResult(fractureRows(), undefined, true);
+  const first = clear.positions[0];
+  assert.ok(first);
+  const rows = [...fractureRows(), smallPeer(80, 0, 0)];
+  const configure = h => {
+    const record = h.native.records.get(80), R = h.native.RAPIER;
+    // Native compound pieces and local rotations are actual query geometry. A
+    // piece occupies the formerly clear first placement, far from its body origin.
+    const extra = h.native.world.createCollider(R.ColliderDesc.cuboid(4, 5, 9)
+      .setTranslation(first.x, 0, first.z)
+      .setRotation({ x: 0, y: Math.sin(.37), z: 0, w: Math.cos(.37) })
+      .setContactSkin(.4).setDensity(0), record.body);
+    record.colliders.push(extra);
+    record.collectorSweepRadius = 0; // deliberately stale; the new gate must not trust it.
+  };
+  const reference = await fractureSearchResult(rows, configure, true);
+  const actual = await fractureSearchResult(rows, configure);
+  assert.equal(actual.positions.length, 4);
+  assert.notDeepEqual(actual.positions[0], first, 'the offset compound really blocks the initial choice');
+  assertSearchEquality(actual, reference);
+});
+
+test('stale native shape cache cannot hide a radius mutation from fracture clearance', async () => {
+  const rows = [...fractureRows(), smallPeer(80, 0, 0)];
+  const configure = h => {
+    const record = h.native.records.get(80), collider = record.colliders[0];
+    assert.equal(collider.shape.radius, 2);
+    collider.setRadius(40);
+    assert.equal(collider.radius(), 40);
+    assert.equal(collider.shape.radius, 2, 'the pinned binding really retains stale JS shape metadata');
+    record.collectorSweepRadius = Infinity;
+  };
+  const reference = await fractureSearchResult(rows, configure, true);
+  const actual = await fractureSearchResult(rows, configure);
+  assert.equal(reference.positions.length, 0, 'the real enlarged blocker fills the placement envelope');
+  assertSearchEquality(actual, reference);
+});
+
+test('fracture rejection fails open for unknown/nonfinite bounds and native boundary contacts', async () => {
+  const clear = await fractureSearchResult([...fractureRows(), smallPeer(80, 0, 0)], undefined, true);
+  const point = clear.positions[0];
+  assert.ok(clear.queryRadius > 0);
+  for (const mode of ['touching', 'overlap', 'unknown-shape', 'nonfinite-skin']) {
+    const rows = [...fractureRows(), smallPeer(80, point.x, point.z)];
+    const configure = h => {
+      const record = h.native.records.get(80), collider = record.colliders[0];
+      if (mode === 'touching' || mode === 'overlap') {
+        // Use a real native shape extent. The ball/ball separation is set at the
+        // same rounded contact boundary the exact query consumes.
+        const R = h.native.RAPIER;
+        collider.setShape(new R.Ball(2));
+        collider.setTranslationWrtParent({ x: 0, y: 0, z: 0 });
+        collider.setContactSkin(.25);
+        const origin = h.native._frameOrigin;
+        const queryAt = { x: Math.fround(point.x - origin.x), y: 0, z: Math.fround(point.z - origin.z) };
+        record.body.setTranslation({ x: Math.fround(queryAt.x + Math.fround(clear.queryRadius) + 2
+          - (mode === 'overlap' ? .002 : 0)), y: 0, z: queryAt.z }, true);
+        h.native.world.propagateModifiedBodyPositionsToColliders();
+        const probe = collider.contactShape(new R.Ball(clear.queryRadius), queryAt, { x: 0, y: 0, z: 0, w: 1 }, .001);
+        if (mode === 'touching') assert.ok(probe && Math.abs(probe.distance) < 1e-4, 'real native near-zero boundary');
+        else assert.ok(probe && probe.distance < 0, 'real native penetration');
+      } else if (mode === 'unknown-shape') {
+        record.collectorSweepRadius = Infinity;
+        collider.setShape(new h.native.RAPIER.HalfSpace({ x: 1, y: 0, z: 0 }));
+      } else collider.contactSkin = () => NaN;
+    };
+    const reference = await fractureSearchResult(rows, configure, true);
+    const actual = await fractureSearchResult(rows, configure);
+    assertSearchEquality(actual, reference);
+    if (mode === 'unknown-shape' || mode === 'nonfinite-skin') assert.equal(actual.queries, reference.queries);
+  }
+});
+
+test('crowded retry and moved obstacles preserve exact search admission and native child properties', async () => {
+  const rows = [...fractureRows(), smallPeer(80, 0, 0, 150)];
+  const reference = await fractureSearchResult(rows, undefined, true);
+  const actual = await fractureSearchResult(rows);
+  assert.equal(actual.positions.length, 0);
+  assert.equal(actual.reactions.length, 1);
+  assertSearchEquality(actual, reference);
+  const move = h => {
+    const record = h.native.records.get(80);
+    record.body.setTranslation({ x: 200, y: 0, z: 0 }, true);
+    h.native.world.propagateModifiedBodyPositionsToColliders();
+  };
+  const movedReference = await fractureSearchResult(rows, move, true);
+  const moved = await fractureSearchResult(rows, move);
+  assert.equal(moved.positions.length, 4);
+  assertSearchEquality(moved, movedReference);
+});
