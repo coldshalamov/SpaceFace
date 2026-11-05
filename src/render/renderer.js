@@ -33256,8 +33256,10 @@ export const render = {
     const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
       const disp = displayPixelFootprint();
-      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
       if (typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(dyn);
+      // Size/scale transitions publish active content before the display gate is reconciled.
+      // setSize reserves the post pool before opening admission; later Auto bands reuse it.
+      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
     }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
@@ -33697,7 +33699,7 @@ function applyRendererSize(renderer, state) {
 
 // The display's native pixel footprint: CSS viewport × devicePixelRatio. This is the size the
 // browser upscales the drawing buffer to — the CAS gate (src/render/cas.js) compares the actual
-// drawing buffer against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
+// active content against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
 // or supersampled one does not. Reuses _drawSize-style module state; _applySize can run per
 // frame under the dynamic-resolution controller, so this must not allocate.
 const _displayFootprint = { x: 0, y: 0 };
