@@ -5,6 +5,19 @@
 // fixture pins that prefix as an immutable migration proof, so post-migration modules take the
 // next free order rather than slotting in by theme.
 import { deepFreeze, defineEncounter } from './catalog.js';
+import { combatFlag } from '../featureFlags.js';
+import { addSalvage } from '../../systems/cargo.js';
+
+/** The plate the hauler names when the raiders are actually down. Legal scrap; any dock cashes the bay. */
+const OPENING_RAID_PLATE_ID = 'cmdty_comp_hullplate';
+
+function depositOpeningRaidPlate(state) {
+  // Instance profile wins, same as the other combat readers. legacy47a keeps the bay off
+  // so a frozen golden never grows a salvage field. No player means there is no bay to fill.
+  const features = state?.runtime?.features;
+  if (!state?.player || !combatFlag('salvageBay', features)) return 0;
+  return addSalvage(state, OPENING_RAID_PLATE_ID, 1);
+}
 
 export const encounterOrder = 344;
 
@@ -556,6 +569,7 @@ export const runtime = Object.freeze({
       }
       d.grant(250, 'convoy:guard');
       d.rep('faction_mts', 5, 'hauler_rescued');
+      depositOpeningRaidPlate(state);
       d.emit('comms:log', {
         from: 'MTS HAULER',
         text: 'All raiders down! Thank you for the assist, pilot. Hazard pay transferred. Their plate\'s in your bay — any dock pays.',
