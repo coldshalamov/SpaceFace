@@ -61,7 +61,7 @@ import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
-import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
+import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
@@ -938,6 +938,7 @@ function resetAutoTargetPath(host, state = host && host.state) {
 // The next flight tick then republished that shove as thrust. Discard the knob and the
 // vector it already published. The mode itself stays; only a fresh packet steers again.
 function discardCombatStick(host) {
+  host._combatStickPilotRun = null;
   const { width, height } = centeredPointer();
   resetDynamicFlightStick(host, width, height);
   const inp = host && host.state && host.state.input;
@@ -1019,7 +1020,14 @@ export function domPointerMoveEvent(host, d = {}) {
     const movementX = Number.isFinite(d.movementX) ? d.movementX : 0;
     const movementY = Number.isFinite(d.movementY) ? d.movementY : 0;
     if (movementX === 0 && movementY === 0) return;
-    recordAutoTargetStick(host, movementX, movementY);
+    const accepted = recordAutoTargetStick(host, movementX, movementY);
+    if (accepted && !swarmPilotHasActed(host.state)
+      && !shouldNeutralizeFlightInput(host.state, modalInputActive())) {
+      // Remember the device edge, not the persistent knob or the assist's later axes.
+      // Admission waits for input sampling and must still belong to this run/wave.
+      host._combatStickPilotRun = host.state.run;
+      host._combatStickPilotWave = host.state.run.wave;
+    }
     host._screen.x = geometry.cx;
     host._screen.y = geometry.cy;
     host._screen.active = true;
@@ -1100,6 +1108,7 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
+    this._combatStickPilotRun = null;
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._m2HeldS = 0;
     this._m2ToolLane = null;
@@ -1418,8 +1427,10 @@ export const input = {
     };
     const offDeath = bus.on('player:death', onDeath);
     const offRespawn = bus.on('player:respawn', onRespawn);
+    const offMode = bus.on('mode:changed', () => { this._combatStickPilotRun = null; });
     if (typeof offDeath === 'function') offs.push(offDeath);
     if (typeof offRespawn === 'function') offs.push(offRespawn);
+    if (typeof offMode === 'function') offs.push(offMode);
     this._interruptControlOffs = offs;
   },
 
@@ -1682,6 +1693,9 @@ export const input = {
   },
 
   update(dt, state) {
+    const combatStickPilotRun = this._combatStickPilotRun;
+    const combatStickPilotWave = this._combatStickPilotWave;
+    this._combatStickPilotRun = null;
     // F4/G9: stamp kbm activity with (tick, sequence) when DOM events fired this interval.
     if (this._kbmActivityPending) {
       const stamp = this._bumpActivityStamp(state);
@@ -2351,7 +2365,14 @@ export const input = {
     }
     // Capture deliberate verbs before their later consumers clear the one-shot edges.
     // This observes the finalized input contract without changing axes or actions.
-    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
+    const run = state.run;
+    // drawFlightManual interrupts G steering, so a sampled pointer act has its own admission.
+    // Wallet commits replace run objects; the issued retire token preserves run identity.
+    const combatStickPilotAct = !!(combatStickPilotRun && inp.autoFire && kbmRecent
+      && inp.autoTargetVector?.active && run?.phase === 'active' && run.wave === combatStickPilotWave
+      && (run === combatStickPilotRun || (Number.isSafeInteger(combatStickPilotRun.retireToken)
+        && run.retireToken === combatStickPilotRun.retireToken)));
+    if (swarmPilotIsActing(state) || combatStickPilotAct) noteSwarmPilotAction(state);
   },
 };
 
