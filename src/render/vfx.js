@@ -149,6 +149,12 @@ import {
   SURVIVOR_EJECT_FLARE_PLAN,
   SURVIVOR_EJECT_PRIORITY,
 } from './vfx/survivorEjectRead.js';
+import {
+  isBroodBurstMoment,
+  broodBurstHue,
+  broodBurstPlan,
+  BROOD_BURST_PRIORITY,
+} from './vfx/broodBurstRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
@@ -2924,6 +2930,12 @@ export const vfx = {
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
+    // inf-brood-burst-read: a brood bomb's death blast finally reads. The engine has
+    // carried the swarm:broodBurst receipt (pos, radius, familyId, strain) since the
+    // burst families landed — the shove was always real — but no render path subscribed,
+    // so a cyst's spore burst or a volatile pop went off invisibly. broodBurstRead owns
+    // the plan; the sprites ride the normal admission and flash accessibility.
+    add('swarm:broodBurst', (p) => this._onBroodBurst(p));
     // inf-mayday-flare: a mayday starts here — the pod tearing clear of a killed crew reads
     // on the glass, not just in the speaker.
     add('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p));
@@ -9945,6 +9957,30 @@ export const vfx = {
       SURVIVOR_EJECT_PRIORITY);
     this._eventLight({ x: pos.x, z: pos.z }, 'tell', { severity: 'mayday' });
     this._emitJuiceCue(SURVIVOR_EJECT_CUE_ID, { pos }, 0.9);
+  },
+
+  // inf-brood-burst-read: the bomb's death plays where the receipt says it went off.
+  // flash is the white-hot core in the family's own hue pushed hot, vent is the
+  // family-coloured gas drifting out over the blast's reach, and the star outlives the
+  // flash — the shove the whole pack felt. The event light rides the explosion/beat row
+  // in the family hue, reach-keyed. No juice cue: swarmJuice already speaks the kill,
+  // and cue-count contracts stay frozen.
+  _onBroodBurst(p) {
+    if (!isBroodBurstMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const plan = broodBurstPlan(p.radius, broodBurstHue(p.familyId, p.strain));
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.flash.life, plan.flash.size0,
+      plan.flash.size1, plan.flash.op0, 0.0, plan.flash.color, 0, 0, 1, null,
+      BROOD_BURST_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.vent.life, plan.vent.size0,
+      plan.vent.size1, plan.vent.op0, 0.0, plan.vent.color,
+      (Math.random() - 0.5) * plan.vent.drift, (Math.random() - 0.5) * plan.vent.drift,
+      1, null, BROOD_BURST_PRIORITY);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, 0.0, plan.star.color, 0, 0, 1, null,
+      BROOD_BURST_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'explosion',
+      { severity: plan.light.severity, color: plan.vent.color, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
