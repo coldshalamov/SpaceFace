@@ -613,6 +613,7 @@ export function createSimLaneRuntime({
   // replies. Keep a separate identity so a delayed confirmation for an old
   // command cannot close or invalidate its replacement.
   let workerClockCommandFlight = null;
+  let workerClockLatestCommandFlight = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
@@ -741,7 +742,16 @@ export function createSimLaneRuntime({
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;
     }
+    // An older ACK releases only the watched fence. Keep a newer live batch's
+    // original sent-time budget instead of declaring all controls complete.
+    const latest = workerClockLatestCommandFlight;
+    if (latest && appliedCommandSequence < latest.commandSequence) {
+      workerClockCommandFlight = latest;
+      watchFlight(latest);
+      return false;
+    }
     workerClockCommandFlight = null;
+    workerClockLatestCommandFlight = null;
     workerClockCommandInFlight = false;
     workerClockCommandInFlightSequence = 0;
     return true;
@@ -1337,6 +1347,10 @@ export function createSimLaneRuntime({
       // A delayed watchdog callback documents unavailable dispatch time. Neither it nor a
       // worker message can run during that interval; do not charge it to worker silence.
       flight.mainThreadDelayedMs += Math.max(0, observedMs - dueMs);
+      const latest = flight.kind === 'clockCommand' ? workerClockLatestCommandFlight : null;
+      if (latest && latest !== flight) {
+        latest.mainThreadDelayedMs += Math.max(0, observedMs - Math.max(dueMs, latest.sentMs));
+      }
       drainSabRepliesNow();
       if (laneClosed || !isCurrentFlight(flight)) return;
       const responsiveMs = observedMs - flight.sentMs - flight.mainThreadDelayedMs;
@@ -1458,7 +1472,11 @@ export function createSimLaneRuntime({
     // sequence) but still needs an ACK; withholding that ACK while the command
     // is in flight deadlocks the worker's coalesced reply and leaves every later
     // RPC buffered. ACKs are safe to send alone; commands remain FIFO below.
-    if (workerClockCommandInFlight) {
+    // The advancing worker can accept ordered controls before main receives an
+    // older reply. Otherwise a render task can strand a readiness/key-release
+    // event while its simulation deadline passes. Frozen routes keep coalescing.
+    const advancingFlight = workerClockRequested && state.mode === 'flight' && state.timeScale > 0;
+    if (workerClockCommandInFlight && !advancingFlight) {
       if (workerClockAckPending) postWorkerClockAck();
       return;
     }
@@ -1531,12 +1549,17 @@ export function createSimLaneRuntime({
       sentMs: nowMs(),
       mainThreadDelayedMs: 0,
     };
-    workerClockCommandFlight = commandFlight;
+    workerClockLatestCommandFlight = commandFlight;
     postedDirectives++;
     // Local-clock commands are RPC-like transport boundaries even though the
     // worker reply is unsolicited. Watch them with the same responsive-dispatch
     // budget as directive-driven tick replies.
-    watchFlight(commandFlight);
+    // New input must not renew a dead worker's timer. Keep the watched fence
+    // until genuine cumulative ACK progress permits its budget to hand off.
+    if (!workerClockCommandFlight) {
+      workerClockCommandFlight = commandFlight;
+      watchFlight(commandFlight);
+    }
     postLaneDirective(msg);
   }
 
@@ -2149,6 +2172,7 @@ export function createSimLaneRuntime({
       stallWatchdogTimer = null;
     }
     workerClockCommandFlight = null;
+    workerClockLatestCommandFlight = null;
     workerClockCommandInFlight = false;
     workerClockCommandInFlightSequence = 0;
     try { uninstallSink(); } catch (_) {}
