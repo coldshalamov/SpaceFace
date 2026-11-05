@@ -392,6 +392,16 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
+/* ui-polish-339: at 871-959 the Ships/Commodities hero column is ~253-295px — under both dials'
+   300px width floor — so the price/hull dial sleeps and leaves an empty slot between the list and
+   the reading (960 already wakes at ~328px). The reading flexes down toward 170px and the gap
+   tightens so the hero holds ≥340px: the price dial paints, and the hull dial clears its tight
+   overrun check; Ores keeps its own stage columns. */
+@media (min-width:871px) and (max-width:959px) and (min-height:461px) {
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage {
+    grid-template-columns:minmax(0, 1fr) clamp(170px, 19vw, 200px); column-gap:18px; }
+}
+
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
