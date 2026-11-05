@@ -19,6 +19,10 @@
 // props only (verified by test/world-one-offs.test.mjs against the packaged GLBs); no new art,
 // no owner call.
 
+// The whole loaded tub is dismantled in one admitted batch: 20t of ore,
+// with its remaining 4t consumed as container/processing loss. No empty tub.
+export const CRACKER_RUN_LOAD_RECOVERY = Object.freeze({ commodityId: 'cmdty_ore_iron', amount: 25 });
+
 export const WORLD_ONE_OFFS = Object.freeze([
   Object.freeze({
     id: 'oneoff_refinery_quarantine_hauler',
@@ -253,6 +257,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     spin: 0,
     radius: 12,
     physicalBody: Object.freeze({ mass: 24 }),
+    materialRecovery: CRACKER_RUN_LOAD_RECOVERY,
     why: 'A loaded yard tub left loose beside the stripped berth.',
   }),
   Object.freeze({
@@ -809,6 +814,17 @@ export const HELIOS_ROPE_CACHE = Object.freeze({
   amount: 1,
   radius: 8,
 });
+
+// Catalog identity only; gameplay callers additionally validate the canonical
+// seeded world-record ID and the current live occupant/life.
+export function crackerRunLoadRecovery(entity) {
+  const d = entity?.data;
+  return entity?.type === 'wreck' && d?.worldOneOff === true
+    && d.oneOffId === 'oneoff_cracker_loose_ore_tub'
+    && d.identityKey === 'worldOneOff:oneoff_cracker_loose_ore_tub'
+    && d.placeId === 'place_ore_bulk_container' && d.homeSectorId === 'sector_helios_prime'
+    ? CRACKER_RUN_LOAD_RECOVERY : null;
+}
 
 // The courier one-off ("a courier far too fast") is not a prop: it is a named lane contact
 // flying the `express` traffic role — see lane_cinder_run_courier in src/data/laneContacts.js,

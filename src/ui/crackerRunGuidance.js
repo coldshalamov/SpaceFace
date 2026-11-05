@@ -43,8 +43,8 @@ export function crackerRunWorkLoadRead(state, entity) {
     name: loadDefinition.name,
     classLine: 'Movable yard load',
     note: key
-      ? `Aim at the tub and tap ${key} to latch. Thrust gently to tow; tap ${key} again to cut.`
-      : 'Bind the Line control in Settings to latch or cut. Thrust gently to tow once latched.',
+      ? `Aim at the tub and tap ${key} to latch. Thrust gently to tow; tap ${key} again to cut. Or hold the salvage beam on the intact load to recover Iron Ore; this dismantles the tub.`
+      : 'Bind the Line control in Settings to latch or cut. Or hold the salvage beam on the intact load to recover Iron Ore; this dismantles the tub.',
   };
 }
 

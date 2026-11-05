@@ -45,7 +45,7 @@ import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
-import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { WORLD_ONE_OFFS, crackerRunLoadRecovery } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import { VX_FREE_DRIVE_SECTOR_ID, VX_FREE_DRIVE_POI, vxFreeDrivePoisFor,
   vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
   from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
@@ -804,6 +804,22 @@ export const world = {
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
       handleMachineTokenDestroyed(this, p || {}, true);
       noteFoldAberrantKilled(this, p || {});
+    });
+    bus.on('salvage:completed', (p) => {
+      const entity = p && this.state.entities.get(p.wreckId);
+      const recovery = crackerRunLoadRecovery(entity);
+      if (!recovery || entity.alive !== false || entity.data?._salvaged !== true
+          || entity.occupantGeneration !== p.sourceGeneration
+          || entity.data.worldRecordId !== p.worldRecordId
+          || p.worldRecordId !== stableRecordId(this.state.meta?.seed || 1,
+            entity.data.homeSectorId, RECORD_KIND.WRECK, entity.data.identityKey)
+          || p.loot?.[recovery.commodityId] !== recovery.amount
+          || Object.values(entity.data.salvagePool || {}).some(qty => qty !== 0)) return;
+      const prior = this.state.world.records?.byId?.[p.worldRecordId];
+      if (prior?.alive === false || prior?.outcome === 'destroyed' || prior?.outcome === 'defeated') return;
+      // Use the existing durable retirement owner, without a lethal event,
+      // kill reward, or law attribution. Core removes this consumed mesh next.
+      this._onDurableEntityKilled({ id: entity.id });
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -3800,6 +3816,19 @@ export const world = {
       masslineTetherable: true,
     });
     this._stampHomeSector(ent, sector.id);
+    if (oneOff.materialRecovery) {
+      // Recovery is atomic: an intact original has paid no contents. A terminal
+      // original never reaches this decoration path (_spawnWorldOneOffs guards it).
+      const { commodityId, amount } = oneOff.materialRecovery;
+      const pool = { [commodityId]: amount };
+      ent.data.debrisCache ??= 'empty';
+      const salvage = this.registry?.get?.('salvageActions');
+      if (salvage?.configureAuthoredWreck) salvage.configureAuthoredWreck(ent, { salvagePool: pool });
+      else {
+        ent.data.authoredSalvagePool = { ...pool };
+        ent.data.salvagePool = pool;
+      }
+    }
     return ent;
   },
 
