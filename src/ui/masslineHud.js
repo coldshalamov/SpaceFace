@@ -46,6 +46,7 @@ import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massS
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 import { announceStrokeGrade } from './stuntCallout.js';
 import { formatSpeed } from './units.js';
+import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -216,9 +217,11 @@ export function massPreviewRead(entity, playerMass) {
   return { mass: targetMass, share, word: `MASS ${shown} · ${band}` };
 }
 
-export function massPreviewWord(entity, playerMass) {
+export function massPreviewWord(entity, playerMass, state = null) {
   const read = massPreviewRead(entity, playerMass);
-  return read ? read.word : '';
+  if (!read) return '';
+  return isCrackerRunWorkLoad(state, entity)
+    ? `${targetDisplayName(entity, { state }).toUpperCase()} · ${read.word}` : read.word;
 }
 
 /** Shape id on the acquisition mark: open diamond, broken ring, or crossed diamond. */
@@ -1456,7 +1459,7 @@ export const masslineHud = {
     const seedText = masslineSeedPreviewText(seedPreview);
     // F4: a latchable body with mass answers the swing question on the same caption line.
     const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
-    const massText = !seedPreview && ready ? massPreviewWord(target, playerMass) : '';
+    const massText = !seedPreview && ready ? massPreviewWord(target, playerMass, state) : '';
     const text = seedText || massText || bracketReadText(read);
     const paint = seedText || massText || bracketPaintText(read);
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,

@@ -1,5 +1,6 @@
 import { getCinderglassJobMapMarkers } from '../features/cinderglassJob/integration.js';
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
+import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { stationServiceGaps } from './dockArrival.js';
@@ -1396,6 +1397,9 @@ function visitLocalChartContacts(state, fn) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
     visitIndexedLists([index.shipLike, index.stations, index.asteroids, index.payloads], fn);
+    visitIndexedLists([index.wrecks], (entity) => {
+      if (isCrackerRunWorkLoad(state, entity)) fn(entity);
+    });
     return;
   }
   visitIndexedLists([entityIterator(state)], fn);
@@ -2471,9 +2475,10 @@ export function buildLocalModel(state, isHostile, options = {}) {
     if (!e || e.alive === false || !e.pos) return;
     if (player && e.id === player.id) return;
     let kind = e.type;
+    const workLoad = crackerRunWorkLoadRead(state, e);
     const explicitWorldSite = e.data && e.data.worldSiteTargetable === true;
     if (kind !== 'ship' && kind !== 'drone' && kind !== 'station' && kind !== 'asteroid'
-      && !(kind === 'payload' && explicitWorldSite)) return;
+      && !(kind === 'payload' && explicitWorldSite) && !workLoad) return;
     let hostile = false;
     if (kind === 'ship' || kind === 'drone') {
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
@@ -2494,7 +2499,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       archetypeGlb: e.data && e.data.archetypeGlb,
       typeId: e.data && e.data.typeId,
       isGate: !!(e.data && (e.data.isGate || e.data.isWormhole)),
-      name: (e.data && e.data.name) || e.name || e.role || kind,
+      name: workLoad?.name || (e.data && e.data.name) || e.name || e.role || kind,
       x: e.pos.x, z: e.pos.z,
       vx: e.vel ? e.vel.x : 0, vz: e.vel ? e.vel.z : 0,
       rot: e.rot || 0,
@@ -2502,6 +2507,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       factionId: e.factionId || null,
       entityId: e.id,
       stable: captureEntitySelection(e),
+      ...(workLoad ? { chartNote: workLoad.note, objectClass: workLoad.classLine } : {}),
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
       worldSiteTargetable: explicitWorldSite,
@@ -4129,6 +4135,8 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         stable: c.stable || null,
         factionId: c.factionId,
         hostile: c.hostile,
+        chartNote: c.chartNote,
+        objectClass: c.objectClass,
         detail: `Contact · ${c.kind.toUpperCase()}`,
       });
     }
@@ -6300,6 +6308,8 @@ _stepAnimation(now) {
         ? Math.round(Math.hypot(t.x - player.pos.x, t.z - player.pos.z)) : null;
       const contactSpeed = Number.isFinite(t.vx) ? Math.round(Math.hypot(t.vx, t.vz)) : 0;
       const contactFaction = factionNameOf(t.factionId);
+      const workLoad = crackerRunWorkLoadRead(state, resolveEntitySelection(state, t.stable));
+      const chartNote = t.kind === 'poi' ? t.chartNote : workLoad?.note;
       html += `
         <div class="gm-ins-section">
           <div class="gm-ins-kind">Contact record</div>
@@ -6308,8 +6318,8 @@ _stepAnimation(now) {
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Object Class</div>
-          ${t.kind === 'poi' && t.chartNote ? `<div class="gm-ins-note">${escapeMapHtml(t.chartNote)}</div>` : ''}
-          <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
+          ${chartNote ? `<div class="gm-ins-note">${escapeMapHtml(chartNote)}</div>` : ''}
+          <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${workLoad ? escapeMapHtml(workLoad.classLine) : t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
           <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(contactFaction)}</span></span></div>
           <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
           <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
@@ -6435,7 +6445,8 @@ _stepAnimation(now) {
       const stationReadout = isStation ? glyphForStationType(c.stationTypeId) : null;
       const glyph = isStation ? stationReadout.glyph : isGate ? '⊂⊃' : isHostile ? '◆' : '➤';
       const color = isHostile ? INK.red : isStation ? '#f2d9a6' : isGate ? '#8fcbff' : INK.ink0;
-      const tag = isStation ? stationReadout.label.toUpperCase() : isGate ? 'GATE' : isHostile ? 'HOSTILE' : 'SHIP';
+      const tag = c.objectClass ? c.objectClass.toUpperCase()
+        : isStation ? stationReadout.label.toUpperCase() : isGate ? 'GATE' : isHostile ? 'HOSTILE' : 'SHIP';
       const priority = isHostile ? 900 : isStation ? 850 : isGate ? 800 : (c.named ? 700 : 500);
       items.push({
         target: {

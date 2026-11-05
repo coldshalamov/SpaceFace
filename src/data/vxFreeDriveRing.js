@@ -39,7 +39,7 @@ export const VX_FREE_DRIVE_POI = Object.freeze({
   name: 'Cracker Run',
   pos: Object.freeze({ x: 1060, z: 40 }),
   runtimeOwner: 'vxFreeDriveRing',
-  chartNote: 'Unscored free flying through the yard; no start to trigger. This fix is the outer entry buoy. Find the Mouth, then follow buoys north into solid berth ribs. Take the low road south of the Helios Claim Cracker for a safe machinery bypass; its warning precedes the southward shove. Wait for calm before the narrow anvil thread.',
+  chartNote: 'Stripped ore berth for unscored free flying; no start to trigger. This fix is the outer entry buoy. Round the solid Mouth gantry, then follow buoys north between the ribs. Fly the loop or bring a load on the Line. The low road south of the Helios Claim Cracker avoids its southward shove; its warning precedes the surge. Wait for calm before the narrow anvil thread.',
 });
 
 // Arrival copy names an existing body. These are presentation semantics, not a
@@ -47,8 +47,8 @@ export const VX_FREE_DRIVE_POI = Object.freeze({
 export const VX_FREE_DRIVE_ENTRY_GUIDANCE = Object.freeze({
   mouthId: 'vx_ring_plaza_gate',
   nearPoiRadius: 200,
-  label: 'Cracker Run · unscored',
-  instruction: 'No start. Buoys lead north into solid berth ribs.',
+  label: 'Cracker Run · unscored berth',
+  instruction: 'Round the solid Mouth; follow buoys north.',
 });
 
 /** Add the public fix to the mutable sector catalog without editing the static Atlas. */

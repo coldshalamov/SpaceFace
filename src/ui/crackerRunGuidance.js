@@ -5,9 +5,48 @@ import {
   VX_FREE_DRIVE_ENTRY_GUIDANCE, VX_FREE_DRIVE_STRUCTURES,
 } from '../data/vxFreeDriveRing.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js';
+import { stableRecordId } from '../world/worldRecords.js';
+import { resolveActionLabel } from '../systems/input.js';
 
 const mouthDefinition = VX_FREE_DRIVE_STRUCTURES.find(row => row.id === VX_FREE_DRIVE_ENTRY_GUIDANCE.mouthId);
 const finitePos = pos => Number.isFinite(pos?.x) && Number.isFinite(pos?.z);
+const loadDefinition = WORLD_ONE_OFFS.find(row => row.id === 'oneoff_cracker_loose_ore_tub');
+const loadIdentityKey = `worldOneOff:${loadDefinition.id}`;
+
+// A public working load, not a general scan exception for wrecks. The live Map
+// occupant and the world's authored record identity must both agree. A fresh
+// one-off has this identity before its first durable capture row is written.
+export function isCrackerRunWorkLoad(state, entity) {
+  const data = entity?.data;
+  if (state?.world?.currentSectorId !== VX_FREE_DRIVE_SECTOR_ID
+      || !Number.isFinite(state.meta?.seed) || !entity || entity.alive === false
+      || entity.type !== 'wreck' || !finitePos(entity.pos)
+      || state.entities?.get(entity.id) !== entity
+      || !Number.isSafeInteger(entity.occupantGeneration) || entity.occupantGeneration <= 0
+      || data?.worldOneOff !== true || data.oneOffId !== loadDefinition.id
+      || data.identityKey !== loadIdentityKey || data.placeId !== loadDefinition.placeId
+      || data.homeSectorId !== VX_FREE_DRIVE_SECTOR_ID || data.sectorId !== VX_FREE_DRIVE_SECTOR_ID
+      || data.masslineTetherable !== true) return false;
+  const recordId = stableRecordId(state.meta.seed, VX_FREE_DRIVE_SECTOR_ID, 'wreck', loadIdentityKey);
+  if (data.worldRecordId !== recordId) return false;
+  const record = state.world.records?.byId?.[recordId];
+  return !record || (record.recordId === recordId && record.identityKey === loadIdentityKey
+    && record.kind === 'wreck' && record.alive !== false
+    && record.outcome !== 'destroyed' && record.outcome !== 'defeated');
+}
+
+export function crackerRunWorkLoadRead(state, entity) {
+  if (!isCrackerRunWorkLoad(state, entity)) return null;
+  const key = resolveActionLabel(state, 'tether');
+  return {
+    name: loadDefinition.name,
+    classLine: 'Movable yard load',
+    note: key
+      ? `Aim at the tub and tap ${key} to latch. Thrust gently to tow; tap ${key} again to cut.`
+      : 'Bind the Line control in Settings to latch or cut. Thrust gently to tow once latched.',
+  };
+}
 
 export function crackerRunEntryGuidance(state, waypoint) {
   if (state?.mode !== 'flight' || state.world?.currentSectorId !== VX_FREE_DRIVE_SECTOR_ID
@@ -49,5 +88,5 @@ export function crackerRunEntryGuidance(state, waypoint) {
         || (state.entities?.has(body.id) && state.entities.get(body.id) !== body)) continue;
     if (!accept(body)) return null;
   }
-  return mouth ? { ...VX_FREE_DRIVE_ENTRY_GUIDANCE, mouth } : null;
+  return mouth ? { ...VX_FREE_DRIVE_ENTRY_GUIDANCE, mouth, entry: waypoint } : null;
 }

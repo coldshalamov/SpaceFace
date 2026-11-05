@@ -817,8 +817,10 @@ export function flightDestinationSurface(state, command) {
       const mouth = { pos: entry.mouth.pos };
       const reading = mtReadingsLine(objectiveBearingGlyph(state, mouth),
         objectiveTravelReadout(state, mouth).distanceText, '');
+      const entryReading = mtReadingsLine(objectiveBearingGlyph(state, entry.entry),
+        objectiveTravelReadout(state, entry.entry).distanceText, '');
       return { show: true, urgent: false,
-        line: `${localizeText(entry.label)}\n${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
+        line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
     }
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);

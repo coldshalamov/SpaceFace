@@ -81,7 +81,8 @@ test('default worker publishes original Mouth identity into the real selected-co
     assert.equal(command.owner, 'navigation');
     const shown = flightDestinationSurface(state, command);
     assert.match(shown.line, /Cracker Run.*unscored/);
-    assert.match(shown.line, /No start.*Buoys lead north.*solid berth ribs/);
+    assert.match(shown.line, /Entry buoy .* · Mouth /);
+    assert.ok(shown.line.includes(VX_FREE_DRIVE_ENTRY_GUIDANCE.instruction));
     assert.ok(shown.line.includes(objectiveBearingGlyph(state, { pos: mouth.pos })));
     assert.ok(shown.line.includes(objectiveTravelReadout(state, { pos: mouth.pos }).distanceText));
     assert.deepEqual(state.nav, beforeNav, 'guidance never rewrites or advances navigation');
@@ -102,7 +103,8 @@ test('default worker publishes original Mouth identity into the real selected-co
     ]) {
       state.nav.waypoint = wrong;
       assert.equal(crackerRunEntryGuidance(state, wrong), null);
-      assert.doesNotMatch(flightDestinationSurface(state, { owner: 'navigation', waypoint: wrong }).line, /No start/);
+      assert.ok(!flightDestinationSurface(state, { owner: 'navigation', waypoint: wrong }).line
+        .includes(VX_FREE_DRIVE_ENTRY_GUIDANCE.instruction));
     }
     state.nav.waypoint = originalWaypoint;
     for (const mode of ['paused', 'loading', 'menu']) {
