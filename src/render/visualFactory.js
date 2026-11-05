@@ -2409,7 +2409,7 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     if (def.variant === 'ice') {
-      return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+      const material = new THREE.MeshPhysicalMaterial({
         color,
         roughness: 0.06,
         metalness: 0.0,
@@ -2424,7 +2424,20 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         clearcoatRoughness: 0.08,
         envMapIntensity: 1.15,
         fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK);
+      });
+      // Ordinary world ice keeps its colour/specular skin without re-rendering the whole
+      // opaque scene for screen-space refraction. Retain the exact source params for the
+      // bounded pilot comparison; authored hero/ship/station materials use other owners.
+      material.userData.spacefaceTransmissionBudget = {
+        family: 'ordinary-ice', strategy: 'environment-alpha',
+        original: { transmission: material.transmission, opacity: material.opacity,
+          transparent: material.transparent, depthWrite: material.depthWrite },
+      };
+      material.transmission = 0;
+      material.opacity = Math.min(material.opacity, 0.72);
+      material.transparent = true;
+      material.depthWrite = false;
+      return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -2535,22 +2548,32 @@ function buildAsteroid(e) {
   } else if (!opticKind && def.variant === 'gas') {
     const hull = new THREE.Mesh(
       geo,
-      getMaterial('ast:gashull', () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#2d6a52'),
-        roughness: 0.42,
-        metalness: 0,
-        transmission: 0.88,
-        ior: 1.04,
-        thickness: 3.6,
-        attenuationColor: new THREE.Color('#3dff9a'),
-        attenuationDistance: 2.1,
-        emissive: new THREE.Color('#10a060'),
-        emissiveIntensity: 0.28,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK)),
+      getMaterial('ast:gashull', () => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('#2d6a52'),
+          roughness: 0.42,
+          metalness: 0,
+          transmission: 0.88,
+          ior: 1.04,
+          thickness: 3.6,
+          attenuationColor: new THREE.Color('#3dff9a'),
+          attenuationDistance: 2.1,
+          emissive: new THREE.Color('#10a060'),
+          emissiveIntensity: 0.28,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          fog: true,
+        });
+        material.userData.spacefaceTransmissionBudget = {
+          family: 'ordinary-gas', strategy: 'environment-alpha',
+          original: { transmission: material.transmission, opacity: material.opacity,
+            transparent: material.transparent, depthWrite: material.depthWrite },
+        };
+        material.transmission = 0;
+        material.opacity = Math.min(material.opacity, 0.70);
+        return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
+      }),
     );
     hull.scale.setScalar(R * 1.22);
     hull.userData.spacefaceTags = { greeble: true };
