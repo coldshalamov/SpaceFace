@@ -49,6 +49,7 @@ import {
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { resolveContract47aRecoveryTarget } from '../navigationWaypoint.js';
+import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
 import {
   buildMissionLogCareerChip,
   buildMissionLogOriginChoiceModel,
@@ -1749,14 +1750,27 @@ export function storyActionForBeat(beat, state) {
         body: 'Mine the anomalous ore deposit, then dock at Helios Station.',
         meta: 'Mining',
       };
-    case 1:
+    case 1: {
+      const scale = kesslerScaleWaypoint(state);
+      if (scale) return {
+        tone: 'primary',
+        label: 'STORY',
+        title: `Check the manifest · ${scale.sectorName}`,
+        body: 'The manifest was re-coded. At Scale 4, settle a fresh jettisoned unreserved cargo pod in the ring at 8 WU/s or less. Buy or mine cargo if needed; the delivered alloys are gone.',
+        meta: 'Scale 4',
+      };
+      const completed = story.campaign47a?.stepProgress?.['1']?.completed;
+      if (Array.isArray(completed) && completed.length) return null;
+      if ((state?.missions?.active || []).some((mission) => mission?.status === 'active'
+          && mission.storyTag === 'campaign47a:b1:alloy_run')) return null;
       return {
         tone: 'primary',
         label: 'CONTRACT',
-        title: 'Take a haul',
-        body: 'Pick a low-risk cargo or trade contract from a station board, then track it before undocking.',
-        meta: 'Trade',
+        title: 'Weigh-In · sealed alloy delivery',
+        body: 'At Helios, take Weigh-In from Missions. Deliver the preloaded alloys to Tethys and compare the manifest.',
+        meta: 'Helios board',
       };
+    }
     case 2:
       return {
         tone: 'primary',
