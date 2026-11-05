@@ -23,6 +23,7 @@ reviewer agreement does not itself prove correctness, literal perfection or mark
 | [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md) | 2026-10-29 whole-game integration coverage, repairs, current verification limits and final review scope |
 | [`STUDIO.md`](./STUDIO.md) | Controller, departments, asset processing, worker handoffs and current execution capacity |
 | [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
+| [`swarm/`](./swarm/README.md) | **owner priority 2026-11-05: SWARM** — the vision, configuration audit and plans S1–S16 for Crucible Swarm (look and feel; supersedes queued Lane 2 Swarm breadth) |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
 | [`LANE_3_WORLD_GLASS_HOUSE.md`](./LANE_3_WORLD_GLASS_HOUSE.md) | medium lane: Adventure world, economy, story, every 2D screen and the HUD, audio, and the document razor |
