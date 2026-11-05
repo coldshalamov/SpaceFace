@@ -18,7 +18,7 @@ import { createCounterweightCircuitSystem } from '../src/features/counterweightC
 import { venueAnchorGlobal, venueGlobalPos } from '../src/features/counterweightCircuit/physical.js';
 import { COUNTERWEIGHT_EVENT_BY_ID, VENUE_SECTOR_ID } from '../src/features/counterweightCircuit/definition.js';
 import { ghostPoseAt } from '../src/features/counterweightCircuit/ghost.js';
-import { freshEventRecord } from '../src/features/counterweightCircuit/scoring.js';
+import { freshEventRecord, applyResultToRecord } from '../src/features/counterweightCircuit/scoring.js';
 
 let previousFlags;
 test.before(() => { previousFlags = snapshotFeatureMaps(); applyFeatureConfigToMaps(PRODUCTION_FEATURES); });
@@ -273,11 +273,85 @@ test('an away-from-registrar result remains readable and can be dismissed', asyn
   owner._cancelAttempt('cancelled'); tick(2);
   let offer = s.counterweightCircuitOffer;
   assert.equal(offer.id, 'counterweight:result');
-  sim.bus.emit('counterweightCircuit:action', { action: 'menu', offerId: offer.id, generation: offer.generation });
+  sim.bus.emit('counterweightCircuit:action', { action: 'events', offerId: offer.id, generation: offer.generation });
   offer = s.counterweightCircuitOffer;
   assert.match(offer.detail, /Return to the registrar/);
   sim.bus.emit('counterweightCircuit:action', { action: 'close', offerId: offer.id, generation: offer.generation });
   tick(2); assert.equal(s.counterweightCircuitOffer, null);
+});
+
+test('settlement snapshots prior records once and review follows the registrar gate', async () => {
+  const cases = [
+    { name: 'first', prior: null, completions: 0, expected: null, time: 70 },
+    { name: 'personal best', prior: 80, completions: 1, expected: 80, time: 60 },
+    { name: 'slower practice', prior: 50, completions: 1, expected: 50, time: 70, practice: true },
+    { name: 'legacy missing best', prior: null, completions: 1, expected: undefined, time: 65 },
+    { name: 'condition cap', prior: 80, completions: 1, expected: 80, time: 70, eventId: 'fragile_freight', condition: 0.7 },
+  ];
+  for (const c of cases) {
+    const { s, sim, owner, tick, row, player, anchor, acceptPresentation } = await fixture();
+    const eventId = c.eventId || 'soft_berth';
+    const rec = row().records[eventId] = { ...freshEventRecord(), completions: c.completions, bestTimeS: c.prior };
+    assert.equal(owner._startAttempt(eventId, c.practice === true), true, c.name);
+    acceptPresentation();
+    const live = owner._attempt();
+    // Exercise the real FSM -> runtime settlement seam without claiming a flown course.
+    live.fsm.phase = 'running'; live.fsm.legIndex = live.def.legs.length;
+    live.fsm.armedAt = s.simTime + DT - c.time;
+    if (c.condition != null) {
+      const pod = live.cohort.get('pod'); pod.hull = pod.hullMax * c.condition;
+    }
+    tick(1);
+    const result = row().lastResult;
+    assert.equal(result.outcome, 'complete', c.name);
+    assert.equal(result.previousBestTimeS, c.expected, c.name);
+    assert.equal(rec.completions, c.completions + 1, c.name);
+    if (c.condition != null) assert.equal(result.reason, 'pod_damage');
+    if (c.practice) assert.equal(result.rewardCr, undefined);
+    const before = rec.completions;
+    assert.equal(applyResultToRecord(rec, live.def, live.fsm).result, result);
+    assert.equal(rec.completions, before, 'duplicate settlement cannot update the record');
+    const saved = owner.serialize();
+    owner.deserialize(saved);
+    assert.equal(row().lastResult.previousBestTimeS, c.expected, 'receipt survives restore');
+    assert.equal(row().records[eventId].lastResult.previousBestTimeS, c.expected);
+    if (c.name === 'first') {
+      const offer = s.counterweightCircuitOffer;
+      assert.ok(offer.choices.some(choice => choice.id === 'preview:soft_berth'));
+      sim.bus.emit('counterweightCircuit:action', { action: 'preview', eventId: 'soft_berth', offerId: offer.id, generation: offer.generation });
+      assert.equal(s.counterweightCircuitOffer.id, 'counterweight:preview:soft_berth');
+      sim.bus.emit('counterweightCircuit:action', { action: 'preview', eventId: 'soft_berth', offerId: offer.id, generation: offer.generation });
+      assert.equal(s.counterweightCircuitOffer.id, 'counterweight:preview:soft_berth', 'stale result cannot act');
+    }
+    if (c.practice) {
+      // A result offered in range may become stale as the pilot flies away.
+      const offer = s.counterweightCircuitOffer;
+      player.pos.set(anchor.x + 600, 0, anchor.z);
+      sim.bus.emit('counterweightCircuit:action', { action: 'preview', eventId, offerId: offer.id, generation: offer.generation });
+      assert.equal(s.counterweightCircuitOffer.id, 'counterweight:result');
+      assert.match(s.counterweightCircuitOffer.detail, /Return to the registrar/);
+      assert.ok(!s.counterweightCircuitOffer.choices.some(choice => choice.id.startsWith('preview:')));
+      tick(1);
+      assert.equal(s.counterweightCircuitOffer.id, 'counterweight:result');
+      player.pos.set(anchor.x + 40, 0, anchor.z); tick(1);
+      assert.ok(s.counterweightCircuitOffer.choices.some(choice => choice.id === `preview:${eventId}`));
+    }
+  }
+});
+
+test('a real failed FSM result does not manufacture a prior-best comparison', async () => {
+  const { s, owner, tick, row, acceptPresentation } = await fixture();
+  row().records.soft_berth = { ...freshEventRecord(), completions: 1, bestTimeS: 42 };
+  assert.equal(owner._startAttempt('soft_berth', false), true);
+  acceptPresentation();
+  const live = owner._attempt();
+  live.fsm.phase = 'running'; live.fsm.armedAt = s.simTime;
+  live.cohort.get('load').hull = 0;
+  tick(1);
+  assert.equal(row().lastResult.outcome, 'failed');
+  assert.equal(row().lastResult.reason, 'load_destroyed');
+  assert.equal('previousBestTimeS' in row().lastResult, false);
+  assert.equal(row().records.soft_berth.bestTimeS, 42);
 });
 
 test('economy settles only the owner-authorized award and makes reentrant replay harmless', async () => {
