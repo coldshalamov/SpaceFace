@@ -290,6 +290,35 @@ Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/gu
 all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
 left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
 before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
+Inbox (Lane 2, noticed 2026-11-05): src/systems/swarmJuice.js `_onKilled` reads
+`payload.provenance?.actorId` as a fallback, but no `entity:killed` emitter sets
+`provenance` (combat/damage/kernel/careerCohorts all carry killerId) — a dead fallback line.
+Sweep it with the next touching of that file; do NOT substitute impactorId (scoring semantic).
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-reinforce-tell (WF-02/WF-14): a mid-wave reinforcement names its count and bearing while
+  the pack is still on approach — "Three more inbound — out of the south" — one line per 8 s
+  gap, max 2/wave, inside the per-wave budget, never a pill (85a4c46e01e1).
+- inf-hive-tide-close (WF-19 repair): kill every spawn sac and the emptied Hive room stops
+  paying crowd cost for nobody — the done gate reads the tide's heartbeat instead of a budget
+  zero that kept full per-tick machinery on zero bodies until the wave refit (fc4cffbb1769).
+- inf-brood-grief (WF-16 integration): a kill into the swarm is a kill the room notices — the
+  authored BLOOM cascade finally runs: filament flinch recoils 26 wu/s along the web, a
+  credited kill arms neighbors inside the 220 wu reach and each bends toward its corpse for
+  5 s; LED-drawn windups kill lateral velocity at the stamp so the tells stay true under any
+  shove. Panic/aggression remain authored-but-unwired, named next steps (5ae61ff7f7ec).
+Resolved investigation: the named tether-latched-pair-in-a-field-zone A/B is HONEST —
+512c12e88b49, test/inf-tether-field-ab.test.mjs: fixed-seed lab on the real SG-02 rope joint,
+end-COM velocity = v0 + ΣJ/M exactly, rope held inside its envelope, tension reads the
+differential pull, same-seed replay identical. Candidate (not claim) from the free arm: a
+light hull slung into a heavy one can end ticks interpenetrated with ball colliders —
+production hulls use compound proxies; contact-domain owner should look.
+Verified already deep, wave 7: boss-phase honesty (capitalBossScore stamps behavior per
+phase), brood death residue (six authored remains families spawn real latched bodies),
+aftershock honesty (chunks carry parent velocity + angular momentum), pursuit-leash break
+(mercy stand-down + patrol intervention + staggered despawn receipts). Candidate wires for a
+future tell: swarm:hiveSacKilled / swarm:broodReserve have no production consumer.
 
 ## Traps
 

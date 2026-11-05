@@ -132,32 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-weep-dry",
-      "date": "2026-10-25",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "An empty tank on a cracked hull does not seal the weep.",
-      "fingerprint": "verb=hold,subject=weep,sector=hull,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "88b1ef869b9d86ea8e99fa29098b6d57858da8bc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-nozzle-light",
-      "date": "2026-10-25",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The warm light stays behind the nozzles when the ship turns.",
-      "fingerprint": "verb=sit,subject=cooldown-light,sector=nozzle,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "3b512c0b15f00f62238d4bccb4b03c1f4a3d1c10",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-printer-follow",
       "date": "2026-10-25",
       "wf": "WF-17",
@@ -1689,6 +1663,32 @@
       "references": [],
       "integration": "live",
       "commit": "347bd0cf962f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-hive-tide-close",
+      "date": "2026-11-05",
+      "wf": "WF-19",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Kill every sac before it births and the room stops paying crowd cost for nobody: the cut tide is named, the done gate closes, and the emptied Hive rests instead of grinding the swarm engine to the refit.",
+      "fingerprint": "verb=repair,subject=hive-sac-tide-gate,sector=swarm-hive,domain=wf-19",
+      "references": [],
+      "integration": "live",
+      "commit": "fc4cffbb1769",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-brood-grief",
+      "date": "2026-11-05",
+      "wf": "WF-16",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "A kill into the swarm is a kill the room notices: the linked web flinches and the neighbors sag toward the corpse - the authored BLOOM cascade finally runs instead of sitting dormant in data.",
+      "fingerprint": "verb=wire,subject=brood-cascade-grief,sector=swarm-flock,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "5ae61ff7f7ec",
       "verification": "focused_green"
     }
   ],
