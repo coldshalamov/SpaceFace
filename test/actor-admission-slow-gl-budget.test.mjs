@@ -29,13 +29,16 @@ test('actor admission deadline: slow GL that keeps linking slides one window at 
   assert.equal(e.extendedMs, 40000);
 });
 
-test('renderer first-flight actor admission uses the progress deadline for its checks, timer and first-picture remainder', () => {
+test('renderer first-flight actor admission uses the progress deadline for its checks and timer', () => {
   const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const start = src.indexOf('const actorBudget = createProgressDeadline(');
   assert.ok(start > 0);
   const block = src.slice(start, src.indexOf('recordOpeningCookStep(state.render, mobileFirstPicture', start));
   assert.match(block, /if \(!actorBudget\.check\(\)\)/);
   assert.match(block, /if \(actorBudget\.check\(\)\) \{ arm\(\); return; \}/);
-  assert.match(block, /timeoutMs: Math\.max\(1, actorBudget\.remainingMs\(\)\)/);
+  // First-picture seal keeps its own openingGateBudgetMs() floor (same as the cook barrier)
+  // so a spent actor remainder cannot starve the cohort into a ~1s GPU_RESIDENCY refusal.
+  assert.match(block, /timeoutMs: Math\.max\(openingGateBudgetMs\(\), Math\.max\(1, actorBudget\.remainingMs\(\)\)\)/);
+  assert.doesNotMatch(block, /timeoutMs: Math\.max\(1, actorBudget\.remainingMs\(\)\),/);
   assert.doesNotMatch(block, /performance\.now\(\) - exactStarted >= openingGateBudgetMs\(\)/);
 });
