@@ -1868,7 +1868,19 @@ export const vergeCourt = {
   },
 
   update(dt, state) {
-    ensureVergeState(state);
+    const v = ensureVergeState(state);
+    // Keep border posture current even without a machine. Dormant arenas need
+    // no repeated machine/evidence walks; live authority and pending work do.
+    if (state.run?.kind === 'survival' && !v.court && !v.violations.length
+        && !v.lawZones.length && !v.permit && !v.escort && !v.pursuit
+        && !v.returns.length && v.scans.pendingPatrol == null
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (vergeMachineKind(e) != null || e.data?.vergeCheckpoint || e.data?.permitIssuer === true
+            || typeof e.data?.vergeDirective === 'string'
+            || e.data?.typeId === VERGE_LINE_TRIAL.fragmentTypeId))) {
+      this._tickTreatment(state);
+      return;
+    }
     this._tickDirectives(state, dt);
     this._tickMeasureEngines(state);
     this._tickAppeal(state);

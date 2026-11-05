@@ -2319,7 +2319,17 @@ export const frontierHomesteads = {
   },
 
   update(dt, state) {
-    ensureFrontierState(state);
+    const f = ensureFrontierState(state);
+    // An arena has no ambient homestead/site business. Keep every existing
+    // board obligation and physical weld/frame path on the normal update.
+    if (state.run?.kind === 'survival' && !f.barnAttempt && !f.deeds && !f.nextDebtAt
+        && !f.homesteads.length && !f.supplyRuns.length && !f.leads.length
+        && !f.debts.length && !f.disputes.length && !f.calls.length && !f.vendettas.length
+        && !Object.keys(f.sites).length
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (e.data?.lineHeadId === FRONTIER_WELD_HEAD.id || e.data?.weldedTo != null
+            || e.data?.homesteadFrame === true || e.data?.homestead === true
+            || e.data?.frontierRaider === true))) return;
     this._tickBarnAttempt(state);
     this._tickSiteSeeding(state);
     this._tickRaising(state, dt);
