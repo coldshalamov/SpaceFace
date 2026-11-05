@@ -2420,10 +2420,20 @@ export const trafficCausalChainOps = {
       if (adoptedScavenger && (context.entry.job.payload?.extracted !== true
         || !this._salvorOwnsExtractedManifest(context.entry.job, manifest))) return false;
       if (context.entry.job.payload?.salvageIntakeWait?.status === 'awaiting-intake') {
-        // General-salvor maintenance can release the physical hold after its canonical
-        // receiver quote becomes eligible. Retire the matching wait too, including
-        // legacy receipt recovery; an actually held remainder still cannot resubmit.
-        if (manifest.salvageIntakeHeld) return false;
+        // A refused lot stays parked until a yard that can take it is presented. Direct
+        // unload at an eligible yard (Forge retry after an unsupported refuse, or a
+        // remainder after partial intake) must clear the hold and settle — the same
+        // gate maintenance uses via quoteNpcSalvageIntake. Same-yard refuse loops
+        // still return false while the quote stays ineligible.
+        if (manifest.salvageIntakeHeld) {
+          const yardId = destination.slice(5);
+          const economy = this._registry?.get?.('economy');
+          const quote = typeof economy?.quoteNpcSalvageIntake === 'function'
+            ? economy.quoteNpcSalvageIntake(yardId, manifest.lines)
+            : null;
+          if (!quote?.ok) return false;
+          delete manifest.salvageIntakeHeld;
+        }
         delete context.entry.job.payload.salvageIntakeWait;
         delete context.entry._salvorIntakeProbe;
       }
