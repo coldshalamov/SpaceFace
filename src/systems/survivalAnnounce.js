@@ -408,6 +408,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
+    this._unsubs.push(this.bus.on('swarm:hiveSacKilled', (p) => this._onHiveSacKilled(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -457,6 +458,7 @@ export const survivalAnnounce = {
     this._reinforceAt = 0;         // simTime the last reinforcement tell spoke
     this._reinforceLines = 0;      // reinforcement arrival lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
+    this._sacSpoke = false;        // the Hive sac lesson, once per run
     this._firstCourtRock = null;
   },
 
@@ -700,6 +702,26 @@ export const survivalAnnounce = {
     const spoke = this._say('objective', `survival:w${wave}:stall`,
       'The room breathes again — the pack is inbound.', 5);
     if (spoke) this._stallSpokeWave = wave;
+  },
+
+  /**
+   * The Hive's own counter, named the first time it works. A burst sac receipts on the bus
+   * (`swarm:hiveSacKilled`) and the brood it was feeding answer through the grief cascade —
+   * but nothing TOLD the player what the burst took: the tide that sac was feeding dies with
+   * it, and the sacs are the room's win lever (burst them all and the wave runs dry). Once
+   * per run, marked on announce (the affix law) so a wave whose budget is spent defers the
+   * lesson to the next burst instead of losing it. 'objective' like the stall release — a
+   * state of the room, not a danger beat. Later sacs stay silent: the lesson belonged to the
+   * first burst, not a per-sac chorus.
+   */
+  _onHiveSacKilled(payload) {
+    if (this._muted || this._sacSpoke) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    const spoke = this._say('objective', `hive-sac:w${wave}`,
+      'The sac bursts — the tide it was feeding dies with it.', 4);
+    if (spoke) this._sacSpoke = true;
   },
 
   /**

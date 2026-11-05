@@ -380,8 +380,11 @@ export function createBroodEngine(deps = {}) {
   // integration (semi-implicit Euler, family speed cap, windup hold), so it can never
   // outrun the room's own levers. The filament flinch — "a node's death pushes linked
   // members outward this hard" — rides the same death seam as an additive Δv, the exact
-  // shape the Domino shove lands through. Panic scatter/knot and the aggression cascade
-  // stay unwired (authored, named next steps); nothing here invents numbers.
+  // shape the Domino shove lands through. A Hive node's death answers through the same
+  // loop (BROOD_CASCADE_EVENTS names `swarm:hiveSacKilled` a cascade seam; the arena calls
+  // hiveSacFell at the corpse, the authored "a Hive node dying" trigger). Panic
+  // scatter/knot and the aggression cascade stay unwired (authored, named next steps);
+  // nothing here invents numbers.
   const griefUntil = new Float64Array(CAP);
   const griefX = new Float32Array(CAP);
   const griefZ = new Float32Array(CAP);
@@ -3451,15 +3454,25 @@ export function createBroodEngine(deps = {}) {
   // the freshest corpse wins a mourner that was already grieving an older one, the
   // same last-write the Domino ledger keeps. The victim itself is already dead.
   function armGrief(victim, now) {
+    armGriefAt(px[victim], pz[victim], now);
+  }
+
+  // The position form of the same law. A Hive node is not a brood cell — the sac is an
+  // entity in the room (the arena's own buffers), so its death cannot ride the credited
+  // cell path above. BROOD_CASCADE_EVENTS names its receipt (`swarm:hiveSacKilled`) a
+  // cascade seam, and the authored grief trigger says "a Hive node dying clusters linked
+  // members around the body" — so the arena answers it here, at the corpse's own
+  // coordinates, with the identical radius/window/last-write law.
+  function armGriefAt(x, z, now) {
     const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
     for (let j = 0; j < CAP; j++) {
       if (!alive[j]) continue;
-      const dx = px[j] - px[victim];
-      const dz = pz[j] - pz[victim];
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
       if (dx * dx + dz * dz > cr2) continue;
       griefUntil[j] = now + BROOD_GRIEF_S;
-      griefX[j] = px[victim];
-      griefZ[j] = pz[victim];
+      griefX[j] = x;
+      griefZ[j] = z;
     }
   }
 
@@ -3687,6 +3700,20 @@ export function createBroodEngine(deps = {}) {
     return born;
   }
 
+  // B4 — the room answers a sac's death: the authored grief loop arms at the corpse. A sac
+  // is the Hive node the cascade contract names (BROOD_CASCADE_EVENTS); the brood it was
+  // feeding mourn around the burst exactly as they mourn a credited cell. Returns the
+  // mourners armed (0 when the burst fell where no living brood could hear it — an
+  // honest no-op, not a pretend room).
+  function hiveSacFell(x, z) {
+    if (!hiveMode) return 0;
+    const now = finite(getState()?.simTime);
+    armGriefAt(finite(x), finite(z), now);
+    const mourners = griefMournerCount(now);
+    if (mourners > 0) publish();
+    return mourners;
+  }
+
   // The tide is deliverable while some live unspent sac still owes a birth: one heartbeat
   // (successful sacRelease) within the last SAC_TIDE_SILENCE_S, or a tide fresh from install.
   function sacTidePendingAt(now) {
@@ -3865,9 +3892,11 @@ export function createBroodEngine(deps = {}) {
     queryNearestDirectTarget,
     commitProjectileHit,
     damageSegment,
-    // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
+    // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid, and a sac's
+    // death is answered by the authored grief loop at the corpse (BROOD_CASCADE_EVENTS).
     sacRelease,
     hivePool,
+    hiveSacFell,
     // Row-270 — the Domino shove lands here through the arena, never across the buffers' owner.
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */

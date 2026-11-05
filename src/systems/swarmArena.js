@@ -2176,8 +2176,13 @@ export const swarmArena = {
       const entity = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(id) : null;
       if (!entity || entity.alive === false) {
-        // The burst: a sac does not die quietly — its pool stays where it fell.
-        if (brood) brood.hivePool(sac.x, sac.z, 6);
+        // The burst: a sac does not die quietly — its pool stays where it fell, and the
+        // brood it was feeding answer the Hive node's death through the authored grief
+        // loop (BROOD_CASCADE_EVENTS names this receipt a cascade seam).
+        if (brood) {
+          brood.hivePool(sac.x, sac.z, 6);
+          brood.hiveSacFell(sac.x, sac.z);
+        }
         this._emit('swarm:hiveSacKilled', { wave: hive.wave, sacId: id });
         hive.sacs.delete(id);
         continue;
