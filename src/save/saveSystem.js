@@ -6024,14 +6024,20 @@ export const save = {
     return data || null;
   },
 
-  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
-  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
-  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
-  // failure so the caller can run its identical sync tail.
+  // The slot fill's card payload — canonical gzip decode + small projection only (no
+  // migration/normalize: the portrait reads the stored shape verbatim). The parse normally
+  // runs on the save worker; an unavailable/failed worker uses the same decoder locally.
+  // World tables and thumbnail stay off postMessage; malformed data resolves null.
   peekSaveCardData(raw) {
     if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    const readWithoutWorker = async () => {
+      try {
+        const decoded = await decodeSaveEnvelopeText(raw);
+        return decoded.ok ? cardDataFromEnvelope(JSON.parse(decoded.text)) : null;
+      } catch (_) { return null; }
+    };
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
-      return Promise.resolve(null);
+      return readWithoutWorker();
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -6048,7 +6054,7 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
       ? prepared.cardData
-      : null));
+      : readWithoutWorker()));
   },
 
   _prepareEnvelopeStringAsync(raw) {
