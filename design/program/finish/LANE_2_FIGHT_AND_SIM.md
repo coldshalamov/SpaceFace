@@ -293,7 +293,10 @@ before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at
 Inbox (Lane 2, noticed 2026-11-05): src/systems/swarmJuice.js `_onKilled` reads
 `payload.provenance?.actorId` as a fallback, but no `entity:killed` emitter sets
 `provenance` (combat/damage/kernel/careerCohorts all carry killerId) — a dead fallback line.
-Sweep it with the next touching of that file; do NOT substitute impactorId (scoring semantic).
+SWEPT 2026-11-05 (support commit, sha in the body): re-verified every `entity:killed`
+emitter (combat/damage/kernel/careerCohorts/tallyho carry killerId; survivalWave's bare
+{id,tick} receipt carries neither field, so the fallback never answered it either) and the
+dead read is gone; impactorId was not substituted.
 
 Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
 `design/program/inference-memory.json`):
