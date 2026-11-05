@@ -358,6 +358,7 @@ import {
 } from '../story/campaign47a/index.js';
 // Row 413 (AL-MACH-2): method groups split out verbatim into sibling ops modules and spread back
 // onto the missions object — `this` still binds to the system, so behavior is byte-identical.
+import { localizeText } from '../localization/sourceText.js';
 import { missionBoardOps } from './missionBoardOps.js';
 import { missionObjectiveOps } from './missionObjectiveOps.js';
 import { missionSpawningOps } from './missionSpawningOps.js';
@@ -1692,6 +1693,19 @@ export const missions = {
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('lanternWard:serviceCommitted', (p) => this.settleLanternWard(p?.receiptId));
+    // The standing move is the world's answer to a finished job. factions stays the sole rep
+    // writer; this capture reads its `complete_faction_mission` receipt — applied after clamps,
+    // diminishing, and the run seal — so the completion line can NAME the move only when the
+    // book actually moved. Never a second rep computation here.
+    this._onCompletionRepApplied = (p) => {
+      if (p && p.reason === 'complete_faction_mission') {
+        this._completionRepReceipt = {
+          factionId: p.factionId, delta: Number(p.delta) || 0,
+          tick: this.state && Number.isFinite(this.state.tick) ? this.state.tick : null,
+        };
+      }
+    };
+    bus.on('faction:repChanged', this._onCompletionRepApplied);
     bus.on('save:loaded', () => {
       // Persistent trains must rebind while the restore's identity window is open,
       // even if 3/3 couplers are already complete or the player saved in another sector.
@@ -5417,12 +5431,54 @@ export const missions = {
       text,
       category: success ? 'personal' : 'trap',
       ttl: success ? 8 : 7,
-      note: success ? (zeroPayLandmark
-        ? 'Field record filed; no credits issued.'
-        : m.storyTag === CONTRACT_47A_B0_TAG
-          ? contract47aBalanceNote(rewardCr)
-          : this._missionPaydayNote(m, rewardCr, settlement)) : null,
+      note: success ? (this._missionStandingClause(settlement)
+        + (zeroPayLandmark
+          ? 'Field record filed; no credits issued.'
+          : m.storyTag === CONTRACT_47A_B0_TAG
+            ? contract47aBalanceNote(rewardCr)
+            : this._missionPaydayNote(m, rewardCr, settlement))) : null,
     });
+  },
+
+  // The payer's own acknowledgment that the house book moved for this job. Read from the
+  // settlement row `_completeMission` captured off factions' receipt; the client says it, the
+  // standing owner priced it, and a job with no applied move says nothing at all.
+  _missionStandingClause(settlement = {}) {
+    const applied = settlement && settlement.standingApplied;
+    if (!applied || !(applied.delta > 0) || !applied.label) return '';
+    return `${localizeText('+{delta} {label} standing.', {
+      delta: applied.delta, label: applied.label,
+    })} `;
+  },
+
+  // The toast clause for a proved standing move — `· +15 MERIDIAN standing` — and nothing
+  // when no move was applied. Through the localization pipeline with placeholder parity.
+  _completionStandingSuffix(standingApplied) {
+    return standingApplied && standingApplied.delta > 0 && standingApplied.label
+      ? localizeText(' · +{delta} {label} standing', {
+        delta: standingApplied.delta, label: standingApplied.label,
+      })
+      : '';
+  },
+
+  /**
+   * Consume factions' completion standing receipt for this contract, captured by the init
+   * listener on `faction:repChanged{reason:'complete_faction_mission'}`. Returns the applied
+   * row ({delta, label}) only when the receipt is from this tick and this contract's faction —
+   * otherwise null. The delta is factions' own applied number (after clamps, diminishing and
+   * the run seal); this helper never computes rep.
+   */
+  _takeCompletionRepApplied(m) {
+    const receipt = this._completionRepReceipt;
+    this._completionRepReceipt = null;
+    if (!receipt || !m || !(receipt.delta > 0)) return null;
+    if (m.factionId && receipt.factionId && receipt.factionId !== m.factionId) return null;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : null;
+    if (receipt.tick != null && tick != null && receipt.tick !== tick) return null;
+    const meta = FACTION_BY_ID.get(receipt.factionId);
+    const label = String((meta && (meta.short || meta.name)) || receipt.factionId || '').toUpperCase();
+    if (!label) return null;
+    return { delta: receipt.delta, label };
   },
 
   /**
@@ -5881,8 +5937,12 @@ export const missions = {
     }
 
     // ── optional presentation: may fail without costing the settled contract anything ──
+    // The standing receipt rode the `mission:completed` emit above (factions listens on the
+    // same synchronous bus); read it here so both the client's debrief and the toast can name it.
+    const standingApplied = this._takeCompletionRepApplied(m);
     this._settleOptional('completion debrief', () => this._emitMissionDebrief(m, 'completed', null, {
       rewardCr: displayRewardCr,
+      standingApplied,
       // RC-467: the premium and the deposit are itemized from the settlement already computed
       // above — a gambit contract only, so every other receipt note keeps its shipped shape.
       ...(clauseGambitMeta(m)
@@ -5893,13 +5953,14 @@ export const missions = {
         : {}),
     }));
     const rpSuffix = researchPoints > 0 ? ` +${researchPoints} RP` : '';
+    const standingSuffix = this._completionStandingSuffix(standingApplied);
     // 47-A: the PAYMENT WITHHELD beat above is true of the contract; the credits that land are
     // the balance posting. Say both so the toast never reads as the withheld pay arriving.
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
-      ? `Mission complete: ${m.title} — field record filed; no credits issued.`
+      ? `Mission complete: ${m.title} — field record filed; no credits issued.${standingSuffix}`
       : m.storyTag === CONTRACT_47A_B0_TAG
-        ? `Mission complete: ${m.title} — contract pay withheld; +${displayRewardCr} cr posted for balance${rpSuffix}`
-        : `Mission complete: ${m.title} +${displayRewardCr} cr${rpSuffix}`;
+        ? `Mission complete: ${m.title} — contract pay withheld; +${displayRewardCr} cr posted for balance${rpSuffix}${standingSuffix}`
+        : `Mission complete: ${m.title} +${displayRewardCr} cr${rpSuffix}${standingSuffix}`;
     this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
     // chord + music duck fire from audioSystem's mission:completed subscription). 'branch' lane
