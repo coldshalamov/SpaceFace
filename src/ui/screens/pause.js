@@ -203,7 +203,7 @@ function missionNextStep(m) {
     case 'recon_scan':
       return 'Next: follow tracked nav and scan each marked site.';
     default:
-      return 'Next: follow the tracked objective. Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
+      return 'Next: follow the tracked objective. Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' has the details.';
   }
 }
 
@@ -234,6 +234,15 @@ function routeCommitment(state, wp) {
 
 /** PRO-05 — Local Map copy with placeholders. en-US matches the old concatenation. */
 export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
+  if (isPhoneLayout()) {
+    return {
+      label: localizeText('Local Map'),
+      hint: inThisSystem
+        ? localizeText('Open Local Map for the live marker in this system.')
+        : localizeText('Open Local Map for the live marker{place}; no jump route is required.', { place }),
+      title: 'Open Local Map',
+    };
+  }
   const label = localizeText('Local Map ({key})', { key });
   const hint = inThisSystem
     ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
@@ -272,11 +281,12 @@ export function pauseMapAction(state) {
     };
   }
   const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
-  const hint = 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.';
+  const mapLabel = 'Star Map' + pauseKeyHint(BINDINGS.starmap);
+  const hint = 'Open ' + mapLabel + ' to review the inter-system route' + target + ' before committing a jump.';
   // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
   const handoff = mapHandoffAction({
     focus: MAP_FOCUS.GALAXY,
-    label: 'Star Map (' + BINDINGS.starmap.label + ')',
+    label: mapLabel,
     title: 'Open Star Map',
     body: hint,
     sectorId: wp.sectorId || null,
@@ -316,6 +326,10 @@ function routeNextText(mapAction) {
     return mapAction.hint + ' Resume and fly the marker in-system.';
   }
   return 'resume and follow the current marker; ' + mapAction.hint;
+}
+
+function pauseKeyHint(binding) {
+  return isPhoneLayout() ? '' : ' (' + binding.label + ')';
 }
 
 function slotLabel(id) {
@@ -366,9 +380,10 @@ export function saveLine(state) {
     return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
   const everyS = autosaveIntervalOf(state);
+  const saveControls = isPhoneLayout() ? 'Save' : 'Save or F5';
   const autosaveSentence = everyS > 0
-    ? 'Use Save or F5 before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
-    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.';
+    ? 'Use ' + saveControls + ' before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
+    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use ' + saveControls + ' before quitting.';
   if (slot) {
     return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
   }
@@ -470,7 +485,7 @@ export function pauseStatusLines(state) {
       objectiveMention: missionId(candidate)
         ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + ') and Track Nav on a contract.',
+      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and Track Nav on a contract.',
       save: saveLine(state),
     };
   }
