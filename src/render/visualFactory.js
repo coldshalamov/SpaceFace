@@ -78,6 +78,7 @@ import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
 import { isSurvivorPodEntity, MAYDAY_LAMP_COLOR, MAYDAY_LAMP_CORE_COLOR } from './survivorPodVisual.js';
+import { worthTierFor, worthReadFor } from './pickupWorthRead.js';
 import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
@@ -3818,6 +3819,11 @@ function buildPickup(e) {
   // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
   // that is not a known commodity keep the original octahedron.
   const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
+  // inf-pod-worth: the drop's light answers what the lot is worth (pickupWorthRead.js reads
+  // commodityId + amount off the sim's own data). Junk rests dimmer, plain keeps today's read,
+  // rich burns hotter and builds the double band below.
+  const worthTier = worthTierFor(e && e.data);
+  const worth = worthReadFor(worthTier);
   const gem = new THREE.Mesh(
     shapeName
       ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
@@ -3847,6 +3853,26 @@ function buildPickup(e) {
   g.userData.pickupHalo = halo;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // The worth tier rides userData so the pose pass (pickupMotionPresentation) can grade the
+  // ring's floor/kick without re-reading the price table every frame.
+  g.userData.worthTier = worthTier;
+  // Rich lots build the double band: a second, tighter ring the eye reads as "that one"
+  // across the field. Posed by pickupMotionPresentation against the outer ring's clock.
+  if (worth.doubleBand) {
+    const band = new THREE.Mesh(
+      getGeometry('pickup:worthband', () => new THREE.TorusGeometry(0.95, 0.03, 6, 24)),
+      getMaterial(`pickupworthband:${color}`, () => new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color), transparent: true, opacity: 0.4,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })),
+    );
+    band.material = band.material.clone();
+    band.scale.setScalar(R);
+    band.userData.baseScale = R;
+    band.frustumCulled = false;
+    g.add(band);
+    g.userData.worthBand = band;
+  }
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
   // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
@@ -3856,10 +3882,11 @@ function buildPickup(e) {
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
   // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
   // The breathe carries farther than it used to: at flight-camera range the old ±28% never
-  // separated a live drop from dark scenery.
+  // separated a live drop from dark scenery. The worth read scales the heat: junk rests dim,
+  // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.material.emissiveIntensity = 1.6 * (1 + 0.45 * Math.sin(t * 3 + ph));
+    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * (1 + 0.45 * Math.sin(t * 3 + ph));
   };
   return g;
 }
