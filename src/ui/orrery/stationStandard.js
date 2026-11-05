@@ -173,6 +173,17 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important; padding-bottom:2px !important; }
 }
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  /* The active handoff needs its complete instruction above the tab body. Keep the compact
+     Market and Shipworks allocations below; other tabs can use the available head room. */
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) {
+    grid-template-rows:minmax(0, 40vh) minmax(200px, 1fr) max-content !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth.dp-frame__head {
+    max-height:40vh !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth > .sxb-signs {
+    padding-top:0 !important;
+  }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
     min-height:0 !important; max-height:145px !important; overflow-y:auto !important; overflow-x:hidden !important;
@@ -231,6 +242,22 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
   ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  /* The crown is ~587px here: the five readings fit ONE row (hull, fuel, hold, ledger, munitions), so FUEL, HOLD and
+     MUNITIONS stand in the head's visible band. In the two-row grid above they sat on a second row under the head's
+     32vh scrollport (ships: 145px), so a player at 960x540 saw only the hull and ledger. Cell widths follow each
+     reading's own ink (label + figure, or the 92px Repair/Rearm key); 901-959 keeps the two rows, where five do not fit. */
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; }
+}
+
+/* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
+   ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
+   to 12px, the cells follow each reading's own ink, so FUEL, HOLD and MUNITIONS stand in the visible band. */
+@media (min-width:901px) and (max-width:959px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,91fr) minmax(0,85fr) minmax(0,83fr) minmax(0,125fr) minmax(0,125fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 5px !important; }
+  ${P} .sxb-crown .sxb-vital__head { column-gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
@@ -284,6 +311,32 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
   ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:3px !important; padding-right:3px !important; }
 }
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
+
+/* A short, narrow desktop window needs a bounded facility rail: otherwise its
+   last tabs run underneath the station's Comms, Help and Undock controls. 801–900 wide × 461–800 tall had no rule at all
+   (seven tabs ~790px against a 737px foot), so FACTIONS sat under COMMS · HELP and BAR · LEDGER under UNDOCK: it takes
+   the same two-row foot as the 460px-tall window, the rail on its own row and COMMS · HELP · UNDOCK under it. */
+@media (min-width:801px) and (max-width:900px) and (max-height:800px) {
+  ${P} .sxb-ops { flex-wrap:wrap !important; gap:2px 8px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; }
+  ${P} .sxb-ops .of-facility-rail :is(.sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { width:max-content !important; min-width:100% !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { flex-wrap:nowrap !important; gap:0 3px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:5px !important; padding-right:5px !important; }
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  ${P} .sxb-ops > .sx-comms { order:2 !important; flex:0 0 auto !important; flex-direction:row !important; gap:4px !important; margin:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; flex:0 0 auto !important; margin-left:auto !important; }
+}
+/* The 461–800 tall window cannot spare the 57px two-line UNDOCK on a row of its own: UNDOCK and its READY line sit side by
+   side and COMMS · HELP centre on them, so the second row is the keys' own 32px instead of ~57px under a 20px gap. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-ops > .sx-comms { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-launch__copy { flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+  /* the tabs' one-line gloss painted nothing here but its 26px of reserved padding still held a blank band under the keys, a gap above COMMS · HELP */
+  ${P} .sxb-ops .sx-tile__gloss { display:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { padding-top:0 !important; padding-bottom:0 !important; }
+}
 
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */

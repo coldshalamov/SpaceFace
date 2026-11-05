@@ -9,6 +9,7 @@ import {
   buildLocalizationInventory,
   renderGeneratedCatalog,
   renderGeneratedCatalogJson,
+  readGitLocalizationSource,
 } from './lib/localizationInventory.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,8 +20,11 @@ const RUNTIME_CATALOG_PATH = path.join(ROOT, 'src/localization/catalogs/en-US.ge
 const READINESS_PATH = path.join(ROOT, 'src/localization/catalogs/readiness.generated.js');
 const writeMode = process.argv.includes('--write');
 const checkMode = process.argv.includes('--check');
+const commitArgs = process.argv.filter(arg => arg.startsWith('--commit='));
 
 if (writeMode === checkMode) fail('choose exactly one mode: --write or --check');
+if (commitArgs.length > 1 || (commitArgs.length && !commitArgs[0].slice(9))) fail('provide one nonempty --commit=REF');
+if (commitArgs.length && process.argv.includes('--readiness-only')) fail('--commit cannot be combined with --readiness-only');
 
 function renderReadiness(payload) {
   const metadata = {
@@ -48,10 +52,14 @@ if (process.argv.includes('--readiness-only')) {
   process.exit(0);
 }
 
-const surfaces = await readJson(SURFACES_PATH, 'surface configuration');
-const exemptions = await readJson(EXEMPTIONS_PATH, 'exemption configuration');
-const first = await buildLocalizationInventory({ rootDir: ROOT, surfaces, exemptions });
-const second = await buildLocalizationInventory({ rootDir: ROOT, surfaces, exemptions });
+let frozen = null;
+try { if (commitArgs.length) frozen = readGitLocalizationSource(ROOT, commitArgs[0].slice(9)); }
+catch (error) { fail(`cannot read frozen source: ${error.message}`); }
+const surfaces = frozen?.surfaces || await readJson(SURFACES_PATH, 'surface configuration');
+const exemptions = frozen?.exemptions || await readJson(EXEMPTIONS_PATH, 'exemption configuration');
+const inventoryOptions = { rootDir: ROOT, surfaces, exemptions, sourceFiles: frozen?.sourceFiles || null };
+const first = await buildLocalizationInventory(inventoryOptions);
+const second = await buildLocalizationInventory(inventoryOptions);
 const rendered = renderGeneratedCatalog(first);
 const renderedAgain = renderGeneratedCatalog(second);
 const runtimeRendered = renderGeneratedCatalogJson(first);
@@ -100,6 +108,7 @@ if (writeMode) {
 console.log(JSON.stringify({
   ok: true,
   mode: writeMode ? 'write' : 'check',
+  ...(frozen ? { sourceCommit: frozen.commit } : {}),
   catalog: 'src/localization/catalogs/en-US.generated.js',
   runtimeCatalog: 'src/localization/catalogs/en-US.generated.json',
   digest: first.digest,

@@ -196,6 +196,11 @@ export function causalAftermath(causality, outcome, at = {}) {
     remedy: resolvedGrammar.remedy,
     status,
     ...(freight || {}),
+    // Keep the raid owner's earned escape fact on this existing cause. Missing/old causes
+    // remain uncredited; a generic 'defended' result never becomes personal gratitude.
+    ...(causality.shapeId === 'opening_hauler_raid' && result === 'defended'
+      && freight?.adoptedWorkingBarge === true && causality.resolutionMethod === 'physical_escape'
+      ? { resolutionMethod: 'physical_escape' } : {}),
     createdTick: Number.isFinite(at.tick) ? at.tick : 0,
     createdAt: Number.isFinite(at.t) ? at.t : 0,
     offerId: null,

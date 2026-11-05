@@ -1,3 +1,4 @@
+import { CINDERGLASS_JOB_COMBAT_PROFILE, CINDERGLASS_JOB_MOUNT_DEFINITION } from '../features/cinderglassJob/definition.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 import { LAST_ARGUMENT_SUBSYSTEMS, LAST_ARGUMENT_COMBAT_PROFILE } from './lastArgumentCombat.js';
 // SG-03 canonical combat grammar. Pure data: no DOM, renderer, wall clock, or runtime imports.
@@ -367,6 +368,7 @@ export const SUBSYSTEM_DEFS = Object.freeze([
 ]);
 
 export const ATTACHMENT_DEFS = Object.freeze([
+  CINDERGLASS_JOB_MOUNT_DEFINITION,
   {
     id: 'attachment_snarl', version: 1,
     sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
@@ -490,6 +492,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
+  CINDERGLASS_JOB_COMBAT_PROFILE,
   LAST_ARGUMENT_COMBAT_PROFILE,
   {
     id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],

@@ -8,12 +8,22 @@ references (a lane board names a build-map row; the row's prose in `build_map.md
 
 **Current execution.** The controller owns integration of the working tree, plans and open PRs. The latest owner direction calls for 5–10 useful GPT-6.1 Terra/Sol departments, using terminal workers alongside the three available native worker slots. Assign substantial, disjoint work and preserve concurrent edits under §5. Keep the owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work or another model.
 
+**Final release review, owner direction November4.** After finishing the product outcomes and
+incorporating the three additional commissions, obtain three successive independent subagent
+release-readiness approvals of the coherent candidate. Each reviewer must assess the actual
+player experience against this program, report concrete shortcomings, and withhold approval for
+material unfinished work. Fix those findings before restarting the approval sequence; material
+candidate changes invalidate prior approvals. Keep the reviews blind to earlier verdicts where
+practical. This is the owner's final review requirement, not a recurring gate for every patch;
+reviewer agreement does not itself prove correctness, literal perfection or market competitiveness.
+
 | File | What it is |
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |
 | [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md) | 2026-10-29 whole-game integration coverage, repairs, current verification limits and final review scope |
 | [`STUDIO.md`](./STUDIO.md) | Controller, departments, asset processing, worker handoffs and current execution capacity |
 | [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
+| [`swarm/`](./swarm/README.md) | **owner priority 2026-11-05: SWARM** — the vision, configuration audit and plans S1–S16 for Crucible Swarm (look and feel; recommends holding queued Lane 2 Swarm breadth until these land) |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
 | [`LANE_3_WORLD_GLASS_HOUSE.md`](./LANE_3_WORLD_GLASS_HOUSE.md) | medium lane: Adventure world, economy, story, every 2D screen and the HUD, audio, and the document razor |

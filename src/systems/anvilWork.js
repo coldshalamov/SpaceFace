@@ -518,8 +518,8 @@ function counterFieldThrottle(owner, e, p) {
 }
 // Uses Flight V3's civilian intent, never writes velocity/position. Arrive is speed-limited
 // with the same braking-distance contract as the existing Helios ore-carrier approach.
-function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
-  if (anvilTrafficYield(owner.state, e)) { hold(e); return false; }
+function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed, checkedBuyerDetour = false) {
+  if (!checkedBuyerDetour && anvilTrafficYield(owner.state, e)) { hold(e); return false; }
   const dx = target.x - e.pos.x, dz = target.z - e.pos.z;
   const distance = Math.hypot(dx, dz), aim = Math.atan2(dz, dx);
   const p = resolvePropulsionProfile(e, owner.state);
@@ -538,6 +538,91 @@ function steer(owner, e, target, reach = 24, speed = ANVIL_WORK.speed) {
       + counterFieldThrottle(owner, e, p)),
   boost: false, fire: false, fireGroup: null, aimAngle: aim, brake };
   return distance <= reach;
+}
+
+// Sweep the fitted-hull envelope against real native solids and their current
+// velocities. Missing native admission or an unusually dense query fails closed.
+function buyerChordClear(owner, e, from, to, seconds = null) {
+  const native = owner._registry?.get?.('physics')?._sg02;
+  const own = native?.records?.get(e.id), origin = native?._frameOrigin;
+  if (!own || own.entity !== e || !origin || !native.RAPIER?.Ball) return false;
+  const dx = to.x - from.x, dz = to.z - from.z, length = Math.hypot(dx, dz);
+  if (!(length > 0) && seconds == null) return true;
+  const duration = seconds ?? Math.max(0.1, length / 15), velocity = { x: dx / duration, y: 0, z: dz / duration };
+  const point = { x: from.x - origin.x, y: 0, z: from.z - origin.z };
+  const shape = new native.RAPIER.Ball(trafficHullEnvelope(e));
+  let checked = 0;
+  for (const rec of native.records.values()) {
+    if (rec === own || !rec.body || rec.entity?.alive === false) continue;
+    const at = rec.body.translation(), v = rec.body.isFixed() ? { x: 0, y: 0, z: 0 } : rec.body.linvel();
+    const other = rec.entity, radius = Math.max(0, trafficHullEnvelope(other));
+    if (Math.hypot(at.x - point.x, at.z - point.z) > length + radius + trafficHullEnvelope(e)
+      + Math.hypot(v.x, v.z) * duration + 16) continue;
+    for (const co of rec.colliders) {
+      if (co.isSensor()) continue;
+      if (++checked > 512) return false;
+      if (co.castShape(v, shape, point, { x: 0, y: 0, z: 0, w: 1 }, velocity, 2, duration, true)) return false;
+    }
+  }
+  return true;
+}
+
+// A slow ship on the narrow buyer chord can otherwise hold both pilots in a
+// brake/creep loop. The waypoint is transient: a restored actor must re-solve
+// against the new native world rather than trusting saved coordinates.
+function steerBuyerChord(owner, e, target, reach, speed) {
+  let plan = owner._anvilBuyerDetour;
+  if (plan && (plan.entity !== e || plan.route !== itinerary(e)
+    || plan.target.x !== target.x || plan.target.z !== target.z)) plan = owner._anvilBuyerDetour = null;
+  if (plan && Math.hypot(e.pos.x - plan.point.x, e.pos.z - plan.point.z) <= 10) {
+    if (plan.next) {
+      if (!buyerChordClear(owner, e, e.pos, plan.next) || !buyerChordClear(owner, e, plan.next, target)) {
+        owner._anvilBuyerDetour = null; hold(e); return false;
+      }
+      plan.point = plan.next; plan.next = null;
+    } else {
+      if (!buyerChordClear(owner, e, e.pos, target)) { hold(e); return false; }
+      owner._anvilBuyerDetour = plan = null;
+    }
+  }
+  if (!plan) {
+    const conflict = anvilTrafficYield(owner.state, e);
+    if (!conflict) return steer(owner, e, target, reach, speed);
+    const now = Number.isFinite(owner.state?.tick) ? owner.state.tick : 0;
+    const retry = owner._anvilBuyerRetry;
+    if (retry?.entity === e && retry.route === itinerary(e) && now < retry.tick) { hold(e); return false; }
+    const blocker = owner.state.entities?.get(conflict.targetId);
+    if (!finitePose(blocker) || Math.hypot(blocker.vel.x, blocker.vel.z) > 3
+      || Math.hypot(e.vel.x, e.vel.z) > 8) { hold(e); return false; }
+    if (owner._registry?.get?.('physics')?._sg02?.records?.get(blocker.id)?.entity !== blocker) {
+      hold(e); return false;
+    }
+    const dx = target.x - e.pos.x, dz = target.z - e.pos.z, distance = Math.hypot(dx, dz);
+    if (!(distance > 0)) { hold(e); return false; }
+    const ux = dx / distance, uz = dz / distance;
+    candidates: for (const width of [75, 110, 150]) for (const side of [-1, 1]) {
+      const point = { x: e.pos.x - ux * 20 - uz * width * side,
+        z: e.pos.z - uz * 20 + ux * width * side };
+      const next = { x: blocker.pos.x + ux * 55 - uz * width * side,
+        z: blocker.pos.z + uz * 55 + ux * width * side };
+      if (!buyerChordClear(owner, e, e.pos, point) || !buyerChordClear(owner, e, point, next)
+        || !buyerChordClear(owner, e, next, target)) continue;
+      plan = owner._anvilBuyerDetour = { entity: e, route: itinerary(e), target: { ...target }, point, next };
+      break candidates;
+    }
+    if (!plan) {
+      owner._anvilBuyerRetry = { entity: e, route: itinerary(e), tick: now + 30 };
+      hold(e); return false;
+    }
+  }
+  // Recheck the actual next movement, including crossing ships, before every
+  // command; a newly blocked chord brakes instead of bypassing collision.
+  const coast = { x: e.pos.x + finite(e.vel?.x), z: e.pos.z + finite(e.vel?.z) };
+  if (!buyerChordClear(owner, e, e.pos, plan.point) || !buyerChordClear(owner, e, e.pos, coast, 1)) {
+    owner._anvilBuyerDetour = null; hold(e); return false;
+  }
+  steer(owner, e, plan.point, 10, Math.min(15, speed), true);
+  return false;
 }
 function manifest(owner, e, qty, prior = null) {
   const next = owner._buildMinerManifest(e, itinerary(e).sequence, PLANET_SITE.harvest.commodityShallow, qty);
@@ -844,7 +929,7 @@ export const anvilTrafficMethods = {
         }
         return;
       }
-      steer(this, receiver, target, 20, 35);
+      steerBuyerChord(this, receiver, target, 20, 35);
       this._deliverAnvilReceiver(receiver, station);
       return;
     }
@@ -857,7 +942,7 @@ export const anvilTrafficMethods = {
         if (!exit) { hold(receiver); return; }
         // Reverse the clear service chord and physically settle outside the station
         // before joining the original district orbit. No station-body shortcut.
-        if (steer(this, receiver, exit, 8, 20)
+        if (steerBuyerChord(this, receiver, exit, 8, 20)
           && Math.hypot(receiver.vel.x, receiver.vel.z) <= ANVIL_WORK.transferSpeed) {
           route.buyerExitRequired = false; persist(this, receiver);
         }
@@ -953,6 +1038,13 @@ export const anvilTrafficMethods = {
     const heat = state.planet?.ships?.[e.id]?.heat || 0;
     if (route.phase === 'berthed') {
       if (!availableReceiver) {
+        // The departing tender has priority over the collector's lay-by move.
+        // Starting both together at handoff range makes their conservative
+        // envelopes overlap and both civilian yield controllers can stall.
+        if (receiver && itinerary(receiver)?.phase === 'delivery' && finitePose(receiver)
+          && Math.hypot(e.pos.x - receiver.pos.x, e.pos.z - receiver.pos.z) < 120) {
+          hold(e); return;
+        }
         // Clear the receiving approach while the same tender makes its buyer leg.
         // This exterior lay-by is reached with ordinary thrust, not a parking snap.
         const home = homeBerth(route);

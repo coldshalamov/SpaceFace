@@ -157,7 +157,7 @@ test('the map handoff answers LOCAL MAP for a same-sector destination — not a 
   const action = missionMapAction(state, m, true);
   assert.ok(action, 'a tracked contract owes a map handoff');
   assert.equal(action.focus, 'local', 'Helios is in this sector — Local Map, not a star-chart pretense');
-  assert.equal(action.stationId, 'station_helios');
+  assert.equal(action.stationId, null, 'unrecovered sample must not point to the later delivery berth');
   assert.equal(action.sectorId, 'sector_helios_prime');
 });
 
@@ -265,7 +265,7 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(afterView.openTarget.stationId, mission.destStationId);
 });
 
-test('B0 keeps the berth selection when its owner waypoint position is absent or invalid', () => {
+test('B0 can select the saved owner fix when its active waypoint is absent or invalid', () => {
   const cases = [
     ['missing', (wp) => { delete wp.pos; }],
     ['null', (wp) => { wp.pos = null; }],
@@ -276,12 +276,12 @@ test('B0 keeps the berth selection when its owner waypoint position is absent or
     const { state, mission } = fixtureWithSampleRock();
     corrupt(state.nav.waypoint);
     const action = missionMapAction(state, mission, true);
-    assert.equal(action.stationId, mission.destStationId, `${label} owner fix keeps destination selection`);
+    assert.equal(action.stationId, null, `${label} cannot select the later berth`);
     const button = mapButton(action, mission.id);
-    assert.doesNotMatch(button.attrs, /data-map-selection-target=/);
+    assert.match(button.attrs, /data-map-selection-target="47a-recovery-fix"/);
     const normalized = normalizeMapOpenIntent(button.intent);
-    assert.equal(Object.hasOwn(normalized, 'selectionTarget'), false, `${label} owner fix keeps the default intent shape`);
-    assert.equal(resolveMapOpenTarget(state, normalized).kind, 'station', `${label} fix does not select a fake waypoint`);
+    assert.equal(normalized.selectionTarget, '47a-recovery-fix');
+    assert.equal(resolveMapOpenTarget(state, normalized).kind, 'waypoint', `${label} selects the saved mission fix`);
   }
 });
 
@@ -296,8 +296,7 @@ test('a marked positional selection requires the matching owner and exact curren
     const savedIntent = normalizeMapOpenIntent(mapButton(action, mission.id).intent);
     replaceWaypoint(state.nav.waypoint);
     const target = resolveMapOpenTarget(state, savedIntent);
-    assert.equal(target.kind, 'station', `${label} must not select the stale positional objective`);
-    assert.equal(target.stationId, mission.destStationId);
+    assert.equal(target.kind, 'sector', `${label} must not select the stale positional objective or false berth`);
   }
 });
 

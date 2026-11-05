@@ -374,7 +374,7 @@ ${CX} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "
 ${CX} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
 ${CX} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 ${CX} .cx-index__num.orr-counter { height:1em; }
-${CX} .cx-index__num .orr-counter__digit { width:.5em; }
+${CX} .cx-index__num .orr-counter__digit { width:.6em; }
 /* arrival: the lore rises line by line under its title (reduced motion: it simply is there) */
 ${CX} .cx-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
 ${CX}.cx-arrive .sf-tabbar > li, ${CX}.cx-arrive .cx-index__item { animation:orr-rise 420ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -401,7 +401,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-index__item { grid-template-rows:46px auto; width:64px; }
   ${CX} .cx-index__dial { width:46px; height:46px; }
   ${CX} .cx-index__n { font-size:12px !important; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 480 !important; letter-spacing:-.03em !important; }
-  ${CX} .cx-index__num .orr-counter__digit { width:.45em; }
+  ${CX} .cx-index__num .orr-counter__digit { width:.6em; }
   ${CX} .cx-index__of { font-size:12px; font-stretch:76%; font-variation-settings:"wdth" 76, "wght" 500; letter-spacing:-.03em; margin-left:0; }
   ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.04em !important; }
   ${CX} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
@@ -1235,7 +1235,7 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
    ends back on one row (FROM | THIS SECTOR | TO, names wrapping) bring the whole lane into frame. */
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${ML} { grid-template-columns:minmax(0, 284px) minmax(0, 1fr) !important; }
-  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-28px !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-40px !important; }
   ${ML} .ml-route { --ml-disc:36px; }
   ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows:auto; align-items:start; gap:12px; }
   ${ML} .ml-route__mid { grid-column:2; grid-row:1; flex-direction:column; align-items:center; gap:3px; }
@@ -1246,7 +1246,9 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { column-gap:12px; padding-top:2px !important; padding-bottom:2px !important; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.1em !important; white-space:nowrap; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
-  ${ML} .sf-mlog-card > .ml-route-host { margin-top:8px; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:4px; }
+  /* The lane's faces sat 7px under the stage's fold: the stage now runs 12px lower (margin above) and the route claws back 4px + 10px of foot room. */
+  ${ML} .ml-route:not(.has-slot) .ml-route__track { height:calc(var(--ml-disc) + 6px); }
 }
 /* On desktop, group the selected contract's terms into a single reading card while leaving the
    public tracking, route, and action controls in their existing owners. */

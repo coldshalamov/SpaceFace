@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sampleIronKrakenArm, ironKrakenBodyPose, ironKrakenArmRadius } from '../src/render/ironKrakenMotion.js';
-import { createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
+import { createIronKrakenVisual, IRON_KRAKEN_ARM_COUNT } from '../src/render/ironKrakenVisuals.js';
 import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
 import { createCapitalBossFight, stepCapitalBossFight } from '../src/combat/capitalBossScore.js';
 
@@ -47,12 +47,16 @@ test('foreground sleeve envelopes clear each other through the real rake and rec
         root.userData.updateAuthoredMotion(entity,state.simTime,{},state);
         if(tick>=180) {
           const points=root.userData.ironKrakenRig.points;
-          for(let a=0;a<links;a++)for(let b=0;b<links;b++) {
-            // Whole-segment capsules deliberately include the empty axial joint gaps. The
-            // extra2% covers sleeve paint/trim, so positive separation also clears actual armor.
-            const gap=segmentDistance(points,pointCount+a*3,pointCount*2+b*3)
-              -1.02*(ironKrakenArmRadius(a)+ironKrakenArmRadius(b));
-            assert.ok(gap>0,`tick${tick}, cadence${cadence.step}, sleeves${a}/${b} overlap by${-gap}R`);
+          // Every adjacent arm pair shares a collar boundary; the 1↔2-only sweep left the
+          // other six neighboring pairs unverified.
+          for(let arm=0;arm<IRON_KRAKEN_ARM_COUNT-1;arm++) {
+            for(let a=0;a<links;a++)for(let b=0;b<links;b++) {
+              // Whole-segment capsules deliberately include the empty axial joint gaps. The
+              // extra2% covers sleeve paint/trim, so positive separation also clears actual armor.
+              const gap=segmentDistance(points,pointCount*arm+a*3,pointCount*(arm+1)+b*3)
+                -1.02*(ironKrakenArmRadius(a)+ironKrakenArmRadius(b));
+              assert.ok(gap>0,`tick${tick}, cadence${cadence.step}, arms${arm}/${arm+1} sleeves${a}/${b} overlap by${-gap}R`);
+            }
           }
         }
         if(tick>=473)break;

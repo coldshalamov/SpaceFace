@@ -17,8 +17,13 @@ const player = () => ({
 });
 
 const payload = (id, x, z) => ({
-  id, type: 'asteroid', alive: true, team: 0,
+  id, occupantGeneration: id + 100, type: 'asteroid', alive: true, team: 0,
   pos: { x, z }, vel: { x: 0, z: 0 }, radius: 20, mass: 5200, data: {},
+});
+
+const receiptFacts = (rock, load = 0.55) => ({
+  targetGeneration: rock.occupantGeneration, targetX: rock.pos.x, targetZ: rock.pos.z,
+  tonnageU: rock.mass, load, receiptStrain: 0.14,
 });
 
 function initHud(state) {
@@ -45,11 +50,13 @@ test('CV-THROW-1 rateRelease marks deliberate cuts and never calls a break an ap
   const rock = payload(7, 120, 60);
   const state = {
     tick: 100, simTime: 5, playerId: p.id,
-    player: { tether: { active: true, phase: 'taut' }, masslineTelemetry: {} },
+    player: { tether: { active: true, targetId: rock.id, phase: 'taut', load: 0.55, strain: 0.14 }, masslineTelemetry: {} },
     entities: new Map([[p.id, p], [rock.id, rock]]),
   };
   const cut = rateRelease(state, rock.id, { deliberate: true });
   assert.equal(cut.deliberate, true, 'a player-initiated release is marked deliberate');
+  assert.deepEqual({ targetGeneration: cut.targetGeneration, targetX: cut.targetX, targetZ: cut.targetZ,
+    tonnageU: cut.tonnageU, load: cut.load, receiptStrain: cut.receiptStrain }, receiptFacts(rock));
   const breakRating = rateRelease(state, rock.id);
   assert.equal(breakRating.deliberate, false, 'a break/target-loss rating is not deliberate');
   assert.equal(breakRating.releasedAtApex, false,
@@ -74,7 +81,7 @@ test('CV-THROW-1 only deliberate release ratings write a verdict, anchored at th
 
   bus.emit('tether:releaseRated', {
     targetId: rock.id, classification: 'razor', technique: 'swing',
-    deliberate: true, releasedAtApex: true,
+    deliberate: true, releasedAtApex: true, ...receiptFacts(rock),
   });
   const verdict = state.masslineReleaseVerdict;
   assert.ok(verdict, 'a deliberate release lands the verdict');
@@ -82,6 +89,7 @@ test('CV-THROW-1 only deliberate release ratings write a verdict, anchored at th
   assert.equal(verdict.technique, 'swing');
   assert.equal(verdict.releasedAtApex, true);
   assert.equal(verdict.targetId, rock.id);
+  assert.equal(verdict.targetGeneration, rock.occupantGeneration);
   assert.equal(verdict.atX, rock.pos.x, 'the pill anchors at the released body');
   assert.equal(verdict.atZ, rock.pos.z);
   assert.ok(verdict.untilSimTime > state.simTime, 'the verdict carries a quantized expiry');
@@ -115,7 +123,7 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
     const { bus, hud } = initHud(state);
     bus.emit('tether:releaseRated', {
       targetId: rock.id, classification: 'razor', technique: 'swing',
-      deliberate: true, releasedAtApex: true,
+      deliberate: true, releasedAtApex: true, ...receiptFacts(rock),
     });
     hud.update(1 / 60, state);
 
@@ -132,11 +140,12 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'an earned cut keeps the solid diamond — the mark is a result, not a denial');
     assert.equal(mark.attributes['aria-label'], 'RAZOR · AT THE APEX');
+    assert.equal(mark.style.transform, 'translate3d(420px, 260px, 0)', 'the stamped live body anchors the mark');
 
     // A messy cut reads differently — weaker shape, warn grade.
     state.masslineReleaseVerdict = null;
     bus.emit('tether:releaseRated', {
-      targetId: rock.id, classification: 'messy', technique: 'tow', deliberate: true,
+      targetId: rock.id, classification: 'messy', technique: 'tow', deliberate: true, ...receiptFacts(rock),
     });
     hud.update(1 / 60, state);
     assert.equal(preview.textContent, 'MESSY · NEVER SWUNG',
@@ -161,6 +170,20 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('an unstamped legacy release never borrows the current entity life or position', () => {
+  const rock = payload(7, 120, 60);
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { tether: { active: false } },
+    entities: new Map([[rock.id, rock]]) };
+  const { bus, hud } = initHud(state), receipts = [];
+  bus.on('toast', p => { if (p.channel === 'massline') receipts.push(p.text); });
+  bus.emit('tether:releaseRated', { targetId: rock.id, deliberate: true, load: 0 });
+  assert.equal(state.masslineReleaseVerdict.targetGeneration, null);
+  assert.equal(state.masslineReleaseVerdict.atX, null);
+  assert.equal(state.masslineReleaseVerdict.atZ, null);
+  assert.equal(receipts[0], 'Line released: load 0%', 'numeric zero remains a valid receipt');
+  hud.destroy();
 });
 
 function findByClass(root, className) {

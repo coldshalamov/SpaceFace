@@ -208,6 +208,125 @@ test('the actual resize owner requests its scene cohort rather than an offscreen
   });
 });
 
+test('rotation does not wait on hidden scene branches or an empty pool texture', async () => {
+  resetPackageDetachManifestsForTests();
+  const previousWindow = globalThis.window;
+  globalThis.window = { innerWidth: 844, innerHeight: 390, devicePixelRatio: 1 };
+  const h = harness(), scene = new THREE.Scene();
+  h.owner.scene = scene;
+  let releaseDecode, decodes = 0;
+  const wait = new Promise(resolve => { releaseDecode = resolve; });
+  const geometry = new THREE.BoxGeometry(), freshGeometry = geometry.clone();
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  const freshTexture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  texture.needsUpdate = true;
+  createPackageDetachManifest({ contentHash: 'hidden-orientation-resources', resources: [geometry, texture] }, {
+    redecode: async () => { decodes++; await wait; return { resources: [freshGeometry, freshTexture] }; },
+    collectResources: value => value.resources,
+  });
+  assert.equal(detachPackageGeometry(geometry), true);
+  assert.equal(detachPackageTexture(texture), true);
+  const hidden = new THREE.Group();
+  hidden.visible = false;
+  hidden.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture })));
+  const emptyPool = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: texture }), 1);
+  emptyPool.count = 0;
+  scene.add(hidden, emptyPool);
+  try {
+    h.owner.onResize();
+    assert.deepEqual(h.sizes, [[844, 390]], 'resources with no possible presented draw cannot hold the current picture');
+    await Promise.resolve();
+    assert.equal(decodes, 0, 'hidden and zero-count owners keep their existing later admission path');
+    assert.equal(h.owner._orientationResizePending, undefined);
+    assert.equal(orientationDetachedHoldActive(h.renderer), false);
+  } finally {
+    releaseDecode();
+    await presentedDetachRehydrateInFlight();
+    await h.owner._orientationResizePending;
+    resetPackageDetachManifestsForTests();
+    globalThis.window = previousWindow;
+  }
+});
+
+function attachOrientationCamera(owner, scene, mesh, x) {
+  const camera = new THREE.PerspectiveCamera(60, 390 / 664, 1, 100);
+  camera.updateMatrixWorld(true);
+  mesh.position.set(x, 0, -10);
+  scene.updateMatrixWorld(true);
+  owner.cam = { obj: camera, onResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  } };
+  owner.renderer.shadowMap = { enabled: false };
+  return camera;
+}
+
+test('rotation does not decode a package outside the resized native picture', async () => {
+  await withPendingRefill(async ({ owner, scene, mesh, sizes }) => {
+    attachOrientationCamera(owner, scene, mesh, 100);
+    owner.onResize();
+    assert.deepEqual(sizes, [[844, 390]], 'an offscreen cold package must not freeze the visible world');
+    assert.equal(owner._orientationResizePending, undefined);
+  });
+});
+
+test('rotation protects a hull entering the wider landscape picture', async () => {
+  await withPendingRefill(async ({ owner, scene, mesh, sizes, release }) => {
+    const camera = attachOrientationCamera(owner, scene, mesh, 8);
+    const portrait = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(
+      camera.projectionMatrix, camera.matrixWorldInverse,
+    ));
+    assert.equal(portrait.intersectsObject(mesh), false, 'the fixture starts outside portrait');
+    owner.onResize();
+    assert.deepEqual(sizes, [], 'the pending landscape projection must keep its incoming hull protected');
+    release();
+    await owner._orientationResizePending;
+    owner._renderPostRoute('bloom', scene, camera);
+    assert.deepEqual(sizes, [[844, 390]]);
+  });
+});
+
+test('an unknown pending projection cannot exclude an incoming authored hull', async () => {
+  await withPendingRefill(async ({ owner, scene, mesh, sizes, release }) => {
+    attachOrientationCamera(owner, scene, mesh, 8);
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 100);
+    camera.updateMatrixWorld(true);
+    owner.cam = { obj: camera, onResize() {
+      camera.left = -20; camera.right = 20;
+      camera.updateProjectionMatrix();
+    } };
+    owner.onResize();
+    assert.deepEqual(sizes, [], 'an unsupported projection adapter must retain authored refill protection');
+    release();
+    await owner._orientationResizePending;
+    owner._renderPostRoute('bloom', scene, camera);
+    assert.deepEqual(sizes, [[844, 390]]);
+  });
+});
+
+for (const protectedPass of ['unculled', 'shadow']) {
+  test(`rotation still refills an offscreen ${protectedPass} drawable`, async () => {
+    await withPendingRefill(async ({ owner, scene, mesh, sizes, release }) => {
+      const camera = attachOrientationCamera(owner, scene, mesh, 100);
+      if (protectedPass === 'unculled') mesh.frustumCulled = false;
+      else {
+        mesh.castShadow = true;
+        owner.renderer.shadowMap.enabled = true;
+        owner.keyLight = new THREE.DirectionalLight();
+        owner.keyLight.castShadow = true;
+        owner.keyLight.shadow.camera = new THREE.OrthographicCamera(90, 110, 10, -10, 1, 100);
+        owner.keyLight.shadow.camera.updateMatrixWorld(true);
+      }
+      owner.onResize();
+      assert.deepEqual(sizes, [], 'a real unculled or shadow draw cannot upload empty bytes');
+      release();
+      await owner._orientationResizePending;
+      owner._renderPostRoute('bloom', scene, camera);
+      assert.deepEqual(sizes, [[844, 390]]);
+    });
+  });
+}
+
 for (const retire of ['disposed', 'replaced']) {
   test(`a ${retire} renderer cannot resize from an old refill completion`, async () => {
     await withPendingRefill(async ({ owner, sizes, release }) => {

@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Lane 1 — THE MACHINE & THE PICTURE (high complexity, taste)
 
-**Written only by Lane 1.** Other lanes append one line to *Inbox* and nothing else.
+The controller coordinates current writers under README §3; lane labels do not create permanent path locks.
 Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md).
 
 **The outcome:** SpaceFace runs like a professional game on the owner's Intel-iGPU laptop — combat
@@ -10,6 +10,23 @@ long session that never dies — and every model, effect and sky on screen is be
 budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reason>)`.
 
 ## Baseline (packet M0 rewrites this table with today's numbers, then keeps a dated row per re-measure)
+
+**November5 source integration:** c4b88c85acd4 (runtime6794833) passes17/17 baseline groups in73.563s/90s,
+with unchanged source and no failures/timeouts. This is not an FPS comparison. Live worker controls
+no longer wait for an older reply while simulation deadlines advance; the existing watchdog retains
+real progress accounting. Packaged props no longer inherit a second procedural root scale: the
+actual beacon wrapper is28WU rather than1680WU, with procedural transforms/materials retained.
+Ordinary Ring obstruction/input and Counterweight admission checks now move to this candidate;
+their older failures and changed-build look limits remain in INTEGRATION_COVERAGE.md. Startup,
+frame targets, physical iPhone and signed-update acceptance remain open.
+
+**Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
+JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
+policy. This is a component result; D222/full-owner/FPS targets remain open. Canonical map aliases
+and forced-color icons have selected mounted looks. Fifteen qualified whole-hulk releases now
+share physical/render identity and level collision-aligned presentation; ordinary hull/hero looks
+remain open. Integration found a growth-attachment tilt mismatch and assigns the correction.
+No opaque-sort or refraction quality change has shipped from the latest profile.
 
 | Date | Build | Crucible p50 / p99 / longest | GPU p50 | Adventure p50 / p99 / longest | Longest load task | Loading anim gap p99 | Launch→flight | Host busy |
 |---|---|---|---|---|---|---|---|---|
@@ -96,6 +113,30 @@ The owner suite passes 84/84. A fresh 92e run passed its two public save/F9 warm
 *(Lane 1 writes border files it has taken here.)*
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
+
+**Current November3 checkpoint:** public demo is `89ddfe4830e2`, deployment `dpl_Gg6MKJkSLbEJeRvdebjMxsS46cn1`; exact receipt/entry/three worker bindings pass. All2,446 authored assets and417 package plans retained. The second Foundry bank surface pass is visible on the ordinary route. Hero readability near Helios and software mobile body legibility remain open. The existing combat profile plus a later bounded census now identify transmission-eligible instanced ice for a specific quality/cost investigation; no FPS improvement is claimed. Incoming UI source-hash refresh is metadata only. Earlier inbox receipts below retain their source and evidence limits.
+
+- 2026-11-03 earlier8ea release: public-origin launch17.761s/native touch19.240WU and actual alias-versioned worker pass; the candidate also passes3.267-second rotation/PauseResume. No rare plasma warning occurred in these runs, but frame hitches and physical iPhone remain open. Authored Kestrel LOD0 appears dark/coarse at software contentScale0.34; CPU presence/AABB is not pixel acceptance. Later89dd native body dispatch was observed before the save route; the distinct settledContinue Helios readability concern still needs its synchronized observation. Public89dd supersedes this earlier deployment.
+
+- 2026-11-03 earlier world/furniture cohort: all17 baseline groups pass in62,057ms under unchanged90,000ms/allowance4; English15,745/0 unresolved. The first52-triangle bank panel pass was superseded by89dd's60-triangle inset/chamfered metal, with no extra maps/lights/draw meshes; root opened its ordinary view. Shared nonplate shape adoption and12 combined geometry/native-contact/retained-surface checks remain valid. Source logs: `.devshots/finish/integration-2026-11-03/world-furniture-*` and `foundry-shared-shape.log`.
+
+- 2026-11-03 integrated follow-up: all17 baseline groups pass in74,889ms under the unchanged90,000ms budget and normal allowance4 after plasma/cache, captured-fleet, Registry, refit, carrier and audio integration. English catalog/readiness remains15,738 surfaces/0 unresolved. This is source integration evidence; the new frozen candidate and changed ordinary controls remain the next player checks.
+
+- 2026-11-03 release: DDE is now live at `https://spaceface-play-demo.vercel.app/` through immutable deployment `dpl_2kmmJ6SmpPmftV7RYXV6iAfFSPoD`. The actual public-origin worker, visible page, native Chromium touch movement, Pause/Resume and6.726-second same-document rotation pass; Launch18.163s. Physical iPhone and smooth-frame targets remain open. The complete upload artifact passed the unchanged build and417 copy plans before publication; no authored runtime assets were omitted.
+
+- 2026-11-03 next cohort: finite opening now warms the actual player's plasma ribbon/forge/throat through the existing admission pipeline before sealing; normal flight adopts that same owner.112 focused checks pass; removal of the observed175.9ms first-drive program hitch awaits the next runtime route. The separate683.5ms authored-turret hitch remains open. Settled render-package live handoff now protects its exact generation before awaiting: a real Drift/default64MiB pressure case falls from2 producer decodes to1, while warm-only eviction remains;50 lifecycle cases pass. Neither result establishes browser FPS.
+
+- 2026-11-03 geometry preparation: the sampled hull-coordinate bake now uses a direct affine path for supported packed/interleaved Float32 and normalized Int16 data, retaining identity aliasing and the generic fallback. Seven behavior cases and actual Drift package byte parity pass. One bounded Node CPU leaf comparison measured41.439→31.373ms; this24.3% leaf result is not a browser FPS claim. No quality, shader, asset or timing-budget change.
+
+- 2026-11-03 connected-cohort verification: `681a633e6348` passes all17 baseline groups in72,633ms under the unchanged90,000ms budget with normal allowance4. English extraction/readiness is current at15,738 surfaces and0 unresolved; translated production coverage is not claimed. Logs are under `.devshots/finish/integration-2026-11-03/connected-cohort-*`. This supports the integrated source; the next frozen deployment and ordinary player routes remain separate checks.
+
+- 2026-11-03 mobile and assets: deployed6736 passes native Chromium mobile touch, visible page, Pause/Resume and3.973-second rotation; root opened both world captures. Windows WebKit's bright-canvas/black-page divergence also occurs in a standalone WebGL triangle, so no renderer workaround was added for that capture path. Physical iPhone remains unknown and alias unchanged. A real683.5ms authored-wreck scene submission remains unresolved; the next planned route retains its full warning. Orchard pod spawn/live vitals now carry canonical bounded body/ownership metadata to the main mirror, preserving authored asset/guide classification, dynamic release, tetherability and stale-life rejection; focused real-worker checks pass. Actual player skim → release → recovery remains open.
+
+- 2026-11-03 purposeful performance check: one8.049-second Ceres profile on current797 with only toast-coalescing reversed produced no toast/comms traffic and0.114% receipt-placement cost. The comparison stopped before B; there is no matched FPS claim. Current host-busy84% cadence was20.54 submissions/s. The same capture identifies a301ms sampled main-thread hull-coordinate bake and repeated package preparation; the narrow arithmetic optimization is selected, while cache/residency causes need their actual owners before changing protections.
+
+- 2026-11-03 Continue result: immutable `8cadc94233ee` and the same earned Ceres save advance both previously blocked wrecks1397/1398 from loading to authored, clear the visual gate, reach flight and answer public turn input. Root opened the paused view over the authored scene; the later capture reveals flight behind the normal run-recap card. The subsequent Anvil actor stopped because it lacked that card's public dismissal action; it did not attempt feed/release/recovery. The owned browser was closed and Mobile received the GPU. This closes this Continue failure, not loading-time, Anvil or device acceptance.
+
+- 2026-11-03 Continue: the ordinary earned Ceres save stalled at the authored-visuals gate with Crossbeam1397 and Keel1398 still loading. A restored-save queue reproduction found the Crossbeam within the gate's required runway but excluded by its restricted loading queue. Both owners now share the same live-entity/mesh/runway predicate; required contacts drain while distant wrecks and ambient work stay deferred. Focused queue/admission/lifetime checks pass. The captured browser omitted queue-owner detail, so the previous Keel promise's cause and the corrected ordinary Continue remain open; no deadline or authored-content shortcut was added.
 
 - 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
 
@@ -461,6 +502,60 @@ gate (856c4d37e019); wreck-wisp latch suite drives the current laneVersions sche
 Verified already deep, no unit taken: sector sky (per-sector palettes + deep-sky plates +
 landmark layer), loading screen (five authored worker-rendered tableaux), asteroid geology
 family, station side events (7 authored profiles).
+
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, focused
+tests in `test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`):
+- inf-mortal-blow (WF-12, wave 2): the shot that empties a hull punches through with a white
+  core and its own light before the flare, so the kill reads as its own event (212d29beeb05).
+- inf-shield-reknit (WF-12, wave 2): a shield coming back online after a break breathes once
+  through its lattice (af5d3d3bbd8c).
+- inf-scar-history (WF-12, wave 2): sustained fire leaves cool, target-bound hull scars that
+  keep their identity across a fight (with f8b04d2c3ca3).
+- inf-dying-drive (WF-12, wave 3, direct): a dying hull's exhaust says so — the bell cools
+  toward ember and sputters on its own deterministic phase as the hull fails, from the same
+  hull truth the smoke trail reads; hulls without hull fields never gutter (a3ae485e5d6d;
+  accessibility-gated sputter, plasma-stream carrier and pooled-slot pins hardened a795a25d2904).
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-wound-smoke (WF-12 repair): the smoke a wounded ship trails rises from the wounds it
+  actually has — the emitter round-robins the hottest scars, scales by severity/youth, and a
+  fresh energy wound vents the striking weapon's tint before it greys (5861ca1c3e3e).
+- inf-line-shield-bite (WF-12 repair): a massline latching a shielded hull bites at hit
+  parity on the shell's own contact wire, re-asserts on cadence while strained, and lands
+  one last full-strength bite on the break; reduced-flash halves the sustained gain
+  (e5f677b2d8d8).
+- inf-beacon-lamp (WF-11): claim buoys carry a light read at last — breathing running light,
+  claim-green pulse, fast anti-collision double-flash inside the lease warn window; reduced
+  motion stretches periods, never silences (32d3f41104e9).
+- inf-debris-wound-heat (WF-11 repair): death debris tears warm — the freshest wound's heat
+  rides the death receipt into the shard cooling track's start, pulled toward the weapon tint
+  (29a5dddde27f).
+Verified already deep, wave 4: station night-side lights (stationNightLights.js), muzzle flash
+per family (weaponImpactVfx consumes the classifier), projectile-side shield contacts
+(shieldContacts.js). Correction (wave 5 probe): the wave-4 docking-beacon note was stale —
+state.dockingCorridor publishes phase='approach' + berth at ALL distances and the cradle
+preview already fades in pre-approach; the real gap was station-side dressing, shipped below.
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-dock-approach-beacons (WF-11 integration): a docking station says where its dock is and
+  whether it is open — gate pair, inbound lane walk, threshold bar in the cradle's holo-green;
+  walking pulse while the corridor works, anti-collision double-flash on capture; reduced
+  motion stretches, never silences (10168f20ba5d).
+- inf-engine-wash (WF-12): a burning drive hanging over a rock, deck or wreck stirs that
+  surface's dust off its skin — contact under the plume path, breath downrange, strength
+  following throttle and height, tint naming the surface (3713cd0923d0).
+- inf-scar-skid (WF-12 repair): a lasting scar points the way the shot was travelling —
+  grazing fire smears into a gouge, dead-center keeps the round seat, stored hull-local so a
+  turning hull shows the hit's true bearing (4218ebd9d49f).
+- inf-scar-seats (WF-11 repair): a hull chewed on one spot grows one wound there — strikes
+  inside a kept seat widen and reheat it instead of spawning scattered identical pocks;
+  absorbed strikes never touch the scar-history book (5244ade5f3a7).
+Verified already deep, wave 5: Massline cable tension feedback (masslinePresentation.js —
+load swell, strain chatter, overload heat, parting ferrules, whip/reel glow at pixel numbers).
+Defect on this lane's paths, recorded: visualFactory.js animateStation pulses nav blinkers on
+wall clock, not sim time — frozen sims keep blinking (pre-existing; fix with next touching).
 
 ## Traps — measured and rejected; do not repeat
 

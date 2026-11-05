@@ -58,6 +58,12 @@ export const SWARM_AFFIXES = Object.freeze([
   Object.freeze({ id: 'magnetic', name: 'Magnetic', blurb: 'Drags your credit chips off the field.' }),
   Object.freeze({ id: 'commander', name: 'Commander', blurb: 'Hardens the hulls flying near it.' }),
   Object.freeze({ id: 'hasted', name: 'Hasted', blurb: 'Runs a third faster than its kin.' }),
+  Object.freeze({ id: 'cover', name: 'Coverseek', blurb: 'Swings until a rock sits between it and you — flank it to flush.' }),
+  // The two law rows sit LAST in a fixed order (diver, then rider): non-law rooms roll the
+  // head of the table short of BOTH, so a room without a field law can never stamp a trick
+  // only a current can carry (see swarmElites._stampAffix).
+  Object.freeze({ id: 'diver', name: 'Diver', blurb: 'Dives through the room\'s pull to reach you — a hit breaks the commit.' }),
+  Object.freeze({ id: 'rider', name: 'Rider', blurb: 'Cuts its drive and rides the room current — one hit knocks it off.' }),
 ]);
 
 export const SWARM_AFFIX_BY_ID = Object.freeze(Object.fromEntries(
@@ -98,12 +104,12 @@ export function swarmAffixVeteranPct(wave) {
  * an offset 1..N-1 past the primary's own row and wraps, so the pair can never double one
  * trick — no double-shielded, ever. Same hash in, same partner out.
  */
-export function swarmAffixVeteranFor(hash, primaryId) {
+export function swarmAffixVeteranFor(hash, primaryId, count = SWARM_AFFIXES.length) {
   if (!Number.isInteger(hash) || hash < 0) return null;
-  const count = SWARM_AFFIXES.length;
+  const n = Math.min(Math.max(2, count | 0), SWARM_AFFIXES.length);
   const primaryIndex = SWARM_AFFIXES.findIndex((row) => row.id === primaryId);
-  if (primaryIndex < 0 || count < 2) return null;
-  const row = SWARM_AFFIXES[(primaryIndex + 1 + (hash % (count - 1))) % count];
+  if (primaryIndex < 0 || primaryIndex >= n || n < 2) return null;
+  const row = SWARM_AFFIXES[(primaryIndex + 1 + (hash % (n - 1))) % n];
   return row ? row.id : null;
 }
 
@@ -186,9 +192,10 @@ export function swarmAffixFromWave(threatIds) {
  * The seeded affix pick for one body: same seed + wave + ordinal, same trick, every time.
  * Returns a catalog id or null for an out-of-table hash (never — kept for the contract).
  */
-export function swarmAffixFor(hash) {
+export function swarmAffixFor(hash, count = SWARM_AFFIXES.length) {
   if (!Number.isInteger(hash) || hash < 0) return null;
-  const row = SWARM_AFFIXES[hash % SWARM_AFFIXES.length];
+  const n = Math.min(Math.max(2, count | 0), SWARM_AFFIXES.length);
+  const row = SWARM_AFFIXES[hash % n];
   return row ? row.id : null;
 }
 

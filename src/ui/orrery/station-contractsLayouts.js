@@ -22,6 +22,17 @@ const CSS = `
 /* the commit under its terms: in flow, unplated, nothing over-paints the reading */
 ${TAB} .sx-dossier__foot { position: static !important; bottom: auto !important; background: none !important;
   z-index: auto !important; padding-block: 0 !important; }
+/* A short, mid-width berth leaves too little width for the dossier's two columns.
+   Keep the reading and its final action in one independently scrolling column. */
+@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+  ${DTAB} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:none !important; grid-auto-rows:max-content !important; row-gap:0 !important;
+    overflow-x:hidden !important; overflow-y:auto !important; }
+  ${DTAB} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; order:0 !important; width:auto !important; }
+  ${DTAB} .sx-dossier > .sx-dossier__foot { margin:8px 0 0 !important; }
+  ${DTAB} .sx-dossier__terms > li { grid-template-columns:max-content minmax(0, 1fr) !important; }
+  ${DTAB} .sx-dossier__terms > li > .k-62 { overflow-wrap:normal !important; }
+}
 /* short desktop stages (1080/900 with the arrival notice band mounted): the reading, verb last,
    keeps its air above the stage's foot — margins the shell's band media did not close */
 @media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {

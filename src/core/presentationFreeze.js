@@ -19,6 +19,14 @@ export function shouldFreezeFlightSubmit(state) {
   return hasFlightFreeze(state);
 }
 
+/** Photo exposes the held world through the normal renderer without unpausing simulation. */
+export function shouldPresentPausedPhotoFrame(state) {
+  if (state?.mode !== 'paused' || state.render?.photoMode?.active !== true) return false;
+  if (state.ui?.docked === true || canvasIsProtectedDuringFreeze(state)) return false;
+  const stack = state.ui?.screenStack;
+  return Array.isArray(stack) && stack[stack.length - 1] === 'pause';
+}
+
 function hasFlightFreeze(state) {
   const ui = state && state.ui;
   if (ui && ui.docked === true) return true;

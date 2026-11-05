@@ -10301,7 +10301,62 @@
           8.800000190734863
         ]
       },
-      "note": "PQ-193.09 S6 faction hull — live Concord Navy interdictor: the Hornet frame under navy lacquer, pale pursuit stripe and blue wing-edge lamps. Routes the patrol_lawman and customs_cutter enemy ids; the player Hornet is untouched. Forge variant (tools/blender/forge/ships/hornet_scn_interdictor.py)"
+      "note": "PQ-193.09 S6 faction hull — live Concord Navy interdictor: the Hornet frame under navy lacquer, pale pursuit stripe and blue wing-edge lamps. Routes patrol_lawman; customs_cutter uses its authored Customs derivative. The ordinary player Hornet is untouched. Forge variant (tools/blender/forge/ships/hornet_scn_interdictor.py)"
+    },
+    {
+      "id": "wholeship_hornet_scn_customs_cutter",
+      "assetId": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/hornet_scn_customs_cutter.glb",
+      "tris": 24715,
+      "bytes": 1656744,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Port",
+        "SOCKET_Engine_Starboard",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -5.220991134643555,
+          -0.4906860888004303,
+          -4.400000095367432
+        ],
+        "max": [
+          4.619999885559082,
+          0.9656911492347717,
+          4.400000095367432
+        ],
+        "dimensionsM": [
+          9.840991020202637,
+          1.456377238035202,
+          8.800000190734863
+        ]
+      },
+      "note": "Forge Concord customs cutter derivative: pale armored forebody and transverse joint; shared Hornet frame and fittings."
     },
     {
       "id": "wholeship_wasp_quiet_ghost",

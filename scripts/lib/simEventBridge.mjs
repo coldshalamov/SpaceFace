@@ -24,6 +24,7 @@ export const PRESENTATION_LANE_TYPES = new Set([
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
 ]);
 
 const REJECT = Symbol('sf.bridge.reject');
@@ -193,6 +194,31 @@ export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
   'run:wavePlanned': projectSurvivalWavePlan,
+  // The full Cinderglass view is a worker-owned mirrored domain. Its nested
+  // contact/actions do not fit the generic event depth; this wakes the panel
+  // after that mirror has been applied without shipping the view twice.
+  'cinderglassJob:view': (p) => p && typeof p === 'object' && typeof p.token === 'string'
+    ? { token: p.token.slice(0, 200), revision: Number.isSafeInteger(p.revision) ? p.revision : 0 }
+    : undefined,
+  // Chain receipts have a small scalar wire contract; do not project live entities.
+  'combat:chainKill': (p) => p && typeof p === 'object' ? {
+    firstId: typeof p.firstId === 'string' ? p.firstId.slice(0, 120) : Number.isSafeInteger(p.firstId) ? p.firstId : null,
+    secondId: typeof p.secondId === 'string' ? p.secondId.slice(0, 120) : Number.isSafeInteger(p.secondId) ? p.secondId : null,
+    cause: typeof p.cause === 'string' ? p.cause.slice(0, 40) : null,
+    at: Number.isFinite(p.at) ? p.at : null, windowS: Number.isFinite(p.windowS) ? p.windowS : null,
+    pos: Number.isFinite(p.pos?.x) && Number.isFinite(p.pos?.z) ? { x: p.pos.x, z: p.pos.z } : null,
+  } : undefined,
+  // The full result, including wreck and replay, travels in the authoritative
+  // survivalResultsPublic snapshot before this wakeup. Deep wreck scars cannot
+  // fit the event bridge's bounded generic projection.
+  'run:resultsReady': (p) => (p && typeof p === 'object' ? {
+    outcome: p.outcome ?? null,
+    stopReason: p.stopReason ?? null,
+    seed: Number.isInteger(p.seed) ? p.seed : null,
+    arenaId: p.arenaId ?? null,
+    wave: Number.isInteger(p.wave) ? p.wave : null,
+    endedAtTick: Number.isInteger(p.endedAt?.tick) ? p.endedAt.tick : null,
+  } : undefined),
   // entity:spawned carries the live entity — consumers resolve it via the
   // main-side read model by entityId (the spawn already rode the journal).
   'entity:spawned': (p) => (p && typeof p === 'object'

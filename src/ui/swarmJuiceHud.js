@@ -511,6 +511,23 @@ const CSS = `
 .sf-sj { position:fixed; inset:0; z-index:14; pointer-events:none; overflow:hidden;
   font-family:var(--dp-face-etch, var(--sf-subhead-face)); }
 .sf-sj[hidden] { display:none; }
+/* Desktop Swarm owns the upper centre for chain and announcer. The existing alert floor
+   and receipt lane remain live in the upper right, clear of that arcade register. The
+   mobile HUD has its own measured placement and must keep control of its lanes. */
+@media (min-width: 1100px) and (min-height: 700px) {
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-flight #alerts {
+    position:fixed !important; left:auto !important; right:20px !important; top:22px !important;
+    bottom:auto !important; width:300px !important; transform:none !important; align-items:flex-end;
+  }
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-flight #alerts .sf-alert {
+    max-width:100%; white-space:normal; text-align:left;
+  }
+  html:not([data-sf-mobile-flight="1"]) body.sf-swarm-flight #toasts {
+    position:fixed !important; left:auto !important; right:20px !important;
+    top:clamp(150px, 18vh, 190px) !important; bottom:auto !important;
+    width:300px !important; transform:none !important;
+  }
+}
 /* — the chain hero — */
 .sf-sj__hero { position:absolute; top:3.4vh; left:50%; transform:translateX(-50%);
   display:flex; flex-direction:column; align-items:center; gap:2px; }

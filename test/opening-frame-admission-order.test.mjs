@@ -98,6 +98,47 @@ function makeHarness(runtimeState) {
 
 const ARRIVAL_BODY = { sectorArrivalBody: true };
 
+test('loading queue admits the same current runway wrecks that hold the flight gate', async () => {
+  const state = beltArrivalRuntimeState({ mode: 'loading', composedCamera: false });
+  state.camera = { zoom: 144, tilt: 60, focus: null };
+  const player = state.entities.get(state.playerId);
+  player.mesh = new THREE.Group();
+  player.mesh.userData.authoredAssetState = 'authored';
+  const harness = makeHarness(state);
+  try {
+    // Restored Second Measure geometry: Crossbeam and Keel pin the veil even when
+    // the 144-WU camera has no composed-frame hint. A distant wreck and ambient
+    // dressing must remain deferred by the same loading hold.
+    harness.enqueue({ id: 'ambient', type: 'fx', pos: { x: 5000, z: 0 } });
+    harness.enqueue({ id: 'distant-wreck', type: 'wreck', pos: { x: 5000, z: 0 } });
+    harness.enqueue({ id: 'crossbeam', type: 'wreck', pos: { x: 291, z: 109 } });
+    harness.enqueue({ id: 'keel', type: 'wreck', pos: { x: 211, z: 179 } });
+    for (const [id, radius] of [['crossbeam', 64.66], ['keel', 36.4], ['distant-wreck', 36.4]]) {
+      const entity = state.entities.get(id);
+      entity.radius = radius;
+      state.entityList.push(entity);
+    }
+    const blockers = () => partsLibrary.authoredCriticalVisualReadiness(state).flightReadyBlockers
+      .map((row) => row.metadata?.id).filter(Boolean).sort();
+    assert.deepEqual(blockers(), ['crossbeam', 'keel']);
+    partsLibrary.resumeAuthoredUpgradeQueueForLoadingHulls(harness.scene);
+    for (let i = 0; i < 2; i++) {
+      await harness.runNextFrame();
+      const id = harness.starts[i];
+      assert.ok(id === 'crossbeam' || id === 'keel', 'only a live required wreck starts');
+      state.entities.get(id).mesh.userData.authoredAssetState = 'authored';
+      harness.releases.get(id)();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.deepEqual(new Set(harness.starts), new Set(['crossbeam', 'keel']));
+    assert.deepEqual(blockers(), [], 'both admitted contacts release the existing flight gate');
+    assert.equal(partsLibrary.describeAuthoredUpgradeQueue(harness.scene).pending, 2,
+      'off-runway work remains queued');
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('a new loading cohort drains required hulls after the previous first-flight hold', async () => {
   const runtimeState = beltArrivalRuntimeState({ mode: 'flight' });
   const harness = makeHarness(runtimeState);

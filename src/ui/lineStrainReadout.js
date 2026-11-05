@@ -14,13 +14,17 @@ export function lineStrainWords(state, profile) {
 }
 
 const CSS = `
-.sf-line-strain { position:fixed; left:0; top:0; width:220px; pointer-events:none;
- color:var(--dp-ink-strong,#eee); font:600 12px/1.45 var(--dp-font-mono,monospace);
- letter-spacing:.04em; text-shadow:0 1px 3px var(--dp-bg,#080c12); }
+.sf-line-strain { position:fixed; left:0; top:0; width:max-content; min-width:148px; max-width:220px;
+ padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .13);
+ background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88));
+ box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 8px 20px -6px rgb(0 0 0 / .68);
+ pointer-events:none; color:var(--dp-ink-strong,#f4f1ea);
+ font:600 12px/1.35 var(--dp-face-read,"Instrument Sans",sans-serif);
+ font-variant-numeric:tabular-nums; letter-spacing:.03em; }
 .sf-line-strain[hidden] { display:none; }
-.sf-line-strain__detail { color:var(--dp-ink-dim,#bcc7d1); font-size:12px; }
+.sf-line-strain__detail { color:var(--dp-ink-dim,#9ba3b0); font-family:var(--dp-face-num,"Spline Sans Mono",monospace); font-weight:500; font-size:12px; }
 .sf-line-strain[data-over=true] .sf-line-strain__detail { color:var(--dp-warn,#ffc078); }
-.sf-line-strain__track { width:120px; height:2px; margin-top:4px; background:var(--dp-hairline,#48515a); }
+.sf-line-strain__track { width:100%; height:3px; border-radius:1.5px; margin-top:4px; background:rgb(236 230 216 / .18); overflow:hidden; }
 .sf-line-strain__fill { height:100%; width:100%; transform-origin:left center; background:var(--dp-warn,#ffc078); }
 `;
 

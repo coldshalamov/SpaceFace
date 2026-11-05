@@ -975,6 +975,8 @@ function freezeDeep(value) {
 }
 
 export const SWARM_ACT_ID = 'mooring_line';
+/** LW-04 — the second three-round act, waves 32–34. Same contract, new questions. */
+export const SWARM_ACT_BREAKER_YARD_ID = 'breaker_yard';
 export const SWARM_ACT_ROUNDS = 3;
 /** Staged act bodies land on the same readable beat a debut uses — alone, a little far out. */
 export const SWARM_ACT_STAGED_TICKS = SWARM_DEBUT_TICKS;
@@ -1028,6 +1030,81 @@ export const SWARM_ACT = freezeDeep({
       // The r2 specialist rides the anchor's bearing — the contest and the anchor arrive as
       // one event instead of two lectures.
       { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+    ]),
+  },
+  // ── LW-04 — the second act, waves 32–34 ('breaker_yard') ───────────────────────────
+  // The mooring line asked about bodies: an exposed hull, a specialist, then both under
+  // pressure. The yard asks about LINKS — a warden's guard, a jackal's mine lane, then the
+  // full composition arriving as two linked pairs inside a closing lane. Waves 32–34 are
+  // the next quiet window past the roster clock (last unlock at 22, boss at 30, no debut,
+  // mass-gap or character slot fires): every archetype is already legal, and — like the
+  // first act — the phase cycle happens to hand each round the room its question asks
+  // for. The act still owns the token outright; it simply agrees with the dealt one.
+  //
+  //   r1 furnace_active     — THE GUARD LINK. A warden lands a beat late with a corsair on
+  //                           its bearing — the ward is the prize, the screen is the
+  //                           problem — while the lit centre shoves everything off the
+  //                           stand-and-fight spot.
+  //   r2 shutter_slow       — THE MINE LANE. A jackal sows its lane while the room leans
+  //                           and a brawler commits on the same bearing; the darts and
+  //                           fodder already inbound are fuse or payload, the player's
+  //                           choice.
+  //   r3 shutter_lane_close — THE COMPOSITION UNDER A FIRE CAP. Warden + anchor on one
+  //                           bearing, jackal + tether on another — four specialists, two
+  //                           links, one kill order — inside the room that already sweeps
+  //                           the arrival lane and mines its mouth. `shooterCap` bounds
+  //                           the simultaneous guns so the board stays readable: the wave
+  //                           owner clears at most three cohort hulls to fire at once
+  //                           instead of the wave table's eight.
+  32: {
+    id: SWARM_ACT_BREAKER_YARD_ID,
+    round: 1,
+    arenaPhase: 'furnace_active',
+    question: 'One hull in this pack is guarded — the screen is the problem, not the prize it shields.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 6, gateIndex: 0, atTick: 0 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 2, atTick: 12 },
+      { enemyId: 'choir_zealot', count: 4, gateIndex: 4, atTick: 24 },
+      // The guard and its ward arrive as one event, on a bearing the burst does not use.
+      { enemyId: 'warden_escort', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 30, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+      { enemyId: 'corsair_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 30, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+    ]),
+  },
+  33: {
+    id: SWARM_ACT_BREAKER_YARD_ID,
+    round: 2,
+    arenaPhase: 'shutter_slow',
+    question: 'The jackal is sowing a mine lane while the room leans — the pack is the fuse or the payload.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 5, gateIndex: 0, atTick: 0 },
+      { enemyId: 'detonator_dart', count: 5, gateIndex: 1, atTick: 12 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 3, atTick: 24 },
+      { enemyId: 'mine_layer_jackal', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      // The brawler rides the sower's bearing — the lane and its guard are one problem.
+      { enemyId: 'bruiser_brawler', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+    ]),
+  },
+  34: {
+    id: SWARM_ACT_BREAKER_YARD_ID,
+    round: 3,
+    arenaPhase: 'shutter_lane_close',
+    // A finite simultaneous-fire budget (see _shapeSwarmFire in survivalWave.js): the
+    // composition already asks for a kill order, so the room never opens more guns at
+    // once than the player can read. Absent on other rounds — the wave table rules there.
+    shooterCap: 3,
+    question: 'Two linked pairs land inside a closing lane — which link breaks first?',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 5, gateIndex: 0, atTick: 0 },
+      { enemyId: 'choir_zealot', count: 4, gateIndex: 2, atTick: 12 },
+      // Two linked pairs, two bearings: the guard link and the lane crew land a breath
+      // apart so each pair reads as its own event before the board is full.
+      { enemyId: 'warden_escort', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      { enemyId: 'field_anchor_controller', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      { enemyId: 'mine_layer_jackal', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 90, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 90, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
     ]),
   },
 });

@@ -34,6 +34,7 @@ import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -71,41 +72,47 @@ function calloutRarity(value) {
 }
 
 const CSS = `
-.sf-stuntcall { position:fixed; left:16px; bottom:32vh; z-index:12; display:flex; flex-direction:column;
+.sf-stuntcall { position:fixed; left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); bottom:32vh; z-index:12; display:flex; flex-direction:column;
   align-items:flex-start; gap:5px; pointer-events:none; }
 .sf-stuntcall[hidden] { display:none; }
-.sf-stuntcall__line { display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
+.sf-stuntcall__line { display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
+  padding:3px 9px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .86), rgb(11 14 20 / .86));
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60); }
 .sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.sf-stuntcall__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
+.sf-stuntcall__name { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
 .sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
-  color:rgb(248 244 234 / .72); }
+  color:rgb(248 244 234 / .78); }
 .sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
-  color:rgb(248 244 234 / .84); }
+  color:rgb(248 244 234 / .88); }
 .sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
-  color:rgb(248 244 234 / .95); }
+  color:rgb(248 244 234 / .96); }
 .sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
   color:rgb(248 244 234 / 1); }
-.sf-stuntcall__pts { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(${BONE} / .66); }
+.sf-stuntcall__pts { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:500;
+  font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.02em; color:rgb(${BONE} / .76); }
+.sf-stuntcall__line.is-bank { border-color:rgb(242 185 80 / .36); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__pts { color:var(--dp-hand, #f2b950); }
-.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px; }
+.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px;
+  padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88)); }
 .sf-stuntcall__rowtop { display:flex; align-items:baseline; gap:10px; }
-.sf-stuntcall__mult { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:30px; line-height:1; letter-spacing:-.01em; font-variant-numeric:tabular-nums;
+.sf-stuntcall__mult { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:600;
+  font-size:24px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
   color:rgb(248 244 234 / .95); }
-.sf-stuntcall__names { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .72); }
-.sf-stuntcall__scale { position:relative; width:190px; height:3px;
-  background:rgb(${BONE} / .22); }
+.sf-stuntcall__names { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:rgb(${BONE} / .78); }
+.sf-stuntcall__scale { position:relative; width:190px; height:3px; border-radius:1.5px;
+  background:rgb(${BONE} / .20); }
 .sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
-  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .78); }
+  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .82); }
 .sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
   background:rgb(${BONE} / .55); }
-.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .58); }
+.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-num, "Spline Sans Mono", monospace);
+  font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
+  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .64); }
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
@@ -431,6 +438,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
   meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
+  meter.style.display = 'none';
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
   const namesLine = mk(doc, 'span', 'sf-stuntcall__names', '');
@@ -663,9 +671,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function renderMeter(readout) {
     if (!readout) {
       if (!meter.hidden) meter.hidden = true;
+      if (meter.style.display !== 'none') meter.style.display = 'none';
       return;
     }
     if (meter.hidden) meter.hidden = false;
+    if (meter.style.display) meter.style.display = '';
     const multText = `×${readout.multiplier.toFixed(2)}`;
     if (mult.textContent !== multText) mult.textContent = multText;
     const namesText = readout.names.join(' → ');
@@ -868,10 +878,6 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   // word -> { count, until } — the physics-cause counters that ride the same TTL the
   // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
   const causeRuns = new Map();
-  // word -> { count, until } — the ARENA register's own run, same TTL law. The LOG lane
-  // keeps its one slot per desk (a filing supersedes, never stacks), so the storm roll
-  // rides the pts cell instead of spending a line per word: "ARENA: SWALLOWED ×4".
-  const arenaRuns = new Map();
   function onSwarmKill(p) {
     if (destroyed) return;
     const st = getState();
@@ -891,7 +897,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     rec.count += 1;
     rec.until = now + CALLOUT_TTL_MS;
     causeRuns.set(word, rec);
-    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    addLine('log:swarm:killPopup', `ARENA: ${word.toUpperCase()}`,
+      rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
     spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
     sr.textContent = spoken;
     wake();
@@ -953,34 +960,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
         && payload?.hostId !== st.playerId) return;
       if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
         && payload?.shipId !== st.playerId) return;
-      // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
-      // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
-      if (eventName === 'swarm:killPopup'
-        && (scope.adventure || !payload || payload.friendlyFire === true
-          || !SWARM_TEACHING_CAUSES.has(payload.cause))) return;
+      // Swarm's cause lane already files this same kill word, including its run count.
+      // The two durable world records need no additional flight-register receipt during
+      // this fast arena: their owners still record them normally.
+      if (eventName === 'swarm:killPopup') return;
+      if (!scope.adventure && isSwarmRuleset(scope.run.ruleset)
+        && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) return;
       const line = physicsLogLine(eventName, payload || {});
       if (!line) return;
-      // A kill storm used to rewrite the register's one slot per kill — the ARENA line
-      // flashed through words. Same run law as the kc lane's pinball: the word's own
-      // count rolls inside the beat, a different word files fresh with its own count,
-      // and one register slot still supersedes instead of stacking.
-      if (eventName === 'swarm:killPopup') {
-        const word = String(payload.word || '').toUpperCase();
-        const now = calloutNow();
-        let rec = arenaRuns.get(word);
-        if (!rec || rec.until <= now) rec = { count: 0 };
-        rec.count += 1;
-        rec.until = now + CALLOUT_TTL_MS;
-        arenaRuns.set(word, rec);
-        addLine(`log:${eventName}`, line, rec.count > 1 ? `×${rec.count}` : '',
-          now, CALLOUT_TTL_MS, false);
-        spoken = rec.count > 1
-          ? `${line.toLowerCase()}, ${rec.count} in a row`
-          : line.toLowerCase();
-        sr.textContent = spoken;
-        wake();
-        return;
-      }
       speak({ key: `log:${eventName}`, name: line, detail: '' });
     };
     for (const ev of PHYSICS_LOG_EVENTS) unsubs.push(bus.on(ev, onLogEvent(ev)));
@@ -1029,7 +1016,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       heardStatuses.clear();
       // The run maps ride the same session — a leftover count must not greet the next run.
       causeRuns.clear();
-      arenaRuns.clear();
+      renderMeter(null);
       for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
       lineNodes.clear();
       sr.textContent = '';

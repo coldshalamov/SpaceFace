@@ -2019,6 +2019,20 @@ export const vaelLiens = {
 
   update(dt, state) {
     const v = ensureVaelState(state);
+    // Do not create sector visits or contract traffic in a dormant arena. The
+    // conservative live-work test leaves the original update intact when armed.
+    if (state.run?.kind === 'survival' && !v.pageNine && !v.contractJobActive
+        && !v.invoices.length && !v.writs.length && !v.patrols.length
+        && !v.clauses.length && !v.debtors.length && v.giftPod.entityId == null
+        && !v.book.clauses && !v.book.stains && !v.book.settledCr
+        && !Object.keys(v.liens).length && !Object.keys(v.telegraphs).length
+        && !Object.keys(v.writTelegraphs).length && !Object.keys(v.visits).length
+        && !state.entityList.some((e) => e && (Number(e.data?.lienMass) > 0
+          || (e.alive !== false && (e.factionId === FACTION_ID
+            || e.data?.lineHeadId === VAEL_OVERRIDE_HEAD.id || e.data?.overrideTender === true
+            || e.data?.lienAnchor === true || e.data?.vaelPatrol === true
+            || e.data?.vaelWritTender === true || e.data?.vaelLance === true
+            || e.data?.vaelDebtor === true))))) return;
     const visit = this._visit(state);
     this._telegraphTenders(state);
     this._tickAnchors(state, dt);

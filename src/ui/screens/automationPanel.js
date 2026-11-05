@@ -7,6 +7,7 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, BUILDABLE_OUTPOSTS as OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { MODULES } from '../../data/modules.js';
 import { CLAIM_REFINERY_RECIPES } from '../../data/sites.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
@@ -28,6 +29,19 @@ const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const STATION_NAMES = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+
+function fleetAssignmentForShip(ship, fleet) {
+  return ship?.fleetAssignmentId == null ? null
+    : (fleet || []).find((row) => row && row.id === ship.fleetAssignmentId) || null;
+}
+
+function trackedVesselAtBerth(state, ship) {
+  const sj = state?.player?.shipjack || state?.shipjack;
+  const v = ship?.vesselId && sj?.vesselsById?.[ship.vesselId];
+  return !!(v && v.custodian === 'player' && v.defId === ship.defId && v.condition?.hull > 0
+    && state.ui?.docked && v.location?.kind === 'berth' && v.location.stationId === state.ui.dockedStationId
+    && !sj.yards?.[ship.vesselId] && !sj.fleetOperations?.[ship.vesselId]);
+}
 
 /** Earnings are ceilings on one shared bucket; depot receipts settle physical throughput. */
 export function describeDroneEarnings(state, assetOrDef = {}) {
@@ -1097,6 +1111,30 @@ export const automationScreen = {
     body.addEventListener('input', (e) => this._onLoopInput(e.target, false));
     this._listenProgramRejections();
 
+    // Worker replies apply the fleet mirror before replaying this owner event.
+    // Refresh the open panel from that mirror, not from the click's optimistic state.
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = ctx?.bus?.on?.('automation:fleetChanged', (event) => {
+      if (this._root && this._tab === 'fleet') this.refresh(this._ctx);
+      const messages = {
+        assigned: 'Wingman assigned. The hull remains yours and will deploy on sector entry.',
+        released: 'Wingman returned to the hangar.',
+        releaseRejected: 'Cannot return this wingman: its owned hull link is missing or ambiguous.',
+        hullSaleRejected: 'Return the wingman to the hangar before selling its hull.',
+        hullSwitchRejected: 'Return the wingman to the hangar before flying its hull.',
+      };
+      const refusal = { active: 'Your active hull cannot be assigned.', assigned: 'That hull is already assigned to the wing.',
+        capacity: 'Fleet is at capacity.', missing: 'That owned hull is no longer available.', unavailable: 'Fleet assignment is unavailable.',
+        tracked_vessel: 'Bring this tracked hull to this berth and finish any yard or recovery work before assigning it.',
+        destroyed: 'This hull has no integrity. Switch to it at a berth and repair it before deploying.' };
+      const text = event?.reason === 'destroyed' && event.action === 'released'
+        ? 'Wingman lost; its owned hull remains with zero integrity.'
+        : event?.reason === 'tracked_not_berthed' && event.action === 'releaseRejected'
+          ? 'Bring this wingman to the receiving berth and stop before returning it.'
+        : event?.action === 'assignmentRejected' ? (refusal[event.reason] || 'Fleet assignment was not accepted.') : messages[event?.action];
+      if (text) ctx.bus.emit('toast', { text, kind: /Rejected$/.test(event.action) || event.reason === 'destroyed' ? 'warn' : 'good', ttl: 4000 });
+    });
+
     // A finished trader cycle had no reader. The strip says what the receipt paid.
     if (this._offCycle) this._offCycle();
     this._cycleNote = '';
@@ -1115,6 +1153,8 @@ export const automationScreen = {
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
   dispose() {
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = null;
     if (this._offProgramRejected) this._offProgramRejected();
     if (this._offProgramAssigned) this._offProgramAssigned();
     this._offProgramRejected = this._offProgramAssigned = null;
@@ -1384,7 +1424,8 @@ export const automationScreen = {
       for (const fs of a.fleet || []) {
         parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs._liveId || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
       }
-      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i] && owned[i].defId, owned[i] && owned[i].customName);
+      parts.push(player.activeShipIndex);
+      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i]?.defId, owned[i]?.name, owned[i]?.customName, owned[i]?.vesselId, owned[i]?.fleetAssignmentId);
     }
     return parts.join('|');
   },
@@ -1725,6 +1766,8 @@ export const automationScreen = {
   _renderFleet(frag) {
     const a = this._auto();
     const fleet = a.fleet || [];
+    const st = this._ctx.state;
+    const owned = (st.player && st.player.ownedShips) || [];
     const cap = a.fleetCap || (this._balance().fleetCapByTier || AUTO_BALANCE.fleetCapByTier || [2])[this._playerTier() - 1] || 0;
 
     const h = this._section(`Escort / Wingmen Fleet (${fleet.length}/${cap})`);
@@ -1736,8 +1779,10 @@ export const automationScreen = {
       for (const fs of fleet) {
         const card = document.createElement('div');
         card.className = 'au-card';
-        const order = fs.order || 'escort';
+        const order = fs.order === 'idle' ? 'regroup' : (fs.order || 'escort');
         const deployment = describeWingmanDeployment(fs);
+        const links = owned.filter((ship) => ship?.fleetAssignmentId === fs.id);
+        const hasMiningBeam = links.length === 1 && (links[0].fittings || []).some((id) => MODULES.some((mod) => mod.id === id && mod.slotType === 'mining'));
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${fs.defId ? entitySpanHtml('hull:' + fs.defId, escapeHtml(fs.name) || prettyId(fs.defId)) : (escapeHtml(fs.name) || prettyId('wingman'))} ${statusPill(fs.status)}</div>
@@ -1746,23 +1791,24 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} An escort guards you now and can guard your automation assets later.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? (links.length === 1 && !hasMiningBeam ? 'No mining beam fitted; return to hangar to refit.' : 'Mines nearby rock; scoop the ore it drops.') : 'Escort guards you; Regroup returns to formation.'} ${links.length === 1 ? (links[0].vesselId ? 'Registry vessel on fleet duty. Bring it to a receiving berth and stop before returning it to the hangar.' : 'Owned hull assigned to wing with its fitted equipment. Return it before flying, selling or refitting it; its stored cargo remains aboard.') : 'Legacy wingman: owned hull link unavailable; retained in fleet.'}</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
-          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Recall</button>`;
+          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Regroup</button>
+          ${links.length === 1 ? `<button class="au-order" data-act="releaseFleet" data-ref="${automationRecordRefAttr(fs.id)}" data-kind="fleet">Return to hangar</button>` : ''}`;
         frag.appendChild(card);
       }
     }
 
     // assignable owned ships (anything beyond the active hull can be tasked)
-    const st = this._ctx.state;
-    const owned = (st.player && st.player.ownedShips) || [];
     const activeIdx = (st.player && st.player.activeShipIndex) || 0;
     frag.appendChild(this._section('Assign Owned Ship'));
-    const assignable = owned.map((s, i) => ({ s, i })).filter(({ i }) => i !== activeIdx);
+    const spare = owned.map((s, i) => ({ s, i })).filter(({ s, i }) => s && i !== activeIdx);
+    const assignable = spare.filter(({ s }) => (!s.vesselId || trackedVesselAtBerth(st, s)) && !fleetAssignmentForShip(s, fleet));
+    const tracked = spare.some(({ s }) => s.vesselId && !fleetAssignmentForShip(s, fleet));
     if (!assignable.length) {
-      frag.appendChild(emptyEl('No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
+      frag.appendChild(emptyEl(tracked ? 'Bring a tracked vessel to this berth and finish its yard or recovery work before assigning it.' : spare.length ? 'Your spare ships are already assigned to the wing.' : 'No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
     } else if (fleet.length >= cap) {
       frag.appendChild(lockedEl(`Fleet at capacity (${cap}). Research higher Drone/Fleet tiers to expand.`));
     } else {
@@ -1986,10 +2032,9 @@ export const automationScreen = {
       resumeTrader: 'Resuming trader…',
       buildOutpost: 'Constructing outpost…',
       decommission: 'Decommissioning outpost…',
-      orderEscort: 'Order: escort.',
-      orderMine: 'Order: mine.',
-      orderRecall: 'Order: recall.',
-      assignFleet: 'Assigning wingman…',
+      orderEscort: 'Sending escort order…',
+      orderMine: 'Sending mining order…',
+      orderRecall: 'Sending regroup order…',
       assignProgram: 'Assigning drone program…',
     };
 
@@ -2174,7 +2219,7 @@ export function automationNextAction(state) {
   const droneMk1 = DRONES[0] || {};
   const ownedShips = player.ownedShips || [];
   const activeShipIndex = player.activeShipIndex || 0;
-  const spareShipIndex = ownedShips.findIndex((_ship, index) => index !== activeShipIndex);
+  const spareShipIndex = ownedShips.findIndex((ship, index) => ship && (!ship.vesselId || trackedVesselAtBerth(state, ship)) && index !== activeShipIndex && !fleetAssignmentForShip(ship, a.fleet));
   const spareShips = spareShipIndex >= 0;
   if (summary.distressedAssets > 0) {
     return nextAction('drones', 'Stabilize distressed assets',

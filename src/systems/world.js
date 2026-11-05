@@ -46,6 +46,9 @@ import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { VX_FREE_DRIVE_SECTOR_ID, vxFreeDrivePoisFor,
+  vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+  from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
 import { FACTION_BERTHS } from '../data/factionBerths.js'; // CR-BERTH-1 faction berths
@@ -119,6 +122,7 @@ import {
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
+import { tetherMemorialPresentation } from '../data/tetherMemorialPresentation.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -190,8 +194,8 @@ import {
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
-import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
-import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
+import { presentationEntityIdForCourseTarget, resolveContract47aRecoveryTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -651,6 +655,7 @@ export const world = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._resourceBodyRestoreJobs = null;
 
     const state = this.state;
     const bus = this.bus;
@@ -673,6 +678,7 @@ export const world = {
       state.world.sectors = {};
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
+    this._registerFreeDriveRingPoi();
     if (!state.world.discovery) state.world.discovery = {};
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
@@ -683,7 +689,7 @@ export const world = {
     state.world.resourceWork = normalizeResourceWorkState(state.world.resourceWork);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
-    ensureResourceBodies(state.world);
+    ensureResourceBodies(state.world, { npcJobs: state.npcJobs });
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
     state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
 
@@ -2696,6 +2702,10 @@ export const world = {
         });
       }
     }
+    // VX-02 Cracker Run: authored lane discs keep seeded scatter out of the ring's rib
+    // corridor, apron, chute and refuge lines, the same protection machines and boulders get.
+    reservations.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const heliosFace = heliosOpeningFaceBinding(sector.id, 'f_helios_starter', 1,
       (localPos) => this._toGlobal(localPos, sector.id));
     if (heliosFace) {
@@ -3086,6 +3096,9 @@ export const world = {
       blockers.push({ pos: machine.anvil.pos,
         radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
     }
+    // Keep fresh ladder bedrock out of the same authored lanes as arranged scatter.
+    blockers.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
     for (let tier = 0; tier <= 4; tier++) {
       for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
@@ -3122,10 +3135,19 @@ export const world = {
     }
   },
 
+  _resourceBodyRetentionOptions() {
+    return { npcJobs: this._resourceBodyRestoreJobs || this.state?.npcJobs };
+  },
+
+  finishResourceBodyRestore() {
+    this._resourceBodyRestoreJobs = null;
+  },
+
   _restoreResourceBody(ent) {
     if (!ent || ent.type !== 'asteroid') return ent;
     const state = this.state;
-    const bag = ensureResourceBodies(state.world);
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
     if (rec.outcome === 'destroyed') {
@@ -3146,7 +3168,7 @@ export const world = {
         && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
     }) || rec;
     applyResourceBodyToEntity(ent, advanced);
-    upsertResourceBody(bag, advanced);
+    upsertResourceBody(bag, advanced, opts);
     return ent;
   },
 
@@ -3154,17 +3176,19 @@ export const world = {
     if (!entity || entity.type !== 'asteroid') return null;
     const state = this.state;
     const d = entity.data || {};
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const captured = captureResourceBodyRecord(entity, {
       sectorId: entity.homeSectorId || d.homeSectorId || d.sectorId
         || (state.world && state.world.currentSectorId),
       fieldId: d.fieldId,
       slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
       simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
-      previousRecord: d.resourceBodyId ? ensureResourceBodies(state.world).byId[d.resourceBodyId] : null,
-      resourceBag: ensureResourceBodies(state.world),
+      previousRecord: d.resourceBodyId ? bag.byId[d.resourceBodyId] : null,
+      resourceBag: bag,
     });
     if (!captured) return null;
-    const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+    const stored = upsertResourceBody(bag, captured, opts);
     if (stored && entity.data) entity.data.resourceBodyId = stored.recordId;
     return stored;
   },
@@ -3265,13 +3289,17 @@ export const world = {
     const fullPresence = tier === RESIDENCY_TIER.FULL;
     if (!disc.pois) disc.pois = {};
     for (const poi of (sector.pois || [])) {
-      const ang = rng() * Math.PI * 2;
-      const r = wr * (0.2 + rng() * 0.6);
+      // This added navigation identity uses an existing buoy; consume no content RNG, so the
+      // original POIs, dressing and physical bodies retain their established generation stream.
+      const ringNavigation = poi.runtimeOwner === 'vxFreeDriveRing';
+      const ang = ringNavigation ? 0 : rng() * Math.PI * 2;
+      const r = ringNavigation ? 0 : wr * (0.2 + rng() * 0.6);
       const local = poi.pos
         ? { x: poi.pos.x, z: poi.pos.z }
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
       let pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      const earnedMemorial = tetherMemorialPresentation(this.state, poi.id);
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
       // A markerless projection still joins active.pois: sector sweeps mark it discovered and
@@ -3306,6 +3334,7 @@ export const world = {
       const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
       const poiData = {
         poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
+        ...earnedMemorial,
         hidden, gatedBy: poi.gatedBy || null,
         requiresTriangulation: !!triangulation,
         triangulation,
@@ -3404,6 +3433,7 @@ export const world = {
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
+        ...earnedMemorial,
         hidden, claimable: !!poi.claimable,
         ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
         ...(finitePositive(poi.scannerSignalPriority)
@@ -3527,6 +3557,7 @@ export const world = {
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
+    this._spawnFreeDriveRing(sector, active);
     yield 'materialize:dressing-oneoffs';
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
@@ -3655,6 +3686,37 @@ export const world = {
     this._spawnKettleLinePayoff(sector, active);
     this._spawnCachePayoffs(sector, active);
     this._spawnFactionBerths(sector, active);
+  },
+
+  // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
+  // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
+  // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
+  _registerFreeDriveRingPoi() {
+    const sector = this.state.world.sectors?.[VX_FREE_DRIVE_SECTOR_ID];
+    if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
+  },
+
+  _spawnFreeDriveRing(sector, active) {
+    for (const structure of vxFreeDriveStructuresFor(sector.id)) {
+      const pos = this._toGlobal(
+        { x: structure.localPos.x, z: structure.localPos.z }, sector.id);
+      this._spawnPlaceProp(active, sector, structure.placeId, pos, {
+        rot: structure.rot,
+        name: structure.name,
+        radius: structure.radius,
+        worldOneOff: true,
+      });
+    }
+    for (const marker of vxFreeDriveMarkersFor(sector.id)) {
+      const pos = this._toGlobal(
+        { x: marker.localPos.x, z: marker.localPos.z }, sector.id);
+      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
+        rot: 0,
+        name: 'Cracker Run marker',
+        radius: 10,
+        worldOneOff: true,
+      });
+    }
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
@@ -6525,6 +6587,13 @@ export const world = {
   _onSetCourse(payload = {}) {
     const pos = sanitizeCoursePos(payload.pos);
     if (pos) {
+      if (payload.recoverySource) {
+        const source = resolveContract47aRecoveryTarget(this.state, payload.missionId, payload.recoverySource);
+        if (!source || !payload.stable || resolveEntitySelection(this.state, payload.stable) !== source
+          || source.id !== payload.targetEntityId) return null;
+        // The UI command crosses a worker boundary: retain its identity, but use the live pose.
+        pos.x = source.pos.x; pos.z = source.pos.z;
+      }
       const label = String(payload.label || payload.reason || 'Autopilot fix');
       const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
       const targetSectorId = typeof payload.targetSectorId === 'string'
@@ -6540,6 +6609,8 @@ export const world = {
         label,
         reason: payload.reason || label,
         pos,
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       let stableTarget = null;
       if (targetEntityId != null) {
@@ -6547,22 +6618,23 @@ export const world = {
         // leave an unprovable bind that a recycled occupant later inherits — the authored pos
         // stays the fail-closed place instead. presentationEntityId already refused the same
         // dead bind two lines above; the id write now agrees with it (review).
-        const bound = liveEntityById(this.state, targetEntityId);
+        const bound = payload.stable ? resolveEntitySelection(this.state, payload.stable)
+          : liveEntityById(this.state, targetEntityId);
         // SF-244: the armed course outlives the commit instant and the core recycles entity
         // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
         // back to the fix) instead of redirecting the burn onto an unrelated body. A live but
         // uncapturable entity binds nothing: the waypoint must not keep a bare recyclable id
         // the autopilot already refused (review).
         if (bound) {
-          stableTarget = captureEntitySelection(bound);
+          stableTarget = payload.stable || captureEntitySelection(bound);
           if (stableTarget) {
-            this.state.nav.waypoint.targetEntityId = targetEntityId;
+            this.state.nav.waypoint.targetEntityId = bound.id;
             this.state.nav.waypoint.stable = stableTarget;
             // INF-056: the course aimed at a live body, so bind the presentation id too — flight
             // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
             // instrument resolves the same moving position through the canonical resolver. The
             // save whitelist drops the field, so a loaded waypoint falls back to pos the same way.
-            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, bound.id);
             if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
           }
         }
@@ -6574,12 +6646,14 @@ export const world = {
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,
-        targetEntityId: stableTarget ? targetEntityId : null,
+        targetEntityId: stableTarget ? this.state.nav.waypoint.targetEntityId : null,
         label,
         arrivalRadius,
         status: 'armed',
         ...(payload.planetaryApproach === 'planet_tethys_anvil' ? { planetaryApproach: payload.planetaryApproach } : {}),
         ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);
@@ -8107,7 +8181,8 @@ export const world = {
       arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
-      resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
+      resourceBodies: serializeResourceBodyBag(
+        ensureResourceBodies(state.world, this._resourceBodyRetentionOptions()), this._resourceBodyRetentionOptions()),
       // Shelved far actors are durable run state: without them a virtualized NPC rematerializes
       // live on load and the next serialize captures a fat record where the save held a thin one.
       farActors: serializeFarActorTable(state.world.farActors),
@@ -8138,19 +8213,23 @@ export const world = {
     return out;
   },
 
-  deserialize(data) {
-    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  deserialize(data, context) {
+    for (const _ of this.deserializeChunked(data, context)) { /* sync lane: every batch inline */ }
   },
 
   // Generator twin: yields only at section boundaries (between the durable bag restores), never
   // inside a section — the async lane paints between them while every call keeps sync order.
-  *deserializeChunked(data) {
+  *deserializeChunked(data, context) {
     if (!data) return;
+    // World and its resource rows restore before npcJobs. During that interval use the
+    // incoming saved job bag, never the outgoing session's transient jobs.
+    this._resourceBodyRestoreJobs = context ? (context.npcJobs || { byId: {} }) : null;
     this._clearAdoptedSalvorApproachState(this.state);
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
     state.world.arrangementVersion = arrangementVersion;
+    this._registerFreeDriveRingPoi();
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
     // materializer believe stations/gates are still live and the loaded sector appears empty.
@@ -8177,7 +8256,7 @@ export const world = {
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = yield* normalizeRecordsBagChunked(data.records);
     yield 'world-records';
-    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies, this._resourceBodyRetentionOptions());
     yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
@@ -8232,6 +8311,7 @@ export const world = {
     for (const sector of SECTORS) {
       state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
     }
+    this._registerFreeDriveRingPoi();
     state.world.discovery = {};
     state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};

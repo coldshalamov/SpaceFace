@@ -159,3 +159,51 @@ export function impactLinkFromPresentation(presentation, { impactTick = null, pl
     playerId,
   });
 }
+
+// Transient death-to-physical-wreck join. State-scoped ownership avoids save/entity mutations; the
+// pending map is bounded and only an immediate aftermath bind can carry a witness forward.
+const chainWitnessStores = new WeakMap();
+const CHAIN_WITNESS_CAP = 32;
+export const CHAIN_WITNESS_WINDOW_S = 6;
+function witnessStore(state) {
+  let store = chainWitnessStores.get(state);
+  if (!store) { store = { pending: new Map(), bodies: new Map() }; chainWitnessStores.set(state, store); }
+  return store;
+}
+export function clearChainWreckWitnesses(state) { if (state) chainWitnessStores.delete(state); }
+export function rememberChainDeath(state, markerId, payload, victim) {
+  if (!state || !markerId || payload?.type !== 'ship' || payload.killerId !== state.playerId
+    || !victim || victim.id !== payload.id || !Number.isSafeInteger(victim.occupantGeneration)
+    || !Number.isFinite(state.simTime)) return null;
+  const witness = Object.freeze({ firstId: victim.id, firstGeneration: victim.occupantGeneration, deathTime: state.simTime });
+  const pending = witnessStore(state).pending;
+  pending.set(markerId, witness);
+  while (pending.size > CHAIN_WITNESS_CAP) pending.delete(pending.keys().next().value);
+  return witness;
+}
+export function bindChainWreck(state, markerId, wreck) {
+  if (!state || !markerId || !wreck || wreck.type !== 'wreck' || wreck.alive === false
+    || !Number.isSafeInteger(wreck.occupantGeneration)) return null;
+  const store = witnessStore(state), death = store.pending.get(markerId);
+  if (!death || !Number.isFinite(state.simTime) || state.simTime !== death.deathTime) return null;
+  const witness = Object.freeze({ ...death, wreckId: wreck.id, wreckGeneration: wreck.occupantGeneration });
+  for (const [body, old] of store.bodies) {
+    if (body.alive === false || state.entities?.get?.(body.id) !== body
+      || body.occupantGeneration !== old.wreckGeneration
+      || state.simTime - old.deathTime > CHAIN_WITNESS_WINDOW_S) store.bodies.delete(body);
+  }
+  store.bodies.set(wreck, witness);
+  while (store.bodies.size > CHAIN_WITNESS_CAP) store.bodies.delete(store.bodies.keys().next().value);
+  store.pending.delete(markerId);
+  return witness;
+}
+export function currentChainWreckWitness(state, wreck) {
+  const bodies = state && chainWitnessStores.get(state)?.bodies;
+  const witness = wreck && bodies?.get(wreck);
+  if (!witness) return null;
+  if (wreck.alive === false || state.entities?.get?.(wreck.id) !== wreck
+    || wreck.id !== witness.wreckId || wreck.occupantGeneration !== witness.wreckGeneration
+    || !Number.isFinite(state.simTime) || state.simTime - witness.deathTime > CHAIN_WITNESS_WINDOW_S
+    || state.simTime < witness.deathTime) { bodies.delete(wreck); return null; }
+  return state.simTime > witness.deathTime ? witness : null;
+}

@@ -12,7 +12,59 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Claimed paths (beyond README §3)
 
+**November5 source integration:** c4b88c85acd4 connects canonical course momentum/receiver guidance,
+seven briefings and earned-result comparisons, and prioritizes the real current course objective.
+Compressed Load cards now retain scar truth; restored seed identity arrives with the actual worker
+receipt. The Counterweight adapter now preserves the full110-reader autosave capture, and invalid
+plans refuse before encoding. Focused integration checks pass; actual flown courses remain open.
+The genuine Ring pilot's latest414u approach/eleven-scar/grudge save is preserved for the repaired
+candidate. Lantern Ward PR840 is a separate active31-path integration, with native/ordinary work
+still pending; it is not covered by the c4b88 baseline. See NOW for exact live writers.
+
+**Active connected batch,2026-11-03:** ordinary Adventure exposed47-A's missing recovery marker
+and false delivery focus. Source now binds the actual field/slot, publishes the recovery/delivery
+phase through the worker, and makes first-pull teaching optional without stealing a manual course
+or losing a physically carried training body. The real mining producer handoff passes. Mounted
+chart review found the separate source marker sharing manual-course identity; correction is active.
+The earned sample/delivery/workshop journey remains open. Last Shift's bounded filed account,
+Borrowed Voice's actual global anchor, and the physical Warm Freighter/attached growth/deliberate
+standby scene are source-ready, with ordinary connected-world play still required.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
+
+**Current November3 checkpoint:** public `89ddfe4830e2` includes the repaired arcade Exit/Adventure autosave boundary. Ordinary purchase/save/Swarm/Exit/Continue returns to flight with exact4,962 credits, cargo and sector. The actual Ceres plate brace pays400 once,4,806→5,206, followed by crew cutter release; full physical receiving remains open. Connected mining/refining/crafting/fitting and Last Shift are the next ordinary journeys. Earlier source/fixture receipts below do not imply those routes are accepted.
+
+- 2026-11-03 first shift: a new completed player-only Second Measure long-plate brace pays400cr once through Economy's existing saved committed-intent owner. Partial/copied/stale/replayed/legacy work does not pay; production host/main checks publish the wallet before the paid yard line. Kessler offers the real Ceres lead and distinguishes brace, loss and actual cradle retention. Mounted Bar choice/reply/focus and a short-window facility/Comms/Help/Undock overlap are fixed and directly checked at1280/844. The ordinary paid brace and subsequent cutter release now pass; no full lift or paid-shift Continue is claimed.
+
+- 2026-11-03 working fleet: newly commissioned Prospectors physically reach/face a real seam and report dated field depletion/location through existing Hail Status, with no ore/reward/discovery grant. Same-job Continue binds the exact persisted resource identity; active-job references protect it during bounded compaction and release removes that protection. Focused physical/Hail/Continue/pressure and existing compaction checks pass; natural encounter/look remain open. Rescue standby now yields to a real unattended survivor pod, preserving player lines/other lifters/active approaches. Root caught and removed the new broad per-tick search; indexed standby visits only payloads. The existing sweeper shift was already complete and was not duplicated.
+
+- 2026-11-03 connected services: actual mounted Registry/production-worker cases now publish paid title, completed module extraction, exact inventory sale and owned fittings in the receipt's mirror. Spare resale is newest-first and paginated, so a newly extracted101st part is reachable and older parts remain accessible. Shipworks chooser descriptions/actions now keep their geometry under hover/focus at desktop, landscape and phone sizes; ordinary changed station travel remains open.
+
+- 2026-11-03 character and sound: optional Hail on the same Helios carrier reads loaded/conflict/accepted-unload state; personal thanks require that same durable carrier/manifest and earned physical escape. Existing help/tow actions and private manifest scanner gating retain priority;48 cases pass. Legacy Massline spool now silences on actual ScreenManager pause and resumes its real graph;2 permanent lifecycle checks pass. Natural hail aftermath and audible mix remain separate player checks.
+
+- 2026-11-03 tracked wingmen: the captured-hull branch now uses the Registry's actual berth, physical body, condition and identity through ordinary undock, save/Continue, sector transition and receiver-gated Return. Yard/tug jobs and fleet assignment exclude one another. Same-reply Registry publication and optional armor maximum preserve the actual repaired hull; review removed a second configuration pass that could restore stale zero-condition caches. The mounted panel/production-worker fixture passes, including paid repair, stale generation and distance refusal; physical travel was fixture-arranged and is not ordinary-route acceptance.
+
+- 2026-11-03 Anvil ordinary route accepted on immutable DDE: earned Ceres Continue, real chart/course and public inputs produced a player-contributed1H pod at socket1, reserve44→43, with hold13 unchanged. Closing Scoop and fresh B released that same id/life; physical pickup marked its lot delivered and increased hold13→14. No game position, inventory or completion writes. Root opened the paused recovery capture; receipt is in play-systems/ANVIL_PLAYER_ROUTE_DDE.md. Controller overshoot was corrected during the same boot.
+
+- 2026-11-03 first-wreck polish: its existing once-only two electronics pickups now originate at the live training hull and inherit its velocity with opposed separation. Generation-aware selection prevents an unrelated recycled occupant satisfying the lesson or being removed during cleanup. Focused onboarding/Continue/cargo cases pass; the ordinary first-pull visual route remains open. The reward, optional collection and separate47A progression retain their existing owners.
+
+- 2026-11-03 fleet and paid services: assigning one spare twice could create duplicate working hulls. Ships now owns the persistent assignment link, refuses activation/sale/refit until Return, deploys the real fitted equipment, and preserves hull/armor condition through return, reassignment, switching and save. Unlinked legacy fleet remains intact. Tracked Shipjack hull assignment explicitly awaits an atomic physical handoff; a separate reverse-sequence guard prevents Shipjack admitting a live assigned wingman or Fleet release retiring the player. Actual owner/worker regressions pass. The paid impound desk now waits across cover/reopen for its correlated reply and same-reply lot/papers publication, including a168-credit tip, wallet refusal and saved papers sale. Hauler's actual first-manifest receipt can recommend the existing state-sensitive Harbor Brake Set at Helios; no new currency, mandatory purchase or timing claim. Ordinary visual/gameplay routes remain open.
+
+- 2026-11-03 compact flight: the actual mobile landscape capture showed top-center captions and receipts overlapping View & circuits. At844×390 the allocator now uses the measured gap between that control and the radar; mission and touch controls retain their layout. The focused geometry/attention suite passes28 cases. This is not a changed-build screenshot or phone acceptance; the separate black-page composition defect remains with Mobile, and a fully occupied viewport still requires a deliberate message-lifetime decision.
+
+- 2026-11-03 hull choice: Make active now explains which unreserved cargo stays on the outgoing named hull, which sealed/protected freight must fit, and what the incoming hull can load. The guidance uses the cargo owner's reservation rules and appears beside activation and in both controls' accessible names. A direct guidance/real-cargo-switch check passes, including sealed freight; browser layout and normal switching remain separate route work.
+
+- 2026-11-03 connected ownership: Shipworks Remove now forwards to the worker, waits for its correlated accepted/refused receipt, and publishes the same fitting instance immediately from a cold inventory. Overflow reports actual used/resulting capacity and a remedy. The actual stage/worker regression also purchases and switches to a Pelican, then restores cargo, credits, active hull and fitting identity. Fleet Mine now survives its existing save owner, updates the open panel from the accepted worker order and stops cutting on Regroup. Recovery consumes a one-trip cargo policy even with zero payout, preventing free later coverage. Focused worker/save checks pass for these configured fixtures; ordinary browser actions remain open.
+
+- 2026-11-03 outpost actions: the actual Automation Build handler charged45,000 credits and created an authoritative outpost, but its panel stayed empty because `automation.outposts` was not published. The existing leaf now mirrors normally; successful build/decommission invalidate only that leaf so the command reply updates even a paused, cold-sized list. The panel → worker → main regression passes for empty and100-outpost lists, including Decommission and saved-owner serialization; ordinary browser construction remains open.
+
+- 2026-11-03 connected player actions: `1bbdf2c314ec` makes the first Deck Cargo Net an instant, real material-consuming bench build with immediate Shipworks handoff; existing paid queues retain their saved timing. Timed work explicitly pauses at berth. A real 41,893-byte cold-inventory case required event-triggered publication of only `player.moduleInventory`; the Industry screen → worker acknowledgement → same-berth fit now passes. `b0c4b6069853` moves evidence-board pins/ties to the worker before confirming them, publishes the bounded board, and triggers its story event after accepted mutation. The actual panel/story/save-restore regression passes; ordinary browser crafting and evidence play remain open.
+
+- 2026-11-03 material and picture follow-up: `c1930c5226e9` prevents Maw fragments from replacing a destroyed objective, becoming whole-Maw visuals, or yielding drone ore. Real fragments stay alive and ordinary ore remains mineable. The first rotation scope correction did not resolve the deployed stall; the next trace showed serial redecode of offscreen packages. `b90cce0b8c4f` scopes admission to the pending native-camera picture while retaining unculled/shadow/uncertain draws. Twenty-seven focused cases pass; the next deployed rotation result remains open.
+
+- 2026-11-03 first fabrication: Forge now admits its advertised refining recipes. Starter iron and silicate can become an existing Deck Cargo Net S through the material-consuming, timed queue and Shipworks handoff, adding20 capacity to the Hitch. Focused actual pickup/consumption/queue restoration/fitting checks pass. The main-to-worker Industry click and full ordinary trade/craft route remain separate integration work.
+
+- 2026-11-03 mobile: deployed `befca12c4c8b` candidate64d59 reached headless WebKit flight, actual thrust movement and Pause/Resume; root opened both rendered world/page captures. Rotation stalled the old target beyond10 seconds while simulation advanced. `8084c8925704` scopes rotation admission to visible, nonempty drawables;22 focused resize/lifetime cases pass, corrected deployment still pending. The new cohort baseline passes17/17 in71,396ms under90,000ms. Headed launch was rejected by automatic approval review with only “blocked by policy”; narrower headless execution was accepted. Visible native window and physical iPhone remain unverified; alias remains unchanged.
 
 - 2026-11-03 batch verification: the coherent creative source passes17/17 baseline groups in67,580ms under the unchanged90,000ms limit using the normal bounded allowance4. The earlier allowance2 run passed functional groups but failed timing at112,518ms because its nested Massline lane was serial; both logs are retained under `.devshots/finish/integration-2026-11-03/`. English extraction/readiness is current with zero unresolved surfaces; production translations are not claimed. This is integration evidence, not game-frame, public-route or physical-iPhone acceptance.
 
@@ -729,6 +781,73 @@ route outcomes remain distinct from these owner and layout checks):
 - inf-market-receipt-lane (WF-14 repair): the station's receipt line — sales, tolls, services,
   the PA — is readable on the market at 1280×720 instead of painting off the top of the glass;
   layout probe 17 findings → 0 (d9f10637f688).
+
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, recorded
+in `design/program/inference-memory.json`):
+- inf-radio-kill (WF-13, wave 2): the radio mentions the hostile wing you downed yourself —
+  The Margin airs the receipt over the band (b414436038b1).
+- inf-wreck-history (WF-16, wave 2): a scanned battlefield wreck reads as a history — the
+  black box names how it died, what it carried, how long it has been dead (ca1f422ec8b0).
+- inf-bar-regular (WF-09, wave 2): a bar regular whose story advances every visit —
+  recognition names your last exchange instead of one bark forever (c0f7eb02056b).
+- inf-berth-remembers (WF-04, wave 3, direct): docking at a station you berthed at before
+  reads one keeper line — days since your last visit — from persisted dock-provenance
+  stamps (visitedAt/priorVisitAt on the market-memory row); surveys and uplink refreshes
+  are knowledge, never presence, so the memory never lies about a hull in the bay
+  (8905cfb8f385).
+- inf-quiet-berth (WF-14, wave 3, direct): a berth with nothing happening reads one honest
+  quiet line — whether its boards have moved since you last read them — instead of a dead
+  card; never spoken over louder voices, never invented movement (41729f77ea5a).
+Verified already deep, wave 3 reconciliation, no unit taken: a hail that carries the ship's
+name and captain (src/data/shipRegistry.js mints the painted hull name + manifest captain
+per save seed; contactHail's callsign read already answers with it).
+
+Inbox (Lane 3, noticed 2026-11-04): ceres-workfleet-recovery/production-cycle suites fail on
+the current working tree (bodies.length/service-state assertions in restore()); the fixture
+imports src/systems/world.js, which has large uncommitted edits from the active integration
+thread — flagging so the thread lands or repairs it with its wave.
+Inbox (Lane 3, noticed 2026-11-04, second): test/tier2-why.test.mjs section 7 crashes in
+Node — contracts.js (Cinderglass thread commit 8ba645d79394) transitively imports
+src/localization/sourceText.js, which writes documentElement.dataset.locale at module load
+under the suite's DOM stub. Next step: guard sourceText's boot write or lazy-import in
+contracts.js; owning thread holds the contracts screens.
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-pa-market-desk (WF-13): docked, the station PA airs what its own market just did — an
+  active shortage first, else the biggest listing move against a watch-old mid (credits
+  floor + 8% fraction gate so drift never reads as news), once per watch, with an authored
+  desk-chime recipe and caption (ac5f3d86d1c3).
+- inf-wreck-captain (WF-09 integration): a scanned wreck now tells you who was aboard — the
+  aftermath owner stamps the registry identity at record time (same law as killerLabel) and
+  the scan adds "CAPT. <name> of the <ship>"; authored hulls never mint, legacy restores
+  honestly to nobody (a8015cf28f34).
+- inf-cause-your-kill (WF-06 repair): selling the freight you took off the hull you downed
+  tightens the destination's book — the why-tooltip names that cause instead of leaving the
+  player's biggest economy move a mystery (6b392b33409c).
+Verified already deep, wave 4: giver-voice offers (443fb963cf7a), ship name + captain on
+hail (shipRegistry, re-verified through the registry refactor).
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-challenge (WF-16): carrying heat, the ambient patrol that finds you cuts its
+  station orbit, holds a 220-WU standoff off your beam, and names the sheet on the band once
+  per heat episode — long before any scan cone or seeded hunter; challenged hulls stay
+  passive; law writes the fact, traffic only flies it (56acd9157562).
+- inf-fine-why (WF-14): the law desk's fine card names what the fine is made of — base plus
+  one step per heat band, your live step named — and the conviction it answers for, via the
+  same no-false-witness trace as the flight alert; suspicion without a receipt renders
+  nothing (63723f81ce70 + dad25ea2f40d hardening).
+- inf-defeat-situation (WF-09): the after-action sheet names the hunt you died in — the
+  wanted band, the escape clock, and on a real receipt the convicting incident it traced to;
+  heat freezes over the open sheet so the clause reads the situation at death (e4f279764227).
+Verified already deep, wave 5: traffic registry continuity (durable worldRecordId +
+identityKey stamps at spawn; replacement hulls minting fresh names is the by-design per-hull
+law), defeat receipt depth (killer/weapon/strike/vitals/Range teaching already present).
+Inbox addition: test/infer-p05-patrol-hostility-live.test.mjs fails on the current tree
+("0 shots") — the rig loads combatDoctrine.js/physics.js, both carrying large uncommitted
+edits from the active integration thread; left for the owning thread (same pattern as the
+two Inbox lines above).
 
 ## Traps
 

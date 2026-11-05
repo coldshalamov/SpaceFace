@@ -299,6 +299,13 @@
       "part_id": "wholeship_hornet_scn_interdictor",
       "npc_root": "HORNET_SCN_INTERDICTOR_ROOT"
     },
+    "hornet_scn_customs_cutter": {
+      "layout": "npc",
+      "file": "hornet_scn_customs_cutter",
+      "asset_id": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+      "part_id": "wholeship_hornet_scn_customs_cutter",
+      "npc_root": "HORNET_SCN_CUSTOMS_CUTTER_ROOT"
+    },
     "wasp_quiet_ghost": {
       "layout": "npc",
       "file": "wasp_quiet_ghost",

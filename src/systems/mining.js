@@ -3201,7 +3201,8 @@ export function persistTouchedResourceBody(state, ast) {
     simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
   });
   if (!captured) return null;
-  const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+  const opts = { npcJobs: state.npcJobs };
+  const stored = upsertResourceBody(ensureResourceBodies(state.world, opts), captured, opts);
   if (stored && ast.data) ast.data.resourceBodyId = stored.recordId;
   return stored;
 }

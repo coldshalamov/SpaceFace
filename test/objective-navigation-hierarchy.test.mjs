@@ -16,6 +16,7 @@ import {
   activeMapGoal,
   pickMapTargetAt,
 } from '../src/ui/galaxyMap.js';
+import { BEATS, onboarding } from '../src/systems/onboarding.js';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -182,7 +183,6 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
   const hud = read('../src/ui/hud.js');
   const log = read('../src/ui/screens/missionLog.js');
   const target = read('../src/ui/targetPanel.js');
-  const onboarding = read('../src/systems/onboarding.js');
   assert.match(hud, /one-objective-one-action-one-threat/);
   assert.match(hud, /setDisplay\(objWrap, false\)/,
     'legacy multi-mission HUD list must remain hidden');
@@ -220,10 +220,61 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
     'the selected target must own the single current-threat detail slot');
   assert.equal((hud.match(/createTargetPanel\(ctx\)/g) || []).length, 1,
     'flight HUD must mount only one detailed target/threat card');
-  assert.match(onboarding, /const demoteObjectiveCopy = !!\(this\.state\.nav/,
-    'tutorial/story context must yield when the spatial objective command is already visible');
-  assert.match(onboarding, /this\._titleEl\.style\.display = 'none'/,
-    'duplicate story flavor collapses instead of covering live controls and status');
+});
+
+test('tutorial panel yields to the current spatial objective and returns when it clears', () => {
+  const attributes = new Map();
+  const title = {
+    textContent: '', style: {},
+    setAttribute: (key, value) => attributes.set(key, value),
+    getAttribute: (key) => attributes.get(key) ?? null,
+    hasAttribute: (key) => attributes.has(key),
+    removeAttribute: (key) => attributes.delete(key),
+  };
+  const state = {
+    onboarding: { active: true, finished: false, currentBeat: BEATS.findIndex((beat) => beat.key === 'thrust') },
+    nav: { waypoint: null },
+  };
+  const owner = Object.assign(Object.create(onboarding), {
+    state, _panel: {}, _storyMode: false, _titleEl: title,
+  });
+  // Isolate the real update, waypoint and panel owners from unrelated teaching systems.
+  for (const method of ['_speakCombatStickHint', '_noteMissingThreeUses', '_teachFieldEscapes',
+    '_teachCadencePump', '_teachReleaseWindow', '_tickShelfVerbs', '_tickFitFelt', '_drainHintQueue',
+    '_notePaceFlight', '_tryAdvanceBeat', '_resolveProximityDone', '_resolveRescueDone',
+    '_resolveRaidDone', '_tickSwingClinic', '_tickClaimed', '_maybeAdvanceMissingThree',
+    '_tickPowerSituations', '_resolveMissingThreeDone']) owner[method] = () => {};
+  owner._setRescueWaypoint = () => false;
+  owner._setMissingThreeWaypoint = () => false;
+  let beacon = null;
+  owner._findBeacon = () => beacon;
+  const tick = () => owner.update(0.2, state);
+  owner._refreshBeatPanel();
+  assert.ok(title.textContent, 'the tutorial supplies an instruction without a spatial objective');
+  assert.notEqual(title.style.display, 'none');
+  assert.equal(title.hasAttribute('aria-hidden'), false);
+
+  beacon = { pos: { x: 10, z: 20 }, label: 'Beacon' };
+  tick();
+  assert.equal(state.nav.waypoint.onboarding, true);
+  assert.equal(title.style.display, 'none', 'the HUD already paints the tutorial waypoint');
+  assert.equal(title.getAttribute('aria-hidden'), 'true', 'the duplicate is also hidden from assistive technology');
+
+  for (const kind of ['nav', 'local']) {
+    const waypoint = { kind, reason: 'Fly to the selected destination', pos: { x: 20, z: 30 } };
+    state.nav.waypoint = waypoint;
+    tick();
+    assert.equal(state.nav.waypoint, waypoint, `${kind} player course remains selected`);
+    assert.equal(resolveFlightObjectiveCommand(state).owner, 'navigation');
+    assert.equal(title.style.display, 'none', `${kind} course owns the flight objective`);
+    assert.equal(title.getAttribute('aria-hidden'), 'true', `${kind} does not leave a competing accessible command`);
+  }
+
+  beacon = null;
+  state.nav.waypoint = null;
+  tick();
+  assert.notEqual(title.style.display, 'none', 'the lesson returns when no spatial objective owns the HUD');
+  assert.equal(title.hasAttribute('aria-hidden'), false);
 });
 
 test('contact density prioritizes useful rows and truthfully summarizes responsive overflow', () => {

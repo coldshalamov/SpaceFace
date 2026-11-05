@@ -8,6 +8,7 @@
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
 
 import * as THREE from 'three';
+import { ashlineFactorMaterialKey, makeAshlineFactorGeometry, applyAshlineFactorShader } from './ashlineFactorPalette.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { assertPackageGeometryRefillReady, isPackageGeometryDetached,
   rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
@@ -518,9 +519,10 @@ function hasLiveBatchDataTextures(batch) {
     && mesh._indirectTexture?.image?.data != null;
 }
 
-function createBatch(scene, source, lane, capacity) {
+function createBatch(scene, source, lane, capacity, factorPalette = false) {
   const material = copyMaterialForBatch(source.material);
   if (!material) return null;
+  if (factorPalette) applyAshlineFactorShader(material);
   let mesh;
   try {
     mesh = new THREE.BatchedMesh(
@@ -604,15 +606,19 @@ function buildCandidate(scene, plan, options) {
           maxVerts: Math.max(1, pendingVerts),
           maxIndices: Math.max(1, pendingIndices),
         };
-        const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity);
+        const factorPalette = group.materialKey.startsWith('ashline-factor-v1:');
+        const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity, factorPalette);
         if (!batch) throw new Error('rigid-opaque-batch-create-failed');
         batch.recipe = { materialKey: group.materialKey, geometryKey: group.geometryKey };
         batches.push(batch);
         for (const source of pendingSources) {
-          let geometryId = batch.geometryIds.get(source.geometry);
+          const geometryKey = factorPalette ? `${source.geometry.uuid}|${source.material.uuid}` : source.geometry;
+          let geometryId = batch.geometryIds.get(geometryKey);
           if (geometryId == null) {
-            geometryId = batch.mesh.addGeometry(source.geometry);
-            batch.geometryIds.set(source.geometry, geometryId);
+            const geometry = factorPalette ? makeAshlineFactorGeometry(source) : source.geometry;
+            try { geometryId = batch.mesh.addGeometry(geometry); }
+            finally { if (factorPalette) geometry.dispose(); }
+            batch.geometryIds.set(geometryKey, geometryId);
           }
           const instanceId = batch.mesh.addInstance(geometryId);
           _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
@@ -1215,7 +1221,9 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     isTransformOnlySource,
     isAttestedRigidMotionOwner,
     isRenderHookSafe,
-    materialProgramKey: rigidOpaqueMaterialProgramKey,
+    materialProgramKey: (material, source) => options.isAshlineFactorSource?.(source) === true
+      ? (ashlineFactorMaterialKey(material, source) || rigidOpaqueMaterialProgramKey(material))
+      : rigidOpaqueMaterialProgramKey(material),
     shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
   });
 
@@ -1267,7 +1275,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       }
     }
     const signature = signatureFor(normalized);
-    if (pending && pending.signature === signature
+    // Arriving roots stay on their canonical direct draws while the resident plan compiles.
+    // Restarting that work on every arrival can starve admission in a streaming fight.
+    // A departure/replacement still cancels, as do all captured owner/source guards.
+    if (pending && (pending.signature === signature
+        || pending.roots.every((root) => rootInList(normalized, root)))
         && (typeof pending.ownerIsActive !== 'function' || pending.ownerIsActive() === true)) return pending.promise;
     if (pending) {
       pending.cancelled = true;

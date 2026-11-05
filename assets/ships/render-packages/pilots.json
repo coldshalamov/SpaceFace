@@ -1953,7 +1953,7 @@
       "sourceUrl": "assets/ships/release/parts/places/place_crusher_module.glb",
       "releaseSha256": "d8c92aaf8dab4e889c5c47fbf3120dcbae61ce33be7a9e39c5bf9e7d5df93bf9",
       "releaseBytes": 28708,
-      "rootNode": "crusher_module",
+      "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/crusher-module",
       "metadataUrl": "assets/ships/release/render-packages/crusher-module/render-package.json"
@@ -2944,6 +2944,27 @@
       ],
       "outputDir": "assets/ships/release/render-packages/hornet-scn-interdictor",
       "metadataUrl": "assets/ships/release/render-packages/hornet-scn-interdictor/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "hornet-scn-customs-cutter",
+      "assetId": "sf.render.hornet-scn-customs-cutter",
+      "runtimeAssetId": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_hornet_scn_customs_cutter",
+      "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "releaseSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+      "releaseBytes": 782436,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/hornet-scn-customs-cutter",
+      "metadataUrl": "assets/ships/release/render-packages/hornet-scn-customs-cutter/render-package.json",
       "sceneRoot": true
     },
     {
@@ -4229,7 +4250,7 @@
       "sourceUrl": "assets/ships/release/parts/places/place_ore_sorter.glb",
       "releaseSha256": "50c0fab060cc465d117fa3d47322631c10d3a704d3024242d616ec6c9f3369f2",
       "releaseBytes": 28352,
-      "rootNode": "ore_sorter",
+      "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/ore-sorter",
       "metadataUrl": "assets/ships/release/render-packages/ore-sorter/render-package.json"

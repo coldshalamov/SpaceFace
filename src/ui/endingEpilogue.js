@@ -6,6 +6,7 @@ import {
   endingDef,
   isSandboxId,
 } from '../story/endings/endingDefs.js';
+import { confessionalReadback, CONFESSIONAL_RECORD_TEXT_MAX } from '../systems/special500Confessional.js';
 
 const STYLE_ID = 'sf-ending-epilogue-style';
 const DEFER_MS = 240;
@@ -30,12 +31,19 @@ function postEndingOf(state) {
 
 export function buildEndingEpilogueModel({ event, payload = {}, state } = {}) {
   const rec = postEndingOf(state);
+  const mailed = event === 'mail:delivered' && payload.id === 'mail_guilt_read_back' ? payload.readback : null;
+  const deliveredRecord = mailed && typeof mailed.text === 'string' && mailed.text.length > 0
+    && mailed.text.length <= CONFESSIONAL_RECORD_TEXT_MAX && typeof mailed.finaleReceiptId === 'string'
+    && mailed.finaleReceiptId.length > 0 && typeof mailed.offerId === 'string'
+    && endingDef(mailed.choiceId) && !isSandboxId(mailed.choiceId) ? mailed : null;
+  const readback = deliveredRecord || confessionalReadback(state);
   const sandbox = event === 'endgame:sandboxContinued'
     || isSandboxId(payload.choice)
-    || (!payload.choice && rec && isSandboxId(rec.choiceId));
+    || (!payload.choice && !deliveredRecord && rec && isSandboxId(rec.choiceId));
   const id = sandbox
     ? SANDBOX_DEF.id
-    : clean(payload.choice || (rec && (rec.choiceId || rec.endingId)));
+    : clean(payload.choice || (deliveredRecord && deliveredRecord.choiceId)
+      || (rec && (rec.choiceId || rec.endingId)) || (readback && readback.choiceId));
   const def = endingDef(id);
   if (!def) return null;
 
@@ -51,6 +59,7 @@ export function buildEndingEpilogueModel({ event, payload = {}, state } = {}) {
     objective: clean(rec && rec.objective) || def.continuity.objective,
     objectiveTitle: clean(rec && rec.title) || def.continuity.title,
     dismissLabel: 'CONTINUE OPERATIONS',
+    filedRecordText: isEnding ? (readback?.text || null) : null,
   });
 }
 
@@ -104,6 +113,8 @@ function injectStyles() {
     .sf-ending-epilogue__sections { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
     .sf-ending-epilogue__section-title { font-size: 12px; margin-bottom: 9px; color: #89a9bc; }
     .sf-ending-epilogue__section-copy { margin: 0; color: #e1ebf2; font-size: 14px; line-height: 1.55; }
+    .sf-ending-epilogue__record { grid-column: 1 / -1; }
+    .sf-ending-epilogue__record .sf-ending-epilogue__section-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
     .sf-ending-epilogue__objective-name { display: block; margin-bottom: 5px; color: #76d9f3; }
     .sf-ending-epilogue__dismiss {
       margin-top: 34px; min-height: 42px; padding: 9px 18px; border: 1px solid rgba(118, 217, 243, .72);
@@ -141,6 +152,14 @@ export function createEndingEpilogue({ bus, state, root, isBlocked } = {}) {
   let deferAttempts = 0;
   let destroyed = false;
   const offs = [];
+
+  function appendFiledRecord(sections, text) {
+    if (!text || sections.querySelector('.sf-ending-epilogue__record')) return;
+    const record = element('section', 'sf-ending-epilogue__section sf-ending-epilogue__record');
+    record.append(element('h2', 'sf-ending-epilogue__section-title', 'THE FILED RECORD, READ BACK'),
+      element('p', 'sf-ending-epilogue__section-copy', text));
+    sections.append(record);
+  }
 
   function blocked() {
     if (typeof isBlocked === 'function' && isBlocked()) return true;
@@ -195,6 +214,7 @@ export function createEndingEpilogue({ bus, state, root, isBlocked } = {}) {
     nextCopy.append(objectiveName, document.createTextNode ? document.createTextNode(model.objective) : element('span', '', model.objective));
     next.append(element('h2', 'sf-ending-epilogue__section-title', 'NEXT OBJECTIVE'), nextCopy);
     sections.append(consequence, next);
+    appendFiledRecord(sections, model.filedRecordText);
 
     const button = element('button', 'sf-ending-epilogue__dismiss', model.dismissLabel);
     button.setAttribute('type', 'button');
@@ -253,10 +273,30 @@ export function createEndingEpilogue({ bus, state, root, isBlocked } = {}) {
     return mountModel(model);
   }
 
+  function presentReadback(payload) {
+    const event = payload && payload.id === 'mail_guilt_read_back' ? 'mail:delivered' : 'endgame:finaleCompleted';
+    const model = buildEndingEpilogueModel({ event, payload: payload || {}, state });
+    if (!model || !model.filedRecordText || destroyed) return false;
+    if (active) {
+      appendFiledRecord(active.querySelector('.sf-ending-epilogue__sections'), model.filedRecordText);
+      return true;
+    }
+    return present(event, payload || {});
+  }
+
   if (bus && typeof bus.on === 'function') {
     for (const [event, handler] of [
       ['endgame:chosen', (payload) => present('endgame:chosen', payload)],
       ['endgame:sandboxContinued', (payload) => present('endgame:sandboxContinued', payload)],
+      ['endgame:finaleCompleted', presentReadback],
+      ['mail:delivered', (payload) => {
+        if (payload && payload.id === 'mail_guilt_read_back') presentReadback(payload);
+      }],
+      ['save:loaded', () => {
+        pending = null;
+        dismiss();
+        if (!state.mail?.delivered?.includes('mail_guilt_read_back')) presentReadback();
+      }],
     ]) {
       const off = bus.on(event, handler);
       if (typeof off === 'function') offs.push(off);

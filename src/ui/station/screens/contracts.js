@@ -1,3 +1,4 @@
+import { mountCinderglassJobContracts } from '../../../features/cinderglassJob/integration.js';
 import { briefingDiagramHtml, contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
 import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
@@ -528,6 +529,7 @@ export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
+  const cinderglassContact = mountCinderglassJobContracts(ctx, el);
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
   const standingEl = document.createElement('p');
   standingEl.className = 'k-sentence';
@@ -1443,6 +1445,7 @@ export function createContractsScreen(ctx) {
   }
 
   function renderAll(state) {
+    cinderglassContact.frame(state);
     renderBoard(state);
     renderDossier(state);
     renderActive(state);
@@ -1643,6 +1646,7 @@ export function createContractsScreen(ctx) {
       endHold();
     },
     dispose() {
+      cinderglassContact.destroy();
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       releaseTarget?.removeEventListener?.('pointerup', onPointerReleased, true);
       releaseTarget?.removeEventListener?.('pointercancel', onPointerCancelled, true);

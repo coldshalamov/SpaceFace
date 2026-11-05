@@ -48,8 +48,8 @@ test('the authored bank, live slab and native proxy share width, normal and refe
     const box = new THREE.Box3().setFromObject(visual);
     near(box.max.x, shape.halfWidth); near(box.max.z, shape.halfDepth); near(box.max.y, shape.halfHeight);
     const body = visual.children.find(object => object.isMesh);
-    assert.equal(body.material.color.getHex(), 0x2c2926);
-    assert.equal(body.material.roughness, 0.94); assert.equal(body.material.metalness, 0.06);
+    assert.equal(body.material.isMeshStandardMaterial, true);
+    assert.equal(body.material.transparent, false, 'a bank is a solid visible surface');
     const restored = JSON.parse(JSON.stringify(plate));
     assert.deepEqual(foundryPlateShape(restored), shape);
     assert.deepEqual(foundryPlateProxy(shape), plate.physicsBody.collisionProxyManifest);
@@ -105,13 +105,17 @@ test('production projectile receipt and bank reflection retain the off-center sl
   assert.equal(result.ok, true); near(result.velocity.x, n.x * 300, 1e-3); near(result.velocity.z, n.z * 300, 1e-3);
 });
 
-test('legacy room plates resolve the canonical datum without expanding nonplate toys', () => {
+test('legacy room plates retain their datum while gate contacts use the visible post footprint', () => {
   const legacy = foundryPlateShape({ radius: 26, data: { roomKind: 'plate' } });
   assert.equal(legacy.referenceRadius, 26); assert.equal(legacy.halfWidth, 48);
   assert.equal(legacy.halfDepth, 16.900000000000002);
   const h = fixture();
   h.host._materializeRoom([{ id: 'gate', kind: 'gate', solid: true, radius: 16, pos: { x: -400, z: -400 } }], 3);
   const gate = h.state.entityList.at(-1);
-  assert.equal(gate.radius, 16); assert.equal(gate.physicsBody.collisionProxyManifest, undefined);
+  assert.equal(gate.radius, 16);
+  const proxy = resolveCollisionProxyManifest(gate);
+  assert.equal(proxy.id, 'foundry:furniture-gate');
+  assert.equal(proxy.compactHull.length, 6);
+  near(Math.max(...proxy.compactHull.map(p => Math.hypot(p.x, p.z))) * gate.radius, 3.2);
   assert.equal(gate.mass, 640); assert.equal(gate.rot, 0);
 });

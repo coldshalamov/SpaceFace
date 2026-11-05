@@ -33,6 +33,7 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+import { contract47aReadout } from '../sim/missionRecap.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
 import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
@@ -182,6 +183,9 @@ function missionCommodity(m) {
 
 function missionNextStep(m) {
   const dest = missionDestination(m);
+  if (contract47aReadout(m)) return m.params.sampleRecovered === true
+    ? 'Next: deliver the recovered assay sample to Helios Station.'
+    : 'Next: recover the assay sample at the 47-A Recovery Site in Helios Prime.';
   switch (m && m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
@@ -199,7 +203,7 @@ function missionNextStep(m) {
     case 'recon_scan':
       return 'Next: follow tracked nav and scan each marked site.';
     default:
-      return 'Next: follow the tracked objective. Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
+      return 'Next: follow the tracked objective. Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' has the details.';
   }
 }
 
@@ -230,6 +234,15 @@ function routeCommitment(state, wp) {
 
 /** PRO-05 — Local Map copy with placeholders. en-US matches the old concatenation. */
 export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
+  if (isPhoneLayout()) {
+    return {
+      label: localizeText('Local Map'),
+      hint: inThisSystem
+        ? localizeText('Open Local Map for the live marker in this system.')
+        : localizeText('Open Local Map for the live marker{place}; no jump route is required.', { place }),
+      title: 'Open Local Map',
+    };
+  }
   const label = localizeText('Local Map ({key})', { key });
   const hint = inThisSystem
     ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
@@ -268,11 +281,12 @@ export function pauseMapAction(state) {
     };
   }
   const target = commitment.targetSectorName ? ' to ' + commitment.targetSectorName : '';
-  const hint = 'Open Star Map (' + BINDINGS.starmap.label + ') to review the inter-system route' + target + ' before committing a jump.';
+  const mapLabel = 'Star Map' + pauseKeyHint(BINDINGS.starmap);
+  const hint = 'Open ' + mapLabel + ' to review the inter-system route' + target + ' before committing a jump.';
   // Inter-system review still uses the same galaxyMap surface with GALAXY focus.
   const handoff = mapHandoffAction({
     focus: MAP_FOCUS.GALAXY,
-    label: 'Star Map (' + BINDINGS.starmap.label + ')',
+    label: mapLabel,
     title: 'Open Star Map',
     body: hint,
     sectorId: wp.sectorId || null,
@@ -312,6 +326,10 @@ function routeNextText(mapAction) {
     return mapAction.hint + ' Resume and fly the marker in-system.';
   }
   return 'resume and follow the current marker; ' + mapAction.hint;
+}
+
+function pauseKeyHint(binding) {
+  return isPhoneLayout() ? '' : ' (' + binding.label + ')';
 }
 
 function slotLabel(id) {
@@ -362,9 +380,10 @@ export function saveLine(state) {
     return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
   const everyS = autosaveIntervalOf(state);
+  const saveControls = isPhoneLayout() ? 'Save' : 'Save or F5';
   const autosaveSentence = everyS > 0
-    ? 'Use Save or F5 before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
-    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.';
+    ? 'Use ' + saveControls + ' before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
+    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use ' + saveControls + ' before quitting.';
   if (slot) {
     return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
   }
@@ -466,7 +485,7 @@ export function pauseStatusLines(state) {
       objectiveMention: missionId(candidate)
         ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + ') and Track Nav on a contract.',
+      next: 'Next: open Mission Log' + pauseKeyHint(BINDINGS.missionLog) + ' and Track Nav on a contract.',
       save: saveLine(state),
     };
   }
@@ -491,6 +510,18 @@ export function pauseStatusLines(state) {
 // The exit gate carries facts, not coaching: one consequence sentence, the save fact, and the
 // loss line separate (`confirm`'s note). Objective and next-step guidance stay on the flight
 // brief behind the dialog — reading them here taught the player nothing they couldn't already see.
+function pauseSurvivalRunActive(state) {
+  const run = state?.run;
+  return run?.kind === 'survival' && !['inactive', 'ended', 'victory'].includes(run.phase);
+}
+
+export function pauseRetireToken(state) {
+  const run = state?.run;
+  if (!pauseSurvivalRunActive(state)) return null;
+  const token = run.retireToken;
+  return Number.isSafeInteger(token) && token > 0 ? token : null;
+}
+
 export function pauseExitSaveFact(state) {
   const run = state && state.run;
   if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
@@ -652,6 +683,7 @@ function unwatchPauseNarrow() {
 
 function photoHintText() {
   // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
+  if (isPhoneLayout()) return 'Capture saves the photo · Close returns to Pause';
   return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
 }
 
@@ -854,17 +886,26 @@ export function syncPhotoFov(ctx, value) {
   return next;
 }
 
-function runPhotoCapture(ctx) {
-  const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
-  return writePhotoCapture(capture, {
-    document: globalThis.document,
-    sfDesktop: globalThis.sfDesktop,
-    electronAPI: globalThis.electronAPI,
-    spaceface: globalThis.spaceface,
-    writeStorePage: ctx && ctx.writeStorePage,
-    publishStoreStill: ctx && ctx.publishStoreStill,
-    state: ctx && ctx.state,
-  });
+export async function runPhotoCapture(ctx, host = globalThis) {
+  const state = ctx && ctx.state;
+  const render = ctx?.registry?.get?.('render');
+  const canvas = resolvePhotoCanvas(ctx);
+  // Pause retains the last composited picture, but WebGL may discard its drawing buffer after
+  // presentation. Submit the current prepared scene and begin readback in the same task.
+  if (!state?.render?.photoMode?.active || !canvas || !render
+    || render.state !== state || render.renderer !== state.render.renderer || render.renderer?.domElement !== canvas
+    || typeof render.drawPreparedFrame !== 'function') return { ok: false, reason: 'no-frame' };
+  try {
+    if (render.drawPreparedFrame() !== true) return { ok: false, reason: 'no-frame' };
+    const capture = await capturePhotoPngAsync(canvas, { kind: PHOTO_STORE_KIND });
+    return writePhotoCapture(capture, {
+      document: host.document, sfDesktop: host.sfDesktop, electronAPI: host.electronAPI,
+      spaceface: host.spaceface, writeStorePage: ctx.writeStorePage,
+      publishStoreStill: ctx.publishStoreStill, state,
+    });
+  } catch {
+    return { ok: false, reason: 'capture-failed' };
+  }
 }
 
 function bindPhotoKeys(photoState) {
@@ -964,8 +1005,11 @@ function enterPhoto(rootEl, ctx) {
   captureBtn.type = 'button';
   // The capture's result is a saved file off-page (a download or the desktop photo folder), and
   // photo mode hides the receipt rails — so the key itself names the outcome, then reverts.
-  captureBtn.addEventListener('click', () => {
-    const result = runPhotoCapture(ctx);
+  captureBtn.addEventListener('click', async () => {
+    if (captureBtn.disabled) return;
+    captureBtn.disabled = true;
+    const result = await runPhotoCapture(ctx);
+    captureBtn.disabled = false;
     if (photoCaptureAckTimer) clearTimeout(photoCaptureAckTimer);
     captureBtn.textContent = result && result.ok ? 'Captured' : 'No frame';
     photoCaptureAckTimer = setTimeout(() => {
@@ -983,17 +1027,21 @@ function enterPhoto(rootEl, ctx) {
   fovControl.appendChild(fov);
   bar.appendChild(fovControl);
   bar.appendChild(captureBtn);
-  // Seat the deck on the bottom frame. #screens flex-centres unpositioned children, which parked
-  // this bar mid-air over the subject the player is framing; the hint (k-fine) owns the bottom
-  // left, so the deck takes the bottom centre, one k-margin step above it. Seated without a
-  // transform — kit settle animates transform to none, so translateX centring would fight it.
+  const closeBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Close');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close photo mode');
+  closeBtn.addEventListener('click', () => exitPhoto(rootEl, ctx));
+  bar.appendChild(closeBtn);
+  // The hint shares the deck's flow, so wrapped phone controls and 44px keys reserve their
+  // actual height instead of painting over an independently positioned bottom caption.
+  // Seat without a transform: kit settle animates transform back to none.
   bar.style.position = 'absolute';
-  bar.style.left = '0';
-  bar.style.right = '0';
+  bar.style.left = 'var(--sf-safe-left, 0px)';
+  bar.style.right = 'var(--sf-safe-right, 0px)';
   bar.style.width = 'fit-content';
   bar.style.marginInline = 'auto';
-  bar.style.bottom = 'var(--k-margin, 24px)';
-  host.appendChild(hint);
+  bar.style.bottom = 'calc(var(--k-margin, 24px) + var(--sf-safe-bottom, 0px))';
+  bar.appendChild(hint);
   host.appendChild(bar);
   settle(hint, { from: 'bottom', state: 'photo-hint' });
   settle(bar, { from: 'bottom', delay: 60, state: 'photo-bar' });
@@ -1146,14 +1194,31 @@ export const pauseScreen = {
     if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
-    mk(coreText('mainMenu'), async () => {
+    this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
+    mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {
+      const token = pauseRetireToken(ctx && ctx.state);
+      if (pauseSurvivalRunActive(ctx && ctx.state)) {
+        if (token == null) { ctx.bus?.emit?.('ui:toast', { text: 'Run is still preparing. Try again shortly.', kind: 'info' }); return; }
+        const generation = ctx.helpers?.workerReadGeneration?.();
+        const ok = await confirm({
+          title: 'End this run?',
+          body: 'Retire and see your flight record. Only completed rounds count as cleared.',
+          note: 'Retired runs are unranked. Unbanked salvage does not carry back to the hangar.',
+          confirmLabel: 'Retire run', danger: true,
+        });
+        if (ok && pauseRetireToken(ctx && ctx.state) === token
+          && ctx.helpers?.workerReadGeneration?.() === generation) {
+          ctx.bus?.emit?.('run:retireRequested', { token });
+        }
+        return;
+      }
       const ok = await confirm({
         title: 'Return to main menu?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
         note: pauseExitConfirmNote(ctx && ctx.state),
         confirmLabel: 'Main Menu', danger: true,
       });
-      if (ok) this._toMenu(ctx);
+      if (ok && !pauseSurvivalRunActive(ctx && ctx.state)) this._toMenu(ctx);
     }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
     // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
@@ -1324,6 +1389,7 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
+    if (pauseRootEl && this._retireAtMount !== pauseSurvivalRunActive(ctx.state)) this.mount(pauseRootEl, ctx);
     // the window may have crossed 760 while another screen was over this one
     if (pauseRootEl && typeof this._columnAtMount === 'boolean' && pauseWantsColumn() !== this._columnAtMount) {
       this.mount(pauseRootEl, ctx);

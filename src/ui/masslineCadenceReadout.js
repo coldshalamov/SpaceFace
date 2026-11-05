@@ -113,26 +113,31 @@ export function createMasslineCadenceReadout(parent) {
   const doc = parent.ownerDocument, root = doc.createElement('section');
   root.className = 'ml-cadence'; root.setAttribute('aria-label', 'Massline release instrument');
   root.innerHTML = `<style>
-  .ml-cadence{position:relative;top:-28px;box-sizing:border-box;width:min(260px,calc(100vw - 44px));
-    padding:7px 10px;border-left:2px solid var(--dp-lamp-dim,#8a6b3a);
-    background:var(--dp-glass-flight,rgb(18 23 29 / .88));color:var(--dp-ink,#e8e2d4);
-    font:14px/1.3 var(--dp-face-read,system-ui);pointer-events:none}
-  .ml-cadence[hidden]{display:none}.ml-cadence__load{font-weight:700;overflow-wrap:anywhere}
-  .ml-cadence__cue{color:var(--dp-ink-dim,#c6c3b8)}
+  .ml-cadence{position:relative;top:0;box-sizing:border-box;width:calc(262px * clamp(.9, var(--k-s, 1), 1.15));max-width:calc(100vw - 32px);
+    padding:8px 12px;border-radius:4px;border:1px solid rgb(236 230 216 / .13);border-left:2px solid var(--dp-lamp,#f2b950);
+    background:linear-gradient(180deg, rgb(16 20 28 / .92), rgb(11 14 20 / .92));
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 12px 28px -8px rgb(0 0 0 / .72);
+    color:var(--dp-ink,#e8e2d4);font:13px/1.35 var(--dp-face-read,"Instrument Sans",system-ui,sans-serif);pointer-events:none}
+  .ml-cadence[hidden]{display:none}
+  .ml-cadence__load{font-size:13px;font-weight:600;line-height:1.35;letter-spacing:.015em;word-spacing:.08em;color:var(--dp-ink-hi,#f4f1ea);margin-bottom:3px;overflow-wrap:anywhere}
+  .ml-cadence__cue{font-size:12px;line-height:1.35;letter-spacing:.015em;word-spacing:.08em;color:var(--dp-ink-dim,#9ba3b0)}
   .ml-cadence[data-open="true"] .ml-cadence__cue{color:var(--dp-phos,#dfeeff)}
-  .ml-cadence details{pointer-events:auto}
-  .ml-cadence summary{cursor:pointer;margin-top:4px;font-size:12px;color:var(--dp-ink-dim,#c6c3b8);width:max-content}
-  .ml-cadence__focus-hint{display:block;font-size:12px;color:var(--dp-ink-dim,#c6c3b8)}
-  .ml-cadence summary:focus-visible{outline:2px solid var(--dp-lamp,#f2b950);outline-offset:3px}
-  .ml-cadence__detail{position:absolute;top:100%;left:0;box-sizing:border-box;
-    width:min(300px,calc(100vw - 44px));max-height:30vh;overflow:auto;overflow-wrap:anywhere;padding:10px;
-    background:var(--dp-glass-flight,rgb(18 23 29 / .96));color:var(--dp-ink,#e8e2d4);font-size:13px}
+  .ml-cadence details{pointer-events:auto;margin-top:5px;padding-top:5px;border-top:1px solid rgb(236 230 216 / .08)}
+  .ml-cadence summary{cursor:pointer;font-size:12px;font-weight:500;letter-spacing:.015em;color:var(--dp-ink,#e8e2d4);width:100%}
+  .ml-cadence__focus-hint{display:block;margin-top:2px;font-family:var(--dp-face-num,"Spline Sans Mono",monospace);font-size:12px;font-weight:400;color:var(--dp-ink-dim,#9ba3b0);opacity:.85}
+  .ml-cadence summary:focus-visible{outline:1px solid var(--dp-lamp,#f2b950);outline-offset:2px}
+  .ml-cadence__detail{position:absolute;top:calc(100% + 4px);left:0;box-sizing:border-box;
+    width:min(300px,calc(100vw - 44px));max-height:30vh;overflow:auto;overflow-wrap:anywhere;padding:10px 12px;
+    border-radius:4px;border:1px solid rgb(236 230 216 / .14);
+    background:linear-gradient(180deg, rgb(18 22 30 / .96), rgb(11 14 20 / .96));
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 12px 28px -8px rgb(0 0 0 / .78);
+    color:var(--dp-ink,#e8e2d4);font-size:12px}
   @media(max-width:600px){
     .ml-cadence{width:min(260px,calc(50vw - 30px))}
     .ml-cadence summary{width:100%;white-space:normal;overflow-wrap:anywhere}
   }
   .ml-cadence__detail p{margin:0 0 7px}.ml-cadence__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}
-  .ml-cadence__value{font-variant-numeric:tabular-nums}.ml-cadence__label{color:var(--dp-ink-dim,#c6c3b8)}
+  .ml-cadence__value{font-family:var(--dp-face-num,"Spline Sans Mono",monospace);font-variant-numeric:tabular-nums}.ml-cadence__label{color:var(--dp-ink-dim,#9ba3b0)}
   .ml-cadence[data-whip="soon"] [data-ml="whip"]{color:var(--dp-danger-hot,#ff8a70)}
   </style>
   <div class="ml-cadence__load"></div><div class="ml-cadence__cue"></div>

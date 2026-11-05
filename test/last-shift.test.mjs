@@ -215,11 +215,18 @@ test('actual cold and repeated Continue preserve the original recorder, finite s
     }
     native.syncFromEntities(destination.state.entityList); getCombatKernel(system.ctx).attachments.reconcilePhysics();
     assert.equal(system.returnRecorder().ok, true);
+    assert.equal(system.readout().archiveFiled, true, 'physical return does not make the same filed account new');
+    const headlines = []; destination.bus.on('news:headline', row => headlines.push(row));
+    assert.equal(system.archive().duplicate, true, 'the same account cannot be published twice after return');
+    assert.equal(system.serialize().receipts.length, 1); assert.deepEqual(headlines, []);
     const accepted = saver.serializeData();
     assert.equal(accepted.lastShift.recoveryActive, false);
     assert.equal(saver._restore(JSON.parse(JSON.stringify(accepted)), 'quick').restored, true);
     destination.state.mode = 'flight'; system.update(1 / 60, destination.state);
     assert.equal(system._find('recorder'), null); assert.equal(system.serialize().bodies.recorder.status, 'returned');
+    assert.equal(system.readout().archiveFiled, true, 'cold Continue retains the filed account after return');
+    assert.equal(system.archive().duplicate, true); assert.equal(system.serialize().receipts.length, 1);
+    assert.equal(dossArchiveEvidence(destination.state).at(-1).copy.includes(filed.receipt.text), true);
     resetFreshRunSystems(destination.registry);
     assert.equal(system.serialize().receipts.length, 0); assert.equal(system.serialize().recorderReturn, undefined);
     destination.state.mode = 'flight'; destination.state.world.currentSectorId = C.sectorId;

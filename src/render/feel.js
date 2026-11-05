@@ -535,6 +535,7 @@ const HS_HULL_HIT = 0.0;      // s — hull hits do NOT freeze (spec2/02 §3)
 const HS_KILL = 0.06;         // s — small-kill camera beat (spec2/02 §3)
 const HS_CAPITAL_KILL = 0.80; // s — capital-kill camera window (≤ 800 ms, spec2/02 §3)
 const HS_DEATH = 0.90;        // s — camera beat duration for the player dying
+export const DEATH_BELL_FRAME_HOLD_S = 0.25;
 // Rated-moment feel (PQ-146.03 + PQ-159.02). A `moment:holyShit` bus event is the moment
 // detector's output (bulletTime rates `stunt:trickDetected`). This owner applies
 // a camera accent and stinger; gameplay owns any separate deliberate time effect.
@@ -819,6 +820,7 @@ export const feel = {
     this.timeEffects.clear(BEAT_TIME_SOURCE); // release a legacy lease on hot re-init
     // live state
     this._beatTimer = 0; // presentation sequencing only; never controls simulation time
+    this._deathBellFrameHoldS = 0; // framebuffer lease, drained only by presentation frameDt
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
@@ -852,6 +854,7 @@ export const feel = {
   // Teardown releases a legacy lease and all tracked listeners. Pending visual beats
   // are reset so an old session cannot leak feedback into the next one.
   destroy() {
+    this._deathBellFrameHoldS = 0;
     if (this._chainBeats) {
       this._resetHitStop();
     } else {
@@ -1357,11 +1360,27 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       return off;
     } };
 
-    const clearHitStop = () => this._resetHitStop();
-    bus.on('sim:pause', clearHitStop);
+    const clearHitStop = () => {
+      this._resetHitStop();
+      this._deathBellFrameHoldS = 0;
+    };
+    bus.on('sim:pause', () => {
+      this._resetHitStop();
+      // The ordinary after-action screen pauses immediately after this occurrence.
+      // Retain its last flight picture for the bell; other pauses cancel the lease.
+      const stack = state.ui && state.ui.screenStack;
+      if (!Array.isArray(stack) || stack.length !== 1 || stack[0] !== 'gameOver') this._deathBellFrameHoldS = 0;
+    });
     bus.on('game:new', clearHitStop);
     bus.on('save:restoring', clearHitStop);
     bus.on('save:loaded', clearHitStop);
+    bus.on('game:over:dismissed', () => { this._deathBellFrameHoldS = 0; });
+    bus.on('mode:changed', () => { this.isDeathBellFrameHeld(state); });
+    bus.on('special500:deathBell', (payload) => {
+      if (!payload || typeof payload.stationId !== 'string' || !Number.isFinite(payload.at)) return;
+      this._deathBellFrameHoldS = DEATH_BELL_FRAME_HOLD_S;
+      this.isDeathBellFrameHeld(state); // reject an old occurrence on a different route
+    });
 
     // Spec2/02 §3 exact feel rules: shield-break 40 ms hit-stop + 0.3 trauma if player involved;
     // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
@@ -2011,9 +2030,28 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     this._chainBeatQueued = 0;
   },
 
+  // The render submission owner reads this lease before any stage/prewarm/world draw.
+  // A death sheet may retain it; Photo, navigation, docks and route changes may not.
+  isDeathBellFrameHeld(state = this.state) {
+    const stack = state && state.ui && state.ui.screenStack;
+    const deathSheet = Array.isArray(stack) && stack.length === 1 && stack[0] === 'gameOver';
+    const video = state && state.settings && state.settings.video;
+    if (state !== this.state || !state || (state.mode !== 'flight' && !(state.mode === 'paused' && deathSheet))
+        || state.ui?.docked || (Array.isArray(stack) && stack.length > 0 && !deathSheet)
+        || state.render?.photoMode?.active || state.render?.sectorShellAdmission
+        || video?.motionReduce || video?.flashReduce
+        || state.settings?.accessibility?.flashReduce) this._deathBellFrameHoldS = 0;
+    return this._deathBellFrameHoldS > 0;
+  },
+
   frame(frameDt, state) {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
+
+    if (this.isDeathBellFrameHeld(this.state)) {
+      this._deathBellFrameHoldS = Math.max(0, this._deathBellFrameHoldS
+        - (Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0));
+    }
 
     // ---- rate-limit collision camera feedback on presentation time ----
     this._beatTimer = Math.max(0, this._beatTimer - frameDt);

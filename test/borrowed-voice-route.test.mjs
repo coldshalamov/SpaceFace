@@ -1,3 +1,5 @@
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { globalToFrame } from '../src/core/coordinates.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
@@ -10,6 +12,7 @@ import { explorationDiscoveryPlates } from '../src/world/explorationJournal.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 
+const WORLD_CENTER=sectorLocalToGlobalForSector(C.center,C.sectorId);
 const external=(runtime,fn)=>{const old=snapshotFeatureMaps();applyFeatureConfigToMaps(runtime.config.features);
   try{return fn();}finally{restoreFeatureMaps(old);}};
 test('normal R2 Charon source, native towing and a cold Continue retain evidence and permanent quarantine',async()=>{
@@ -17,7 +20,7 @@ test('normal R2 Charon source, native towing and a cold Continue retain evidence
   try{const s=source.state;s.mode='flight';ensureAlienEcologyState(s).revelation=2;
     const player=source.spawn(makeShipEntitySpec('ship_hawser',{isPlayer:true,player:s.player,pos:{x:0,z:0},fittings:[]}));s.playerId=player.id;
     external(source,()=>source.getSystem('world').enterSector(C.sectorId,{continuous:false,noTeleport:true,placePlayer:false}));
-    external(source,()=>source.getSystem('world').relocatePlayerInSector({x:C.center.x+70,z:C.center.z+40,heading:0},{reason:'borrowed-voice-route'}));
+    external(source,()=>source.getSystem('world').relocatePlayerInSector({x:WORLD_CENTER.x+70,z:WORLD_CENTER.z+40,heading:0},{reason:'borrowed-voice-route'}));
     const ph=source.getSystem('physics');assert.equal(await ph.prepareBackend(s,{reset:true}),true);
     source.step(1/60);source.step(1/60);
     const owner=source.getSystem('borrowedVoice'),a=owner._find('a'),b=owner._find('b'),ring=owner._find('ring');
@@ -25,7 +28,9 @@ test('normal R2 Charon source, native towing and a cold Continue retain evidence
     assert.equal(ph._sg02.records.get(a.id).body.mass(),8);assert(borrowedVoicePresentation(s,ring).nativeBodyReady);
     // A native fixture places an original housing inside the genuinely open bore. All
     // subsequent quality, attachment, loss, save and reload use the ordinary production owners.
-    const body=ph._sg02.records.get(a.id).body;body.setTranslation({x:C.center.x+7,y:0,z:C.center.z},true);
+    const body=ph._sg02.records.get(a.id).body;
+    const nativePoint=globalToFrame({x:WORLD_CENTER.x+7,z:WORLD_CENTER.z},ph._sg02.getFrameOrigin());
+    body.setTranslation({x:nativePoint.x,y:0,z:nativePoint.z},true);
     body.setRotation({x:0,y:-1,z:0,w:0},true);body.setLinvel({x:0,y:0,z:0},true);body.setAngvel({x:0,y:0,z:0},true);
     for(let i=0;i<110;i++)source.step(1/60);
     assert(owner._signals.get('a')?.quality>.8);s.player.targetId=a.id;

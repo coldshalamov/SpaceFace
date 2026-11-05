@@ -73,7 +73,7 @@ export function normalizeMapOpenIntent(raw = {}) {
     pos: copyPos(src.pos),
     label: src.label != null ? String(src.label) : null,
     source: src.source != null ? String(src.source) : null,
-    ...(src.selectionTarget === 'active-waypoint' ? { selectionTarget: 'active-waypoint' } : {}),
+    ...(['active-waypoint', '47a-recovery-fix'].includes(src.selectionTarget) ? { selectionTarget: src.selectionTarget } : {}),
   };
 }
 
@@ -168,7 +168,7 @@ export function mapHandoffAction({
     stationId: stationId != null ? String(stationId) : null,
     pos: copyPos(pos),
     source: source || null,
-    ...(selectionTarget === 'active-waypoint' ? { selectionTarget: 'active-waypoint' } : {}),
+    ...(['active-waypoint', '47a-recovery-fix'].includes(selectionTarget) ? { selectionTarget } : {}),
   };
 }
 

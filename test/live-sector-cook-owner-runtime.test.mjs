@@ -1164,6 +1164,53 @@ test('ordinary desktop preflight admits required picture resources without a fut
   assert.deepEqual(f.marks, ['discard-speculative-warm', 'watch-opening-admissions', 'hold', 'freeze']);
 });
 
+test('finite opening waits for its real player plasma admission and rests it before the picture seal', async () => {
+  const f = mobilePreflightFixture(), gate = deferred();
+  const root = { parent: f.values.scene };
+  let picture = false, released = 0;
+  f.state.render.warmupOpeningEffectSubset = options => {
+    assert.deepEqual(options, { playerPlasmaOnly: true });
+    return { plasma: true, plasmaRoot: root, isActive: () => released === 0,
+      releaseWarmSamples() { released++; } };
+  };
+  f.values.admitSubjectPipelines = (subject, options) => {
+    assert.equal(subject, root);
+    assert.equal(options.openingRequired, true); assert.equal(options.strict, true);
+    assert.equal(options.isActive(), true);
+    return gate.promise;
+  };
+  f.state.render.prepareOpeningFirstPicture = async () => {
+    assert.equal(released, 1); picture = true; return true;
+  };
+  const run = evaluate(preflightCode, f.owner, f.values)();
+  await nextTurn(); assert.equal(picture, false);
+  gate.resolve({ ok: true });
+  assert.equal((await run).exactFirstPicture, true);
+  assert.equal(picture, true); assert.equal(released, 1);
+});
+
+test('failed or superseded player plasma admission always releases its captured warm', async () => {
+  for (const cancel of [false, true]) {
+    const f = mobilePreflightFixture(), gate = deferred(), root = { parent: f.values.scene };
+    let released = 0, active = true;
+    f.state.render.warmupOpeningEffectSubset = () => ({ plasma: true, plasmaRoot: root,
+      isActive: () => active, releaseWarmSamples() { released++; } });
+    f.values.admitSubjectPipelines = async () => {
+      await gate.promise;
+      if (!cancel) throw new Error('plasma admission failed');
+      return { ok: true };
+    };
+    const run = evaluate(preflightCode, f.owner, f.values)({ isActive: () => active });
+    await nextTurn(); if (cancel) active = false;
+    gate.resolve();
+    if (cancel) assert.equal((await run).reason, 'sector-superseded');
+    else await assert.rejects(run, /plasma admission failed/);
+    assert.equal(released, 1);
+    assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+    assert.equal(f.marks.includes('watch-opening-admissions'), false);
+  }
+});
+
 test('ordinary desktop preflight refuses incomplete required GPU admission', async () => {
   const f = mobilePreflightFixture();
   f.values.isMobileRenderContext = () => false;

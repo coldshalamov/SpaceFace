@@ -1,3 +1,5 @@
+import { validateCinderglassJob } from '../features/cinderglassJob/persistence.js';
+import { cinderglassJobFlagsForSave } from '../features/cinderglassJob/physical.js';
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import {
   compareOccupiedSlotNewestFirst,
@@ -373,6 +375,8 @@ export const save = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._ephemeralRacing = false;     // lifetime-owned, never serialized into a campaign
+    this._temporaryCampaignState = null;
+    this._retainTemporaryCampaignState();
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
     this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
     this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
@@ -568,14 +572,26 @@ export const save = {
     const clearPlayerDeathGate = () => { this._playerDead = false; this._lastPlayerCombatSimTime = -Infinity; };
     bus.on('save:loaded', clearPlayerDeathGate);
     bus.on('game:started', clearPlayerDeathGate);
+    // runSession clears its envelope before the Exit save listener runs. Keep the live
+    // temporary state's protection independently of that envelope, including in the menu.
+    bus.on('run:started', () => this._retainTemporaryCampaignState());
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
     bus.on('game:new', (opts) => {
+      this._retainTemporaryCampaignState();
       this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
+      this._retainTemporaryCampaignState();
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
     bus.on('game:newGame', (opts) => {
+      const held = this._temporaryCampaignState;
+      // The public request can be canceled before resetRunState runs. Only its post-reset
+      // alias, with all campaign bags replaced, may release the discarded arcade state.
+      if (held && this.state.player !== held.player && this.state.economy !== held.economy
+        && this.state.world !== held.world) this._temporaryCampaignState = null;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
+      this._retainTemporaryCampaignState(opts?.crucibleLaunch === true);
       // Public New Game already opened the epoch on `game:new`. The live route now also emits
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
@@ -585,7 +601,6 @@ export const save = {
         this._publishSharedStoreStatus();
         return;
       }
-      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._beginRunEpoch('game:newGame');
       this._publishSharedStoreStatus();
     });
@@ -1152,6 +1167,7 @@ export const save = {
       ['nemesis', () => this._callSerialize('nemesis') || clonePlain(state.nemesis || null)],
       ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
       ['enemyMind', () => clonePlain(state.enemyMind || null)],
+      ['tacticalAI', () => this._callSerialize('tacticalAI')],
       // The plan must walk keys in exactly _serializeDataSteps order — the chunked/worker
       // lane assembles `data` in this order and the envelope checksum is insertion-order
       // sensitive, so a plan that drifts from serializeData yields a different byte layout
@@ -1376,6 +1392,7 @@ export const save = {
     data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
     yield 'serialize:nemesisDeployment';
     data.enemyMind = clonePlain(state.enemyMind || null);
+    data.tacticalAI = this._callSerialize('tacticalAI');
     data.latchNine = this._callSerialize('latchNine');
     yield 'serialize:latchNine';
     data.scissorwake = this._callSerialize('scissorwake');
@@ -1862,7 +1879,8 @@ export const save = {
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
       const finiteRef = !isPlayer && ceresWorkfleetEntityRef(e);
       if (finiteRef) {
-        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id), ref: finiteRef });
+        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id),
+          saveEntityId: e.id, occupantGeneration: e.occupantGeneration ?? null, ref: finiteRef });
         continue;
       }
       // Live projectiles ride the persistent list without being flagged persistent: the
@@ -1877,7 +1895,8 @@ export const save = {
       // interrupt the beam — the snagged body resumes its authored life on continue.)
       const gyreBall = !!(e.data && e.data.gyreLaunched);
       if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
-      out.push(plainEntity(e, isPlayer));
+      // Validation metadata for dependent saved cognition, never authority to reuse a live life.
+      out.push({ ...plainEntity(e, isPlayer), occupantGeneration: e.occupantGeneration ?? null });
     }
     for (const entry of this._ceresEntityReferenceRestore?.pending?.values() || []) {
       const key = ceresWorkfleetRefKey(entry.ref);
@@ -3874,10 +3893,22 @@ export const save = {
    * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
    */
   _campaignSaveSuppressed() {
+    if (this._temporaryCampaignState) return true;
     if (this._ephemeralRacing === true || this.state?.physicsVenue?.active === true) return true;
     const run = this.state && this.state.run;
     if (!run || run.phase === 'inactive') return false;
     return run.kind === 'survival' || run.kind === 'lab';
+  },
+
+  _retainTemporaryCampaignState(force = false) {
+    const state = this.state;
+    const run = state?.run;
+    const temporaryRun = run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab');
+    // Dedicated circuit/venue launches replace the campaign. An in-Adventure court
+    // keeps its dynamic physicsVenue.active guard and becomes saveable on normal leave.
+    if (!state || (!force && !temporaryRun && this._ephemeralRacing !== true
+      && state.physicsVenueSession !== true)) return;
+    this._temporaryCampaignState = { player: state.player, economy: state.economy, world: state.world };
   },
 
   _campaignAutosaveSuppressed() {
@@ -4101,9 +4132,17 @@ export const save = {
     }
 
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
+    let plan;
+    try { plan = this._saveCapturePlan(); }
+    catch (error) { return this._failAutosave(job, 'invalid_capture_plan', null); }
+    // Adapters must preserve the indexed [key, reader] array contract. A generator
+    // has no length and would skip every reader, encoding checksum-valid empty data.
+    if (!Array.isArray(plan) || plan.length === 0 || plan.some((row) => (
+      !Array.isArray(row) || typeof row[0] !== 'string' || !row[0] || typeof row[1] !== 'function'
+    ))) return this._failAutosave(job, 'invalid_capture_plan', null);
     const descriptor = this._autosaveDescriptor();
     const capture = {
-      plan: this._saveCapturePlan(),
+      plan,
       data: {},
       index: 0,
       tick: this.state.tick,
@@ -5993,14 +6032,20 @@ export const save = {
     return data || null;
   },
 
-  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
-  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
-  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
-  // failure so the caller can run its identical sync tail.
+  // The slot fill's card payload — canonical gzip decode + small projection only (no
+  // migration/normalize: the portrait reads the stored shape verbatim). The parse normally
+  // runs on the save worker; an unavailable/failed worker uses the same decoder locally.
+  // World tables and thumbnail stay off postMessage; malformed data resolves null.
   peekSaveCardData(raw) {
     if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    const readWithoutWorker = async () => {
+      try {
+        const decoded = await decodeSaveEnvelopeText(raw);
+        return decoded.ok ? cardDataFromEnvelope(JSON.parse(decoded.text)) : null;
+      } catch (_) { return null; }
+    };
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
-      return Promise.resolve(null);
+      return readWithoutWorker();
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -6017,7 +6062,7 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
       ? prepared.cardData
-      : null));
+      : readWithoutWorker()));
   },
 
   _prepareEnvelopeStringAsync(raw) {
@@ -6931,6 +6976,8 @@ export const save = {
 
   _openRestoreSession(data, slot, options) {
     const state = this.state;
+    // save:restoring resets state.run even when this attempt later fails or rolls back.
+    this._retainTemporaryCampaignState();
     this._restoring = true;
     let timeEffects = null;
     let restoreSource = null;
@@ -7142,7 +7189,9 @@ export const save = {
       this._callDeserialize('faction_concord', data.concord);
       this._callDeserialize('fulfillmentRoutes', data.fulfillment);
       yield 'deserialized-factions';
-      yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
+      // World resource compaction precedes npcJobs deserialization. Give it the incoming
+      // saved jobs so it does not protect the outgoing run's sources during sector rebuild.
+      yield* this._callDeserializeChunked('world', data.world, { npcJobs: data.npcJobs });
       yield 'deserialized-world';
       this._callDeserialize('reactiveMatter', data.reactiveMatter);
       this._callDeserialize('spectrum', data.spectrum);
@@ -7416,6 +7465,7 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       yield* this._callDeserializeChunked('npcJobsRuntime', data.npcJobs);
+      this.registry?.get?.('world')?.finishResourceBodyRestore?.();
       yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
@@ -7628,6 +7678,23 @@ export const save = {
         // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
+        tacticalAI: data.tacticalAI || null,
+        // Fresh canonical spawns receive fresh life tokens. Receipt the exact save-id bridge;
+        // tactical memory must never infer that an arbitrary same-id occupant is the saved actor.
+        tacticalAIEntityBindings: (() => {
+          const savedRows = [data.entities?.player, ...(data.entities?.persistent || []),
+            ...(data.entities?.ceresWorkfleetRefs || []).map((row) => ({ ...row, id: row.saveEntityId }))];
+          const savedById = new Map(savedRows.filter(Boolean).map((row) => [row.id, row]));
+          return (Array.isArray(data.tacticalAI?.bindings) ? data.tacticalAI.bindings : []).flatMap((binding) => {
+            if (!binding || !['number', 'string'].includes(typeof binding.id)) return [];
+            const saved = savedById.get(binding.id);
+            if (!saved || saved.occupantGeneration == null || saved.occupantGeneration !== binding.generation) return [];
+            const id = entityIdRemap.get(String(saved.id));
+            const entity = id == null ? null : this.state.entities.get(id);
+            return entity ? [{ saveId: saved.id, savedGeneration: saved.occupantGeneration,
+              entityId: entity.id, generation: entity.occupantGeneration ?? null }] : [];
+          });
+        })(),
       });
       // Time-aware drain: a fixed batch of 12 listeners could stack several heavy reconciles
       // into one over-frame slice. Drain small batches and hand a yield back whenever a slice's
@@ -7739,6 +7806,7 @@ export const save = {
 
   _closeRestoreSession(s, restoreError) {
     const { state, timeEffects, restoreSource, slot } = s;
+    this.registry?.get?.('world')?.finishResourceBodyRestore?.();
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
@@ -7753,6 +7821,10 @@ export const save = {
     const pendingRunTransition = this._pendingRunTransition;
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
+    // save:loaded is mid-restore: native reconciliation can still fail after it. A
+    // rollback restores the temporary world, not campaign ownership. Release only on
+    // successful campaign replacement, before a newer queued route can claim state.
+    if (restoreError == null && s.options?.rollback !== true) this._temporaryCampaignState = null;
     this._restoring = false;
     // sector:exit slicing was armed in _openRestoreSession for this session's
     // world leg only — a live-tick exit emit must never slice (listener order).
@@ -8349,11 +8421,11 @@ export const save = {
     return error;
   },
 
-  _callDeserialize(name, data) {
+  _callDeserialize(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
       try {
-        sys.deserialize(data);
+        sys.deserialize(data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8364,11 +8436,11 @@ export const save = {
 
   // Async-lane twin: a system exposing deserializeChunked gets sliced at its own section
   // boundaries; everyone else runs the same synchronous deserialize the sync lane uses.
-  *_callDeserializeChunked(name, data) {
+  *_callDeserializeChunked(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserializeChunked === 'function') {
       try {
-        yield* sys.deserializeChunked.call(sys, data);
+        yield* sys.deserializeChunked.call(sys, data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8376,7 +8448,7 @@ export const save = {
       }
       return;
     }
-    this._callDeserialize(name, data);
+    this._callDeserialize(name, data, context);
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the
@@ -9046,6 +9118,7 @@ export function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
 // Returns false if a migration throws (caller aborts the load without touching live state).
 // Exported for the migration-ladder proof.
 export function runMigrations(data, fromVer) {
+  if (!validateCinderglassJob(data?.world?.cinderglassJob)) throw new Error('cinderglass_invalid_save');
   let v = fromVer | 0;
   let guard = 0;
   while (v < CURRENT_VERSION && guard++ < 64) {
@@ -9397,7 +9470,7 @@ function plainEntity(e, isPlayer) {
     if (shouldSkipEntitySaveKey(k)) continue;
     const v = e[k];
     if (k === 'flags') {
-      const flags = sanitizeEntityFlagsForSave(v, isPlayer);
+      const flags = sanitizeEntityFlagsForSave(cinderglassJobFlagsForSave(e), isPlayer);
       if (Object.keys(flags).length) out.flags = flags;
     } else if (k === 'boost') {
       const boost = sanitizeBoostForSave(v);

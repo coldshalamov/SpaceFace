@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as mod from '../src/systems/survivalWave.js';
 
-const proto = Object.values(mod).find((v) => v && typeof v === 'object' && typeof v._releaseStragglers === 'function');
+const proto = Object.values(mod).find((v) => v && typeof v === 'object' && typeof v._commitStragglers === 'function');
 
 function wave(enemyPos) {
   const sys = Object.create(proto);
   const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
-  const enemy = { id: 7, alive: true, type: 'ship', pos: { ...enemyPos }, data: { runCohort: 'survival' } };
+  const enemy = { id: 7, alive: true, type: 'ship', pos: { ...enemyPos }, data: { runCohort: 'survival', ai: { combatDoctrineId: 'pack_pursuit' } } };
   const removed = [];
   sys.state = { playerId: 1, entities: new Map([[1, player], [7, enemy]]) };
   sys.helpers = { removeEntity: (id) => removed.push(id) };
@@ -20,17 +20,21 @@ function wave(enemyPos) {
   return { sys, enemy, removed };
 }
 
-test('a lone straggler far behind the pilot breaks off after the grace window', () => {
-  const { sys, removed } = wave({ x: 4000, z: 0 });
-  for (let i = 0; i < 8 * 60 - 1; i++) sys._releaseStragglers();
-  assert.deepEqual(removed, [], 'not before the grace window');
-  sys._releaseStragglers();
-  assert.deepEqual(removed, [7]);
+test('a distant straggler commits after the grace window and stays alive in the cohort', () => {
+  const { sys, enemy, removed } = wave({ x: 4000, z: 0 });
+  for (let i = 0; i < 8 * 60 - 1; i++) sys._commitStragglers();
+  assert.equal(enemy.data.ai.combatDoctrineId, 'pack_pursuit');
+  sys._commitStragglers();
+  assert.deepEqual(removed, []);
+  assert.equal(enemy.alive, true);
+  assert.equal(sys._cohort.has(enemy.id), true);
+  assert.equal(enemy.data.ai.combatDoctrineId, 'brawler_commit');
+  assert.equal(enemy.data.ai.swarmLastStand, true);
 });
 
 test('a straggler in range keeps the round open', () => {
   const { sys, removed } = wave({ x: 600, z: 0 });
-  for (let i = 0; i < 20 * 60; i++) sys._releaseStragglers();
+  for (let i = 0; i < 20 * 60; i++) sys._commitStragglers();
   assert.deepEqual(removed, []);
 });
 

@@ -177,6 +177,26 @@ function rescueWithSwingDone() {
   return rescue;
 }
 
+test('Continue away from first-pull home preserves the lesson until the player returns', () => {
+  const record = saveMidRail((ob) => {
+    ob.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
+    ob.tetherSectorId = 'sector_helios_prime';
+    ob.tetherReeled = true;
+  });
+  const h = boot();
+  h.state.world.currentSectorId = 'sector_ceres';
+  h.sys.deserialize(record);
+  h.bus.emit('save:loaded', {});
+  assert.equal(h.state.onboarding.active, true);
+  assert.equal(h.state.onboarding.tetherReeled, true);
+  assert.equal(h.spawned.filter((entity) => entity.data?.kind === 'derelict').length, 0);
+  assert.ok(!h.state.nav.waypoint?.onboarding);
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.sys._resolveProximityDone();
+  assert.ok(alive(h, h.sys._derelictId), 'the real lesson restages when home is reached');
+  assert.equal(h.state.onboarding.tetherReeled, false, 'the fresh body requires a fresh reel');
+});
+
 test('Continue mid-raid restages the raid cast AND the still-open rescue cast, then finishes the beat', () => {
   const raidBeat = BEATS.findIndex((b) => b.key === 'raid');
   const record = saveMidRail((ob) => {

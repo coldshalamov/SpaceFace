@@ -9,6 +9,7 @@ export {
   applyAutoTargetHelmProfile, applyAutoTargetPathProfile, resolveAutopilotTarget,
 } from '../core/flight/flightPresentationReads.js';
 import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
+import { isSwarmCoverLive } from './swarmCoverSeek.js';
 import { isPlayerSaucer } from '../data/saucer.js';
 import { saucerVelocity } from '../core/flight/saucerControl.js';
 import { queueSaucerVelocity } from '../core/physicsAuthority.js';
@@ -30,7 +31,7 @@ import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
 import { composePlayerDriveAuthority, DAMAGED_DRIVE_AUTHORITY_FLOOR } from '../core/flight/driveAuthority.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { physicalObstacleBody, queryNearbyPhysicalObstacles } from '../core/physicalObstacleQuery.js';
 import {
   cryoLockStickLive,
   helmControlScaleFromCombat,
@@ -398,6 +399,51 @@ export const flightV3 = {
     if (entity.data?.shipjackDriveRemoved) {
       driveAuthority.forward = 0; driveAuthority.reverse = 0;
       driveAuthority.strafe = 0; driveAuthority.yaw = 0;
+    }
+    // A current rider spends no translation authority during its own live ride. Keep yaw and
+    // all pre-existing drive restrictions intact; field/physics forces remain independent.
+    const ride = entity.data?.swarmRide;
+    const run = state.run;
+    if (!isPlayer && ride && ride.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < ride.until
+      && (entity.data.swarmAffix === 'rider' || entity.data.swarmAffix2 === 'rider')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0; driveAuthority.strafe = 0;
+    }
+    // A coverseek elite (inf-coverseek) holds its ground while a room rock sits on the line
+    // to the player: forward/reverse cut, yaw and strafe intact — the hull coasts its orbit
+    // behind the stone until the pilot flanks or a hit flushes it. swarmElites owns the
+    // record's life cycle under the same run gates as the ride; flight only reads it live.
+    const cover = entity.data?.swarmCover;
+    if (!isPlayer && cover
+      && isSwarmCoverLive(cover, { tick: state.tick, life: entity.occupantGeneration ?? null })
+      && state.entities?.get(entity.id) === entity) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0;
+    }
+    // A committed diver (inf-well-dive) flies its approach THROUGH the room's pull: no drive
+    // authority is cut — the commit is the trick, thrust through the well arrives hot and
+    // bent — but while the hull is still outside the grip, translation answers the stamped
+    // well center: turn onto the dive bearing under a committed throttle floor, guns still on
+    // the pilot (NPC aim is not this record's business). Inside the grip the ordinary closing
+    // intent resumes and the field's own acceleration shapes the slingshot. swarmElites owns
+    // the record's life under the same run gates as the ride and cover; flight only reads it.
+    const dive = entity.data?.swarmDive;
+    if (!isPlayer && dive && dive.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < dive.until
+      && (entity.data.swarmAffix === 'diver' || entity.data.swarmAffix2 === 'diver')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')
+      && entity.pos && Number.isFinite(dive.cx) && Number.isFinite(dive.cz)) {
+      const wellDx = dive.cx - entity.pos.x;
+      const wellDz = dive.cz - entity.pos.z;
+      if (Math.hypot(wellDx, wellDz) > dive.radius * SWARM_DIVE_GRIP_FRAC) {
+        const diveBearing = Math.atan2(wellDz, wellDx);
+        const diveErr = wrapAngle(diveBearing - entity.rot);
+        input.turn = clamp(diveErr * SWARM_DIVE_TURN_GAIN, -1, 1);
+        if (input.throttle < SWARM_DIVE_THROTTLE_FLOOR) input.throttle = SWARM_DIVE_THROTTLE_FLOOR;
+        input.brake = false;
+      }
     }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
@@ -1005,12 +1051,15 @@ export const flightV3 = {
       ? sweptHullContacts(state, entity)
       : null;
     const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const contact = advisory.active ? contacts?.find(e => e.id === advisory.contactId) : null;
+    advisory.contactGeneration = contact?.occupantGeneration ?? null;
     const latch = this._sweptHull
       || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
     if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
       const now = finite(state && state.simTime, 0);
       const faceChanged = !latch.active
         || latch.contactId !== advisory.contactId
+        || latch.contactGeneration !== advisory.contactGeneration
         || latch.sliding !== advisory.sliding;
       if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
         this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
@@ -1019,6 +1068,7 @@ export const flightV3 = {
     }
     latch.active = advisory.active;
     latch.contactId = advisory.contactId;
+    latch.contactGeneration = advisory.contactGeneration;
     latch.sliding = advisory.sliding;
     return advisory;
   },
@@ -1925,6 +1975,7 @@ function deterministicAvoidanceSide(baseX, baseZ) {
 const AUTOPILOT_OBSTACLE_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
+const AUTOPILOT_DRESSING_BOUNDS = [];
 
 // An obstacle only matters when its center sits inside the lookahead capsule: projection within
 // (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
@@ -1941,7 +1992,7 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
   const clearanceSlack = positive(player.radius, 0) + 58 + 70;
   AUTOPILOT_OBSTACLE_QUERY_POS.x = px + baseX * halfProjection;
   AUTOPILOT_OBSTACLE_QUERY_POS.z = pz + baseZ * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     AUTOPILOT_OBSTACLE_QUERY_POS,
     halfProjection + clearanceSlack,
@@ -1953,12 +2004,9 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     // in obstacle guidance until the ship is aligned for the final berth lane.
     const targetStationBlocksMouthApproach = e === target.entity
       && !!target.dockingProxyId && target.dockingStage === 'corridor-mouth';
-    if (!e || e === player || (e === target.entity && !targetStationBlocksMouthApproach)
-        || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    if (e === player || (e === target.entity && !targetStationBlocksMouthApproach)) continue;
+    const obstacle = physicalObstacleBody(e, AUTOPILOT_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -1969,6 +2017,7 @@ const SWEPT_HULL_OBSTACLE_SCRATCH = [];
 const SWEPT_HULL_QUERY_SCRATCH = [];
 const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
 const SWEPT_HULL_NO_CONTACTS = [];
+const SWEPT_HULL_DRESSING_BOUNDS = [];
 
 // The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
 // covering that capsule returns every possible contributor — the hash buckets entities by their
@@ -1987,7 +2036,7 @@ function sweptHullContacts(state, entity) {
   const pz = finite(entity.pos && entity.pos.z);
   SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
   SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     SWEPT_HULL_QUERY_POS,
     halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
@@ -1996,11 +2045,9 @@ function sweptHullContacts(state, entity) {
   const out = SWEPT_HULL_OBSTACLE_SCRATCH;
   out.length = 0;
   for (const e of list) {
-    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    if (e === entity) continue;
+    const obstacle = physicalObstacleBody(e, SWEPT_HULL_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -2009,7 +2056,7 @@ function sweptHullContacts(state, entity) {
 // the ship:thrust contract. No field aliases a per-tick advisory object.
 const _sweptHullPayload = {
   shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
-  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  driftAngle: 0, contactId: null, contactGeneration: null, contactType: null, contactRadius: 0, timeToContactS: null,
   contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
   canStopBeforeContact: false, stopDistanceWU: 0,
 };
@@ -2025,6 +2072,7 @@ function sweptHullEventPayload(shipId, advisory) {
   P.lateralSpeed = advisory.lateralSpeed;
   P.driftAngle = advisory.driftAngle;
   P.contactId = advisory.contactId;
+  P.contactGeneration = advisory.contactGeneration;
   P.contactType = advisory.contactType;
   P.contactRadius = advisory.contactRadius;
   P.timeToContactS = advisory.timeToContactS;
@@ -2217,6 +2265,12 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
+// The committed diver's steering shape (inf-well-dive): the grip fraction where the pull's own
+// acceleration takes the approach over, the heading gain onto the dive bearing, and the
+// throttle floor that makes the commit read as thrust through, not a drift.
+const SWARM_DIVE_GRIP_FRAC = 0.55;
+const SWARM_DIVE_TURN_GAIN = 2.2;
+const SWARM_DIVE_THROTTLE_FLOOR = 0.6;
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

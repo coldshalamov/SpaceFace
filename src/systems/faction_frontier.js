@@ -64,6 +64,9 @@ const intOr = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n
 
 const FACTION_ID = 'faction_free';
 const MAX_STEADS = 24;
+const BARN_MISSION_TAG = 'campaign47a:b4:operation';
+const BARN_MISSION_VERSION = 1;
+const BARN_MODULE_IDS = new Set(FRONTIER_MODULES.map((m) => m.id));
 // Site seeding — the production spawner for the barn-raising pipeline.
 const FRONTIER_SITE = Object.freeze({
   minR: 1400,        // a site never plants under the player's nose
@@ -277,6 +280,11 @@ export function ensureFrontierState(state) {
   if (!Array.isArray(f.vendettas)) f.vendettas = [];
   if (!Array.isArray(f.justice)) f.justice = [];
   if (!isObj(f.sites)) f.sites = {};
+  if (f.barnAttempt !== null && !isObj(f.barnAttempt)) f.barnAttempt = null;
+  if (isObj(f.barnAttempt)) {
+    if (!isObj(f.barnAttempt.moduleIds)) f.barnAttempt.moduleIds = {};
+    if (!isObj(f.barnAttempt.moduleGens)) f.barnAttempt.moduleGens = {};
+  }
   if (!isObj(f.paid)) f.paid = {};
   // Writers cap stamps at PAID_STAMPS_CAP; a hostile bag can carry any size —
   // bound it at normalize like every other ledger (insertion order = evict order).
@@ -455,6 +463,9 @@ export const frontierHomesteads = {
     ensureFrontierState(this.state);
     this._subs = [
       this.bus.on('entity:killed', (p) => this._onKilled(p)),
+      this.bus.on('mission:accepted', (p) => this._onBarnMissionAccepted(p)),
+      this.bus.on('mission:failed', (p) => this._onBarnMissionEnded(p)),
+      this.bus.on('mission:completed', (p) => this._onBarnMissionCompleted(p)),
       // The restore seam: a frontier payload rebinds generations to the fresh
       // occupants; no payload means the live bag is bleed-over from the session
       // the load replaced, and it clears.
@@ -520,6 +531,229 @@ export const frontierHomesteads = {
     ensureFrontierState(state);
   },
 
+  _isBarnMission(m) {
+    return !!m && m.status === 'active' && m.type === 'tow_recovery'
+      && m.storyTag === BARN_MISSION_TAG
+      && m.params?.frontierBarnRaisingVersion === BARN_MISSION_VERSION
+      && m.params?.bookScene === 'barn_raising';
+  },
+
+  _onBarnMissionAccepted(payload) {
+    if (payload?.missionId == null) return;
+    const mission = (this.state.missions?.active || []).find((m) => m.id === payload.missionId);
+    if (!this._isBarnMission(mission)) return;
+    const f = ensureFrontierState(this.state);
+    let attempt = f.barnAttempt;
+    if (attempt?.missionId === mission.id && ['pending', 'active'].includes(attempt.status)) return;
+    if (attempt?.status === 'completed') {
+      this.bus.emit('frontier:missionAttemptUnavailable', { missionId: mission.id, reason: 'already_completed' });
+      return;
+    }
+    if (attempt && ['pending', 'active'].includes(attempt.status)) this._retireBarnAttempt(attempt, 'reaccepted');
+    f.barnAttempt = {
+      version: BARN_MISSION_VERSION, missionId: mission.id, status: 'pending',
+      sectorId: 'sector_io_reach', siteId: null, frameId: null, frameGen: null,
+      moduleIds: {}, moduleGens: {}, adoptedSite: false, acceptedAt: num(this.state.simTime),
+    };
+    if (this.state.world?.currentSectorId === 'sector_io_reach') this._plantBarnAttempt(this.state);
+    this.bus.emit('frontier:missionAttemptStarted', { missionId: mission.id, sectorId: 'sector_io_reach' });
+  },
+
+  _onBarnMissionEnded(payload) {
+    const attempt = ensureFrontierState(this.state).barnAttempt;
+    if (!attempt || attempt.missionId !== payload?.missionId || attempt.status === 'completed') return;
+    this._retireBarnAttempt(attempt, 'failed');
+  },
+
+  _onBarnMissionCompleted(payload) {
+    const attempt = ensureFrontierState(this.state).barnAttempt;
+    const receipt = payload?.frontierReceipt;
+    if (!attempt || attempt.missionId !== payload?.missionId || attempt.status !== 'active'
+        || receipt?.version !== BARN_MISSION_VERSION || receipt.missionId !== attempt.missionId
+        || receipt.siteId !== attempt.siteId || receipt.frameId !== attempt.frameId
+        || !this._validBarnReceipt(attempt, receipt)) return;
+    attempt.status = 'completed';
+    attempt.completedAt = num(this.state.simTime);
+  },
+
+  _validBarnReceipt(attempt, receipt) {
+    const state = this.state;
+    const frame = state.entities?.get(attempt.frameId);
+    if (!frame || frame.alive === false || frame.data?.frontierMissionId !== attempt.missionId
+        || frame.data?.frontierSite !== attempt.siteId || frame.occupantGeneration !== attempt.frameGen
+        || frame.data?.homestead !== true || frame.data?.homesteadRaised !== true
+        || frame.data?.barnDone !== true || receipt.frameGen !== frame.occupantGeneration) return false;
+    const rec = (state.frontier?.homesteads || []).find((row) => row && row.entityId === frame.id
+      && row.gone !== true && row.partial !== true && row.frontierMissionId === attempt.missionId
+      && row.frontierSite === attempt.siteId && row.gen === frame.occupantGeneration
+      && Number(row.raisedAt) >= Number(attempt.acceptedAt)
+      && Number(row.raisedAt) >= Number(attempt.plantedAt));
+    if (!rec || !Array.isArray(rec.modules) || rec.modules.length !== FRONTIER_MODULES.length) return false;
+    for (const module of FRONTIER_MODULES) {
+      const id = attempt.moduleIds?.[module.id];
+      const body = state.entities?.get(id);
+      if (id == null || receipt.moduleIds?.[module.id] !== id || !body || body.alive === false
+          || body.occupantGeneration !== attempt.moduleGens?.[module.id]
+          || body.data?.frontierMissionId !== attempt.missionId || body.data?.frontierSite !== attempt.siteId
+          || body.data?.homesteadModule !== module.id || body.data?.snapped !== true
+          || body.data?.slotKind !== module.id || body.data?.snappedFrameId !== frame.id
+          || body.data?.snappedFrameGen !== frame.occupantGeneration
+          || frame.data?.slots?.[module.id] !== id || !rec.modules.includes(module.id)) return false;
+    }
+    return true;
+  },
+
+  _tickBarnAttempt(state) {
+    const attempt = ensureFrontierState(state).barnAttempt;
+    if (!attempt || attempt.status !== 'active') return;
+    const mission = (state.missions?.active || []).find((m) => m.id === attempt.missionId);
+    if (!this._isBarnMission(mission)) {
+      this._retireBarnAttempt(attempt, 'mission_inactive');
+      return;
+    }
+    const frame = state.entities?.get(attempt.frameId);
+    if (frame && frame.alive !== false && frame.data?.homesteadFrame === true
+        && frame.data.frontierMissionId === attempt.missionId
+        && frame.data.frontierSite === attempt.siteId
+        && frame.occupantGeneration === attempt.frameGen) {
+      for (const module of FRONTIER_MODULES) {
+        const id = attempt.moduleIds[module.id];
+        if (id == null) continue;
+        const body = state.entities?.get(id);
+        if (body && body.alive !== false && body.data?.frontierMissionId === attempt.missionId
+            && body.data?.frontierSite === attempt.siteId
+            && body.data?.homesteadModule === module.id
+            && body.occupantGeneration === attempt.moduleGens[module.id]) continue;
+        delete attempt.moduleIds[module.id];
+        delete attempt.moduleGens[module.id];
+        attempt.nextRestockAt = Math.max(num(attempt.nextRestockAt), num(state.simTime) + FRONTIER_SITE.restockS);
+      }
+      return;
+    }
+    attempt.status = 'lost';
+    this.bus.emit('frontier:missionAttemptLost', { missionId: attempt.missionId, reason: 'frame_lost' });
+  },
+
+  _retireBarnAttempt(attempt, reason) {
+    if (!attempt || attempt.status === 'completed' || attempt.status === 'retired') return false;
+    const state = this.state;
+    // An adopted unfinished world site belongs to the open Frontier scene, not to this
+    // contract. Releasing the mission tag hands the same frame, pods, and snapped progress
+    // back to the ordinary owner. Mission-only planted attempts remain disposable on abort.
+    if (attempt.adoptedSite === true) {
+      for (const e of state.entityList || []) {
+        if (!e || e.alive === false || !e.data
+            || e.data.frontierMissionId !== attempt.missionId
+            || (attempt.siteId && e.data.frontierSite !== attempt.siteId)) continue;
+        delete e.data.frontierMissionId;
+      }
+      attempt.status = 'retired';
+      attempt.retiredAt = num(state.simTime);
+      attempt.retireReason = reason;
+      return true;
+    }
+    for (const e of state.entityList || []) {
+      if (!e || e.alive === false || !e.data) continue;
+      if (e.data.frontierMissionId !== attempt.missionId) continue;
+      if (attempt.siteId && e.data.frontierSite !== attempt.siteId) continue;
+      this.helpers.removeEntity(e.id, { reason: `frontier_barn_${reason}` });
+    }
+    attempt.status = 'retired';
+    attempt.retiredAt = num(state.simTime);
+    attempt.retireReason = reason;
+    return true;
+  },
+
+  _plantBarnAttempt(state) {
+    const f = ensureFrontierState(state);
+    const attempt = f.barnAttempt;
+    if (!attempt || attempt.status !== 'pending' || state.world?.currentSectorId !== attempt.sectorId) return null;
+    const mission = (state.missions?.active || []).find((m) => m.id === attempt.missionId);
+    if (!this._isBarnMission(mission)) { this._retireBarnAttempt(attempt, 'inactive'); return null; }
+    if (num(state.simTime) < num(attempt.nextPlantAt)) return null;
+    // Reuse the live unfinished Frontier site when one exists. A completed or partial stead
+    // stays untouched; only then does the owner plant one fresh bounded mission site beside it.
+    const ordinary = (state.entityList || []).find((e) => e && e.alive !== false && e.data
+      && (e.data.homestead === true || e.data.homesteadFrame === true)
+      && e.data.frontierMissionId == null && e.pos
+      && (typeof e.data.frontierSite !== 'string' || e.data.frontierSite.startsWith(`site:${attempt.sectorId}:`)));
+    const reusable = ordinary && ordinary.data.homestead !== true && ordinary.data.barnDone !== true
+      ? ordinary : null;
+    const origin = sectorGlobalOrigin(attempt.sectorId);
+    let frame = reusable;
+    let siteId = reusable?.data?.frontierSite || null;
+    if (reusable) {
+      // The six existing Frontier pods are the supply. Bind only the authored six identities
+      // from this exact site; already snapped pieces count only if their live bond names this frame.
+      reusable.data.frontierMissionId = attempt.missionId;
+      siteId = reusable.data.frontierSite;
+    } else {
+      const anchor = ordinary?.pos || origin;
+      const angle = frac('frontier-barn-mission-angle', attempt.missionId) * Math.PI * 2;
+      const px = anchor.x + Math.cos(angle) * 780;
+      const pz = anchor.z + Math.sin(angle) * 780;
+      siteId = `mission:${attempt.missionId}`;
+      frame = this.helpers.spawnEntity({
+        type: 'station', team: 0, factionId: FACTION_ID,
+        pos: { x: px, z: pz }, radius: FRONTIER_FRAME.radius, mass: 1e6,
+        hull: 2000, hullMax: 2000, collides: true,
+        flags: { persistent: true },
+        data: {
+          homesteadFrame: true, typeId: FRONTIER_FRAME.typeId,
+          frontierSite: siteId, frontierMissionId: attempt.missionId,
+          name: 'HOMESTEAD FRAME · E-21',
+        },
+      });
+    }
+    if (!frame) {
+      attempt.nextPlantAt = num(state.simTime) + FRONTIER_SITE.restockS;
+      return null;
+    }
+    attempt.status = 'active';
+    attempt.adoptedSite = !!reusable;
+    attempt.siteId = siteId;
+    attempt.frameId = frame.id;
+    attempt.frameGen = frame.occupantGeneration ?? null;
+    attempt.moduleIds = {};
+    attempt.moduleGens = {};
+    attempt.plantedAt = num(state.simTime);
+    if (reusable) {
+      for (const body of state.entityList || []) {
+        if (!body || body.alive === false || body.data?.frontierSite !== siteId
+            || !BARN_MODULE_IDS.has(body.data?.homesteadModule)) continue;
+        if (body.data.snapped === true
+            && (body.data.snappedFrameId !== frame.id
+              || body.data.snappedFrameGen !== (frame.occupantGeneration ?? null))) continue;
+        body.data.frontierMissionId = attempt.missionId;
+        if (body.data.snapped === true) body.data.snappedFrameGen = frame.occupantGeneration ?? null;
+        attempt.moduleIds[body.data.homesteadModule] = body.id;
+        attempt.moduleGens[body.data.homesteadModule] = body.occupantGeneration ?? null;
+      }
+    } else {
+      for (const module of FRONTIER_MODULES) {
+        const body = this._spawnSiteModule(state, siteId, module, frame.pos.x, frame.pos.z, hash32('frontier-barn', attempt.missionId));
+        if (body) {
+          body.data.frontierMissionId = attempt.missionId;
+          attempt.moduleIds[module.id] = body.id;
+          attempt.moduleGens[module.id] = body.occupantGeneration ?? null;
+        }
+      }
+    }
+    if (Object.keys(attempt.moduleIds).length < FRONTIER_MODULES.length) {
+      attempt.nextRestockAt = num(state.simTime) + FRONTIER_SITE.restockS;
+    }
+    this.bus.emit('frontier:sitePlanted', {
+      siteId, sectorId: attempt.sectorId, frameId: frame.id,
+      missionId: attempt.missionId, missionVersion: BARN_MISSION_VERSION,
+      pos: { x: frame.pos.x, z: frame.pos.z }, tick: state.tick,
+    });
+    this.bus.emit('comms:log', {
+      text: 'Io Reach: six E-21 modules are staged around the marked frame. Snap the set before the window closes; the weld crew can retry a lost window.',
+      speaker: 'Frontier board',
+    });
+    return frame;
+  },
+
   /** Entity ids recycle and a restore mints fresh occupant generations — rebind
    *  each recorded generation to the body that still carries the matching tag.
    *  A row whose body is truly gone keeps its cold generation, so the tick writes
@@ -527,6 +761,120 @@ export const frontierHomesteads = {
   _rebindGenerations(state) {
     const f = ensureFrontierState(state);
     const get = (id) => (state.entities && id != null ? state.entities.get(id) : null);
+    // SaveSystem has already restored persistent bodies and published the exact
+    // saved-id -> current-id map. Apply it once, at this save:loaded seam, before
+    // any Frontier ledger or frame bond can observe regenerated sector occupants.
+    const remap = state.sessionEntityIdRemap;
+    if (remap instanceof Map) {
+      const mapped = id => id == null ? null : remap.get(String(id));
+      const steads = new Map();
+      for (const rec of f.homesteads) {
+        if (rec.gone === true) continue;
+        const oldId = rec.entityId, newId = mapped(oldId), body = get(newId);
+        if (newId == null || !body || body.alive === false || body.data?.homestead !== true
+            || (rec.frontierMissionId != null && (body.data.frontierMissionId !== rec.frontierMissionId
+              || body.data.frontierSite !== rec.frontierSite))) continue;
+        steads.set(oldId, newId);
+        rec.entityId = newId;
+        rec.gen = body.occupantGeneration ?? null;
+      }
+      const steadId = id => steads.has(id) ? steads.get(id) : id;
+      for (const row of f.supplyRuns) row.homesteadId = steadId(row.homesteadId);
+      for (const rows of [f.leads, f.calls, f.vendettas, f.justice]) {
+        for (const row of rows) if (row.steadId != null) row.steadId = steadId(row.steadId);
+      }
+      for (const row of f.debts) {
+        row.debtorId = steadId(row.debtorId);
+        row.creditorId = steadId(row.creditorId);
+        const marker = get(mapped(row.markerId));
+        if (marker?.alive !== false && marker?.data?.frontierAidId === row.id) row.markerId = marker.id;
+      }
+      for (const row of f.disputes) {
+        row.steadIds = row.steadIds.map(steadId);
+        const wreck = get(mapped(row.wreckId));
+        if (wreck?.alive !== false && wreck?.data?.frontierDisputeId === row.id) row.wreckId = wreck.id;
+      }
+      for (const row of f.vendettas) {
+        const target = get(mapped(row.targetId));
+        if (target?.alive !== false && target?.data?.vendettaMark === row.id) row.targetId = target.id;
+      }
+      for (const entity of state.entityList || []) {
+        const d = entity?.data;
+        if (!d || entity.alive === false) continue;
+        if (d.raidSteadId != null) d.raidSteadId = steadId(d.raidSteadId);
+        if (d.homesteadFrame !== true || !isObj(d.slots)) continue;
+        for (const [kind, oldPodId] of Object.entries(d.slots)) {
+          const pod = get(mapped(oldPodId));
+          if (!pod || pod.alive === false || pod.data?.homesteadModule !== kind
+              || pod.data?.frontierSite !== d.frontierSite || pod.data?.snapped !== true
+              || mapped(pod.data.snappedFrameId) !== entity.id) continue;
+          d.slots[kind] = pod.id;
+          pod.data.snappedFrameId = entity.id;
+          pod.data.snappedFrameGen = entity.occupantGeneration ?? null;
+        }
+      }
+      for (const site of Object.values(f.sites)) {
+        const body = get(mapped(site.frameId));
+        if (body?.data?.homesteadFrame === true && body.alive !== false) {
+          site.frameId = body.id;
+          site.frameGen = body.occupantGeneration ?? null;
+        }
+      }
+      const savedAttempt = f.barnAttempt;
+      if (savedAttempt && ['active', 'completed'].includes(savedAttempt.status)) {
+        const frame = get(mapped(savedAttempt.frameId));
+        if (frame?.alive !== false && frame?.data?.homesteadFrame === true
+            && frame.data.frontierMissionId === savedAttempt.missionId
+            && frame.data.frontierSite === savedAttempt.siteId) {
+          savedAttempt.frameId = frame.id;
+          savedAttempt.frameGen = frame.occupantGeneration ?? null;
+          for (const module of FRONTIER_MODULES) {
+            const body = get(mapped(savedAttempt.moduleIds[module.id]));
+            if (body?.alive !== false && body?.data?.homesteadModule === module.id
+                && body.data.frontierMissionId === savedAttempt.missionId
+                && body.data.frontierSite === savedAttempt.siteId) {
+              savedAttempt.moduleIds[module.id] = body.id;
+              savedAttempt.moduleGens[module.id] = body.occupantGeneration ?? null;
+            }
+          }
+        }
+      }
+    }
+    // Sector regeneration can occupy saved numeric ids before persistent bodies are
+    // restored. Rebind this mission's unique durable site/kind identities first, then
+    // repair its saved slot bonds. Do this only on the save:loaded boundary.
+    const attempt = f.barnAttempt;
+    if (attempt?.status === 'active' && attempt.siteId && attempt.missionId != null) {
+      const owned = (state.entityList || []).filter(e => e && e.alive !== false
+        && state.entities?.get(e.id) === e && e.data?.frontierMissionId === attempt.missionId
+        && e.data?.frontierSite === attempt.siteId);
+      const frames = owned.filter(e => e.data?.homesteadFrame === true);
+      if (frames.length === 1) {
+        const frame = frames[0];
+        const oldFrameId = attempt.frameId;
+        attempt.frameId = frame.id;
+        attempt.frameGen = frame.occupantGeneration ?? null;
+        const site = f.sites?.[attempt.sectorId];
+        if (site?.frameId === oldFrameId) {
+          site.frameId = frame.id;
+          site.frameGen = attempt.frameGen;
+        }
+        for (const module of FRONTIER_MODULES) {
+          const matches = owned.filter(e => e.type === 'payload' && e.data?.homesteadModule === module.id);
+          if (matches.length !== 1) continue;
+          const body = matches[0];
+          const oldId = attempt.moduleIds?.[module.id];
+          if (body.data.snapped === true && body.data.snappedFrameId === oldFrameId
+              && frame.data?.slots?.[module.id] === oldId) {
+            frame.data.slots[module.id] = body.id;
+            body.data.snappedFrameId = frame.id;
+            body.data.snappedFrameGen = attempt.frameGen;
+          }
+          attempt.moduleIds[module.id] = body.id;
+          attempt.moduleGens[module.id] = body.occupantGeneration ?? null;
+        }
+      }
+    }
     for (const rec of f.homesteads) {
       const e = get(rec.entityId);
       if (e && e.data && e.data.homestead === true) rec.gen = e.occupantGeneration ?? null;
@@ -557,6 +905,34 @@ export const frontierHomesteads = {
         d.snappedFrameGen = host.occupantGeneration ?? null;
       }
     }
+    if (attempt && ['active', 'pending'].includes(attempt.status)) {
+      const frame = get(attempt.frameId);
+      if (frame && frame.alive !== false && frame.data?.frontierMissionId === attempt.missionId
+          && frame.data?.frontierSite === attempt.siteId) {
+        // Restore mints a new occupant generation. The mission site's durable tag and frame ID
+        // prove the owner; saved generation alone is deliberately not treated as identity.
+        attempt.frameGen = frame.occupantGeneration ?? null;
+        for (const module of FRONTIER_MODULES) {
+          const body = get(attempt.moduleIds?.[module.id]);
+          if (body && body.alive !== false && body.data?.frontierMissionId === attempt.missionId
+              && body.data?.frontierSite === attempt.siteId
+              && body.data?.homesteadModule === module.id) {
+            attempt.moduleGens[module.id] = body.occupantGeneration ?? null;
+            continue;
+          }
+          if (attempt.status === 'active') {
+            delete attempt.moduleIds[module.id];
+            delete attempt.moduleGens[module.id];
+            attempt.nextRestockAt = Math.max(num(attempt.nextRestockAt), num(state.simTime) + FRONTIER_SITE.restockS);
+          }
+        }
+      } else if (attempt.status === 'active') {
+        // A destroyed mission frame is a real failed worksite. Do not silently adopt another
+        // same-sector frame or let a recycled entity ID become the job's receiver.
+        attempt.status = 'lost';
+        this.bus.emit('frontier:missionAttemptLost', { missionId: attempt.missionId, reason: 'frame_lost' });
+      }
+    }
   },
 
   // ── Site seeding: the Reach plants the frame — nothing else can ───────────────
@@ -575,6 +951,9 @@ export const frontierHomesteads = {
     let frame = null;
     for (const e of state.entityList) {
       if (!e || e.alive === false || !e.data) continue;
+      const completedAttemptFrame = f.barnAttempt?.status === 'completed'
+        && e.id === f.barnAttempt.frameId && e.data.frontierMissionId === f.barnAttempt.missionId;
+      if (e.data.frontierMissionId != null && !completedAttemptFrame) continue;
       if (e.data.homestead === true || e.data.homesteadFrame === true) { frame = e; break; }
     }
     // Orphaned snap bonds: a module whose frame fell stays snapped forever — the
@@ -598,12 +977,33 @@ export const frontierHomesteads = {
     const site = f.sites[sectorId] || (f.sites[sectorId] = {
       frameId: null, frameGen: null, plantedAt: 0, nextAt: 0, nextRestockAt: 0,
     });
+    if (f.barnAttempt?.status === 'pending' && f.barnAttempt.sectorId === sectorId && frame) {
+      this._plantBarnAttempt(state);
+    }
+    const attempt = f.barnAttempt;
+    if (attempt?.status === 'active' && attempt.sectorId === sectorId) {
+      const missionFrame = state.entities.get(attempt.frameId);
+      if (missionFrame && missionFrame.alive !== false
+          && missionFrame.data?.frontierMissionId === attempt.missionId
+          && missionFrame.data?.frontierSite === attempt.siteId
+          && missionFrame.occupantGeneration === attempt.frameGen) {
+        this._tickSiteRestock(state, attempt, missionFrame);
+      }
+    }
     if (frame) {
       // Bind the row to the live occupant; a recycled id under the same number
       // re-binds by generation, and a raised homestead still counts as a site.
       site.frameId = frame.id;
       site.frameGen = frame.occupantGeneration ?? null;
       this._tickSiteRestock(state, site, frame);
+      return;
+    }
+    if (attempt?.status === 'active' && attempt.sectorId === sectorId) return;
+    if (f.barnAttempt?.status === 'pending' && f.barnAttempt.sectorId === sectorId
+        && num(state.simTime) < site.nextAt) {
+      // The ordinary site is in its replant cooldown. Seed one dedicated attempt rather than
+      // making a stale contract wait ten in-world minutes.
+      this._plantBarnAttempt(state);
       return;
     }
     if (num(state.simTime) < site.nextAt) return; // cooldown after a loss
@@ -652,6 +1052,9 @@ export const frontierHomesteads = {
       pos: { x: px, z: pz }, tick: state.tick,
     });
     this.bus.emit('comms:log', { text: FRONTIER_BARN_RAISING.startLine, speaker: 'Frontier board' });
+    if (f.barnAttempt?.status === 'pending' && f.barnAttempt.sectorId === sectorId) {
+      this._plantBarnAttempt(state);
+    }
   },
 
   /** One deliverable module pod for a site — outside snap range by design. */
@@ -674,20 +1077,43 @@ export const frontierHomesteads = {
     if (fd.homestead === true || fd.barnDone === true) return;
     const siteId = fd.frontierSite;
     if (typeof siteId !== 'string') return;
+    if (fd.frontierMissionId != null) {
+      const attempt = ensureFrontierState(state).barnAttempt;
+      if (!attempt || attempt.status !== 'active' || attempt.missionId !== fd.frontierMissionId
+          || attempt.frameId !== frame.id || attempt.siteId !== siteId
+          || attempt.frameGen !== frame.occupantGeneration) return;
+    }
     if (num(state.simTime) < site.nextRestockAt) return;
     // Count the site's living modules (snapped or loose). A slot whose kind is
     // already aboard needs no restock; a dead or culled pod eventually gets one.
     const have = new Set();
     for (const e of state.entityList) {
       if (!e || e.alive === false || !e.data) continue;
-      if (e.data.frontierSite === siteId && typeof e.data.homesteadModule === 'string') have.add(e.data.homesteadModule);
+      if (e.data.frontierSite === siteId && typeof e.data.homesteadModule === 'string') {
+        if (fd.frontierMissionId == null) have.add(e.data.homesteadModule);
+        else {
+          const attempt = ensureFrontierState(state).barnAttempt;
+          const kind = e.data.homesteadModule;
+          if (e.data.frontierMissionId === fd.frontierMissionId && BARN_MODULE_IDS.has(kind)
+              && attempt?.moduleIds?.[kind] === e.id
+              && attempt?.moduleGens?.[kind] === e.occupantGeneration) have.add(kind);
+        }
+      }
     }
     const missing = FRONTIER_MODULES.filter((m) => !have.has(m.id) && !fd.slots?.[m.id]);
     if (missing.length === 0) return;
     site.nextRestockAt = num(state.simTime) + FRONTIER_SITE.restockS; // latch first
     site.restockSeq = (site.restockSeq | 0) + 1;
     const m = missing[hash32('frontier-restock', siteId, site.restockSeq) % missing.length];
-    this._spawnSiteModule(state, siteId, m, frame.pos.x, frame.pos.z, site.restockSeq);
+    const body = this._spawnSiteModule(state, siteId, m, frame.pos.x, frame.pos.z, site.restockSeq);
+    if (body && fd.frontierMissionId != null) {
+      body.data.frontierMissionId = fd.frontierMissionId;
+      const attempt = ensureFrontierState(state).barnAttempt;
+      if (attempt?.missionId === fd.frontierMissionId) {
+        attempt.moduleIds[m.id] = body.id;
+        attempt.moduleGens[m.id] = body.occupantGeneration ?? null;
+      }
+    }
     this.bus.emit('frontier:moduleRestocked', {
       siteId, frameId: frame.id, kind: m.id, tick: state.tick,
     });
@@ -695,6 +1121,7 @@ export const frontierHomesteads = {
 
   // ── E-21 Barn Raising: modules snap on, welders run, the window looms ──────────
   _tickRaising(state, dt) {
+    const attempt = ensureFrontierState(state).barnAttempt;
     for (const frame of state.entityList) {
       if (!frame || frame.alive === false || frame.data?.homesteadFrame !== true) continue;
       const fd = frame.data;
@@ -703,10 +1130,23 @@ export const frontierHomesteads = {
       // surface like the ledger, so heal it to a real object once.
       if (!isObj(fd.slots)) fd.slots = {};
       if (fd.homesteadRaised === true || fd.barnDone === true) continue;
+      const missionFrame = fd.frontierMissionId != null;
+      const boundAttempt = missionFrame && attempt && attempt.status === 'active'
+        && attempt.missionId === fd.frontierMissionId && attempt.frameId === frame.id
+        && attempt.siteId === fd.frontierSite
+        && attempt.frameGen === (frame.occupantGeneration ?? null);
+      if (missionFrame && !boundAttempt) continue;
       // Snap: an unsnapped module inside range locks to the next open slot.
       for (const e of state.entityList) {
         if (!e || e.alive === false || e.data?.snapped === true) continue;
         if (typeof e.data?.homesteadModule !== 'string') continue;
+        if (missionFrame) {
+          if (e.data.frontierMissionId !== fd.frontierMissionId
+              || e.data.frontierSite !== fd.frontierSite
+              || !BARN_MODULE_IDS.has(e.data.homesteadModule)
+              || attempt.moduleIds[e.data.homesteadModule] !== e.id
+              || attempt.moduleGens[e.data.homesteadModule] !== e.occupantGeneration) continue;
+        } else if (e.data.frontierMissionId != null) continue;
         if (dist2(e.pos, frame.pos) > FRONTIER_FRAME.snapRange ** 2) continue;
         const kind = e.data.homesteadModule;
         if (fd.slots[kind]) continue; // one of each
@@ -725,6 +1165,8 @@ export const frontierHomesteads = {
         this.bus.emit('frontier:moduleSnapped', {
           frameId: frame.id, moduleId: e.id, kind,
           count: Object.keys(fd.slots).length, tick: state.tick,
+          ...(missionFrame ? { missionId: attempt.missionId, siteId: attempt.siteId,
+            frameGen: frame.occupantGeneration ?? null } : {}),
         });
         if (!Number.isFinite(fd.raiseDeadline)) {
           // The first module starts the window — the tide does not wait for you.
@@ -736,11 +1178,18 @@ export const frontierHomesteads = {
       // was recycled into a non-module is released — a ghost must not hold the
       // kind hostage and count toward the six.
       for (const kind of Object.keys(fd.slots)) {
+        if (missionFrame && !BARN_MODULE_IDS.has(kind)) { delete fd.slots[kind]; continue; }
         const e = state.entities.get(fd.slots[kind]);
         // A body tagged to a DIFFERENT frame is a recycled occupant — release.
         // An untagged snapped body is compat (pre-tag saves): it stays on.
         if (!e || e.alive === false || e.data?.snapped !== true || e.data?.slotKind !== kind
-            || (e.data?.snappedFrameId != null && e.data.snappedFrameId !== frame.id)) {
+            || (e.data?.snappedFrameId != null && e.data.snappedFrameId !== frame.id)
+            || (missionFrame && (e.data?.frontierMissionId !== fd.frontierMissionId
+              || e.data?.frontierSite !== fd.frontierSite || e.data?.homesteadModule !== kind
+              || attempt.moduleIds[kind] !== e.id
+              || attempt.moduleGens[kind] !== e.occupantGeneration
+              || e.data?.snappedFrameId !== frame.id
+              || e.data?.snappedFrameGen !== (frame.occupantGeneration ?? null)))) {
           delete fd.slots[kind];
           continue;
         }
@@ -763,10 +1212,27 @@ export const frontierHomesteads = {
       // FF: the window closes first — a half-built homestead survives, damaged.
       if (Number.isFinite(fd.raiseDeadline) && state.simTime >= fd.raiseDeadline
           && fd.barnDone !== true) {
-        fd.barnDone = true;
-        fd.damaged = true;
-        frame.hull = Math.max(1, Math.floor(frame.hullMax * FRONTIER_BARN_RAISING.partialPenaltyHull));
-        this._raiseHomestead(state, frame, true);
+        if (boundAttempt) {
+          fd.damaged = true;
+          frame.hull = Math.max(1, Math.floor(frame.hullMax * FRONTIER_BARN_RAISING.partialPenaltyHull));
+          fd.weldT = 0;
+          fd.raiseDeadline = state.simTime + FRONTIER_BARN_RAISING.windowS;
+          this.bus.emit('frontier:barnRetry', {
+            missionId: attempt.missionId, siteId: attempt.siteId, frameId: frame.id,
+            snapped: snappedCount, required: FRONTIER_MODULES.length, tick: state.tick,
+          });
+          this.bus.emit('comms:log', {
+            text: snappedCount === FRONTIER_MODULES.length
+              ? 'The E-21 crew resets the arc and regroups at the frame. The complete set is still aboard; hold while the welders renew the pass.'
+              : `The E-21 window slipped at ${snappedCount}/6. The crew has ${FRONTIER_SITE.restockS}s to stage missing modules; the next snap restarts the window.`,
+            speaker: 'Frontier board',
+          });
+        } else {
+          fd.barnDone = true;
+          fd.damaged = true;
+          frame.hull = Math.max(1, Math.floor(frame.hullMax * FRONTIER_BARN_RAISING.partialPenaltyHull));
+          this._raiseHomestead(state, frame, true);
+        }
       }
     }
   },
@@ -788,6 +1254,10 @@ export const frontierHomesteads = {
     const rec = {
       entityId: frame.id,
       gen: frame.occupantGeneration ?? null,
+      ...(frame.data?.frontierMissionId != null ? {
+        frontierMissionId: frame.data.frontierMissionId,
+        frontierSite: frame.data.frontierSite,
+      } : {}),
       pos: { x: frame.pos.x, z: frame.pos.z },
       sectorId: state.world?.currentSectorId || null,
       modules: Object.keys(frame.data?.slots || {}),
@@ -807,6 +1277,10 @@ export const frontierHomesteads = {
     frame.data.steadName = rec.name;
     this.bus.emit(partial ? 'frontier:barnPartial' : 'frontier:homesteadRaised', {
       homesteadId: frame.id, modules: rec.modules, tick: state.tick,
+      ...(frame.data?.frontierMissionId != null ? {
+        missionId: frame.data.frontierMissionId, siteId: frame.data.frontierSite,
+        frameGen: frame.occupantGeneration ?? null,
+      } : {}),
     });
     this.bus.emit('comms:log', {
       text: partial ? FRONTIER_BARKS.owe : `${rec.name}: ${FRONTIER_BARKS.raised}`, speaker: 'Frontier board',
@@ -1845,7 +2319,18 @@ export const frontierHomesteads = {
   },
 
   update(dt, state) {
-    ensureFrontierState(state);
+    const f = ensureFrontierState(state);
+    // An arena has no ambient homestead/site business. Keep every existing
+    // board obligation and physical weld/frame path on the normal update.
+    if (state.run?.kind === 'survival' && !f.barnAttempt && !f.deeds && !f.nextDebtAt
+        && !f.homesteads.length && !f.supplyRuns.length && !f.leads.length
+        && !f.debts.length && !f.disputes.length && !f.calls.length && !f.vendettas.length
+        && !Object.keys(f.sites).length
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (e.data?.lineHeadId === FRONTIER_WELD_HEAD.id || e.data?.weldedTo != null
+            || e.data?.homesteadFrame === true || e.data?.homestead === true
+            || e.data?.frontierRaider === true))) return;
+    this._tickBarnAttempt(state);
     this._tickSiteSeeding(state);
     this._tickRaising(state, dt);
     this._tickHomesteads(state);

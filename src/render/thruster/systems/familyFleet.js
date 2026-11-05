@@ -193,6 +193,9 @@ export class FamilyProductionFleet {
       factionR: 0.533,
       factionG: 0.667,
       factionB: 1.0,
+      // The dying tell (inf-dying-drive): hull truth from the sim, advanced sputter clock.
+      hullFrac: 1,
+      sputterPhase: 0,
       // Tumbling ships corkscrew (PQ-139.04): raw angVel and the accumulated wobble phase.
       spin: 0,
       spinPhase: 0,
@@ -339,6 +342,7 @@ export class FamilyProductionFleet {
       ship.driveState.modeSeeded = false;
       ship.spin = 0;
       ship.spinPhase = 0;
+      ship.sputterPhase = 0;
     }
     ship.alive = true;
     ship.entityId = entityId;
@@ -480,6 +484,9 @@ export class FamilyProductionFleet {
     ship.retroOnly = !!driveInfo.retroOnly;
     ship.brake = driveInfo.brake || 0;
     ship.speedDrive = driveInfo.speedDrive || 0;
+    // Hull truth the plume reads for the dying tell (unknown fields read intact).
+    ship.hullFrac = Number.isFinite(driveInfo.hullFrac) ? driveInfo.hullFrac : 1;
+    ship.sputterPhase = Number.isFinite(driveInfo.simTime) ? driveInfo.simTime : 0;
   }
 
   /**

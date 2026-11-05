@@ -186,3 +186,39 @@ test('both existing census drivers freeze resource IDs when they visit an object
     assert.equal(validation.ok, false, 'a retained Object3D cannot absorb its later unknown geometry into allowed IDs');
   }
 });
+
+function cameraSnapshot(lookAt) {
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+  camera.position.set(0, 0, 0);
+  camera.lookAt(lookAt);
+  camera.updateMatrixWorld(true);
+  const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  return { frustum: new THREE.Frustum().setFromProjectionMatrix(projection), layers: camera.layers };
+}
+
+test('a resident leaf the live camera turned toward during the opening hold is captured, not a first-draw admission', () => {
+  const f = fixture();
+  // The plan froze its camera looking down -Z at cook time; the opening hold kept the picture
+  // refused while the live camera turned to +X, where a resident beacon was already mounted.
+  f.leaf.position.set(0, 0, -10);
+  f.leaf.updateMatrixWorld(true);
+  const beacon = new THREE.Mesh(new THREE.BoxGeometry(), f.leaf.material);
+  beacon.name = 'beacon_PackagedBody';
+  beacon.position.set(10, 0, 0);
+  f.scene.add(beacon);
+  beacon.updateMatrixWorld(true);
+  f.plan.camera = cameraSnapshot(new THREE.Vector3(0, 0, -1));
+  const receipt = createOpeningSubmissionReceipt(f.renderer, f.plan);
+  f.owner.state.render.openingSubmissionReceipt = receipt;
+  const beaconId = `uuid:${beacon.geometry.uuid}`;
+  const liveCamera = cameraSnapshot(new THREE.Vector3(1, 0, 0));
+  const preSubmitValidation = validateOpeningSubmissionReceipt(receipt, f.renderer, null, null,
+    { camera: liveCamera });
+  assert.ok(preSubmitValidation.currentResources.geometryBufferIds.includes(beaconId),
+    'the pre-submit census walks the leaves the submitting camera can see');
+  const observer = beginOpeningFirstDrawObservation(f.renderer, { plan: f.plan, receipt, preSubmitValidation });
+  f.draw(beacon);
+  const validation = finishDiagnostics(f, observer.finish());
+  assert.deepEqual(validation.uncapturedGeometryBufferIds, []);
+  assert.equal(validation.reason, null);
+});

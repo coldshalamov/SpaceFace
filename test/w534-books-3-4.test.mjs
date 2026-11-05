@@ -13,6 +13,8 @@
 // Run: node --test test/w534-books-3-4.test.mjs
 
 import assert from 'node:assert/strict';
+import { admitMarkedSampleYield } from './helpers/pr825-sample-admission.mjs';
+import { installBook4Owners, completeBook4Spine, completeBook4Barn } from './helpers/pr825-book4-physical.mjs';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
@@ -56,8 +58,8 @@ function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
   (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
 }
 
-function check(name, fn) {
-  try { fn(); console.log(`  PASS  ${name}`); }
+async function check(name, fn) {
+  try { await fn(); console.log(`  PASS  ${name}`); }
   catch (err) {
     failures += 1;
     console.error(`  FAIL  ${name}`);
@@ -105,7 +107,7 @@ function makeHarness(seed = 47) {
     voice: { say: () => true },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
-      const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
+      const entity = { id, alive: true, occupantGeneration: id, vel: { x: 0, z: 0 }, ...spec, data: structuredClone(spec.data || {}) };
       state.entities.set(id, entity);
       state.entityList.push(entity);
       return entity;
@@ -131,6 +133,7 @@ function makeHarness(seed = 47) {
   const registry = { get: (n) => systems[n] || null };
   const ctx = { state, bus, helpers, registry };
   missions.init(ctx);
+  installBook4Owners({ state, bus, helpers, registry, systems });
   story.init(ctx);
   aftermath.init(ctx);
   rook.init(ctx);
@@ -328,7 +331,7 @@ function completeBounty(h, m) {
 // ── Route helpers: replay Books 0–2 (the w533 route) to stand Book 3 up. ─────
 function reachB1(h) {
   const { state, bus } = h;
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 1);
 }
@@ -451,7 +454,7 @@ function completeEscort(h, m) {
 console.log('w534-books-3-4');
 
 // ── BOOK THREE: Bigger Boat — core tow, live-line strain, maw, Foreman, first audit. ────
-check('B3: board posts the Ceres slag-core tow first', () => {
+await check('B3: board posts the Ceres slag-core tow first', () => {
   const h = makeHarness(60);
   const { state } = h;
   reachB3(h);
@@ -479,7 +482,7 @@ check('B3: board posts the Ceres slag-core tow first', () => {
   assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(handover), 'the mission makes no named-hull handoff');
 });
 
-check('B3: the Ceres tow arms the live-line strain record; the fourth spike files failure', () => {
+await check('B3: the Ceres tow arms the live-line strain record; the fourth spike files failure', () => {
   const h = makeHarness(61);
   const { state, bus } = h;
   reachB3(h);
@@ -536,7 +539,7 @@ check('B3: the Ceres tow arms the live-line strain record; the fourth spike file
   assert.equal(h.seamFailed.length, 1, 'the welded seam does not re-fail');
 });
 
-check('B3: the Kepler gate weld records as optional world evidence', () => {
+await check('B3: the Kepler gate weld records as optional world evidence', () => {
   const h = makeHarness(62);
   const { state, bus } = h;
   reachB3(h);
@@ -550,7 +553,7 @@ check('B3: the Kepler gate weld records as optional world evidence', () => {
   assert.deepEqual(status.completed, ['gate_audit_kepler'], 'the B4 weld is not Book 3 evidence');
 });
 
-check('B3: Feed the Maw needs the slag stuns before the tow settles', () => {
+await check('B3: Feed the Maw needs the slag stuns before the tow settles', () => {
   const h = makeHarness(63);
   const { state, bus } = h;
   reachB3(h);
@@ -582,7 +585,7 @@ check('B3: Feed the Maw needs the slag stuns before the tow settles', () => {
   assert.deepEqual(status.completed, ['delivery', 'feed_the_maw']);
 });
 
-check('B3: actual save restore owns its Maw params without mutating the saved payload', () => {
+await check('B3: actual save restore owns its Maw params without mutating the saved payload', () => {
   const h = makeHarness(530); reachB3(h);
   const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
   enterDest(h, berth); dockTow(h, berth);
@@ -620,7 +623,7 @@ check('B3: actual save restore owns its Maw params without mutating the saved pa
   assert.equal(third.state.missions.active.find(row => row.id === maw.id).params.mawLedgerInvalid, true);
 });
 
-check('B3: an old active Maw preserves earned stuns but rejects targetless synthetic hits', () => {
+await check('B3: an old active Maw preserves earned stuns but rejects targetless synthetic hits', () => {
   const h = makeHarness(532); reachB3(h);
   const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
   enterDest(h, berth); dockTow(h, berth);
@@ -640,7 +643,7 @@ check('B3: an old active Maw preserves earned stuns but rejects targetless synth
   assert.equal(maw.params.mawBodies, undefined, 'legacy progress does not mint a second worksite');
 });
 
-check('B3: a lost supplied pod voids the detail without payment and the authored board reoffers it', () => {
+await check('B3: a lost supplied pod voids the detail without payment and the authored board reoffers it', () => {
   const h = makeHarness(531);
   reachB3(h);
   const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
@@ -664,7 +667,7 @@ check('B3: a lost supplied pod voids the detail without payment and the authored
   assert.equal(h.state.entityList.filter(e => e.alive !== false && e.data?.mawMissionId === maw.id).length, 0);
 });
 
-check('B3: the Foreman yard feud closes the book; the audit never gates it', () => {
+await check('B3: the Foreman yard feud closes the book; the audit never gates it', () => {
   const h = makeHarness(64);
   const { state, bus } = h;
   reachB3(h);
@@ -698,7 +701,7 @@ check('B3: the Foreman yard feud closes the book; the audit never gates it', () 
 });
 
 // ── BOOK FOUR: Pick a Side — three doors, three operations, the doubled tag. ──
-check('B4: Meridian door — intro accept opens, Spine Break settles, book closes', () => {
+await check('B4: Meridian door — intro accept opens, Spine Break settles, book closes', async () => {
   const h = makeHarness(65);
   const { state, bus } = h;
   reachB4(h);
@@ -733,7 +736,7 @@ check('B4: Meridian door — intro accept opens, Spine Break settles, book close
   assert.equal(op.type, 'escort');
   assert.equal(op.params.bookScene, 'spine_break', 'Meridian runs Spine Break');
   assert.equal(op.storyBranch, 'traders');
-  completeEscort(h, op);
+  await completeBook4Spine(h, op);
   assert.equal(op.status, 'completed');
   assert.equal(state.story.flags.spine_break_done, true);
   assert.ok(isBeatStepsComplete(state, 4));
@@ -749,7 +752,7 @@ check('B4: Meridian door — intro accept opens, Spine Break settles, book close
     'the canon wall line does not fire for an untaken tag');
 });
 
-check('B4: Concord door — the Weighing plus the Too-Perfect Pack', () => {
+await check('B4: Concord door — the Weighing plus the Too-Perfect Pack', () => {
   const h = makeHarness(66);
   const { state } = h;
   reachB4(h, 'custody'); // custody outcome pins the Coalition evidence door
@@ -770,7 +773,7 @@ check('B4: Concord door — the Weighing plus the Too-Perfect Pack', () => {
   assert.equal(state.story.beatIndex, 5);
 });
 
-check('B4: Free Captain door — Barn Raising', () => {
+await check('B4: Free Captain door — Barn Raising', async () => {
   const h = makeHarness(67);
   const { state } = h;
   reachB4(h, 'unpinned'); // Elroy unresolved: all three doors on the boards
@@ -785,14 +788,13 @@ check('B4: Free Captain door — Barn Raising', () => {
   assert.equal(op.type, 'tow_recovery');
   assert.equal(op.params.bookScene, 'barn_raising', 'the Free Captains raise the barn');
   assert.equal(op.storyBranch, 'free');
-  enterDest(h, op);
-  dockTow(h, op);
+  await completeBook4Barn(h, op);
   assert.equal(op.status, 'completed');
   assert.equal(state.story.flags.barn_raised, true);
   assert.equal(state.story.beatIndex, 5);
 });
 
-check('B4: re-accepting a second door intro is acknowledged, not a rejection', () => {
+await check('B4: re-accepting a second door intro is acknowledged, not a rejection', () => {
   const h = makeHarness(68);
   const { state } = h;
   reachB4(h, 'unpinned'); // both doors are on the boards
@@ -813,7 +815,7 @@ check('B4: re-accepting a second door intro is acknowledged, not a rejection', (
   assert.equal(state.story.branch, 'patrol', 'a stale intro cannot unsettle the door');
 });
 
-check('B4: the doubled contract pays double and the wall answers six days later', () => {
+await check('B4: the doubled contract pays double and the wall answers six days later', () => {
   const h = makeHarness(69);
   const { state } = h;
   reachB4(h);
@@ -844,7 +846,7 @@ check('B4: the doubled contract pays double and the wall answers six days later'
   assert.equal(h.graffiti.filter((g) => g.line === 'YOU READ THE TAG.').length, 1, 'the wall fires once');
 });
 
-check('B4: the door operation does not post for another door\u2019s board', () => {
+await check('B4: the door operation does not post for another door\u2019s board', () => {
   const h = makeHarness(70);
   const { state } = h;
   reachB4(h, 'unpinned');

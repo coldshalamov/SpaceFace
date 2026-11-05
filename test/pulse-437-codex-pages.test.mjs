@@ -52,7 +52,9 @@ test('catalog covers every commodity, hull, module, weapon, faction, sector, spe
   const ids = new Set(CODEX_PAGES.map((p) => p.id));
   assert.equal(ids.size, CODEX_PAGES.length, 'page ids unique');
   const inSection = (s) => CODEX_PAGES.filter((p) => p.section === s);
-  assert.equal(inSection('commodities').length, COMMODITIES.length);
+  // The one extra commodity page is special-500 SP2-138's codex-only "Discontinued Cargo" —
+  // deliberately not in COMMODITIES, because no market lists it anymore.
+  assert.equal(inSection('commodities').length, COMMODITIES.length + 1);
   assert.ok(inSection('commodities').length >= 66, '≥66 commodities');
   assert.equal(inSection('hulls').length, SHIPS.length);
   assert.ok(inSection('hulls').length >= 15, '≥15 hulls');

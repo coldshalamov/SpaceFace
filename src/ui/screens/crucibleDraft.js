@@ -306,7 +306,7 @@ export function rememberedSpareChoice(options, remembered) {
 }
 
 /**
- * How many of the drawn shop cards the wallet can still buy: available (the owner already folds
+ * How many of the current shop offers the wallet can still buy: available (the owner already folds
  * affordability and slot legality into it), not yet fitted, not the hull being flown, and not a
  * hull already on the manifest (a free switch, not a sale). Pure so a check can pin the count
  * the Escape guard reads without a DOM.
@@ -858,6 +858,13 @@ const REFIT_RESULT_REFRESH_EVENTS = Object.freeze([
   ['run:awarded', (payload) => payload?.reason === 'partial_bank_refund'],
 ]);
 
+const REFIT_PENDING_LINES = Object.freeze({
+  'run:refitFitRequested': 'Fitting the selected spare…',
+  'run:refitStripRequested': 'Moving the fitting to spares…',
+  'run:refitSellRequested': 'Selling the selected part…',
+});
+let refitRequestSequence = 0;
+
 function unbindScreenResultRefresh(screen) {
   screen._resultRefreshVersion = (screen._resultRefreshVersion || 0) + 1;
   for (const off of screen._resultRefreshUnsubs || []) {
@@ -1271,7 +1278,7 @@ export const crucibleDraftScreen = {
 
   /**
    * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one drawn card is
+   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
    * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
    * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
    * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
@@ -1383,7 +1390,9 @@ export const crucibleDraftScreen = {
       this._launchWarned = false;
       return false;
     }
-    const count = affordableOfferCount(this._drawnOffers);
+    // Search and category filters only change the view. An empty shelf must not turn Cancel
+    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
     if (count < 1) return false;
     this._launchWarned = true;
     const text = launchGuardLine(count);
@@ -1574,12 +1583,14 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
 
-    if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      // The Hulls shelf is empty at the opening stop by design (the door's pick is being
-      // fitted, not re-sold) — it says where the hulls are instead of reading as broken.
-      const hullPause = this._category === 'Hulls' && !this._query && wave === 0;
+    if (shop && !visibleOffers.length && !recommended.length
+        && typeof document.createElementNS === 'function') {
+      // The Ships shelf is empty at the opening stop by design: the player's launch hull is
+      // already selected. Say what to do next without promising hulls will unlock after round 1;
+      // One Hull contracts intentionally keep that shelf empty for the whole run.
+      const hullPause = this._category === 'Ships' && !this._query && wave === 0;
       const empty = el('div', 'orr-armory-empty', hullPause
-        ? 'New hulls go on sale after round 1 — this stop fits the ship you chose.'
+        ? 'Your launch hull is already selected. Fit it from the other shelves.'
         : 'No equipment matches this search.');
       const clear = el('button', 'orr-armory-clear', hullPause ? 'Back to all fittings' : 'Clear filters');
       clear.type = 'button';
@@ -1591,8 +1602,6 @@ export const crucibleDraftScreen = {
     }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
-    // What the shelf shows right now, for the Escape guard (the Gauntlet never reads it).
-    this._drawnOffers = shop ? [...recommended, ...visibleOffers] : [];
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
       this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
@@ -1962,6 +1971,13 @@ export const crucibleRefitScreen = {
 
   mount(rootEl, ctx) {
     this._root = rootEl;
+    this._pendingRefit = null;
+    this._refitResultOff?.();
+    // Keep the acknowledgement listener while another screen covers the refit. Its normal
+    // visible-screen receipt subscription owns repainting after the read model has landed.
+    this._refitResultOff = ctx.bus.on('run:refitChanged', (receipt) => {
+      if (receipt?.requestId === this._pendingRefit?.requestId) this._pendingRefit = null;
+    });
     rootEl.innerHTML = '';
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
@@ -2291,6 +2307,9 @@ export const crucibleRefitScreen = {
 
   dispose() {
     unbindScreenResultRefresh(this);
+    this._refitResultOff?.();
+    this._refitResultOff = null;
+    this._pendingRefit = null;
     if (this._jig) this._jig.dispose();
     this._jig = null;
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
@@ -2345,7 +2364,13 @@ export const crucibleRefitScreen = {
   },
 
   _emitIntentAndRefresh(context, event, payload) {
-    emitIntentAndRefresh(this, context, event, payload);
+    const line = REFIT_PENDING_LINES[event];
+    if (!line) return emitIntentAndRefresh(this, context, event, payload);
+    if (this._pendingRefit) return;
+    const requestId = `crucible-refit:${++refitRequestSequence}`;
+    this._pendingRefit = { requestId, line,
+      generation: draftOwner(context)?.preparationGeneration?.() };
+    emitIntentAndRefresh(this, context, event, { ...payload, requestId });
   },
 
   refresh(ctx) {
@@ -2359,6 +2384,10 @@ export const crucibleRefitScreen = {
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
+    const generation = draftOwner(context)?.preparationGeneration?.();
+    if (this._pendingRefit && generation !== this._pendingRefit.generation) this._pendingRefit = null;
+    const pending = !!this._pendingRefit;
+    rows.setAttribute('aria-busy', String(pending));
     this._syncFoot(context);
     setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
     // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
@@ -2468,7 +2497,7 @@ export const crucibleRefitScreen = {
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
       action.classList.add('sf-cru-act');
-      action.disabled = !!lines.disabled;
+      action.disabled = pending || !!lines.disabled;
       // nothing can go in: no verb to offer
       if (state === 'bare') action.hidden = true;
       if (!lines.disabled) {
@@ -2514,6 +2543,7 @@ export const crucibleRefitScreen = {
         if (sellTarget && sellPrice != null && sellPrice > 0) {
           const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
           sell.classList.add('sf-cru-act', 'sf-cru-sell');
+          sell.disabled = pending;
           sell.addEventListener('click', () => {
             this._emitIntentAndRefresh(context, 'run:refitSellRequested', sellTarget);
           });
@@ -2548,7 +2578,7 @@ export const crucibleRefitScreen = {
 
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
-    if (this._note) this._note.textContent = notice || '';
+    if (this._note) this._note.textContent = this._pendingRefit?.line || notice || '';
     this._dressHull();
   },
 

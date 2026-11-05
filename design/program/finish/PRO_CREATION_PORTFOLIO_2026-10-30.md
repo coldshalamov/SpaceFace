@@ -2,9 +2,21 @@
 
 ## Current status: Pro queued; usage limit observed
 
-The integrated Browser now connects in Codex. The regular ChatGPT page shows **Chat** selected,
-**Pro** effort and the GPT-6 family. The model menu still reports **“Usage limit reached”** on the
-2026-11-01 recheck. Correct Pro dispatches remain **zero**; all five briefs below remain unsent.
+November5,01:05UTC recheck: the actual regular ChatGPT menu still shows Pro5of5, Locked and Usage limit reached, with Chat selected and Work unselected. No prompt was entered/submitted; only the new empty check tab closed. All five remain unsent. Reset time is unknown; no substitute model/app is authorized.
+
+November4,21:52UTC: all five remain unsent. The integrated Browser is now reachable. A fresh regular
+ChatGPT page had Chat selected and Work unselected; its actual model menu showed **Pro,5of5**, a
+locked power slider and **Usage limit reached**. No prompt was submitted and no alternate model/app
+was used. Only the empty check tab created for this observation was closed. The earlier18:09UTC
+`Browser is not available: iab` result is historical; it does not describe the current browser.
+The quota reset time remains unknown. Refresh the exact remote base and interface packet before
+any later authorized Pro dispatch, and keep main game integration moving meanwhile.
+
+The integrated Browser connects in Codex. On the 2026-11-03 recheck, the actual regular ChatGPT
+page had **Chat** selected, **Work** unselected, and the GPT-6 family. The model/effort menu
+showed **Medium**, a disabled power control and **“Usage limit reached”**. Pro was not available
+in that observed menu. No prompt was submitted and the menu was closed. Correct Pro dispatches
+remain **zero**; all five briefs below remain unsent. Refresh their base/interface packet before dispatch.
 Use the integrated Browser for these new Pro conversations. Work, alternate models and native
 thread creation are not substitutes for this request. Keep the main game integration moving
 while the Pro jobs are blocked by the observed limit.

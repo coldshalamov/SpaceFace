@@ -220,7 +220,9 @@ async function loadMainWithCrashReporter({ isPackaged = false, isolatedEvidence 
   const windows = [];
   const receipts = [];
   const processEvents = emitter({
-    env: {},
+    // This fake shell tests crash reporting, build info, and updates without compiling a worker.
+    // The dev-sim-worker-bundle and game-server-dev-sim-worker-bundle tests own that behavior.
+    env: { SPACEFACE_DEV_SIM_WORKER_BUNDLE: '0' },
     platform: 'win32',
     execPath: paths.exe,
     resourcesPath: path.join(tmpRoot, 'resources'),
@@ -647,8 +649,8 @@ test('isolated evidence launches never touch the update feed', async () => {
 });
 
 test('packaged packaging metadata ships the updater, modules, and feed', async () => {
-  assert.equal(leftoverPkg.dependencies['electron-updater'], '6.2.1',
-    'updater is pinned to the electron-builder 24-train sibling (6.2.1 fixes the 6.2.0 mac critical)');
+  assert.equal(leftoverPkg.dependencies['electron-updater'], '6.8.11',
+    'updater pins the compatible 6.x signing and credential-redirect fixes');
   assert.ok(leftoverPkg.build.files.includes('electron/autoUpdate.cjs'));
   assert.ok(leftoverPkg.build.files.includes('electron/releaseIdentity.cjs'));
   assert.deepEqual(leftoverPkg.build.publish, {

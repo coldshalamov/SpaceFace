@@ -8,6 +8,8 @@ import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksit
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
+import { ensureSpineBreakWorksite, isSpineBreakOperation, spineBreakOutcome, SPINE_BREAK_CONFIG,
+  SPINE_BREAK_MAX_RETRIES, spineBreakContainers, spineBreakTugIdentity } from '../missions/spineBreakWorksite.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -58,6 +60,7 @@ import { QUIET_PASSAGE, buildQuietPassageOffer, evaluatePassengerHeatProximity }
 import { pointContaminationAt } from '../data/alienEcology.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
+import { FRONTIER_MODULES } from '../data/factions/free.js';
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
   CONTRACT_DESK_SERVICES, hasContractsDesk,
@@ -150,6 +153,7 @@ import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders, captainStandingOfferPreflight } from './captainStandingOrders.js';
 import { syncColdburnBid, coldburnDeliveryBonus } from './coldburnRey.js';
+import { quinnStoolPayoutBonus } from './special500DockLedger.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -217,7 +221,7 @@ import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
-import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { sectorGlobalOrigin, sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 // FB-066 — race courses are derived data: the course record rides the offer's params verbatim.
 import {
   raceCourseForSector,
@@ -1155,10 +1159,7 @@ const CONTRACT_47A_REWARD_CR = Math.max(0, Math.round(Number(
   STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0));
 const contract47aBalanceNote = (cr) =>
   `Contract pay withheld — status pending. ${Math.max(0, Math.round(Number(cr) || 0)).toLocaleString('en-US')} cr posted for balance.`;
-// A yield within this radius of the 47-A fix is the sample (missionObjectiveOps._onMiningYield).
-const CONTRACT_47A_SAMPLE_MATCH_WU = 80;
-// Standing this close to the fix means its rocks are loaded; only then can a missing rock re-mark.
-const CONTRACT_47A_SITE_LOADED_WU = 400;
+// The opening assay binds a real world slot; only proven depletion can re-mark its field exposure.
 export const CONTRACT_47A_B2_SCAN_RADIUS_WU = 1200;
 export const CONTRACT_47A_B2_CUSTODY_REEL_WU = 60;
 
@@ -1319,6 +1320,19 @@ function missionNavReason(m, station, sector) {
   const sectorName = sector && sector.name || 'target sector';
   const remaining = Math.max(0, (m.objectiveTarget || p.qty || 1) - (m.objectiveProgress || 0));
   const wreckName = p.wreckName || 'the marked wreck';
+  if (p.frontierBarnRaisingVersion === 1) {
+    const remainingModules = Math.max(0, FRONTIER_MODULES.length - Math.max(0, Number(m.objectiveProgress) || 0));
+    return remainingModules > 0
+      ? `Tow or push ${remainingModules} marked E-21 module${remainingModules === 1 ? '' : 's'} into the matching Io frame slots`
+      : 'Hold the six snapped modules while the frame welders finish';
+  }
+  if (isSpineBreakOperation(m)) {
+    const goal = SPINE_BREAK_CONFIG.recoupleGoal;
+    const progress = Math.max(0, Math.min(goal, Number(m.objectiveProgress) || 0));
+    return progress >= goal
+      ? `Escort the re-coupled train to ${stationName}`
+      : `Re-couple ${goal} loose containers (${progress}/${goal}), then escort the train to ${stationName}`;
+  }
   if (p.setPieceObjective === 'long_read_rumor_survey') {
     if (p.rumorAlreadyKnown) return `Fix the known ${wreckName} bearing in ${sectorName}`;
     return p.rumorPurchased
@@ -1491,6 +1505,153 @@ export const missions = {
   ...missionStoryOps,
   name: 'missions',
 
+  _adoptLiveMissionTargets(m) {
+    // This version's targets are physical Frontier-owned module/frame entities, not the
+    // generic one-asteroid tow objective. Unmarked accepted tow jobs keep the original adopter.
+    if (m?.params?.frontierBarnRaisingVersion === 1) return 0;
+    return missionSpawningOps._adoptLiveMissionTargets.call(this, m);
+  },
+
+  _isFrontierBarnMission(m) {
+    return !!m && m.type === 'tow_recovery' && m.storyTag === 'campaign47a:b4:operation'
+      && m.params?.bookScene === 'barn_raising'
+      && m.params?.frontierBarnRaisingVersion === 1;
+  },
+
+  _frontierBarnAttempt(m) {
+    if (!this._isFrontierBarnMission(m)) return null;
+    const attempt = this.state.frontier?.barnAttempt;
+    if (!attempt || attempt.version !== 1 || attempt.status !== 'active'
+        || attempt.missionId !== m.id || attempt.sectorId !== 'sector_io_reach'
+        || typeof attempt.siteId !== 'string' || attempt.frameId == null) return null;
+    const frame = this.state.entities?.get(attempt.frameId);
+    if (!frame || frame.alive === false || this.state.entities.get(frame.id) !== frame
+        || frame.data?.homesteadFrame !== true
+        || frame.data?.frontierMissionId !== m.id || frame.data?.frontierSite !== attempt.siteId
+        || frame.occupantGeneration !== attempt.frameGen) return null;
+    return { attempt, frame };
+  },
+
+  _frontierBarnSnappedKinds(m) {
+    const bound = this._frontierBarnAttempt(m);
+    if (!bound) return [];
+    const { attempt, frame } = bound;
+    const slots = frame.data?.slots;
+    if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return [];
+    const valid = [];
+    for (const module of FRONTIER_MODULES) {
+      const id = slots[module.id];
+      if (id == null) continue;
+      const body = this.state.entities?.get(id);
+      if (!body || body.alive === false || this.state.entities.get(body.id) !== body
+          || attempt.moduleIds[module.id] !== id
+          || attempt.moduleGens[module.id] !== body.occupantGeneration
+          || body.type !== 'payload' || body.data?.homesteadModule !== module.id
+          || body.data?.frontierMissionId !== m.id || body.data?.frontierSite !== attempt.siteId
+          || body.data?.snapped !== true || body.data?.slotKind !== module.id
+          || body.data?.snappedFrameId !== frame.id
+          || body.data?.snappedFrameGen !== (frame.occupantGeneration ?? null)) continue;
+      valid.push(module.id);
+    }
+    return valid;
+  },
+
+  _frontierBarnReceipt(m) {
+    const bound = this._frontierBarnAttempt(m);
+    if (!bound) return null;
+    const { attempt, frame } = bound;
+    if (frame.data?.homesteadRaised !== true || frame.data?.homestead !== true || frame.data?.barnDone !== true) return null;
+    const kinds = this._frontierBarnSnappedKinds(m);
+    if (kinds.length !== FRONTIER_MODULES.length
+        || new Set(kinds).size !== FRONTIER_MODULES.length) return null;
+    const rec = (this.state.frontier?.homesteads || []).find((row) => row
+      && row.entityId === frame.id && row.gone !== true && row.partial !== true
+      && row.frontierMissionId === m.id && row.frontierSite === attempt.siteId
+      && row.gen === (frame.occupantGeneration ?? null)
+      && Number(row.raisedAt) >= Number(attempt.acceptedAt)
+      && Number(row.raisedAt) >= Number(attempt.plantedAt));
+    if (!rec || rec.modules?.length !== FRONTIER_MODULES.length
+        || FRONTIER_MODULES.some((module) => !rec.modules?.includes(module.id))) return null;
+    return {
+      version: 1, missionId: m.id, siteId: attempt.siteId, frameId: frame.id,
+      frameGen: frame.occupantGeneration ?? null,
+      moduleIds: Object.fromEntries(FRONTIER_MODULES.map((module) => [module.id, frame.data.slots[module.id]])),
+      raisedAt: rec.raisedAt,
+    };
+  },
+
+  _reconcileFrontierBarnAttempt() {
+    const attempt = this.state.frontier?.barnAttempt;
+    if (!attempt || !['active', 'pending'].includes(attempt.status)) return;
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === attempt.missionId && m.status === 'active');
+    if (!this._isFrontierBarnMission(mission)) return;
+    const frame = attempt.frameId != null ? this.state.entities?.get(attempt.frameId) : null;
+    if (frame && frame.alive !== false && frame.data?.frontierMissionId === mission.id
+        && frame.data?.frontierSite === attempt.siteId) {
+      // The durable owner tag and exact frame identity survive Continue; the saved occupant
+      // generation alone does not. Frontier has rebound snapped modules before this listener.
+      attempt.frameGen = frame.occupantGeneration ?? null;
+      mission.objectiveProgress = this._frontierBarnSnappedKinds(mission).length;
+      mission.params.frontierAttempt = {
+        siteId: attempt.siteId, frameId: frame.id, frameGen: frame.occupantGeneration ?? null,
+      };
+      this._refreshTrackedMissionNav(mission);
+    }
+  },
+
+  _onFrontierBarnSitePlanted(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    mission.params.frontierAttempt = {
+      siteId: bound.attempt.siteId, frameId: bound.frame.id,
+      frameGen: bound.frame.occupantGeneration ?? null,
+    };
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id });
+  },
+
+  _onFrontierBarnModuleSnapped(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (!this._isFrontierBarnMission(mission)) return;
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    const kinds = this._frontierBarnSnappedKinds(mission);
+    mission.objectiveProgress = kinds.length;
+    mission.params.frontierModulesSnapped = kinds;
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id, objectiveProgress: kinds.length });
+  },
+
+  _onFrontierBarnRetry(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    mission.params.frontierRetries = Math.max(0, Number(mission.params.frontierRetries) || 0) + 1;
+    mission.objectiveProgress = this._frontierBarnSnappedKinds(mission).length;
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id, frontierRetries: mission.params.frontierRetries });
+  },
+
+  _onFrontierBarnRaised(payload) {
+    const index = (this.state.missions?.active || []).findIndex((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (index < 0) return;
+    const mission = this.state.missions.active[index];
+    if (!this._isFrontierBarnMission(mission)) return;
+    const receipt = this._frontierBarnReceipt(mission);
+    if (!receipt || payload.siteId !== receipt.siteId || payload.homesteadId !== receipt.frameId) return;
+    mission.params.frontierReceipt = receipt;
+    mission.objectiveProgress = FRONTIER_MODULES.length;
+    this._completeMission(mission, index);
+  },
+
+  _onFrontierBarnAttemptLost(payload) {
+    const index = (this.state.missions?.active || []).findIndex((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (index >= 0 && this._isFrontierBarnMission(this.state.missions.active[index])) {
+      this._failMission(this.state.missions.active[index], index, 'target_lost');
+    }
+  },
+
   init(ctx) {
     this._racingSetPieces?.stop('reinitialize');
     this._racingSetPieces = null;
@@ -1523,17 +1684,34 @@ export const missions = {
     this._nextMissionSpawnRetryTick = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
+    this._spineBreakSaveRestorePending = false;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
+      // Persistent trains must rebind while the restore's identity window is open,
+      // even if 3/3 couplers are already complete or the player saved in another sector.
+      for (const m of this.state.missions?.active || []) {
+        if (m.status === 'active' && isSpineBreakOperation(m)) this._adoptLiveMissionTargets(m);
+      }
+      this._spineBreakSaveRestorePending = false;
       this._reconcileCompostGrowth();
       this._reconcileNestOutcome();
+      this._reconcileFrontierBarnAttempt();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
-    bus.on('save:restoring', () => this._missionBudgetDeferrals.clear());
+    bus.on('frontier:sitePlanted', (p) => this._onFrontierBarnSitePlanted(p || {}));
+    bus.on('frontier:moduleSnapped', (p) => this._onFrontierBarnModuleSnapped(p || {}));
+    bus.on('frontier:barnRetry', (p) => this._onFrontierBarnRetry(p || {}));
+    bus.on('frontier:homesteadRaised', (p) => this._onFrontierBarnRaised(p || {}));
+    bus.on('frontier:missionAttemptLost', (p) => this._onFrontierBarnAttemptLost(p || {}));
+    bus.on('frontier:missionAttemptUnavailable', (p) => this._onFrontierBarnAttemptLost(p || {}));
+    bus.on('save:restoring', () => {
+      this._spineBreakSaveRestorePending = true;
+      this._missionBudgetDeferrals.clear();
+    });
     // A Crucible launch (Swarm / Gauntlet / scored) boots the shared NEW_GAME world, whose
     // newGame() installs and tracks the 47-A cold-start contract. The Crucible is not the
     // campaign: withdraw that contract before the run so its objective, nav marker and HUD
@@ -1629,7 +1807,10 @@ export const missions = {
     bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p));
     bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p));
     bus.on('tether:strain', (p) => this._onBookVarianceStrain(p));
-    bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
+    bus.on('pickup:collected', (payload) => {
+      onWakePickupCollected(this, payload);
+      this._onSpineBreakCargoCollected(payload);
+    });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
@@ -2754,7 +2935,7 @@ export const missions = {
     const mission = (state.missions.active || []).find((m) => m.id === missionId && m.status === 'active');
     if (!mission) return false;
     state.ui.trackedMissionId = mission.id;
-    this._refreshTrackedMissionNav(mission);
+    this._refreshTrackedMissionNav(mission, { forceRoute: true });
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
       const ownsWaypoint = wp && wp.kind === 'mission' && wp.missionId === mission.id;
@@ -2910,6 +3091,7 @@ export const missions = {
         ? Math.max(1, params.scanTargets || 1) + Math.max(1, params.sampleQty || 1)
         : params.scanTargets;
       case 'tow_recovery':
+        if (params?.frontierBarnRaisingVersion === 1) return FRONTIER_MODULES.length;
       case 'demolition':
       case 'rescue_under_fire':
       case AUTHORED_SET_PIECE_TYPE:
@@ -2931,10 +3113,13 @@ export const missions = {
   },
 
   _typeSpawnsTargets(typeId, offer = null, params = null) {
+    const barnParams = params || (offer && offer.params) || null;
+    // B4 v1 receives its target set from Frontier's six-module frame, never the generic tow core.
+    if (typeId === 'tow_recovery' && barnParams?.frontierBarnRaisingVersion === 1) return false;
     // WF-08 claim-stake salvage: a board salvage row materializes a contested wreck site
     // on arrival, so it needs the deferred spawn lifecycle like every other placed contract.
     if (typeId === 'salvage_retrieval' && contractClaimSiteOffer(offer)) return true;
-    const p = params || (offer && offer.params) || null;
+    const p = barnParams;
     // PB-MIS-E: the yard scenes materialize their bodies on destination arrival like every
     // other placed contract — deferred spawn lifecycle, sector-exit conservation.
     return typeId === SPLIT_MANIFEST_TYPE || typeId === QUIET_BERTH_TYPE
@@ -2996,7 +3181,7 @@ export const missions = {
     return true;
   },
 
-  _refreshTrackedMissionNav(mission = null) {
+  _refreshTrackedMissionNav(mission = null, options = {}) {
     // Direct callers (trackMission, objective progress) must not clobber the staged opening marker.
     // Use active-teaching (not the broader pre-init _tutorialOwnsOpening) so headless harnesses
     // without an onboarding subtree still get normal mission nav ownership.
@@ -3005,8 +3190,14 @@ export const missions = {
     if (!trackedId) return;
     const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');
     if (!m || m.id !== trackedId || m.status !== 'active') return;
+    const current = this.state.nav && this.state.nav.waypoint;
+    if (!options.forceRoute && current && !current.onboarding
+      && (current.kind === 'local' || current.kind === 'nav' || current.kind === 'trade')) {
+      if (m.storyTag === CONTRACT_47A_B0_TAG && !m.params?.sampleRecovered) this._resolveContract47aSampleSource(m);
+      return;
+    }
     const waypoint = this._missionWaypoint(m);
-    if (waypoint) this._setNavWaypoint(waypoint);
+    if (waypoint) this._setNavWaypoint(waypoint, options);
   },
 
   _refreshNavigation(options = {}) {
@@ -3064,9 +3255,28 @@ export const missions = {
     if (sectorId) this.spawnTargetsForSector(sectorId);
     const nav = this.state.nav;
     const existing = nav && nav.waypoint;
-    if (this._trackedOrFirstActiveMission()) {
+    const tracked = this._trackedOrFirstActiveMission();
+    if (tracked) {
+      const restoredRecovery = tracked.storyTag === CONTRACT_47A_B0_TAG && existing?.kind === 'mission'
+        && existing.missionId === tracked.id && !existing.stationId;
+      const resumeRecovery = restoredRecovery && nav.autopilot?.active === true;
       if (existing && existing.kind === 'local') this._retireRestoredLocalCourse();
       this._refreshNavigation({ silent: true });
+      if (restoredRecovery) {
+        const waypoint = nav.waypoint;
+        if (waypoint?.recoverySource && waypoint.targetEntityId != null && waypoint.stable) {
+          // Saves intentionally drop transient IDs/stamps. The mission's durable field/slot
+          // proves the restored source; World revalidates its fresh witness at the normal seam.
+          this.bus.emit('ui:setCourse', { pos: waypoint.pos, label: waypoint.label,
+            waypointKind: 'mission', missionId: tracked.id, recoverySource: waypoint.recoverySource,
+            targetEntityId: waypoint.targetEntityId, stable: waypoint.stable,
+            arrivalRadius: 48, autopilot: resumeRecovery });
+        } else if (nav.autopilot) {
+          nav.autopilot = { active: false, target: null, targetEntityId: null,
+            label: '', arrivalRadius: 36, status: 'lost-target' };
+          this.bus.emit('nav:autopilot', nav.autopilot);
+        }
+      }
       return;
     }
     if (existing && existing.kind === 'trade') {
@@ -3123,7 +3333,7 @@ export const missions = {
     return active[0];
   },
 
-  _setNavWaypoint(waypoint) {
+  _setNavWaypoint(waypoint, options = {}) {
     this.state.nav = this.state.nav || {};
     // Stamp the durable bind at the single write seam: every mission waypoint literal above
     // carries a bare targetEntityId, and a recycled slot would redirect throw aim, tether
@@ -3139,22 +3349,25 @@ export const missions = {
       this.state.nav.waypoint = waypoint || null;
       this.bus.emit('nav:waypoint', waypoint || null);
     }
-    this._syncWaypointRoute(waypoint);
+    this._syncWaypointRoute(waypoint, options);
   },
 
-  _syncWaypointRoute(waypoint) {
+  _syncWaypointRoute(waypoint, { forceRoute = false } = {}) {
     if (!waypoint || !waypoint.sectorId) return;
     const state = this.state;
     const currentSectorId = state.world && state.world.currentSectorId;
     if (!currentSectorId || currentSectorId === waypoint.sectorId) return;
     const route = state.nav && state.nav.route;
+    // A tracked objective may update its marker without taking over a player-plotted detour.
+    // Only an explicit Track request replaces an existing course; routine progress does not.
+    if (!forceRoute && route && Array.isArray(route.legs) && route.legs.length) return;
     const legs = route && Array.isArray(route.legs) ? route.legs : [];
     const first = legs[0];
     const last = legs[legs.length - 1];
     if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) return;
     const key = `${currentSectorId}->${waypoint.sectorId}`;
     const now = deferredEnterNow(state) || 0;
-    if (this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
+    if (!forceRoute && this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
     this._lastWaypointRouteKey = key;
     this._lastWaypointRouteAt = now;
     this.bus.emit('ui:setCourse', {
@@ -3190,6 +3403,21 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    if (m.params?.frontierBarnRaisingVersion === 1) {
+      const bound = this._frontierBarnAttempt(m);
+      if (bound) {
+        return {
+          ...base, label: 'Io Reach E-21 frame', stationId: null,
+          targetEntityId: bound.frame.id,
+          pos: { x: bound.frame.pos.x, z: bound.frame.pos.z },
+          reason: missionNavReason(m, station, sector),
+        };
+      }
+      return {
+        ...base, label: 'Io Reach worksite',
+        reason: 'Reach Io Station and follow the mission marker to the Frontier frame',
+      };
+    }
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const mawFocus = mawWorksiteFocus(m, this.state, sectorLocalToGlobalForSector);
@@ -3217,6 +3445,11 @@ export const missions = {
             ? (m.destSectorId || (this.state.world && this.state.world.currentSectorId))
             : (this.state.world && this.state.world.currentSectorId || m.destSectorId),
           pos: { x: source.pos.x, z: source.pos.z },
+          ...(source.type === 'asteroid' && source.id != null ? {
+            targetEntityId: source.id,
+            stable: captureEntitySelection(source),
+            ...(m.params.sampleSource ? { recoverySource: { ...m.params.sampleSource } } : {}),
+          } : {}),
         };
       }
       return { ...base, label: '47-A Recovery Site', stationId: null };
@@ -3679,38 +3912,109 @@ export const missions = {
     const p = m.params || (m.params = {});
     const saved = p.samplePos && Number.isFinite(Number(p.samplePos.x)) && Number.isFinite(Number(p.samplePos.z))
       ? { x: Number(p.samplePos.x), z: Number(p.samplePos.z) } : null;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    // An old save may not yet have a fix. Never choose a rock in the sector being visited.
+    if (m.destSectorId && sectorId !== m.destSectorId) {
+      return saved ? { id: null, type: 'sample_site', pos: saved } : null;
+    }
     const player = this.state.entities.get(this.state.playerId);
     const playerPos = player && player.pos ? player.pos : { x: 0, z: 0 };
+    const binding = p.sampleSource;
+    // Older saves could mark a Ceres asteroid before returning to this Helios contract. Correct
+    // only an unbound legacy point that lies in Ceres' authored disc, outside Helios' disc and in
+    // canonical Ceres membership. A missing local body alone is never proof of a wrong sector.
+    const helios = SECTOR_BY_ID.get('sector_helios_prime');
+    const ceres = SECTOR_BY_ID.get('sector_ceres_belt');
+    const heliosOrigin = sectorGlobalOrigin('sector_helios_prime');
+    const ceresOrigin = sectorGlobalOrigin('sector_ceres_belt');
+    const wrongLegacyFix = !!(saved && !binding && p.sampleRecovered !== true
+      && m.destSectorId === 'sector_helios_prime' && sectorId === m.destSectorId
+      && Number.isFinite(helios?.worldRadius) && Number.isFinite(ceres?.worldRadius)
+      && sectorMembershipAtGlobal(saved) === 'sector_ceres_belt'
+      && Math.hypot(saved.x - ceresOrigin.x, saved.z - ceresOrigin.z) <= ceres.worldRadius
+      && Math.hypot(saved.x - heliosOrigin.x, saved.z - heliosOrigin.z) > helios.worldRadius);
     // The first fix is chosen near the player; once fixed, distance is measured from the fix so a
     // re-mark (below) lands on the rock nearest the site, never on whatever the player is beside.
-    const anchor = saved || playerPos;
+    const anchor = wrongLegacyFix ? playerPos : (saved || playerPos);
     let nearest = null;
     let nearestD2 = Infinity;
+    let replacement = null;
+    let replacementD2 = Infinity;
     for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
+      if (binding) {
+        if (binding.sectorId === sectorId && binding.fieldId === entity.data?.fieldId
+          && binding.slotId === entity.data?.asteroidSlotId) {
+          if (binding.resourceSlotId == null) {
+            binding.resourceSlotId = entity.data.activityObjectSlotId || entity.data.asteroidSlotId || entity.data.slotId;
+            this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+          }
+          return entity;
+        }
+        const data = entity.data || {};
+        const home = entity.homeSectorId || data.homeSectorId || data.sectorId;
+        if (binding.sectorId === sectorId && home === sectorId && data.fieldId === binding.fieldId
+          && data.asteroidSlotId != null && data.asteroidSlotId !== binding.slotId
+          && data.siteAnchored !== true && data.respawnAt == null && data.depleted !== true && data.destroyed !== true
+          && (!Number.isFinite(data.oreHP) || data.oreHP > 0)
+          && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+          const dx = entity.pos.x - anchor.x, dz = entity.pos.z - anchor.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 < replacementD2) { replacementD2 = d2; replacement = entity; }
+        }
+        continue;
+      }
+      // Only choose a new (or legacy-unbound) fix from a body the mining beam can work.
+      // A previously bound slot above keeps its identity until depletion is proved.
+      const data = entity.data || {};
+      if (wrongLegacyFix && ((entity.homeSectorId || data.homeSectorId || data.sectorId) !== sectorId
+        || data.fieldId == null || data.asteroidSlotId == null)) continue;
+      if (data.siteAnchored === true || data.respawnAt != null || data.depleted === true
+        || data.destroyed === true || (Number.isFinite(data.oreHP) && data.oreHP <= 0)
+        || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;
       const dx = entity.pos.x - anchor.x;
       const dz = entity.pos.z - anchor.z;
       const d2 = dx * dx + dz * dz;
-      if (saved && d2 <= CONTRACT_47A_SAMPLE_MATCH_WU * CONTRACT_47A_SAMPLE_MATCH_WU) return entity;
       if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
     }
-    if (!saved) {
-      if (nearest) p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+    if (!saved || wrongLegacyFix) {
+      if (nearest) {
+        p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+        if (nearest.data?.fieldId != null && nearest.data?.asteroidSlotId != null) {
+          p.sampleSource = { sectorId, fieldId: nearest.data.fieldId, slotId: nearest.data.asteroidSlotId,
+            resourceSlotId: nearest.data.activityObjectSlotId || nearest.data.asteroidSlotId || nearest.data.slotId };
+        }
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+        if (wrongLegacyFix) this.bus.emit('toast', { text: 'Recovery site corrected. Follow the marked Helios exposure.', kind: 'info', ttl: 5 });
+      }
+      return nearest || (saved ? { id: null, type: 'sample_site', pos: saved } : null);
+    }
+    // Legacy saves carry only the fix. Bind a real world slot only at that recorded position;
+    // a later occupant of a nearby recycled id must never inherit the assay.
+    if (!binding && nearest && nearestD2 <= 1) {
+      if (nearest.data?.fieldId != null && nearest.data?.asteroidSlotId != null) {
+        p.sampleSource = { sectorId, fieldId: nearest.data.fieldId, slotId: nearest.data.asteroidSlotId,
+          resourceSlotId: nearest.data.activityObjectSlotId || nearest.data.asteroidSlotId || nearest.data.slotId };
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+      }
       return nearest;
     }
-    // The site the board marked is the site. A sector change, a cold or emptied index, or a rock
-    // that simply has not streamed in must not move it: report the fix itself so the waypoint
-    // and the yield match stay on it. Only when the player is standing at the fix in the
-    // contract's own sector — so the area is certainly loaded — and the marked rock is gone is
-    // the site re-marked, onto the rock nearest the old fix.
-    const sectorId = this.state.world && this.state.world.currentSectorId;
-    const inContractSector = !m.destSectorId || !sectorId || sectorId === m.destSectorId;
-    const px = playerPos.x - saved.x;
-    const pz = playerPos.z - saved.z;
-    const playerAtFix = px * px + pz * pz <= CONTRACT_47A_SITE_LOADED_WU * CONTRACT_47A_SITE_LOADED_WU;
-    if (nearest && inContractSector && playerAtFix) {
-      p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
-      return nearest;
+    // Only the resource owner can prove this exact marked slot was exhausted. A cold or missing
+    // source alone is not evidence: never slide the marker to whatever happens to be loaded.
+    if (binding && replacement && binding.sectorId === sectorId) {
+      const resourceSlot = binding.resourceSlotId ?? binding.slotId;
+      const records = Object.values(this.state.world?.resourceBodies?.byId || {}).filter((record) =>
+        record?.sectorId === binding.sectorId && record.fieldId === binding.fieldId
+        && record.slotId === resourceSlot);
+      if (records.length === 1 && records[0].outcome === 'depleted') {
+        const data = replacement.data;
+        p.sampleSource = { sectorId, fieldId: data.fieldId, slotId: data.asteroidSlotId,
+          resourceSlotId: data.activityObjectSlotId || data.asteroidSlotId || data.slotId };
+        p.samplePos = { x: replacement.pos.x, z: replacement.pos.z };
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+        this.bus.emit('toast', { text: 'The marked rock is exhausted. Another exposure in the same field is marked.', kind: 'info', ttl: 5 });
+        return replacement;
+      }
     }
     return { id: null, type: 'sample_site', pos: saved };
   },
@@ -3828,17 +4132,31 @@ export const missions = {
       const stake = getPickSideStake(flags.elroy_outcome);
       const authored = embodiedMissionAt(4) || {};
       const loc = authored.location || {};
-      // PQ-032.02: the live route posts all three doors — none is "the" stake until the
-      // player picks, so point at the clearing administrator's authored desk instead of a
-      // flavour branch. Legacy/pinned saves keep their outcome-shaped stake pointer.
-      const target = campaign47aRouteKind(state) === 'live'
+      const routeKind = campaign47aRouteKind(state);
+      // PQ-032.02: before the player chooses, the live route points at the clearing
+      // administrator's desk. Once an intro settles, use the same authored operation row
+      // the board posts so the story marker hands off to that door's actual station.
+      const operation = routeKind === 'live' && state.story && state.story.branch
+        ? buildMissionBoardContract(4, { state, branch: state.story.branch })
+        : null;
+      const operationInfo = operation && operation.storyTag === 'campaign47a:b4:operation'
+        ? STATION_INFO.get(operation.stationId)
+        : null;
+      const target = operationInfo
         ? {
-          stationId: loc.stationId || stake.stationId,
-          sectorId: loc.sectorId || stake.sectorId,
-          label: storyBeatTitle(beat),
-          instruction: authored.recovery || stake.instruction,
+          stationId: operation.stationId,
+          sectorId: operationInfo.sectorId,
+          label: operation.title || storyBeatTitle(beat),
+          instruction: `${operation.title || 'The operation'} is on the board at ${operationInfo.name}.`,
         }
-        : stake;
+        : routeKind === 'live'
+          ? {
+            stationId: loc.stationId || stake.stationId,
+            sectorId: loc.sectorId || stake.sectorId,
+            label: storyBeatTitle(beat),
+            instruction: authored.recovery || stake.instruction,
+          }
+          : stake;
       const info = STATION_INFO.get(target.stationId);
       const station = currentSectorId === target.sectorId ? this._liveStation(target.stationId) : null;
       return {
@@ -3934,6 +4252,9 @@ export const missions = {
     const existing = state.nav && state.nav.waypoint;
     const force = !!(options.forceStory || options.force);
     const allowReplaceTrade = force || !!options.preferStory;
+    // Story progress updates guidance; it never cancels a pilot's explicit local burn.
+    // This also applies to completion/restore refreshes that force story guidance.
+    if (existing && (existing.kind === 'local' || existing.kind === 'nav')) return false;
     // The optional physical weigh follows delivery; never hijack a pilot's own
     // course (even the completion path's forceStory refresh) to perform it.
     if (kesslerScalePending(state) && existing
@@ -4560,6 +4881,45 @@ export const missions = {
       if (this._refuseTurnInIfBlocked(m)) continue;
 
       if (t === 'escort') {
+        if (isSpineBreakOperation(m)) {
+          const outcome = this._refreshSpineBreakProgress(m) || spineBreakOutcome(this.state, m);
+          if (!this._escorteeArrivedOk(m)) {
+            this.bus.emit('toast', { text: 'Spine Break: wait for the Meridian tug to dock', kind: 'warn', ttl: 3 });
+            continue;
+          }
+          if (outcome.status !== 'spine_recoupled') {
+            if (outcome.status === 'unrecoverable') {
+              if (this._retrySpineBreakAttempt(m, { reason: 'manifest_unrecoverable' })) {
+                this.bus.emit('toast', {
+                  text: 'Manifest unrecoverable. Meridian has sent one fresh train and six new boxes.',
+                  kind: 'warn', ttl: 5,
+                });
+              } else {
+                const worksite = ensureSpineBreakWorksite(m);
+                if (worksite) worksite.status = 'failed';
+                this._failMission(m, i, 'spine_break_unrecoverable');
+              }
+            } else {
+              this.bus.emit('toast', {
+                text: `Spine Break: re-couple ${outcome.remaining} more loose container${outcome.remaining === 1 ? '' : 's'} before docking`,
+                kind: 'warn', ttl: 4,
+              });
+            }
+            continue;
+          }
+          const worksite = ensureSpineBreakWorksite(m);
+          if (worksite) {
+            worksite.status = 'completed';
+            worksite.completedAt = Number(this.state.simTime) || 0;
+            worksite.recoupledIndices = spineBreakContainers(this.state, m)
+              .filter((entity) => entity.data?.authoredLoose === true
+                && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+              .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+          }
+          this._settleEscortConvoyPay(m);
+          this._completeMission(m, i);
+          continue;
+        }
         // Player reached the destination — complete only if the convoy survived AND arrived too.
         const ok = this._escorteeArrivedOk(m);
         if (ok) { this._settleEscortConvoyPay(m); this._completeMission(m, i); }
@@ -4761,6 +5121,21 @@ export const missions = {
     }
     const e = this.state.entities.get(m._escorteeId);
     if (!e || !e.alive) return false;       // dead → _onEntityDestroyed will fail it anyway
+    if (isSpineBreakOperation(m)) {
+      const worksite = ensureSpineBreakWorksite(m);
+      const identity = spineBreakTugIdentity(m, worksite?.attempt);
+      if (!worksite || e.id !== worksite.tugId
+          || (e.occupantGeneration ?? null) !== worksite.tugGeneration
+          || e.data?.spineBreakTug !== true
+          || e.data?.spineBreakTugIdentity !== identity
+          || String(e.data?.spineBreakMissionId) !== String(m.id)
+          || e.data?.spineBreakAttempt !== worksite.attempt
+          || e.data?.spineId !== worksite.spineId) return false;
+      const station = this._liveStation(m.destStationId);
+      if (this.state.world?.currentSectorId !== m.destSectorId || !station?.pos || !e.pos) return false;
+      const radius = (station.data?.dockRadius || 80) + 40;
+      if (Math.hypot(e.pos.x - station.pos.x, e.pos.z - station.pos.z) > radius) return false;
+    }
     return !!m._escorteeArrived;
   },
 
@@ -5259,11 +5634,44 @@ export const missions = {
     // not settled until its physical terms are — and the player is told which one and why. The
     // mission stays active and re-settles the moment the term latches (see _onConditionSatisfied).
     if (this._refuseTurnInIfBlocked(m)) { m._settlePending = true; return; }
+    if (this._isFrontierBarnMission(m)) {
+      const receipt = this._frontierBarnReceipt(m);
+      if (!receipt) {
+        // No dock, tow, stale event, or saved objective counter can settle the v1 job.
+        delete m.params.frontierReceipt;
+        m._settlePending = true;
+        return;
+      }
+      m.params.frontierReceipt = receipt;
+      m.objectiveProgress = FRONTIER_MODULES.length;
+    }
+    if (isSpineBreakOperation(m)) {
+      const outcome = spineBreakOutcome(state, m);
+      const worksite = ensureSpineBreakWorksite(m);
+      if (outcome.status !== 'spine_recoupled' || !this._escorteeArrivedOk(m)) {
+        if (worksite && worksite.status !== 'completed') worksite.status = outcome.status;
+        m._settlePending = true;
+        return;
+      }
+      m.objectiveTarget = outcome.goal;
+      m.objectiveProgress = outcome.recoupled;
+      if (worksite) {
+        worksite.status = 'completed';
+        worksite.completedAt = Number(state.simTime) || 0;
+        worksite.recoupledIndices = spineBreakContainers(state, m)
+          .filter((entity) => entity.data?.authoredLoose === true
+            && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+          .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+      }
+    }
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
     if (m.cause?.reyBid) this.bus.emit('coldburnRey:playerDelivered', { missionId: m.id });
-    const settledRewardCr = clauseSettlement.rewardCr + coldburnDeliveryBonus(state, m);
+    // SP2-053: Quinn's stool regulars get the +1 cr nudge on contracts offered at her bars
+    // (tiny, real — the flag read lives with the counter leg that writes it).
+    const settledRewardCr = clauseSettlement.rewardCr + coldburnDeliveryBonus(state, m)
+      + quinnStoolPayoutBonus(state, m);
     m.status = 'completed';
     noteStandingOrderCompletion(state, m);
     if (m.params?.workingBattlefield) state.story.flags.workingBattlefieldCompleted = true;
@@ -5360,6 +5768,8 @@ export const missions = {
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       causeTag: m.cause && m.cause.tag || undefined,
       rewardCr: settledRewardCr,
+      ...(this._isFrontierBarnMission(m) && m.params?.frontierReceipt
+        ? { frontierReceipt: JSON.parse(JSON.stringify(m.params.frontierReceipt)) } : {}),
       ...(m.featured ? { featured: { dayKey: m.featured.dayKey ?? null, repBonus: featuredRep } } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     };

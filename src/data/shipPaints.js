@@ -84,6 +84,9 @@ export function buildPaintAppearance(current, patch) {
     finish: base.finish != null ? base.finish : 'satin',
     wear: Number.isFinite(Number(base.wear)) ? Number(base.wear) : 0.25,
     decalId: base.decalId != null ? base.decalId : null,
+    // Paint changes the coat, not the captured hull's authored identity. The ship owner
+    // still normalizes this optional variant against the actual hull definition.
+    ...(base.variantId ? { variantId: base.variantId } : {}),
   };
   if (!patch || typeof patch !== 'object') return next;
   if (patch.hullColor !== undefined) next.hullColor = patch.hullColor;

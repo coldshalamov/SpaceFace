@@ -2571,7 +2571,7 @@ export function resultRows(result) {
   if (!result) return [];
   const progress = roundProgress(result);
   return [
-    ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost'))],
+    ['Outcome', result.stopReason === 'player_retired' ? 'Retired · unranked' : (result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')))],
     ['Reached', reachedRow(result)],
     ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
     ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
@@ -2839,6 +2839,7 @@ export function vitalsFigures(defeat) {
  */
 export function resultTitle(result) {
   if (result && result.outcome === 'victory') return 'Arena Cleared';
+  if (result && result.stopReason === 'player_retired') return 'Run Retired';
   if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';
   if (result && result.outcome === 'extracted') return 'Extracted';
   if (result && result.outcome === 'aborted') return 'Run Ended';
@@ -3307,7 +3308,14 @@ function renderLastSeconds(band, trail) {
 }
 
 function renderLedger(band, result) {
-  band.appendChild(pairRows(resultRows(result), 'sf-crd-grid'));
+  const ledger = el('ul', 'k-rows sf-crd-grid');
+  for (const [label, value] of resultRows(result)) {
+    if (label === 'Stake') {
+      ledger.appendChild(staticRow(label, swarmStakeFor(result.swarmStake).label,
+        { sub: swarmStakePitch(result.swarmStake) }));
+    } else ledger.appendChild(staticRow(label, value));
+  }
+  band.appendChild(ledger);
   // INF-035: the one real achievement, small and beside the score — the strongest banked
   // stunt as a cause-to-consequence line, or an honest alternative when there is none.
   const feat = featDiagram(result);
@@ -3617,6 +3625,7 @@ export const crucibleResultsScreen = {
   // the spec is plain data (no renderer import), and null is the designed fallback every
   // time: under reduced motion, after the visible SKIP, or when no tape was recorded.
   stage(ctx) {
+    if (resultsOwner(ctx)?.lastResult?.()?.stopReason === 'player_retired') return null;
     return killcamStageRequestFor(ctx && ctx.state);
   },
 
@@ -3643,7 +3652,7 @@ export const crucibleResultsScreen = {
 
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
     // idempotent and gets exactly this tape. A seal failure must never take down the plate.
-    try { takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
+    try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
@@ -3653,6 +3662,9 @@ export const crucibleResultsScreen = {
     title.appendChild(h);
     title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
       result && result.headline ? result.headline : 'The run ended.'));
+    if (result?.stopReason === 'player_retired' && result.bankLine) {
+      title.appendChild(el('p', 'k-sentence', result.bankLine));
+    }
     rootEl.appendChild(title);
 
     // SWARM-05 §7.4 — celebrate FIRST, post-mortem second. The swarm plate leads with what
@@ -3791,7 +3803,7 @@ export const crucibleResultsScreen = {
 
     // The kill-cam's visible SKIP: the fight is playing behind the plate right now, so the
     // word leads the ways out. After it, the authored still is the picture and stays so.
-    if (ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+    if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
       const skipCam = addWord(word('Skip the kill-cam', 'k-word--emph'));
       skipCam.addEventListener('click', () => {
         skipKillcamPlayback();

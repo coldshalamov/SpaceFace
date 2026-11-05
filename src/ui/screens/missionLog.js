@@ -1,3 +1,6 @@
+import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
+import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
+import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a Track word.
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
@@ -45,6 +48,7 @@ import {
   missionUpfrontCost,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { resolveContract47aRecoveryTarget } from '../navigationWaypoint.js';
 import {
   buildMissionLogCareerChip,
   buildMissionLogOriginChoiceModel,
@@ -307,6 +311,64 @@ const PROTECTION_WARN_FRAC = 0.70;
 const PROTECTION_CRITICAL_FRAC = 0.35;
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 
+// These identities belong only to this journal. They are never mission IDs or owner commands.
+export function commissionEntries(state) {
+  const entries = [];
+  const cg = state?.cinderglassJobView;
+  const journal = cg?.journal;
+  if (journal?.objective && !journal.outcome) {
+    const actions = [];
+    for (const control of (cg.recoveryActions || []).slice(0, 4)) {
+      if (!control.id || !control.action || control.disabled) continue;
+      actions.push({ key: 'recovery:' + control.id, verb: control.id === 'tuneBeacon' ? (control.label?.startsWith('Request') ? 'Request fresh fix' : 'Tune beacon') : control.label,
+        label: control.label, event: 'cinderglassJob:action', payload: { ...control.action, action: control.id } });
+    }
+    for (const marker of (cg.navigation || []).slice(0, 4)) {
+      if (!marker.id || !marker.action) continue;
+      actions.push({ key: 'track:' + marker.id, verb: 'Track', label: 'Track ' + marker.label,
+        detail: marker.label, detailCopy: marker.labelCopy,
+        event: 'cinderglassJob:action', payload: { ...marker.action, action: 'track', markerId: marker.id } });
+    }
+    const details = [];
+    if (cg.legLabel) details.push(['Route', cg.legLabel]);
+    if (cg.receiveQuote?.condition) details.push(['Condition', cg.receiveQuote.condition]);
+    for (const fact of (journal.facts || []).slice(-6)) if (fact?.text) details.push(['Record', fact.text]);
+    if (cg.refusal?.text) details.push(['Notice', cg.refusal.text]);
+    entries.push({ key: 'cinder', life: String(cg.operationId || journal.id || 'cinder'), title: journal.title || 'The Cinderglass Job',
+      objective: journal.objective, listDetail: 'Active commission', details, actions });
+  }
+  const circuit = state?.counterweightCircuitView;
+  const attempt = circuit?.journal?.attempt;
+  if (circuit?.eventId && attempt) {
+    const leg = attempt.legs?.[attempt.legIndex];
+    const details = [['Event', attempt.title || COUNTERWEIGHT_EVENTS.find((event) => event.id === circuit.eventId)?.title || circuit.eventId],
+      ['Status', [attempt.practice ? 'Practice' : '', attempt.phase || circuit.phase].filter(Boolean).join(' · ')]];
+    if (Number.isFinite(attempt.conditionFrac)) details.push(['Condition', Math.round(attempt.conditionFrac * 100) + '%']);
+    for (const item of attempt.legs || []) {
+      details.push(['Leg', [item.label, item.status, item.retries ? item.retries + (item.retries === 1 ? ' retry' : ' retries') : ''].filter(Boolean).join(' · ')]);
+    }
+    const record = circuit.records?.find((item) => item.id === circuit.eventId);
+    if (record && (record.bestTimeS != null || record.bestMedal)) details.push(['Personal best', [record.bestMedal, Number.isFinite(record.bestTimeS) ? record.bestTimeS.toFixed(1) + 's' : ''].filter(Boolean).join(' · ')]);
+    const result = circuit.journal?.lastResult;
+    if (result) details.push(['Last result', [result.outcome, result.medal, Number.isFinite(result.timeS) ? result.timeS.toFixed(1) + 's' : '', result.reason?.replaceAll('_', ' ')].filter(Boolean).join(' · ')]);
+    entries.push({ key: 'circuit', life: String(circuit.attemptId ?? circuit.eventId), title: 'Counterweight Circuit',
+      objective: leg?.hint || leg?.label || attempt.title || 'Prepare the course.', listDetail: attempt.title || circuit.eventId, details, actions: [] });
+  }
+  const spur = state?.breakwaterSpurView;
+  if (spur && spur.phase !== 'dark' && spur.phase !== 'failed' && spur.nextAction) {
+    const details = [];
+    if (spur.phase) details.push(['Status', String(spur.phase).replaceAll('_', ' ')]);
+    if (spur.charter) details.push(['Charter', String(spur.charter).replaceAll('_', ' ')]);
+    for (const cartridge of Object.values(spur.cartridges || {})) {
+      if (cartridge) details.push([cartridge.label || cartridge.role || 'Cartridge', [cartridge.status, cartridge.damaged ? 'damaged' : ''].filter(Boolean).join(' · ')]);
+    }
+    for (const receipt of (spur.receipts || []).slice(-4)) if (receipt.text) details.push(['Receipt', receipt.text]);
+    entries.push({ key: 'spur', life: 'breakwater', title: 'Breakwater Spur', objective: spur.nextAction,
+      listDetail: 'Spur work', details, actions: [] });
+  }
+  return entries;
+}
+
 const EMPTY_TEXT = 'No active missions. Dock at a station, open Missions or the Bar, accept a contract, then undock and follow the tracked nav marker.';
 
 /**
@@ -500,6 +562,22 @@ export function missionMapAction(state, mission, isTracked) {
   const currentSectorId = state.world && state.world.currentSectorId || null;
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
+  const recovery = !!contract47aReadout(mission) && mission.params?.sampleRecovered === false;
+  const source = recovery && sameSector && resolveContract47aRecoveryTarget(state, mission);
+  if (source) {
+    return mapHandoffAction({ focus: MAP_FOCUS.LOCAL, missionId: mission.id, sectorId: targetSectorId,
+      pos: source.pos, source: 'missionLog', selectionTarget: '47a-recovery-fix',
+      title: 'Open the recovery site on Local Map' });
+  }
+  const savedFix = recovery && mission.params?.samplePos;
+  const liveRecoveryWaypoint = wp && !wp.stationId && wp.pos
+    && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z);
+  if (recovery && sameSector && savedFix && Number.isFinite(savedFix.x) && Number.isFinite(savedFix.z)
+    && !liveRecoveryWaypoint) {
+    return mapHandoffAction({ focus: MAP_FOCUS.LOCAL, missionId: mission.id, sectorId: targetSectorId,
+      pos: savedFix, source: 'missionLog', selectionTarget: '47a-recovery-fix',
+      title: 'Open the recovery site on Local Map' });
+  }
   const hasLocalFix = !!(wp && wp.pos);
   // The owner waypoint is the actual 47-A recovery site until its sample flag changes. Keep this
   // exact opening contract's Local Map selection on that live fix; ordinary jobs and malformed
@@ -517,7 +595,7 @@ export function missionMapAction(state, mission, isTracked) {
       body: 'Show the live objective marker and nearby contacts.',
       missionId: mission.id,
       sectorId: targetSectorId,
-      stationId: b0RecoveryFix ? null : mission.destStationId || (wp && wp.stationId) || null,
+      stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
       pos: wp && wp.pos ? wp.pos : null,
       source: 'missionLog',
       selectionTarget: b0RecoveryFix ? 'active-waypoint' : null,
@@ -530,7 +608,7 @@ export function missionMapAction(state, mission, isTracked) {
     body: 'Plot or review the jump route to this objective.',
     missionId: mission.id,
     sectorId: targetSectorId,
-    stationId: mission.destStationId || (wp && wp.stationId) || null,
+    stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
     pos: null,
     source: 'missionLog',
   });
@@ -1770,7 +1848,7 @@ const PERSISTENT_CAMPAIGN_LABELS = new Set([
  * Keep the final disposition / post-ending thread visible beside ordinary work whenever that
  * work owns CURRENT ACTION. Earlier story beats remain folded into the single-command policy.
  */
-export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null) {
+export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null, commissionSelected = false) {
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
   const action = storyActionForBeat(STORY_BEATS[beatIndex], state);
   const label = String(action && action.label || '');
@@ -1778,7 +1856,7 @@ export function persistentCampaignAction(state, activeMissions = [], trackedMiss
   if (!action || (!PERSISTENT_CAMPAIGN_LABELS.has(label) && !isEndingLabel)) return null;
   const active = (activeMissions || []).filter((mission) => mission && mission.status === 'active');
   const tracked = trackedMissionId ? active.find((mission) => mission.id === trackedMissionId) : null;
-  const ordinaryWorkOwnsCurrent = !!tracked || active.length > 0 || !!tradeRouteAction(state);
+  const ordinaryWorkOwnsCurrent = !!tracked || active.length > 0 || !!tradeRouteAction(state) || commissionSelected;
   return ordinaryWorkOwnsCurrent ? action : null;
 }
 
@@ -2071,10 +2149,21 @@ export const missionLogScreen = {
     this._recommendEl = recEl;
 
     // Active missions: one row each; picking a row opens that mission on the stage.
-    body.appendChild(sectionHeader('Active', 'sf-mlog-section-active'));
+    const activeHeader = sectionHeader('Active', 'sf-mlog-section-active');
+    body.appendChild(activeHeader);
+    this._activeHeader = activeHeader;
     const list = el('div', 'sf-mlog-list');
     body.appendChild(list);
     this._listEl = list;
+
+    const commissionHeader = sectionHeader('Commissions');
+    commissionHeader.hidden = true;
+    body.appendChild(commissionHeader);
+    this._commissionHeader = commissionHeader;
+    const commissions = el('div', 'sf-mlog-commissions sf-mlog-list');
+    commissions.hidden = true;
+    body.appendChild(commissions);
+    this._commissionsEl = commissions;
 
     // Career ladder chip (CL-UI-03) rows: start/decline/choose/recover/abandon + map/track words
     // emit intents; owners transition state. Non-diegetic: no visor, no portrait.
@@ -2395,7 +2484,16 @@ export const missionLogScreen = {
    */
   refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
-    if (options && options.periodic) return;
+    if (options && options.periodic) {
+      const state = this._ctx?.state;
+      const signature = JSON.stringify([commissionEntries(state), state?.cinderglassJobView?.journal?.outcome,
+        state?.counterweightCircuitView?.journal?.lastResult, state?.breakwaterSpurView?.receipts]);
+      if (signature !== this._commissionJournalSignature) {
+        this._commissionJournalSignature = signature;
+        this._render();
+      }
+      return;
+    }
     this._render();
   },
 
@@ -2424,7 +2522,7 @@ export const missionLogScreen = {
         + 'button[data-career-act]:not([disabled])',
       );
     }
-    if (!target && this._listEl) target = this._listEl.querySelector('.k-row[aria-selected="true"]');
+    if (!target && this._hangEl) target = this._hangEl.querySelector('.k-row[aria-selected="true"]');
     if (!target) target = this._closeBtn || null;
     if (target && typeof target.focus === 'function') {
       try { target.focus({ preventScroll: true }); } catch (_) {
@@ -2438,6 +2536,12 @@ export const missionLogScreen = {
     this._subbed = true;
     const bus = this._ctx.bus;
     const refresh = () => { if (this._visible()) this._render(); };
+    bus.on('counterweightCircuit:view', refresh);
+    bus.on('counterweightCircuit:close', refresh);
+    bus.on('breakwaterSpur:offer', refresh);
+    bus.on('breakwaterSpur:receipt', refresh);
+    bus.on('cinderglassJob:view', refresh);
+    bus.on('cinderglassJob:refused', refresh);
     bus.on('mission:updated', refresh);
     bus.on('mission:accepted', refresh);
     bus.on('mission:completed', refresh);
@@ -2480,29 +2584,41 @@ export const missionLogScreen = {
     const tracked = state.ui && state.ui.trackedMissionId;
     const simTime = state.simTime || 0;
 
-    // Story is folded into CURRENT ACTION when no tracked/active contract owns the next verb.
-    this._renderStory(state);
-    this._renderRecommendations(state, activeMissions, tracked);
-    this._renderCareerChip(state);
-
-    // Remember where focus was so a repaint (every click repaints) does not drop it.
+    const entries = commissionEntries(state);
+    if (this._activeHeader) this._activeHeader.hidden = !activeMissions.length && entries.length > 0;
+    if (this._commissionSelection && !entries.some((entry) => entry.key === this._commissionSelection.key && entry.life === this._commissionSelection.life)) {
+      this._commissionSelection = null;
+      this._focusedId = null;
+      if (this._stageEl) this._stageEl.scrollTop = 0;
+    }
+    if (!this._commissionSelection && !activeMissions.some((m) => m.id === this._focusedId)) {
+      this._focusedId = activeMissions.some((m) => m.id === tracked) ? tracked : (activeMissions[0]?.id || null);
+      if (!this._focusedId && entries.length) this._commissionSelection = { key: entries[0].key, life: entries[0].life };
+    }
+    const selectedCommission = entries.find((entry) => entry.key === this._commissionSelection?.key && entry.life === this._commissionSelection?.life) || null;
+    // Capture before rebuilding either list so a live mirror refresh retains focus.
     const focusToken = this._captureFocusToken();
+    // Story is folded into CURRENT ACTION when no tracked/active contract owns the next verb.
+    this._renderStory(state, !!selectedCommission && !activeMissions.length);
+    this._renderRecommendations(state, activeMissions, tracked, selectedCommission);
+    this._renderCareerChip(state);
+    this._renderCommissions(state, entries);
 
     this._listEl.innerHTML = '';
 
     if (!activeMissions.length) {
-      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
-      this._focusedId = null;
-      this._renderStage(state, null, tracked);
+      if (!entries.length) this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
+      this._renderChosen(state, null, tracked, entries);
       if (this._compVisible) this._renderCompleted();
       if (this._corrVisible) this._renderCorridorLog();
+      this._restoreFocusToken(focusToken);
       this._placeHand();
       if (this._markCssReady) this._markCssReady();
       return;
     }
 
     // The focused mission: the one picked in the hang, else the tracked one, else the first.
-    if (!activeMissions.some((m) => m.id === this._focusedId)) {
+    if (!this._commissionSelection && !activeMissions.some((m) => m.id === this._focusedId)) {
       this._focusedId = activeMissions.some((m) => m.id === tracked) ? tracked : activeMissions[0].id;
     }
 
@@ -2518,7 +2634,7 @@ export const missionLogScreen = {
         name: missionTitle(m),
         sub: [objectiveText(m), remaining > 0 ? fmtTime(remaining) : ''].filter(Boolean).join(' · '),
         num: reward > 0 ? '+' + reward.toLocaleString() : '',
-        selected: m.id === this._focusedId,
+        selected: !this._commissionSelection && m.id === this._focusedId,
       });
     }
     const list = rows(items, {
@@ -2553,7 +2669,7 @@ export const missionLogScreen = {
     });
     this._listEl.appendChild(list);
 
-    this._renderStage(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked);
+    this._renderChosen(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked, entries);
     if (this._compVisible) this._renderCompleted();
     if (this._corrVisible) this._renderCorridorLog();
     this._restoreFocusToken(focusToken);
@@ -2567,7 +2683,7 @@ export const missionLogScreen = {
     if (!this._hangEl || !richDom()) return;
     // the Hand points at the node (13px below a row's top, 13px across), not the row's middle
     if (!this._hand) this._hand = createLadderHand(this._hangEl, { nodeY: 19.5 });
-    const row = this._listEl ? this._listEl.querySelector('.k-row[aria-selected="true"]') : null;
+    const row = this._hangEl ? this._hangEl.querySelector('.k-row[aria-selected="true"]') : null;
     this._hand.moveTo(row, { instant });
     try { syncScrollExtent(this._hangEl); } catch (_) { /* layout-free host */ }
     this._fadeOnRow();
@@ -2705,7 +2821,7 @@ export const missionLogScreen = {
     }
     const trace = this._trace;
     const rec = this._recommendEl && this._recommendEl.querySelector('.sf-mlog-rec-item');
-    const rows = this._listEl ? [...this._listEl.querySelectorAll('.k-row[data-id]')] : [];
+    const rows = this._hangEl ? [...this._hangEl.querySelectorAll('.sf-mlog-list .k-row[data-id]')] : [];
     const nodes = rows.map((row) => ({ row, y: this._beamY(row, 19.5) })).filter((n) => n.y != null);
     const head = (rec && this._beamY(rec, 11)) ?? (nodes[0] ? nodes[0].y : null);
     // the beam runs from the first graduation to a little past the last thing hung on it
@@ -2764,8 +2880,10 @@ export const missionLogScreen = {
 
   /** Focus a mission from the hang: mark its row and open it on the stage. */
   _select(missionId, { quiet = false } = {}) {
-    if (!missionId || missionId === this._focusedId) return;
+    if (!missionId || (!this._commissionSelection && missionId === this._focusedId)) return;
+    this._commissionSelection = null;
     this._focusedId = missionId;
+    if (this._stageEl) this._stageEl.scrollTop = 0;
     if (this._listEl) {
       for (const row of this._listEl.querySelectorAll('.k-row[aria-selected]')) {
         row.setAttribute('aria-selected', String(row.dataset.id === missionId));
@@ -2773,10 +2891,7 @@ export const missionLogScreen = {
     }
     const state = this._ctx && this._ctx.state;
     if (!state) return;
-    const active = (state.missions && state.missions.active) || [];
-    const m = active.find((x) => x && x.id === missionId && x.status === 'active') || null;
-    this._renderStage(state, m, state.ui && state.ui.trackedMissionId);
-    this._placeHand();
+    this._render();
     if (!quiet) cue('move');
   },
 
@@ -2786,8 +2901,12 @@ export const missionLogScreen = {
     const active = document.activeElement;
     if (!active || !active.closest || !this._rootEl.contains(active)) return null;
     if (this._stageEl && this._stageEl.contains(active)) {
-      const btn = active.closest('[data-act]');
-      return btn ? { where: 'stage', act: btn.getAttribute('data-act') } : { where: 'stage' };
+      const btn = active.closest('[data-act], [data-commission-action]');
+      return btn ? { where: 'stage', act: btn.getAttribute('data-act'), commissionAction: btn.getAttribute('data-commission-action') } : { where: 'stage' };
+    }
+    if (this._commissionsEl && this._commissionsEl.contains(active)) {
+      const row = active.closest('.k-row[data-id]');
+      return { where: 'commission', id: row ? row.dataset.id : null };
     }
     if (this._listEl && this._listEl.contains(active)) {
       const row = active.closest('.k-row[data-id]');
@@ -2804,8 +2923,11 @@ export const missionLogScreen = {
     if (!token) return;
     let target = null;
     if (token.where === 'stage' && this._stageEl) {
-      target = (token.act && this._stageEl.querySelector('button[data-act="' + token.act + '"]'))
+      target = (token.commissionAction && Array.from(this._stageEl.querySelectorAll('button[data-commission-action]')).find((b) => b.getAttribute('data-commission-action') === token.commissionAction))
+        || (token.act && this._stageEl.querySelector('button[data-act="' + token.act + '"]'))
         || this._stageEl.querySelector('button[data-act]');
+    } else if (token.where === 'commission' && this._commissionsEl) {
+      target = Array.from(this._commissionsEl.querySelectorAll('.k-row[data-id]')).find((r) => r.dataset.id === token.id) || null;
     } else if (token.where === 'list' && this._listEl) {
       target = (token.id && Array.from(this._listEl.querySelectorAll('.k-row[data-id]')).find((r) => r.dataset.id === token.id))
         || this._listEl.querySelector('.k-row[aria-selected="true"]');
@@ -2971,11 +3093,11 @@ export const missionLogScreen = {
 
   // Only final disposition / post-ending continuity persists beside normal work. Earlier story
   // beats remain folded into CURRENT ACTION so this screen never returns to competing commands.
-  _renderStory(state) {
+  _renderStory(state, commissionSelected = false) {
     if (!this._storyEl) return;
     const active = (state.missions && state.missions.active) || [];
     const tracked = state.ui && state.ui.trackedMissionId;
-    const action = persistentCampaignAction(state, active, tracked);
+    const action = persistentCampaignAction(state, active, tracked, commissionSelected);
     if (!action) {
       this._storyEl.innerHTML = '';
       this._storyEl.hidden = true;
@@ -3002,11 +3124,15 @@ export const missionLogScreen = {
       '</div>';
   },
 
-  _renderRecommendations(state, activeMissions, trackedMissionId) {
+  _renderRecommendations(state, activeMissions, trackedMissionId, selectedCommission = null) {
     if (!this._recommendEl) return;
     // The policy may produce secondary readiness advice for other consumers, but this screen paints
     // exactly one command. Readiness and terms live on the focused mission's stage.
     const actions = recommendedActions(state, activeMissions, trackedMissionId).slice(0, 1);
+    if (selectedCommission && !(activeMissions || []).some((m) => m && m.status === 'active')) {
+      actions.splice(0, actions.length, { tone: 'primary', label: 'COMMISSION',
+        title: selectedCommission.title, body: selectedCommission.objective, commission: true });
+    }
     if (!actions.length) {
       this._recommendEl.innerHTML = '';
       return;
@@ -3028,9 +3154,9 @@ export const missionLogScreen = {
           '<span class="k-row__name sf-mlog-rec-title">' + (a.titleRef ? entitySpanHtml(a.titleRef, escapeHtml(a.title || 'Next action')) : escapeHtml(a.title || 'Next action')) + '</span>' +
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
-          '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
+          (a.commission ? '' : '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
             ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
-            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>' +
+            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>') +
         '</div>' +
         '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +
       '</div></div>' +
@@ -3117,17 +3243,118 @@ export const missionLogScreen = {
     if (this._careerHeader) {
       this._careerHeader.hidden = false;
       this._careerHeader.textContent = chips.some((chip) => chip && chip.originChoice)
-        ? 'CHOOSE A FIRST CONTRACT' : 'CAREER LADDER';
+        ? (commissionEntries(state).length ? 'CAREER' : 'CHOOSE A FIRST CONTRACT') : 'CAREER LADDER';
     }
     this._careerEl.hidden = false;
     this._careerEl.innerHTML = chips.map((chip) => careerChipHtml(chip, state)).join('');
     this._restoreCareerFocusToken(focusToken);
   },
 
+  _renderCommissions(state, entries = commissionEntries(state)) {
+    const host = this._commissionsEl;
+    if (!host) return;
+    host.innerHTML = '';
+    host.hidden = !entries.length;
+    this._commissionHeader.hidden = !entries.length;
+    if (!entries.length) return;
+    const list = rows(entries.map((entry) => ({ id: entry.key, name: entry.title, sub: entry.listDetail,
+      selected: this._commissionSelection?.key === entry.key && this._commissionSelection?.life === entry.life })), {
+      ariaLabel: 'Commissions', onPick: (key) => {
+        const current = commissionEntries(this._ctx.state).find((entry) => entry.key === key);
+        if (!current) return;
+        this._commissionSelection = { key: current.key, life: current.life };
+        if (this._stageEl) this._stageEl.scrollTop = 0;
+        this._render();
+        cue('move');
+      },
+    });
+    for (const row of list.querySelectorAll('.k-row')) {
+      row.classList.add('sf-mlog-row');
+      row.setAttribute('tabindex', '0');
+    }
+    host.appendChild(list);
+  },
+
+  _renderChosen(state, mission, tracked, entries = commissionEntries(state)) {
+    const entry = entries.find((item) => item.key === this._commissionSelection?.key && item.life === this._commissionSelection?.life);
+    if (!entry) { this._renderStage(state, mission, tracked); return; }
+    this._renderCommissionStage(state, entry);
+  },
+
+  _renderCommissionStage(state, entry) {
+    const stage = this._stageEl;
+    if (!stage) return;
+    stage.innerHTML = '';
+    this._dialEl = null; this._routeEl = null; this._previewId = null;
+    this._floorArt = sectorArtUrl(state?.world?.currentSectorId) || RELAY_STILL;
+    if (this._floorEl) this._floorEl.classList.remove('is-tracing');
+    const card = el('article', 'sf-mlog-card sf-mlog-commission-card');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'Commission: ' + entry.title);
+    card.appendChild(el('p', 'sf-mlog-kicker', 'Commission'));
+    card.appendChild(el('h2', 'k-display k-t-title', entry.title));
+    card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', entry.objective));
+    const terms = el('div', 'sf-mlog-terms sf-mlog-commission-terms');
+    for (const [label, value] of entry.details) {
+      if (!value) continue;
+      const row = el('div', 'k-row k-row--static');
+      row.appendChild(el('span', 'k-62', label));
+      row.appendChild(el('span', 'k-row__name', value));
+      terms.appendChild(row);
+    }
+    card.appendChild(terms);
+    const side = el('div', 'sf-mlog-side');
+    const dial = el('div', 'orr-mdial is-empty');
+    dial.setAttribute('aria-hidden', 'true');
+    dial.innerHTML = missionDialSvg({ progress: 0, time: null })
+      + '<div class="orr-mdial__read"><span class="orr-mdial__pct">—</span><span class="orr-mdial__w">Work in hand</span></div>';
+    side.appendChild(dial);
+    card.appendChild(side);
+    const actions = el('div', 'sf-mlog-btns sf-mlog-commission-actions');
+    const words = el('ul', 'k-words k-words--row');
+    words.setAttribute('aria-label', 'Commission actions');
+    for (const [index, item] of entry.actions.entries()) {
+      const li = el('li');
+      const button = el('button', 'k-word k-word--emph', item.verb);
+      button.type = 'button';
+      button.setAttribute('data-commission-action', item.key);
+      button.setAttribute('aria-label', item.label);
+      button.addEventListener('click', () => {
+        const current = commissionEntries(this._ctx.state).find((v) => v.key === entry.key && v.life === entry.life);
+        const action = current?.actions.find((v) => v.key === item.key);
+        if (!action) { this._render(); return; }
+        this._ctx.bus.emit(action.event, { ...action.payload });
+      });
+      li.appendChild(button);
+      if (item.detail) {
+        const detail = el('div', 'k-word-sub sf-mlog-commission-target', item.detail);
+        button.id = 'sf-mlog-commission-verb-' + index;
+        detail.id = 'sf-mlog-commission-target-' + index;
+        button.setAttribute('aria-labelledby', button.id + ' ' + detail.id);
+        if (item.detailCopy) setLocalizedTextTemplate(detail, item.detailCopy);
+        li.appendChild(detail);
+      }
+      words.appendChild(li);
+    }
+    if (entry.actions.length) { actions.appendChild(words); card.appendChild(actions); }
+    stage.appendChild(card);
+  },
+
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
-    const receipts = missionReceiptRows(this._ctx.state, 5);
+    const cinderglass = this._ctx.state.cinderglassJobView?.journal?.outcome
+      ? cinderglassJobJournalReceipt(this._ctx.state) : null;
+    const spurReceipts = (this._ctx.state.breakwaterSpurView?.receipts || []).slice(-4).map((receipt) => ({
+      title: 'Breakwater Spur', body: receipt.text || '', meta: '',
+      outcome: String(receipt.kind || 'record').replaceAll('_', ' '), tone: 'neutral',
+    }));
+    const result = this._ctx.state.counterweightCircuitView?.journal?.lastResult;
+    const circuitReceipt = result ? { title: 'Counterweight Circuit',
+      body: COUNTERWEIGHT_EVENTS.find(e => e.id === result.eventId)?.title || result.eventId || '',
+      meta: result.reason ? String(result.reason).replaceAll('_', ' ') : '',
+      outcome: [result.outcome, result.medal].filter(Boolean).join(' · '), tone: 'neutral' } : null;
+    const receipts = [...missionReceiptRows(this._ctx.state, 5), ...spurReceipts, ...(circuitReceipt ? [circuitReceipt] : []), ...(cinderglass ? [cinderglass] : [])];
     this._compListEl.innerHTML = '';
     if (!receipts.length && !log.length) {
       this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet. The ledger writes its first line the first time a job pays out.</p></div>';

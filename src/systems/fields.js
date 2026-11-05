@@ -2,6 +2,7 @@ import {
   FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, fieldLifecyclePhase,
   collectorFitted, playerFieldSpec, isForceableFieldBody, pullMarkTargetEligible,
   fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
+  EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
@@ -1764,6 +1765,37 @@ export const fields = {
     if (!fieldsFlag('enabled') || state?.mode !== 'flight'
       || !entity || entity.alive === false || state.entities?.get(entity.id) !== entity
       || entity.flags?.docked || (entity.id === state.playerId && state.ui?.docked)) return null;
+    const sample = this._acceptedSampleIfCurrent(entity);
+    if (!sample) return null;
+    const result = out || {};
+    result.ax = sample.ax; result.az = sample.az; result.tick = sample.tick;
+    return result;
+  },
+
+  // inf-plow-turn — the second reader of the same accepted-force receipt: the OWNER IDS of the
+  // fields whose accepted force last moved this body, under the identical validity contract
+  // (this or the previous tick's pass, same occupant generation, every contributing field
+  // still live). Read-only; null when no current accepted sample exists. Consumers decide
+  // what an owner's force MEANS — fields only vouches for whose force it was.
+  readAcceptedFieldOwnerIds(entity) {
+    const state = this.state;
+    if (!fieldsFlag('enabled') || state?.mode !== 'flight'
+      || !entity || entity.alive === false || state.entities?.get(entity.id) !== entity
+      || entity.flags?.docked || (entity.id === state.playerId && state.ui?.docked)) return null;
+    const sample = this._acceptedSampleIfCurrent(entity);
+    if (!sample) return null;
+    const owners = [];
+    for (let i = 0; i < sample.fields.length; i++) {
+      const owner = sample.fields[i].ownerId;
+      if (owner != null && !owners.some((seen) => String(seen) === String(owner))) owners.push(owner);
+    }
+    return owners;
+  },
+
+  // The accepted-force sample for this body, if it is still current. Shared validity half of
+  // the two public reads above; the entity-side guards stay with each caller.
+  _acceptedSampleIfCurrent(entity) {
+    const state = this.state;
     const sample = this._acceptedFieldAccel?.get(entity);
     const age = state.tick - sample?.tick;
     if (!sample || sample.pass !== this._fieldForcePass || (age !== 0 && age !== 1)
@@ -1773,9 +1805,7 @@ export const fields = {
       const field = sample.fields[i];
       if (this._kernel?.get(field.id) !== field || field.expireAt <= now) return null;
     }
-    const result = out || {};
-    result.ax = sample.ax; result.az = sample.az; result.tick = sample.tick;
-    return result;
+    return sample;
   },
 
   // ── force application (the ONE kernel → membrane) ────────────────────────────────────────────

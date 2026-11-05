@@ -10151,21 +10151,21 @@
           8.8
         ]
       },
-      "bytes": 765004,
+      "bytes": 782436,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
         "id": "skin:customs_cutter",
         "kind": "proxy",
         "outline": [
-          16.693849,
+          16.691271,
           15.491373,
           19.60376,
           19.333711,
           15.541337,
           13.716686,
-          3.892113,
-          3.747087,
+          5.628691,
+          3.747084,
           3.928559,
           7.620373,
           5.91982,
@@ -10174,8 +10174,8 @@
           5.91982,
           7.620373,
           3.928559,
-          3.747085,
-          3.892113,
+          3.747083,
+          5.628691,
           13.716686,
           15.542271,
           19.333711,
@@ -10344,8 +10344,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": -0.908486,
-            "bz": -0.119604,
+            "bx": -0.908344,
+            "bz": -0.119586,
             "id": "arm-0",
             "kind": "capsule",
             "r": 0.025
@@ -10398,8 +10398,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.026773,
-            "bz": -0.203363,
+            "bx": 0.039366,
+            "bz": -0.299014,
             "id": "arm-6",
             "kind": "capsule",
             "r": 0.025
@@ -10497,8 +10497,8 @@
           {
             "ax": 0,
             "az": 0,
-            "bx": 0.026773,
-            "bz": 0.203363,
+            "bx": 0.039366,
+            "bz": 0.299014,
             "id": "arm-17",
             "kind": "capsule",
             "r": 0.025
@@ -10565,8 +10565,8 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1188,
-        "inwardFaceFraction": 0.23825,
+        "boundaryEdges": 1323,
+        "inwardFaceFraction": 0.228,
         "silhouetteRadius": 19.60376,
         "sliceY": 0
       },
@@ -10680,9 +10680,9 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 23176,
+      "triangles": 24694,
       "unmeasuredHitVolumes": [],
-      "url": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb",
+      "url": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
       "worldSize": [
         30.96,
         4.580233,

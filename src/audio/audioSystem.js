@@ -38,6 +38,7 @@ import {
   BOMB_STATUS_LOOP_PREFIX,
 } from './bombAudio.js';
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
+import { bindCommissionCues } from './commissionCues.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
@@ -955,6 +956,11 @@ export function arbitrateCommsLine(input = {}) {
 export function incomeVoices(event, payload) {
   if (event === 'credits:changed') {
     if (!payload || !(Number(payload.delta) > 0)) return [];
+    // The commission owners forward these accepted receipts through audio:cue
+    // so worker and main use the same one cash voice, not two on main.
+    const reason = String(payload.reason || '');
+    if (reason.startsWith('counterweight:first-completion:')
+      || (reason.startsWith('cinderglass:cg:') && reason.endsWith(':settlement'))) return [];
     if (String(payload.reason || '').startsWith('trade')) return [];
     return ['sfx_cash_register'];
   }
@@ -2587,6 +2593,7 @@ export const audio = {
   name: 'audio',
 
   init(ctx) {
+    this.rt?._commissionCueDispose?.();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -2751,6 +2758,8 @@ export const audio = {
     this.rt = rt;
 
     const bus = this.bus;
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = bindCommissionCues(this, bus);
     bus.on('scan:shipRevealed', (p) => this._noteAnomalyCandidate(p));
     bus.on('scan:wreckRevealed', (p) => this._noteAnomalyCandidate(p));
 
@@ -3428,6 +3437,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = null;
     this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
@@ -4163,6 +4174,7 @@ export const audio = {
     silence(rt.brakeGain);
     silence(rt.tetherHum);
     silence(rt.tetherOverloadGain);
+    silence(rt._tetherSpoolGain);
     if (rt._breachBed) {
       silence(rt._breachBed.noiseGain);
       silence(rt._breachBed.subGain);
@@ -6343,7 +6355,11 @@ export const audio = {
       panner.connect(targetBus);
       dest = panner;
     }
-    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
+    // Mining tracks its target throughout the hold. Its recipe already receives the authored
+    // level here; the outer voice gain must carry distance only, or position updates multiply
+    // that level a second time and make the cutter almost inaudible.
+    const miningBeam = recipeId === 'sfx_mining_beam';
+    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * (miningBeam ? 1 : att));
     // PQ-158.00 hybrid loop: resident sample body + live synth layer, released together.
     const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
     const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
@@ -6356,7 +6372,8 @@ export const audio = {
       id: rt._nextVoiceId++,
     }, rt._caches);
     v._panner = panner;
-    v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
+    v._baseGain = miningBeam ? 1 : this._ampFor(recipe) * (gain == null ? 1 : gain);
+    if (miningBeam) v.gain.gain.value = att;
     v.busName = busName;
     v.recipeId = recipeId;
     v.loop = true;

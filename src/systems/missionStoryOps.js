@@ -1,5 +1,6 @@
 import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
+import { isSpineBreakOperation } from '../missions/spineBreakWorksite.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
 import { furnaceSettlementFromMission } from '../story/campaign47a/campaignReceipts.js';
@@ -1455,7 +1456,7 @@ export const missionStoryOps = {
       });
       // _spawnTargetsFor re-runs the adopt + cast-reattach itself — the explicit adopt
       // here duplicated its living-actor scan for identical output.
-      if (m.objectiveProgress < m.objectiveTarget) {
+      if (m.objectiveProgress < m.objectiveTarget || isSpineBreakOperation(m)) {
         this._spawnTargetsFor(m);
       }
       yield 'mission-targets';
@@ -1728,11 +1729,22 @@ export const missionStoryOps = {
         text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
       });
     } else if (bookScene === 'barn_raising') {
-      story.flags.barn_raised = true;
-      this.bus.emit('comms:popup', {
-        id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
-        text: 'The frame holds six modules and a name. Before the weld cooled the gate was already behind you. Weld Head rating posted.',
-      });
+      if (m.params?.frontierBarnRaisingVersion === 1 && m.params?.frontierReceipt?.version === 1) {
+        story.flags.barn_raised = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The six marked modules are welded to the Io frame. The Nereid gate audit keeps its separate place on the board; this receipt belongs to the homestead crew.',
+        });
+      } else {
+        // Existing saves may carry an accepted one-body tow from before the B4 versioned
+        // worksite existed. Let that already accepted contract close the book, but never
+        // fabricate a six-module Frontier receipt from its generic tow completion.
+        story.flags.barn_raising_legacy_complete = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_legacy_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The earlier tow record is settled. No new six-module worksite receipt was filed; existing homesteads remain on the chart.',
+        });
+      }
     }
     if (!isBeatStepsComplete(this.state, beat.beat)) {
       // A mid-list contract settled — the beat stays open and the board may post the next
@@ -1956,7 +1968,7 @@ export const missionStoryOps = {
     const story = this.state.story;
     story.flags = story.flags || {};
     story.flags.contract_47a_skimmed = true;
-    this._spawnContract47aSkimWrecks(m);
+    const salvageWreckCount = this._spawnContract47aSkimWrecks(m);
     // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
     // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
     // knows the mass the manifest will lie about.
@@ -1968,8 +1980,11 @@ export const missionStoryOps = {
       id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
       text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
     });
+    const salvageCue = salvageWreckCount > 0
+      ? ` Optional salvage: ${salvageWreckCount} wreck${salvageWreckCount === 1 ? '' : 's'}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      : '';
     this.bus.emit('toast', {
-      text: 'The black Line takes the load — 12.4 t on your own gauge. The escort feed is already a graveyard.',
+      text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
       kind: 'warn', ttl: 7,
     });
     this.bus.emit('story:skimResolved', {
@@ -1982,40 +1997,65 @@ export const missionStoryOps = {
   /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
    *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
+  /** Returns the count of unique, live, map-and-list-backed one-alloy wrecks. A failed
+   *  prop spawn is isolated so it cannot strand the already-latched story receipt. */
   _spawnContract47aSkimWrecks(m) {
-    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
-    const player = this.state.entities && this.state.playerId != null
-      ? this.state.entities.get(this.state.playerId) : null;
-    if (!player || !player.pos) return;
-    const seed = (this.state.meta && this.state.meta.seed) >>> 0;
-    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function'
+      || !entities || typeof entities.values !== 'function' || typeof entities.get !== 'function') return 0;
+    const player = state.playerId != null ? entities.get(state.playerId) : null;
+    if (!player || !player.pos) return 0;
+    const seed = (state.meta && state.meta.seed) >>> 0;
+    const sectorId = state.world && state.world.currentSectorId || null;
     const rows = [
       { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
       { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
       { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
     ];
+    const hasLiveWreck = (row) => {
+      const label = `${row.name} — WRECK`;
+      for (const entity of entities.values()) {
+        if (!entity || entity.alive === false || entity.type !== 'wreck'
+          || entities.get(entity.id) !== entity || !Array.isArray(state.entityList)
+          || !state.entityList.includes(entity)) continue;
+        const data = entity.data;
+        if (data && data.contract47aSkim === true && data.scanLabel === label
+          && data.salvagePool && Number(data.salvagePool.cmdty_alloys) === 1) return true;
+      }
+      return false;
+    };
     rows.forEach((row, idx) => {
+      // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
+      if (hasLiveWreck(row)) return;
       const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
       const dist = row.r + (hash32(seed, 4751, idx) % 30);
-      this.helpers.spawnEntity({
-        type: 'wreck',
-        pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
-        vel: { x: 0, z: 0 },
-        radius: 9, mass: 40000, hull: 1, hullMax: 1,
-        homeSectorId: sectorId,
-        data: {
+      try {
+        this.helpers.spawnEntity({
+          type: 'wreck',
+          pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+          vel: { x: 0, z: 0 },
+          radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,
-          parentType: 'ship',
-          wreckClass: 'battlefield',
-          wreckClassLabel: row.label,
-          contract47aSkim: true,
-          salvagePool: { cmdty_alloys: 1 },
-          salvageTimeLeft: 60,
-          scanLabel: `${row.name} — WRECK`,
-          killedAt: this.state.simTime || 0,
-        },
-      });
+          flags: { persistent: true },
+          data: {
+            homeSectorId: sectorId,
+            parentType: 'ship',
+            wreckClass: 'battlefield',
+            wreckClassLabel: row.label,
+            persistenceOwner: 'campaign47aSkim',
+            contract47aSkim: true,
+            salvagePool: { cmdty_alloys: 1 },
+            salvageTimeLeft: 60,
+            scanLabel: `${row.name} — WRECK`,
+            killedAt: state.simTime || 0,
+          },
+        });
+      } catch (_) {
+        // A wreck failure must not suppress the already-latched story receipt or later wrecks.
+      }
     });
+    return rows.filter(hasLiveWreck).length;
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */
@@ -2537,7 +2577,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'barn_raising') {
-      popup('IO HOMESTEAD', 'Six modules and a frame before the Nereid gate welds. Whatever you tow becomes the wall.', 7);
+      popup('IO HOMESTEAD', 'Io Reach has six marked modules around a fresh frame. The first snap starts the 240-second E-21 window; the crew can restock a lost module or reset a missed window. Nereid’s audit runs on its own clock.', 7);
       return true;
     }
     if (scene === 'doubled_interdiction') {
@@ -2723,6 +2763,12 @@ export const missionStoryOps = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
+    // The first tether exercise is optional once a real tracked mission is available.
+    // Its own marker yields to the mission; later teaching beats keep their existing priority.
+    if (ob && ob.currentBeat === 0) {
+      const tracked = this.state.ui && this.state.ui.trackedMissionId;
+      if (tracked && (this.state.missions?.active || []).some((m) => m?.id === tracked && m.status === 'active')) return false;
+    }
     // Once B4's authored delivery is accepted, that physical mission must own its route. The
     // tutorial remains active only to await completion and present B5; keeping the Helios marker
     // here would strand the player at the origin with a tracked job pointing nowhere.

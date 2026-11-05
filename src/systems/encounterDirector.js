@@ -72,6 +72,8 @@ import {
 } from '../data/encounters/planning.js';
 export { PURSUIT_RESOLVE_S, sectorSecurityOf };
 import { makeEnemySpawnSpec } from './combat.js';
+import { patrolJurisdictionFor } from '../data/factionContactGrammar.js';
+import { patrolInterventionHailFor } from '../data/barks.js';
 import {
   ENCOUNTER_REPETITION_DAY_SECONDS,
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
@@ -152,6 +154,7 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
+import { tickPatrolBaits } from './patrolBait.js';
 import {
   tickImpoundGrudge,
   noteImpoundGrudgeKill,
@@ -426,6 +429,7 @@ export const encounterDirector = {
       this.bus.on('mission:expired', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());
       this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
+      this.bus.on('dock:committed', (p) => this._routeToSelfRegistered('dockCommitted', p));
       // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
       this._fenceDesk = installFenceDesk(this);
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
@@ -511,6 +515,14 @@ export const encounterDirector = {
       tickTowedLurePursuits(state, state.player && state.player.tether);
     } catch (err) {
       dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
+    // inf-patrol-bait: a losing raider's spoofed band can turn two lawful parties on each
+    // other for one short beat; a scanner pulse (or the clock) burns the mask and they
+    // stand down. Stamps and restores ride the same 1 Hz beat as the towed-lure pass.
+    try {
+      tickPatrolBaits(state, this.bus);
+    } catch (err) {
+      dedupWarn('encounterDirector/patrol-bait', '[encounterDirector] patrol bait tick failed', err);
     }
     // CRT-03 second slice: the bought lot hull's nemesis — one cadenced find/track
     // pass per director clock, spawns through the same helpers/budget the scripts use.
@@ -722,7 +734,9 @@ export const encounterDirector = {
     for (const id of Object.keys(dir.live)) {
       const live = dir.live[id];
       const script = encounterScriptFor(live);
-      if (live.script === 'namedHunter' && script) {
+      if (live.script === 'weirAmbush' && script) {
+        script.depart(this, live, this.state);
+      } else if (live.script === 'namedHunter' && script) {
         script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
         if (leaveNestVisit(this, live)) continue;
@@ -759,6 +773,14 @@ export const encounterDirector = {
     ensureNamed(fresh);
     for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
       if (typeof runtime.restoreSaved === 'function') runtime.restoreSaved(this, state);
+    }
+    const weir = ENCOUNTER_SCRIPTS.weirAmbush.restoreSaved(this, state);
+    if (weir) {
+      fresh.active[weir.squadId] = { ids: weir.ids.slice(), sectorId: weir.sectorId };
+      for (const id of weir.ids) {
+        indexSquadMember(fresh, weir, id);
+        indexActiveMember(fresh, weir, id);
+      }
     }
     this._restorePersistedFreightCustodies();
     this._rebindPersistedFreightCustodyCarriers();
@@ -1897,6 +1919,9 @@ export const encounterDirector = {
   },
 
   _fire(dir, state, item, shape, now) {
+    // The one finite Weir visit is either resumed or terminal. A replan must not replace
+    // its coordinator (including a same-id day row) or manufacture another original lot.
+    if (shape.script === 'weirAmbush' && ENCOUNTER_SCRIPTS.weirAmbush.hasVisit(state)) return;
     if (shape.id === 'the_nest' && Object.values(dir.live).some(l => l?.shapeId === 'the_nest' && l.phase !== 'done')) return;
     const nestResume = shape.id === 'the_nest' && item.encounterId === this._nestResumePermit && item.data?.nestResume === true;
     if (!nestResume) {
@@ -3358,8 +3383,16 @@ export const encounterDirector = {
     const spawnX = ppos.x + bx * 420;
     const spawnZ = ppos.z + bz * 420;
 
+    // A zone is not jurisdiction by itself: live control must agree with its local role.
+    const sectorId = state.world && state.world.currentSectorId;
+    const local = globalToSectorLocalForSector(ppos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const jurisdiction = patrolJurisdictionFor(state, sectorId, zone);
+    // Retain the existing Concord responder where no local authority is established.
+    const responderFactionId = jurisdiction || 'faction_scn';
+
     const spec = makeEnemySpawnSpec('patrol_lawman', 4, { x: spawnX, z: spawnZ }, {
-      factionId: 'faction_scn',
+      factionId: responderFactionId,
       startedTick: state.tick,
       motive: 'jurisdiction_enforcement',
       engagementTrigger: 'security_response',
@@ -3395,14 +3428,23 @@ export const encounterDirector = {
     const spawned = spawnEntity(spec);
     if (!spawned) return false;
 
+    const hail = patrolInterventionHailFor(jurisdiction);
+    const seed = state.meta && state.meta.seed;
+    const hailLine = hail.lines[
+      Math.abs(hash32(seed == null ? 0 : seed, 'patrol-intervention-hail', attacker.id, now | 0)) % hail.lines.length
+    ]?.text || hail.lines[0].text;
     this.emit('comms:log', {
-      from: 'CONCORD PATROL',
-      text: 'Patrol Interceptor on scene. Hostile vessel, break off pursuit immediately!',
+      from: hail.name,
+      text: hailLine,
       kind: 'encounter',
     });
     this.emit('encounter:patrolIntervened', {
       patrolId: spawned.id,
       attackerId: attacker.id,
+      factionId: responderFactionId,
+      jurisdiction,
+      zoneId: zone ? zone.id : null,
+      hailText: hailLine,
       t: now,
     });
     return true;

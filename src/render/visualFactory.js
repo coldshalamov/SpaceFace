@@ -1,4 +1,5 @@
-import { isMawWorksiteBody } from '../missions/mawWorksite.js';
+import { wholeHulkVisualForEntity } from '../data/wholeShipVisualIdentity.js';
+import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { createIronKrakenVisual } from './ironKrakenVisuals.js';
@@ -109,8 +110,11 @@ import {
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { foundryPlateShape } from '../data/foundryPlate.js';
+import { foundryFurnitureShape } from '../data/foundryFurniture.js';
+import { createFoundryBankSurface } from './foundryBankSurface.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
+import { ENEMY_ROLE_VARIANT_BUILDERS } from './enemyRoleVariants.js';
 import { SWARM_BROOD_FAMILIES, swarmBroodFamily } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, swarmBroodLateFamily } from '../data/swarmBroodLate.js';
 
@@ -1837,6 +1841,8 @@ const ENEMY_FAMILY_BUILDERS = {
   kilnback: buildBruiserArmor,
   mothlight: buildSniperLance,
   pallet_jack: buildTraderHaul,
+  // Specialist recovery art only: production admits the selected authored whole ship.
+  ...ENEMY_ROLE_VARIANT_BUILDERS,
 };
 
 const FAMILY_BUILDERS = {
@@ -2899,37 +2905,47 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
 function buildFoundryToy(e) {
   const R = Math.max(6, Number(e.radius) || 16);
   const kind = (e.data && e.data.roomKind) || 'plate';
+  const furniture = foundryFurnitureShape(e);
   const g = new THREE.Group();
-  const mat = getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
-    roughness: 0.94,
-    metalness: 0.06,
-    emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
-    emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
-  }), SHARED_MATERIAL_ROLE.STATION));
+  const mat = kind === 'plate'
+    ? getMaterial('foundrytoy:bank-steel', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0xffffff, vertexColors: true, roughness: 0.72, metalness: 0.38,
+    }), SHARED_MATERIAL_ROLE.STATION))
+    : getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
+      roughness: 0.94,
+      metalness: 0.06,
+      emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
+      emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
+    }), SHARED_MATERIAL_ROLE.STATION));
   let body;
   if (kind === 'plate') {
     const shape = foundryPlateShape(e);
-    body = new THREE.Mesh(getGeometry('foundry:bank-slab', () => new THREE.BoxGeometry(2, 2, 2)), mat);
+    body = new THREE.Mesh(getGeometry('foundry:bank-steel-slab', createFoundryBankSurface), mat);
     body.scale.set(shape.halfWidth, shape.halfHeight, shape.halfDepth);
   } else if (kind === 'gate') {
-    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(0.16, 0.2, 1.5, 6)), mat);
+    const shape = furniture.body;
+    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(
+      shape.radiusTop, shape.radiusBottom, shape.height, shape.radialSegments)), mat);
   } else if (kind === 'furnace') {
-    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(1.15, 0.72, 0.95)), mat);
+    const shape = furniture.body;
+    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
   } else {
-    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(1.5, 0.32, 0.42)), mat);
+    const shape = furniture?.body || { width: 1.5, height: 0.32, depth: 0.42 };
+    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
   }
-  if (kind !== 'plate') body.scale.setScalar(R);
+  if (kind !== 'plate') body.scale.setScalar(furniture?.scale || R);
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);
   if (kind === 'furnace') {
+    const shape = furniture.mouth;
     const mouth = new THREE.Mesh(
-      getGeometry('foundry:mouth', () => new THREE.BoxGeometry(0.22, 0.14, 0.05)),
+      getGeometry('foundry:mouth', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)),
       getMaterial('foundry:ember', () => new THREE.MeshBasicMaterial({ color: 0x6a3014 })),
     );
-    mouth.position.set(0, R * 0.04, R * 0.5);
-    mouth.scale.setScalar(R);
+    mouth.position.set(0, furniture.scale * shape.offsetY, furniture.scale * shape.offsetZ);
+    mouth.scale.setScalar(furniture.scale);
     g.add(mouth);
   }
   g.userData.kind = 'station';
@@ -4036,16 +4052,7 @@ function fractureFragmentFitRadius(entity) {
 // aftermath piece below.
 function hulkPackagedFileForEntity(e) {
   if (ironKrakenWreckProfileFor(e)) return null;
-  const data = e && e.data || {};
-  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
-    ? data.hulkVisual
-    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
-  if (!visual) return null;
-  const selection = wholeShipVisualForEntity(
-    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
-    { requiredWholeShip: true },
-  );
-  return selection && selection.file || null;
+  return wholeHulkVisualForEntity(e, wholeShipVisualForEntity)?.file || null;
 }
 
 // Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated
@@ -7029,7 +7036,7 @@ function stampBuiltVisual(root) {
 // Reuse the existing nine-part Maw at its collision footprint. Keep scale on a parent:
 // installFaunaMotion owns/resets the child root scale on every breath.
 export function buildMawWorksiteVisual(entity) {
-  if (!isMawWorksiteBody(entity)) return null;
+  if (!isIntactMawWorksiteBody(entity)) return null;
   const body = buildFaunaMesh(entity);
   if (!body) return null;
   const root = new THREE.Group();
@@ -7062,7 +7069,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
         if (!e) return null;
         // This mission keeps asteroid physics for the existing massline impact contract.
         // Reuse the authored vent-bowl; ordinary rock and ambient fauna keep their owners.
-        if (isMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
+        if (isIntactMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
         if (ironKrakenWreckProfileFor(e)) return stampBuiltVisual(createIronKrakenWreckVisual(e));
         // An articulated character owns its graph; static ship batching would freeze its arms.
         if (ironKrakenProfileFor(e)) return stampBuiltVisual(createIronKrakenVisual(e));
