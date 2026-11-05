@@ -155,6 +155,7 @@ import {
   broodBurstPlan,
   BROOD_BURST_PRIORITY,
 } from './vfx/broodBurstRead.js';
+import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
@@ -9883,8 +9884,14 @@ export const vfx = {
     if (!pos) return;
     const source = this._ent(p.chunkId ?? p.id);
     const crystal = (p.material || source?.data?.material) === 'crystal';
+    // inf-sac-death-voice: a Hive spawn sac is the room's win lever — its death takes the
+    // tide with it — yet it died an anonymous rock's death: the same grey cleavage and the
+    // default-ore flash as every barren stone. hiveSacRead re-voices the break in the
+    // Hive's own acid green; the fracture stays physical (a sac is meat on rock).
+    const sacVoice = isHiveSacBody(source) ? HIVE_SAC_VOICE : null;
     const materialId = crystal ? 'ice' : 'rock';
-    const col = crystal ? '#d8f6ff' : oreColor(p.commodityId || p.typeId);
+    const col = sacVoice ? sacVoice.lightColor
+      : (crystal ? '#d8f6ff' : oreColor(p.commodityId || p.typeId));
     // IMPACTS: brittle failure. A rock does not explode -- it opens conchoidal cleavage planes in
     // sequence, cold, with the dust lagging behind them. No ignition, no reward firework.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
@@ -9927,6 +9934,19 @@ export const vfx = {
       });
     }
     this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'shatter', color: col });
+    // The sac's own two-beat burst layered over the ordinary shatter: the membrane's
+    // white-green tear, the acid breath over the corpse, and the lit star that outlives
+    // the tear so the read survives the flash. Ordinary rocks never play these.
+    if (sacVoice) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, sacVoice.tear.life, sacVoice.tear.size0,
+        sacVoice.tear.size1, sacVoice.tear.op0, 0.0, sacVoice.tear.color,
+        (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
+      this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, sacVoice.vent.life, sacVoice.vent.size0,
+        sacVoice.vent.size1, sacVoice.vent.op0, 0.0, sacVoice.vent.color,
+        (Math.random() - 0.5) * sacVoice.vent.drift, (Math.random() - 0.5) * sacVoice.vent.drift);
+      this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, sacVoice.star.life, sacVoice.star.size0,
+        sacVoice.star.size1, sacVoice.star.op0, 0.0, sacVoice.star.color, 0, 0);
+    }
     this._emitJuiceCue(
       chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
       { pos },
