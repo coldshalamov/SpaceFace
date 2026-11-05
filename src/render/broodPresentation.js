@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
   BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S,
+  BROOD_CASCADE_NONE, BROOD_CASCADE_PANIC, BROOD_CASCADE_GRIEF,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, SWARM_BROOD_STRAINS } from '../data/swarmBroodLate.js';
 import { SWARM_MACHINE_FAMILIES } from '../data/swarmMachine.js';
@@ -25,6 +26,7 @@ import { circleHitRadius, corridorHalfWidth, dashReach } from '../combat/telegra
 const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES, SWARM_MACHINE_FAMILIES);
 const FAMILY_N = DRAW_FAMILIES.length;
 const MACHINE_SET = new Set(SWARM_MACHINE_FAMILIES);
+const TAU = Math.PI * 2;
 
 function familyStretch(fam) {
   const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
@@ -46,6 +48,72 @@ const FAMILY_STRETCH = Object.freeze([
   Object.freeze([1.9, 0.55, 0.65]),   // wake_eel — long ribbon
   Object.freeze([0.95, 1.5, 1.35]),   // bellows — a swelling sac
 ]);
+
+// ---- inf-brood-cascade-flush — the pack's coupling finally reads -----------------------------
+//
+// The Bloom spine authors the coupling web ("faint green filaments join members within this
+// radius; a node's death flares the web", bloomLadder.js) and the data contract on the cascade
+// kinds names the duty ("published on the view; the renderer flushes the filaments on them") —
+// yet the picture kept every body its calm family colour. The BLOOM pathology's authored
+// cascades ran as motion only, and in a 200-body furball a pack scattering in panic and a pack
+// feeding read identically until you have watched the motion for seconds.
+//
+// The honest reader is the filament flush the contract names, keyed to the view kind the sim
+// already publishes (view.cascade):
+//   PANIC — the web flares: bodies sweep hot pale acid green (the coupling lighting up as one
+//           animal breaks), an urgent pulse with a per-body stagger so the flare waves through
+//           the pack instead of recolouring it at once.
+//   GRIEF — the pack cools: bodies sink toward a desaturated slate (mourning dimming around
+//           the corpse), a slow breath.
+//   NONE  — null: the caller's colours stay bit-identical to the unwired path.
+// The flush rides the flock mesh only — the cascade windows arm cells, never Tendril segments.
+// The aggression cascade stays unwired in the sim (authored, named next step), so its kind
+// falls to no flush rather than inheriting a read invented for it.
+
+/** The web's flare: pale-hot acid green — the coupling colour burning, not a new family voice. */
+export const BROOD_FLUSH_PANIC_RGB = Object.freeze([0.86, 1.0, 0.68]);
+/** The mourning slate: desaturated, cool — the pack dimming around its dead. */
+export const BROOD_FLUSH_GRIEF_RGB = Object.freeze([0.3, 0.36, 0.33]);
+
+const FLUSH_PANIC_HZ = 1.8;      // the flare's urgent pulse
+const FLUSH_GRIEF_PERIOD_S = 2.4; // the mourning breath
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/**
+ * The filament flush for one body of the pack. Pure function of (kind, simTime, phase,
+ * reducedMotion) — test-seam, no allocation (writes `out`). Returns null when no flush
+ * owns the view kind (NONE, unknown, or the unwired aggression kind), so callers keep
+ * their exact unwired colours.
+ */
+export function resolveBroodCascadeFlush(cascade, simTime, phase01, reducedMotion, out = null) {
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  const ph = Number.isFinite(phase01) ? phase01 : 0;
+  const rec = out || { weight: 0, r: 0, g: 0, b: 0 };
+  if (cascade === BROOD_CASCADE_PANIC) {
+    rec.r = BROOD_FLUSH_PANIC_RGB[0];
+    rec.g = BROOD_FLUSH_PANIC_RGB[1];
+    rec.b = BROOD_FLUSH_PANIC_RGB[2];
+    // Reduced motion holds the flare at its floor weight — the coupling still reads,
+    // nothing pulses. The stagger (phase01) waves the flare through the pack.
+    rec.weight = reducedMotion
+      ? 0.5
+      : clamp01(0.5 + 0.18 * Math.sin((t * FLUSH_PANIC_HZ + ph * 0.35) * Math.PI * 2));
+    return rec;
+  }
+  if (cascade === BROOD_CASCADE_GRIEF) {
+    rec.r = BROOD_FLUSH_GRIEF_RGB[0];
+    rec.g = BROOD_FLUSH_GRIEF_RGB[1];
+    rec.b = BROOD_FLUSH_GRIEF_RGB[2];
+    rec.weight = reducedMotion
+      ? 0.4
+      : clamp01(0.4 + 0.08 * Math.sin(t * (Math.PI * 2 / FLUSH_GRIEF_PERIOD_S) + ph * 2.1));
+    return rec;
+  }
+  return null;
+}
 
 /**
  * The mite body: a faceted dart. Authored as raw triangles (non-indexed for flat facet
@@ -296,6 +364,10 @@ export function createBroodPresentation(scene, capacity = 400) {
   const STRAIN_TINTS = SWARM_BROOD_STRAINS.map((strain) => color.clone().setRGB(
     strain.tint[0], strain.tint[1], strain.tint[2],
   ));
+  // The cascade flush's scratch (zero per-frame allocation): the target colour and the
+  // pure layer's output record, both retained.
+  const flushColor = new THREE.Color();
+  const flushScratch = { weight: 0, r: 0, g: 0, b: 0 };
 
   function dispose() {
     for (const m of [mesh, rings, pools, lines, lanes, lobs, segs, mlinks, mbeams, mauras]) {
@@ -360,6 +432,17 @@ export function createBroodPresentation(scene, capacity = 400) {
         if (view.affix && view.affix[i] > 0) {
           const markTint = STRAIN_TINTS[view.affix[i] - 1];
           if (markTint) color.lerp(markTint, 0.72);
+        }
+        // inf-brood-cascade-flush: the coupling web's flush, keyed to the view kind the
+        // engine publishes — panic flares the pack hot, grief cools it toward its dead.
+        // No cascade live (or an unwired kind) leaves the colour exactly as it was.
+        const flush = view.cascade && view.cascade !== BROOD_CASCADE_NONE
+          ? resolveBroodCascadeFlush(view.cascade, simTime,
+            (seedPhase[i] % TAU) / TAU, reduced, flushScratch)
+          : null;
+        if (flush) {
+          flushColor.setRGB(flush.r, flush.g, flush.b);
+          color.lerp(flushColor, flush.weight);
         }
         mesh.setColorAt(written, color);
         // The committed-pass telegraph: one stretched marker per winding pass — the
