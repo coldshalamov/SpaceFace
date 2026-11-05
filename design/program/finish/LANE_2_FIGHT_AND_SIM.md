@@ -385,6 +385,33 @@ Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit eac
   per-wave bound; a landing nobody can read still says the count (sha below,
   test/inf-brood-reserve-tell.test.mjs). `swarm:broodReserve` now has a production
   consumer; the wave-7 candidate note is closed.
+- inf-tacticalai-lane-scans (WF-19 repair): the tactical owner's fixed-step universe walks
+  ride the entity index lanes the code already prefers — the incoming-mass cue (every tick,
+  before the quiet latch) reads the physics-owned body lane with the same speed/type/
+  tumbling/dynamic predicate shared verbatim by the unready-index fallback (a scripted
+  presentation mover the schema opts out of physics was never a thrown body the warning
+  owed), and the body-launcher enemy walk rides shipLike (a launcher is ship-only), so the
+  same hulls are admitted on both paths. Matched within-session A/B on the committed wave-15
+  crowd fixture (seed 4242, 300 warmup + 400 measured, one session): tacticalAI 4.859 →
+  4.747/4.698 ms/tick across two patched blocks, sim-step mean 22.906 → 22.063/22.131 ms;
+  the win is the universe the lanes skip (rocks, FX, wrecks) and grows with sector clutter
+  (sha below, test/inf-tacticalai-lane-scans.test.mjs).
+- Verified already true, wave 9 (no unit taken): C10's five named physics faults checked
+  against today's code — NPC bolts hurt NPCs (npcCrossfireAdmits reckless/grudge law), AI
+  throws bodies (stepHostileBodyLaunches, npc_body_launch provenance + incoming-mass tell),
+  _retaliate covers NPC victims (lawSecurity) beside the AL-FIGHT-1 grudge, and fields are
+  read by every brood family (current-rider shipped); racing rivals are career/ghost records
+  with no live Massline-anchor overlap to finish. The shove-into-field zone-kill question is
+  honest — every reachable zone has an explicit attribution law (collision/crusher read the
+  toss provenance; storm discharge reads the wire; kilnback reads its owner; brood pools and
+  the metronome beam burn only the player), and weapon knock is per-weapon authored identity
+  (PQ-009 impulsePerHit on one physical delivery), not a shared shove table. Found gap,
+  named next step: the bloomLadder route-memory tide (BLOOM_TIDE_SECTORS policies,
+  bloomTidePlan, the persisted {kills,lastX,lastZ,seq} record) is authored and unwired —
+  the header's named adventure-side owner (src/systems/faction_bloom.js) does not exist.
+  Complete unit scope: sector tide stream + persisted route-memory record + kill tracking
+  riding the fauna spawn path; the tide cadence per class (endemic/tidal/incursion) has no
+  authored numbers, so the clock is an E-packet design decision before code.
 
 ## Traps
 

@@ -44,7 +44,7 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedShipLikeOrEntitiesScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
   isBodyLauncherEnemy } from '../ai/specialistPlans.js';
@@ -79,29 +79,51 @@ const OWNERSHIP_REFRESH_TICKS = 3;
 const incomingMassContacts = [];
 const incomingMassPool = [];
 
+/**
+ * The incoming-mass candidate law, shared verbatim by the lane walk and the universe
+ * fallback: alive, solid, fast (≥120 wu/s), not a projectile/pickup/field emitter, and a
+ * real physics threat — a tumbling or drive-dead craft, or a dynamic body. Writes the
+ * pooled contact; the pool is the caller's, sized once.
+ */
+function admitIncomingMassContact(state, player, body) {
+  if (body === player || !body || !body.alive || body.collides === false || !body.pos || !body.vel
+    || !(body.vel.x * body.vel.x + body.vel.z * body.vel.z >= 120 * 120)) return;
+  const ship = body.type === 'ship' || body.type === 'drone';
+  if (body.type === 'projectile' || body.type === 'pickup' || body.type === 'fieldEmitter') return;
+  const tumbling = ship && isTumbling(state, body);
+  if (!tumbling && !isDynamicPhysicsBodyEntity(body)) return;
+  const index = incomingMassContacts.length;
+  const contact = incomingMassPool[index] || (incomingMassPool[index] = {});
+  contact.id = body.id;
+  contact.pos = body.pos;
+  contact.vel = body.vel;
+  contact.radius = body.radius;
+  contact.planarRadius = body.planarRadius;
+  contact.kind = ship ? 'ship' : 'hazard';
+  contact.tumbling = tumbling;
+  contact.disabled = ship && state.combat?.entities?.[String(body.id)]?.capabilities?.drive === false;
+  incomingMassContacts.push(contact);
+}
+
 /** Runs even while the NPC think stack is quiet: a thrown body can still reach the player. */
 export function emitIncomingMassCue(state, bus) {
   const player = state.entities?.get(state.playerId);
   if (state.mode !== 'flight' || !player || player.alive === false || !bus?.emit) return;
   incomingMassContacts.length = 0;
-  for (const body of state.entities.values()) {
-    if (body === player || !body.alive || body.collides === false || !body.pos || !body.vel
-      || !(body.vel.x * body.vel.x + body.vel.z * body.vel.z >= 120 * 120)) continue;
-    const ship = body.type === 'ship' || body.type === 'drone';
-    if (body.type === 'projectile' || body.type === 'pickup' || body.type === 'fieldEmitter') continue;
-    const tumbling = ship && isTumbling(state, body);
-    if (!tumbling && !isDynamicPhysicsBodyEntity(body)) continue;
-    const index = incomingMassContacts.length;
-    const contact = incomingMassPool[index] || (incomingMassPool[index] = {});
-    contact.id = body.id;
-    contact.pos = body.pos;
-    contact.vel = body.vel;
-    contact.radius = body.radius;
-    contact.planarRadius = body.planarRadius;
-    contact.kind = ship ? 'ship' : 'hazard';
-    contact.tumbling = tumbling;
-    contact.disabled = ship && state.combat?.entities?.[String(body.id)]?.capabilities?.drive === false;
-    incomingMassContacts.push(contact);
+  // F1(a) — the per-tick candidate walk rides the entity index's physics-owned body lane
+  // instead of the whole universe: physicsBodies holds exactly the entities whose pose the
+  // physics owns (shouldSyncPhysicsBodyEntity), and the per-body predicate below keeps the
+  // speed/type/dynamic law identical on both paths. The one class a body lane cannot carry
+  // is the schema's own opt-out (physicsBody === false / unauthored fx) — scripted
+  // presentation movers whose pose the physics never owned, so they were never a thrown
+  // body the warning owed the pilot. Unready index falls back to the same universe walk.
+  const index = state.entityIndex;
+  const rows = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.physicsBodies) ? index.physicsBodies : null;
+  if (rows) {
+    for (const body of rows) admitIncomingMassContact(state, player, body);
+  } else {
+    for (const body of state.entities.values()) admitIncomingMassContact(state, player, body);
   }
   const threat = selectIncomingMassCue(player, incomingMassContacts);
   // Do not retain world/entity references between sessions in the reusable contact pool.
@@ -125,8 +147,11 @@ export function stepHostileBodyLaunches(state, bus, runtime, doctrineRuntime) {
     const enemy = state.entities.get(id);
     if (enemy !== rt.actor || !isBodyLauncherEnemy(enemy) || !isHostileForAI(state, enemy, player)) runtime.delete(id);
   }
-  for (const enemy of state.entities.values()) {
-    if (enemy.id === player.id || !isBodyLauncherEnemy(enemy)
+  // F1(a) — a body launcher is a ship (isBodyLauncherEnemy is ship-only), so the enemy walk
+  // rides the shipLike lane the index already maintains; the fallback keeps the map walk and
+  // the same predicate, so both paths admit exactly the same hulls.
+  for (const enemy of indexedShipLikeOrEntitiesScan(state)) {
+    if (!enemy || enemy.alive === false || enemy.id === player.id || !isBodyLauncherEnemy(enemy)
       || !isHostileForAI(state, enemy, player) || isCounterplayOwned(enemy, state)) continue;
     let rt = runtime.get(enemy.id);
     if (!rt) {
