@@ -84,7 +84,7 @@ test('save adapter nests the section inside the world bag on both lanes', () => 
   state.world.counterweightCircuit.discovered = true;
   const save = {
     state,
-    *_saveCapturePlan() { return [['world', () => ({ currentSectorId: 'sector_pallas_drift' })]]; },
+    _saveCapturePlan() { return [['world', () => ({ currentSectorId: 'sector_pallas_drift' })]]; },
     *_serializeDataSteps() { return { world: { currentSectorId: 'sector_pallas_drift' } }; },
     *_restoreChunks(session) {
       this.restored = session?.data?.world?.counterweightCircuit ?? 'absent';
@@ -97,10 +97,9 @@ test('save adapter nests the section inside the world bag on both lanes', () => 
   };
   const dispose = installCounterweightCircuitSaveAdapter(save, systemRef);
   // Chunked lane: the world plan row carries the nested section.
-  const it = save._saveCapturePlan();
-  let step;
-  while (!(step = it.next()).done) { /* drain markers */ }
-  const worldBag = step.value.find(([key]) => key === 'world')[1].call(save);
+  const plan = save._saveCapturePlan();
+  assert.equal(Array.isArray(plan), true);
+  const worldBag = plan.find(([key]) => key === 'world')[1]();
   assert.equal(worldBag.counterweightCircuit.discovered, true);
   // Streaming lane: data.world gets the section appended.
   const steps = save._serializeDataSteps();
@@ -115,10 +114,8 @@ test('save adapter nests the section inside the world bag on both lanes', () => 
   assert.equal(systemRef.raw.schema, 1);
   dispose();
   // After disposal the world bag is the untouched owner's again.
-  const it2 = save._saveCapturePlan();
-  let step2;
-  while (!(step2 = it2.next()).done) { /* drain */ }
-  const plainBag = step2.value.find(([key]) => key === 'world')[1].call(save);
+  const plainPlan = save._saveCapturePlan();
+  const plainBag = plainPlan.find(([key]) => key === 'world')[1]();
   assert.equal(plainBag.counterweightCircuit, undefined);
 });
 
