@@ -337,6 +337,52 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-ops .sx-tile__gloss { display:none !important; }
   ${P} .sxb-ops .sx-dock__group--nav { padding-top:0 !important; padding-bottom:0 !important; }
 }
+/* 801–900 wide × 461–800 tall: the head stacked four bands (name, a 232px purse card over the vitals strip, which
+   wrapped LEDGER and MUNITIONS to a second row, then the mechanic's note, the next step and both signs), ~520px of head,
+   so at 801×461 the tab body was 0px tall and at 860×720 ~77px. The purse rides the name's row beside the palette key,
+   the five readings stand on ONE ruled row with their keys inline, the note and the next step share a row, and the
+   signs run on one clamped line (folded away at ≤540 tall, as the Market does at 960×540): the head is ~234px. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:"title purse" "crown crown" "tape handoff" "signs signs" !important;
+    grid-template-rows:max-content max-content max-content max-content !important; align-content:start !important;
+    column-gap:12px !important; row-gap:6px !important; max-height:none !important; }
+  ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
+    min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    align-items:center !important; gap:0 10px !important; margin:0 94px 0 0 !important; padding:3px 10px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:22px !important; line-height:1.1 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
+    grid-template-columns:minmax(0,190fr) minmax(0,105fr) minmax(0,100fr) minmax(0,132fr) minmax(0,130fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 14px !important; margin:0 !important; padding:6px 12px 7px !important;
+    width:auto !important; max-width:none !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
+    margin:4px 0 0 !important; gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:24px !important; padding:1px 6px !important; }
+  ${P} .sxb-crown .sxb-vital--note, ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { text-align:left !important; align-items:flex-start !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { margin:0 !important; white-space:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; display:flex !important; gap:0 32px !important; padding-top:4px !important; }
+  ${P} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden !important; }
+  ${P} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:540px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  /* the Market's exchange and the Shipworks hull need more than the ~107px the full head leaves: there the head is a
+     scrollport that shows the name and the five readings, the note and the next step one scroll down (as 901–1100 does) */
+  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth.dp-frame__head {
+    min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
+}
 
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */
