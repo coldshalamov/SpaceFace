@@ -606,6 +606,28 @@ carved scars, seam lock pulse, fracture anticipation), capital boss death (autho
 families + staged breakup). Skipped: wreck aging (adjacent to a committed subject), zoom
 honesty (lives in foreign-modified LOD owners).
 
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picture side answering wave-8's brood sim):
+- inf-brood-burst-read (WF-12 integration): a brood bomb's death blast finally reads — the
+  `swarm:broodBurst` receipt had no render consumer anywhere — white-hot core flash in the
+  family's hue, a vent drifting over the blast's actual reach, a star beat outliving the
+  flash, an event light reach-keyed; strain pops wear the strain's mark tint (57011e5ee7f2).
+- inf-sac-death-voice (WF-11 repair): a burst Hive sac — the room's win lever — died an
+  anonymous rock's death; the shatter now reads the hiveSac tag: marker-green light plus a
+  two-beat membrane tear, acid breath, lit star outliving the tear 3:1; untagged rocks keep
+  today's read bit-exactly (e43025097ad9).
+- inf-brood-cascade-flush (WF-12 integration): the panic cascade and grief loop ran as motion
+  only — the view contract itself names the renderer's duty; PANIC sweeps hot pale acid green
+  with a staggered urgent pulse, GRIEF sinks to mourning slate on a slow breath; reduced
+  motion holds floor weight; unwired aggression leaves colors bit-identical (074343829194).
+- inf-jettison-claim (WF-11 repair): when YOU jettison, the pod's own transponder carries the
+  claim window — a hot parting beat easing to a steady claim burn for the embargo, relaxing
+  to anonymous exactly when the embargo lapses; per-pod cloned material, shared siblings pay
+  nothing; reduced flash drops the spike, keeps the claim (1880c12be806).
+Verified already true, wave 8: muzzle smoke in vacuum (weaponDischargePool draws flash + gas,
+no smoke card — the honesty read is already authored). Boundary noted: volatile jettison pods
+route to buildVolatilePod and carry the hazard voice, not the claim window.
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
