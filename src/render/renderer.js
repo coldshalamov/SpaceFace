@@ -13700,8 +13700,12 @@ export const render = {
               finally { clearTimeout(actorTimer); }
             }
           }
+          // Actor admission may already be on a residual progress-deadline crumb when this
+          // seal begins (CI software GL often spends most of the actor window on plasma/actors).
+          // Retain at least the same openingGateBudgetMs() picture window the cook barrier uses
+          // instead of starving prepareOpeningFirstPicture into a ~1s cohort timeout.
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
-            timeoutMs: Math.max(1, actorBudget.remainingMs()),
+            timeoutMs: Math.max(openingGateBudgetMs(), Math.max(1, actorBudget.remainingMs())),
             yieldToMain: yieldToBrowser,
             isActive: () => exactActive && !recookStale(),
           });
