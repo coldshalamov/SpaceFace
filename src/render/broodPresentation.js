@@ -17,7 +17,7 @@
 import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
   BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S,
-  BROOD_CASCADE_NONE, BROOD_CASCADE_PANIC, BROOD_CASCADE_GRIEF,
+  BROOD_CASCADE_NONE, BROOD_CASCADE_PANIC, BROOD_CASCADE_AGGRESSION, BROOD_CASCADE_GRIEF,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, SWARM_BROOD_STRAINS } from '../data/swarmBroodLate.js';
 import { SWARM_MACHINE_FAMILIES } from '../data/swarmMachine.js';
@@ -67,16 +67,21 @@ const FAMILY_STRETCH = Object.freeze([
 //           the corpse), a slow breath.
 //   NONE  — null: the caller's colours stay bit-identical to the unwired path.
 // The flush rides the flock mesh only — the cascade windows arm cells, never Tendril segments.
-// The aggression cascade stays unwired in the sim (authored, named next step), so its kind
-// falls to no flush rather than inheriting a read invented for it.
+// The aggression kind is wired: the sim publishes it when a relay/Queen hit arms the rush
+// (swarmBrood relayHit → view.cascade), and its flush is the data contract's own words —
+// "the Queen (or a relay) taking a hit turns every linked member on the player at once;
+// the filaments flush red" (src/data/swarmBrood.js W-COUPLING).
 
 /** The web's flare: pale-hot acid green — the coupling colour burning, not a new family voice. */
 export const BROOD_FLUSH_PANIC_RGB = Object.freeze([0.86, 1.0, 0.68]);
 /** The mourning slate: desaturated, cool — the pack dimming around its dead. */
 export const BROOD_FLUSH_GRIEF_RGB = Object.freeze([0.3, 0.36, 0.33]);
+/** The aggression flush: hot anger red — the authored "filaments flush red" on the rush. */
+export const BROOD_FLUSH_AGGRESSION_RGB = Object.freeze([1.0, 0.3, 0.16]);
 
 const FLUSH_PANIC_HZ = 1.8;      // the flare's urgent pulse
 const FLUSH_GRIEF_PERIOD_S = 2.4; // the mourning breath
+const FLUSH_AGGRESSION_HZ = 2.6; // the rush's hotter beat — angrier than the panic flare
 
 function clamp01(v) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
@@ -85,8 +90,7 @@ function clamp01(v) {
 /**
  * The filament flush for one body of the pack. Pure function of (kind, simTime, phase,
  * reducedMotion) — test-seam, no allocation (writes `out`). Returns null when no flush
- * owns the view kind (NONE, unknown, or the unwired aggression kind), so callers keep
- * their exact unwired colours.
+ * owns the view kind (NONE, unknown), so callers keep their exact unwired colours.
  */
 export function resolveBroodCascadeFlush(cascade, simTime, phase01, reducedMotion, out = null) {
   const t = Number.isFinite(simTime) ? simTime : 0;
@@ -101,6 +105,18 @@ export function resolveBroodCascadeFlush(cascade, simTime, phase01, reducedMotio
     rec.weight = reducedMotion
       ? 0.5
       : clamp01(0.5 + 0.18 * Math.sin((t * FLUSH_PANIC_HZ + ph * 0.35) * Math.PI * 2));
+    return rec;
+  }
+  if (cascade === BROOD_CASCADE_AGGRESSION) {
+    rec.r = BROOD_FLUSH_AGGRESSION_RGB[0];
+    rec.g = BROOD_FLUSH_AGGRESSION_RGB[1];
+    rec.b = BROOD_FLUSH_AGGRESSION_RGB[2];
+    // The rush's read: a hotter, faster beat than the panic flare — the pack is one angry
+    // animal charging you, not scattering. Same stagger law (the web lights up in a wave),
+    // and reduced motion holds a steady anger floor, never silent.
+    rec.weight = reducedMotion
+      ? 0.45
+      : clamp01(0.55 + 0.16 * Math.sin((t * FLUSH_AGGRESSION_HZ + ph * 0.5) * Math.PI * 2));
     return rec;
   }
   if (cascade === BROOD_CASCADE_GRIEF) {

@@ -49,8 +49,9 @@ test('grief cools the pack toward its dead, a different read than panic', () => 
   assert.ok(grief.weight > 0 && grief.weight < 1);
 });
 
-test('the aggression kind carries no flush — an unwired cascade inherits no invented read', () => {
-  assert.equal(resolveBroodCascadeFlush(BROOD_CASCADE_AGGRESSION, 5, 0.1, false), null);
+test('the aggression kind now carries its own red flush (inf-brood-aggression-flush)', () => {
+  const aggr = resolveBroodCascadeFlush(BROOD_CASCADE_AGGRESSION, 5, 0.1, false);
+  assert.ok(aggr, 'the sim publishes the rush; the pack answers red');
   assert.equal(resolveBroodCascadeFlush(99, 5, 0.1, false), null, 'an unknown kind is quiet');
 });
 
