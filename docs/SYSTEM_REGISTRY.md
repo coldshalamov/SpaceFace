@@ -218,7 +218,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `longBerth` | `systems/longBerth.js` | 322 | 5 | 4 | `longBerth:claimOffer`×1, `longBerth:restoreOffer`×1, `economy:chargeCredits`×1 |
 | `crew` | `systems/crew.js` | 819 | 39 | 10 | `comms:popup`×19, `economy:chargeCredits`×4, `crew:hireDenied`×2 |
 | `bandRadio` | `systems/bandRadio.js` | 871 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
-| `onboarding` | `systems/onboarding.js` | 5196 | 25 | 93 | `comms:popup`×3, `onboarding:rangePrompt`×3, `rescue:beat`×2 |
+| `onboarding` | `systems/onboarding.js` | 5207 | 25 | 93 | `comms:popup`×3, `onboarding:rangePrompt`×3, `rescue:beat`×2 |
 | `masslineHud` | `ui/masslineHud.js` | 2626 | 0 | 8 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 380 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 333 | 0 | 0 | — |
@@ -244,7 +244,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `worldClock` | `systems/worldClock.js` | 221 | 6 | 0 | `calendar:stormSeason`×1, `calendar:festival`×1, `calendar:marketDay`×1 |
 | `worldPressure` | `systems/worldPressure.js` | 454 | 13 | 0 | `sectorsim:impulse`×2, `comms:log`×2, `worldPressure:tideChanged`×1 |
 | `lineProgression` | `systems/lineProgression.js` | 244 | 2 | 4 | `line:recordStamped`×1, `line:classChanged`×1 |
-| `save` | `save/saveSystem.js` | 10424 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
+| `save` | `save/saveSystem.js` | 10438 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
 
 ## Render-phase order (every animation frame)
 
