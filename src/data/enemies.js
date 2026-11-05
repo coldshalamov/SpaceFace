@@ -275,7 +275,7 @@ export const ENEMY_TYPES = [
   // ── Variety roles (append-only; reuse existing AI archetypes / doctrines / silhouettes) ──
   {
     id: 'mine_layer_jackal', name: 'Mine-Layer Jackal', shipId: 'ship_drifter',
-    silhouette: 'pirate_swoop', factionId: 'faction_reach',
+    silhouette: 'jackal_rack', factionId: 'faction_reach',
     aiArchetype: 'pirate', levelRange: [3, 8],
     combatDoctrineId: 'mine_layer_wake',
     hull: 110, armor: 28, armorFlat: 1, shield: 45, shieldRegen: 8, cap: 150, capRegen: 20,
@@ -331,7 +331,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'customs_cutter', name: 'Customs Cutter', shipId: 'ship_hornet',
-    silhouette: 'patrol_interdict', factionId: 'faction_scn',
+    silhouette: 'customs_prow', factionId: 'faction_scn',
     aiArchetype: 'brawler', levelRange: [2, 7],
     combatDoctrineId: 'interceptor_flyby',
     hull: 160, armor: 40, armorFlat: 1, shield: 90, shieldRegen: 12, shieldRegenCapable: true, cap: 200, capRegen: 26,
@@ -342,7 +342,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
     aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 320, leashRadius: 2600 },
-    // Same Hornet hull and patrol_interdict silhouette as the interceptor — the cutter's
+    // Same Hornet hull as the interceptor — the cutter's
     // differentiator is its plated boarding prow. Within a narrow 90° nose arc an eligible
     // ricochet shot banks off the plate instead of landing; every other contact is the
     // ordinary hull. The boss-surface machinery resolves the verdict per contact.
@@ -448,7 +448,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'warden_escort', name: 'Warden Escort', shipId: 'ship_bastion',
-    silhouette: 'bruiser_armor', factionId: 'faction_vael',
+    silhouette: 'warden_screen', factionId: 'faction_vael',
     aiArchetype: 'guardian', levelRange: [4, 9],
     combatDoctrineId: 'escort_screen',
     hull: 300, armor: 90, armorFlat: 3, shield: 110, shieldRegen: 13, shieldRegenCapable: true,
@@ -473,7 +473,7 @@ export const ENEMY_TYPES = [
   },
   {
     id: 'field_anchor_controller', name: 'Anchor Controller', shipId: 'ship_bastion',
-    silhouette: 'bruiser_armor', factionId: 'faction_reach',
+    silhouette: 'anchor_dish', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [5, 11],
     combatDoctrineId: 'field_anchor_controller',
     hull: 360, armor: 105, armorFlat: 3, shield: 120, shieldRegen: 10, shieldRegenCapable: true,

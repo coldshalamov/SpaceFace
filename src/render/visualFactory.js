@@ -114,6 +114,7 @@ import { foundryFurnitureShape } from '../data/foundryFurniture.js';
 import { createFoundryBankSurface } from './foundryBankSurface.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
+import { ENEMY_ROLE_VARIANT_BUILDERS } from './enemyRoleVariants.js';
 import { SWARM_BROOD_FAMILIES, swarmBroodFamily } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, swarmBroodLateFamily } from '../data/swarmBroodLate.js';
 
@@ -1840,6 +1841,8 @@ const ENEMY_FAMILY_BUILDERS = {
   kilnback: buildBruiserArmor,
   mothlight: buildSniperLance,
   pallet_jack: buildTraderHaul,
+  // Specialist recovery art only: production admits the selected authored whole ship.
+  ...ENEMY_ROLE_VARIANT_BUILDERS,
 };
 
 const FAMILY_BUILDERS = {

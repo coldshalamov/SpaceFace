@@ -2,15 +2,24 @@
 import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 
+const BRUISER_PROPORTIONS = Object.freeze({ length: 1.72, halfWidth: 0.43, height: 0.31 });
+const PIRATE_PROPORTIONS = Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.27 });
+const PATROL_PROPORTIONS = Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 });
+
 export const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
   drone_swarm: Object.freeze({ length: 1.72, halfWidth: 0.36, height: 0.26 }),
   sniper_lance: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
   detonator_dart: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  bruiser_armor: Object.freeze({ length: 1.72, halfWidth: 0.43, height: 0.31 }),
+  bruiser_armor: BRUISER_PROPORTIONS,
   trader_haul: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  pirate_swoop: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.27 }),
+  pirate_swoop: PIRATE_PROPORTIONS,
   corsair_blade: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.24 }),
-  patrol_interdict: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
+  patrol_interdict: PATROL_PROPORTIONS,
+  // Recovery-art names preserve the original capsule contracts; they are not new hull classes.
+  warden_screen: BRUISER_PROPORTIONS,
+  anchor_dish: BRUISER_PROPORTIONS,
+  jackal_rack: PIRATE_PROPORTIONS,
+  customs_prow: PATROL_PROPORTIONS,
   dreadnought_enemy: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
 });
 
