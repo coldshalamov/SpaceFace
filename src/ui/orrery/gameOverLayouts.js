@@ -118,13 +118,18 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .sf-go-tape { height:112px; }
 }
 /* short stacked windows (641-1100w, <=640h, e.g. 960x540): the 66px headline ran to three lines and
-   pushed the recovery verbs and the career record below the fold, so it takes the short-desktop size */
+   pushed the recovery verbs and the career record below the fold, so it takes the short-desktop size.
+   The filled dial kept the 210px ring (378px across at --sv .75) with no scroll (scrollHeight = viewport),
+   so the ring was cut mid-dial; shrink every recap to the short-desktop ring and tighten the stage. */
 @media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} { --r:calc(112px * var(--sv)); row-gap:calc(8px * var(--sv)) !important;
+    padding-block:16px 12px !important; }
   ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
   ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
   ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
-  /* a blank record has no rim stations, so its bare dial takes the short-desktop ring and fits the frame */
-  ${GO} > .sf-go-recap.is-blank { --r:calc(112px * var(--sv)); height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
+  ${GO} > .sf-go-recap { height:calc(var(--r) * 2 + 100px * var(--sv)); width:calc(var(--r) * 2 + 280px * var(--sv)); }
+  /* a blank record has no rim stations, so its bare dial takes a slightly taller host */
+  ${GO} > .sf-go-recap.is-blank { height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
 }
 /* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
    lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears
@@ -142,6 +147,11 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
    sideways step would run Contracts done off the right edge */
 @media (min-width:1101px) and (max-width:1500px) and (max-height:640px) {
   ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 14px * var(--sv))); }
+}
+/* short stacked (641-1100w, <=640h): same idea — the general 641w+ step would walk the
+   rim stations past the narrowed recap host once --r drops to 112 */
+@media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 18px * var(--sv))); }
 }
 /* narrow short desktop (1101-1260w, <=640h): the left column is narrower than the one-line verb rail,
    so Load latest ran under Lifetime profit. The primary keeps its own line; the two loads sit beneath it */
