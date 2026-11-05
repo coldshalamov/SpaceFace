@@ -16,9 +16,11 @@ with unchanged source and no failures/timeouts. This is not an FPS comparison. L
 no longer wait for an older reply while simulation deadlines advance; the existing watchdog retains
 real progress accounting. Packaged props no longer inherit a second procedural root scale: the
 actual beacon wrapper is28WU rather than1680WU, with procedural transforms/materials retained.
-Ordinary Ring obstruction/input and Counterweight admission checks now move to this candidate;
-their older failures and changed-build look limits remain in INTEGRATION_COVERAGE.md. Startup,
-frame targets, physical iPhone and signed-update acceptance remain open.
+Actualc4 Ring obstruction is absent and public throttle moves the ship; entry guidance is now
+connected in8398e7c8d2b1, with its ordinary Mouth/ribs look pending. Exactc4 production now serves
+the public demo; fresh public-origin WebKit NewGame reaches visible advancing flight in28.800s.
+The stock touch-capability gate still fails/maxTouchPoints0 and physical iPhone remains UNKNOWN.
+Loading23–29s, frame targets, actual Counterweight courses and signed-update acceptance remain open.
 
 **Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
 JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
@@ -554,8 +556,10 @@ Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit eac
   absorbed strikes never touch the scar-history book (5244ade5f3a7).
 Verified already deep, wave 5: Massline cable tension feedback (masslinePresentation.js —
 load swell, strain chatter, overload heat, parting ferrules, whip/reel glow at pixel numbers).
-Defect on this lane's paths, recorded: visualFactory.js animateStation pulses nav blinkers on
-wall clock, not sim time — frozen sims keep blinking (pre-existing; fix with next touching).
+Defect retracted (controller trace, wave 6): the animateStation wall-clock report was wrong —
+nowSec() prefers the presentation clock the renderer pushes every frame
+(renderer.js setFactoryPresentationNow(state.simTime)); wall clock is only the documented
+headless fallback, so a frozen sim holds its blinkers with the world. No change made.
 
 ## Traps — measured and rejected; do not repeat
 

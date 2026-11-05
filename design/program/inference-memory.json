@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-04",
+  "updated": "2026-11-05",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,58 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-pod-buyer",
-      "date": "2026-10-25",
-      "wf": "WF-06",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Only the fence who buys pods takes a towed mayday pod.",
-      "fingerprint": "verb=sell,subject=mayday-pod,sector=kepler,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "d5067163de58fc190975db363d3bb297eebc50cc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-hunter-dock",
-      "date": "2026-10-25",
-      "wf": "WF-07",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Filing a hunter ledger or finishing a capture only counts at the dock that choice names.",
-      "fingerprint": "verb=file,subject=hunter-ledger,sector=helios,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "edf9aec1f925124f3a71d17644542e67bc24e5b7",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-yard-starved",
-      "date": "2026-10-25",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A thin hopper at a yard is named when the price jumps.",
-      "fingerprint": "verb=announce,subject=starved-hopper,sector=ceres,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "5ddcbdd39df54432076e4ffe678b2479955e66c0",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-berth-goods",
-      "date": "2026-10-25",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The Long Berth yard card and refusal name Composite Alloys and Fuel Cells.",
-      "fingerprint": "verb=name,subject=berth-goods,sector=ceres,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "7d75d98a52406b56eec7193ac7658c05eba65875",
-      "verification": "focused_green"
-    },
     {
       "id": "pulse-07-merged-rim-lore",
       "date": "2026-10-25",
@@ -1689,6 +1637,58 @@
       "references": [],
       "integration": "live",
       "commit": "47209b767a46",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-drop-in-read",
+      "date": "2026-11-04",
+      "wf": "WF-12",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A fresh wing dropping into your fight now reads as an arrival: faction-tinted flash, inbound lane wake and brake flare at the drop point, instead of a silent generic pop-in.",
+      "fingerprint": "verb=arrive,subject=drop-in-arrival,sector=encounter-lanes,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "e61fcc98ff60",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-salvage-lamp",
+      "date": "2026-11-04",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A paying wreck wears a slow amber salvage work-lamp and a stripped husk goes dark, so a furball's aftermath tells you which hulk is worth stopping for.",
+      "fingerprint": "verb=lamp,subject=salvage-wreck-read,sector=furball-aftermath,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "4c3322b6776a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-apron-flood",
+      "date": "2026-11-04",
+      "wf": "WF-11",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A docking station's apron now runs warm sodium work lights - rig pair at the dock mouth, taxi pools on the deck, a lit pad over the berth - that step up while a corridor works and hold while berthed.",
+      "fingerprint": "verb=light,subject=apron-floodlights,sector=docking-apron,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "6c48b041beb2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-magnet-catch",
+      "date": "2026-11-05",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A pod your magnet field takes now shows the same teal capture beat as a net catch, riding the pod from first pull — a furball catch reads on the glass",
+      "fingerprint": "verb=see,subject=loot-capture,sector=furball-combat,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "a629c10f1556",
       "verification": "focused_green"
     }
   ],
