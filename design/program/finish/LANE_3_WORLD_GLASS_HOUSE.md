@@ -898,6 +898,32 @@ Inbox additions (wave 7, both pre-existing at HEAD, verified by owner-swap):
    pre-edit missions.js too; landed with 8398e7c8d2b1 (lantern-ward), which postdates the
    test. Owner: lantern-ward/missions story integration.
 
+Implemented and focused-tested, waves 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-tow-work-voice (WF-01, controller direct): a hired tug speaks its own two milestones —
+  the hook and the delivery — instead of a fee and a silent cable drag; arbiter floor +
+  matching radio receipts, stamps gate re-attaches, no corpus rows (b7d8ab4bb85a).
+- inf-war-desk (WF-04, controller direct): docking into a faction at war, the desk names the
+  rival — the same conflict truth the chart's war front renders, posture repeating per visit
+  like every recognition band; cold and tense pairs stay quiet (a06f15a5b3a9).
+- inf-rescue-desk-answer (WF-13 integration): the station that takes a rescued pod answers
+  the delivery once — a bunk offered, the debt named — the ambulance crew answers a handoff,
+  ransom keeps the fence's voice; same seam as the tow voice, once per rescue, pod-scoped
+  (13de58fe5c40; also localizes the owner's adjacent raw copy).
+- inf-war-ledger-page (WF-16): a war the player leaned on files a dated page in the Ship's
+  Ledger — front, houses, the turn — from factions' own durable flip stamp; NPC-only flips
+  and pre-stamp saves file nothing (bc31c1a7d72a).
+- inf-standing-reason-words (WF-09 repair): the standing register reads every deed back as
+  words — mayday answered, fled the border, choir offering — instead of raw reason ids;
+  the never-a-raw-id law is now pinned by a source-scan test (1a54592ab63c).
+Verified already deep, wave 8: bar history register (inf-bar-regular's ladder), career desk
+acknowledgment (comms/news announce rank crossings; a band ticket is another thread's
+in-flight work), rescue world answers (rescuedWorkerReturn + fence ransom verified deep),
+standing why-surface (factionHistoryLines ring deep).
+Inbox addition (wave 8): test/fb-hitchhiking-named.test.mjs "the flight HUD path mounts the
+layer" fails at HEAD — clean hud.js (9dec955de450) added onFlightTextGeometryChange to the
+stunt-callout mount and the test's regex expects the old call. Owner: HUD/geometry thread.
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
