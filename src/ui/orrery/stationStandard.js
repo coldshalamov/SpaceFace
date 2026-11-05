@@ -557,6 +557,18 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
   ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
 }
 
+/* Market at 801–900 × 461–800: the Standard 276px Fewer/qty/More/Max strip is wider than the
+   compact berth's ~146px console column beside the analysis (marketLayouts), so Max hung ~57px
+   past the glass and BUY/SELL clipped the right edge once the densified head left a real body.
+   Same fix as 901–1100 × 461–640: keep the stepper inside the console and stack quote/actions. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sx-mkt__console { min-width:0 !important; max-width:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
+}
+
 /* ==== BAR =================================================================================== */
 ${P} .sx-bar__hang { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important; background-image:none !important; padding:9px 12px !important; }
 ${P} .sx-bar__hang::before, ${P} .sx-bar__hang::after, ${P} .sx-bar__rows::before, ${P} .sx-bar__rows::after,
