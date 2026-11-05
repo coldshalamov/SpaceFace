@@ -320,6 +320,44 @@ aftershock honesty (chunks carry parent velocity + angular momentum), pursuit-le
 (mercy stand-down + patrol intervention + staggered despawn receipts). Candidate wires for a
 future tell: swarm:hiveSacKilled / swarm:broodReserve have no production consumer.
 
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picked wire is the sac answer, the reserve wire
+left untouched by rotation):
+- inf-sac-mourn (WF-16 integration): bursting a Hive sac answers now — the arena hands the
+  corpse to the brood engine's hiveSacFell seam and the authored grief loop arms at it
+  (BROOD_CASCADE_EVENTS already named swarm:hiveSacKilled a cascade seam), and the combat
+  net says the tide law once per run: "The sac bursts — the tide it was feeding dies with
+  it." The sacs are the room's win lever; the first burst names what it took (610226462a43,
+  test/inf-sac-answer.test.mjs).
+- inf-panic-cascade (WF-16 completion): the authored panic scatter/knot finally runs — one
+  credited kill of a body at or above BROOD_PANIC_KILL_MASS (90: a wake eel, a bellows)
+  bolts every living neighbor inside the cascade reach outward from the corpse for its own
+  seeded slice of the authored 1.5–2.5 s band, then the knot converges back onto it for
+  BROOD_PANIC_REFORM_S; the cascade replaces the ordinary jitter for its window (never the
+  room's fields), outranks grief while live, publishes BROOD_CASCADE_PANIC, and a blast
+  nobody credits breaks nothing (cfbda7130a09, test/inf-panic-cascade.test.mjs). Aggression
+  remains the one authored-but-unwired cascade.
+- inf-bank-cascade-yield (WF-02 repair): the grief loop and the composition bank fought —
+  a corpse beside the staged slot armed the bend on the STAGED body, the second charger
+  mourned into the hull scrum the first pass had just made and died by collision before
+  its stage called it (test/swarm-bank.test.mjs red since the grief loop landed, verified
+  red on the pre-session tree). The engine's own law — the attack language outranks the
+  cascade — now covers the bank's staged slot: it neither mourns nor panics while held;
+  unstaged cells keep the full answer and a live grief resumes when the bank releases
+  (5589d8173643, test/inf-bank-cascade-yield.test.mjs; read-only _bank() seam beside
+  _machine()).
+Resolved candidate: the light-into-heavy contact question is HONEST on production —
+e1329b354e88, test/inf-light-heavy-contact.test.mjs: the fixed-seed SG-02 lab with the
+owner's solid-contact sampler shows craft-to-craft capsules, a thrown hull into the Ceres
+breaker's 13 authored primitives, and the Borrowed Voice recorder (a production dynamic
+compound hull) all holding min separation at rounding error with zero penetrating ticks,
+no tunneling, the shove landing, resting end states — at 140 wu/s, dead-center and
+offset-bearing; even the toy ball path is honest in this lab. Lab lesson recorded: a
+thrower spawned inside a compound's authored footprint reads phantom overlap — spawn
+clearance owns that case, not the contact solve. Shove-recovery honesty (tossed hull into
+wall/asteroid) stays covered by the committed wave subjects: native contact spin
+preservation c16e43dd6c24, INF-027 tumble recovery, and wave-5 ricochet causality.
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.
