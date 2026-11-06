@@ -2949,6 +2949,9 @@ export const vfx = {
     // so a cyst's spore burst or a volatile pop went off invisibly. broodBurstRead owns
     // the plan; the sprites ride the normal admission and flash accessibility.
     add('swarm:broodBurst', (p) => this._onBroodBurst(p));
+    // S6: every brood kill winks out — a ≤0.25 s pop on the instanced spark pool at the kill
+    // receipt's own position, so the horde visibly thins under your fire.
+    add('swarm:broodKills', (p) => this._onBroodKills(p));
     // inf-mayday-flare: a mayday starts here — the pod tearing clear of a killed crew reads
     // on the glass, not just in the speaker.
     add('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p));
@@ -10171,6 +10174,21 @@ export const vfx = {
       BROOD_BURST_PRIORITY);
     this._eventLight({ x: pos.x, z: pos.z }, 'explosion',
       { severity: plan.light.severity, color: plan.vent.color, distance: plan.light.distance });
+  },
+
+  // S6: the plain brood death — a wink, not an explosion. One flash + one cooling puff per
+  // receipt at the kill centroid, ≤0.25 s, in the family's own acid tones. The bomb family's
+  // authored blast keeps _onBroodBurst; this is the dart going out under your fire.
+  _onBroodKills(p) {
+    if (!p?.pos || !this._scene) return;
+    const pos = p.pos;
+    const pops = Math.min(3, Math.max(1, Math.trunc(p.count || 0) || Math.trunc(p.removedCount || 0) || 1));
+    for (let i = 0; i < pops; i++) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.2, 0.5, 2.1, 0.75, 0.0, '#c8ff70',
+        0, 0, 1, null, BROOD_BURST_PRIORITY);
+      this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.24, 0.6, 1.7, 0.42, 0.0, '#3f6b28',
+        (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, 1, null, BROOD_BURST_PRIORITY);
+    }
   },
 
   _onEnvironmentDetonated(p) {
