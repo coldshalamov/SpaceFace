@@ -65,12 +65,16 @@ const smokeScenarioTetherCues = smokePresentationCues.filter((record) => {
   const id = String(record.payload && record.payload.id || '');
   return id.startsWith('scenario.') || id.startsWith('tether.');
 });
-assert.equal(smokeScenarioTetherCues.length, 3,
-  'scenario trace should prove SG-08 cue routing for first beat, Massline attach, and near-break warning');
+// The ordinary action_attach Massline is fail-closed against load-induced breakage. A warning
+// here would claim a failure that this input tape cannot cause. Real overload warning routing is
+// exercised with an explicitly breakable endpoint in check-sg02-tether-resilience.mjs.
+assert.equal(counts['tether:nearBreak'] || 0, 0, 'ordinary scenario towing must not invent impending breakage');
+assert.equal(counts['tether:broken'] || 0, 0, 'ordinary scenario towing must retain its line');
+assert.equal(smokeScenarioTetherCues.length, 2,
+  'scenario trace should route the first beat and actual Massline attach through SG-08');
 assert.deepEqual([...new Set(smokeScenarioTetherCues.map((record) => record.payload.id))].sort(), [
   'scenario.signal.pulse',
   'tether.attach',
-  'tether.near_break',
 ], 'smoke scenario/tether cue family should remain exact while combat adds its own cues');
 assert(result.trace.records.some((record) => record.type === 'scenario:beatEntered'
   && record.payload.beatId === 'drop_wreck_field'), 'trace records should name the first beat');
@@ -120,14 +124,17 @@ const progressedScenarioTetherCues = progressedPresentationCues.filter((record) 
   const id = String(record.payload && record.payload.id || '');
   return id.startsWith('scenario.') || id.startsWith('tether.');
 });
-assert.equal(progressedScenarioTetherCues.length, 5,
-  'progressed run should route the five authored scenario and tether cues through SG-08');
+assert.equal(progressed.traceSummary.types['tether:nearBreak'] || 0, 0,
+  'the ordinary scenario line must not acquire a false overload warning in later beats');
+assert.equal(progressed.traceSummary.types['tether:broken'] || 0, 0,
+  'the ordinary scenario line must remain attached through scavenger arrival');
+assert.equal(progressedScenarioTetherCues.length, 4,
+  'progressed run should route the three entered beats and actual Massline attach through SG-08');
 assert.deepEqual([...new Set(progressedScenarioTetherCues.map((record) => record.payload.id))].sort(), [
   'scenario.comms.denial',
   'scenario.comms.kessler',
   'scenario.signal.pulse',
   'tether.attach',
-  'tether.near_break',
 ], 'progressed scenario/tether cue family should remain exact while combat adds its own cues');
 assert(progressed.metrics.presentationCue >= progressedScenarioTetherCues.length,
   'progressed presentation metric should include the authored scenario/tether cues');

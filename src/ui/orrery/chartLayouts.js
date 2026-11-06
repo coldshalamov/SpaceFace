@@ -34,6 +34,7 @@ const SEG = (a = 1, x = '0') => `background:linear-gradient(90deg, rgb(248 244 2
 /** visually hidden, still read aloud */
 // the chart in a desktop window: never the phone sheet (mobileScreenLayouts owns that)
 const CD = 'html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="narrow"]';
+const COMPACT_DESKTOP = 'html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart:is([data-layout="compact"], [data-layout="narrow"])';
 const SR = 'position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; padding:0 !important;';
 /** a word hanging off the spine: its tick */
 const TICK = (w = 12, a = 0.5, h = 2) => `content:"" !important; display:block !important; position:absolute !important; left:${SPINE_X}px !important; top:50% !important;
@@ -504,6 +505,18 @@ ${C}[data-layout="narrow"] .gm-layer-bank {
   gap:2px 10px !important;
 }
 
+/* Wrapping must preserve usable controls as well as fit the viewport. Expanded lens names
+   and tab labels stay inside their chip, and keyboard focus remains distinct from selection.
+   Phone controls keep the mobile sheet's larger touch targets. */
+${COMPACT_DESKTOP} :is(.gm-layer-btn, .gm-tab).k-word {
+  min-width:0 !important; max-width:100% !important; min-height:28px !important;
+  height:auto !important; white-space:normal !important; overflow-wrap:anywhere;
+}
+${COMPACT_DESKTOP} .gm-layer-name { min-width:0; white-space:normal !important; overflow-wrap:anywhere; }
+${COMPACT_DESKTOP} :is(.gm-layer-btn, .gm-tab).k-word:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px;
+}
+
 /* SHORT DENSIFY (ui-polish-364): below ~820 of height the narrow hang's 22% bound collapses to
    ~20px (scrollH 521 into clientH 20) and the compact hang's 40% still hides the last lenses
    under the foot. Raise a scroll-bound floor, densify the stacked head, and let the frame
@@ -556,7 +569,6 @@ ${C}[data-layout="narrow"] .gm-layer-bank {
     max-height:max(72px, 24vh) !important; overflow-x:hidden !important; overflow-y:auto !important;
     -webkit-mask-image:none !important; mask-image:none !important;
   }
-  ${C}[data-layout="compact"] .gm-layer-btn.k-word { min-height:24px !important; }
   ${C}[data-layout="compact"] .gm-apron { position:relative; z-index:3; }
   ${C}[data-layout="compact"] .gm-navfoot { position:relative; z-index:3; }
   /* Engage Route's lamp key hung ~14–16px into the foot tape at 801×461. Keep the inspector
