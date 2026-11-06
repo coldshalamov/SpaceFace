@@ -59,6 +59,17 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
   const media = createBootMediaPlayback({ video, host, timeoutMs: options.timeoutMs ?? 2500,
     sources: options.sources || BOOT_MEDIA, motionReduced: reduced, flashReduced: quiet,
     hidden: () => !!document.hidden || pageHidden,
+    // Every loading session enters the ambient loop somewhere new — an endless
+    // corridor, not a sequence — so the same first seconds stop being the only
+    // part a player ever sees. Landing inside ~2 s of the previous exit frame
+    // would read as a hold, not a cut, so jump across the loop instead.
+    startOffset: options.startOffset || ((duration, position) => {
+      const span = Math.max(0, duration - 1.25);
+      if (span <= 0) return null;
+      let t = Math.random() * span;
+      if (Math.abs(t - position) < 2) t = (t + duration / 2) % span;
+      return t;
+    }),
     onFallback: fallback,
     onState({ status }) {
       if (disposed) return;
