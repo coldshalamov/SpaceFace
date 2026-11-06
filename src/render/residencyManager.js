@@ -236,7 +236,9 @@ export function createResidencyManager(options = {}) {
     }
     root.visible = false;
     counters.heldRoots += 1;
-    requestUpload(root, reason);
+    // On-glass drawables are urgent; a bind-time hold of a body that has not been shown yet
+    // is not (it can wait its turn in the off-screen lane).
+    requestUpload(root, reason, wasPresented || reason === 'over-budget');
     return true;
   }
 
@@ -266,7 +268,7 @@ export function createResidencyManager(options = {}) {
     }
   }
 
-  function requestUpload(root, reason = 'geometry') {
+  function requestUpload(root, reason = 'geometry', urgent = false) {
     if (!root) return false;
     if (pendingSet.has(root) || inFlight.has(root)) return false;
     if (pendingRoots.length >= RESIDENCY_MAX_PENDING) return false;
@@ -274,7 +276,10 @@ export function createResidencyManager(options = {}) {
     data.sfResidencyRequestedAt = nowMs();
     data.sfResidencyReason = reason;
     pendingSet.add(root);
-    pendingRoots.push(root);
+    // A drawable the camera is already trying to draw jumps the queue: its absence is on
+    // screen, unlike the runway/backlog roots that were requested while still off-glass.
+    if (urgent) pendingRoots.unshift(root);
+    else pendingRoots.push(root);
     counters.uploadRequests += 1;
     if (onRequest) {
       try { onRequest(root); } catch (_) { /* scheduling is best-effort */ }

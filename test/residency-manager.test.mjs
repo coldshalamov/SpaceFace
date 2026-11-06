@@ -203,3 +203,16 @@ test('BatchedMesh owns its own residency and is never gated here', () => {
   assert.equal(manager.admitGeometry(batched, geometryWith(1)), true);
   assert.equal(manager.snapshot().heldDraws, 0);
 });
+
+test('an on-glass hold jumps ahead of a bind-time hold in the drain queue', () => {
+  const batches = [];
+  const manager = createResidencyManager({ requestRoots: (roots) => { batches.push(roots.slice()); } });
+  manager.beginFrame();
+  const bindRoot = drawable();
+  manager.holdRoot(bindRoot, 'bind');
+  const glassRoot = drawable();
+  manager.holdRoot(glassRoot, 'over-budget');
+  assert.equal(manager.drainUploads(1), 1);
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0][0], glassRoot, 'the drawable the camera is trying to draw goes first');
+});

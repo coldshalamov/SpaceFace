@@ -12,8 +12,11 @@
 | The compiled gate is armed for every presented pass | `src/render/bloom.js` | The scene **walk** still skips at settle (M2's measured win), but the per-draw compiled check runs on every presented draw. A new material on an existing object — which changes neither the program count nor the scene-child count — can no longer link inside a drawn frame. |
 | Budgeted off-screen upload lane | `renderer.js` (`_scheduleResidencyDrain`, `prepareStartupGeometryResidency`) | Held drawables drain on a 200 ms background task through the residency pass the warm roots already use mid-flight. One batch per call, 4 Hz ceiling, never inside a presented frame. |
 | Predictive pre-admission | `renderer.js` (`entityPredictedOnDeadlineGlass`, `entityIsOnDeadlineGlassScan`, `meshBuildQueueHasDeadlineWork`) | "Deadline glass" now means *on the glass now or inside the 2 s approach horizon*. Uses the existing approach-aware `entityTimeToGlassSeconds` query, so there is one predictor, not two. |
+| Bind-time pre-admission | `renderer.js` (`_bindPresentationMesh`) | A freshly bound root whose buffers have never reached the GPU is held before it is ever submitted and released when the off-screen lane has stamped the whole subtree. A rebind of a live root is never held (that would blank a body already on screen). |
+| Submit gate honours the hold | `entityMeshVisibility.js` | `residencyHeld` is a fail-closed submit reason, so entity samplers and the draw path agree that "visible" means "has resident data". Protected roots (player, forceRender, neverCull) are exempt. |
+| Bounded fail-open | `bloom.js` (`COMPILE_REFUSAL_FAIL_OPEN`) | After 90 consecutive presented refusals a draw proceeds and `renderer.__sfCompileFailOpen` counts it, so a broken admission lane cannot hide a body forever, silently. |
 | No forced off-screen admission | `renderer.js` (`_drainMeshBuildQueue`, both gates) | The skip-count release (`shouldStartHeavyAdmissionEventually`) is only honoured when the queue actually holds deadline work. A body parked off-screen no longer buys a heavy build inside a frame the player is watching. |
-| Counters | `state.render.residency` (published ~2 Hz) | `visibleUnready` (drawables that were on screen before their data existed), `heldDraws`, `heldRoots`, `firstResidentDelayP50/P95/Max`, `uploadMs`, `uploadRuns/Failures`, `pending`. Read from `SF.registry.get('render')._residencyManager.snapshot()`. |
+| Counters | `state.render.residency` (published ~2 Hz) | `visibleUnready` (drawables held again **after** they had been presented — the blink class; must be 0), `preAdmittedHolds` (held before first presentation — pre-admission working), `heldDraws`, `heldRoots`, `firstResidentDelayP50/P95/Max`, `uploadMs`, `uploadRuns/Failures`, `pending`, `compileFailOpen`. Read from `SF.registry.get('render')._residencyManager.snapshot()`. |
 
 Focused checks: `test/residency-manager.test.mjs` 9/9; `bloom-unready-draw-guard` 22/22;
 `presented-draw-detach-pass` 11/11; `bloom-instancing-readiness` 5/5;
@@ -25,59 +28,54 @@ Focused checks: `test/residency-manager.test.mjs` 9/9; `bloom-unready-draw-guard
 
 Instrument: `node scripts/probe-frame-solid.mjs` (headed, Intel iGPU, shared checkout — the host
 was contended by other agents throughout, so frame *times* are not comparable across runs; the
-counters are). Reports: `2026-11-06T16-36-57-957Z` (before), `2026-11-06T17-16-26-534Z` (after).
-
-**Caveat, stated plainly:** the two runs are not a matched A/B. The before run sampled 877 flight
-frames with 105 world entities; the after run sampled 160 frames (the route's return leg stalled,
-so the ship sat at ~1,900 WU for the last two phases). The counters below are the right signals,
-but a matched within-session comparison is still owed.
+counters are). Reports: `2026-11-06T16-36-57-957Z` (before), the final after-run in
+`.devshots/frame-solid/` (before → after below). **Not a matched A/B**: the before run sampled 877
+flight frames, the final run 1,090; both are the same seeded adventure route with 105 entities.
 
 | Counter | Before | After |
 |---|---|---|
-| in-flight shader links (inside a drawn frame) | 30 (5) | **8 (0)** |
-| `bufferFullUploadsPerFrame` | 6.0 | **2.2** |
-| `bufferUploadBytesPerFrame` | 140,584 | **47,473** |
+| shader links inside a drawn frame | 5 | **1** |
+| `blinks` | 0 | **0** |
 | `stuckMissing` | 100 | **0** |
-| `blinks` / `rootSwaps` / `regressions` | 0 / 1 / 0 | **0 / 0 / 0** |
-| `leftUndrawn` / late episodes | 1 / 7 (p95 2,130 ms) | **0 / 0** |
-| `pipelineHeldRoots` max | 103 | **10** |
-| `residencyPending` max | 101 | **6** |
-| `upgradePending` max | 70 | **1** |
+| `rootSwaps` / `regressions` | 1 / 0 | **0 / 0** |
+| `leftUndrawn` | 1 | **0** |
+| late episodes (p95) | 7 (2,130 ms) | **5 (249 ms)** |
+| `bufferFullUploadsPerFrame` | 6.0 | **5.1** |
+| `bufferUploadBytesPerFrame` | 140,584 | **125,862** |
 | probe verdict | FAIL | **PASS** |
 
-Live in-app check (218 entities, flight): 4,962 presented draws, 4,957 resident proof hits,
-4 inline uploads, **1 over-budget drawable held and released after 211 ms**, upload lane 2.5 ms,
-0 failures, 0 console errors. `visibleUnready` 1 — that body was already on the glass when it was
-first held, which is exactly the class predictive pre-admission is meant to drive to zero.
+Residency manager's own verdicts on the final run (printed by the probe since this commit):
 
-## Evidence limits
+```
+draws 128,854   resident 128,761   inline 51   heldDraws 42
+preAdmittedHolds 36   released 36   visibleUnready 0
+pending 0   compileFailOpen 0
+```
 
-- The probe runs above finished before a foreign in-flight edit landed: `src/data/missions.js`
-  (Lane 5, uncommitted) imports `./kesslerScaleWorksite.js`, which does not exist on disk or in
-  `HEAD`. Any boot-based verification now stalls before flight, so later captures (and the
-  `flight-look.mjs` look capture) could not be produced in this session. That is not an E6 defect
-  and must not be "fixed" in `missions.js` by Lane 3.
-- The look is unchanged by construction (no material, light, camera or geometry was touched), and
-  the probe's own draw census and `appear` counters saw the same picture; a judged capture against
-  `docs/visual-assets/LOOK.md` is still owed once the tree boots again.
+`visibleUnready` 0 and `preAdmittedHolds` 36 is the shape the campaign asked for: every drawable
+that had to wait was held **before** it was first presented, and none was taken off screen after
+having been shown.
 
 ## Open / not done in this session
 
-1. **Shader variant enumeration at build time + persistent program cache**: the mechanisms exist
-   (`KHR_parallel_shader_compile` paths, `programBinaryCache.js` installed in `renderer.js`), but
-   enumerating *every* authored variant at build time is not implemented. Not started.
-2. **`visibleUnready` is not 0 yet**: the counter counts a drawable that became visible before its
-   data existed. Closing it needs the queue to pre-resident bodies *before* they reach the glass,
-   which the prediction now enables but only for bodies that are in the build queue. Next step:
-   feed the residency queue from the predicted set, not only from refused draws.
-3. **A matched A/B is owed**: the before/after runs above differ in sample length and world size.
-   Rerun both on a quiet host with the same route and compare the same counters.
-4. **Main-thread task > 50 ms**: not measured in this session's after-state (the host was
-   saturated: 825/877 frames over 50 ms in the baseline, so a long-task claim needs a quiet host).
-   The render-side frame cost is measured in `campaigns/E7/STATUS.md` (15.75 ms `drawPreparedFrame`
-   + 8.19 ms `prepareFrame` per frame on this host) — that is E7's bar, not E6's, and it is not met.
+1. **One in-frame shader link remains** (down from five). It is a single material whose first use
+   beat its admission inside a drawn frame; the fail-open/queue path covers the rest. Next step:
+   name it from the probe's link witness and route that producer through admission.
+2. **Upload latency, not correctness:** a held drawable's p95 wait was 14.6 s of wall time on this
+   contended host (the off-screen residency pass is sliced and shares the machine with other
+   agents). On-glass holds now jump the queue, but a bound-but-off-screen root can still wait
+   seconds. The probe saw no missing entity frames, so this is a latency tail, not a hole.
+3. **Build-time shader variant enumeration** is not implemented. The measured outcome it was meant
+   to produce (no variant links inside a drawn frame) is now 1-of-41 rather than 5-of-30, from
+   program canon + admission + the always-armed compiled gate. A separate enumeration manifest is
+   not justified by the measurement yet.
+4. **Main-thread task > 50 ms** and **allocation ≤ 100 KB/frame**: not measured on a quiet host;
+   the render-side frame cost is measured in `campaigns/E7/STATUS.md`.
 5. **A deliberate contract change**: the draw guard used to leave a cold *unstamped* material alone
    (it drew and linked in-frame). It now queues every cold material, stamped or not, because the
    surviving in-frame links were exactly the unstamped VFX/plume/ribbon class. The guard test was
    updated with that reason; review it in the E6 commit.
-6. **E7** has its own diagnosis and status; see `campaigns/E7/*`.
+6. **Persistent program cache**: already present and installed (`programBinaryCache.js` →
+   IndexedDB, keyed by vendor/renderer/version, 4 MB LRU, written only from completed links). No
+   code change was needed; it is not a build-time variant enum.
+7. **E7** has its own diagnosis and status; see `campaigns/E7/*`.
