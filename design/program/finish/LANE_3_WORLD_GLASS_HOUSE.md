@@ -960,6 +960,29 @@ per save, per ending):
   left it leaning, with your name on the lean; the sandbox continuation card carries the
   line too (c4b44ae548ba).
 
+Implemented and focused-tested, wave 10 — the closing wave (INFERENCE 100 program — one
+commit each, recorded in `design/program/inference-memory.json`):
+- inf-war-digest (WF-16): docking after a week of war cites the war itself — the weekly
+  digest's fact pool (verified to contain zero conflict events) hears war declarations and
+  front flips as war facts, one story per pair, ranked above one more kill, save round trip
+  keeps the war citable (8382f7643531).
+- inf-rescue-delivery-chime (WF-13): the pod crossing the station ring answers with an
+  authored layered receiving chime — struck bell + answering fifth, positioned at the pod,
+  only on the player-attributed station delivery; the fence's ring keeps quiet; authored
+  caption for the muted floor (7c9327cf4744).
+- inf-peace-receipt (WF-16): the conflict lifecycle had no peace moment — a flip dropped the
+  pair to tense and every war reader went silent; for three sim days after factions' own
+  durable flip stamp, either house's desk names the peace (who took the lane, from whom) off
+  the existing record — no new fields, no migration; live war outranks peace news (88def8f3e759).
+Verified already true, wave 10: the war's economic footprint (stationConditions derives a
+live-war blockade on the berth's contested sector — buy ×1.2, fuel rationed to 60%, service
+chips say so), rank-ladder comms/ledger answers. Recorded, not built: a war surcharge in the
+STANDING price layer would lie (the honest route runs through economy.js quote reasons).
+
+With wave 10 the INFERENCE 100 program's row count reads 100 recorded production units
+across the three boards — every row with its own production commit, focused green suite, and
+memory entry; already-true reconciliations and owner defects carried in the inboxes above.
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
