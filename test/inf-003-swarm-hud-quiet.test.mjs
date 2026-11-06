@@ -86,7 +86,9 @@ function swarmState() {
     ui: {},
     run: {
       kind: 'survival', phase: 'active', ruleset: 'swarm', arenaId: 'helios_core',
-      wave: 3, threatBudget: 40, spawnedThreat: 40, resolvedThreat: 10,
+      // No threatBudget: an unbudgeted wave keeps the bare kill figure. A budgeted
+      // cohort without a plan or clock now reads the remaining/total census instead.
+      wave: 3, spawnedThreat: 40, resolvedThreat: 10,
       score: 1000, credits: 50, xp: 200, level: 2,
     },
   };

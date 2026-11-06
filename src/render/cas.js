@@ -1,12 +1,11 @@
-// FidelityFX Contrast Adaptive Sharpening (AQ-CAS) — sharpen-only CasFilter for frames the
-// pipeline drew below the display resolution. The canvas backing store IS the low-res frame:
-// the browser upscales it to the display, so this pass runs CasFilter with noScaling=true —
-// sharpen the buffer, let the compositor upscale. (vendor/fidelityfx-cas/README.md)
+// FidelityFX Contrast Adaptive Sharpening (AQ-CAS). Reconstruct active-resolution sRGB content
+// into the drawing buffer; equal input/output sizes use sharpen-only (the browser still owns
+// any remaining drawing-buffer-to-display upscale). vendor/fidelityfx-cas/README.md.
 //
 // The AMD headers are NOT rewritten: casHeaders.generated.js carries ffx_a.h byte-exact and
 // ffx_cas.h with exactly one documented ES3 uint-literal fix inside CasSetup (the CPU-side
-// function — see applyEs3Compat in scripts/build-cas-shader.mjs). CasSetup runs once per
-// resize on the CPU — its constants ride up as uvec4 uniforms, matching the header's
+// function — see applyEs3Compat in scripts/build-cas-shader.mjs). CasSetup runs on CPU size/scale
+// transitions — its constants ride up as uvec4 uniforms, matching the header's
 // bit-cast contract.
 import { FFX_A_H, FFX_CAS_H } from './casHeaders.generated.js';
 
@@ -15,7 +14,7 @@ export const CAS_SHARPNESS = 0;
 
 /**
  * The done-when gate: a frame drawn below the display resolution sharpens; a full-res (or
- * supersampled) frame is left alone. buffer* is the drawing-buffer size the bloom targets use;
+ * supersampled) frame is left alone. buffer* is the ACTIVE scene content size, not its pool;
  * display* is the canvas's physical pixel footprint (CSS size × devicePixelRatio).
  */
 export function resolveCasSharpenActive(bufferW, bufferH, displayW, displayH) {
@@ -24,6 +23,12 @@ export function resolveCasSharpenActive(bufferW, bufferH, displayW, displayH) {
   const dw = Math.floor(Number(displayW) || 0);
   const dh = Math.floor(Number(displayH) || 0);
   return bw > 0 && bh > 0 && (dw > bw || dh > bh);
+}
+
+/** The vendored CasSupportScaling contract: at most four times the input pixel area. */
+export function casSupportsScaling(inW, inH, outW, outH) {
+  return inW > 0 && inH > 0 && outW > 0 && outH > 0
+    && outW * outH <= 4 * inW * inH;
 }
 
 // --- CPU CasSetup --------------------------------------------------------------
@@ -61,6 +66,8 @@ export function createCasUniforms() {
     tSrc: { value: null },
     uConst0: { value: new Uint32Array(4) },
     uConst1: { value: new Uint32Array(4) },
+    uInputSize: { value: new Int32Array([1, 1]) },
+    uNoScaling: { value: true },
   };
 }
 
@@ -77,12 +84,15 @@ export function applyCasSetup(uniforms, sharpness, inW, inH, outW, outH) {
   c1[1] = floatToHalfBits(sharp) | (floatToHalfBits(0) << 16);
   c1[2] = f2u(8 * inW / outW);
   c1[3] = 0;
+  uniforms.uInputSize.value[0] = inW;
+  uniforms.uInputSize.value[1] = inH;
+  uniforms.uNoScaling.value = inW === outW && inH === outH;
 }
 
 // --- Fragment shader -------------------------------------------------------------
 // Assembly order per vendor/fidelityfx-cas/README.md: A_GPU/A_GLSL defines, ffx_a.h,
 // CasLoad (integer texelFetch, edge-clamped — the documented injection seam), no-op
-// CasInput, ffx_cas.h, then a fullscreen main() that calls CasFilter sharpen-only.
+// CasInput, ffx_cas.h, then a fullscreen main() selecting the two literal CasFilter modes.
 export const CAS_FRAG = /* glsl */`
 #define A_GPU 1
 #define A_GLSL 1
@@ -102,8 +112,10 @@ highp uint sfBitfieldInsert(highp uint v,highp uint ins,int off,int bits){
 #define bitfieldInsert sfBitfieldInsert
 ${FFX_A_H}
 uniform highp sampler2D tSrc;
+uniform highp ivec2 uInputSize;
+uniform bool uNoScaling;
 AF3 CasLoad(ASU2 p){
-  ASU2 bounds=ASU2(textureSize(tSrc,0))-ASU2(1);
+  ASU2 bounds=min(ASU2(textureSize(tSrc,0)),uInputSize)-ASU2(1);
   return texelFetch(tSrc,clamp(p,ASU2(0),bounds),0).rgb;
 }
 void CasInput(inout AF1 r,inout AF1 g,inout AF1 b){}
@@ -115,7 +127,10 @@ layout(location = 0) out highp vec4 sfCasOut;
 void main(){
   AU2 ip=AU2(ASU2(gl_FragCoord.xy));
   AF3 c=AF3(0.0,0.0,0.0);
-  CasFilter(c.r,c.g,c.b,ip,uConst0,uConst1,true);
+  // The vendor requires literal noScaling arguments. A uniform branch keeps both modes in
+  // the one admitted program: a scale transition never creates a new shader variant.
+  if(uNoScaling) CasFilter(c.r,c.g,c.b,ip,uConst0,uConst1,true);
+  else CasFilter(c.r,c.g,c.b,ip,uConst0,uConst1,false);
   sfCasOut=vec4(c,1.0);
 }
 `;

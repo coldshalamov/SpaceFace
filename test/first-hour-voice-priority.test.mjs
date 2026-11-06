@@ -23,6 +23,7 @@ import {
   isOnboardingTeaching,
   voiceArbiter,
 } from '../src/ui/voiceArbiter.js';
+import { isOnboardingTeaching as readOnboardingTeaching } from '../src/core/onboardingReadModel.js';
 
 let passes = 0;
 let failures = 0;
@@ -165,6 +166,7 @@ check('without tutorialProtect, load-bearing story still preempts tutorial (post
 });
 
 check('isOnboardingTeaching gates protection from state.onboarding', () => {
+  assert.equal(isOnboardingTeaching, readOnboardingTeaching, 'voice arbiter delegates to the canonical shared predicate');
   assert.equal(isOnboardingTeaching({ onboarding: { active: true, finished: false } }), true);
   assert.equal(isOnboardingTeaching({ onboarding: { active: false, finished: true } }), false);
   assert.equal(isOnboardingTeaching({ onboarding: { active: true, finished: true } }), false);

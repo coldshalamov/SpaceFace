@@ -523,7 +523,9 @@ export const tumbleStates = {
     const inertia = Math.max(0.1, finite(body && body.inertiaY, finite(profile.inertia, 1)));
     const currentSpin = finite(victim.angVel, 0);
     const sign = input.hitSide === -1 ? -1 : 1;
-    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
+    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 },
+      input.source === 'collision' || input.source === 'rope_whip'
+        ? { kind: 'contact_tumble_entry' } : null);
     writePhysicsControl(victim, tumbleControl(victim, 1 / 60, input.kind));
     // C10: a heavy that was mid-salvo keeps that bearing in its own frame — read before the fire
     // intent is silenced below.

@@ -24,6 +24,43 @@ function offlineSummaryReceipt(state) {
   return (meta && meta.lastOfflineReceipt) || null;
 }
 
+/**
+ * The berth keeper remembers your last visit (inf-berth-remembers). The stamps live on the
+ * persisted player berth-memory row (economy stamps only physical arrivals). The existing
+ * player serializer retains it; market refreshes never stand in for presence. A
+ * first visit, a same-day return, and a station you have never berthed at all stay quiet.
+ * Pure read.
+ */
+export function berthVisitLine(state, stationId) {
+  const memory = state && state.player && state.player.berthMemory;
+  const stationMemory = memory && memory[stationId];
+  const prior = stationMemory?.priorVisitAt;
+  const arrival = stationMemory?.visitedAt;
+  if (!Number.isFinite(prior) || !Number.isFinite(arrival) || arrival <= prior) return null;
+  const days = Math.floor((arrival - prior) / SIM_DAY_S);
+  if (days < 1) return null;
+  return days === 1
+    ? 'The berth keeper nods — you were here yesterday.'
+    : `The berth keeper nods — ${days} days since your last visit.`;
+}
+
+/**
+ * The quiet berth tells its tiny story (inf-quiet-berth). A berth with no news, no traffic,
+ * no deed and no rumor is where the world breathes out, and the card speaks the one true
+ * thing a quiet place can say — whether its boards have moved since you last read them.
+ * Reads the arrival comparison recorded by the economy owner. Pure read.
+ */
+export function quietBerthLine(state, stationId) {
+  const memory = state && state.player && state.player.berthMemory;
+  const board = memory?.[stationId]?.berthBoard;
+  if (!board || !Number.isFinite(board.arrivalAt) || !Number.isFinite(board.observedAt)) return null;
+  const days = Math.floor(Math.max(0, board.arrivalAt - board.observedAt) / SIM_DAY_S);
+  const ago = days >= 1 ? (days === 1 ? ', a day ago' : `, ${days} days ago`) : '';
+  return board.moved
+    ? `Quiet berth — prices have crept since you last read these boards${ago}.`
+    : `Quiet berth — the boards have not moved since you last read them${ago}.`;
+}
+
 /** TEACH-07 — one line for a loaded save older than a sim day. A fresh save stays quiet. */
 export function returningPilotLine(state) {
   const ui = state && state.ui;
@@ -555,6 +592,9 @@ export function buildDockArrival(state = {}, station = {}) {
   const news = rumor || localNews(state, stationId) || localDeedLine(state);
   const route = leftoverRouteLine(state, stationId);
   const traffic = localTraffic(state, stationId) || route;
+  // A berth with nothing to say still says one true thing (inf-quiet-berth) — but only when
+  // the world's louder voices (rumor, news, deed, traffic) are all silent here.
+  const quietLine = (news || traffic) ? null : quietBerthLine(state, stationId);
   const paperwork = paperworkFor(state, station);
   const factionBerth = factionBerthStatusLine(state, stationId);
   const homeCard = stationId === LONG_BERTH_STATION_ID ? longBerthHomeCard(state) : null;
@@ -586,12 +626,15 @@ export function buildDockArrival(state = {}, station = {}) {
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
   const berthLine = [yardBerthLine(state, stationId), factionBerth].filter(Boolean).join(' ') || null;
   const returnSummary = returningPilotLine(state);
+  const visitLine = berthVisitLine(state, stationId);
   const digest = weeklyDigestLine(state);
   const hull = activeHullIdentity(state);
   // serviceNotice rides position 4: the seven-line slice must never spend the berth's
   // missing-refuel/repair warning on flavor cards. A station with news, traffic and
-  // paperwork still shows it; patch/ledger/mechanic dressing falls off first.
-  const lines = [action.label, berthLine, returnSummary, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  // paperwork still shows it; patch/ledger/mechanic dressing falls off first. The visit
+  // memory rides beside the return summary — both are recognition, and a keeper who
+  // remembers you outranks the weekly digest.
+  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, quietLine, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -600,9 +643,11 @@ export function buildDockArrival(state = {}, station = {}) {
     primaryAction: action.label,
     primaryTarget: action.target,
     returnSummary,
+    visitLine,
     digest,
     digestLine: digest,
     news,
+    quietLine,
     eventCard,
     rumor,
     patch: patchText,

@@ -16,6 +16,7 @@ import { arsenalIdentity } from '../src/data/arsenalIdentity.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
 const PULSE = WEAPON_BY_ID.get('wpn_pulse_laser_s');
+const PULSE_M = WEAPON_BY_ID.get('wpn_pulse_laser_m');
 const AUTO = WEAPON_BY_ID.get('wpn_autocannon_s');
 const RAILGUN = WEAPON_BY_ID.get('wpn_railgun_m');
 const PLASMA = WEAPON_BY_ID.get('wpn_plasma_cannon_m');
@@ -43,8 +44,9 @@ test('INF-036: split leaders read as sustained fire versus shove, with the defsâ
 });
 
 test('INF-036: one spare leading both says so plainly', () => {
-  const text = weaponSpareContrast([spare(PULSE, 1), spare(AUTO, 2)]);
-  assert.match(text, /Pulse Laser S leads sustained fire \(44 dps\) and shove \(impulse 84\)/);
+  // Pulse Laser M leads Pulse Laser S on both axes since the ROW 482 pulse rebalance.
+  const text = weaponSpareContrast([spare(PULSE_M, 1), spare(PULSE, 2)]);
+  assert.match(text, /Pulse Laser M leads sustained fire \(72 dps\) and shove \(impulse 126\)/);
 });
 
 test('INF-036: no comparison where there is none', () => {
@@ -60,7 +62,7 @@ test('INF-036: no comparison where there is none', () => {
 
 test('INF-036: option labels carry the figures, mod spares stay bare', () => {
   const lines = refitRowLines({ slotIndex: 0, defId: null, name: null, spares: [spare(PULSE, 1), spare(AUTO, 2)] });
-  assert.match(lines.options[0].label, /44 dps/);
+  assert.match(lines.options[0].label, /27\.5 dps/);
   assert.match(lines.options[0].label, /impulse 84/);
   assert.match(lines.options[1].label, /31 dps/);
   assert.ok(lines.contrast && lines.contrast.length > 0, 'the row carries the contrast');

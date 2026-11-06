@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f622d318b419b12a9670b9f91425caa72f120967dce2c87a66b7ea4fbc391478",
+  "contentHash": "96c21293a4d9da4a8bf2e69ae21b1727307daa7a38f1069edd6654e0d1390c9b",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-jackal.node.lod0-hook-drive-core.dynamic",
@@ -4913,8 +4913,8 @@
       "uri": "swarm_jackal.glb"
     },
     "sourceManifest": {
-      "bytes": 325299,
-      "sha256": "3091bd01391db3916893912846619f7a7f925d4851afea4f6827956f31d0911d",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
@@ -7973,7 +7973,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_jackal.glb"
   },
-  "runtimeHash": "4c8c15946f18d9720a4e5a41f455cf1f6012e6686028334d335cca3ffda632bc",
+  "runtimeHash": "228007aec5601d7bb006be9d835c416d15cef3c34286dc3aa4ddb26c24ff1b83",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

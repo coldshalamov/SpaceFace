@@ -30,7 +30,10 @@ async function triangles(file){
  await doc.transform(dequantize());
  const tiers=[[],[],[]];
  for(const node of doc.getRoot().listNodes()){
-  const match=/^LOD([012])_/.exec(node.getName());if(!match||!node.getMesh()||node.getExtras().nonRender===true)continue;
+  if(!node.getMesh()||node.getExtras().nonRender===true)continue;
+  let parent=node,match=null;
+  while(parent&&!match){match=/^LOD([012])_/.exec(parent.getName());parent=parent.getParentNode();}
+  if(!match)continue;
   const m=node.getWorldMatrix();
   for(const p of node.getMesh().listPrimitives()){
    const attr=p.getAttribute('POSITION'),indices=p.getIndices();
@@ -76,11 +79,15 @@ test('one keeper visibility group remains unpooled and independent at all pipeli
   for(const lod of [0,1,2]){
    const group=keepers.filter(n=>n.getName().startsWith(`LOD${lod}_`));
    assert.equal(group.length,3);
-   const triangleCount=group.flatMap(n=>n.getMesh().listPrimitives())
+   const meshes = group.flatMap(n => { const found=[]; const walk=node=>{
+    if(node.getMesh())found.push(node.getMesh());for(const child of node.listChildren())walk(child);
+   };walk(n);return found; });
+   const triangleCount=meshes.flatMap(mesh=>mesh.listPrimitives())
     .reduce((sum,p)=>sum+(p.getIndices()?.getCount()||p.getAttribute('POSITION').getCount())/3,0);
    assert.ok(triangleCount<=[880,240,80][lod],`${stage}: LOD${lod} keeper detail budget: ${triangleCount}`);
    for(const n of group){
-    assert.ok(n.getMesh(),`${stage}: real keeper geometry`);
+    const hasMesh=node=>!!node.getMesh()||node.listChildren().some(hasMesh);
+    assert.ok(hasMesh(n),`${stage}: real keeper geometry`);
     assert.equal(n.getExtras().spaceface?.instance,false,`${stage}: keeper must not enter shared opaque instance pools`);
     assert.ok(!n.getParentNode()?.getName().startsWith('MOTION_'),'Fixed keeper has no actuator');
    }

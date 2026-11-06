@@ -36,7 +36,7 @@ import {
   sharedPlayerStoreCapability,
 } from '../save/sharedPlayerStore.js';
 import { loadCrucibleMeta, recordKey } from './survivalRecords.js';
-import { isOnboardingTeaching } from '../ui/voiceArbiter.js';
+import { isOnboardingTeaching } from '../core/onboardingReadModel.js';
 
 export const ACHIEVEMENTS_FMT = 'spaceface-achievements';
 export const ACHIEVEMENTS_SCHEMA_VERSION = 1;

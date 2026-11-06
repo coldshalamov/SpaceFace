@@ -47,6 +47,10 @@ function parseArgs(argv = process.argv.slice(2)) {
     const value = argv[index];
     if (value === '--out') args.out = argv[++index];
     else if (value === '--flight-timeout-ms') args.flightTimeoutMs = Number(argv[++index]);
+    else if (value === '--load-timeout-ms') {
+      args.loadTimeoutMs = Number(argv[++index]);
+      if (!Number.isSafeInteger(args.loadTimeoutMs) || args.loadTimeoutMs <= 0) throw new Error('--load-timeout-ms must be a positive integer');
+    }
     else if (value === '--task-id') args.taskId = String(argv[++index] || TASK_ID);
     else if (value === '--attribute-delete-errors') args.attributeDeleteErrors = true;
     else if (value === '--public-save-load-before-context') args.publicSaveLoadBeforeContext = true;
@@ -107,6 +111,17 @@ function compactIssues(issues, phaseWindows = []) {
     phase: issue?.phase || phaseForIssue(issue?.at, phaseWindows),
     location: issue?.location || null,
     text: String(issue?.text || '').slice(0, 500),
+    ...((issue?.networkProvenance?.url || issue?.text || '').includes('/__spaceface_player_store') ? {
+      networkProvenance: issue.networkProvenance ? {
+        source: issue.networkProvenance.source || null,
+        method: issue.networkProvenance.method || null,
+        methodSource: issue.networkProvenance.methodSource || null,
+        requestId: issue.networkProvenance.requestId || null,
+        status: Number.isFinite(issue.networkProvenance.status) ? issue.networkProvenance.status : null,
+        cdpRequestCandidateCount: Number.isFinite(issue.networkProvenance.cdpRequestCandidateCount)
+          ? issue.networkProvenance.cdpRequestCandidateCount : null,
+      } : null,
+    } : {}),
   }));
 }
 
@@ -168,6 +183,7 @@ function compactPageState(state) {
       } : null,
     } : null,
     authoredReady: state.authoredReady === true,
+    submissionGates: state.submissionGates || null,
     opening: state.opening ? {
       firstPictureReady: state.opening.firstPictureReady === true,
       firstPlayableFrameAt: Number.isFinite(state.opening.firstPlayableFrameAt)
@@ -209,6 +225,12 @@ async function readPageState(page) {
       || state?.entityList?.find?.((entity) => entity?.id === state.playerId);
     const recovery = state?.render?.contextRecovery || state?.contextRecovery || null;
     const renderer = state?.render?.renderer || null;
+    let owner = null;
+    try { owner = sf?.registry?.get?.('render') || null; } catch (_) { /* unavailable during teardown */ }
+    const count = fn => { try { const value = fn?.(); return Number.isFinite(value) ? value : null; } catch (_) { return null; } };
+    const bool = value => typeof value === 'boolean' ? value : null;
+    let glContextLost = null;
+    try { const gl = renderer?.getContext?.(); if (typeof gl?.isContextLost === 'function') glContextLost = !!gl.isContextLost(); } catch (_) { /* unavailable */ }
     let loop = null;
     try { loop = sf?.loop?.getDiagnostics?.() || null; } catch (_) { /* loop may already be closed */ }
     let authoredReady = false;
@@ -230,6 +252,26 @@ async function readPageState(page) {
         pos: { x: Number(player.pos?.x || 0), z: Number(player.pos?.z || 0) },
       } : null,
       authoredReady,
+      submissionGates: {
+        renderOwnerAvailable: !!owner,
+        worldSubmittedFrames: Number.isFinite(state?.render?.worldSubmittedFrames) ? state.render.worldSubmittedFrames : null,
+        sectorShellAdmission: bool(state?.render?.sectorShellAdmission),
+        blackout: bool(state?.ui?.fulfillmentBlackoutActive),
+        ownerContextLost: bool(owner?._contextLost),
+        glContextLost,
+        environmentVariantPending: bool(owner?._environmentVariantAdmissionPending),
+        environmentTargetKey: owner?._environmentVariantAdmissionTargetKey || null,
+        environmentReadyKey: owner?._environmentVariantAdmissionEnvKey || null,
+        firstPresentGpuReady: bool(owner?._firstPresentGpuReady),
+        pendingPipelineAdmissions: count(state?.render?.pendingPipelineAdmissions),
+        pendingAuthoredResidency: count(state?.render?.pendingAuthoredGpuResidency),
+        exactTouchActive: bool(renderer?.__sfExactTargetTouch),
+        programCount: Array.isArray(renderer?.info?.programs) ? renderer.info.programs.length : null,
+        lifecycle: (() => { try { return sf?.loop?.getLifecycleState?.() || null; } catch (_) { return null; } })(),
+        suspended: (() => { try { return sf?.loop?.isSuspended?.() ?? null; } catch (_) { return null; } })(),
+        visibility: document.visibilityState,
+        focused: document.hasFocus(),
+      },
       opening: state?.render ? {
         firstPictureReady: state.render.openingFirstPictureReady === true,
         firstPlayableFrameAt: Number.isFinite(state.render.firstPlayableFrameAt)
@@ -279,6 +321,26 @@ async function readPageState(page) {
   }).then(compactPageState);
 }
 
+async function readAuthoredStaging(page) {
+  return Promise.race([page.evaluate(async () => {
+    let readiness = null, queue = null;
+    try {
+      const r = window.SF?.authoredVisualReadiness?.();
+      if (r) readiness = { pipelineReady: r.pipelineReady, ready: r.ready,
+        playerId: r.playerId ?? null, playerStatus: r.playerStatus ?? null,
+        startingHubId: r.startingHubId ?? null, startingHubStatus: r.startingHubStatus ?? null,
+        flightReadyBlockers: (r.flightReadyBlockers || []).slice(0, 12),
+        openingPipelinePending: (r.openingPipelinePending || []).slice(0, 12),
+        openingPipelinePendingCount: r.openingPipelinePending?.length ?? null };
+    } catch (_) { /* report unavailable */ }
+    try {
+      const { describeAuthoredUpgradeQueue } = await import('/src/render/partsLibrary.js');
+      queue = describeAuthoredUpgradeQueue(window.SF?.state?.render?.scene);
+    } catch (_) { /* report unavailable */ }
+    return { readiness, queue };
+  }).catch(() => null), new Promise(resolve => setTimeout(() => resolve(null), 5_000))]);
+}
+
 export function releasedPlayableFlightInPage({ minimumTick = null, minimumSimTime = null } = {}) {
   const sf = window.SF;
   const state = sf?.state;
@@ -317,6 +379,7 @@ async function runPublicSaveLoadBeforeContext(page, {
   loadTimeoutMs = 120_000,
   flightTimeoutMs = 240_000,
   flightBeforeSaveSeconds = 0,
+  onStagingSample = null,
 } = {}) {
   const flightDeadline = Date.now() + flightTimeoutMs;
   const startupFlight = await readPageState(page);
@@ -376,11 +439,18 @@ async function runPublicSaveLoadBeforeContext(page, {
     tick: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedTick) || 0,
     simTime: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedSimTime) || 0,
   }));
-  const releasedAfterLoad = await waitForReleasedPlayableFlight(page, {
-    deadline: loadDeadline,
-    minimumTick: loaded.tick + 2,
-    minimumSimTime: loaded.simTime + (2 / 60),
-  });
+  let sampling = false;
+  const sampleTimer = typeof onStagingSample === 'function' ? setInterval(async () => {
+    if (sampling) return;
+    sampling = true;
+    try { onStagingSample(await readAuthoredStaging(page)); } finally { sampling = false; }
+  }, 60_000) : null;
+  let releasedAfterLoad;
+  try {
+    releasedAfterLoad = await waitForReleasedPlayableFlight(page, {
+      deadline: loadDeadline, minimumTick: loaded.tick + 2, minimumSimTime: loaded.simTime + (2 / 60),
+    });
+  } finally { if (sampleTimer) clearInterval(sampleTimer); }
   const after = releasedAfterLoad;
   if (after?.mode !== 'flight' || after?.authoredReady !== true || after?.docked === true) {
     throw new Error(`public F5/F9 trigger did not leave authored active flight: ${JSON.stringify(after)}`);
@@ -468,6 +538,7 @@ export function buildContextRecoveryReceipt({
       rootUrl: runtime.rootUrl || null,
       pid: Number.isInteger(Number(runtime.pid)) ? Number(runtime.pid) : null,
       isolated: runtime.isolated === true,
+      playerStoreObservations: Array.isArray(runtime.playerStoreObservations) ? runtime.playerStoreObservations.slice(-16) : [],
     },
     preRecovery,
     postRecovery,
@@ -516,6 +587,7 @@ export async function runContextRecoveryElectronDiagnostic({
   publicSaveLoadBeforeContext = false,
   bufferResizeDiagnosticEnabled = process.env.SF_BUFFER_RESIZE_DIAG === '1',
   flightBeforeSaveSeconds = 0,
+  loadTimeoutMs = 120_000,
 } = {}) {
   if (!Number.isInteger(flightBeforeSaveSeconds) || flightBeforeSaveSeconds < 0 || flightBeforeSaveSeconds > 600) {
     throw new RangeError('flightBeforeSaveSeconds must be an integer in [0, 600]');
@@ -548,6 +620,7 @@ export async function runContextRecoveryElectronDiagnostic({
   let canonicalUrlTracker = null;
   let processMonitor = null;
   let pageIssueTracker = null;
+  const playerStoreObservations = [];
   let rootUrl = null;
   let primaryError = null;
   let routeSnapshot = null;
@@ -621,6 +694,21 @@ export async function runContextRecoveryElectronDiagnostic({
     });
 
     page = await electronApp.firstWindow({ timeout: 90_000 });
+    page.on('response', response => {
+      try {
+        const url = new URL(response.url());
+        if (url.pathname !== '/__spaceface_player_store' || playerStoreObservations.length >= 16) return;
+        let method = null;
+        try { const request = response.request?.(); method = typeof request?.method === 'function' ? request.method() : null; }
+        catch (_) { /* method remains unknown */ }
+        let pageOrigin = null;
+        try { pageOrigin = new URL(page.url()).origin; } catch (_) { /* navigation not yet committed */ }
+        playerStoreObservations.push({ kind: 'response', method: method || null,
+          status: response.status(), origin: url.origin, pageOrigin,
+          sameOrigin: pageOrigin ? url.origin === pageOrigin : null });
+      } catch (_) { /* retain only directly observed, parseable endpoint responses */ }
+    });
+    await pageIssueTracker.bindNetworkProvenance(page);
     await pageIssueTracker.bindAndBackfillPage(page);
     page.on('console', postTeardownConsoleHandler);
     electronApp.on?.('console', postTeardownConsoleHandler);
@@ -660,6 +748,8 @@ export async function runContextRecoveryElectronDiagnostic({
       publicSaveLoadResult = await runPublicSaveLoadBeforeContext(page, {
         flightTimeoutMs,
         flightBeforeSaveSeconds,
+        loadTimeoutMs,
+        onStagingSample: staging => mark('f9-staging-sample', { staging }),
       });
       mark('public-f5-f9-complete', {
         saves: publicSaveLoadResult.events.saves,
@@ -757,6 +847,10 @@ export async function runContextRecoveryElectronDiagnostic({
   } finally {
     if (page && !page.isClosed()) {
       preRecovery ||= await readPageState(page).catch(() => null);
+      if (primaryError) {
+        if (preRecovery) preRecovery.authoredStaging = await readAuthoredStaging(page);
+        await page.screenshot({ path: path.join(resolvedOutputDir, 'failure.png'), timeout: 5_000 }).catch(() => {});
+      }
       if (liveGlDeleteTrap == null) {
         liveGlDeleteTrap = await readGlDeleteTrap(page).catch(() => null);
         liveGlDeleteTrapCapture = {
@@ -813,7 +907,7 @@ export async function runContextRecoveryElectronDiagnostic({
       pageIssues: issues,
       phaseWindows,
       milestones,
-      runtime: { rootUrl, pid: childProcess?.pid ?? null, isolated: true },
+      runtime: { rootUrl, pid: childProcess?.pid ?? null, isolated: true, playerStoreObservations },
     });
     try {
       await writeJsonAtomic(receiptPath, receipt);
@@ -848,7 +942,7 @@ function isEntrypoint() {
 if (isEntrypoint()) {
   const args = parseArgs();
   if (args.help) {
-    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors] [--public-save-load-before-context] [--flight-before-save-seconds N]');
+    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--load-timeout-ms N] [--task-id ID] [--attribute-delete-errors] [--public-save-load-before-context] [--flight-before-save-seconds N]');
   } else {
     const report = await runContextRecoveryElectronDiagnostic({
       outputDir: args.out ? path.resolve(ROOT, args.out) : undefined,
@@ -856,6 +950,7 @@ if (isEntrypoint()) {
       flightTimeoutMs: positiveInteger(args.flightTimeoutMs, positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000)),
       attributeDeleteErrors: args.attributeDeleteErrors === true,
       publicSaveLoadBeforeContext: args.publicSaveLoadBeforeContext === true,
+      loadTimeoutMs: positiveInteger(args.loadTimeoutMs, 120_000),
       flightBeforeSaveSeconds: Number.isInteger(args.flightBeforeSaveSeconds) ? args.flightBeforeSaveSeconds : 0,
     });
     if (report.pass !== true) process.exitCode = 1;

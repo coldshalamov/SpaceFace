@@ -1,19 +1,14 @@
-// Stable Swarm specialist vocabulary. All timings are integer ticks at 60 Hz.
-export const SWARM_SPECIALIST_ENEMY_IDS = Object.freeze({
-  WARDEN: 'warden_escort', JACKAL: 'mine_layer_jackal', ANCHOR: 'field_anchor_controller',
-});
-
+// Swarm-only counterplay tuning. Timings are 60 Hz simulation ticks.
 export const SWARM_SPECIALIST_TUNING = Object.freeze({
   warden: Object.freeze({ linkRange: 300, linkMaxEnergy: 92, redirectFraction: 0.4,
     windupTicks: 30, activeTicks: 180, recoveryTicks: 90 }),
   jackal: Object.freeze({ windupTicks: 30, activeTicks: 70, recoveryTicks: 45,
-    salvoCount: 3, salvoSpacingTicks: 18, mineCap: 3, cooldownTicks: 360,
+    salvoCount: 3, salvoSpacingTicks: 18, salvoSpacingWU: 34, mineCap: 3, cooldownTicks: 360,
     armDelayTicks: 90, lifetimeTicks: 720, triggerRadius: 52, blastDamage: 34, mineHull: 24 }),
   anchor: Object.freeze({ windupTicks: 30, activeTicks: 180, recoveryTicks: 75,
     recoveryMaxTicks: 200, interruptDisplacement: 36, activeRadius: 220, activeStrength: 88 }),
 });
 
-export const SWARM_SPECIALIST_PHASES = Object.freeze(new Set(['idle', 'windup', 'active', 'recovery']));
 export const SWARM_SPECIALIST_BRIEFS = Object.freeze({
   warden_escort: Object.freeze({
     name: 'Warden Escort',
@@ -28,19 +23,45 @@ export const SWARM_SPECIALIST_BRIEFS = Object.freeze({
   field_anchor_controller: Object.freeze({
     name: 'Anchor Controller',
     threat: 'A field spool precedes one short snare cycle; its field drops while the hull recovers.',
-    counter: 'Displace the hull during its spool or while the field is active, then fight while it is down or stay outside the ring.',
+    counter: 'Displace the hull during its spool or active field, then attack while the field is down or stay outside the ring.',
   }),
 });
 
 export function isSwarmSpecialistRun(state) {
   const run = state?.run;
-  return !!(run?.kind === 'survival' && run.ruleset === 'swarm'
-    && run.phase !== 'inactive' && run.phase !== 'ended');
+  return run?.kind === 'survival' && run.ruleset === 'swarm'
+    && run.phase !== 'inactive' && run.phase !== 'ended';
 }
 
 export function swarmSpecialistKind(enemyId) {
-  if (enemyId === SWARM_SPECIALIST_ENEMY_IDS.WARDEN) return 'warden';
-  if (enemyId === SWARM_SPECIALIST_ENEMY_IDS.JACKAL) return 'jackal';
-  if (enemyId === SWARM_SPECIALIST_ENEMY_IDS.ANCHOR) return 'anchor';
+  if (enemyId === 'warden_escort') return 'warden';
+  if (enemyId === 'mine_layer_jackal') return 'jackal';
+  if (enemyId === 'field_anchor_controller') return 'anchor';
   return null;
+}
+
+export function swarmSpecialistBriefForEnemy(enemyId) {
+  const kind = swarmSpecialistKind(enemyId);
+  const key = kind === 'warden' ? 'warden_escort'
+    : kind === 'jackal' ? 'mine_layer_jackal'
+      : kind === 'anchor' ? 'field_anchor_controller' : null;
+  return key ? SWARM_SPECIALIST_BRIEFS[key] : null;
+}
+
+/** Freeze a mine-lane at the wake cue so later drops do not track a moving target. */
+export function swarmMineWakeSalvoLayout(entity, count = SWARM_SPECIALIST_TUNING.jackal.salvoCount) {
+  if (!entity?.pos || !Number.isInteger(count) || count <= 0) return [];
+  const vx = Number.isFinite(entity.vel?.x) ? entity.vel.x : 0;
+  const vz = Number.isFinite(entity.vel?.z) ? entity.vel.z : 0;
+  const speed = Math.hypot(vx, vz);
+  const dx = speed > 1 ? vx / speed : Math.cos(Number.isFinite(entity.rot) ? entity.rot : 0);
+  const dz = speed > 1 ? vz / speed : Math.sin(Number.isFinite(entity.rot) ? entity.rot : 0);
+  const side = -dz * (String(entity.id).length % 2 ? 1 : -1);
+  const sideZ = dx * (String(entity.id).length % 2 ? 1 : -1);
+  const standoff = Math.max(8, Number.isFinite(entity.radius) ? entity.radius + 10 : 18);
+  const spacing = SWARM_SPECIALIST_TUNING.jackal.salvoSpacingWU;
+  return Array.from({ length: count }, (_, index) => ({
+    x: entity.pos.x - dx * (standoff + index * spacing) + side * 28,
+    z: entity.pos.z - dz * (standoff + index * spacing) + sideZ * 28,
+  }));
 }

@@ -94,7 +94,8 @@ test('the actual intro DOM predicate keeps an unrelated root confirmation blocki
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
   closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
-  supersedeOnPlay = false, cinematicAriaModal = false, conditionReturn = 'handle',
+  supersedeOnPlay = false, delayedPromptOpening = false, replacementDuringOpeningWait = false,
+  cinematicAriaModal = false, conditionReturn = 'handle',
   dismissSplashOnPromptCleanup = false } = {}) {
   const clicks = [], events = [];
   const locatorClicks = [], mouseClicks = [];
@@ -173,7 +174,8 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
         const excludesCinematic = String(fn).includes("node.id === 'cinematic-splash'");
         return { splashVisible, firstLightVisible: active && title.trim() === 'First light',
           firstLightDialogPresent: dialogPresent && !otherDialogTitle,
-          otherModalActive: !!otherDialogTitle || (modalFence && !active) || (cinematicAriaModal && !excludesCinematic),
+          otherModalActive: !!otherDialogTitle || (modalFence && !active && (!dialogPresent || !!otherDialogTitle))
+            || (cinematicAriaModal && !excludesCinematic),
           otherModalTitle: otherDialogTitle || null };
       }
       if (String(fn).includes('dialogPresent')) return {
@@ -200,7 +202,7 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       assert.equal(key, 'Space', 'intro dismissal uses the public Space input');
       spacePresses++;
       if (promptAfterFirstSpace && spacePresses === 1) {
-        active = true;
+        active = !delayedPromptOpening;
         dialogPresent = true;
         modalFence = true;
       }
@@ -210,9 +212,18 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       if (String(fn).includes('cinematic-splash')) {
         if (cinematicAriaModal) assert.ok(String(fn).includes("node.id === 'cinematic-splash'"),
           'the intro dialog is excluded from unrelated-modal checks');
-        assert.ok(!splashVisible || (active && title.trim() === 'First light'),
+        assert.ok(!splashVisible || dialogPresent || (active && title.trim() === 'First light') || otherDialogTitle,
           'intro polling wakes when Space dismisses the splash or First light interrupts it');
         return true;
+      } else if (String(fn).includes("root.classList.contains('sf-confirm--in')")) {
+        if (replacementDuringOpeningWait) {
+          otherDialogTitle = 'Confirm purchase';
+          return conditionValue({ superseded: true, title: otherDialogTitle });
+        }
+        assert.equal(dialogPresent, true, 'the First light dialog is mounted while its opening frame is pending');
+        assert.equal(active, false, 'the entrance class has not been applied yet');
+        active = true;
+        return conditionValue({ opened: true });
       } else if (String(fn).includes('_sfConfirmToken')) {
         assert.equal(active, false, 'the First light entrance class has already been removed');
         assert.equal(dialogPresent, true, 'the old dialog remains in the DOM during delayed cleanup');
@@ -329,6 +340,26 @@ test('a late First light interrupts intro Space, is answered, then intro receive
   assert.equal(f.handleJsonCalls, 0, 'the CSP-safe raw value is consumed without a Playwright JSHandle');
   assert.equal(f.events.at(-1)[0], 'intro-dismissed');
   assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
+});
+
+test('a mounted First light is observed through its delayed opening frame before it is answered', async () => {
+  const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true,
+    delayedPromptOpening: true, conditionReturn: 'raw' });
+  await f.install();
+  const result = await f.dismissIntro();
+  assert.deepEqual(result, { shown: true, spacePresses: 2, promptAnswers: 1 });
+  assert.deepEqual(f.clicks, ['Play']);
+  assert.equal(f.otherDialogTitle, '', 'the expected First light prompt remains the dialog owner');
+});
+
+test('a replacement modal during the First light opening wait blocks any further intro Space', async () => {
+  const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true,
+    delayedPromptOpening: true, replacementDuringOpeningWait: true, conditionReturn: 'raw' });
+  await f.install();
+  await assert.rejects(f.dismissIntro(), /First light was superseded.*Confirm purchase/);
+  assert.equal(f.spacePresses, 1, 'no Space reaches the replacement confirmation');
+  assert.deepEqual(f.clicks, [], 'the unrelated replacement is preserved without interaction');
+  assert.equal(f.otherDialogTitle, 'Confirm purchase');
 });
 
 test('intro cleanup finishing at the deadline is judged from a fresh visible-splash sample', async () => {

@@ -84,6 +84,7 @@ import { faction as MTS } from '../data/factions/mts.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const SPINE = (MTS.custom && MTS.custom.cargoSpine) || {};
 const TICKER = (MTS.custom && MTS.custom.hullTicker) || {};
@@ -545,6 +546,45 @@ export const factionMeridian = {
       { tick: state.tick, provenance: 'meridian_steer' });
   },
 
+  _tickMissionSpineFollowers(state, spines) {
+    // Reuse the groups already built for the coupler law. Ordinary frames have no
+    // mission train and must not pay for another whole-world entity scan.
+    for (const members of spines.values()) {
+      const tug = members[0];
+      const td = tug && tug.data;
+      if (!tug || tug.alive === false || !td || td.spineBreakTug !== true
+          || td.spineBreakMissionId == null || !td.spineId
+          || !Number.isInteger(td.spineBreakAttempt)) continue;
+      const followers = members.filter((e) => {
+        const d = e && e.data;
+        return e && e.alive !== false && e.type === 'payload' && d
+          && d.spineBreakContainer === true
+          && d.meridianMissionOwnedCargo === true
+          && String(d.spineBreakMissionId) === String(td.spineBreakMissionId)
+          && d.spineBreakAttempt === td.spineBreakAttempt
+          && d.spineId === td.spineId && d.spineLoose !== true
+          && d.spineBreakTugId === tug.id
+          && d.spineBreakTugGeneration === (tug.occupantGeneration ?? null)
+          && state.entities?.get(e.id) === e;
+      }).sort((a, b) => a.data.spineIndex - b.data.spineIndex);
+      const vel = tug.vel || { x: 0, z: 0 };
+      const speed = Math.hypot(num(vel.x), num(vel.z));
+      const heading = speed > 0.5
+        ? Math.atan2(num(vel.z), num(vel.x))
+        : num(tug.rot);
+      const ux = Math.cos(heading), uz = Math.sin(heading);
+      let previous = tug;
+      for (const body of followers) {
+        const slot = {
+          x: num(previous.pos && previous.pos.x) - ux * LINK_GAP,
+          z: num(previous.pos && previous.pos.z) - uz * LINK_GAP,
+        };
+        this._steerTo(state, body, slot, MERIDIAN_CONVOY.followSpeed);
+        previous = body;
+      }
+    }
+  },
+
   /** Live MTS exchange stations — transient, rebuilt each tick, never cached. */
   _desks(state, entities) {
     const out = [];
@@ -705,14 +745,31 @@ export const factionMeridian = {
     // joint closes behind it. The lead of a dead spine can never re-head a train.
     const tails = new Map();
     for (const [spineId, members] of spines) {
-      if (!members.length) continue;
-      tails.set(spineId, members[members.length - 1]);
+      // The break pass above mutates members but leaves them in this tick's group.
+      // Only a still-linked tail behind a live head can receive loose freight.
+      if (!members.length || members[0].data.spineIndex !== 0) continue;
+      for (let i = members.length - 1; i >= 0; i--) {
+        const member = members[i];
+        if (member.data.spineLoose !== true && member.data.spineId === spineId) {
+          tails.set(spineId, member);
+          break;
+        }
+      }
     }
     for (const body of loose) {
       const d = body.data || (body.data = {});
       let best = null, bestId = null, bestD2 = RECOUPLE_WU * RECOUPLE_WU;
       for (const [spineId, tail] of tails) {
         if (tail === body || tail.alive === false) continue;
+        if (d.meridianMissionOwnedCargo === true && d.spineBreakMissionId != null) {
+          const members = spines.get(spineId) || [];
+          const lead = members.find((member) => member && member.data?.spineIndex === 0);
+          if (spineId !== d.lostFromSpineId || !lead || lead.data?.spineBreakTug !== true
+              || String(lead.data.spineBreakMissionId) !== String(d.spineBreakMissionId)
+              || lead.data.spineBreakAttempt !== d.spineBreakAttempt
+              || lead.id !== d.spineBreakTugId
+              || (lead.occupantGeneration ?? null) !== d.spineBreakTugGeneration) continue;
+        }
         const dx = body.pos.x - tail.pos.x, dz = body.pos.z - tail.pos.z;
         const d2 = dx * dx + dz * dz;
         if (d2 < bestD2) { bestD2 = d2; best = tail; bestId = spineId; }
@@ -730,6 +787,13 @@ export const factionMeridian = {
       // The just-linked body is the new tail — chain re-couples in one pass, no stall.
       tails.set(bestId, body);
     }
+
+    // Book 4's authored spine is mission-owned, but it still uses Meridian's physical
+    // coupler law. Keep linked boxes behind their exact tug with the same queued-impulse
+    // steering used by registered ambient convoys. It deliberately does not create a
+    // `mer.convoys` row, so no ambient convoy bounty, escort payment, or ledger settlement
+    // can attach to the mission cast.
+    this._tickMissionSpineFollowers(state, spines);
 
     // ── 3. hull tickers count a drifting container down ───────────────────────────────
     for (const e of entities) {
@@ -757,12 +821,15 @@ export const factionMeridian = {
     }
 
     // ── the exchange ledger ──────────────────────────────────────────────────────────
+    // Ledger work is simTime-stamped bookkeeping: 15 Hz with the accumulated step.
+    const ledgerStep = strideDt(this, 'ledger', step, 4, state);
+    if (ledgerStep <= 0) return;
     const desks = this._desks(state, entities);
     this._tickContracts(state, mer, desks, now);
     this._tickClaims(state, mer, desks, loose, now);
-    this._tickConvoys(state, mer, desks, step, now);
+    this._tickConvoys(state, mer, desks, ledgerStep, now);
     this._tickWarrants(state, mer, now);
-    this._tickAccount(state, mer, step, now);
+    this._tickAccount(state, mer, ledgerStep, now);
   },
 
   // ── manifest contracts ─────────────────────────────────────────────────────
@@ -939,6 +1006,7 @@ export const factionMeridian = {
   _postClaim(state, mer, box, now) {
     const d = box && box.data;
     if (!d || d.meridianClaimId != null) return null;
+    if (d.meridianMissionOwnedCargo === true) return null;
     if (d.meridianClaimedOut === true) return null; // written off — the syndicate lets it drift
     if (!Number.isFinite(d.cargoValueCr) || d.encounterId != null) return null;
     if (this._openClaimCount(mer) >= MERIDIAN_RECOVERY.maxOpen) return null;
@@ -975,6 +1043,11 @@ export const factionMeridian = {
     for (const cl of mer.claims) {
       if (cl.state !== 'open') continue;
       const box = entOf(state, cl.boxId);
+      if (box && box.data && box.data.meridianMissionOwnedCargo === true) {
+        if (box.data.meridianClaimId === cl.id) box.data.meridianClaimId = null;
+        cl.state = 'cancelled'; cl.how = 'mission_owned'; cl.settledAt = now;
+        continue;
+      }
       const ok = box && box.alive !== false && box.data && box.data.meridianClaimId === cl.id
         && (cl.gen == null || box.occupantGeneration === cl.gen);
       if (!ok) { this._closeClaim(state, cl, 'lost', now); continue; }

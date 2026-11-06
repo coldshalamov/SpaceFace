@@ -86,6 +86,12 @@ ${P} .orr-arcrail-host .dp-lit__item:not([data-awake]) {
   color:rgb(${BONE} / .86) !important; }
 ${P} .orr-arcrail-host .dp-lit__item--danger:not([data-awake]) {
   color:rgb(255 140 110 / .78) !important; }
+/* ArcRail's active-word !important color outranks the shared dp-lit forced-colors rule.
+   Restore a system text color for every Pause verb so the primary Resume word stays readable. */
+@media (forced-colors:active) {
+  ${P} .orr-arcrail-host .dp-lit__item {
+    color:CanvasText !important; text-shadow:none !important; }
+}
 ${P} .orr-svg text.orr-arcrail__legend { fill:rgb(${BONE} / .92) !important; }
 ${P} .orr-svg .orr-arcrail__head.is-lit text.orr-arcrail__legend { fill:rgb(255 253 248) !important; }
 ${P} .orr-svg .orr-arcrail__lettering, ${P} .orr-svg .orr-arcrail__lettering text {
@@ -93,6 +99,10 @@ ${P} .orr-svg .orr-arcrail__lettering, ${P} .orr-svg .orr-arcrail__lettering tex
 ${P} .orr-svg .orr-arcrail__rule { stroke-opacity:1; }
 
 /* phone column (no dial): group heads + bank verbs clearer */
+/* Keep the column's words legible over the held world on both phones and narrow windows. */
+${PH} > .dp-frame__body {
+  background:linear-gradient(180deg, rgb(4 6 9 / .72), rgb(4 6 9 / .62) 70%, rgb(4 6 9 / .5)) !important;
+  border-radius:4px; box-shadow:0 0 0 10px rgb(4 6 9 / .5) !important; }
 ${PH} .k-words__group {
   color:rgb(${BONE} / .78) !important; letter-spacing:.08em !important;
   margin:calc(14px * var(--dp-s, 1)) 0 6px !important; }
@@ -230,6 +240,14 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} { padding-bottom:14px !important; }
   ${P} > .sf-pause-foot { row-gap:6px !important; min-height:0 !important; padding-top:0 !important; }
   ${P} > .sf-pause-foot .sf-pause-foot__keys { padding:6px 0 7px !important; }
+  ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
+}
+/* short desktop (521–640 tall, e.g. 960×540): the dial's outer rings reach y≈480, and the foot sat a
+   48px frame margin + a row gap above the bottom, so ESC / RESUME / P PHOTO printed on the rim. The foot
+   seats on the bottom edge as in the ≤520 rule, so the keycap strip lands below the dial's last ring. */
+@media (min-width:701px) and (min-height:521px) and (max-height:640px) {
+  ${P} { padding-bottom:16px !important; }
+  ${P} > .sf-pause-foot { row-gap:6px !important; min-height:0 !important; padding-top:0 !important; }
   ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
 }
 /* narrow + very short (≤900 × ≤460, e.g. 844×390): the GAME bank's LOAD reaches x≈465 at y≈160, where

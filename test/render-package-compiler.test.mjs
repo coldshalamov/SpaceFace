@@ -15,6 +15,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   RENDER_PACKAGE_SCHEMA,
   RENDER_PACKAGE_SOURCE_SCHEMA,
+  renderPackageContentIdentity,
+  renderPackageRuntimeIdentity,
   validateRenderPackage,
 } from '../src/contracts/renderPackage.js';
 import {
@@ -558,6 +560,28 @@ test('render-package schema rejects unknown fields, duplicate IDs, and broken se
     new Set(validateRenderPackage(unsupported).issues.map((issue) => issue.rule)),
     new Set(['schema']),
   );
+});
+
+test('optional shared KTX2 resource descriptors are strict and legacy package identity stays unchanged', () => {
+  const legacy = minimalPackage();
+  assert.deepEqual(renderPackageContentIdentity(legacy).render, {
+    sha256: legacy.render.sha256,
+    bytes: legacy.render.bytes,
+  });
+
+  const valid = minimalPackage();
+  valid.render.resources = [{ uri: `../_shared/images/${'a'.repeat(64)}.ktx2`, mimeType: 'image/ktx2', sha256: 'a'.repeat(64), bytes: 12 }];
+  assert.equal(validateRenderPackage(valid).ok, true);
+  assert.notDeepEqual(renderPackageContentIdentity(valid).render, renderPackageContentIdentity(legacy).render);
+  legacy.runtime = { schema: 'spaceface.renderPackageRuntime.v1' };
+  valid.runtime = structuredClone(legacy.runtime);
+  assert.notDeepEqual(renderPackageRuntimeIdentity(valid).render, renderPackageRuntimeIdentity(legacy).render);
+  const invalid = structuredClone(valid);
+  invalid.render.resources[0].uri = '../../outside/image.ktx2';
+  assert.ok(validateRenderPackage(invalid).issues.some((issue) => issue.rule === 'resource-uri'));
+  const stale = structuredClone(valid);
+  stale.render.resources[0].uri = `../_shared/images/${'b'.repeat(64)}.ktx2`;
+  assert.ok(validateRenderPackage(stale).issues.some((issue) => issue.rule === 'resource-hash'));
 });
 
 test('semantic IDs, anchors, and dynamic groups are canonical across source declaration order', async () => {

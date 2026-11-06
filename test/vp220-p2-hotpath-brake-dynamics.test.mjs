@@ -487,6 +487,8 @@ test('retain pass does not burn screen-check budget on newcomers; each candidate
     _flightFrame: { throttle: 1 },
   };
   const { system, state } = makeHarness([player, nearNpc]);
+  // Presented hulls: npcPropulsionVisible binds NPC propulsion only under the live scene.
+  nearNpc.mesh = state.render.scene.add(new THREE.Object3D());
   for (let f = 0; f < 4; f++) system.update(1 / 60);
   const fleet = system._energy.fleet;
   assert.ok(fleet.findShip(1) && fleet.findShip(2), 'historical owners warmed');
@@ -507,6 +509,8 @@ test('retain pass does not burn screen-check budget on newcomers; each candidate
     newcomers.push(e);
     state.entities.set(e.id, e);
     state.entityList.push(e);
+    // Presented hulls: npcPropulsionVisible binds propulsion only under the live scene.
+    e.mesh = state.render.scene.add(new THREE.Object3D());
   }
 
   const fleetResolveCounts = Object.create(null);
@@ -704,6 +708,9 @@ test('legacy overflow exhaust preserves faction tint with real palette delta', (
     helpers: {},
   });
   system._productionOwnedCount = 0; // outside the production fleet: overflow ribbons, not streaks
+  // npcPropulsionVisible binds overflow propulsion only to a hull presented under the live scene.
+  concord.mesh = scene.add(new THREE.Object3D());
+  reaver.mesh = scene.add(new THREE.Object3D());
   let streakSpawns = 0;
   system._spawnTrailStreak = () => { streakSpawns += 1; };
   system._emitEngineTrail(concord, 1, 1 / 60);
@@ -780,6 +787,9 @@ test('production fleet same-family ships get distinct faction instance RGB', () 
     _flightFrame: { throttle: 1 },
   };
   const { system, state } = makeHarness([player, npc, npc2]);
+  // Presented hulls: npcPropulsionVisible binds NPC propulsion only under the live scene.
+  npc.mesh = state.render.scene.add(new THREE.Object3D());
+  npc2.mesh = state.render.scene.add(new THREE.Object3D());
   state.content = {
     factionPalettes: {
       faction_cyan: { thruster: '#00eeff' },

@@ -1,5 +1,6 @@
 import { occupantGenerationOf } from '../core/entity.js';
 import { activeOwnedShip, shipCarriesModule } from '../data/starterJobs.js';
+import { forEachFieldRock } from '../world/livingWorldViews.js';
 
 // Authored places, not another mission owner. Existing mission targets own custody,
 // destruction, delivery, payment and durable reattachment.
@@ -14,11 +15,12 @@ export const STARTER_WORK_SITES = Object.freeze({
       brief: 'The yard needs 2u iron. Outer seam marked; your own Helios cut is equally good.' },
   ]),
   starter_pelican: Object.freeze([
-    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 40, drift: { x: 0, z: 0 },
+    // All three introductory contracts are available to a fresh Class I Line (20 t ceiling).
+    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 18, drift: { x: 0, z: 0 },
       brief: '44-C broke its mooring beside the first lane pin. Winch the lit buoy to Helios.' },
-    { label: 'Claim-rim loose lane buoy', pos: { x: 1000, z: 30 }, mass: 65, drift: { x: 0, z: 2 },
+    { label: 'Claim-rim loose lane buoy', pos: { x: 1000, z: 30 }, mass: 19, drift: { x: 0, z: 2 },
       brief: 'A heavier buoy is drifting off the claim rim. Catch it and winch it back to Helios.' },
-    { label: 'Outer-yard loose lane buoy', pos: { x: -1560, z: -1100 }, mass: 90, drift: { x: 1, z: -1 },
+    { label: 'Outer-yard loose lane buoy', pos: { x: -1560, z: -1100 }, mass: 20, drift: { x: 1, z: -1 },
       brief: 'The outer yard lost its approach light. Bring the heavy buoy back; keep the hulk clear.' },
   ]),
 });
@@ -56,6 +58,34 @@ export function starterMiningFocus(m, entities, toGlobal, asteroidDefs = []) {
   return best ? { label: site.label, pos: { x: best.pos.x, z: best.pos.z }, targetEntityId: best.id,
     reason: site.brief } : null;
 }
+
+/** Existing field-owner view: nearest eligible live or dormant resource face, without materializing it. */
+export function nearestMiningResourceFace(state, { sectorId, center, commodityId }, asteroidDefs, accept = null) {
+  let face = null, distance = Infinity;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return { face, distance };
+  forEachFieldRock(state, (e) => {
+    const data = e?.data || {};
+    if (e?.alive !== true || e.type !== 'asteroid' || !Number.isFinite(e.pos?.x)
+      || !Number.isFinite(e.pos?.z) || data.missionTag || data.respawnAt != null
+      || !Number.isFinite(data.oreHP) || data.oreHP <= 0) return;
+    if (e.fieldResident && (state.world?.asteroidField?.schema !== 'spaceface.asteroidField.v1'
+      || e.liveEntityId != null || state.entities?.get(e.id))) return;
+    if (!e.fieldResident && state.entities?.get(e.id) !== e) return;
+    if (data.siteAnchored || (typeof data.opticStructureId === 'string' && data.opticStructureId)) return;
+    const chunkMass = Math.max(0, Number(data.bulkMassU ?? data.yieldU ?? e.mass) || 0);
+    if (data.isChunk && chunkMass > 20) return;
+    if ([e.sectorId, e.homeSectorId, data.sectorId, data.homeSectorId]
+      .some((id) => id && id !== sectorId)) return;
+    const def = asteroidDefs.find((row) => row.id === data.typeId);
+    if (!Number.isFinite(def?.oreTable?.[commodityId]) || def.oreTable[commodityId] <= 0) return;
+    const d = Math.hypot(e.pos.x - center.x, e.pos.z - center.z);
+    if (!(d < distance) || (accept && !accept(e))) return;
+    face = e;
+    distance = d;
+  });
+  return { face, distance };
+}
+
 export function starterBuoySpec(m, toGlobal) {
   const site = authoredStarterSite(m);
   if (!site || m.type !== 'tow_recovery' || m.params.starterJobId !== 'starter_pelican') return null;
@@ -66,7 +96,8 @@ export function starterBuoySpec(m, toGlobal) {
     data: { missionTag: m.id, name: site.label, scanLabel: site.label.toUpperCase(),
       tetherable: true, tetherPayload: true, placeId: 'place_lane_beacon',
       packagedPropFile: 'places/place_lane_beacon.glb', packagedPropSlot: 'place',
-      packagedPropRadius: 10, starterJobId: m.params.starterJobId, starterStep: m.params.starterStep, starterWorkdayVersion: STARTER_WORKDAY_VERSION },
+      packagedPropRadius: 10, worldSiteTargetable: true,
+      starterJobId: m.params.starterJobId, starterStep: m.params.starterStep, starterWorkdayVersion: STARTER_WORKDAY_VERSION },
   };
 }
 
@@ -86,6 +117,18 @@ export function isStarterBuoyRecord(rec) {
     && rec.identityKey === `mission:${rec.missionId}:0`
     && marker?.version === STARTER_WORKDAY_VERSION && marker.jobId === 'starter_pelican'
     && marker.role === 'slag_core' && Number.isInteger(marker.step) && marker.step >= 1 && marker.step <= 3;
+}
+
+// Persistent attached bodies may be restored directly from a save instead of the world-record
+// spawn path. Only reapply the current authored mass when both saved identities describe the
+// same versioned starter buoy; the saved pose, health and all other body fields remain intact.
+export function starterBuoySavedMass(spec, rec) {
+  if (!isStarterBuoyRecord(rec)) return null;
+  const marker = starterBuoyRecordMarker(spec), d = spec?.data, recorded = rec.extra.starterWorkdayBuoy;
+  if (!marker || marker.step !== recorded.step || d?.worldRecordId !== rec.recordId
+    || d.identityKey !== rec.identityKey || d.missionId !== rec.missionId || d.missionTag !== rec.missionId
+    || d.missionTargetSlot !== 0 || !spec.physicsBody || typeof spec.physicsBody !== 'object') return null;
+  return starterWorkSite(marker.jobId, marker.step)?.mass ?? null;
 }
 export function starterBuoyFromRecord(rec) {
   if (!isStarterBuoyRecord(rec)) return null;

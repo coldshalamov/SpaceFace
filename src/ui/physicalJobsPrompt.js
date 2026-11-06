@@ -52,31 +52,67 @@ export function createPhysicalJobsPrompt(ctx) {
   };
   const on = (type, fn) => { const off = bus.on(type, fn); if (typeof off === 'function') offs.push(off); };
   const evidenceIds = new Set();
+  const heatInteraction = 'warm-freighter-standby';
+  let heatCard = null, heatPending = null, heatEpoch = 0;
   on('siteEvidence:offer', row => {
     if (!row?.siteId || !Array.isArray(row.choices)) return;
-    const evidenceId = `site-evidence:${row.siteId}`;
+    const isHeat = row.interactionId === heatInteraction;
+    const evidenceId = `site-evidence:${row.siteId}${isHeat ? `:${row.interactionId}` : ''}`;
+    const deck = getPromptDeck();
+    if (!deck) return;
+    const card = isHeat ? { requestId: row.requestId, epoch: heatEpoch, admitted: false } : null;
+    if (isHeat) heatCard = card;
     evidenceIds.add(evidenceId);
-    getPromptDeck()?.offerDecision({ id: evidenceId, kind: 'info', sender: 'FIELD EVIDENCE',
+    const admitted = deck.offerDecision({ id: evidenceId, kind: 'info', sender: 'FIELD EVIDENCE',
       headline: row.headline, detail: row.detail,
-      choices: row.choices.map((choice, index) => ({ id: String(index), label: choice.label, cancel: choice.id === 'abort' })),
+      choices: row.choices.map((choice, index) => ({ id: String(index), label: choice.label,
+        cancel: choice.id === 'abort' || (isHeat && choice.id === 'leave') })),
       onChoose: index => {
         const choice = row.choices[Number(index)];
-        if (!choice) return false;
+        if (!choice || (isHeat && (heatCard !== card || !card.admitted || card.epoch !== heatEpoch))) return false;
+        if (isHeat) heatCard = null;
         getPromptDeck()?.resolveDecision(evidenceId);
+        if (isHeat) {
+          if (card.epoch !== heatEpoch || heatCard) return false;
+          if (choice.id === 'leave') return true;
+          heatPending = { requestId: row.requestId, epoch: heatEpoch };
+          bus.emit('siteEvidence:action', { siteId: row.siteId, interactionId: row.interactionId,
+            requestId: row.requestId, expectedOnline: row.expectedOnline, verb: choice.id });
+          return true;
+        }
         bus.emit('siteEvidence:action', { siteId: row.siteId, verb: choice.id, approach: choice.approach });
         return true;
       },
     });
+    if (isHeat) {
+      card.admitted = admitted !== false && heatCard === card && card.epoch === heatEpoch;
+      if (!card.admitted && heatCard === card) heatCard = null;
+    }
   });
-  on('siteEvidence:closed', row => getPromptDeck()?.resolveDecision(`site-evidence:${row?.siteId}`));
-  const clearEvidence = () => { for (const evidenceId of evidenceIds) getPromptDeck()?.resolveDecision(evidenceId); evidenceIds.clear(); };
+  on('siteEvidence:result', row => {
+    if (row?.interactionId !== heatInteraction || !heatPending
+        || row.requestId !== heatPending.requestId || heatPending.epoch !== heatEpoch) return;
+    heatPending = null;
+    notify(row.ok ? (row.online ? 'Standby restored. Cysts have heat; eels are held.'
+      : 'Standby cut. Cysts move slowly; eels are released.')
+      : `Standby unchanged. ${row.reason || 'Scan again.'}`);
+  });
+  on('siteEvidence:closed', row => {
+    const suffix = row?.interactionId === heatInteraction ? `:${heatInteraction}` : '';
+    getPromptDeck()?.resolveDecision(`site-evidence:${row?.siteId}${suffix}`);
+  });
+  const clearEvidence = () => {
+    heatEpoch++; heatCard = null; heatPending = null;
+    for (const evidenceId of evidenceIds) getPromptDeck()?.resolveDecision(evidenceId);
+    evidenceIds.clear();
+  };
   // The mirror follows the event receipt. Show on a later UI task, after transport domains apply.
   let pending = null;
   on('mercyService:started', () => { pending = 'mercy'; });
   on('wreckCourt:opened', () => { pending = 'court'; });
   on('mercyService:toolResult', result => notify(result?.ok ? 'Rescue tool seated.' : `Tool not seated: ${String(result?.reason || 'move closer').replace(/_/g, ' ')}.`));
   on('wreckCourt:result', result => notify(result?.ok ? 'Evidence recorded in the notebook.' : `Evidence not accepted: ${String(result?.reason || 'read the bodies first').replace(/_/g, ' ')}.`));
-  for (const type of ['game:new', 'game:load', 'sector:exit', 'game:exitToMenu', 'mercyService:completed', 'wreckCourt:ruled'])
+  for (const type of ['game:new', 'game:load', 'save:restoring', 'sector:exit', 'game:exitToMenu', 'mercyService:completed', 'wreckCourt:ruled'])
     on(type, () => { pending = null; clearEvidence(); getPromptDeck()?.resolveDecision(id); });
   return { mercy, court, frame() {
     if (pending === 'mercy' && state.mercyServicePublic?.bodies?.length) { pending = null; mercy(); }

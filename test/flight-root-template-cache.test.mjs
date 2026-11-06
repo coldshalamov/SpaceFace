@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   authoredHullJobs,
+  getFlightRootTemplateCacheDiagnostics,
   runFlightKestrelTemplatePackageProbe,
   runFlightRootTemplateCacheProbe,
   collectFlightRootTemplateContextLossRoots,
@@ -32,14 +33,29 @@ if (!globalThis.document) {
 }
 
 test('flight root template hits reuse geometry but rebind per-instance state', () => {
-  assert.deepEqual(runFlightRootTemplateCacheProbe(), {
+  let retiredDuringHeldEviction = null;
+  const result = runFlightRootTemplateCacheProbe((phase) => {
+    if (phase === 'evicted-held') retiredDuringHeldEviction = getFlightRootTemplateCacheDiagnostics();
+  });
+  assert.deepEqual(result, {
     distinctRoots: true,
     sharedGeometry: true,
     distinctMaterials: true,
     sharedBakeAliased: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
+    geometryBytesEstimated: true,
+    weightedBudgetEvictsOldest: true,
+    weightedBudgetRetainsLiveInstance: true,
+    cacheBudgetRespected: true,
+    oversizeCandidateRejectedSafely: true,
   });
+  assert.ok(retiredDuringHeldEviction?.retiredLiveEntries > 0,
+    'an evicted template with live instances remains in the context-loss retirement set');
+  assert.ok(retiredDuringHeldEviction.retiredInstanceRefs > 0,
+    'the diagnostic counts instance references keeping an evicted template alive');
+  assert.ok(retiredDuringHeldEviction.retiredGeometryBytes > 0,
+    'the diagnostic accounts for geometry retained by evicted live templates');
 });
 
 for (const lossPhase of ['cached', 'evicted-held']) {

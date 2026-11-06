@@ -13,7 +13,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
-import { makeEnemySpawnSpec } from './combat.js';
+import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';

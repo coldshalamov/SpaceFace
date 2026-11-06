@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "02378f187e7563aa5c04ba0e1bd780ee6e3463da8847c221cf5c272ea4ef77fa",
+  "contentHash": "516d179f2d1309d998186f1d9b05ebfda3c07c8f1a7586321055eafa65da1363",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1460,14 +1460,52 @@
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 323169,
-      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 191496,
-    "sha256": "91c61243ae8800afacde8e0c3d59f811281f33fa45108ad0c1fb97cf05d9de58",
+    "bytes": 87968,
+    "resources": [
+      {
+        "bytes": 29332,
+        "mimeType": "image/ktx2",
+        "sha256": "1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d",
+        "uri": "../_shared/images/1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d.ktx2"
+      },
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 22990,
+        "mimeType": "image/ktx2",
+        "sha256": "56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a",
+        "uri": "../_shared/images/56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 21717,
+        "mimeType": "image/ktx2",
+        "sha256": "6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444",
+        "uri": "../_shared/images/6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444.ktx2"
+      }
+    ],
+    "sha256": "9b8a3501107c37752123d967b2b21ea2d0323ed4c75cca99158c3c0d12f5cb10",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1805,7 +1843,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "4379c3b32c5866b21e9acf58f2a181ad9d99ab901325d62c756b95a0da5f0c42",
+  "runtimeHash": "b78f765f4da210d4be31d299082f10fd552ea49da5798273a7a998be5f331c65",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,1 +1,0 @@
-SG-06 production port checks OK

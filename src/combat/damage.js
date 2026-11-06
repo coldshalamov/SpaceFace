@@ -11,7 +11,7 @@ import {
   signedHitSide,
 } from './impulseKernel.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import {
   currentPlayerRewardIdentity,
   readPlayerFirstHitTruth,
@@ -181,21 +181,24 @@ export function createDamageRouter(context, statusService, options = {}) {
           link.linkHp = link.linkEnergy;
           const scaled = (fraction, guard = false) => ({
             ...normalized,
-            channels: Object.fromEntries(catalog.damageModel.channelOrder.map((channel) =>
+            channels: Object.fromEntries(catalog.damageModel.channelOrder.map(channel =>
               [channel, (normalized.channels[channel] || 0) * fraction])),
-            flags: { ...normalized.flags }, statuses: guard ? [] : [...normalized.statuses],
-            heat: guard ? 0 : normalized.heat * fraction, impulse: guard ? null : normalized.impulse,
+            flags: { ...normalized.flags },
+            statuses: guard ? [] : [...normalized.statuses],
+            heat: guard ? 0 : normalized.heat * fraction,
+            impulse: guard ? null : normalized.impulse,
           });
+          const origin = input.origin && typeof input.origin === 'object' ? input.origin : {};
           const guard = routeDamage({ ...input, targetId: screen.id, wardFromId: aimed.id,
             packet: scaled(share, true),
-            origin: { ...(input.origin || {}), swarmWardRedirected: true, wardedId: aimed.id } });
+            origin: { ...origin, swarmWardRedirected: true, wardedId: aimed.id } });
           const remainder = routeDamage({ ...input, packet: scaled(1 - share),
-            origin: { ...(input.origin || {}), swarmWardRedirected: true } });
+            origin: { ...origin, swarmWardRedirected: true } });
           if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
           return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
             warderId: screen.id, wardedId: aimed.id };
         }
-        // A zero-damage status/impulse packet is not converted into an unbounded guard hit.
+        // A zero-damage packet cannot bypass the finite guard pool or carry conditions for free.
       } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
     }
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
@@ -612,10 +615,17 @@ export function createDamageRouter(context, statusService, options = {}) {
         ? packet.tumbleTorque
         : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
       const environmentImpulse = packet.source && packet.source.environmentImpulse;
+      // Weapon packets carry momentum, unlike authored Force/field response. Keep
+      // explicit nonweapon sources authoritative; older weapon packets may name
+      // their origin or provenance without a source kind.
+      const sourceKind = packet.source && packet.source.kind;
+      const weaponImpact = sourceKind === 'weapon' || (!sourceKind
+        && (origin?.kind === 'weapon' || (!origin?.kind && tag && weaponId != null)));
       const delivery = deliverPhysicalImpulseDetailed(state, target, vector, {
         ...provenance, provenance: provenance || { tag: reason }, reason, maxTorque,
         point: input && input.packet && input.packet.hit && input.packet.hit.pos || null,
-      }, { port: combatPhysics(), referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
+      }, { port: combatPhysics(), scaleEnvironment: weaponImpact ? false : undefined,
+        referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
       if (!delivery.accepted) return { applied: false, reason: 'physics_rejected' };
       const magnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
       const victimMass = Math.max(0.1, Number(resolvePhysicsBodySpec(target)?.mass) || Number(target.mass) || 1);

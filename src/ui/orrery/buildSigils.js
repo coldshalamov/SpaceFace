@@ -26,6 +26,24 @@ export const BUILD_SIGILS = Object.freeze({
     p('M30 46H50V82H30Z M78 46H98V82H78Z', true),
     p('M40 30V40 M88 30V40 M40 88V98 M88 88V98 M56 52 72 64 56 76 M24 64H32 M96 64H104'),
   ],
+  // Veil Step — the shadow holds the start while the hull steps through the veil to the landing.
+  veil_step: [
+    p('M92 48 112 64 92 80 72 64Z', true),
+    p('M36 48 56 64 36 80 16 64Z'),
+    p('M58 58 66 58 66 70 78 70 M60 40 64 34 68 40 M60 88 64 94 68 88'),
+  ],
+  // Boomerang Bomb Run — the banked lane out and back, one bomb let go under the turn.
+  boomerang_bomb_run: [
+    p('M40 96V64Q40 44 64 44Q88 44 88 64V96H74V68Q74 58 64 58Q54 58 54 68V96Z', true),
+    p('M88 82 96 94 104 82 M20 64H28 M104 64H112'),
+    c(64, 108, 5),
+  ],
+  // Pinball Rush — the lane charged, the hull loosed at the bumper.
+  pinball_rush: [
+    p('M26 56 74 56 74 44 102 64 74 84 74 72 26 72Z', true),
+    p('M34 48 26 40 M34 80 26 88 M50 50 44 44 M50 78 44 84'),
+    c(114, 64, 6),
+  ],
   // Baseline Kinetic — a slug seated in a rail channel, primed.
   kinetic_baseline: [
     p('M40 50H74L88 64 74 78H40Z', true),

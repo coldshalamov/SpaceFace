@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0b433ba1e8b888a35989ded10bc969ee99672658121777cc4fb36456ad5f28c2",
+  "contentHash": "9ab52a12c99fce8242c4a6fc42c342df43d5e29608f28dbe1a5643054ff531bc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -889,14 +889,52 @@
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 323169,
-      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 144108,
-    "sha256": "b7d1b828d6884d9ffb1d2451541cf430f48509b39a1a0b65623b08ccd3c9a98e",
+    "bytes": 40596,
+    "resources": [
+      {
+        "bytes": 29332,
+        "mimeType": "image/ktx2",
+        "sha256": "1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d",
+        "uri": "../_shared/images/1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d.ktx2"
+      },
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 22990,
+        "mimeType": "image/ktx2",
+        "sha256": "56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a",
+        "uri": "../_shared/images/56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 21717,
+        "mimeType": "image/ktx2",
+        "sha256": "6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444",
+        "uri": "../_shared/images/6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444.ktx2"
+      }
+    ],
+    "sha256": "aa6dc6cd96952546a0564db5fa63aac4bd71a84781733bc33bcaf44a466052cd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1105,7 +1143,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "346f8eb1e76e4a0f5d323d357f78ce5a42b188c3db6e3f3b6d9910a635128a87",
+  "runtimeHash": "a2c5580c2bc598135fb301d95cb95c0904d0bfef05ac1796586941e243e42051",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

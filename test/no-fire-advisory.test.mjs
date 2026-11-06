@@ -93,6 +93,32 @@ test('non-player fire inside the ring is silent', () => {
   assert.equal(said.length, 0);
 });
 
+test('sealed arena combat cannot warn the pilot to stop firing near campaign stations', () => {
+  for (const kind of ['survival', 'lab']) {
+    const state = makeState([makeStation('st_alpha', 0, 0)], { x: 0, y: 0, z: 40 });
+    state.run = { kind, phase: 'active' };
+    const { said, bus } = boot(state);
+    bus.emit('combat:fire', { ownerId: 1 });
+    noFireAdvisory.update(1 / 60, state);
+    state.run.phase = 'intermission';
+    bus.emit('combat:fire', { ownerId: 1 });
+    assert.deepEqual(said, [], `${kind} has no campaign traffic-control warning`);
+    noFireAdvisory.destroy();
+  }
+});
+
+test('suppressed arena fire does not consume the first real campaign advisory', () => {
+  const state = makeState([makeStation('st_alpha', 0, 0)], { x: 0, y: 0, z: 40 });
+  state.run = { kind: 'survival', phase: 'active' };
+  const { said, bus } = boot(state);
+  bus.emit('combat:fire', { ownerId: 1 });
+  state.run = { kind: 'adventure', phase: 'inactive' };
+  bus.emit('combat:fire', { ownerId: 1 });
+  assert.equal(said.length, 1);
+  assert.equal(said[0].text, NO_FIRE_BARK);
+  noFireAdvisory.destroy();
+});
+
 test('destroy silences the watch; newGame re-arms for a fresh run', () => {
   const st = makeStation('st_alpha', 0, 0);
   const state = makeState([st], { x: 0, y: 0, z: 40 });

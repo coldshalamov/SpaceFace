@@ -20,6 +20,9 @@ function follower(nav, disabled) {
   const sys = Object.assign(Object.create(routeFollower), {
     state,
     bus: { emit(name, payload) { events.push({ name, payload }); } },
+    // engage() weld-audits through decomposeRoute before the drive check; unresolved legs are a
+    // supported answer, so the fixture atlas only has to answer getNode honestly.
+    _atlas: { getNode: () => undefined },
   });
   return { sys, state, events };
 }

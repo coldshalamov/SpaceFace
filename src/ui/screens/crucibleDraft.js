@@ -30,6 +30,8 @@ import { fortifyAvailable } from '../swarmFortifyPanel.js';
 
 import { MODULES } from '../../data/modules.js';
 import { arsenalIdentity } from '../../data/arsenalIdentity.js';
+import { ENEMY_TYPES } from '../../data/enemies.js';
+import { summarizeRunBuild } from '../../data/runModifiers.js';
 import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft.js';
 import { SWARM_CATEGORIES, catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
@@ -38,10 +40,12 @@ import {
   canExtract,
   partialBankOffer,
   requestSurvivalExtraction,
-  requestSurvivalPartialBank,
   securedBountyOf,
 } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
+import { difficultyForWave } from '../../data/survivalActs.js';
+import { planWave } from '../../systems/survivalWavePlanner.js';
+import { normalizeMutators } from '../../systems/survivalMutators.js';
 import {
   circuitBossFor,
   circuitChoicesFor,
@@ -302,7 +306,7 @@ export function rememberedSpareChoice(options, remembered) {
 }
 
 /**
- * How many of the drawn shop cards the wallet can still buy: available (the owner already folds
+ * How many of the current shop offers the wallet can still buy: available (the owner already folds
  * affordability and slot legality into it), not yet fitted, not the hull being flown, and not a
  * hull already on the manifest (a free switch, not a sale). Pure so a check can pin the count
  * the Escape guard reads without a DOM.
@@ -719,21 +723,201 @@ export function circuitPanelLines(run) {
   };
 }
 
-/** SWARM-04 §6.5 — the one next-round sentence the armory and the refit bench both print. */
-function swarmNextLine(next) {
+// One short handoff on the existing Armory subtitle. Reads the same currentOffers
+// receipt as the shelf; it neither quotes repairs itself nor owns a purchase.
+export function firstSwarmIntermission(run, offers) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || run.telemetry?.circuit != null || !Array.isArray(offers)) return null;
+  const start = Number.isInteger(run.telemetry?.startWave) ? run.telemetry.startWave : 1;
+  if (start !== 1) return null;
+  if (run.wave === 0 && offers.length === 0) {
+    return 'Before round 1 — no stock is available. Keep your current loadout and launch when ready.';
+  }
+  if (run.wave !== 1) return null;
+  const wallet = Number.isFinite(run.credits) && run.credits >= 0 ? run.credits : null;
+  const buyable = offer => offer?.available === true && offer.purchased !== true
+    && Number.isFinite(offer.price) && offer.price >= 0 && wallet != null && offer.price <= wallet;
+  const repair = offers.filter(offer => buyable(offer) && offer.kind === 'service'
+    && (offer.service === 'weld' || offer.service === 'hull_patch')
+    && typeof offer.name === 'string' && offer.name.trim()).sort((a, b) => a.price - b.price)[0];
+  const choice = repair
+    ? `Service: ${repair.name.trim()} (${repair.price} cr).`
+    : offers.some(buyable)
+      ? 'Buy for round 2, or keep your salvage.'
+      : 'Keep your salvage; no purchase is available now.';
+  return `Round 1 cleared. ${choice} Rearrange loadout for spares, or Fortify the field. Launch round 2 when ready.`;
+}
+
+/** SWARM-04 §6.5 — the next-round sentence shared by the armory and the refit bench. */
+const SWARM_ENEMY_NAME_BY_ID = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy.name]));
+
+function canForecastOrdinarySwarm(run) {
+  if (!run || run.ruleset !== 'swarm' || circuitStateError(run)) return false;
+  const circuit = circuitFor(run);
+  // The finite Circuit has its own authored objective panel. After its sixteen rounds,
+  // circuitRoundFor returns null and survivalRun deliberately plans ordinary Swarm again.
+  return !circuit || circuit.status === 'overtime';
+}
+
+/**
+ * The shared shop next-round model. The zone and event are authored by the ladder; the values that
+ * change with a player's choices come from the same pure planner and the same inputs the run
+ * owner will use. It consumes only the planner's private, seeded RNG — never state.rng — and
+ * writes nothing back to the run. A malformed or unplannable run has no forecast, not a plausible
+ * looking base-ladder guess.
+ */
+export function swarmForecastForRun(run, nextWave) {
+  if (!canForecastOrdinarySwarm(run) || !Number.isInteger(nextWave) || nextWave < 1) return null;
+  try {
+    const plan = planWave({
+      seed: run.seed,
+      arenaId: run.arenaId,
+      wave: nextWave,
+      act: 0,
+      difficulty: difficultyForWave(nextWave),
+      mutators: normalizeMutators(run.arenaMutators),
+      buildSummary: summarizeRunBuild(run.modifiers),
+      mode: 'swarm',
+      ruleset: run.ruleset,
+      swarmStake: run.telemetry && typeof run.telemetry.swarmStake === 'string'
+        ? run.telemetry.swarmStake : null,
+      swarmThreats: Array.isArray(run.telemetry?.threats) ? run.telemetry.threats : null,
+      // Ordinary Swarm is the only caller. A Circuit's next objective belongs to its own route.
+      circuitRound: null,
+    });
+    const swarm = plan && plan.swarm;
+    if (!plan || plan.ok === false || plan.error || !swarm
+      || !Number.isInteger(swarm.killTarget) || swarm.killTarget <= 0
+      || !Number.isInteger(swarm.concurrent) || swarm.concurrent <= 0) return null;
+
+    const authored = swarmRoundPreview({ arenaId: run.arenaId, wave: nextWave, seed: run.seed });
+    if (!authored || !authored.zone || typeof authored.zone.name !== 'string') return null;
+    const roster = [...new Set((Array.isArray(swarm.roster) ? swarm.roster : [])
+      .filter((entry) => entry && (Number(entry.weight) || 0) > 0)
+      .map((entry) => SWARM_ENEMY_NAME_BY_ID.get(entry.enemyId))
+      .filter((name) => typeof name === 'string' && name.length > 0))];
+    return {
+      ...authored,
+      killTarget: swarm.killTarget,
+      concurrent: swarm.concurrent,
+      roster,
+      newcomer: typeof swarm.newcomer?.name === 'string' ? swarm.newcomer.name : null,
+      boss: swarm.boss === true && typeof swarm.bossLabel === 'string'
+        ? { label: swarm.bossLabel } : null,
+    };
+  } catch {
+    // A bad or stale saved run must not crash a shop to show a fabricated base forecast.
+    return null;
+  }
+}
+
+/** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
+export function swarmNextLine(next) {
   if (!next) return '';
   const bits = [
     `Round ${next.wave} — ${next.zone.name}`,
     `clear ${next.killTarget}`,
-    `${next.concurrent} in the room`,
+    `room cap ${next.concurrent}`,
   ];
   if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
+  if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
-  const intel = next.specialist
-    ? ` Prepare for ${next.specialist.name}: ${next.specialist.threat} ${next.specialist.counter}` : '';
-  return `Next — ${bits.join(' · ')}.${intel}`;
+  return `Next — ${bits.join(' · ')}`;
+}
+
+/** The shared read-only preview painter. Circuit owns its own next-round language. */
+function paintSwarmPreview(node, run, nextWave) {
+  if (!node) return '';
+  const text = canForecastOrdinarySwarm(run)
+    ? swarmNextLine(swarmForecastForRun(run, nextWave))
+    : '';
+  node.textContent = text;
+  node.hidden = !text;
+  return text;
+}
+
+const ARMORY_RESULT_REFRESH_EVENTS = Object.freeze([
+  'run:draftOffered',
+  'run:draftPickRejected',
+  'run:draftRerollRejected',
+  'run:draftLockChanged',
+  'run:shopPurchased',
+  'module:equipped',
+  'module:unequipped',
+  ['run:spendRejected', (payload) => payload?.reason === 'crucible:purchase'
+    || payload?.reason === 'crucible:draftReroll'],
+  ['run:awarded', (payload) => payload?.reason === 'crucible:purchaseRefund'],
+]);
+
+const REFIT_RESULT_REFRESH_EVENTS = Object.freeze([
+  'run:refitChanged',
+  'run:partialBanked',
+  ['run:spendRejected', (payload) => payload?.reason === 'partial_bank'],
+  ['run:awarded', (payload) => payload?.reason === 'partial_bank_refund'],
+]);
+
+const REFIT_PENDING_LINES = Object.freeze({
+  'run:refitFitRequested': 'Fitting the selected spare…',
+  'run:refitStripRequested': 'Moving the fitting to spares…',
+  'run:refitSellRequested': 'Selling the selected part…',
+});
+let refitRequestSequence = 0;
+
+function unbindScreenResultRefresh(screen) {
+  screen._resultRefreshVersion = (screen._resultRefreshVersion || 0) + 1;
+  for (const off of screen._resultRefreshUnsubs || []) {
+    try { off(); } catch { /* an already-released bus is a closed screen */ }
+  }
+  screen._resultRefreshUnsubs = [];
+  screen._resultRefreshBus = null;
+  screen._resultRefreshQueued = null;
+}
+
+/** Bind one visible screen to canonical worker receipts; the read model lands before replay. */
+function bindScreenResultRefresh(screen, ctx, subscriptions) {
+  unbindScreenResultRefresh(screen);
+  const bus = ctx && ctx.bus;
+  if (!bus || typeof bus.on !== 'function') return;
+  const version = screen._resultRefreshVersion;
+  screen._resultRefreshBus = bus;
+  screen._resultRefreshUnsubs = [];
+  const defer = typeof queueMicrotask === 'function'
+    ? queueMicrotask
+    : (callback) => Promise.resolve().then(callback);
+  const queueRefresh = () => {
+    if (screen._suppressIntentResultRefresh > 0) return;
+    if (screen._resultRefreshQueued && screen._resultRefreshQueued.version === version) return;
+    const ticket = { version };
+    screen._resultRefreshQueued = ticket;
+    defer(() => {
+      if (screen._resultRefreshQueued !== ticket) return;
+      screen._resultRefreshQueued = null;
+      if (screen._resultRefreshVersion !== version || screen._resultRefreshBus !== bus) return;
+      const current = screen._ctx;
+      if (!current || current.bus !== bus) return;
+      screen.refresh(current);
+    });
+  };
+  for (const entry of subscriptions) {
+    const [type, accepts] = Array.isArray(entry) ? entry : [entry, null];
+    const off = bus.on(type, (payload) => {
+      if (typeof accepts === 'function' && !accepts(payload)) return;
+      queueRefresh();
+    });
+    if (typeof off === 'function') screen._resultRefreshUnsubs.push(off);
+  }
+}
+
+/** Preserve the immediate main-thread read while allowing a later worker receipt to repaint. */
+function emitIntentAndRefresh(screen, ctx, event, payload) {
+  const bus = ctx && ctx.bus;
+  if (!bus || typeof bus.emit !== 'function') return;
+  screen._suppressIntentResultRefresh = (screen._suppressIntentResultRefresh || 0) + 1;
+  try { bus.emit(event, payload); }
+  finally { screen._suppressIntentResultRefresh -= 1; }
+  screen.refresh(ctx);
 }
 
 export const crucibleDraftScreen = {
@@ -1032,9 +1216,6 @@ export const crucibleDraftScreen = {
     this._regions = { title: h, stage, foot };
     // SWARM-08 B5 — the worker's acknowledgement of a Circuit choice re-publishes the draft
     // snapshot; repaint from that receipt rather than guessing at the main thread.
-    this._offDraftOffered = ctx.bus && typeof ctx.bus.on === 'function'
-      ? ctx.bus.on('run:draftOffered', () => { if (this._ctx) this.refresh(this._ctx); })
-      : null;
     this.refresh(ctx);
     // The door unit's composition sheet lands last in the mount so it wins the cascade against
     // the armory sheet (crucible-doorLayouts.js documents what it carries).
@@ -1042,7 +1223,9 @@ export const crucibleDraftScreen = {
     rootEl.dataset.kReady = '1';
   },
 
-  onShow() {
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
     this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
     this._offCancel?.();
@@ -1063,6 +1246,7 @@ export const crucibleDraftScreen = {
   onHide() {
     this._offCancel?.();
     this._offCancel = null;
+    unbindScreenResultRefresh(this);
     this._visualArmory?.setActive(false);
     if (canAnimate()) cue('close');
   },
@@ -1070,8 +1254,7 @@ export const crucibleDraftScreen = {
   dispose() {
     this._offCancel?.();
     this._offCancel = null;
-    this._offDraftOffered?.();
-    this._offDraftOffered = null;
+    unbindScreenResultRefresh(this);
     this._visualArmory?.dispose();
     this._purchaseArmed = true;
     this._purchasePending = false;
@@ -1089,15 +1272,13 @@ export const crucibleDraftScreen = {
   _requestReroll(ctx) {
     const context = ctx || this._ctx;
     if (!context || !context.bus) return;
-    // Intent out, then re-read. The bus is synchronous, so by the time this returns the owner has
-    // either swapped the offers or recorded why it would not.
-    context.bus.emit('run:draftRerollRequested', {});
-    this.refresh(context);
+    // Main-lane results land synchronously; worker-lane receipts repaint after their read model.
+    this._emitIntentAndRefresh(context, 'run:draftRerollRequested', {});
   },
 
   /**
    * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one drawn card is
+   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
    * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
    * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
    * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
@@ -1163,6 +1344,14 @@ export const crucibleDraftScreen = {
     list.hidden = rows.length === 0;
   },
 
+  _paintNextPreview(run, nextWave) {
+    return paintSwarmPreview(this._preview, run, nextWave);
+  },
+
+  _emitIntentAndRefresh(context, event, payload) {
+    emitIntentAndRefresh(this, context, event, payload);
+  },
+
   /**
    * SWARM-08 B5 — a Circuit draft can owe a decision that is not a shop purchase: a destination
    * after a stage, or Finish/Overtime after the finale. The launch press says what is owed and
@@ -1201,7 +1390,9 @@ export const crucibleDraftScreen = {
       this._launchWarned = false;
       return false;
     }
-    const count = affordableOfferCount(this._drawnOffers);
+    // Search and category filters only change the view. An empty shelf must not turn Cancel
+    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
     if (count < 1) return false;
     this._launchWarned = true;
     const text = launchGuardLine(count);
@@ -1279,32 +1470,26 @@ export const crucibleDraftScreen = {
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
-    this._sub.textContent = offers.length
+    this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
           : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
-      : `Wave ${wave} cleared. Nothing new fits this hull.`;
+      : `Wave ${wave} cleared. Nothing new fits this hull.`);
 
     // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
-    // the opener), so the preview is always wave + 1. Everything on the line is already
-    // authored on the pure plan — same seed, same card — so the armory can speak for the
-    // round coming without touching generation.
-    if (this._preview) {
-      let text = '';
-      const run = context.state && context.state.run;
-      // SWARM-08 B5 — a Circuit round's objective comes from the journey, not the ordinary
-      // cadence; the Circuit panel's own next line is the honest preview.
-      if (shop && run && !circuitFor(run) && !circuitStateError(run)) {
-        text = swarmNextLine(
-          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
-        );
-      }
-      this._preview.textContent = text;
-      this._preview.hidden = !text;
-    }
+    // the opener), so the preview is always wave + 1. Zone/event remain authored ladder copy;
+    // the quota, concurrent cap and roster come from the canonical pure plan for this run's
+    // stake, Threats, build and mutators. This is a real refresh, not uiRoot's periodic repaint.
+    // SWARM-08 B5 — a Circuit round's objective comes from the journey, not the ordinary
+    // cadence; the Circuit panel's own next line is the honest preview. The shared painter
+    // suppresses the generic forecast for Circuit runs and for planner failures.
+    const runForPreview = context.state && context.state.run;
+    const nextWaveForPreview = Number.isInteger(runForPreview?.wave)
+      ? Math.max(1, runForPreview.wave + 1) : wave + 1;
+    if (this._preview) this._paintNextPreview(shop ? runForPreview : null, nextWaveForPreview);
 
     // SWARM-08 B5 — paint the journey before the shelf: the route, the choice owed and the next
     // round. Ordinary Swarm only shows the opening invitation.
@@ -1398,12 +1583,14 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
 
-    if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      // The Hulls shelf is empty at the opening stop by design (the door's pick is being
-      // fitted, not re-sold) — it says where the hulls are instead of reading as broken.
-      const hullPause = this._category === 'Hulls' && !this._query && wave === 0;
+    if (shop && !visibleOffers.length && !recommended.length
+        && typeof document.createElementNS === 'function') {
+      // The Ships shelf is empty at the opening stop by design: the player's launch hull is
+      // already selected. Say what to do next without promising hulls will unlock after round 1;
+      // One Hull contracts intentionally keep that shelf empty for the whole run.
+      const hullPause = this._category === 'Ships' && !this._query && wave === 0;
       const empty = el('div', 'orr-armory-empty', hullPause
-        ? 'New hulls go on sale after round 1 — this stop fits the ship you chose.'
+        ? 'Your launch hull is already selected. Fit it from the other shelves.'
         : 'No equipment matches this search.');
       const clear = el('button', 'orr-armory-clear', hullPause ? 'Back to all fittings' : 'Clear filters');
       clear.type = 'button';
@@ -1415,8 +1602,6 @@ export const crucibleDraftScreen = {
     }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
-    // What the shelf shows right now, for the Escape guard (the Gauntlet never reads it).
-    this._drawnOffers = shop ? [...recommended, ...visibleOffers] : [];
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
       this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
@@ -1493,10 +1678,9 @@ export const crucibleDraftScreen = {
     this._purchasePending = true;
     this._visualArmory?.pending(offer);
     try {
-      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id });
     } finally {
-      try { this.refresh(ctx); }
-      finally { this._purchasePending = false; }
+      this._purchasePending = false;
     }
   },
 
@@ -1602,8 +1786,7 @@ export const crucibleDraftScreen = {
       demo.textContent = offer.demoed ? 'On trial' : 'Demo — fly it one round';
       demo.disabled = offer.demoed === true;
       demo.addEventListener('click', () => {
-        context.bus.emit('run:draftPickRequested', { offerId: offer.id, demo: true });
-        this.refresh(context);
+        this._emitIntentAndRefresh(context, 'run:draftPickRequested', { offerId: offer.id, demo: true });
       });
       parts.demo.appendChild(demo);
     }
@@ -1618,8 +1801,7 @@ export const crucibleDraftScreen = {
         ? 'Held for the next armory — let it go'
         : 'Hold for the next armory';
       hold.addEventListener('click', () => {
-        context.bus.emit('run:draftLockRequested', { offerId: offer.id });
-        this.refresh(context);
+        this._emitIntentAndRefresh(context, 'run:draftLockRequested', { offerId: offer.id });
       });
       parts.hold.appendChild(hold);
     }
@@ -1775,9 +1957,9 @@ export const crucibleDraftScreen = {
         }
         return;
       }
-      if (offer.available) this._flash = { text: `Bought ${lines.name}.`, until: Date.now() + 5000 };
-      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
-      if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);
+      // Availability is only a quote. The owner notice confirms success or rejection
+      // after the receipt; a worker-backed click must never announce a purchase early.
+      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id });
     });
     return card;
   },
@@ -1789,6 +1971,13 @@ export const crucibleRefitScreen = {
 
   mount(rootEl, ctx) {
     this._root = rootEl;
+    this._pendingRefit = null;
+    this._refitResultOff?.();
+    // Keep the acknowledgement listener while another screen covers the refit. Its normal
+    // visible-screen receipt subscription owns repainting after the read model has landed.
+    this._refitResultOff = ctx.bus.on('run:refitChanged', (receipt) => {
+      if (receipt?.requestId === this._pendingRefit?.requestId) this._pendingRefit = null;
+    });
     rootEl.innerHTML = '';
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
@@ -1914,11 +2103,9 @@ export const crucibleRefitScreen = {
       bank.addEventListener('click', () => {
         if (!refitFootLines(ctx.state && ctx.state.run).bank) { cue('deny'); return; }
         cue('confirm');
-        requestSurvivalPartialBank(ctx.bus);
-        // The run stays benched here — nothing closes this screen — so reprice the foot off
-        // the live purse the way a fit or a sale does: a smaller offer, or no offer once the
-        // purse cannot halve into a whole credit, instead of a word still selling the last one.
-        this.refresh(ctx);
+        // The run stays benched here; the bank receipt refreshes this foot after the worker's
+        // updated run snapshot lands. The helper also preserves one synchronous main-lane read.
+        this._emitIntentAndRefresh(ctx, 'run:partialBankRequested', {});
       });
       this._bankNote = keyNote(bank.parentElement);
     }
@@ -2073,7 +2260,12 @@ export const crucibleRefitScreen = {
     }
   },
 
-  onShow() {
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    bindScreenResultRefresh(this, this._ctx, REFIT_RESULT_REFRESH_EVENTS);
+    // A worker receipt may have landed while this modal was hidden and unsubscribed. Re-read
+    // the canonical snapshot on every reopen rather than waiting for the next event edge.
+    if (this._ctx) this.refresh(this._ctx);
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -2085,6 +2277,7 @@ export const crucibleRefitScreen = {
 
   onHide() {
     this._feedEndHold(false);
+    unbindScreenResultRefresh(this);
     if (canAnimate()) cue('close');
   },
 
@@ -2113,6 +2306,10 @@ export const crucibleRefitScreen = {
   },
 
   dispose() {
+    unbindScreenResultRefresh(this);
+    this._refitResultOff?.();
+    this._refitResultOff = null;
+    this._pendingRefit = null;
     if (this._jig) this._jig.dispose();
     this._jig = null;
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
@@ -2162,6 +2359,20 @@ export const crucibleRefitScreen = {
     if (this._bank && this._bank.title !== lines.bankNote) this._bank.title = lines.bankNote;
   },
 
+  _paintNextPreview(run, nextWave) {
+    return paintSwarmPreview(this._preview, run, nextWave);
+  },
+
+  _emitIntentAndRefresh(context, event, payload) {
+    const line = REFIT_PENDING_LINES[event];
+    if (!line) return emitIntentAndRefresh(this, context, event, payload);
+    if (this._pendingRefit) return;
+    const requestId = `crucible-refit:${++refitRequestSequence}`;
+    this._pendingRefit = { requestId, line,
+      generation: draftOwner(context)?.preparationGeneration?.() };
+    emitIntentAndRefresh(this, context, event, { ...payload, requestId });
+  },
+
   refresh(ctx) {
     // Same guard as the draft: the shell's ~3 Hz periodic refresh(ctx, { periodic: true }) would
     // rebuild the hardpoint rows and collapse an open spare <select> mid-choice; fit/strip and
@@ -2173,22 +2384,17 @@ export const crucibleRefitScreen = {
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
+    const generation = draftOwner(context)?.preparationGeneration?.();
+    if (this._pendingRefit && generation !== this._pendingRefit.generation) this._pendingRefit = null;
+    const pending = !!this._pendingRefit;
+    rows.setAttribute('aria-busy', String(pending));
     this._syncFoot(context);
     setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
     // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
     // wave it names; the round ahead is run.wave + 1.
-    if (this._preview) {
-      let text = '';
-      const run = context.state && context.state.run;
-      if (run && run.ruleset === 'swarm') {
-        const wave = Number.isInteger(run.wave) ? run.wave : 0;
-        text = swarmNextLine(
-          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
-        );
-      }
-      this._preview.textContent = text;
-      this._preview.hidden = !text;
-    }
+    const runForPreview = context.state && context.state.run;
+    const currentWave = Number.isInteger(runForPreview?.wave) ? Math.max(0, runForPreview.wave) : 0;
+    if (this._preview) this._paintNextPreview(runForPreview, Math.max(1, currentWave + 1));
     // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
     const rootEl = this._root;
@@ -2291,7 +2497,7 @@ export const crucibleRefitScreen = {
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
       action.classList.add('sf-cru-act');
-      action.disabled = !!lines.disabled;
+      action.disabled = pending || !!lines.disabled;
       // nothing can go in: no verb to offer
       if (state === 'bare') action.hidden = true;
       if (!lines.disabled) {
@@ -2299,17 +2505,20 @@ export const crucibleRefitScreen = {
           // Routed through the run owner, which calls ships.unfitModule / ships.fitModule
           // directly. The ui:* intents are gated behind a real station berth and an arena has no
           // station.
+          let requested = false;
           if (row.defId) {
-            context.bus.emit('run:refitStripRequested', { slotIndex: row.slotIndex });
+            this._emitIntentAndRefresh(context, 'run:refitStripRequested', { slotIndex: row.slotIndex });
+            requested = true;
           } else {
             const chosen = this._chosenSpare(row);
             if (chosen) {
-              context.bus.emit('run:refitFitRequested', {
+              this._emitIntentAndRefresh(context, 'run:refitFitRequested', {
                 slotIndex: row.slotIndex, instanceId: chosen.instanceId,
               });
+              requested = true;
             }
           }
-          this.refresh(context);
+          if (!requested) this.refresh(context);
         });
       }
       line.appendChild(action);
@@ -2334,9 +2543,9 @@ export const crucibleRefitScreen = {
         if (sellTarget && sellPrice != null && sellPrice > 0) {
           const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
           sell.classList.add('sf-cru-act', 'sf-cru-sell');
+          sell.disabled = pending;
           sell.addEventListener('click', () => {
-            context.bus.emit('run:refitSellRequested', sellTarget);
-            this.refresh(context);
+            this._emitIntentAndRefresh(context, 'run:refitSellRequested', sellTarget);
           });
           line.appendChild(sell);
         }
@@ -2369,7 +2578,7 @@ export const crucibleRefitScreen = {
 
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
-    if (this._note) this._note.textContent = notice || '';
+    if (this._note) this._note.textContent = this._pendingRefit?.line || notice || '';
     this._dressHull();
   },
 

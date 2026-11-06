@@ -64,7 +64,8 @@ test('the projection depends only on persisted plain-data mission fields', () =>
 
 test('the HUD, local map and station board delegate to the one projection — no second inference left', () => {
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.match(hud, /import \{ objectiveText \} from '\.\/screens\/missionLog\.js';/);
+  // The projection's canonical home is sim/missionRecap.js; missionLog re-exports it.
+  assert.match(hud, /import \{ objectiveText \} from '\.\/sim\/missionRecap\.js';/);
   assert.match(hud, /function mtObjectiveText\(m\) \{\s*\n\s*return objectiveText\(m\);/);
   assert.ok(!/Mine \$\{prog\}\/\$\{tgt\}/.test(hud), 'the HUD copy must be gone, not just shadowed');
 

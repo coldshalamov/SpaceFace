@@ -243,11 +243,20 @@ test('world rematerialization catches a record forward from simulation time zero
     vel: { x: 2, z: 0 },
     alive: true,
     outcome: 'active',
+    createdTick: 123,
     lastExactT: 0,
   });
   const entity = world._spawnFromDurableRecord(state.world.records.byId[recordId], 'sector_helios_prime');
   assert.ok(entity);
   assert.equal(entity.pos.x, 10);
+  assert.equal(entity.data.recordCreatedTick, 123,
+    'the restored live body retains the durable record birth tick');
+
+  state.tick = 972;
+  state.simTime = 16.2;
+  world._captureSectorDurableRecords('sector_helios_prime');
+  assert.equal(state.world.records.byId[recordId].createdTick, 123,
+    'a later residency capture must not restart the record age at the Continue tick');
 });
 
 test('scheduled activity wake is consumed once and clears its durable edge', () => {

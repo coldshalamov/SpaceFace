@@ -51,7 +51,7 @@ test('weapon lights are a dedicated pool and do not steal the six event lights',
   // so NUM_POINT_LIGHTS stops running a 22-wide unrolled loop on every lit fragment.
   assert.equal(EVENT_LIGHT_POOL_SIZE, 6);
   assert.equal(WEAPON_LIGHT_POOL_SIZE, 2);
-  assert.equal(visiblePointLightBudget(), 8);
+  assert.equal(visiblePointLightBudget(), 3); // nocturne multiplexes the logical pools onto 3 real points
   const scene = new THREE.Scene();
   const presenter = new WeaponVfxPresenter({ scene });
   const eventLights = scene.children.filter((child) => child.isPointLight);

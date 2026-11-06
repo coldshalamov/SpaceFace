@@ -411,6 +411,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
   ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
 }
+/* At 960×540 with a live contract and full station copy, a 44vh head left the Market register
+   only 22px of scrollport, so the last good remained clipped even after scrolling. Give the
+   scrollable head 32vh and reserve 200px for the tab body so the register keeps a useful viewport. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${D} { grid-template-rows:minmax(0, 32vh) minmax(200px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:32vh !important; overflow-y:auto !important; overflow-x:hidden !important; }
+}
 /* …and at 1101–1280 the crown column was the strip's 326px cap, so the five dials wrapped 2·2·1 into a
    ~330px tower: CREDIT LINE OPEN ran off the right edge and, at 540 tall, LEDGER's DRAW and the
    Munitions dial printed over the station wire. The note column takes what the strip leaves and the

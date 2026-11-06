@@ -15,6 +15,7 @@ import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
 import { createLedgerTape } from '../../orrery/ledgerTape.js';
 import { formatLedgerCycle } from '../../../systems/shipLedger.js';
 import { el } from '../../kit/index.js';
+import { createEndingMeter } from '../dust/endingMeter.js';
 import { rollTo } from '../../orrery/text.js';
 import { dressComms, watchComms } from './comms.js';
 import { dressEvents, watchEvents } from './events.js';
@@ -108,6 +109,15 @@ export function readingOf(entry) {
       return { hero: '', unit: '', title: str(t.title), kicker: kick(type, cycle) };
     case 'name':
       return { hero: '', unit: '', title: str(t.name), kicker: kick(type, cycle) };
+    case 'war':
+      // inf-war-ledger-page — the reading names the ground and whose it is now; the row's
+      // WAR chip and the cycle carry the rest.
+      return {
+        hero: '', unit: '', title: str(t.sector),
+        kicker: kick(type, cycle, t.winner && t.loser
+          ? `${str(t.winner)} took it from ${str(t.loser)}`
+          : str(t.winner)),
+      };
     case 'salvage': {
       // FB-014 — a stunt-minted right: the chit count is the hero, the act that minted (or
       // redeemed) it is the title, and the kicker names the direction like trade does.
@@ -201,6 +211,7 @@ export function createLedgerScreen(ctx) {
   row.append(read, purseHost);
   const right = el('div', 'sx-ledger__right');
   right.append(tapeHost, row);
+  right.append(createEndingMeter(ctx.state));   // DUST P2b — read-only eligibility readout
   wrap.appendChild(right);
   // the keys that walk the ledger, said once at the ladder's foot
   const keys = el('p', 'k-caps sx-ledger__keys');

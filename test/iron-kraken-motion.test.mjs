@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sampleIronKrakenArm, ironKrakenBodyPose, ironKrakenArmRadius } from '../src/render/ironKrakenMotion.js';
-import { createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
+import { createIronKrakenVisual, IRON_KRAKEN_ARM_COUNT } from '../src/render/ironKrakenVisuals.js';
 import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
 import { createCapitalBossFight, stepCapitalBossFight } from '../src/combat/capitalBossScore.js';
 
@@ -47,12 +47,17 @@ test('foreground sleeve envelopes clear each other through the real rake and rec
         root.userData.updateAuthoredMotion(entity,state.simTime,{},state);
         if(tick>=180) {
           const points=root.userData.ironKrakenRig.points;
-          for(let a=0;a<links;a++)for(let b=0;b<links;b++) {
-            // Whole-segment capsules deliberately include the empty axial joint gaps. The
-            // extra2% covers sleeve paint/trim, so positive separation also clears actual armor.
-            const gap=segmentDistance(points,pointCount+a*3,pointCount*2+b*3)
-              -1.02*(ironKrakenArmRadius(a)+ironKrakenArmRadius(b));
-            assert.ok(gap>0,`tick${tick}, cadence${cadence.step}, sleeves${a}/${b} overlap by${-gap}R`);
+          // Every adjacent arm pair shares a collar boundary; the 1↔2-only sweep left the
+          // other six neighboring pairs unverified — including the wrap pair 7↔0.
+          for(let arm=0;arm<IRON_KRAKEN_ARM_COUNT;arm++) {
+            const next=(arm+1)%IRON_KRAKEN_ARM_COUNT;
+            for(let a=0;a<links;a++)for(let b=0;b<links;b++) {
+              // Whole-segment capsules deliberately include the empty axial joint gaps. The
+              // extra2% covers sleeve paint/trim, so positive separation also clears actual armor.
+              const gap=segmentDistance(points,pointCount*arm+a*3,pointCount*next+b*3)
+                -1.02*(ironKrakenArmRadius(a)+ironKrakenArmRadius(b));
+              assert.ok(gap>0,`tick${tick}, cadence${cadence.step}, arms${arm}/${next} sleeves${a}/${b} overlap by${-gap}R`);
+            }
           }
         }
         if(tick>=473)break;
@@ -247,4 +252,30 @@ test('packed multi-arm outputs preserve adjacent buffers and independent anatomi
   const aLength = distance(points, 4), bLength = distance(points, 4 + pointCount);
   assert.ok(Math.abs(aLength - bLength) > 0.005, 'neighboring arms must retain anatomical differences');
   assert.throws(() => sampleIronKrakenArm(0, {}, new Float32Array(pointCount - 1)), RangeError);
+});
+
+test('the wake trawl moves only the aft-rooted sleeves into a rigid, deterministic scoop', () => {
+  const rest = new Float64Array(pointCount), trawl = new Float64Array(pointCount), again = new Float64Array(pointCount);
+  for (let arm = 0; arm < 8; arm++) {
+    const aftRoot = Math.cos(arm * Math.PI * 2 / 8 + Math.PI / 8) < -0.15;
+    sampleIronKrakenArm(arm, { time: 3.25 }, rest);
+    sampleIronKrakenArm(arm, { time: 3.25, trawl: 1 }, trawl);
+    sampleIronKrakenArm(arm, { time: 3.25, trawl: 1 }, again);
+    assert.deepEqual(again, trawl, 'the trawl pose is deterministic');
+    if (!aftRoot) {
+      assert.deepEqual(trawl, rest, 'the fore hemisphere keeps its authored pose');
+      continue;
+    }
+    let moved = 0;
+    for (let p = 0; p < pointCount; p += 3) moved = Math.max(moved,
+      Math.hypot(trawl[p] - rest[p], trawl[p + 1] - rest[p + 1], trawl[p + 2] - rest[p + 2]));
+    assert.ok(moved > 0.05, 'aft sleeves must visibly answer the trawl channel');
+    assert.ok(trawl.every(Number.isFinite), 'scoop geometry stays finite');
+    for (let link = 0; link < links; link++) close(distance(trawl, link * 3),
+      distance(rest, link * 3), 'the trawl rotates rigid links without stretching');
+    // The scoop trails downward and outward — the net reads below the collar line, not through it.
+    const tip = (links - 1) * 3;
+    assert.ok(trawl[tip + 1] < rest[tip + 1] || Math.hypot(trawl[tip], trawl[tip + 2])
+      !== Math.hypot(rest[tip], rest[tip + 2]), 'the gathered tip reads as a drag shape');
+  }
 });

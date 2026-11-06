@@ -187,7 +187,7 @@ import { createWorldSiteRecord, applyWorldSiteOperation, normalizeWorldSiteRecor
 import { CERES_SHIPBREAK_MANIFEST as manifest } from '../src/data/ceresShipbreak.js';
 import { captureEntityRecord, spawnSpecFromRecord } from '../src/world/worldRecords.js';
 import { authorizeCeresBreakerControl, consumeCeresBreakerControl, validateCeresWorkfleetOperation,
-  stepCeresWorkfleet, clearCeresWorkfleetControls, CERES_WORKFLEET_JOB_ID } from '../src/systems/ceresWorkfleet.js';
+  stepCeresWorkfleet, clearCeresWorkfleetControls, publishCeresWorkfleetActuation, CERES_WORKFLEET_JOB_ID } from '../src/systems/ceresWorkfleet.js';
 import { ensureCombatState } from '../src/combat/runtime.js';
 
 test('world records restore only exact canonical hardware at the measured first native pose',()=>{
@@ -399,8 +399,104 @@ test('published workfleet thrust clears on expired, cancelled and idle leases',(
 });
 
 
-import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { readCeresWorkfleetActuation } from '../src/core/ceresWorkfleetActuation.js';
+import { readCeresWorkfleetPublicActuation, bindCeresWorkfleetPublicActuation } from '../src/core/ceresWorkfleetActuation.js';
+import { createCeresWorkfleetPropulsionDriver } from '../src/render/ceresWorkfleetVisuals.js';
+import { applySpawnInfos } from '../scripts/lib/simReadModel.mjs';
+import * as THREE from 'three';
+
+test('native consumed head force and accepted site work reach only the current mirror visual',async()=>{
+  const f=operationFixture();f.state.tick=40;f.state.simTime=4;
+  const cradle={id:4,occupantGeneration:4,...ceresWorkfleetHardwareSpec('cradle')};
+  f.state.entities.set(cradle.id,cradle);f.state.entityList.push(cradle);
+  let record=createWorldSiteRecord(manifest);
+  const brace=applyWorldSiteOperation(manifest,record,{operationId:'brace_long_plate',amount:24,
+    requestStreamId:'player-industrial-beam',requestSequence:1,tick:1});
+  assert.equal(brace.ok,true);record=brace.record;
+  f.state.sites={worldById:{[C.siteId]:record}};
+  const site=Object.create(asteroidSites);Object.assign(site,{state:f.state,bus:{emit(){}},
+    _captureWorldSitePayloads(){},getWorldSite(id){return this.state.sites.worldById[id];},
+    _worldSiteDeliveryEvidence(){return null;},_syncWorldSites(){}});
+  const service={listForEntity(){return [];},get(){return null;}};
+  const owner={state:f.state,registry:{get:name=>name==='combat'?{kernel:{attachments:service}}:name==='asteroidSites'?site:null}};
+  reconcileCeresWorkfleetPresentation(owner);
+  f.head.vel.x=.1;
+  const native=await createSg02DynamicBodyOwner({publishTelemetry:false});
+  native.syncFromEntities([f.head]);
+  assert.equal(validateCeresWorkfleetOperation(f.state,f.request),true);
+  assert.equal(readCeresWorkfleetPublicActuation(f.head,f.state,5,native),null,'intent and copied diagnostic alone cannot light');
+  stepCeresWorkfleet(owner,DT);
+  reconcileCeresWorkfleetPresentation(owner);
+  const beforePhysics=readCeresWorkfleetPublicActuation(f.head,f.state,5,native);
+  assert.ok(beforePhysics?.cutWork);assert.equal(beforePhysics.localFx,0,'a queued control is not consumed force');
+  native.step(DT,f.state.tick);
+  assert.equal(consumePhysicsCommand(f.head)?.control??null,null,'native physics consumed the queued command');
+  const view=readCeresWorkfleetPublicActuation(f.head,f.state,5,native);
+  assert.ok(view);assert.equal(view.cutWork,true);assert.ok(Math.hypot(view.localFx,view.localFz)>0);
+  assert.ok(Object.values(view).every(value=>value===null||['string','number','boolean'].includes(typeof value)));
+  const mirror={tick:f.state.tick,simTime:f.state.simTime,playerId:99,entities:new Map(),render:{contextRecovery:{pending:false}}};
+  applySpawnInfos(mirror,[{entityId:f.head.id,occupantGeneration:f.head.occupantGeneration,type:f.head.type,
+    alive:true,data:f.head.data,vitals:{hull:f.head.hull}}]);
+  const head=mirror.entities.get(f.head.id),root=new THREE.Group();head.mesh=root;
+  for(const channel of C.assets.cutterHead.propulsion.channels){
+    const socket=new THREE.Group();socket.name=channel.socket;root.add(socket);
+    for(const name of channel.coreMeshes){const mesh=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());mesh.name=name;root.add(mesh);}
+  }
+  const cutSocket=new THREE.Group();cutSocket.name='SOCKET_Cut';root.add(cutSocket);
+  const driver=createCeresWorkfleetPropulsionDriver(root,head),contact=root.getObjectByName('CeresWorkfleetCutContact');
+  assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,JSON.parse(JSON.stringify(view)),5),true);
+  driver.update(head);assert.equal(contact.visible,true);assert.ok(driver.binding.samples.some(s=>s.level>0));
+  mirror.render.contextRecovery.pending=true;driver.update(head);assert.equal(contact.visible,false);
+  assert.ok(driver.binding.samples.every(s=>s.level===0));
+  mirror.render.contextRecovery.pending=false;driver.update(head);assert.equal(contact.visible,true);
+  f.head.pos.x+=2;stepCeresWorkfleet(owner,DT);
+  const blocked=readCeresWorkfleetPublicActuation(f.head,f.state,5,native);
+  assert.equal(blocked.cutWork,false,'the real site owner refuses an out-of-position cut');
+  assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,blocked,5),true);
+  driver.update(head);assert.equal(contact.visible,false,'blocked work clears in the same tick');
+  head.data.playerOwned=true;driver.update(head);assert.equal(contact.visible,false);assert.ok(driver.binding.samples.every(s=>s.level===0));
+  head.data.playerOwned=false;assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,4),false);
+  assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),true);
+  head.data.disabled=true;driver.update(head);assert.equal(contact.visible,false);
+  head.data.disabled=false;assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),true);
+  mirror.entities.delete(head.id);driver.update(head);assert.equal(contact.visible,false);
+  mirror.entities.set(head.id,head);assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),true);
+  bindCeresWorkfleetPublicActuation(head,mirror,null,5);driver.update(head);assert.equal(contact.visible,false);
+  assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),true);
+  head.occupantGeneration++;driver.update(head);assert.equal(contact.visible,false);
+  assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),false);
+  head.occupantGeneration--;assert.equal(bindCeresWorkfleetPublicActuation(head,mirror,view,5),true);
+  mirror.tick++;driver.update(head);assert.equal(contact.visible,false);assert.ok(driver.binding.samples.every(s=>s.level===0));
+  f.state.tick++;f.state.simTime+=DT;
+  driveCeresWorkfleetBody(f.head,{x:f.head.pos.x+10,z:f.head.pos.z,rot:f.head.rot},{speed:5,accel:8},f.state);
+  reconcileCeresWorkfleetPresentation(owner);
+  const submitted=readCeresWorkfleetActuation(f.head,f.state);assert.ok(submitted);
+  writePhysicsControl(f.head,{force:{x:submitted.localFx*submitted.axisCos-submitted.localFz*submitted.axisSin,
+    z:submitted.localFx*submitted.axisSin+submitted.localFz*submitted.axisCos},
+    torque:{y:submitted.torque},source:'other-owner'});
+  native.step(DT,f.state.tick);
+  assert.equal(readCeresWorkfleetPublicActuation(f.head,f.state,5,native),null,'even an identical overwritten command cannot borrow the workfleet receipt');
+  driver.dispose();native.dispose();
+});
+test('breaker export requires its current native control and rejects a merely queued request',async()=>{
+  const f=operationFixture();f.state.tick=60;f.state.simTime=6;f.job.phase='extract';fixtureCouplings(f);
+  const native=await createSg02DynamicBodyOwner({publishTelemetry:false});
+  try {
+    native.syncFromEntities([f.breaker]);
+    const target=ceresWorkfleetWorldPose(C.route.extraction.breakerTo);
+    assert.equal(authorizeCeresBreakerControl(f.breaker,f.state,f.job,target),true);
+    assert.equal(readCeresWorkfleetPublicActuation(f.breaker,f.state,5,native),null);
+    const control=consumeCeresBreakerControl(f.breaker,f.state);assert.ok(control);
+    writePhysicsControl(f.breaker,control);
+    publishCeresWorkfleetActuation(f.breaker,control,f.state.tick,f.state);
+    assert.equal(readCeresWorkfleetPublicActuation(f.breaker,f.state,5,native),null,'not yet stepped');
+    native.step(DT,f.state.tick);
+    const view=readCeresWorkfleetPublicActuation(f.breaker,f.state,5,native);
+    assert.ok(view);assert.equal(view.role,'breaker');assert.equal(view.cutWork,false);
+    assert.ok(Math.hypot(view.localFx,view.localFz)>0);
+  } finally {native.dispose();}
+});
 test('head demand is consumed only by the current pre-physics owner and cannot light from a queued or stale lease',()=>{
   const f=operationFixture(),target={x:f.head.pos.x+10,z:f.head.pos.z,rot:f.head.rot};
   driveCeresWorkfleetBody(f.head,target,{speed:5,accel:8,angularSpeed:.3,angularAccel:.6},f.state);

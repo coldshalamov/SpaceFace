@@ -19,20 +19,24 @@ export function shouldSubmitEntityMesh(options = {}) {
   const protectedRoot = isProtectedEntityMesh(options);
   if (options.snapshotMissing === true && !protectedRoot) return false;
   if (protectedRoot) return true;
+  // Stand-in contract: the caller passes standInResident when this root is already drawing a
+  // resident, already-linked low-detail proxy. Pending gates then must not blank the picture;
+  // the glass/tier verdicts below still apply.
+  const standIn = options.standInResident === true;
   // First draw of an uncompiled material links the driver program inside bloomScene.
   // Hold ordinary roots until compileObjectPipelines has actually linked them —
   // once they have, a re-admission re-links variants behind the scenes and the
   // already-linked root keeps drawing (bloom's per-material guard skips any
   // still-unlinked drawable instead of the whole root disappearing).
-  if (options.pipelinesPending === true && options.sfAdmittedOnce !== true) return false;
+  if (!standIn && options.pipelinesPending === true && options.sfAdmittedOnce !== true) return false;
   // Nearby opening extras that are still decoding must not enter bloomScene.
   // Their first authored draw is the 100 ms+ Intel compile brick. A resolving marker is exempt:
   // it draws from the shared, already-linked Standard family and is the only drawable in the
   // substrate, so submitting it costs nothing extra and keeps a pending contact on screen.
-  if (options.authoredPending === true && !protectedRoot && options.resolvingMarker !== true) return false;
+  if (!standIn && options.authoredPending === true && !protectedRoot && options.resolvingMarker !== true) return false;
   // compile() does not upload vertex buffers. Hold ordinary rocks/props until the
   // 1x1 residency pass has registered those geometries.
-  if (options.geometryPending === true && !protectedRoot) return false;
+  if (!standIn && options.geometryPending === true && !protectedRoot) return false;
   if (options.hidden === true) return false;
   // The sim glass uses a conservative aspect and can lag camera zoom/glide. Letting its
   // membership override a measured miss submits off-screen roots; letting a stale tier

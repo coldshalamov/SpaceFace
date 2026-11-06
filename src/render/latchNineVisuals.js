@@ -36,6 +36,7 @@ export function createLatchNinePlumeBatch(plume,Vector3){
   if(!isLatchActor(entity))continue;const binding=active(entity),frame=latchPropulsionFrameForEntity(entity);if(!binding||!frame)continue;
   for(let i=0;i<slots.length;i++){const slot=slots[i],sample=binding.samples[i],level=frame.thrusters[i].fraction;slot.driveState.plumeDrive=slot.signals.throttle=level;if(!(level>0)||!sample.meshes.some(m=>inside(m,entity.mesh)&&m.visible))continue;
    sample.socket.getWorldPosition(slot.position);slot.axis.fromArray(slot.channel.exhaust).transformDirection(sample.socket.parent.matrixWorld);const out=slot.sockets[0];out.x=slot.position.x;out.y=slot.position.y;out.z=slot.position.z;out.ax=-slot.axis.x;out.ay=-slot.axis.y;out.az=-slot.axis.z;
+   slot.signals.entityId=entity.id;slot.signals.hullFrac=Number.isFinite(entity.hull)&&Number.isFinite(entity.hullMax)&&entity.hullMax>0?entity.hull/entity.hullMax:1;slot.signals.sputterPhase=Number.isFinite(state.simTime)?state.simTime:0;
    const first=plume.pool.activeCount;plume.writeEntity(dt,level,slot.sockets,slot.signals,slot.driveState,1);const lip=i<2?.58:.083,g=plume.pool.recipe.geometry;for(let j=first;j<plume.pool.activeCount;j++){plume.pool.slots[j].width*=2*lip/g.baseWidth;plume.pool.slots[j].length*=9*lip/g.baseLength;}count++;
   }
  }plume.endUpdate(a11y?.reducedMotion?0:dt);return count;},dispose(){this.reset();plume.group?.removeFromParent();plume.dispose();}};

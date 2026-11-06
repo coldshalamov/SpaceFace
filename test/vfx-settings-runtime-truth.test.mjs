@@ -1,7 +1,7 @@
 // SETTINGS-RUNTIME-TRUTH — VFX particle pool resize / migration contract.
 //
 // Spec contract (design/specs/10, design/PERF_BUDGET.md §4.3):
-//   settings.video.particleQuality low|medium|high → cap 1500|3000|4000
+//   settings.video.particleQuality low|medium|high → cap 1500|2000|4000
 //   + QUALITY_BURST spawn multiplier 0.55|0.8|1.0
 //   ON settings:changed { particleQuality } → resize particle pool (live-apply).
 //
@@ -30,8 +30,8 @@ const { vfx } = await import('../src/render/vfx.js');
 /** Spec caps — mirrored from vfx.js PARTICLE_CAP / QUALITY_BURST. */
 const EXPECTED = Object.freeze({
   low: { cap: 1500, burst: 0.55 },
-  med: { cap: 3000, burst: 0.8 },
-  medium: { cap: 3000, burst: 0.8 },
+  med: { cap: 2000, burst: 0.8 },
+  medium: { cap: 2000, burst: 0.8 },
   high: { cap: 4000, burst: 1.0 },
 });
 

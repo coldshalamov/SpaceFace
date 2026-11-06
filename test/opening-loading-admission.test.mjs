@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { applyFirstPlayablePaintRelease, releaseOpeningGraphPublication, enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
 import { openingPreparedLeafKey, openingAdmissionSubjects } from '../src/render/runtime/openingAdmissionPlanning.js';
@@ -48,6 +48,7 @@ function loadingOwnerFixture() {
     world: { currentSectorId: 'sector_helios_prime', enterSerial: 1 },
     render: { admissionRunGeneration: 1, renderer: {} }, contextRestoreSeq: 0 };
   const built = [];
+  const scene = new THREE.Scene();
   const owner = { state, _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [],
     _meshBuildQueueHead: 0, _sessionLiveSectorCookedId: 'sector_helios_prime',
     _frameMembrane: { toLocal(pos, out) { out.x = pos.x; out.z = pos.z; return out; } },
@@ -66,11 +67,11 @@ function loadingOwnerFixture() {
   new Function('state', 'cam', 'THREE', 'openingSubmissionCamera', '_meshLocalXZ',
     'rendererGenerationIsActive', 'releaseOpeningGraphPublication', 'createOpeningLoadingAdmission',
     'enqueueMissingMeshBuildsSteps', 'observePipelineAdmission', 'yieldToBrowser',
-    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', source.slice(start, end))
+    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', 'resumeAuthoredUpgradeQueueForLoadingHulls', 'scene', source.slice(start, end))
     .call(owner, state, { obj: { updateMatrixWorld() {} } }, THREE,
       () => ({ frustum: { intersectsSphere: () => false } }), {}, () => true, () => {},
       createOpeningLoadingAdmission, enqueueMissingMeshBuildsSteps, promise => promise,
-      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity);
+      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls, scene);
   let loadingListener;
   const listenerStart = source.indexOf("onBus('mode:changed', ({ mode } = {}) => {");
   const listenerEnd = source.indexOf("onBus('jump:arrive'", listenerStart);

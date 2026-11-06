@@ -23,6 +23,8 @@
 //
 // Pure numbers in, one number out: no THREE, no allocation per frame.
 
+import { beginCameraRoofFrame, endCameraRoofFrame } from './cameraClearanceGuard.js';
+
 export const GLIDE_TUNING = Object.freeze({
   slotCount: 24,             // lookahead samples along the predicted path
   slotsPerFrame: 4,          // lookahead samples refreshed per frame (round-robin)
@@ -197,6 +199,20 @@ function smoothDamp(glide, target, smoothS, maxRate, dt) {
  * @returns {number} dolly scale to apply to (rx, ry, rz)
  */
 export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling = Infinity) {
+  // One frame's roof queries share a validated structural snapshot (see cameraRoofAt). The bracket
+  // closes even if a caller's roof callback throws, so no snapshot outlives the frame.
+  if (typeof roofAt !== 'function' || !(ry > 1)) {
+    return stepCameraGlideFrame(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling);
+  }
+  beginCameraRoofFrame();
+  try {
+    return stepCameraGlideFrame(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling);
+  } finally {
+    endCameraRoofFrame();
+  }
+}
+
+function stepCameraGlideFrame(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling) {
   const t = glide.tuning;
   const diag = glide.diag;
   const step = Number.isFinite(dt) ? Math.min(Math.max(dt, 0), t.maxStepS) : 0;

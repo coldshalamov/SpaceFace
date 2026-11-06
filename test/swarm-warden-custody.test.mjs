@@ -88,3 +88,60 @@ test('a nearer newcomer cannot silently move an active Warden screen to another 
   assert.equal(adventure.custody, newcomer.id,
     'Adventure retains its independent nearest-friendly custody rule');
 });
+
+test('a hit against a dead ward does not consume an active Warden link', (t) => {
+  const h = fixture(t);
+  h.step(0); h.step(30);
+  const energy = h.guard.data.swarmSpecialist.linkEnergy;
+  h.ward.alive = false;
+  assert.equal(wardScreenTarget(h.state, h.player, h.ward, { kind: 'weapon' }), null);
+  assert.equal(h.guard.data.swarmSpecialist.linkEnergy, energy);
+});
+
+test('production Anchor timing keeps the announced active window and caps close-range recovery', (t) => {
+  const h = fixture(t);
+  h.player.pos.x = 100;
+  const anchor = h.sim.spawn(ship(0, 0, 1, { runCohort: 'survival', runWave: 9,
+    lootTableId: 'field_anchor_controller', ai: { forcePlayerTarget: true,
+      combatDoctrineId: CombatDoctrineId.FIELD_ANCHOR_CONTROLLER, roe: 'weapons_free',
+      activity: { kind: 'attack_run', reason: 'survival_wave', targetId: h.player.id, startedTick: 0 } } }));
+  h.state.spatialHash.rebuild(h.state.entityList);
+  const frame = h.sim.helpers.aiSensors.frameFor(anchor.id, 0);
+  assert.equal(frame.self.swarmSpecialistKind, 'anchor');
+  const runtime = new CombatDoctrineRuntime({ seed: 4242 });
+  const directive = { objective: { kind: ObjectiveKind.ENGAGE, targetId: h.player.id }, formation: {} };
+  const phases = new Map();
+  for (let tick = 0; tick <= 411; tick++) {
+    phases.set(tick, runtime.update({ tick, entityId: anchor.id,
+      doctrineId: CombatDoctrineId.FIELD_ANCHOR_CONTROLLER, perception: frame, directive }).phase);
+  }
+  assert.equal(phases.get(29), 'field_spool');
+  assert.equal(phases.get(30), 'anchor_hold');
+  assert.equal(phases.get(209), 'anchor_hold', 'crossing the ring does not cancel its commitment');
+  assert.equal(phases.get(210), 'recover');
+  assert.equal(phases.get(409), 'recover');
+  assert.equal(phases.get(410), 'reform');
+});
+
+test('production Jackal doctrine retains the complete release window for its finite salvo', (t) => {
+  const h = fixture(t);
+  h.player.pos.x = 300;
+  const jackal = h.sim.spawn(ship(0, 0, 1, { runCohort: 'survival', runWave: 9,
+    lootTableId: 'mine_layer_jackal', ai: { forcePlayerTarget: true,
+      combatDoctrineId: CombatDoctrineId.MINE_LAYER_WAKE, roe: 'weapons_free',
+      activity: { kind: 'attack_run', reason: 'survival_wave', targetId: h.player.id, startedTick: 0 } } }));
+  h.state.spatialHash.rebuild(h.state.entityList);
+  const frame = h.sim.helpers.aiSensors.frameFor(jackal.id, 0);
+  assert.equal(frame.self.swarmSpecialistKind, 'jackal');
+  const runtime = new CombatDoctrineRuntime({ seed: 4242 });
+  const directive = { objective: { kind: ObjectiveKind.ENGAGE, targetId: h.player.id }, formation: {} };
+  const phases = new Map();
+  for (let tick = 0; tick <= 101; tick++) {
+    phases.set(tick, runtime.update({ tick, entityId: jackal.id,
+      doctrineId: CombatDoctrineId.MINE_LAYER_WAKE, perception: frame, directive }).phase);
+  }
+  assert.equal(phases.get(29), 'wake_cue');
+  assert.equal(phases.get(30), 'mine_drop');
+  assert.equal(phases.get(99), 'mine_drop');
+  assert.equal(phases.get(100), 'disengage');
+});

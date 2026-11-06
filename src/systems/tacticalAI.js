@@ -1,4 +1,3 @@
-import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
 import { createEnemyMindPort } from '../ai/enemyMind/port.js';
 import { enemyMindAllowsFire, SPECIALIST_DOCTRINES } from '../ai/enemyMind/adapter.js';
 import { shapeNemesisManeuverRequest, nemesisFireAllowed } from '../ai/nemesisTactics.js';
@@ -10,6 +9,7 @@ import {
   capitalBossOrder,
 } from '../ai/capitalBossOrders.js';
 import { AIInspectionEndpoint } from '../ai/inspection.js';
+import { captureTacticalRuntime, restoreTacticalRuntime } from '../ai/tacticalRuntimeSave.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
 import { kilnbackDecision } from '../ai/kilnback.js';
@@ -44,12 +44,18 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedShipLikeOrEntitiesScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeaponId,
   isBodyLauncherEnemy } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
 import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
+import {
+  noteShoveTumble,
+  shovePanicBreakActivity,
+  shovePanicLive,
+} from '../ai/shovePanic.js';
+import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
   MISSION_TAG_BOSS_DOCTRINE,
@@ -73,29 +79,51 @@ const OWNERSHIP_REFRESH_TICKS = 3;
 const incomingMassContacts = [];
 const incomingMassPool = [];
 
+/**
+ * The incoming-mass candidate law, shared verbatim by the lane walk and the universe
+ * fallback: alive, solid, fast (≥120 wu/s), not a projectile/pickup/field emitter, and a
+ * real physics threat — a tumbling or drive-dead craft, or a dynamic body. Writes the
+ * pooled contact; the pool is the caller's, sized once.
+ */
+function admitIncomingMassContact(state, player, body) {
+  if (body === player || !body || !body.alive || body.collides === false || !body.pos || !body.vel
+    || !(body.vel.x * body.vel.x + body.vel.z * body.vel.z >= 120 * 120)) return;
+  const ship = body.type === 'ship' || body.type === 'drone';
+  if (body.type === 'projectile' || body.type === 'pickup' || body.type === 'fieldEmitter') return;
+  const tumbling = ship && isTumbling(state, body);
+  if (!tumbling && !isDynamicPhysicsBodyEntity(body)) return;
+  const index = incomingMassContacts.length;
+  const contact = incomingMassPool[index] || (incomingMassPool[index] = {});
+  contact.id = body.id;
+  contact.pos = body.pos;
+  contact.vel = body.vel;
+  contact.radius = body.radius;
+  contact.planarRadius = body.planarRadius;
+  contact.kind = ship ? 'ship' : 'hazard';
+  contact.tumbling = tumbling;
+  contact.disabled = ship && state.combat?.entities?.[String(body.id)]?.capabilities?.drive === false;
+  incomingMassContacts.push(contact);
+}
+
 /** Runs even while the NPC think stack is quiet: a thrown body can still reach the player. */
 export function emitIncomingMassCue(state, bus) {
   const player = state.entities?.get(state.playerId);
   if (state.mode !== 'flight' || !player || player.alive === false || !bus?.emit) return;
   incomingMassContacts.length = 0;
-  for (const body of state.entities.values()) {
-    if (body === player || !body.alive || body.collides === false || !body.pos || !body.vel
-      || !(body.vel.x * body.vel.x + body.vel.z * body.vel.z >= 120 * 120)) continue;
-    const ship = body.type === 'ship' || body.type === 'drone';
-    if (body.type === 'projectile' || body.type === 'pickup' || body.type === 'fieldEmitter') continue;
-    const tumbling = ship && isTumbling(state, body);
-    if (!tumbling && !isDynamicPhysicsBodyEntity(body)) continue;
-    const index = incomingMassContacts.length;
-    const contact = incomingMassPool[index] || (incomingMassPool[index] = {});
-    contact.id = body.id;
-    contact.pos = body.pos;
-    contact.vel = body.vel;
-    contact.radius = body.radius;
-    contact.planarRadius = body.planarRadius;
-    contact.kind = ship ? 'ship' : 'hazard';
-    contact.tumbling = tumbling;
-    contact.disabled = ship && state.combat?.entities?.[String(body.id)]?.capabilities?.drive === false;
-    incomingMassContacts.push(contact);
+  // F1(a) — the per-tick candidate walk rides the entity index's physics-owned body lane
+  // instead of the whole universe: physicsBodies holds exactly the entities whose pose the
+  // physics owns (shouldSyncPhysicsBodyEntity), and the per-body predicate below keeps the
+  // speed/type/dynamic law identical on both paths. The one class a body lane cannot carry
+  // is the schema's own opt-out (physicsBody === false / unauthored fx) — scripted
+  // presentation movers whose pose the physics never owned, so they were never a thrown
+  // body the warning owed the pilot. Unready index falls back to the same universe walk.
+  const index = state.entityIndex;
+  const rows = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.physicsBodies) ? index.physicsBodies : null;
+  if (rows) {
+    for (const body of rows) admitIncomingMassContact(state, player, body);
+  } else {
+    for (const body of state.entities.values()) admitIncomingMassContact(state, player, body);
   }
   const threat = selectIncomingMassCue(player, incomingMassContacts);
   // Do not retain world/entity references between sessions in the reusable contact pool.
@@ -119,8 +147,11 @@ export function stepHostileBodyLaunches(state, bus, runtime, doctrineRuntime) {
     const enemy = state.entities.get(id);
     if (enemy !== rt.actor || !isBodyLauncherEnemy(enemy) || !isHostileForAI(state, enemy, player)) runtime.delete(id);
   }
-  for (const enemy of state.entities.values()) {
-    if (enemy.id === player.id || !isBodyLauncherEnemy(enemy)
+  // F1(a) — a body launcher is a ship (isBodyLauncherEnemy is ship-only), so the enemy walk
+  // rides the shipLike lane the index already maintains; the fallback keeps the map walk and
+  // the same predicate, so both paths admit exactly the same hulls.
+  for (const enemy of indexedShipLikeOrEntitiesScan(state)) {
+    if (!enemy || enemy.alive === false || enemy.id === player.id || !isBodyLauncherEnemy(enemy)
       || !isHostileForAI(state, enemy, player) || isCounterplayOwned(enemy, state)) continue;
     let rt = runtime.get(enemy.id);
     if (!rt) {
@@ -336,6 +367,12 @@ export function createTacticalAISystem({
   let lastOwnershipRefreshTick = -Infinity;
   let lastManeuverRequests = [];
   const lastDecisionEntityRefs = new Map();
+  // Presentation-only: a sent lane cue needs one cancellation if its doctrine disappears
+  // without a phaseChanged receipt (notably when the target leaves sensor coverage).
+  let committedLaneCues = new WeakMap();
+  // Committed-corridor telegraphs suppressed by a live fire hold. entity -> the frozen
+  // doctrine.telegraph object whose emit is still owed; identity expires with the phase.
+  let heldLaneTelegraphs = new WeakMap();
   const bodyLaunchRt = new Map();
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
@@ -423,6 +460,8 @@ export function createTacticalAISystem({
 
   function resetRuntime() {
     bodyLaunchRt.clear();
+    committedLaneCues = new WeakMap();
+    heldLaneTelegraphs = new WeakMap();
     stack = null;
     inspection = null;
     lastDecisionTick = -Infinity;
@@ -432,6 +471,48 @@ export function createTacticalAISystem({
     quietLatch = null;
     counterplayBindingVersion = -1;
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
+  }
+
+  function restoreRuntime(payload) {
+    resetRuntime();
+    if (!payload?.tacticalAI || !ctxRef?.state) return;
+    const state = ctxRef.state;
+    const liveStack = ensureStack(state);
+    const saved = restoreTacticalRuntime(liveStack, state, payload.tacticalAI, payload.tacticalAIEntityBindings);
+    if (!saved) { resetRuntime(); return; }
+    lastDecisionTick = saved.lastDecisionTick;
+    lastOwnershipRefreshTick = saved.lastOwnershipRefreshTick;
+    lastManeuverRequests = saved.lastManeuverRequests;
+    for (const decision of liveStack.lastResult?.decisions || []) {
+      const entity = state.entities.get(decision.entityId);
+      if (entity) lastDecisionEntityRefs.set(entity.id, entity);
+      // The DTO preserves cognition but cold presentation has no prior warning.
+      // Re-owe only a still-live committed announce on the canonically rebound
+      // bodies. Saved decisions are value copies: latch the doctrine owner's
+      // actual telegraph object so the next decision can recognize its debt.
+      const record = liveStack.combatDoctrine?.byEntity.get(decision.entityId);
+      const doctrine = decision.combatDoctrine;
+      const cue = record?.telegraph;
+      const target = state.entities.get(record?.targetId);
+      if (entity?.alive !== false && Number.isSafeInteger(entity?.occupantGeneration)
+          && target?.alive !== false && Number.isSafeInteger(target?.occupantGeneration)
+          && record?.entityId === entity.id && record.targetId === doctrine?.targetId
+          && record.doctrineId === doctrine?.doctrineId && record.phase === doctrine?.phase
+          && doctrine?.aimCommit && doctrine.attackLine
+          && Number.isFinite(record.aimCommitBearing)
+          && record.aimCommitBearing === doctrine.aimCommit.bearing
+          && record.aimCommitUntilTick === doctrine.aimCommit.untilTick
+          && record.aimCommitUntilTick > state.tick
+          && Number.isInteger(cue?.startedTick) && cue.startedTick <= state.tick
+          && Number.isFinite(cue.durationTicks) && state.tick < cue.startedTick + cue.durationTicks) {
+        heldLaneTelegraphs.set(entity, cue);
+      }
+    }
+    for (const [id, row] of saved.bodyLaunches) {
+      const actor = state.entities.get(id);
+      if (actor) bodyLaunchRt.set(id, { ...row, actor });
+    }
+    refreshFirstSessionAttackerOwnership(state, liveStack.lastResult?.decisions || []);
   }
 
   function detachLifecycleListeners() {
@@ -474,6 +555,33 @@ export function createTacticalAISystem({
     invalidateEntity(entityId);
   }
 
+  /**
+   * Shove panic (src/ai/shovePanic.js): a hull the PILOT tossed loses its helm to the tumble
+   * and then keeps flying its authored attack_run like nothing happened — the shove bought no
+   * tempo. The combat:tumbled announcement is the one physical receipt; the stamp + break are
+   * data on the victim; the fire gate and the aiEncounter mayday call read the same stamp.
+   */
+  function handleShoveTumble(payload) {
+    const state = ctxRef && ctxRef.state;
+    if (!state || !payload || payload.victimId == null) return;
+    const victim = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.victimId)
+      : null;
+    if (!victim || isCounterplayOwned(victim, state)) return;
+    if (!noteShoveTumble(state, payload, { bus: ctxRef.bus, helpers: ctxRef.helpers })) return;
+    const ai = victim.data && victim.data.ai;
+    if (!ai) return;
+    const next = shovePanicBreakActivity(victim);
+    if (!next) return;
+    ai.shovePanicBase = ai.activity || null;
+    ai.activity = next;
+  }
+
+  /** Expired panics hand the authored activity record back exactly once (stash/handback). */
+  function restoreShovePanics(state, shipLikeList) {
+    stepShovePanicRestores(state, shipLikeList);
+  }
+
   function replayLastManeuvers(liveStack, tick, state) {
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
@@ -509,10 +617,11 @@ export function createTacticalAISystem({
           if (ctxRef && ctxRef.state) delete ctxRef.state.enemyMind;
           resetRuntime();
         });
-        listenLifecycle(ctx.bus, 'save:loaded', resetRuntime);
+        listenLifecycle(ctx.bus, 'save:loaded', restoreRuntime);
         listenLifecycle(ctx.bus, 'game:new', () => clearCounterplayAdventure(ctxRef));
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
+        listenLifecycle(ctx.bus, 'combat:tumbled', handleShoveTumble);
       }
     },
 
@@ -520,6 +629,14 @@ export function createTacticalAISystem({
       detachLifecycleListeners();
       resetRuntime();
       ctxRef = null;
+    },
+
+    serialize() {
+      if (!stack || !ctxRef?.state) return null;
+      return captureTacticalRuntime(stack, ctxRef.state, {
+        lastDecisionTick, lastOwnershipRefreshTick, lastManeuverRequests,
+        bodyLaunches: new Map([...bodyLaunchRt].map(([id, { actor, ...row }]) => [id, row])),
+      });
     },
 
     update(_dt, state) {
@@ -567,6 +684,7 @@ export function createTacticalAISystem({
       }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
+      restoreShovePanics(state, shipLikeList);
       const liveStack = ensureStack(state);
       bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
@@ -617,8 +735,46 @@ export function createTacticalAISystem({
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
         const doctrine = decision && decision.combatDoctrine;
+        const priorLane = entity && committedLaneCues.get(entity);
+        const aim = doctrine?.aimCommit;
+        const targetGeneration = state.entities?.get?.(doctrine?.targetId)?.occupantGeneration;
+        const sameLane = priorLane && aim && priorLane.sourceGeneration === entity.occupantGeneration
+          && priorLane.doctrineId === doctrine.doctrineId && priorLane.targetId === doctrine.targetId
+          && priorLane.targetGeneration === targetGeneration
+          && priorLane.untilTick === aim.untilTick && priorLane.bearing === aim.bearing;
+        if (priorLane && !sameLane) {
+          // Only this lane's own changed phase carries its generation below. A forgotten
+          // or replaced doctrine needs one cancellation through the existing receipt.
+          const phaseWillCancel = doctrine?.phaseChanged && doctrine.doctrineId === priorLane.doctrineId
+            && entity.occupantGeneration === priorLane.sourceGeneration;
+          if (!phaseWillCancel && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+            ctxRef.bus.emit('ai:doctrinePhase', { entityId: decision.entityId, targetId: null,
+              doctrineId: priorLane.doctrineId, phase: 'cancelled', aimCommit: null,
+              sourceGeneration: priorLane.sourceGeneration, targetGeneration: priorLane.targetGeneration, tick });
+          }
+          committedLaneCues.delete(entity);
+        }
         // Authored capital scores own their presentation; stock boss telegraphs would double-report.
-        if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.telegraphStarted && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+        // A committed-corridor telegraph is the painted promise of a firing lane, so it may
+        // only announce while the same admissions that gate this tick's volley would let a
+        // shot through. A hull whose gun is held (swarm/arrival hold, squad token, mind veto,
+        // nemesis or panic denial, suppressed stock fire) paints nothing rather than lying
+        // about a volley it cannot release; if the hold lifts while that cue is still live,
+        // the deferred emit below lands inside the same announce window instead of stranding
+        // the warning. The ledger keys on the record's own frozen telegraph, so it expires
+        // for free the moment the doctrine leaves the cue phase.
+        const pendingCue = entity && doctrine && doctrine.telegraph
+          && heldLaneTelegraphs.get(entity) === doctrine.telegraph ? doctrine.telegraph : null;
+        if (entity && !pendingCue && heldLaneTelegraphs.has(entity)) heldLaneTelegraphs.delete(entity);
+        const committedCue = !!(doctrine && doctrine.telegraph && doctrine.aimCommit && doctrine.attackLine);
+        const laneHeld = committedCue && (doctrine.telegraphStarted || pendingCue)
+          ? committedLaneFireHeld(entity, decision, state, liveStack)
+          : null;
+        if (laneHeld != null && entity) heldLaneTelegraphs.set(entity, doctrine.telegraph);
+        else if (entity && pendingCue) heldLaneTelegraphs.delete(entity);
+        if (!capitalScoreControls(state, decision.entityId) && doctrine
+            && (doctrine.telegraphStarted || pendingCue) && laneHeld == null
+            && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:telegraph', {
             entityId: decision.entityId,
             targetId: doctrine.targetId,
@@ -627,11 +783,19 @@ export function createTacticalAISystem({
             kind: doctrine.telegraph.kind,
             durationTicks: doctrine.telegraph.durationTicks,
             attackLine: doctrine.attackLine || null,
+            ...((doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')
+              && doctrine.aimCommit ? { aimCommit: doctrine.aimCommit, sourceGeneration: entity?.occupantGeneration, targetGeneration } : {}),
             // FB-020: stage/edge so the listener can tell a mount-loss beat from a generic cue.
             bossStage: doctrine.bossStage || 0,
             turretEdge: doctrine.turretEdge || 0,
             tick,
           });
+          if (entity && aim && Number.isSafeInteger(entity.occupantGeneration)
+              && (doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')) {
+            committedLaneCues.set(entity, { sourceGeneration: entity.occupantGeneration,
+              doctrineId: doctrine.doctrineId, targetId: doctrine.targetId, targetGeneration,
+              untilTick: aim.untilTick, bearing: aim.bearing });
+          }
         }
         if (!capitalScoreControls(state, decision.entityId) && doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:doctrinePhase', {
@@ -643,6 +807,8 @@ export function createTacticalAISystem({
             fireWindow: doctrine.fireWindow,
             maneuverKind: doctrine.maneuverKind,
             attackLine: doctrine.attackLine || null,
+            ...((doctrine.doctrineId === 'interceptor_flyby' || doctrine.doctrineId === 'brawler_commit')
+              ? { aimCommit: doctrine.aimCommit || null, sourceGeneration: entity?.occupantGeneration, targetGeneration } : {}),
             bossStage: doctrine.bossStage || 0,
             turretEdge: doctrine.turretEdge || 0,
             tick,
@@ -653,6 +819,7 @@ export function createTacticalAISystem({
         applyTurretEdgeEffects(entity, doctrine, state);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
+        applyShovePanicFireGate(entity, state);
         applyEliteChargeTell(entity, decision, state, tick, ctxRef && ctxRef.bus);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
@@ -680,6 +847,7 @@ export function createTacticalAISystem({
             state,
             entity,
             doctrinePhase: doctrine.phase,
+            doctrineStartedTick: doctrine.phaseStartedTick,
             tick,
             placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
           });
@@ -687,9 +855,9 @@ export function createTacticalAISystem({
             ? ctxRef.registry.get('bombs')
             : null;
           if (!(isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
-            && entity.data?.lootTableId === 'mine_layer_jackal')) applyNpcBombMirror({
-            state, entity, doctrinePhase: doctrine.phase, bombs: bombsSys,
-          });
+            && swarmSpecialistKind(enemyId) === 'jackal')) {
+            applyNpcBombMirror({ state, entity, doctrinePhase: doctrine.phase, bombs: bombsSys });
+          }
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
@@ -750,6 +918,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const effective = palletJackDecision(kilnbackDecision(decision, state), state);
     applyMindAwareFiringIntent(effective, state);
     applyNemesisFireGate(entity, state);
+    applyShovePanicFireGate(entity, state);
     applyEliteChargeTell(entity, effective, state, state && state.tick, bus);
   }
   return decisions.length;
@@ -823,6 +992,82 @@ export function applyEliteChargeTell(entity, decision, state, tick, bus) {
 }
 
 /**
+ * Expired panics hand the authored activity record back exactly once (stash/handback, the
+ * applyEngagementPosture shape). Module-level so inspection and focused checks read the same
+ * pass the update loop runs.
+ */
+export function stepShovePanicRestores(state, shipLikeList) {
+  if (!state || !shipLikeList || !shipLikeList.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime
+    : (Number.isFinite(state.tick) ? state.tick / 60 : 0);
+  for (let i = 0; i < shipLikeList.length; i++) {
+    const entity = shipLikeList[i];
+    const ai = entity && entity.data && entity.data.ai;
+    if (!ai || (!ai.shovePanic && !ai.shovePanicBase)) continue;
+    if (shovePanicLive(ai, now)) continue;
+    const base = ai.shovePanicBase;
+    delete ai.shovePanicBase;
+    const current = ai.activity;
+    // Another writer already replaced the break with its own record: leave theirs.
+    if (current && String(current.reason || '') === 'shove_panic') {
+      if (base) ai.activity = base;
+      else delete ai.activity; // no prior activity existed; do not leave the temporary break behind
+    }
+  }
+}
+
+/**
+ * Shove panic fire veto — the same denial-only shape as the Nemesis gate: while a hull's panic
+ * window is live it may not open fire (the crew is still gathering its wits), and it can never
+ * open a gate the ROE, mind veto or engagement authority has closed. Runs on fresh decisions
+ * and on cached ones so a skipped decision frame cannot shoot through the rattle.
+ */
+export function applyShovePanicFireGate(entity, state) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || !ai.shovePanic) return;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  if (!shovePanicLive(ai, now)) return;
+  let intent = data.intent;
+  if (intent && Object.isFrozen(intent)) intent = data.intent = { ...intent };
+  if (intent) clearAIFiringIntent(intent, 'shove_panic');
+}
+
+/**
+ * Lying-paint guard for committed attack lanes. A lane painted at the telegraph promises a
+ * firing corridor, so the emit consults exactly the fields the volley's own gates read:
+ * the wave shaper's holds inside applyAIFiringIntent, the squad director's token that
+ * applySquadTokenFireGate/applyChoreographyFireWindow deny on, the enemy-mind veto inside
+ * applyMindAwareFiringIntent, and the nemesis, shove-panic and capital-score denial gates
+ * applied just after the emit. Denial only — it can never open a door the volley keeps shut;
+ * per-tick aim/geometry admission (engagement authority, friendly and optic lanes, mount
+ * cones) is deliberately not duplicated here because it can release or deny either way.
+ * Returns the holding gate's reason, or null when the painted lane is honestly armed.
+ */
+export function committedLaneFireHeld(entity, decision, state, liveStack) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  const ai = data.ai;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  const swarmHoldUntil = Number(ai && ai.swarmFireHoldUntil);
+  if (Number.isFinite(swarmHoldUntil) && now < swarmHoldUntil) return 'swarm_fire_hold';
+  const arrivalHoldUntil = Number(ai && ai.arrivalHoldUntil);
+  if (Number.isFinite(arrivalHoldUntil) && now < arrivalHoldUntil) return 'arrival_hold';
+  const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
+  if (director && recipeIdFromEntity(entity) && typeof director.planFor === 'function') {
+    const plan = director.planFor(entity.id);
+    if (plan && plan.fireAuthorized === false) return 'squad_token';
+  }
+  if (!enemyMindAllowsFire(decision, state && state.simTime)) return 'enemy_mind_hold';
+  if (!nemesisFireAllowed(entity, state)) return 'nemesis_telegraph_or_retreat';
+  if (shovePanicLive(ai, now)) return 'shove_panic';
+  if (capitalBossOrder(state, entity.id)?.suppressStockFire === true) return 'capital_score';
+  return null;
+}
+
+/**
  * Doctrine egress/lull phases during which a weapons-free combatant's live activity reads as
  * REPOSITION instead of the authored ATTACK_RUN. This is what consumes the reposition cell of the
  * activity/ROE vocabulary mid-fight: the enemy is factually breaking off, so the behavior gate
@@ -882,6 +1127,9 @@ export function applyEngagementPosture(entity, doctrine, state) {
   const ai = entity.data.ai;
   if (!ai || ai.passive === true || ai.roe !== 'weapons_free') return;
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  // A live shove panic owns the hull's posture while it lasts (its own break-off record is
+  // already written and the restore pass hands the authored activity back on expiry).
+  if (shovePanicLive(ai, Number.isFinite(state && state.simTime) ? state.simTime : tick / 60)) return;
   const current = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
   if (!doctrine || !POSTURE_EGRESS_PHASES.has(doctrine.phase)) {
     // Re-commit (or doctrine dropped): hand the authored activity back exactly once.

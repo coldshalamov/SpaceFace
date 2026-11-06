@@ -1,6 +1,8 @@
 // CAN ON THE CIVILIAN CORE — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Helios Station card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { sectorLine } from '../communityPersonality.js';
 
 const spec = {
   "id": "lived_civilian_core_escort_scn_logic",
@@ -29,17 +31,17 @@ const spec = {
     {
       "id": "a",
       "label": "Take the lead",
-      "playerLine": "I will take the lead and keep the can in my wake."
+      "playerLine": "I’ll take the lead. The can rides my wake, manifest first."
     },
     {
       "id": "b",
       "label": "Cover the flank",
-      "playerLine": "I can cover the outside while your slow hull crosses."
+      "playerLine": "I’ll hold the outside. Nothing unfiled crosses with us."
     },
     {
       "id": "c",
       "label": "Leave the escort",
-      "playerLine": "I cannot escort this run. Keep the can on course."
+      "playerLine": "Not my run. File the can as self-propelled."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +54,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CLERK: Keep the can behind your drive through civilian core. No passing.",
+      "line": "CLERK: Concord Core escort. Keep the can behind your drive. Bay 7 is expecting it.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +69,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The escort beacon has been taped over at the wrong end.",
+      "line": "The can’s manifest is older than the can. The hub honors both.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +83,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "CLERK checks the trailing lamp before calling the lead clear.",
+      "line": "CLERK checks the trailing lamp, then the paperwork, then the lamp again.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +97,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The can has a serial someone still loves.",
+      "line": "The can was lost twice and found twice. Bay 7 kept both tickets.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +111,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "The civilian core sounds the same at idle or at full burn.",
+      "line": sectorLine('sector_helios_prime', 0) || 'The hub keeps what the war left behind, alphabetically.',
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "CLERK: Still holding. Nobody here is paid by the minute.",
+      "line": "CLERK: Holding position. The can is not late; the war was.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +150,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Lead taken. The escorted hull kept its lamps behind yours.",
+      "line": "Lead taken. The can crossed in convoy order, paperwork intact.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +177,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Flank clear. No second signal followed the crossing.",
+      "line": "Flank held. Nothing followed the crossing that wasn’t filed first.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +197,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left. CLERK kept the can on the marked course.",
+      "line": "You left. CLERK logged the can as self-propelled. Bay 7 disagreed.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +248,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CAN ON THE CIVILIAN CORE",
-  "primaryLine": "CLERK: Keep the can behind your drive through civilian core. No passing.",
+  "primaryLine": "CLERK: Concord Core escort. Keep the can behind your drive. Bay 7 is expecting it.",
   "factionId": "faction_scn",
   "choices": [
     {
       "id": "a",
       "label": "Take the lead",
-      "playerLine": "I will take the lead and keep the can in my wake."
+      "playerLine": "I’ll take the lead. The can rides my wake, manifest first."
     },
     {
       "id": "b",
       "label": "Cover the flank",
-      "playerLine": "I can cover the outside while your slow hull crosses."
+      "playerLine": "I’ll hold the outside. Nothing unfiled crosses with us."
     },
     {
       "id": "c",
       "label": "Leave the escort",
-      "playerLine": "I cannot escort this run. Keep the can on course."
+      "playerLine": "Not my run. File the can as self-propelled."
     }
   ],
   "timeoutChoice": "c",

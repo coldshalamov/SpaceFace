@@ -2,6 +2,7 @@ const BONE = '236 230 216';
 const WARM = '248 244 234';
 
 const LABEL = `font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal;`;
+const LABEL_IMPORTANT = `font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif !important; font-stretch:112% !important; font-weight:650 !important; text-transform:uppercase !important; font-variation-settings:"wght" 650, "wdth" 112 !important;`;
 const READ = `font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-stretch:100%; font-variation-settings:normal; text-transform:none;`;
 const NUMERAL = `font-family:var(--dp-face-numeral, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:100%; font-weight:250; font-variation-settings:"wght" 250, "wdth" 100;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.01em;`;
@@ -113,11 +114,11 @@ ${T} .con-dossier .sf-entity-link:is(:hover, :focus-visible) { outline:none !imp
 /* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex/mission-log/achievements) */
 ${T} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; gap:clamp(18px, 2.8vw, 64px); min-height:0; margin:0; padding:0; border:0; background:none; position:relative; z-index:3; }
 ${T} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL_IMPORTANT} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_IMPORTANT} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${T} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
@@ -320,6 +321,28 @@ ${T} .con-cost dt { align-self:end; }
 @media (min-width:3400px) and (min-height:1900px) {
   ${T}.k-screen { zoom:1.85; --k-s:1; }
 }
+/* ui-polish-280: the three corner readings (credits, research points, unlocked) were loose type over the
+   dial's sky, and "RESEARCH POINTS" broke under its figure while its neighbours stood on one line. On
+   desktop frames each reading now sits in its own hairline card, figure over a one-line word, the cards
+   sized to their words so the corner reads as one set (as the Codex unlock counts do). Padding, gap and
+   line-height stay tight so the card row is no taller than the old loose corner on short frames */
+@media (min-width:761px) {
+  ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:stretch; align-items:stretch;
+    column-gap:clamp(6px, .6vw, 10px) !important; row-gap:0 !important; text-align:left; }
+  ${T} > .k-corner.con-corner .con-read { box-sizing:border-box; align-items:flex-start; justify-content:flex-start; gap:2px;
+    padding:clamp(4px, .6vh, 9px) clamp(7px, .6vw, 12px); border:1px solid rgb(${BONE} / .16); border-radius:6px;
+    background:rgb(12 12 14 / .62); }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(20px, min(1.6vw, 3.4vh), 40px); line-height:1.05; text-shadow:none; }
+  ${T} > .k-corner.con-corner .con-read__w { font-size:12px; max-width:none; white-space:nowrap; text-align:left; letter-spacing:.08em; line-height:1.2; text-shadow:none; }
+}
+/* the 270–320px reading of a ≤1280 frame: the three words hold one line only in the label's narrow cut with the
+   letters closed up, each card as wide as its word */
+@media (min-width:761px) and (max-width:1280px) {
+  ${T} > .k-corner.con-corner { column-gap:5px !important; }
+  ${T} > .k-corner.con-corner .con-read { min-width:max-content; padding:4px 6px; }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(19px, 1.6vw, 21px); }
+  ${T} > .k-corner.con-corner .con-read__w { letter-spacing:.02em; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 650 !important; }
+}
 @media (forced-colors:active) {
   ${T} > .con-side::before, ${T} > .k-title::before { display:none; }
   ${T} .con-cost__fill { stroke:Highlight; }
@@ -403,6 +426,7 @@ ${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stro
 ${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .58); }
 ${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
+${A} .con-medal-read__kicker .con-medal-read__state { margin:0; white-space:nowrap; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .9); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
@@ -414,11 +438,11 @@ ${A} .con-medal-read__status { ${LABEL} font-size:clamp(12px, .6vw, 12.5px); let
 ${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; min-height:0; margin:0; padding:0; border:0; background:none; }
 ${A} > .k-foot .k-words { display:flex; margin:0; padding:0; list-style:none; }
 ${A} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL_IMPORTANT} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_IMPORTANT} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${A} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
@@ -434,7 +458,14 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} { zoom:1.85; --k-s:1; }
 }
 @media (max-width:1400px) {
-  ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
+  ${A} { grid-template-columns:minmax(0, 1fr) clamp(290px, 26vw, 340px) !important; }
+}
+/* The 761–1100px reading column needs a little more room at 960px to keep the medal state phrase
+   whole on one line. The category, separator, and progress words remain the original live reading. */
+@media (min-width:761px) and (max-width:1100px) {
+  ${A} .con-medal-read__kicker { letter-spacing:.18em; }
+  ${A} .con-medal-read__kicker span { margin:0 .2em; }
+  ${A} .con-medal-read__kicker .con-medal-read__state { margin:0; }
 }
 /* an upright phone or a window under 560px wide: one column. Title, then the medal orrery at full width
    (it stands down under 320px wide), then the chosen medal's reading, then the categories on

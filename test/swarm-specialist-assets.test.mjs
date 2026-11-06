@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { authoredPreloadPlanForEntity } from '../src/render/partsLibrary.js';
 import { sealMotionBankRef } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 import { inspectReleaseAssetPair } from '../src/contracts/assetReleaseValidation.js';
@@ -22,7 +23,7 @@ for (const [kind, enemyId, defId] of cases) test(`${kind}: hostile admission sel
   assert.deepEqual(plan.hull, [path], 'ordinary hostile identity resolves its own body');
   const pilot = pilots.find(row => row.key === `swarm-${kind}`);
   const released = release.find(row => row.id === pilot.releaseAssetId);
-  const compression = inspectReleaseAssetPair(`assets/ships/parts/${path}`, pilot.sourceUrl, { root: root.pathname });
+  const compression = inspectReleaseAssetPair(`assets/ships/parts/${path}`, pilot.sourceUrl, { root: fileURLToPath(root) });
   assert.equal(compression.ok, true, JSON.stringify(compression.issues));
   const bytes = read(pilot.sourceUrl);
   assert.equal(bytes.readUInt32LE(0), 0x46546c67);
@@ -43,7 +44,7 @@ for (const [kind, enemyId, defId] of cases) test(`${kind}: hostile admission sel
   const renderBytes = read(pilot.metadataUrl.replace(/[^/]+$/, metadata.render.uri));
   assert.equal(hash(renderBytes), metadata.render.sha256, 'the compiled payload matches its metadata');
   assert.equal(renderBytes.length, metadata.render.bytes);
-  assert.deepEqual(await sealMotionBankRef(pilot, metadata, { repoRoot: root.pathname }), metadata.runtime.motionBank);
+  assert.deepEqual(await sealMotionBankRef(pilot, metadata, { repoRoot: fileURLToPath(root) }), metadata.runtime.motionBank);
   const bank = json(metadata.runtime.motionBank.uri);
   assert.equal(bank.sourceAssetId, pilot.runtimeAssetId);
   assert.equal(bank.sourceGlbSha256, hash(read(`assets/ships/parts/${path}`)));

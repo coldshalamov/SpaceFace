@@ -179,7 +179,14 @@ function installDom() {
     }
     dispatchEvent(ev) {
       const list = this._listeners.get(ev.type) || [];
-      for (const fn of list) fn({ ...ev, target: this, currentTarget: this });
+      const event = {
+        stopPropagation() {},
+        preventDefault() {},
+        ...ev,
+        target: this,
+        currentTarget: this,
+      };
+      for (const fn of list) fn(event);
     }
     contains(node) {
       for (let n = node; n; n = n.parentNode) if (n === this) return true;

@@ -167,7 +167,10 @@ test('production-order kill creates one immediate marker-backed wreck with durab
 test('repeat sector entry and duplicate kill delivery retain the same live wreck and single news receipt', () => {
   const h = integratedHarness();
   const victim = addVictim(h.state);
-  const payload = killPayload(victim);
+  // Ambient kill (killerId 77 ≠ playerId 1): the generic battle-aftermath residue line is
+  // deliberately suppressed for player-vs-pirate kills since STORY-09 — the witness-gated law
+  // headline owns those — so this dedup contract pins the residue path an ambient kill takes.
+  const payload = { ...killPayload(victim), killerId: 77 };
   h.bus.emit('entity:killed', payload);
   const immediate = wrecks(h.state)[0];
 

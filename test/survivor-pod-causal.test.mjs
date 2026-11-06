@@ -338,14 +338,17 @@ test('rescue hull auto-claims unattended pod', () => {
       pos: { x: 45, z: 2 },
       vel: { x: 0, z: 0 },
       radius: 10,
-      data: { trafficRole: 'rescue', role: 'rescue' },
+      data: { trafficRole: 'rescue', role: 'rescue', worldRecordId: 'test:rescue:902' },
       flags: {},
     });
-    const rescued = [];
+    h.state.traffic = { freighters: [{ id: 902, role: 'rescue' }] };
+    const rescued = [], boarded = [];
     h.bus.on('survivorPod:rescued', (p) => rescued.push(p));
+    h.bus.on('survivorPod:boarded', (p) => boarded.push(p));
     survivorPod.update(1 / 60, h.state);
-    assert.equal(rescued.length, 1);
-    assert.equal(rescued[0].reason, 'rescue_hull');
+    assert.equal(boarded.length, 1);
+    assert.equal(boarded[0].reason, 'rescue_hull');
+    assert.equal(rescued.length, 0, 'pickup is not station delivery');
     assert.equal(h.pods().length, 0);
   } finally {
     h.restore();

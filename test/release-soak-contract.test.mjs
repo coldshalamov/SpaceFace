@@ -14,6 +14,7 @@ import { once } from 'node:events';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { validateContextLoss } from '../scripts/lib/releaseSoakContracts.mjs';
 
 import {
   RELEASE_SOAK_RECEIPT_SCHEMA,
@@ -29,12 +30,36 @@ import {
   runReleaseSoakSession,
   runReleaseSoakCampaign,
   createProcessRegistry,
+  compareSaveReloadPayloads,
   modeConfig,
   digestForCompare,
 } from '../scripts/lib/releaseSoakSession.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHECK = path.join(ROOT, 'scripts', 'check-release-soak.mjs');
+
+test('context-loss contract rejects rAF and a static image without advancing world pixels', () => {
+  const context = { available: true, lostEvent: true, restoredEvent: true, meshResourceReady: true,
+    pixelProof: true, frameAdvanced: true, worldSubmissionAdvanced: true, recovered: true,
+    meshRetained: true, before: false, after: false,
+    pixelAdvancement: { pass: true, width: 1440, height: 900, sampleWidth: 96, sampleHeight: 54,
+      firstWorldSubmittedFrames: 10, secondWorldSubmittedFrames: 12, worldFrameDelta: 2,
+      firstNonblank: true, secondNonblank: true, changedPixels: 3 },
+    tailAdvancement: { pass: true, start: { tick: 100, worldSubmittedFrames: 12 },
+      end: { tick: 110, worldSubmittedFrames: 20 }, tickDelta: 10, worldFrameDelta: 8 } };
+  const failures = [];
+  validateContextLoss(context, failures);
+  assert.deepEqual(failures, []);
+  for (const pixelAdvancement of [null, { ...context.pixelAdvancement, changedPixels: 0 },
+    { ...context.pixelAdvancement, worldFrameDelta: 0 }, { ...context.pixelAdvancement, secondNonblank: false }]) {
+    const rejected = [];
+    validateContextLoss({ ...context, pixelAdvancement }, rejected);
+    assert.ok(rejected.length > 0);
+  }
+  const noTailProgress = [];
+  validateContextLoss({ ...context, tailAdvancement: { ...context.tailAdvancement, worldFrameDelta: 0 } }, noTailProgress);
+  assert.ok(noTailProgress.length > 0);
+});
 
 // ── schema / static ──────────────────────────────────────────────────────────
 
@@ -85,8 +110,93 @@ test('save/reload path reports hash equivalence', () => {
   assert.ok(receipt.saveReload.afterHash, 'afterHash required');
   assert.match(receipt.saveReload.beforeHash, /^[a-f0-9]{64}$/i);
   assert.equal(receipt.saveReload.observedAfterHash, receipt.saveReload.beforeHash,
-    'equivalence must compare the observed post-load durable payload, not normalize a divergent hash');
-  assert.equal(receipt.saveReload.reloadProof, 'stable_durable_payload_hash');
+    'the semantic durable-state hash must match across restore');
+  assert.equal(receipt.saveReload.comparison, 'durable_state_and_allocator_reconciliation');
+  assert.equal(receipt.saveReload.reloadProof, 'stable_durable_state_allocator_reconciliation');
+  assert.equal(receipt.saveReload.allocatorReconciliation.pass, true);
+  assert.equal(receipt.saveReload.divergentPaths.length, 0, 'durable gameplay fields remain exact');
+  assert.ok(receipt.saveReload.rawBeforeHash && receipt.saveReload.rawAfterHash,
+    'raw serialized hashes remain available beside semantic equivalence');
+  assert.ok(receipt.saveReload.rawDivergentPaths.length > 0,
+    'raw allocator differences are retained as evidence');
+  assert.ok(receipt.saveReload.rawDivergentPaths.every((path) => (
+    path.startsWith('$.entities.freeIds.') || path === '$.entities.nextOccupantGeneration'
+  )), `unexpected raw save drift: ${receipt.saveReload.rawDivergentPaths.join(', ')}`);
+});
+
+test('save/reload semantic comparison rejects allocator corruption and durable cargo/stat drift', () => {
+  const entity = { id: 2, occupantGeneration: 8 };
+  const state = {
+    entities: new Map([[2, entity]]),
+    entityList: [entity],
+    world: {},
+  };
+  const before = {
+    player: { credits: 500, cargo: { items: { cmdty_ore_iron: 1 } } },
+    encounterDirector: { stats: { fired: 4 } },
+    entities: { freeIds: [3, 2, 1], nextEntityId: 4, nextOccupantGeneration: 7 },
+  };
+  const after = {
+    player: { credits: 500, cargo: { items: { cmdty_ore_iron: 1 } } },
+    encounterDirector: { stats: { fired: 4 } },
+    entities: { freeIds: [3, 1], nextEntityId: 4, nextOccupantGeneration: 9 },
+  };
+  assert.equal(compareSaveReloadPayloads(before, after, state).equivalence, true,
+    'filtering the now-live id and advancing the lifetime fence is a valid restore');
+
+  for (const freeIds of [[1], [3, 1, 9], [1, 3]]) {
+    const result = compareSaveReloadPayloads(before, {
+      ...after, entities: { ...after.entities, freeIds },
+    }, state);
+    assert.equal(result.allocatorReconciliation.pass, false, `invalid free list ${JSON.stringify(freeIds)}`);
+    assert.equal(result.equivalence, false);
+  }
+  const duplicateKeptId = compareSaveReloadPayloads(before, {
+    ...after, entities: { ...after.entities, freeIds: [3, 3, 1] },
+  }, state);
+  assert.equal(duplicateKeptId.allocatorReconciliation.freeIdsMatch, false);
+  assert.equal(duplicateKeptId.allocatorReconciliation.afterFreeIdsValid, false);
+  assert.equal(duplicateKeptId.equivalence, false);
+
+  const duplicatePresentOnBothSides = compareSaveReloadPayloads({
+    ...before, entities: { ...before.entities, freeIds: [3, 3, 2, 1] },
+  }, {
+    ...after, entities: { ...after.entities, freeIds: [3, 3, 1] },
+  }, state);
+  assert.equal(duplicatePresentOnBothSides.allocatorReconciliation.freeIdsMatch, true,
+    'matching corrupt lists still fail allocator validity');
+  assert.equal(duplicatePresentOnBothSides.allocatorReconciliation.freeIdsValid, false);
+  assert.equal(duplicatePresentOnBothSides.equivalence, false);
+
+  const invalidFreeId = compareSaveReloadPayloads({
+    ...before, entities: { ...before.entities, freeIds: [3, 0, 2, 1] },
+  }, {
+    ...after, entities: { ...after.entities, freeIds: [3, 0, 1] },
+  }, state);
+  assert.equal(invalidFreeId.allocatorReconciliation.freeIdsMatch, true,
+    'matching invalid ids still fail allocator validity');
+  assert.equal(invalidFreeId.allocatorReconciliation.freeIdsValid, false);
+  assert.equal(invalidFreeId.equivalence, false);
+
+  const invalidAllocatorShape = compareSaveReloadPayloads(before, {
+    ...after, entities: { ...after.entities, nextEntityId: 0, nextOccupantGeneration: 0 },
+  }, state);
+  assert.equal(invalidAllocatorShape.allocatorReconciliation.afterNextEntityIdValid, false);
+  assert.equal(invalidAllocatorShape.allocatorReconciliation.afterGenerationValid, false);
+  assert.equal(invalidAllocatorShape.equivalence, false);
+  const cargoDrift = compareSaveReloadPayloads(before, {
+    ...after, player: { credits: 500, cargo: { items: { cmdty_ore_iron: 2 } } },
+  }, state);
+  assert.equal(cargoDrift.equivalence, false, 'durable cargo changes remain a hard mismatch');
+  const statsDrift = compareSaveReloadPayloads(before, {
+    ...after, encounterDirector: { stats: { fired: 5 } },
+  }, state);
+  assert.equal(statsDrift.equivalence, false, 'durable encounter stats changes remain a hard mismatch');
+  const allocatorCursorDrift = compareSaveReloadPayloads(before, {
+    ...after, entities: { ...after.entities, nextEntityId: 5 },
+  }, state);
+  assert.equal(allocatorCursorDrift.allocatorReconciliation.nextEntityIdStable, false);
+  assert.equal(allocatorCursorDrift.equivalence, false, 'the next numeric entity id must remain exact');
 });
 
 // ── bounded growth ───────────────────────────────────────────────────────────

@@ -122,9 +122,12 @@ async function runMachine(machine, {
   const pose = shovePose(machine);
   const playerPos = playerInVolume ? telegraphPose(machine) : spectatorPose(machine);
   const previousFields = FIELD_FLAGS.enabled;
-  FIELD_FLAGS.enabled = fieldsEnabled;
+  // The runtime reseeds process flag maps from its frozen profile config inside every
+  // step; holding FIELD_FLAGS off needs seedProcessMaps off so the call-time read
+  // keeps seeing the scenario's own setting.
   const host = await bootRealPath({
     seed: SEED,
+    seedProcessMaps: fieldsEnabled,
     systems: [
       'actions',
       'flightV3',
@@ -144,6 +147,7 @@ async function runMachine(machine, {
     }],
   });
   try {
+    FIELD_FLAGS.enabled = fieldsEnabled;
     host.state.world = host.state.world || {};
     host.state.world.currentSectorId = KILL_MACHINE_SECTOR_ID;
     host.state.simTime = simTime;

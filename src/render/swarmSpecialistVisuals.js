@@ -122,6 +122,8 @@ export function attachSwarmSpecialistVisual(root, entity) {
     if (wake) wake.mesh.visible = false;
     if (ring) ring.visible = false;
     for (let i = 0; i < pivots.length; i++) { pivots[i].node.quaternion.copy(rests[i]); pivots[i].node.updateMatrix(); }
+    // A demotion or retired tell must not retain an old authored subtree through the controller.
+    content = null; emitter = null; pivots.length = 0; rests.length = 0;
   };
   const update = (live, now) => {
     const view = live?.data?.swarmSpecialist;
@@ -162,7 +164,6 @@ export function attachSwarmSpecialistVisual(root, entity) {
       }
     }
   };
-  root.userData.updateRuntimeState = update;
-  root.userData.swarmSpecialistVisual = { kind, update };
+  root.userData.swarmSpecialistVisual = { kind, update, clear };
   return true;
 }

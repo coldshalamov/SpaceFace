@@ -36,6 +36,7 @@ import { physicalProblemFromPackages, shippedQuestionFor } from '../data/surviva
 import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
   SURVIVAL_WAVE_INTRO_TICKS,
@@ -43,6 +44,8 @@ import {
 import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
+import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -76,6 +79,20 @@ const BROOD_TELEGRAPH_TTL_S = 3;
 export const MAX_AFFIX_LINES_PER_WAVE = 2;
 /** Reading time for an affix tell — it teaches a trick, not an imminent attack. */
 const AFFIX_TELL_TTL_S = 5;
+
+/**
+ * A mid-wave reinforcement tell is the arrival beat the pressure hold cannot give: the hold
+ * telegraphs a breath before the spend, but the GATE is only drawn when the batch materializes,
+ * so the bearing exists only on the materialization receipt. The batch lands as one clump at
+ * the gate — seconds of approach before contact — so a line spoken there is a true pre-contact
+ * tell: the count and the world bearing, one per gap, a small count per wave. Each still counts
+ * against MAX_LINES_PER_WAVE through _alert, because the bound is hard.
+ */
+export const MAX_REINFORCE_LINES_PER_WAVE = 2;
+/** Sim seconds between reinforcement tells inside one wave. */
+export const REINFORCE_TELL_GAP_S = 8;
+/** Reading time for an arrival tell — the hulls are already on the approach. */
+const REINFORCE_TELL_TTL_S = 4;
 
 /**
  * Gate id → world bearing, in words.
@@ -134,6 +151,9 @@ const NUMBER_WORD = Object.freeze([
 const SPECIALIST_RANK = Object.freeze(['elite', 'control', 'anchor', 'disruptor', 'support', 'reach', 'pressure']);
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((def) => [def.id, def]));
+// The exact massline receipt may survive in a restored read model. It is never re-read or replayed
+// on load, and this weak set also rejects duplicate delivery while the module stays alive.
+const FIRST_COURT_IMPACT_RECEIPTS = new WeakSet();
 
 /** Live-run guard, mirroring survivalRun.js / survivalResults.js exactly. */
 function liveSurvivalRun(state) {
@@ -182,6 +202,10 @@ function packagesOf(plan) {
  */
 function questionClauseFor(wave, plan, arenaId) {
   if (!plan || plan.mode === 'boss_circuit') return null;
+  // Authored act rounds already speak their own question — the derived package line can
+  // misname the mechanic on the field (a bruiser's roster role reads as 'anchor' with no
+  // snare well on wave 33). One question per wave: the act's.
+  if (plan.swarm && plan.swarm.act) return null;
   const derived = Boolean(plan.swarm) || plan.heaviesOnly === true || plan.mode === 'endless'
     || !Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_TEMPLATE_BLOCK;
   const row = derived
@@ -286,7 +310,11 @@ export function waveOpeningLine(wave, plan) {
       return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${pressure}${wall}${actLine} ${closing}`;
+    // LW-05: a scheduled recurring character is named before contact, same as the debut it
+    // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
+    const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name
+      ? ` ${swarm.character.name} is inbound.` : '';
+    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${character}${pressure}${wall}${actLine} ${closing}`;
   }
 
   let bodies = 0;
@@ -332,10 +360,14 @@ export function waveOpeningLine(wave, plan) {
  * dreadnought_boss authored real prose; the other five authored snake_case tokens. Prose is
  * detected structurally (it contains a space) and used VERBATIM — authored copy is not paraphrased.
  */
-export function hintTextFor(enemyId) {
+export function hintTextFor(enemyId, state = null) {
   const def = ENEMY_BY_ID.get(enemyId);
   if (!def || typeof def.counterHint !== 'string' || def.counterHint.length === 0) return null;
   const name = def.name || 'Contact';
+  if (isSwarmSpecialistRun(state)) {
+    const brief = swarmSpecialistBriefForEnemy(enemyId);
+    if (brief) return `${name}: ${brief.counter}`;
+  }
   const authored = def.counterHint;
   if (authored.includes(' ')) return `${name}: ${authored}`;
   const prose = HINT_PROSE[authored];
@@ -370,10 +402,14 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
+    this._unsubs.push(this.bus.on('tether:latched', (p) => this._onFirstCourtRockLatched(p)));
+    this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onFirstCourtRockImpact(p)));
     this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
+    this._unsubs.push(this.bus.on('swarm:hiveSacKilled', (p) => this._onHiveSacKilled(p)));
+    this._unsubs.push(this.bus.on('swarm:broodReserve', (p) => this._onBroodReserve(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -386,6 +422,7 @@ export const survivalAnnounce = {
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
+    this._firstCourtRock = null;
   },
 
   newGame() {
@@ -419,7 +456,11 @@ export const survivalAnnounce = {
     this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
+    this._reinforceAt = 0;         // simTime the last reinforcement tell spoke
+    this._reinforceLines = 0;      // reinforcement arrival lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
+    this._sacSpoke = false;        // the Hive sac lesson, once per run
+    this._firstCourtRock = null;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -522,6 +563,7 @@ export const survivalAnnounce = {
     if (this._openedWave !== wave) {
       this._resetWave(wave);
       this._openedWave = wave;
+      this._armFirstCourtRock(wave, this._plan);
       this._speakOpening(wave);
     }
     this._waveIntroTicks = 0;
@@ -605,7 +647,31 @@ export const survivalAnnounce = {
     if (typeof enemyId !== 'string' || !ENEMY_BY_ID.has(enemyId)) return;
 
     if (this._tryBossArrival(wave, enemyId)) return;
+    if (this._tryReinforcementTell(wave, rec)) return;
     this._tryCounterHint(enemyId);
+  },
+
+  /**
+   * The reinforcement batch exists now, at its gate, still seconds from contact. Say how many
+   * and from where — the count and the world bearing off the same receipt the spawner keeps.
+   * Returns true only when a line actually spoke, so a rate-limited or budget-starved tell
+   * falls through to the counter hint instead of swallowing it.
+   */
+  _tryReinforcementTell(wave, rec) {
+    if (rec.reinforcement !== true) return false;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return false;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return false;
+    const where = BEARING_WORD[rec.gateGroup] || null;
+    const text = where
+      ? `${capitalize(countWord(rec.admitted))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(rec.admitted))} more inbound, on approach.`;
+    const spoke = this._alert(
+      `reinforce:${wave}:${rec.tick != null ? rec.tick : 0}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return false;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+    return true;
   },
 
   _onPressureTelegraph(payload) {
@@ -637,6 +703,80 @@ export const survivalAnnounce = {
     const spoke = this._say('objective', `survival:w${wave}:stall`,
       'The room breathes again — the pack is inbound.', 5);
     if (spoke) this._stallSpokeWave = wave;
+  },
+
+  /**
+   * The Hive's own counter, named the first time it works. A burst sac receipts on the bus
+   * (`swarm:hiveSacKilled`) and the brood it was feeding answer through the grief cascade —
+   * but nothing TOLD the player what the burst took: the tide that sac was feeding dies with
+   * it, and the sacs are the room's win lever (burst them all and the wave runs dry). Once
+   * per run, marked on announce (the affix law) so a wave whose budget is spent defers the
+   * lesson to the next burst instead of losing it. 'objective' like the stall release — a
+   * state of the room, not a danger beat. Later sacs stay silent: the lesson belonged to the
+   * first burst, not a per-sac chorus.
+   */
+  _onHiveSacKilled(payload) {
+    if (this._muted || this._sacSpoke) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    const spoke = this._say('objective', `hive-sac:w${wave}`,
+      'The sac bursts — the tide it was feeding dies with it.', 4);
+    if (spoke) this._sacSpoke = true;
+  },
+
+  /**
+   * B5 — the wave's held-back second breath, heard. The brood reserve lands mid-wave as one
+   * gate clump at the 165 wu arrival ring — the same arrival shape the pressure hold's
+   * reinforcement names — and its only voice was the family telegraph, which speaks a
+   * family's behavior line for ANY commitment (a mother's birth, a splitter's break) and
+   * carries no count and no bearing. This is the reinforce tell's own sentence for the
+   * reserve's receipt (`swarm:broodReserve`): the count and the compass word where the clump
+   * landed, one per gap, sharing the reinforcement tell's small per-wave budget — they are
+   * the same kind of sentence about the same kind of arrival, and the room should not spend
+   * two budgets saying it. The bearing reads the landing point against the player POSITION
+   * (the camera follows position only, so the compass word stays true on screen); a receipt
+   * without a readable landing point still says the count. The drop may finish its budget
+   * over several ticks — the gap timer coalesces that burst into one line per 8 s, exactly
+   * like a reinforcement stream. Warn-sev, finite ttl, counted in the hard per-wave bound.
+   */
+  _onBroodReserve(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const rec = payload || {};
+    const wave = rec.wave;
+    if (!Number.isInteger(wave) || wave !== this._wave) return;
+    const count = Number.isInteger(rec.count) && rec.count > 0 ? rec.count : 0;
+    if (count <= 0) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return;
+    const where = this._reserveBearingWord(rec.pos);
+    const text = where
+      ? `${capitalize(countWord(count))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(count))} more inbound, on approach.`;
+    const spoke = this._alert(`reserve:${wave}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+  },
+
+  /**
+   * The reserve landing's compass word against the player's position, in the gate table's
+   * own shape ("the north"). Null when nothing readable stands — no player, no point, or a
+   * landing under one wu from the pilot, where a compass word would be a guess.
+   */
+  _reserveBearingWord(pos) {
+    const player = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!player || !player.pos || !pos
+      || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const dx = pos.x - player.pos.x;
+    const dz = pos.z - player.pos.z;
+    if (!Number.isFinite(dx) || !Number.isFinite(dz) || dx * dx + dz * dz < 1) return null;
+    const name = playerBearingName(dx, dz);
+    return name ? `the ${name}` : null;
   },
 
   /**
@@ -707,6 +847,114 @@ export const survivalAnnounce = {
   },
 
   /**
+   * Arm a single optional first-round reaction only for the ordinary T0 Foundry court.
+   * Training has its own explicit openingLesson copy, Circuits have their own round contract,
+   * and every other arena/variant keeps its existing introduction.
+   */
+  _armFirstCourtRock(wave, plan) {
+    const state = this.state;
+    const run = liveSurvivalRun(state);
+    if (!run || wave !== 1 || run.wave !== 1 || run.ruleset !== 'swarm'
+      || run.arenaId !== 'helios_core' || plan?.openingLesson || !plan?.swarm
+      || plan.swarm.circuit || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0)
+      || Number(state.rockCore?.ratingT || 0) !== 0) return;
+    const player = state.entities?.get?.(state.playerId);
+    const generation = occupantGenerationOf(player);
+    if (!player || player.alive === false || generation == null) return;
+    this._firstCourtRock = {
+      seed: run.seed,
+      playerId: player.id,
+      player,
+      generation,
+      targetId: null,
+      target: null,
+      targetGeneration: null,
+      consumed: false,
+    };
+  },
+
+  /** Arm only from the player's real latch to one of the authored, generation-stamped court rocks. */
+  _onFirstCourtRockLatched(payload) {
+    const track = this._firstCourtRock;
+    const state = this.state;
+    const run = liveSurvivalRun(state);
+    if (!track || !payload || payload.sourceId !== track.playerId) return;
+    const player = state.entities?.get?.(state.playerId);
+    if (!run || run.seed !== track.seed || run.ruleset !== 'swarm' || run.wave !== 1
+      || !['wave_intro', 'active'].includes(run.phase) || state.mode !== 'flight'
+      || !player || player !== track.player || player.alive === false
+      || occupantGenerationOf(player) !== track.generation) {
+      this._firstCourtRock = null;
+      return;
+    }
+
+    // A newer player latch supersedes an earlier sling. Never attribute a later, unrelated mass
+    // to the court rock that happened to be on the line first.
+    track.targetId = null;
+    track.target = null;
+    track.targetGeneration = null;
+    const rock = state.entities?.get?.(payload.targetId);
+    if (!rock || rock.alive === false || (rock.type !== 'asteroid' && rock.type !== 'wreck')
+      || rock.data?.swarmArenaDebris !== true
+      || !Number.isInteger(rock.data?.openingTerrainSlot)
+      || rock.data.openingTerrainSlot < 0 || rock.data.openingTerrainSlot >= 8) return;
+    const targetGeneration = occupantGenerationOf(rock);
+    if (targetGeneration == null) return;
+    track.targetId = rock.id;
+    track.target = rock;
+    track.targetGeneration = targetGeneration;
+  },
+
+  /**
+   * A low-priority, one-shot acknowledgement of the real contact—not a damage claim or a prompt.
+   * The observer's emitted object must be the exact current read-model receipt in this tick. The
+   * player/rock generations bind it to the latch, and live hostile identity rejects nearby scenery,
+   * recycled ids and stale/posthumous deliveries. No update-loop scan is added.
+   */
+  _onFirstCourtRockImpact(payload) {
+    const track = this._firstCourtRock;
+    const state = this.state;
+    if (!track || track.consumed || !payload || typeof payload !== 'object'
+      || FIRST_COURT_IMPACT_RECEIPTS.has(payload)) return;
+    const record = state.player?.masslineImpacts;
+    if (record?.latest !== payload || !Array.isArray(record.impacts) || !record.impacts.includes(payload)
+      || !Number.isFinite(state.simTime) || payload.time !== state.simTime
+      || !Number.isFinite(state.tick) || payload.tick !== state.tick) return;
+    // A real receipt is consumed once even when it proves unrelated or no voice slot remains.
+    FIRST_COURT_IMPACT_RECEIPTS.add(payload);
+
+    const run = liveSurvivalRun(state);
+    if (!run || run.seed !== track.seed || run.ruleset !== 'swarm' || run.wave !== 1
+      || run.arenaId !== 'helios_core' || run.phase !== 'active' || state.mode !== 'flight'
+      || (Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length > 0)) return;
+    const player = state.entities?.get?.(state.playerId);
+    if (!player || player !== track.player || player.alive === false
+      || occupantGenerationOf(player) !== track.generation) return;
+    if (payload.targetId !== track.targetId || (payload.slung !== true && payload.slung !== false)) return;
+    const rock = state.entities?.get?.(payload.targetId);
+    if (!rock || rock !== track.target || rock.alive === false
+      || (rock.type !== 'asteroid' && rock.type !== 'wreck')
+      || occupantGenerationOf(rock) !== track.targetGeneration
+      || rock.data?.swarmArenaDebris !== true
+      || !Number.isInteger(rock.data?.openingTerrainSlot)
+      || rock.data.openingTerrainSlot < 0 || rock.data.openingTerrainSlot >= 8) return;
+    const victim = state.entities?.get?.(payload.victimId);
+    if (!victim || victim.alive === false || (victim.type !== 'ship' && victim.type !== 'drone')
+      || occupantGenerationOf(victim) == null
+      || !isHostileToPlayer(victim, player.team, state)
+      || victim.data?.runCohort !== 'survival' || victim.data?.runWave !== 1) return;
+    const enemyId = victim.data?.lootTableId;
+    const enemy = typeof enemyId === 'string' ? ENEMY_BY_ID.get(enemyId) : null;
+    if (!enemy) return;
+
+    track.consumed = true;
+    // Keep one slot for the result line. Bark (50) yields to objective/clear (60), tutorial (70),
+    // and danger (80/110); a busy or nearly-full wave simply stays quiet.
+    if (this._linesThisWave >= MAX_LINES_PER_WAVE - 1) return;
+    this._say('bark', 'survival:w1:court-impact', `Rock strike: ${enemy.name || 'a hostile'}. Keep moving.`, 3);
+  },
+
+  /**
    * The wave-10 boss gets a real arrival: its own authored telegraph, a camera beat, and a danger
    * alert — fired when the hull actually exists, not when the wave nominally opens.
    *
@@ -741,7 +989,7 @@ export const survivalAnnounce = {
   _tryCounterHint(enemyId) {
     if (this._hintedEnemyIds.has(enemyId)) return;
     if (this._hintsThisWave >= MAX_HINTS_PER_WAVE) return;
-    const text = hintTextFor(enemyId);
+    const text = hintTextFor(enemyId, this.state);
     if (!text) return;
     // 'tutorial' (70) — voiceArbiter.js:40 calls this channel "first-hour teaching", which is
     // exactly what a counter-hint is. It preempts objective and chatter, yields to danger.
@@ -758,6 +1006,7 @@ export const survivalAnnounce = {
     if (!Number.isInteger(wave) || wave !== this._wave) return;
     if (this._closedWave === wave) return;
     this._closedWave = wave;
+    if (wave === 1) this._firstCourtRock = null;
 
     if (rec.starved === true) {
       // The cap admitted nothing, so the wave resolved without a fight. Saying "clear" here would
@@ -794,6 +1043,7 @@ export const survivalAnnounce = {
 
   _onTransitioned(payload) {
     const phase = payload && payload.phase;
+    if (phase && !['arena_intro', 'wave_intro', 'active'].includes(phase)) this._firstCourtRock = null;
     // 'victory' is a TERMINAL phase that emits no run:ended (uiRoot.js:1003), so run:ended alone
     // would leave a won run's announcer live. Both terminal phases mute.
     if (phase === 'victory' || phase === 'ended') {

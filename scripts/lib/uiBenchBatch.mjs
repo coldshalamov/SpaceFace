@@ -16,7 +16,10 @@ export function parseBenchArgs(argv) {
     list: 'boolean', walk: 'boolean', demo: 'boolean', phone: 'boolean', headed: 'boolean',
     shot: 'list', bg: 'value', out: 'value', query: 'value', probe: 'value', max: 'value',
     viewport: 'value', viewports: 'value', 'timeout-ms': 'value', 'baseline-source': 'value',
+    'reduced-motion': 'value', 'forced-colors': 'value',
   });
+  if (o['reduced-motion'] && !['reduce', 'no-preference'].includes(o['reduced-motion'])) throw new Error('Invalid --reduced-motion');
+  if (o['forced-colors'] && !['active', 'none'].includes(o['forced-colors'])) throw new Error('Invalid --forced-colors');
   if (o.viewport && o.viewports) throw new Error('Use --viewport or --viewports, not both');
   const viewports = (o.viewports || o.viewport || (o.phone ? '390x844' : '1920x1080')).split(',').map(value => {
     const m = /^(\d+)x(\d+)$/.exec(value.trim());
@@ -80,7 +83,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
   const summary = { schema: 'spaceface.uiBenchBatch.v1', nonPromoting: true, gameBoots: 0,
     sourceOverlayManifest: args['baseline-source'] || null,
     browserLaunches: 0, ok: false, cells: [], errors: [],
-    note: 'Real screen modules over fixture state. Inspect PNGs. Fixture actions do not prove live game transitions, asset loading or performance.' };
+    note: 'Real screen modules over fixture state. Walk activation uses HTMLElement.click() and is behavior-only; it does not prove pointer reachability. Inspect PNGs. Fixture actions do not prove live game transitions, asset loading or performance.' };
   let server, browser;
   const save = () => writeFileSync(path.join(out, 'report.json'), JSON.stringify(summary, null, 2) + '\n');
   try {
@@ -98,6 +101,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
       try {
         // Reuse the expensive browser process; isolate storage, listeners, focus and fixtures.
         context = await browser.newContext({ viewport,
+          reducedMotion: args['reduced-motion'] || 'no-preference', forcedColors: args['forced-colors'] || 'none',
           ...(args.phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
         const page = await context.newPage();
         page.setDefaultTimeout(args.timeoutMs);

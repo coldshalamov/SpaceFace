@@ -73,6 +73,7 @@ export function normalizeMapOpenIntent(raw = {}) {
     pos: copyPos(src.pos),
     label: src.label != null ? String(src.label) : null,
     source: src.source != null ? String(src.source) : null,
+    ...(['active-waypoint', '47a-recovery-fix'].includes(src.selectionTarget) ? { selectionTarget: src.selectionTarget } : {}),
   };
 }
 
@@ -150,6 +151,7 @@ export function mapHandoffAction({
   stationId = null,
   pos = null,
   source = null,
+  selectionTarget = null,
 } = {}) {
   const f = normalizeMapFocus(focus);
   const isLocal = f === MAP_FOCUS.LOCAL;
@@ -166,6 +168,7 @@ export function mapHandoffAction({
     stationId: stationId != null ? String(stationId) : null,
     pos: copyPos(pos),
     source: source || null,
+    ...(['active-waypoint', '47a-recovery-fix'].includes(selectionTarget) ? { selectionTarget } : {}),
   };
 }
 

@@ -7,6 +7,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { laneRpc, laneSetMode, laneWriteSetting } from '../src/core/simLaneCommands.js';
+import { decodeSaveEnvelopeText } from '../src/save/saveWorker.js';
 
 function until(predicate, label, timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
@@ -55,6 +56,19 @@ function createSaveWorker(entry, saveModule, workerData) {
 function generationSavedAt(raw) {
   const parsed = JSON.parse(raw);
   return parsed.data?.meta?.lastSavedAt || parsed.savedAt || null;
+}
+
+async function economyFromSavedBytes(raw) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  assert.equal(decoded.ok, true, 'the selected durable save bytes decode through the canonical codec');
+  const envelope = JSON.parse(decoded.text);
+  const sourceItems = envelope?.data?.cargo?.items;
+  return {
+    credits: Number(envelope?.data?.player?.credits),
+    cargoItems: Object.fromEntries(Object.entries(sourceItems && typeof sourceItems === 'object' ? sourceItems : {})
+      .filter(([id, quantity]) => typeof id === 'string' && Number.isFinite(quantity))
+      .sort(([a], [b]) => a.localeCompare(b))),
+  };
 }
 
 const durableQuotaSnapshots = new Map();
@@ -521,6 +535,7 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
       const replies = [], receipts = [];
       let receive, lane;
       bus.on('save:loaded', payload => receipts.push({ type: 'save:loaded', payload }));
+      bus.on('save:restoreCommitted', payload => receipts.push({ type: 'save:restoreCommitted', payload }));
       bus.on('save:error', payload => receipts.push({ type: 'save:error', payload }));
       try {
         worker.on('message', message => {
@@ -536,14 +551,49 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
         });
         await lane.readyPromise;
         bus.emit('game:load', { slot: 'latest' });
-        await until(() => receipts.some(row => row.type === 'save:loaded' || row.type === 'save:error'),
+        await until(() => receipts.some(row => row.type === 'save:restoreCommitted' || row.type === 'save:error'),
           'fresh worker load from persisted host storage', 12000);
         assert.equal(receipts.some(row => row.type === 'save:error'), false,
           `the fresh owner restores from bytes that survived in main storage: ${JSON.stringify(receipts)}`);
-        assert.equal(receipts.find(row => row.type === 'save:loaded').payload.slot, 'quick');
+        const loadedReceipt = receipts.find(row => row.type === 'save:loaded').payload;
+        const committedReceipt = receipts.find(row => row.type === 'save:restoreCommitted').payload;
+        const decodedMotion = await decodeSaveEnvelopeText(saved.primary);
+        assert.equal(decodedMotion.ok, true);
+        const savedPlayer = JSON.parse(decodedMotion.text).data.entities.player;
+        assert.equal(committedReceipt.slot, 'quick');
+        assert.deepEqual(committedReceipt.restoredMotion.pos, { x: savedPlayer.pos.x, z: savedPlayer.pos.z });
+        assert.deepEqual(committedReceipt.restoredMotion.vel, { x: savedPlayer.vel.x, z: savedPlayer.vel.z },
+          'the actual worker bridge carries native committed motion from the selected durable bytes');
+        assert.equal(loadedReceipt.slot, 'quick');
+        assert.deepEqual(loadedReceipt.restoredEconomy, await economyFromSavedBytes(saved.primary),
+          'the actual worker bridge carries the economy from the exact selected durable bytes');
         const restored = await laneRpc('probeState');
         assert.equal(restored.result.gameplay.difficulty, saved.difficulty,
           'the fresh worker restores the accepted durable generation');
+        const immutableLoadedEconomy = structuredClone(loadedReceipt.restoredEconomy);
+        const immutableMotion = structuredClone(committedReceipt.restoredMotion);
+        const livePlayer = state.entities.get(state.playerId);
+        assert(livePlayer?.vel);
+        livePlayer.vel.x += 10;
+        assert.deepEqual(committedReceipt.restoredMotion, immutableMotion,
+          'a later main-side motion mirror cannot rewrite the native restore receipt');
+        const liveMirrorItems = state.player?.cargo?.items;
+        assert.ok(liveMirrorItems && typeof liveMirrorItems === 'object',
+          'the main-side player cargo mirror is available after the worker load');
+        const mirrorBeforeMutation = Object.fromEntries(Object.entries(liveMirrorItems)
+          .sort(([a], [b]) => a.localeCompare(b)));
+        const changedId = Object.keys(liveMirrorItems)[0]
+          || Object.keys(immutableLoadedEconomy.cargoItems)[0]
+          || 'cmdty_ore_iron';
+        liveMirrorItems[changedId] = Number(liveMirrorItems[changedId] || 0) + 1;
+        const mirrorAfterMutation = Object.fromEntries(Object.entries(liveMirrorItems)
+          .sort(([a], [b]) => a.localeCompare(b)));
+        assert.equal(mirrorAfterMutation[changedId], Number(mirrorBeforeMutation[changedId] || 0) + 1,
+          'the fixture advances a live main-side cargo quantity after the load receipt');
+        assert.notDeepEqual(mirrorAfterMutation, immutableLoadedEconomy.cargoItems,
+          'the fixture advances the live main-side cargo mirror after the load receipt');
+        assert.deepEqual(loadedReceipt.restoredEconomy, immutableLoadedEconomy,
+          'later cargo-mirror mutation cannot rewrite the immutable worker restore receipt');
         assert.equal(replies.some(row => row.kind === 'error'), false);
       } finally {
         lane?.close();

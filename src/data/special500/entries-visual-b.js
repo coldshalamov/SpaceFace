@@ -31,13 +31,13 @@ export const ENTRIES_VISUAL_B = [
     kind: 'visual-setpiece',
     title: 'The Bell Tolls for You',
     sectors: [],
-    trigger: { type: 'receipt', event: 'player:death' },
-    channel: 'spectacle',
+    trigger: { type: 'receipt', event: 'special500:deathBell' },
+    channel: 'memory', // the death owner already delivers the bell and noticing line
     payload: {
       from: 'Nowhere in particular',
-      text: 'Your hull comes apart the way every hull you have watched come apart does — and then the world does one thing for you: everything goes quiet except a single bell, tolling once, from the direction of the nearest station, not from you. The last frame holds a half-beat longer than it should. Your death gets the same grammar as the wrecks you have watched. Somebody was keeping time.',
+      text: 'Your hull comes apart the way every hull you have watched come apart does — and the nearest station answers through the death hush with a single bell. The last frame holds a half-beat longer than it should. Your death gets the same grammar as the wrecks you have watched. Somebody was keeping time.',
     },
-    followup: 'bespoke leg: on the player:death path, duck all audio except one bell toll spatialized to the nearest station (not the victim) and hold the final frame a half-beat; closure, never a penalty read.',
+    followup: 'bespoke leg: on the player:death path, use the existing death hush with one bell toll spatialized to the nearest station (not the victim) and hold the final frame a half-beat; closure, never a penalty read.',
   },
 
   // SP1-147 — The Bloom Tide: the Veil's scheduled light-front; the cache hour.
@@ -414,13 +414,13 @@ export const ENTRIES_VISUAL_B = [
     kind: 'visual-setpiece',
     title: 'The Karaoke Bell',
     sectors: ['sector_vesta_forge'],
-    trigger: { type: 'receipt', event: 'dock:docked' },
-    channel: 'spectacle',
+    trigger: { type: 'receipt', event: 'special500:karaokeHeard' },
+    channel: 'memory', // the gated occurrence owner delivers the performance once
     payload: {
       from: 'Foundry bar',
       text: 'Dock at the exact shift bell with the bar full and you get the whole performance: the Foundry rail sings the change — the Pitborn COUNT \'EM cadence, adopted by DMC crews who will not tell you where they learned it — and the shift bell harmonizes on top. One engineer harmonizes better than the bell, and everyone resents him for it, forever, warmly. The bell is supposed to be the pitch pipe. The bell is not the pitch pipe.',
     },
-    followup: 'bespoke leg: bar audio row keyed to barPressureAt + the exact shift bell at station_forge; write flag heard_the_count_sung and Pitborn rep +1 (they heard about it and are delighted).',
+    followup: 'bespoke dock receipt leg gated by barPressureAt and the exact shift bell at station_forge; the admitted occurrence rings the bell, delivers the Foundry rail story, writes heard_the_count_sung, grants Pitborn standing +1 and delivers the regular\'s letter.',
   },
 
   // SP3-049 — Hail of Ore: the minute after the storm is the best payday.

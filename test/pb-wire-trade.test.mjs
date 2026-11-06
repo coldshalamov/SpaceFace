@@ -9,17 +9,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { economy } from '../src/systems/economy.js';
 import { projectTradeOutcome, latestTradeReceipt } from '../src/ui/sim/tradeTruth.js';
-import { tradeClearedReceipt, takeTradeExpectation, TRADE_EXPECTATION_KEY } from '../src/ui/station/tradeReceipt.js';
+import { clearTradeExpectation, tradeClearedReceipt, TRADE_EXPECTATION_KEY } from '../src/ui/station/tradeReceipt.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
 const SEED = 4242;
 const CMDTY = 'cmdty_ore_iron';
-const ROOT = join(import.meta.dirname, '..');
 const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name])).get(CMDTY);
 
 function makeState({ holdQty = 6 } = {}) {
@@ -203,26 +200,67 @@ test('PB-286: a stamp from a different station or the future cannot describe thi
   assert.equal(receipt.line, `SOLD 2u ${CMDTY_NAME}`, 'a future-dated stamp falls back');
 });
 
-test('PB-286: the live route consumes the model — market stamps, stationApp projects, refusal clears', () => {
-  const marketSrc = readFileSync(join(ROOT, 'src/ui/station/screens/market.js'), 'utf8');
-  const emitIdx = marketSrc.indexOf("ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell'");
-  // Assert the WRITE, not the import: the assignment with its terms must precede the emit.
-  const writeIdx = marketSrc.lastIndexOf('ui[TRADE_EXPECTATION_KEY] = {', emitIdx);
-  assert.ok(writeIdx > -1, 'the market screen assigns the confirmed terms before emitting');
-  const write = marketSrc.slice(writeIdx, emitIdx);
-  assert.ok(write.includes('qty: decision.payload.qty'), 'the stamp carries the confirmed quantity');
-  assert.ok(write.includes('afterSequence:'), 'the stamp pins the ledger sequence for this settle');
-  assert.ok(marketSrc.includes('latestTradeReceipt'),
-    'the pinned sequence comes from the economy ledger');
+test('PB-286: correlated partial receipts and refusal clearing belong to their intent', () => {
+  const partialId = 'market:pb286:partial';
+  const state = makeState({ holdQty: 6 });
+  const emitted = [];
+  const system = makeEconomy(state, emitted);
+  state.ui[TRADE_EXPECTATION_KEY] = {
+    intentId: partialId, commodityId: CMDTY, side: 'sell', qty: 10, total: 100,
+    stationId: 'station_test', afterSequence: 0, atSimTime: state.simTime,
+  };
 
-  const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
-  const handler = appSrc.slice(appSrc.indexOf("subscribe('economy:tradeCompleted'"));
-  assert.ok(handler.includes('tradeClearedReceipt('),
-    'the TRADE CLEARED receipt derives through the tradeReceipt presenter');
-  const failed = appSrc.slice(appSrc.indexOf("subscribe('economy:tradeFailed'"));
-  assert.ok(failed.includes('ui[TRADE_EXPECTATION_KEY] = null'),
-    'a refused execute kills the stamp — docked simTime never ages it out');
-  assert.ok(appSrc.includes("from './tradeReceipt.js'"), 'stationApp consumes the presenter');
-  assert.ok(readFileSync(join(ROOT, 'src/ui/station/tradeReceipt.js'), 'utf8').includes('projectTradeOutcome'),
-    'the presenter reads through projectTradeOutcome — the ledger, not the display');
+  // Execute the actual owner with its ID seam but no stale full-lot price floor: this case is
+  // specifically proving the cargo-clamped partial receipt and its correlated presentation.
+  const result = system.execute('station_test', CMDTY, 'sell', 10, { intentId: partialId });
+  assert.equal(result.ok, true);
+  assert.equal(result.qty, 6);
+  const settled = completed(emitted);
+  assert.equal(settled.intentId, partialId);
+  const receipt = tradeClearedReceipt(state, settled);
+  assert.equal(receipt.line, 'SOLD 6 OF THE 10 CONFIRMED');
+  assert.ok(receipt.detail.includes('+60 cr'));
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+
+  // Neither an unrelated completion nor a refusal may consume the newer confirmed slot.
+  const newerId = 'market:pb286:newer';
+  state.ui[TRADE_EXPECTATION_KEY] = {
+    intentId: newerId, commodityId: CMDTY, side: 'sell', qty: 2, total: 20,
+    stationId: 'station_test', afterSequence: 1, atSimTime: state.simTime,
+  };
+  const olderId = 'market:pb286:older';
+  assert.equal(clearTradeExpectation(state, { intentId: olderId, reason: 'no_cargo' }), null);
+  const oldReceipt = tradeClearedReceipt(state, {
+    intentId: olderId, stationId: 'station_test', commodityId: CMDTY,
+    side: 'sell', qty: 1, total: 10,
+  });
+  assert.equal(oldReceipt.line, `SOLD 1u ${CMDTY_NAME}`);
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, newerId);
+
+  // A matching terminal refusal from the real economy owner clears only its own confirmation.
+  const refusalId = 'market:pb286:refusal';
+  const refusalState = makeState({ holdQty: 6 });
+  const refusalEvents = [];
+  const refusalSystem = makeEconomy(refusalState, refusalEvents);
+  const refusalExpectation = {
+    intentId: refusalId, commodityId: CMDTY, side: 'sell', qty: 1, total: 1_000_000,
+    stationId: 'station_test', afterSequence: 0, atSimTime: refusalState.simTime,
+  };
+  refusalState.ui[TRADE_EXPECTATION_KEY] = refusalExpectation;
+  const creditsBefore = refusalState.player.credits;
+  const cargoBefore = refusalState.player.cargo.items[CMDTY];
+  const stockBefore = refusalState.economy.markets.station_test[CMDTY].stock;
+  const refusal = refusalSystem.handleTrade(CMDTY, 'sell', 1, {
+    intentId: refusalId, expectedTotal: 1_000_000, sourceStationId: 'station_test',
+  });
+  assert.equal(refusal.ok, false);
+  assert.equal(refusal.reason, 'price_changed');
+  const failed = refusalEvents.filter((event) => event.name === 'economy:tradeFailed').pop();
+  assert.ok(failed);
+  assert.equal(failed.payload.intentId, refusalId);
+  assert.equal(clearTradeExpectation(refusalState, failed.payload), refusalExpectation);
+  assert.equal(refusalState.ui[TRADE_EXPECTATION_KEY], null);
+  assert.equal(refusalState.player.credits, creditsBefore);
+  assert.equal(refusalState.player.cargo.items[CMDTY], cargoBefore);
+  assert.equal(refusalState.economy.markets.station_test[CMDTY].stock, stockBefore);
 });

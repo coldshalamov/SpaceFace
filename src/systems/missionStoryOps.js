@@ -1,6 +1,9 @@
+import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
+import { isSpineBreakOperation } from '../missions/spineBreakWorksite.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
+import { furnaceSettlementFromMission } from '../story/campaign47a/campaignReceipts.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
@@ -13,9 +16,12 @@ import { EGRESS_DISTANCE_WU, EGRESS_FADE_S, fleeOrderActive } from '../ai/egress
 import { hash32 } from '../core/rng.js';
 import { addCargo } from './cargo.js';
 import { normalizeBlackFlagJobs } from '../missions/blackFlagMissions.js';
+import { normalizeLanternWardReward } from '../missions/lanternWardStory.js';
+import { normalizeLanternWardConversation } from '../missions/lanternWardConversation.js';
 import { normalizeStandingOrders } from './captainStandingOrders.js';
 import { ADVENTURE_SPEED_CONTRACTS } from '../data/adventureSpeedContracts.js';
 import { RED_KITE } from '../data/redKite.js';
+import { nestOutcomeReceipt } from '../data/nestVisit.js';
 import { BEAT_HINT, BEAT_TRIGGER, BRANCH_CHAIN_COUNT, BRANCH_CHAIN_TYPE, BRANCH_FACTION, BRANCH_INTRO_BY_BRANCH, CONTRACT_47A_B0_TAG, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_SCAN_LABEL, CONTRACT_CLAIM_WORK_RANGE_WU, HOME_FACTION, MISSION_WRECK_COLLISION_MASK, SECTOR_BY_ID, STATION_INFO, STORY_SIGNAL_BY_KIND, TYPE_BY_ID, campaign47aOutcomeKey, campaign47aRouteKind, contractClaimSiteMission, crucibleScreenIsLive, isCapitalBossMission, isStoryBranchIntroOffer, missionHostileSpawnPos, missions, mulberryLocal, normalizeMissionReceipts, normalizeSetPieceSettlements, salvagePoolUnits, setPieceCauseOf, setPieceEventFields } from './missions.js';
 import { QUIET_BERTH_TUNING, QUIET_BERTH_TYPE, SPLIT_MANIFEST_LOTS, SPLIT_MANIFEST_TUNING, SPLIT_MANIFEST_TYPE, YARD_CUES, splitManifestNetOffset, splitManifestWreckOffset, yardSinkPos } from '../data/yardContracts.js';
 import { missionIdentityOf } from '../world/worldRecords.js';
@@ -25,7 +31,7 @@ import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMiss
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
-import { buildMissionBoardContract, completeBeatStepsForLegacy, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
+import { buildMissionBoardContract, completeBeatStepsForLegacy, commsForBeat, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CAMPAIGN_INTERLUDES, CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX, interludeByEncounterId, interludeEligible, interludeSeen } from '../story/campaign47a/interludes.js';
 import { pushCampaignHistory, pushChoiceLog } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/narrative.js';
@@ -1452,7 +1458,7 @@ export const missionStoryOps = {
       });
       // _spawnTargetsFor re-runs the adopt + cast-reattach itself — the explicit adopt
       // here duplicated its living-actor scan for identical output.
-      if (m.objectiveProgress < m.objectiveTarget) {
+      if (m.objectiveProgress < m.objectiveTarget || isSpineBreakOperation(m)) {
         this._spawnTargetsFor(m);
       }
       yield 'mission-targets';
@@ -1469,6 +1475,7 @@ export const missionStoryOps = {
     for (const m of this.state.missions.active || []) {
       if (m.destSectorId !== sectorId) continue;
       snapshotFurnaceWorksite(this, m);
+      snapshotMawWorksite(this, m);
       // Borrowed fauna stay ecology-owned. Held/gyre/stunt/custody pods remain live under
       // their current owner on every exit; reentry adopts them rather than cloning.
       if (authoredFurnaceWorksite(m)) m.targetEntityIds = [];
@@ -1499,6 +1506,7 @@ export const missionStoryOps = {
       // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
       // ownership retains the real survivors; a hard exit is not their destruction.
       if (authoredCinderRoute(m)) continue;
+      if (m.destSectorId === sectorId && parkMawWorksite(this, m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
         snapshotReckoning(this, m);
@@ -1667,12 +1675,14 @@ export const missionStoryOps = {
       this._advanceStory(beat, { skipCredits: true });
       return true;
     }
+    const furnaceSettlement = furnaceSettlementFromMission(m, beat.beat, 'infested', 'mission:completed');
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
       storyTargetId: m.storyTarget && m.storyTarget.id || null,
       physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
       completionMethod: m.params && m.params.completionMethod || null,
+      ...(furnaceSettlement || {}),
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return false;
     // §34.7 B1: the sealed manifest re-categorizes silent — the HUD does not notify, but
@@ -1686,15 +1696,15 @@ export const missionStoryOps = {
       m.params.silentRecatDone = true;
     }
     // W-BOOKS-3-4: the book scenes land their canon consequences on completion —
-    // VARIANCE ADJUSTMENT's delivery arms the seam counter; the maw and the Foreman
-    // close their legs; the B4 door operations file their receipts.
+    // the slag-core delivery arms the live-tether counter; maw and Foreman close their
+    // legs; the B4 door operations file their receipts.
     const bookScene = m.params && m.params.bookScene;
     if (bookScene === 'variance_delivery') {
       story.flags.variance_delivered = true;
       story.flags.variance_seam_spikes = story.flags.variance_seam_spikes | 0;
       this.bus.emit('comms:popup', {
         id: `b3_variance_berth_${m.id}`, sender: 'SLATE', category: 'story', ttl: 9, persist: true,
-        text: 'VARIANCE ADJUSTMENT, Hawser class. Double-pass seam, mine, hand-set. The line reads honest: three spikes she holds — the fourth, she lets go.',
+        text: 'Core received at Ceres. The Furnace maw still blocks the reactor approach; land three hot-slag stuns, then drag it off the lane.',
       });
     } else if (bookScene === 'feed_the_maw') {
       story.flags.maw_fed = true;
@@ -1721,11 +1731,22 @@ export const missionStoryOps = {
         text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
       });
     } else if (bookScene === 'barn_raising') {
-      story.flags.barn_raised = true;
-      this.bus.emit('comms:popup', {
-        id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
-        text: 'The frame holds six modules and a name. Before the weld cooled the gate was already behind you. Weld Head rating posted.',
-      });
+      if (m.params?.frontierBarnRaisingVersion === 1 && m.params?.frontierReceipt?.version === 1) {
+        story.flags.barn_raised = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The six marked modules are welded to the Io frame. The Nereid gate audit keeps its separate place on the board; this receipt belongs to the homestead crew.',
+        });
+      } else {
+        // Existing saves may carry an accepted one-body tow from before the B4 versioned
+        // worksite existed. Let that already accepted contract close the book, but never
+        // fabricate a six-module Frontier receipt from its generic tow completion.
+        story.flags.barn_raising_legacy_complete = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_legacy_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The earlier tow record is settled. No new six-module worksite receipt was filed; existing homesteads remain on the chart.',
+        });
+      }
     }
     if (!isBeatStepsComplete(this.state, beat.beat)) {
       // A mid-list contract settled — the beat stays open and the board may post the next
@@ -1762,6 +1783,33 @@ export const missionStoryOps = {
     if (res.stepId) {
       this._refreshEmbodiedStoryBoards();
       this._refreshNavigation({ forceStory: true, silent: true });
+      // The accepted ordered step, not a raw growth event or proximity, owns this
+      // handback. Stored growth may be reconciled away from the garden on Continue.
+      if (beat.beat === 1 && res.stepId === 'scale_4') {
+        // Only the ordered Scale 4 variance receipt points Book 1 to its existing Ceres job.
+        const handoff = commsForBeat(1, { variant: 'step_handoff' })[0];
+        if (handoff) this.bus.emit('comms:popup', {
+          id: handoff.id, sender: handoff.sender, category: 'story', ttl: 10, persist: true,
+          text: handoff.text,
+        });
+      } else if (beat.beat === 2 && res.stepId === 'compost') {
+        this.bus.emit('comms:popup', {
+          id: 'b2_compost_nest_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
+          text: 'Your garden growth is on the books. The paid 240t run is optional. Next: the Nest in the south radiation lane. Approach from the east; fight or withdraw alive.',
+        });
+      } else if (beat.beat === 2 && res.stepId === 'nest') {
+        const receipt = nestOutcomeReceipt(this.state);
+        const outcome = {
+          carrier_down: 'The Nest carrier went down.',
+          carrier_gutted: "The Nest carrier's launch couplings were breached.",
+          nest_emptied: 'The Nest launched its last Wasp; both blast baffles were torn away.',
+          carrier_escapes: 'Contact broke. The surviving carrier remains a Reach threat.',
+        }[receipt?.outcome];
+        if (outcome) this.bus.emit('comms:popup', {
+          id: 'b2_nest_registry_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
+          text: `${outcome} Tethys has the Registry Writ. Dock and read it; scan the named ship before choosing force or custody.`,
+        });
+      }
     }
     return true;
   },
@@ -1922,7 +1970,7 @@ export const missionStoryOps = {
     const story = this.state.story;
     story.flags = story.flags || {};
     story.flags.contract_47a_skimmed = true;
-    this._spawnContract47aSkimWrecks(m);
+    const salvageWreckCount = this._spawnContract47aSkimWrecks(m);
     // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
     // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
     // knows the mass the manifest will lie about.
@@ -1934,8 +1982,11 @@ export const missionStoryOps = {
       id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
       text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
     });
+    const salvageCue = salvageWreckCount > 0
+      ? ` Optional salvage: ${salvageWreckCount} wreck${salvageWreckCount === 1 ? '' : 's'}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      : '';
     this.bus.emit('toast', {
-      text: 'The black Line takes the load — 12.4 t on your own gauge. The escort feed is already a graveyard.',
+      text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
       kind: 'warn', ttl: 7,
     });
     this.bus.emit('story:skimResolved', {
@@ -1948,40 +1999,65 @@ export const missionStoryOps = {
   /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
    *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
+  /** Returns the count of unique, live, map-and-list-backed one-alloy wrecks. A failed
+   *  prop spawn is isolated so it cannot strand the already-latched story receipt. */
   _spawnContract47aSkimWrecks(m) {
-    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
-    const player = this.state.entities && this.state.playerId != null
-      ? this.state.entities.get(this.state.playerId) : null;
-    if (!player || !player.pos) return;
-    const seed = (this.state.meta && this.state.meta.seed) >>> 0;
-    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function'
+      || !entities || typeof entities.values !== 'function' || typeof entities.get !== 'function') return 0;
+    const player = state.playerId != null ? entities.get(state.playerId) : null;
+    if (!player || !player.pos) return 0;
+    const seed = (state.meta && state.meta.seed) >>> 0;
+    const sectorId = state.world && state.world.currentSectorId || null;
     const rows = [
       { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
       { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
       { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
     ];
+    const hasLiveWreck = (row) => {
+      const label = `${row.name} — WRECK`;
+      for (const entity of entities.values()) {
+        if (!entity || entity.alive === false || entity.type !== 'wreck'
+          || entities.get(entity.id) !== entity || !Array.isArray(state.entityList)
+          || !state.entityList.includes(entity)) continue;
+        const data = entity.data;
+        if (data && data.contract47aSkim === true && data.scanLabel === label
+          && data.salvagePool && Number(data.salvagePool.cmdty_alloys) === 1) return true;
+      }
+      return false;
+    };
     rows.forEach((row, idx) => {
+      // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
+      if (hasLiveWreck(row)) return;
       const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
       const dist = row.r + (hash32(seed, 4751, idx) % 30);
-      this.helpers.spawnEntity({
-        type: 'wreck',
-        pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
-        vel: { x: 0, z: 0 },
-        radius: 9, mass: 40000, hull: 1, hullMax: 1,
-        homeSectorId: sectorId,
-        data: {
+      try {
+        this.helpers.spawnEntity({
+          type: 'wreck',
+          pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+          vel: { x: 0, z: 0 },
+          radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,
-          parentType: 'ship',
-          wreckClass: 'battlefield',
-          wreckClassLabel: row.label,
-          contract47aSkim: true,
-          salvagePool: { cmdty_alloys: 1 },
-          salvageTimeLeft: 60,
-          scanLabel: `${row.name} — WRECK`,
-          killedAt: this.state.simTime || 0,
-        },
-      });
+          flags: { persistent: true },
+          data: {
+            homeSectorId: sectorId,
+            parentType: 'ship',
+            wreckClass: 'battlefield',
+            wreckClassLabel: row.label,
+            persistenceOwner: 'campaign47aSkim',
+            contract47aSkim: true,
+            salvagePool: { cmdty_alloys: 1 },
+            salvageTimeLeft: 60,
+            scanLabel: `${row.name} — WRECK`,
+            killedAt: state.simTime || 0,
+          },
+        });
+      } catch (_) {
+        // A wreck failure must not suppress the already-latched story receipt or later wrecks.
+      }
     });
+    return rows.filter(hasLiveWreck).length;
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */
@@ -2372,10 +2448,9 @@ export const missionStoryOps = {
   // =========================================================================================
   // W-BOOKS-3-4 — VARIANCE ADJUSTMENT, the doubled contract, the wall line (§34.7).
   //
-  // The Hawser-class tug Slate delivers in Book 3 reads honest: her double-pass seam
-  // holds three strain spikes and lets go at the fourth. The counter runs on the live
-  // tether:strain envelope — a player-actionable physical signal, not a script timer —
-  // armed by variance_delivered and laid to rest when Slate welds the column entry.
+  // The slag-core delivery arms a live-tether counter; the fourth spike files a
+  // failure in Slate's column. The counter runs on the live tether:strain envelope —
+  // a player-actionable signal, not a script timer — and closes with the column record.
   // =========================================================================================
   _onBookVarianceStrain(p) {
     const story = this.state && this.state.story;
@@ -2393,14 +2468,14 @@ export const missionStoryOps = {
     flags.variance_seam_spikes = spikes;
     const lines = [
       null,
-      'STRAIN SPIKE 1 — the Hawser seam holds. Slate\u2019s double pass reads true.',
-      'STRAIN SPIKE 2 — the seam groans. The gauge still reads true.',
-      'STRAIN SPIKE 3 — the seam sings. One more and the weld is a rumor.',
+      'STRAIN SPIKE 1 — Slate logs the live-line reading.',
+      'STRAIN SPIKE 2 — the line groans. The gauge still reads true.',
+      'STRAIN SPIKE 3 — the line sings. One more high reading marks a failure.',
     ];
     if (spikes < VARIANCE_SEAM_FAIL_AT) {
       this.bus.emit('comms:popup', {
         id: `b3_seam_${spikes}`, sender: 'LINE STRAIN', category: 'story', ttl: 6, persist: true,
-        text: lines[spikes] || `STRAIN SPIKE ${spikes} — the seam holds.`,
+        text: lines[spikes] || `STRAIN SPIKE ${spikes} — the live line holds.`,
       });
       return true;
     }
@@ -2409,14 +2484,14 @@ export const missionStoryOps = {
     this._varianceStrainArmed = false;
     this.bus.emit('comms:popup', {
       id: 'b3_seam_fail', sender: 'LINE STRAIN', category: 'story', ttl: 10, persist: true,
-      text: 'FOURTH SPIKE — VARIANCE ADJUSTMENT\u2019S SEAM LETS GO. The weld opens like a mouth. Slate welds it at the yard — second pass, narrower.',
+      text: 'FOURTH SPIKE — your tether hit Slate\u2019s limit. She files the strain failure; dock at Tethys or Forge to close the column entry.',
     });
     this.bus.emit('story:varianceSeamFailed', { spikes: VARIANCE_SEAM_FAIL_AT });
     return true;
   },
 
-  /** Slate's column entry: dock at the yard with the blown seam and the weld fixes it —
-   *  the second pass is narrower, and the column keeps its mark. */
+  /** Slate's column entry: after a live-line failure, docking at Tethys or Forge closes
+   *  the failure record and keeps the mark; this prose does not describe hull repair. */
   _resolveVarianceSeamWeld(stationId) {
     const story = this.state && this.state.story;
     const flags = story && story.flags;
@@ -2427,7 +2502,7 @@ export const missionStoryOps = {
     flags.slate_column_entry = true;
     this.bus.emit('comms:popup', {
       id: 'b3_seam_weld', sender: 'SLATE', category: 'story', ttl: 9, persist: true,
-      text: 'Second pass, narrower — it holds because it has to. Your mark goes in the column with the rest of them.',
+      text: 'Failure filed. Your strain mark stays in Slate\u2019s column.',
     });
     return true;
   },
@@ -2484,11 +2559,11 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'variance_delivery') {
-      popup('SLATE', 'She is called VARIANCE ADJUSTMENT. Hawser class, mine — two passes on the seam, hand-set. Tow the core in and fly her like you mean it.', 8);
+      popup('SLATE', 'Ceres yard needs that slag core. Keep it on the line or sling it clean. After the drop, I\u2019ll tally each strain spike on your tether.', 8);
       return true;
     }
     if (scene === 'feed_the_maw') {
-      popup('CERES TRAFFIC', 'A Furnace maw is working the reactor approach. Hot slag knocks it stupid — three solid hits — then drag it off the lane.', 7);
+      popup('CERES TRAFFIC', 'A Furnace maw blocks the old refinery approach. Three marked hot-slag pods are staged beside it. Latch and swing or sling each pod into the maw hard enough for a solid hit, then tow the stunned body to Ceres yard. Lost pods void the detail.', 7);
       return true;
     }
     if (scene === 'foreman_feud') {
@@ -2504,7 +2579,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'barn_raising') {
-      popup('IO HOMESTEAD', 'Six modules and a frame before the Nereid gate welds. Whatever you tow becomes the wall.', 7);
+      popup('IO HOMESTEAD', 'Io Reach has six marked modules around a fresh frame. The first snap starts the 240-second E-21 window; the crew can restock a lost module or reset a missed window. Nereid’s audit runs on its own clock.', 7);
       return true;
     }
     if (scene === 'doubled_interdiction') {
@@ -2583,6 +2658,8 @@ export const missionStoryOps = {
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
+    delete state.missions.lanternWardReward;
+    delete state.missions.lanternWardConversation;
     delete state.missions.setPieceSettlements;
     delete state.missions.adventureSpeedCompleted;
     delete state.missions.standingOrders;
@@ -2690,6 +2767,12 @@ export const missionStoryOps = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
+    // The first tether exercise is optional once a real tracked mission is available.
+    // Its own marker yields to the mission; later teaching beats keep their existing priority.
+    if (ob && ob.currentBeat === 0) {
+      const tracked = this.state.ui && this.state.ui.trackedMissionId;
+      if (tracked && (this.state.missions?.active || []).some((m) => m?.id === tracked && m.status === 'active')) return false;
+    }
     // Once B4's authored delivery is accepted, that physical mission must own its route. The
     // tutorial remains active only to await completion and present B5; keeping the Helios marker
     // here would strand the player at the origin with a tracked job pointing nowhere.
@@ -2706,11 +2789,23 @@ export const missionStoryOps = {
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
       snapshotFurnaceWorksite(this, a);
+      snapshotMawWorksite(this, a);
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
       snapshotReckoning(this, a);
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
+      if (isMawWorksite(a)) {
+        row.params = { ...a.params };
+        // Four authored slots; a fifth preserves invalid-length detection without
+        // copying an unbounded malformed ledger. Runtime entity IDs are not save state.
+        if (Array.isArray(a.params.mawBodies)) row.params.mawBodies = a.params.mawBodies.slice(0, 5)
+          .map(body => {
+            if (!body || typeof body !== 'object') return body;
+            const { entityId, ...savedBody } = body;
+            return { ...savedBody, pos: { ...body.pos }, vel: { ...body.vel } };
+          });
+      }
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema
       // bump. Live entity ids inside it are transient and are dropped on restore, not here.
@@ -2730,6 +2825,10 @@ export const missionStoryOps = {
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
+    const wardReward = normalizeLanternWardReward(m.lanternWardReward);
+    if (wardReward) serialized.lanternWardReward = wardReward;
+    const wardConversation = normalizeLanternWardConversation(m.lanternWardConversation);
+    if (wardConversation) serialized.lanternWardConversation = wardConversation;
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
       serialized.starterJobStep = { ...m.starterJobStep };
     }
@@ -2805,6 +2904,12 @@ export const missionStoryOps = {
       && Number.isFinite(arkReward.at) && arkReward.at >= 0) {
       state.missions.ilexArkReward = { ...arkReward, deliveredVaultIds: [...arkReward.deliveredVaultIds] };
     } else delete state.missions.ilexArkReward;
+    const wardReward = normalizeLanternWardReward(data.lanternWardReward);
+    if (wardReward) state.missions.lanternWardReward = wardReward;
+    else delete state.missions.lanternWardReward;
+    const wardConversation = normalizeLanternWardConversation(data.lanternWardConversation);
+    if (wardConversation) state.missions.lanternWardConversation = wardConversation;
+    else delete state.missions.lanternWardConversation;
     const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
     if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
     else delete state.missions.setPieceSettlements;
@@ -2856,6 +2961,7 @@ export const missionStoryOps = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
       };
+      restoreMawWorksite(row);
       if (authoredFurnaceWorksite(row) && Array.isArray(row.params?.furnaceLots)) {
         const ledger = normalizeFurnaceAftermath({ version: 1, missionId: row.id, lots: row.params.furnaceLots });
         row.params = ledger ? { ...row.params, furnaceLots: ledger.lots,

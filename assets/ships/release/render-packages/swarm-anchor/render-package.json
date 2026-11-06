@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "13146531edd31b0a5413b77f6fbfa20120f6133b2b98f35f718b33c309965f52",
+  "contentHash": "bb18480236c64ce9b8008aa33b794523679747853151675bdae00c7e116da733",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-anchor.node.lod0-hook-drive-core.dynamic",
@@ -5734,8 +5734,8 @@
       "uri": "swarm_anchor.glb"
     },
     "sourceManifest": {
-      "bytes": 325299,
-      "sha256": "3091bd01391db3916893912846619f7a7f925d4851afea4f6827956f31d0911d",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
@@ -9670,7 +9670,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_anchor.glb"
   },
-  "runtimeHash": "ad06e578c5a626fe84f68fa9c42dc3e96fbc6c687a70ca86547e7e319662bca3",
+  "runtimeHash": "9d47743f147a98c6684cd71237ca558a99bbe1b6f11beb9f8e6a3518f0fb3577",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

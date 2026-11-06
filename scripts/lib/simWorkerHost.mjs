@@ -31,10 +31,17 @@ import { missions } from '../../src/systems/missions.js';
 import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
+import { pinEvidence, unpinEvidence, linkEvidence, unlinkEvidence } from '../../src/systems/shipLedger.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
-import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
+import { isOrchardFrame, isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
+import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
+import { isIntactMawWorksiteBody } from '../../src/missions/mawWorksite.js';
+import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
+import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
+import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
 import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../../src/data/featureFlags.js';
 import {
   makeEvidenceSpindleSpec,
@@ -74,6 +81,7 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
+import { reconcileLaneComponentSelection } from '../../src/core/simLaneCommands.js';
 import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
@@ -86,6 +94,7 @@ import {
   applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
+import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
@@ -265,6 +274,9 @@ const VITAL_FIELDS = [
   'rot', 'bank', 'pitch', 'angVel', 'radius', 'mass', 'team', 'collides', 'alive', 'ttl',
   'isPlayer', 'physicsSleeping',
 ];
+const VITAL_ROT_INDEX = VITAL_FIELDS.indexOf('rot');
+const SWARM_SHADOW_INDEX = VITAL_FIELDS.length + 7;
+const RIDER_SHADOW_INDEX = SWARM_SHADOW_INDEX + 1;
 const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
 
 // Native effects are replaced on deployment; their wire identity must survive clones.
@@ -295,7 +307,13 @@ function pallasSeamStandbyTick(e) {
   return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
 }
 
-export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
+function mawPresentationRadius(e) {
+  if (!isIntactMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
+  const radius = e.physicsBody?.radius;
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
+}
+
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -314,11 +332,24 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+    fields.seekerTargetId = e.data.targetId ?? null;
+    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    fields.seekerDiverted = e.data.diverted === true;
+    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  }
   const specialistFrame = swarmSpecialistFrameValue(e);
   if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+  const riderTell = riderTellValue(e, state);
+  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
   if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
+  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
+    fields.dataBeaconExpireAt = e.data.expireAt;
+  }
   const ecology = e.data && e.data.ecology;
   if (ecology) {
     fields.ecologyName = e.data.name ?? null;
@@ -345,10 +376,18 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  const wardLife = lanternWardPresentationLife(e);
+  if (wardLife != null) {
+    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
   }
+  const mawRadius = mawPresentationRadius(e);
+  if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
+  const orchardPod = orchardPodPublicValue(e);
+  if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   return fields;
 }
@@ -362,12 +401,38 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
 const VITAL_SHADOW_MISSING = Symbol('vital-shadow-missing');
 const VITAL_SHADOW_JSON_NULL = Symbol('vital-shadow-json-null');
 
+// Bounded presentation facts for a canonical pod. Native custody and Rapier handles stay
+// in the worker; a new occupant of the same id cannot inherit this old life's update.
+function orchardPodPublicValue(e) {
+  if (e?.data?.orchardKind !== 'pod' || !isOrchardPod(e)
+    || !Number.isSafeInteger(e.occupantGeneration) || e.occupantGeneration < 1
+    || !Number.isSafeInteger(e.data.amount) || e.data.amount < 1 || e.data.amount > ANVIL_ORCHARD.unitsPerPod
+    || typeof e.data.masslineTetherable !== 'boolean') return VITAL_SHADOW_MISSING;
+  return JSON.stringify([e.occupantGeneration, e.data.worldRecordId, e.physicsBody.dynamic,
+    e.physicsBody.revision, e.data.masslineTetherable, e.data.amount]);
+}
+
 function swarmSpecialistFrameValue(e) {
   const data = e?.data;
   if (!data?.swarmSpecialist && !swarmSpecialistKind(data?.lootTableId || data?.enemyTypeId)) {
     return VITAL_SHADOW_MISSING;
   }
   return swarmSpecialistPresentationFrame(data?.swarmSpecialist);
+}
+
+// Signed occupant generation is one bounded scalar: positive while riding, negative while
+// idle. It identifies the life whose mark may consume the update across the worker boundary.
+function riderTellValue(e, state) {
+  const data = e?.data;
+  const life = e?.occupantGeneration;
+  if ((data?.swarmAffix !== 'rider' && data?.swarmAffix2 !== 'rider')
+    || !Number.isSafeInteger(life) || life < 1) return VITAL_SHADOW_MISSING;
+  const ride = data.swarmRide;
+  const run = state?.run;
+  return e.alive !== false && state?.entities?.get(e.id) === e && e.id !== state.playerId
+    && ride?.life === life && state.tick < ride.until
+    && run?.kind === 'survival' && run.ruleset === 'swarm'
+    && (run.phase === 'active' || run.phase === 'cleanup') ? life : -life;
 }
 
 function vitalShadowValue(value) {
@@ -399,13 +464,27 @@ function krakenMotionFrame(state, e) {
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
 
-function vitalShadowMatches(e, shadow, krakenFrame) {
+function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    const data = e.data;
+    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
+      || shadow.seekerTargetId !== (data.targetId ?? null)
+      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
+      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
+      || shadow.seekerDiverted !== (data.diverted === true)
+      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
+  // Moving actors commonly change velocity or heading each publish. Check those same
+  // canonical scalar tokens first; unchanged actors still compare every field below.
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length]
+      || (vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length + 1]
+      || vitalShadowValue(e.rot) !== shadow[VITAL_ROT_INDEX]) return false;
   let i = 0;
   for (const key of VITAL_FIELDS) {
     if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
   }
-  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
   if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
@@ -416,8 +495,11 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
+  if (riderTellValue(e, state) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
   if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -440,14 +522,39 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   const seam = hasPallasSeamWorkLight(e);
   if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const wardLife = lanternWardPresentationLife(e);
+  const wardShadow = shadow[i++];
+  if (wardLife == null) {
+    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+  } else {
+    if (!Array.isArray(wardShadow)) return false;
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+    }
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
+  if (mawPresentationRadius(e) !== shadow[i++]) return false;
+  if (orchardPodPublicValue(e) !== shadow[i++]) return false;
   if (krakenFrame !== shadow[i++]) return false;
   return true;
 }
 
-function writeVitalShadow(e, shadow, krakenFrame) {
+function writeVitalShadow(e, shadow, krakenFrame, state) {
+  // Named runtime-only slots preserve every existing positional/tail vital index.
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
+    shadow.seekerTargetId = e.data.targetId ?? null;
+    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    shadow.seekerDiverted = e.data.diverted === true;
+    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
+    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
+    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
+    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
+  }
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -461,8 +568,11 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
   shadow[i++] = swarmSpecialistFrameValue(e);
+  shadow[i++] = riderTellValue(e, state);
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;
   shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
@@ -484,15 +594,27 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   const seam = hasPallasSeamWorkLight(e);
   shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
   shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  const wardLife = lanternWardPresentationLife(e);
+  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
+  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
+  else {
+    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+    }
+    shadow[i++] = wardShadow;
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
+  shadow[i++] = mawPresentationRadius(e);
+  shadow[i++] = orchardPodPublicValue(e);
   shadow[i++] = krakenFrame;
   shadow.length = i;
   return shadow;
 }
 
-function entityInfoBlock(state, entityId) {
+function entityInfoBlock(state, entityId, host) {
   const e = resolveWorldPresentationEntity(state, entityId);
   if (!e) return null;
   const data = e.data && typeof e.data === 'object' ? e.data : {};
@@ -531,9 +653,16 @@ function entityInfoBlock(state, entityId) {
     isPlayer: e.isPlayer === true,
     farResident: e.farResident === true,
     fieldResident: e.fieldResident === true,
+    noMesh: e._noMesh === true,
     flags: flatFlags,
-    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
-    vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
+    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) }
+      : isOrchardPod(e) ? { physicsBody: orchardPodBodySpec({
+        dynamic: e.physicsBody.dynamic, revision: e.physicsBody.revision,
+      }) } : {}),
+    ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
+      ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+    } : {}),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e), state),
     data: canonicalClone(data),
   };
 }
@@ -584,13 +713,24 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
     const krakenFrame = krakenMotionFrame(state, e);
-    if (!vitalShadowMatches(e, previous, krakenFrame)) {
+    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
       const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
+      const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow, krakenFrame);
+      writeVitalShadow(e, shadow, krakenFrame, state);
       vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
+      if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
+      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+        fields.swarmRideTell = -e.occupantGeneration;
+      }
+      if (retiredMawRadius) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
   }
@@ -627,6 +767,7 @@ const AUX_FAMILIES = [
 
 function auxRowBlock(kind, row) {
   const data = row && row.data && typeof row.data === 'object' ? row.data : {};
+  const pose = kind === 'dressing' && data.warmFreighterHostMarkerId && data.warmFreighterVisualPose;
   return {
     v: 1,
     kind,
@@ -645,12 +786,15 @@ function auxRowBlock(kind, row) {
     sectorId: typeof row.sectorId === 'string' ? row.sectorId
       : (typeof row.homeSectorId === 'string' ? row.homeSectorId
         : (typeof data.sectorId === 'string' ? data.sectorId : null)),
+    ...(pose && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)
+      ? { warmFreighterPose: { height: pose.height, bank: pose.bank, pitch: pose.pitch, localYaw: pose.localYaw } } : {}),
   };
 }
 
 function auxSignature(b) {
   return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
-    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`;
+    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`
+    + (b.warmFreighterPose ? `|${b.warmFreighterPose.height}|${b.warmFreighterPose.bank}|${b.warmFreighterPose.pitch}|${b.warmFreighterPose.localYaw}` : '');
 }
 
 const _collectOrigin = { x: 0, z: 0 };
@@ -695,6 +839,10 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
+  'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
+  'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
+  'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {
@@ -778,6 +926,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     inputPublishes: [],       // per-step publish records drained onto the reply
     vitalShadow: new Map(),   // entityId -> scalar tuple (production diff channel)
     vitalSeen: new Set(),     // reused membership scratch for vitalShadow cleanup
+    ceresCradleIds: new Set(),
+    ceresActuationIds: new Set(),
     // replayed main→worker emits must not echo back — scoped to the replayed
     // TYPE so a cascaded emit (save:loaded riding a forwarded game:load)
     // still bridges: main's presenters need it to unstack screens.
@@ -796,6 +946,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     gameStartedEmits: 0,
     playerTruthImpulseObserver: null,
     missionBoardMirrorUnsubscribe: null,
+    runShopMirrorUnsubscribe: null,
   };
 
   function drainEvents() {
@@ -1111,11 +1262,58 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
 
   function installBridgeCapture(bus, captureAll) {
     host.missionBoardMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe?.();
+    // Shop receipts are bounded owner events, not a wallet polling channel. A
+    // refit/draft event can be replayed during a frozen (steps:0) reply, so make
+    // the complete current run snapshot urgent before that reply's domain diff.
+    // Generic run awards are intentionally excluded: combat emits those often.
+    const runShopResultEvents = [
+      'run:draftOffered',       // opening shop / reroll stock snapshot
+      'run:refitOffered',       // opening refit screen
+      'run:shopPurchased',      // successful armory purchase
+      'run:draftRerolled',      // paid or Hangar/Gambler re-deal
+      'run:draftResolved',      // completed modifier choice
+      'run:partialBanked',      // successful extraction bank from the refit panel
+      'run:draftPickRejected',
+      'run:draftRerollRejected',
+      'run:refitChanged',       // fit, strip, or sell receipt (including refusal)
+      'swarm:fortifyBuildResolved', // paused construction/service receipt updates the same run purse
+    ];
+    const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
+      if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
+    }));
+    // The event bus also carries unrelated run-wallet traffic. Admit only the
+    // exact shop/refit rejection and refund receipts that can alter the visible
+    // purchase state; never subscribe to award requests or ordinary awards.
+    const offSpendRejected = bus.on('run:spendRejected', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchase' || payload?.reason === 'crucible:draftReroll'
+            || payload?.reason === 'partial_bank')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    const offShopRefund = bus.on('run:awarded', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchaseRefund' || payload?.reason === 'swarm:sellBack'
+            || payload?.reason === 'partial_bank_refund')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    host.runShopMirrorUnsubscribe = () => {
+      for (const off of offRunShopResults) off();
+      offSpendRejected();
+      offShopRefund();
+      host.runShopMirrorUnsubscribe = null;
+    };
     // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
     // paused and has no future timer ticks. Progress and tracking use non-null mission ids;
     // those retain their normal cold root cadence and existing hot active-mission mirror.
     const offBoardUpdate = bus.on('mission:updated', (payload) => {
       if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+      else if ((payload.objectiveProgress != null || payload.sourceFix === true) && (host.state?.missions?.active || []).some((m) =>
+        m.id === payload.missionId && m.storyTag === 'campaign47a:b0:recovery')) {
+        host.domainDiffer.invalidateLeaf('missions.active');
+      }
     });
     const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
     // Terminal settlement mutates the receipt/history root before its canonical event;
@@ -1124,10 +1322,68 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
     // The factions owner emits only after it actually changes standing (including spillover).
     const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    // A fabricated fitting is immediately usable at the berth, including while the
+    // worker clock is paused. Publish only the changed owned-inventory leaf in the
+    // same reply; large inventories otherwise wait for their ordinary cold slot.
+    const offCraftFitting = bus.on('craft:complete', (payload) => {
+      if (payload?.kind === 'module' || payload?.kind === 'weapon') {
+        host.domainDiffer.invalidateLeaf('player.moduleInventory');
+      }
+    });
+    const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offLedgerLoad = bus.on('save:loaded', () => {
+      host.domainDiffer.invalidateLeaf('shipLedger.board');
+      // Restore identity must accompany its receipt, including paused Import/Continue.
+      // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
+      host.domainDiffer.invalidateLeaf('meta.seed');
+    });
+    // Successful outpost changes must reach the open panel in this reply, even
+    // when the clock is paused or the list is on its ordinary cold cadence.
+    const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
+      host.domainDiffer.invalidateLeaf('automation.outposts');
+    });
+    const offFleetChanged = bus.on('automation:fleetChanged', (payload) => {
+      host.domainDiffer.invalidateLeaf('automation.fleet');
+      if (payload?.action === 'assigned' || payload?.action === 'released') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+        if (payload.vesselId) host.domainDiffer.invalidateLeaf('player.shipjack');
+      }
+    });
+    // The paid lot desk repaints only after its answer. Publish the book in that same reply,
+    // including an unsuccessful haggle or bid which may still have changed the book.
+    const offLotDeskAnswered = bus.on('impoundLot:deskAnswered', (payload) => {
+      host.domainDiffer.invalidateLeaf('lossLedger.impound');
+      if (payload?.verb === 'acceptRansom' || payload?.verb === 'declineRansom') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+      }
+    });
+    // Registry operations publish their existing authoritative record before the UI
+    // handles the receipt, even when the Registry is on its cold cadence at a berth.
+    const offRegistryChanges = ['shipjack:yardReceipt', 'shipjack:yardStarted',
+      'shipjack:fleetReceipt', 'shipjack:fleetStarted', 'shipjack:fleetArrived']
+      .map(type => bus.on(type, (payload) => {
+        host.domainDiffer.invalidateLeaf('player.shipjack');
+        if (type === 'shipjack:yardReceipt' && payload?.ok) {
+          if (['extract', 'repair_module', 'sell', 'return', 'repaint'].includes(payload.action)) {
+            host.domainDiffer.invalidateLeaf('player.ownedShips');
+          }
+          if (payload.action === 'forge_broadcast') host.domainDiffer.invalidateLeaf('player.moduleInventory');
+        }
+      }));
+    const offModuleSold = bus.on('module:sold', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
       offRep();
+      offCraftFitting(); offFitFitting();
+      offUnfitFitting();
+      offLedgerLoad();
+      offOutpostsChanged();
+      offFleetChanged();
+      offLotDeskAnswered();
+      for (const off of offRegistryChanges) off();
+      offModuleSold();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
@@ -1152,7 +1408,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       return;
     }
     for (const type of BRIDGE_EVENTS) {
-      bus.on(type, (payload) => recordBridgeEvent(type, payload));
+      bus.on(type, (payload) => {
+        if (type === 'comms:log') {
+          if (payload?.kind !== 'chainKill') return;
+          recordBridgeEvent(type, {kind:'chainKill', speaker:String(payload.speaker || '').slice(0,64), text:String(payload.text || '').slice(0,256)});
+        } else recordBridgeEvent(type, payload);
+      });
     }
   }
 
@@ -1214,11 +1475,30 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           const entry = market[args.commodityId];
           return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
         }
-        const histories = {};
-        for (const cid of Object.keys(market)) {
-          histories[cid] = (market[cid] && market[cid].history) || null;
+        const result = { stationId: args.stationId };
+        if (args.includeObservedComparisons !== true) {
+          const histories = {};
+          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          result.histories = histories;
         }
-        return { stationId: args.stationId, histories };
+        if (args.includeObservedComparisons === true && state.ui?.docked
+          && state.ui.dockedStationId === args.stationId) {
+          const now = Number(state.simTime) || 0;
+          const comparisons = {};
+          for (const [cid, entry] of Object.entries(market)) {
+            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+            let reference = null;
+            for (const point of entry.history) {
+              if (point?.origin !== 'observed' || !Number.isFinite(point.t)
+                || !Number.isFinite(point.mid) || now - point.t < 120) continue;
+              if (!reference || point.t > reference.t) reference = point;
+            }
+            if (reference) comparisons[cid] = { reference: reference.mid,
+              observedAt: reference.t, current: entry.lastMid };
+          }
+          result.observedComparisons = { stationId: args.stationId, asOf: now, comparisons };
+        }
+        return result;
       }],
       ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
       // Sandbox/lab ops converted off the direct-call surface. Each replays the
@@ -1266,6 +1546,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         // A fresh boot supersedes any earlier pending receipt (aborted or
         // never-consumed lifecycle) — stage only on a completed boot.
         host.pendingGameStarted = null;
+        const sandboxSetup = args?.opts?.sandboxSetup;
+        let sandboxSetupApplied = false;
         const result = await runNewGameSimBoot({
           state,
           helpers: sim.helpers,
@@ -1274,14 +1556,17 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           opts: (args && args.opts) || {},
           newGamePlus: (args && args.newGamePlus) || null,
           awaitPhysicsPrep: true,
+          beforeScenePrepared: sandboxSetup ? () => {
+            applySandboxSetup({ state, helpers: sim.helpers, registry, bus: host.bus }, sandboxSetup);
+            const active = state.player?.ownedShips?.[state.player.activeShipIndex];
+            if (sandboxSetup.shipId && active?.defId !== sandboxSetup.shipId) {
+              throw new Error(`sandbox-hull-setup-incomplete:${sandboxSetup.shipId}`);
+            }
+            sandboxSetupApplied = true;
+            return true;
+          } : null,
         });
         if (result && result.ok === true) {
-          if (args?.opts?.sandboxSetup?.scenarioId === 'sling_practice') {
-            applySandboxSetup(
-              { state, helpers: sim.helpers, registry, bus: host.bus },
-              args.opts.sandboxSetup,
-            );
-          }
           // A completed boot must publish its seed before the loading acknowledgement,
           // even when meta's ordinary cold cadence has not reached its next slot.
           host.domainDiffer.invalidateLeaf('meta.seed');
@@ -1295,7 +1580,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
             if (!prepared.ok) throw new Error(prepared.reason || 'crucible-setup-incomplete');
             result.crucible = prepared;
           }
-          host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
+          host.pendingGameStarted = {
+            newGamePlus: (args && args.newGamePlus) || null,
+            ...(sandboxSetupApplied ? { sandboxSetupApplied: true } : {}),
+          };
           // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
           // the main-side sandbox hook's run:beginRequested has not landed yet.
           if (args && args.opts && args.opts.crucibleLaunch === true) {
@@ -1355,10 +1643,18 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
-      ['saveLoad', (args) => {
+      ['savePeekCardData', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.peekSaveCardData !== 'function') {
+          return { ok: false, reason: 'save-system-unavailable' };
+        }
+        return { ok: true, cardData: await s.peekSaveCardData(args?.raw) };
+      }],
+      ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.load((args && args.slot) || undefined) };
+        const result = await s.load((args && args.slot) || undefined);
+        return { ok: result === true, result };
       }],
       ['saveDelete', (args) => {
         const s = registry.get('save');
@@ -1463,6 +1759,21 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
       // racingArm) call the same methods inside one directive window.
+      ['shipLedgerBoard', (args) => {
+        const actions = { pin: pinEvidence, unpin: unpinEvidence, link: linkEvidence, unlink: unlinkEvidence };
+        const action = args?.action;
+        if (!Object.hasOwn(actions, action)) return { ok: false, reason: 'Unknown ledger action.' };
+        const result = actions[action](state, args?.a, args?.b);
+        if (result.ok) {
+          host.domainDiffer.invalidateLeaf('shipLedger.board');
+          if (action === 'link') {
+            const before = state.story?.verge?.valeGatesRevoked;
+            host.bus.emit('ledger:evidenceLinked', { a: args.a, b: args.b });
+            if (before !== state.story?.verge?.valeGatesRevoked) host.domainDiffer.invalidateLeaf('story.verge');
+          }
+        }
+        return result;
+      }],
       ['missionsCall', (args) => {
         const m = registry.get('missions');
         if (!m) return { ok: false, reason: 'missions-system-unavailable' };
@@ -1530,12 +1841,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
       // routes the envelope here so the worker's save system loads it).
-      ['saveImport', (args) => {
+      ['saveImport', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
         const json = args && typeof args.json === 'string' ? args.json : null;
         if (!json) return { ok: false, reason: 'import-empty' };
-        const result = s.importString(json, (args && args.slot) || 'quick');
+        // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
+        // drain before publishing a verdict; a nested Promise cannot cross postMessage.
+        const result = await s.importString(json, (args && args.slot) || 'quick');
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
       }],
@@ -1830,7 +2143,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
       initRebuild.spawnInfos = [];
       for (const entityId of initRebuild.pack.spawnEntityIds) {
-        const info = entityInfoBlock(host.state, entityId);
+        const info = entityInfoBlock(host.state, entityId, host);
         if (info) initRebuild.spawnInfos.push(info);
       }
     }
@@ -1842,6 +2155,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen);
     host.ready = true;
     return {
+      lifecycleGeneration: host.lifecycleGeneration,
       journalSequence: host.committedJournalSequence,
       initRebuild,
       weaponVfxProjectiles: collectWeaponVfxProjectiles(host.state),
@@ -1861,6 +2175,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   }
 
   async function handleInit(msg) {
+    host.lifecycleGeneration = Number.isSafeInteger(msg.generation) && msg.generation >= 0
+      ? msg.generation : (Number.isSafeInteger(msg.timeEffectsSnapshot?.generation) ? msg.timeEffectsSnapshot.generation : 0);
     host.profile = msg.profile === 'production' ? 'production' : 'legacy47a';
     if (host.profile === 'production') return handleInitProduction(msg);
     applyFeatureConfigToMaps(LEGACY47A_FEATURES);
@@ -2028,7 +2344,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
       initRebuild.spawnInfos = [];
       for (const entityId of initRebuild.pack.spawnEntityIds) {
-        const info = entityInfoBlock(state, entityId);
+        const info = entityInfoBlock(state, entityId, host);
         if (info) initRebuild.spawnInfos.push(info);
       }
     }
@@ -2041,6 +2357,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const initDomains = diffDomains(state, host.domainDiffSeq++);
     host.ready = true;
     return {
+      lifecycleGeneration: host.lifecycleGeneration,
       journalSequence: host.committedJournalSequence,
       initRebuild,
       weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
@@ -2191,6 +2508,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     }
     const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
     const production = host.profile === 'production';
+    reconcileLaneComponentSelection(state);
 
     // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
     if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
@@ -2200,13 +2518,24 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let completedTick = null;
     let journalStart = host.committedJournalSequence;
     if (production) host.inputPublishes.length = 0;
+    // Work budget: the local-clock catch-up path (workBudgetMs set by the
+    // worker pump) may stop early once the reply has consumed its share of the
+    // frame — un-executed steps behave like shed debt so the world slows down
+    // instead of compounding one heavy step into a multi-hundred-ms reply.
+    // Explicit-step directives carry no budget and always run exactly.
+    const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0
+      ? msg.workBudgetMs * 1e6
+      : null;
+    let stepsExecuted = 0;
     for (let s = 0; s < steps; s++) {
+      if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
         host.stepper.step(SIM_DT, host.tickBoundary);
       } else {
         update47aScenarioActorIntents(state);
         sim.step(SIM_DT);
       }
+      stepsExecuted++;
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -2219,6 +2548,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           flightBackend: 'legacy',
         });
       }
+      if (workBudgetNs != null && s + 1 < steps
+          && (nowNs() - workStart) >= workBudgetNs) break;
     }
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
@@ -2314,12 +2645,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.lastInputSeq = lastPublish.inputSeq;
       host.lastInputWallMs = lastPublish.inputWallMs;
     }
-    if (steps > 0) {
+    if (stepsExecuted > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
-    host.tickCount += steps;
+    host.tickCount += stepsExecuted;
 
     const packStart = nowNs();
     let pack;
@@ -2340,7 +2671,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.committedJournalSequence = journalEnd;
     const spawnInfos = [];
     for (const entityId of pack.spawnEntityIds) {
-      const info = entityInfoBlock(state, entityId);
+      const info = entityInfoBlock(state, entityId, host);
       if (info) spawnInfos.push(info);
     }
     const packNs = nowNs() - packStart;
@@ -2350,6 +2681,54 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const entityVitals = production
       ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen)
       : null;
+    // This single authored body may become ready or fail without a normal vital
+    // changing. Ship its complete vitals each existing packet so coalescing keeps
+    // the newest native receipt and the scalar layout it authenticates together.
+    if (production) {
+      const current = new Set();
+      const actuationCurrent = new Set();
+      for (const entity of state.entityList || []) {
+        const role = ceresWorkfleetRoleForEntity(entity);
+        if (role !== 'cradle' && role !== 'breaker' && role !== 'cutterHead') continue;
+        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity), state);
+        if (role === 'cradle') {
+          current.add(entity.id);
+          fields.ceresCradlePublic = {
+            receipt: readCeresCradlePublicLayout(entity, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+            layout: entity.data?.ceresWorkfleetCradleLayout ?? null,
+            itineraryLayout: entity.data?.itinerary?.ceresWorkfleet?.cradleLayout ?? null,
+          };
+        } else {
+          actuationCurrent.add(entity.id);
+          fields.ceresWorkfleetPublic = {
+            receipt: readCeresWorkfleetPublicActuation(entity, state, host.lifecycleGeneration, host.registry?.get('physics')?._sg02),
+            playerOwned: entity.playerOwned === true, dataPlayerOwned: entity.data?.playerOwned === true,
+            controlled: !!entity.data?.controlLease, disabled: entity.data?.disabled === true,
+          };
+        }
+        const existing = entityVitals.findIndex(entry => entry[0] === entity.id);
+        if (existing >= 0) entityVitals[existing] = [entity.id, fields];
+        else entityVitals.push([entity.id, fields]);
+      }
+      for (const id of host.ceresCradleIds) if (!current.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
+        fields.ceresCradlePublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresCradleIds = current;
+      for (const id of host.ceresActuationIds) if (!actuationCurrent.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
+        fields.ceresWorkfleetPublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresActuationIds = actuationCurrent;
+    }
     const aux = diffAuxTables(state);
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;
@@ -2360,6 +2739,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const boundaryMs = Number(nowNs() - workStart) / 1e6;
     return {
       tick: msg.tick,
+      lifecycleGeneration: host.lifecycleGeneration,
       arrivalNs,
       completedTick,
       auxUpserts: aux.upserts,
@@ -2398,6 +2778,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
+      stepsRequested: steps,
+      stepsExecuted,
       boundaryMs,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,
@@ -2463,6 +2845,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   function handleShutdown() {
     host.missionBoardMirrorUnsubscribe?.();
     host.missionBoardMirrorUnsubscribe = null;
+    host.runShopMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe = null;
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.dispose?.();

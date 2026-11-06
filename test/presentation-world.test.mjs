@@ -249,6 +249,31 @@ test('PresentationQueries return deterministic visible handles and exact transit
   );
 });
 
+test('PresentationQueries rechecks scalar inputs when a retired slot is reused by the same id', () => {
+  const world = createPresentationWorld({ capacity: 8, cellSize: 64 });
+  const first = entity(41, { x: 0 });
+  const firstHandle = world.allocateEntity(first, 1);
+  bind(world, first);
+  const queries = createPresentationQueries(world);
+  const options = {
+    bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
+    origin: { x: 0, z: 0 },
+    playerId: null,
+  };
+
+  assert.deepEqual(queries.query(options).visibleSlots, [firstHandle.slot]);
+  assert.equal(world.retire(first.id, 1), true);
+
+  const replacement = entity(41, { x: 500 });
+  const replacementHandle = world.allocateEntity(replacement, 1);
+  assert.equal(replacementHandle.slot, firstHandle.slot);
+  bind(world, replacement);
+
+  const afterReuse = queries.query(options);
+  assert.deepEqual(afterReuse.visibleSlots, []);
+  assert.equal(world.entityRefs[replacementHandle.slot], replacement);
+});
+
 test('PresentationWorld rebuild skips duplicate ids instead of freezing the canvas', () => {
   const world = createPresentationWorld({ capacity: 16 });
   const first = entity(311, { x: 4 });

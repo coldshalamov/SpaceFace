@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Lane 2 — THE FIGHT & THE SIM (medium complexity)
 
-**Written only by Lane 2.** Other lanes append one line to *Inbox* and nothing else.
+The controller coordinates current writers under README §3; lane labels do not create permanent path locks.
 Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_2.md`](./PROMPT_LANE_2.md).
 
 **The outcome:** the fight is the best thing in SpaceFace — fast, physics-centric arcade combat
@@ -12,11 +12,34 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Claimed paths (beyond README §3)
 
+**Active connected batch,2026-11-03:** fifteen exact whole-hulk releases use existing measured
+outlines, native convex decompositions and uniform-area inertia at unchanged operational mass.
+Old capsule native-save caches correctly decline exact continuation and rebuild the fitted body;
+pose, motion, remaining salvage and custody survive the selected restore check. Normal impact
+behavior and the ordinary encounter remain separate checks. Swarm arena pursuit now retains its
+existing wounded-tail commitment; the Fortify same-reply mirror includes the charged purse.
+The changed ordinary Bank7/boss journey remains open. One batch baseline passes17/17 in80,529ms,
+within90,000ms; the in-flight ecology attachment hunk has its own affected check.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
-- 2026-11-01, Swarm ecology PR: finite Warden interception, bounded Jackal mine salvo and interruptible Anchor field use existing canonical owners; the 15-ship/two-scheduled-Kraken/20-Brood/14-boss audit and eight future implementation briefs are in `design/swarm/ENEMY_ECOLOGY.md`. Focused checks and ordinary-route limits are recorded separately in `docs/validation/swarm-specialists/README.md`.
+**Current November3 checkpoint:** published `89ddfe4830e2` fixes arcade Exit overwriting Adventure autosave; the ordinary buy/save/Swarm/Exit/Continue route preserves4,962 credits, cargo and sector. Final29 isolation and13 affected Racing/export cases pass. The newer1347 Swarm attempt lost at wave4 with significant pilot/operator movement limitations; a corrected moving pilot is now exercising repair/Fortify and natural Bank/boss progression. This is not yet a balance defect or mode acceptance. Ceres's paid player brace and crew cutter release pass; full same-plate tow/receiving is still being completed. Earlier inbox receipts below retain their original scope.
 
-- 2026-11-01, Swarm ecology CI follow-up: `.github/workflows/mobile-readiness.yml` omits required `assets/characters/ruckus` from its sparse checkout, so retail packaging fails before browser acceptance. Initial full-check CI also reports the Massline acquisition-preview mismatch and other groups still need triage. Exact run links and baseline evidence are in `docs/validation/swarm-specialists/ci-triage.md`; no gate was weakened.
+- 2026-11-03 ordinary Intel Swarm8ea: actual fitted fire and a six-ton shard latch/move clear round1 to the Armory,15/15 resolved, score1385/cr946/hull260. Shard impact is not established. Headed Chrome reports Intel Graphics/D3D11, driver32.0.101.8860; no valid active-window FPS was retained. Wave7/first boss remain open. Next operator uses interruptible30-second public-input combat segments rather than long wall time between tiny simulation pulses.
+
+- 2026-11-03 Foundry collision repair: a production native probe fully outside the visible gate previously contacts its radius-ball and moves8→8.1603; corrected hex contact gives0 contacts/stays8. Furnace main body/mouth and moving shutter now use their visible planar shapes through a shared datum, preserving mass/phase/transform and plate geometry. Legacy unproxied rooms resolve the corrected footprints; incompatible ball caches are refused. Native/sweep/open-gap/save checks pass; ordinary contact feel remains to be played.
+
+- 2026-11-03 combat feedback: one counted physical cause replaces duplicate `ARENA: PRESSED`/`PRESSED`; routine wreck/loss accounting stays in its owners while quiet in Swarm's flight register. Desktop chain/announcer retain the upper center and existing voice/receipt lanes move right. The pictured overlap reproduces before and clears after in the real2D presenter bench;24 checks retain danger preemption, actionable receipts and player-owned loss. Smaller/mobile and actual combat look remain open.
+
+- 2026-11-03 ordinary Swarm: runtime confirms `kind: survival`, `ruleset: swarm` under the public Crucible entry. Two rounds were reached, a real Autocannon S purchased and fired in round2. Hovering Strip moved Sell underneath the pointer; the changed Refit layout keeps measured controls stable and passes actual in-place candidate input plus geometry checks. The initial round's largely environmental kills do not accept combat feel; the next active play targets Bank/wave7 and the first boss without wave skips.
+
+- 2026-11-03 ordinary Anvil: DDE Continue→Tethys→Storm Orchard→Scoop feed→release→physical pickup completed with the same player lot/pod. Reserve44→43, release revision2/tetherable, then H hold13→14 at pickup; no grants or teleports. Root inspected the recovery scene. This closes that specific ordinary skim/release/recovery loop, not all Tethys content or performance.
+
+- 2026-11-03 Armory: rapid Refit Strip/Fit/Sell presses previously queued duplicate transactions, replacing a successful action with a refusal. The screen now waits for a matching owner receipt, disables pending transactions and names the actual fitting movement. Review reproduced a late Strip after public Launch at unchanged generation leaving controls pending; correlated early exits now return the existing refusal receipt. The actual UI/main-lane/production-worker regression and focused cohort pass21 cases. Ordinary intermission → refit → round2 firing, first-ten/boss journey and performance remain open.
+
+- 2026-11-03 native contact repair (`c16e43dd6c24`): already tumbling hulls no longer receive a second legacy entry-spin impulse after the native contact solve. The authored Kestrel reproduction previously multiplied spin2.52× and angular energy6.34× across that command boundary; the corrected path preserves the native response. Disabling tumble now restores an installed contact/damping profile. Sixty focused native cases pass, including tracked contact-normal/material/energy checks replacing obsolete world-axis bounce assumptions. No mass/inertia clamp or expected golden was changed; ordinary perceived combat feel remains open.
+
+- 2026-11-03 integration: incoming PR811's player-truth retry was corrected so menu/loading/route and unclassified graphics failures remain failures, and a failed first-attempt archive prevents a destructive retry. Existing classified environment-loss handling is retained. Thirty-two focused checks pass; no long survival run was added.
 
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `test/ui-frame-references/README.md` (mechanical ref rewrite to `design/archive/…` after the doc moves — doc text only). Foreign-dirty work seen in the tree, not mine: `test/ceres-five-minute-acceptance.test.mjs` and `scripts/lib/ui-layout-measure.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3: `test/lived-frontier-pockets.test.mjs` — removed a committed duplicate `ownsCharonSupplyHull` import (line 45) that left the file a SyntaxError on master (this was defect D265's red; the world bug was already fixed, suite 28/28 green). One-line deletion, committed alone as 1406c221a39.
@@ -74,7 +97,25 @@ within-session A/B shows the sim step ≤ 8 ms at the 150-body round.
 **F2 — Row 488 ROCK-BUDGET.** Wave 15 at sim p95 ≤ 20 ms (floor), ≤ 8 ms (target), measured on
 the laptop with a fixed-seed stress fixture. Commit the fixture so every later packet re-measures it.
 
+Current 2026-11-01 production wave-15 fixture (`sim-crowd-stress`, seed4242, 600 warmup +
+600 measured ticks) averages 157.2 entities: total sim mean27.257ms, p50 26.620, p95 39.208,
+p99 42.977. Physics averages11.022ms/tick; tactical AI6.227ms. These miss F1/F2 targets.
+The bounded CPU profile identifies activity classification/perception as material AI descendants;
+`8dc86e044cbe` reuses an identical presence-radius read during discovery-cell rebuilds, with
+31 focused owner checks passing. No matched speedup is claimed for that small change.
+The separate Ceres physics fixture covers98 entities, p50 6.357/p95 16.673ms; disabling authored
+far-static collision bodies is a diagnostic only and was not shipped. Neither fixture is ordinary
+wave-15 or public-Ceres acceptance. Artifacts live under `.devshots/finish/integration-2026-11-01/`.
+
 ### Wave C — the fight (the showcase)
+
+November3 F1 follow-up: the official matching Rapier0.19.3 SIMD experiment is complete and
+rejected for promotion. Production-loader guards remain active in the artifact-only trial.
+Full-game trajectories diverge (34,818 scalar impacts versus34,411 SIMD), and the separate
+unchanged-fixture timing ABBA provides no reliable useful gain (mean scalar15.505/16.119ms;
+SIMD15.133/19.715ms). No production dependency changed and no full save-compatibility claim is
+made. F1/F2 targets remain open; do not reassign SIMD as an untried shortcut. See
+`.devshots/finish/integration-2026-11-02/terminal-factory/rapier-simd/measurement-02-results.json`.
 
 Build-map rows are the spec; read each row's prose in `build_map.md` (§31–§34) before briefing it.
 
@@ -168,6 +209,212 @@ signature moment each; arena hazards that the physics turns into weapons; enemie
 environment rarely and memorably; the near miss rewarded; streaks and grudges that carry across runs;
 the champion who adapts to how you killed them; creatures that react to Massline vibration; debris
 that keeps momentum and becomes the next round's terrain.
+
+Implemented and focused-tested 2026-11-02 (INFERENCE 100 program, wave 1 — one commit each,
+`test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`; ordinary public
+encounter progression remains distinct from these owner checks):
+- inf-shove-panic (WF-02): a hull the pilot tosses rattles for a beat — guns cold, one mayday
+  over the band — and a rattled reinforcement caller now calls its swarm at full hull, so the
+  massline play reaches the encounter beat the counterHint promises (40d7b14def70).
+- inf-fled-wing-grudge (WF-02): a wing the pilot broke and let run keeps its name on the moral
+  ledger as a spared escape with a crew witness, so the return encounter can bring that named
+  crew back grateful or armed, and the band's hails say the name (50e97d88b139).
+- inf-crusher-bite (WF-15 repair): the crusher jaws bite — a hull shoved into the anvil at
+  crumple speed takes the collision law's own damage through the combat kernel on a half-second
+  grind cadence, and the pilot who aimed the shove keeps the kill (acf1f5ba2236).
+Verified already deep, no unit taken: formations break when their leader is pinned
+(squadFrame.js pinned-commander succession), the near miss rewarded (stunt closeShave → witness
+barks → rep/salvage pay), creatures react to Massline vibration (alienEcology AE-051/F5).
+
+Implemented and focused-tested, wave 2 (INFERENCE 100 program — one commit each unless noted,
+recorded in `design/program/inference-memory.json`):
+- inf-throw-carries (WF-02): the rock you threw keeps its speed into the next round and the
+  room says so, instead of forgetting the carry (e08c9b664dd8).
+- inf-wing-casualty-fold (WF-02): pick off a wingman and the enemy wing visibly folds in around
+  the gap instead of flying a leaderless line; bundled with inf-scar-history and
+  inf-mine-lane-drift in one commit (f8b04d2c3ca3 — deviation from one-commit-per-unit, noted).
+- inf-mine-lane-drift (WF-02): a jackal's telegraphed mine seed is placed on the drifting
+  rock's live pose with its current motion (same bundled commit).
+
+Verified already deep, wave 3 reconciliation, no unit taken: chain kills ("a kill that
+ricochets into a second kill and the game noticing") are fully built and registered —
+src/combat/chainKills.js witnesses the wreck that carried the contact, holds a bounded
+corpse ring, and the wire says one line per link (registered in the authoritative manifest).
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-bait (WF-02): a hurt Reach raider squad spoofs Concord's voice — a Meridian
+  screen hears a tithe at gunpoint, the patrol hears a rogue screen, and both stamp the
+  canonical hostility fields, so the cross-fire flies through isHostileForAI while raiders
+  hang wide with cold guns; a scanner pulse burns the mask (9f332bd9e1db).
+- inf-current-rider (WF-02): a marked Crucible elite cuts its drive and lets the room current
+  carry it — the same field-kernel acceleration every body feels slings it around the seam;
+  one hit knocks it off and the authored thrust returns (72661896ebfb).
+- inf-wing-gap-press (WF-16): a wingman's death names him on the band from the seat beside
+  and carries a bounded grief press — attack_run at the killer, weapons free, leashed to the
+  player; the player's fresh order cancels it (821b2b834e56).
+Verified already deep, wave 4: Massline fauna vibration (alienEcology AE-051/059),
+cross-run grudges (aceMemory New Run+ tiers + moral memory + defeat-streak mercy), Crucible
+signature moments (six authored room laws + round events), formation-half of the wingman gap
+(squadFrame sockets + wingMorale).
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-coverseek (WF-02): a marked elite swings until a rock sits between it and you, then
+  holds and coasts its orbit there; flank, hit, or the 5 s window restores the closing intent;
+  the mark's lit lip shows only while a hold is live (6869b4f0b4dd).
+- inf-room-end-cause (WF-16 repair): a hull a mine, drift bomb, sympathetic cookoff or the
+  crusher jaws took reads MINED/MILLED and pays the documented PQ-174.02 physics rate when
+  player-attributed, instead of reading as a gun kill (fe9b97714a9a).
+- inf-dot-end-word (WF-16 repair): a hull the burn or tar corroded down reads WASTED in each
+  arena's own language (TEMPERED/SOLDERED/SINGED/THAWED/SURGED/SLAGGED/SCALDED) instead of
+  the gun word; attrition pays gun rate, never the force-table ratio (0aa2bdac25c4).
+Verified already deep, wave 5: patrol intervention breadth (20182af972c4 —
+patrolJurisdictionFor over four lawful responders; the board's "Concord-only" seam note was
+stale), ricochet/bounce causality (collisionConsequences provenance + chainKills), DoT kill
+credit (status periodic routes the applier as attackerId). Named skip: well dives (same
+kind/subject family as coverseek — rotation reserves it).
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-well-dive (WF-02): a marked Crucible elite dives THROUGH a gravity well to reach you —
+  full thrust bent through the pull, guns live — instead of holding behind a rock; a hit
+  breaks the commit; law-identical window/stagger/cooldown to the rider (392426e9c689).
+- inf-plow-turn (WF-05 repair): shoving an enemy mine fence with your own plow turns it into
+  your grenade — it trips on the pack that laid it, pays your credit, and the band says the
+  shove took; NPC fields never turn NPC mines; your own mines never turn (8c77b0ed9119).
+- inf-lance-aim (WF-15 repair): the Orbital Lance paints and strikes exactly where the
+  crosshair points instead of a quarter-turn off it, and the thrown decoy drops ahead of the
+  nose line (47209b767a46).
+Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/guidance-lost
+all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
+left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
+before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
+Inbox (Lane 2, noticed 2026-11-05): src/systems/swarmJuice.js `_onKilled` reads
+`payload.provenance?.actorId` as a fallback, but no `entity:killed` emitter sets
+`provenance` (combat/damage/kernel/careerCohorts all carry killerId) — a dead fallback line.
+SWEPT 2026-11-05 (support commit, sha in the body): re-verified every `entity:killed`
+emitter (combat/damage/kernel/careerCohorts/tallyho carry killerId; survivalWave's bare
+{id,tick} receipt carries neither field, so the fallback never answered it either) and the
+dead read is gone; impactorId was not substituted.
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-reinforce-tell (WF-02/WF-14): a mid-wave reinforcement names its count and bearing while
+  the pack is still on approach — "Three more inbound — out of the south" — one line per 8 s
+  gap, max 2/wave, inside the per-wave budget, never a pill (85a4c46e01e1).
+- inf-hive-tide-close (WF-19 repair): kill every spawn sac and the emptied Hive room stops
+  paying crowd cost for nobody — the done gate reads the tide's heartbeat instead of a budget
+  zero that kept full per-tick machinery on zero bodies until the wave refit (fc4cffbb1769).
+- inf-brood-grief (WF-16 integration): a kill into the swarm is a kill the room notices — the
+  authored BLOOM cascade finally runs: filament flinch recoils 26 wu/s along the web, a
+  credited kill arms neighbors inside the 220 wu reach and each bends toward its corpse for
+  5 s; LED-drawn windups kill lateral velocity at the stamp so the tells stay true under any
+  shove. Panic/aggression remain authored-but-unwired, named next steps (5ae61ff7f7ec).
+Resolved investigation: the named tether-latched-pair-in-a-field-zone A/B is HONEST —
+512c12e88b49, test/inf-tether-field-ab.test.mjs: fixed-seed lab on the real SG-02 rope joint,
+end-COM velocity = v0 + ΣJ/M exactly, rope held inside its envelope, tension reads the
+differential pull, same-seed replay identical. Candidate (not claim) from the free arm: a
+light hull slung into a heavy one can end ticks interpenetrated with ball colliders —
+production hulls use compound proxies; contact-domain owner should look.
+Verified already deep, wave 7: boss-phase honesty (capitalBossScore stamps behavior per
+phase), brood death residue (six authored remains families spawn real latched bodies),
+aftershock honesty (chunks carry parent velocity + angular momentum), pursuit-leash break
+(mercy stand-down + patrol intervention + staggered despawn receipts). Candidate wires for a
+future tell: swarm:hiveSacKilled / swarm:broodReserve have no production consumer.
+
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picked wire is the sac answer, the reserve wire
+left untouched by rotation):
+- inf-sac-mourn (WF-16 integration): bursting a Hive sac answers now — the arena hands the
+  corpse to the brood engine's hiveSacFell seam and the authored grief loop arms at it
+  (BROOD_CASCADE_EVENTS already named swarm:hiveSacKilled a cascade seam), and the combat
+  net says the tide law once per run: "The sac bursts — the tide it was feeding dies with
+  it." The sacs are the room's win lever; the first burst names what it took (610226462a43,
+  test/inf-sac-answer.test.mjs).
+- inf-panic-cascade (WF-16 completion): the authored panic scatter/knot finally runs — one
+  credited kill of a body at or above BROOD_PANIC_KILL_MASS (90: a wake eel, a bellows)
+  bolts every living neighbor inside the cascade reach outward from the corpse for its own
+  seeded slice of the authored 1.5–2.5 s band, then the knot converges back onto it for
+  BROOD_PANIC_REFORM_S; the cascade replaces the ordinary jitter for its window (never the
+  room's fields), outranks grief while live, publishes BROOD_CASCADE_PANIC, and a blast
+  nobody credits breaks nothing (cfbda7130a09, test/inf-panic-cascade.test.mjs). Aggression
+  remains the one authored-but-unwired cascade.
+- inf-bank-cascade-yield (WF-02 repair): the grief loop and the composition bank fought —
+  a corpse beside the staged slot armed the bend on the STAGED body, the second charger
+  mourned into the hull scrum the first pass had just made and died by collision before
+  its stage called it (test/swarm-bank.test.mjs red since the grief loop landed, verified
+  red on the pre-session tree). The engine's own law — the attack language outranks the
+  cascade — now covers the bank's staged slot: it neither mourns nor panics while held;
+  unstaged cells keep the full answer and a live grief resumes when the bank releases
+  (5589d8173643, test/inf-bank-cascade-yield.test.mjs; read-only _bank() seam beside
+  _machine()).
+Resolved candidate: the light-into-heavy contact question is HONEST on production —
+e1329b354e88, test/inf-light-heavy-contact.test.mjs: the fixed-seed SG-02 lab with the
+owner's solid-contact sampler shows craft-to-craft capsules, a thrown hull into the Ceres
+breaker's 13 authored primitives, and the Borrowed Voice recorder (a production dynamic
+compound hull) all holding min separation at rounding error with zero penetrating ticks,
+no tunneling, the shove landing, resting end states — at 140 wu/s, dead-center and
+offset-bearing; even the toy ball path is honest in this lab. Lab lesson recorded: a
+thrower spawned inside a compound's authored footprint reads phantom overlap — spawn
+clearance owns that case, not the contact solve. Shove-recovery honesty (tossed hull into
+wall/asteroid) stays covered by the committed wave subjects: native contact spin
+preservation c16e43dd6c24, INF-027 tumble recovery, and wave-5 ricochet causality.
+
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-aggression-cascade (WF-16 completion): the last authored-but-unwired BLOOM cascade
+  finally runs — a hit on the brood's relay node (the Queen champion, or the Tendril's head,
+  the two relay loot ids the data contract stamps) turns every living neighbor inside the
+  authored BROOD_CASCADE_RADIUS onto the player for BROOD_AGGRESSION_S at
+  BROOD_AGGRESSION_ACCEL, tracking the player's live position for the whole window; the
+  arena forwards the relay's ordinary `combat:damage` receipt to a new engine `relayHit`
+  seam, the arm receipts as `swarm:broodAggression`, and the view publishes the authored
+  BROOD_CASCADE_AGGRESSION kind — panic outranks the rush, the rush outranks grief, the
+  attack language outranks both, and every hit re-arms (sha below,
+  test/inf-aggression-cascade.test.mjs). Note for Lane 1: broodPresentation's
+  resolveBroodCascadeFlush still returns null for the now-live aggression kind — the
+  authored "filaments flush red" read is its deliberate follow-up; no colors were invented
+  on Lane 2's side.
+- inf-brood-reserve-tell (WF-14 integration): the brood reserve's landing finally has a
+  voice — the wave's held-back second breath (B5) lands mid-wave as one gate clump at the
+  165 wu arrival ring and its `swarm:broodReserve` receipt had no consumer; the only word
+  near the drop was the family telegraph, which speaks a behavior line for ANY commitment
+  and carries no count and no bearing. survivalAnnounce now reads the receipt with the
+  reinforce tell's own sentence and machinery — the count and the compass word where the
+  clump landed ("Six more inbound — out of the north.", read against the pilot position so
+  the word stays true on screen), the same 8 s gap coalescing a multi-tick drop to one
+  line, the same 2/wave cap and shared counters, warn/finite-ttl, counted in the hard
+  per-wave bound; a landing nobody can read still says the count (sha below,
+  test/inf-brood-reserve-tell.test.mjs). `swarm:broodReserve` now has a production
+  consumer; the wave-7 candidate note is closed.
+- inf-tacticalai-lane-scans (WF-19 repair): the tactical owner's fixed-step universe walks
+  ride the entity index lanes the code already prefers — the incoming-mass cue (every tick,
+  before the quiet latch) reads the physics-owned body lane with the same speed/type/
+  tumbling/dynamic predicate shared verbatim by the unready-index fallback (a scripted
+  presentation mover the schema opts out of physics was never a thrown body the warning
+  owed), and the body-launcher enemy walk rides shipLike (a launcher is ship-only), so the
+  same hulls are admitted on both paths. Matched within-session A/B on the committed wave-15
+  crowd fixture (seed 4242, 300 warmup + 400 measured, one session): tacticalAI 4.859 →
+  4.747/4.698 ms/tick across two patched blocks, sim-step mean 22.906 → 22.063/22.131 ms;
+  the win is the universe the lanes skip (rocks, FX, wrecks) and grows with sector clutter
+  (sha below, test/inf-tacticalai-lane-scans.test.mjs).
+- Verified already true, wave 9 (no unit taken): C10's five named physics faults checked
+  against today's code — NPC bolts hurt NPCs (npcCrossfireAdmits reckless/grudge law), AI
+  throws bodies (stepHostileBodyLaunches, npc_body_launch provenance + incoming-mass tell),
+  _retaliate covers NPC victims (lawSecurity) beside the AL-FIGHT-1 grudge, and fields are
+  read by every brood family (current-rider shipped); racing rivals are career/ghost records
+  with no live Massline-anchor overlap to finish. The shove-into-field zone-kill question is
+  honest — every reachable zone has an explicit attribution law (collision/crusher read the
+  toss provenance; storm discharge reads the wire; kilnback reads its owner; brood pools and
+  the metronome beam burn only the player), and weapon knock is per-weapon authored identity
+  (PQ-009 impulsePerHit on one physical delivery), not a shared shove table. Found gap,
+  named next step: the bloomLadder route-memory tide (BLOOM_TIDE_SECTORS policies,
+  bloomTidePlan, the persisted {kills,lastX,lastZ,seq} record) is authored and unwired —
+  the header's named adventure-side owner (src/systems/faction_bloom.js) does not exist.
+  Complete unit scope: sector tide stream + persisted route-memory record + kill tracking
+  riding the fauna spawn path; the tide cadence per class (endemic/tidal/incursion) has no
+  authored numbers, so the clock is an E-packet design decision before code.
 
 ## Traps
 

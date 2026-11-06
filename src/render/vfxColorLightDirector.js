@@ -74,6 +74,10 @@ const PRESETS = {
   // Surface-contact identities.
   impact: { color: '#ff9a5a', peak: 2.6, decay: 12, distance: 90, priority: 0.6 },
   impactHull: { color: '#ff7040', peak: 2.2, decay: 11, distance: 90, priority: 0.55 },
+  // The strike that empties the hull (mortalBlowRead.js): white-hot core punch, hotter and
+  // tighter than any ordinary hull hit, but below the break/detonation band — the death's own
+  // explosion light still owns the aftermath.
+  impactMortal: { color: '#eaf6ff', peak: 4.4, decay: 7, distance: 150, priority: 0.72 },
   impactDetonation: { color: '#39d0ff', peak: 4.2, decay: 8, distance: 180, priority: 0.7 },
   graze: { color: '#d8c39e', peak: 1.6, decay: 13, distance: 72, priority: 0.35 },
   collision: { color: '#bcd8ff', peak: 3.5, decay: 9, distance: 120, priority: 0.75 },
@@ -89,6 +93,10 @@ const PRESETS = {
   tellMark: { color: '#ffd9a0', peak: 2.6, decay: 9, distance: 140, priority: 0.5 },
   tellMarkCalm: { color: '#ffd9a0', peak: 1.4, decay: 9, distance: 140, priority: 0.5 },
   tellLink: { color: '#ffd9a0', peak: 1.8, decay: 10, distance: 110, priority: 0.45 },
+  // tell/mayday — a survivor pod's beacon shouting its first full-power burst at ejection.
+  // Colour is the lamp's warning red (survivorPodVisual.js); the row owns a slow fade so the
+  // eye keeps the light after the retro flash dies.
+  tellMayday: { color: '#ff4a3c', peak: 3.4, decay: 5, distance: 210, priority: 0.55 },
 
   // Law/heat flip accent — colour stays on LAW_HEAT_COLORS at the call site; the calm severity
   // is the reduced-motion form (lower peak, slower snap).

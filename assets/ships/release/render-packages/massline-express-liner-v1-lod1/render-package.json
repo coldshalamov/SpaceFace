@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "71c7297f9cb0bd10e53fb0136beb61f11b01015f2d5f904afc9cb05dc9122e3d",
+  "contentHash": "2477a3b630d5bc4dbffc582ce2a842852b281c75c6387cd6083263d0a4613a16",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -2862,14 +2862,14 @@
       "uri": "massline_express_liner_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 557700,
-    "sha256": "dba1ee6a22ac36ef717d250cfe237fa568a81b50b939462bb30addd5e958dbe2",
+    "bytes": 557756,
+    "sha256": "f7c266762df6ccd16e452443b662745eb8e5e01c57dab6b99a172240f1d54321",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2967,6 +2967,120 @@
       },
       {
         "matrix": [
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          -20.614999771118164,
+          0.37999996542930603,
+          -4.76837158203125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 8,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          -13.657500267028809,
+          4.059750020503998,
+          -3.057499647140503,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          -17.200000762939453,
+          0.8999999761581421,
+          8.199999809265137,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1-lod1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2985,7 +3099,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3037,7 +3151,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 18,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3089,7 +3203,7 @@
           1
         ],
         "name": "SOCKET_Dock_Port",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3141,7 +3255,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3193,7 +3307,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 21,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3245,7 +3359,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 22,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3297,7 +3411,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 23,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3349,7 +3463,7 @@
           1
         ],
         "name": "SOCKET_Service_Starboard",
-        "planIndex": 24,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3401,7 +3515,7 @@
           1
         ],
         "name": "SOCKET_Tether_Keel",
-        "planIndex": 25,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3453,7 +3567,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 26,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3505,7 +3619,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 27,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3557,7 +3671,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 28,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3609,7 +3723,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 29,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3661,7 +3775,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 30,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3713,7 +3827,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 31,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3782,27 +3896,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 9,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
         "role": "signal"
       },
       {
@@ -3813,16 +3912,31 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
         "role": "warning"
       }
     ],
@@ -3832,7 +3946,7 @@
       "sha256": "17dbde017b3413f080a51fd70e58ebf0b44654f5b4cca7f092e9d4ccf44b1b4a",
       "uri": "assets/ships/motions/massline-express-liner-v1.motion.json"
     },
-    "nodeCount": 32,
+    "nodeCount": 35,
     "primitives": [
       {
         "canopy": false,
@@ -3966,8 +4080,8 @@
           -4.76837158203125e-7,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE001",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4013,8 +4127,8 @@
           -3.057499647140503,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT001",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4042,8 +4156,8 @@
           8.199999809265137,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD001",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4072,7 +4186,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 11,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4100,7 +4214,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
-        "planIndex": 12,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4128,7 +4242,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 13,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4156,7 +4270,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4184,7 +4298,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 15,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4212,7 +4326,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4224,7 +4338,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1_lod1.glb"
   },
-  "runtimeHash": "246bf730bf0e101de6e486d76de3193749c5962292f6061e8afa0a93ca484936",
+  "runtimeHash": "d96a1f82b88cae9a54feac44f85b505fe197c16b364bec159ff18897726df524",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

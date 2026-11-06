@@ -140,15 +140,16 @@ export function projectTradeOutcome(state, expected) {
   const commodityId = typeof wanted.commodityId === 'string' ? wanted.commodityId : null;
   const side = wanted.side === 'sell' ? 'sell' : 'buy';
   const confirmedQty = cleanInt(wanted.qty);
-  const receipt = commodityId
-    ? latestTradeReceipt(state, {
-      commodityId,
-      side,
-      stationId: wanted.stationId != null ? String(wanted.stationId) : undefined,
-      afterSequence: wanted.afterSequence != null ? wanted.afterSequence : undefined,
-      afterSimTime: wanted.afterSimTime != null ? wanted.afterSimTime : undefined,
-    })
-    : null;
+  const filter = {
+    commodityId, side,
+    stationId: wanted.stationId != null ? String(wanted.stationId) : undefined,
+    afterSequence: wanted.afterSequence != null ? wanted.afterSequence : undefined,
+    afterSimTime: wanted.afterSimTime != null ? wanted.afterSimTime : undefined,
+  };
+  const exact = wanted.receiptId != null ? findTradeReceipt(state, { receiptId: wanted.receiptId }) : null;
+  const receipt = !commodityId ? null : wanted.receiptId != null
+    ? (exact && matchesFilter(exact, filter) ? exact : null)
+    : latestTradeReceipt(state, filter);
   const executedQty = receipt ? receipt.qty : 0;
   const partialFill = receipt ? executedQty < confirmedQty : false;
   const quantityAgrees = !!receipt && executedQty === confirmedQty;

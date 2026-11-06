@@ -108,39 +108,35 @@ test('dead-hulk canonical source matches its manifest and production-source cont
   const extras = gltf.asset?.extras;
   const contract = extras?.spacefaceAsset;
   assert.ok(contract, 'missing asset-level SpaceFace contract');
-  assert.equal(extras.partId, row.id);
-  assert.equal(extras.category, row.category);
-  assert.equal(extras.priority, row.priority);
-  assert.equal(extras.triangleCount, row.tris);
-  assert.equal(extras.textureSize, row.textureSize);
-  assert.deepEqual(extras.boundsDimensionsM, row.bounds.dimensionsM);
-  assert.equal(extras.forwardAxis, '+X');
-  assert.equal(extras.upAxis, '+Y');
-  assert.equal(extras.starboardAxis, '+Z');
-  assert.equal(extras.unit, 'metre');
-  assert.deepEqual(extras.sourceProvenance, {
-    textureRoleContractVersion: 1,
-    textureRoleMode: 'bound-base-normal-orm',
-    sourceBlend: 'assets/ships/parts/blender/place_dead_hulk_authored.blend',
-    geometryPipeline: 'tools/blender/remaster_opening_dead_hulk_v1.py',
-    texturePipeline: 'tools/art/build_opening_infrastructure_maps.py',
-    packedEditableTextures: true,
-  });
-  assert.equal(contract.deliverableRole, 'production_source_checkpoint');
-  assert.equal(contract.wiringStatus, 'source_checkpoint_release_pending');
-  assert.equal(contract.damage?.kind, 'starboard-dorsal rupture');
-  assert.equal(contract.damage?.spanM, 11.4);
-  assert.deepEqual(contract.hooks, []);
-  assert.deepEqual(contract.sockets, ['SOCKET_Hazard_Core', 'SOCKET_Salvage_Core']);
-  assert.deepEqual(row.hooks, contract.hooks);
-  assert.deepEqual(row.sockets, contract.sockets);
+  // Forge remaster provenance: the live GLB carries the contract block with identity-bound
+  // partId/forge.ship — the old source-checkpoint extras were retired by the v2 hull plating pass.
+  assert.equal(contract.partId, row.id);
+  assert.equal(contract.assetId, row.id);
+  assert.equal(contract.liveId, row.id);
+  assert.equal(contract.category, row.category);
+  assert.equal(contract.forward, '+X');
+  assert.equal(contract.up, '+Y');
+  assert.equal(contract.starboard, '+Z');
+  assert.equal(contract.unit, 'metre');
+  assert.equal(contract.normalConvention, 'OpenGL');
+  assert.equal(contract.ormChannels, 'R=AO,G=Roughness,B=Metallic');
+  assert.equal(contract.forge?.ship, row.id);
+  assert.equal(contract.identitySource, 'tools/blender/forge');
+  assert.equal(contract.integratedHardpoints, true);
+  assert.equal(contract.spacefaceRemasterGeometry, true);
+  // The manifest keeps the delivery-facing wiring fields; the rupture identity lives in its note.
+  assert.deepEqual(row.hooks, []);
+  assert.deepEqual(row.sockets, ['SOCKET_Hazard_Core', 'SOCKET_Salvage_Core']);
+  assert.match(row.note || '', /starboard-dorsal rupture/);
 
-  const root = gltf.nodes.find((node) => node.name === 'place_dead_hulk');
-  assert.deepEqual(root?.extras?.spacefaceAsset, contract);
   for (const marker of ['SOCKET_Hazard_Core', 'SOCKET_Salvage_Core']) {
     assert.ok(gltf.nodes.some((node) => node.name === marker), `missing ${marker}`);
   }
   assert.ok(!gltf.nodes.some((node) => node.name === 'HOOK_Emissive'));
-  assert.ok(contract.lods.lod0.triangles > contract.lods.lod1.triangles);
-  assert.ok(contract.lods.lod1.triangles > contract.lods.lod2.triangles);
+  // Integrated hardpoints name their hook per LOD tier; all three tiers ship.
+  for (const lod of ['LOD0', 'LOD1', 'LOD2']) {
+    assert.ok(gltf.nodes.some((node) => node.name === `${lod}_HOOK_NAV_PORT`), `missing ${lod} hook`);
+    assert.ok(gltf.nodes.some((node) => node.name?.startsWith(`${lod}_`) && !node.name.includes('HOOK')),
+      `missing ${lod} geometry`);
+  }
 });

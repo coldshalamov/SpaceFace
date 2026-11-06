@@ -64,12 +64,13 @@ class Dialog extends Elem {
   close() { this.open = false; }
 }
 
-/** One simple selector: optional tag, then any run of .class and [attr] / [attr="value"]. */
+/** One simple selector: optional tag, then IDs, classes and attributes. */
 function matchesCompound(el, s) {
-  const m = /^([a-z][\w-]*)?((?:\.[\w-]+|\[[^\]]+\])*)$/i.exec(s);
+  const m = /^([a-z][\w-]*)?((?:[.#][\w-]+|\[[^\]]+\])*)$/i.exec(s);
   if (!m) throw new Error(`the stand-in document cannot match "${s}"`);
   if (m[1] && el.tag !== m[1].toLowerCase()) return false;
-  for (const part of m[2].match(/\.[\w-]+|\[[^\]]+\]/g) || []) {
+  for (const part of m[2].match(/[.#][\w-]+|\[[^\]]+\]/g) || []) {
+    if (part[0] === '#') { if (el.id !== part.slice(1)) return false; continue; }
     if (part[0] === '.') { if (!el._classes.has(part.slice(1))) return false; continue; }
     const [, name, want] = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(part);
     const got = el.attr(name);
@@ -206,6 +207,26 @@ test('the phone Energy and Boost meters read full, spent and replenished worker 
     assert.equal(meter('energy').style.transform, 'scaleX(0.500)');
     assert.equal(meter('boost').style.transform, 'scaleX(1.000)');
     assert.equal(meter('boost').closest('.mf-row').dataset.low, '0');
+  } finally { w.dispose(); }
+});
+
+test('a law notice scroll gesture does not start flight; empty space still does', () => {
+  const w = mount();
+  try {
+    const notice = w.doc.createElement('aside');
+    notice.id = 'sf-sector-law';
+    const text = w.doc.createElement('span');
+    notice.appendChild(text);
+    w.doc.body.appendChild(notice);
+    const down = w.finger.down(1, 120, 400, text);
+    w.finger.move(1, 120, 350, text);
+    w.finger.up(1, 120, 350, text);
+    assert.equal(down.defaultPrevented, false, 'native scrolling is not intercepted');
+    assert.equal(w.model.stick, null);
+    assert.equal(w.model.pointers.size, 0);
+    w.finger.down(2, 120, 600);
+    assert.ok(w.model.stick, 'ordinary background contact still flies');
+    w.finger.up(2, 120, 600);
   } finally { w.dispose(); }
 });
 

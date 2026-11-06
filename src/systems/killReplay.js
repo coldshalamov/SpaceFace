@@ -398,6 +398,13 @@ export const killReplay = {
         const attacker = p.attackerId != null ? this.state.entities?.get(p.attackerId) : null;
         addTapeMark(this.state, 'damage', entityLabel(attacker, 'Damage'), this.state.playerId);
       });
+      // The chain-kill receipt paints its own mark: the tape shows the two kills as the one
+      // act they were, at the second victim's death point.
+      this._offTapeChain = bus.on('combat:chainKill', (p) => {
+        if (!this.state || !p) return;
+        const second = this.state.entities ? this.state.entities.get(p.secondId) : null;
+        addTapeMark(this.state, 'chain', `Chain: ${entityLabel(second, 'kill')}`, p.secondId);
+      });
     }
   },
 
@@ -415,7 +422,7 @@ export const killReplay = {
     }
   },
   destroy() {
-    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick', '_offTapeDamage']) {
+    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick', '_offTapeDamage', '_offTapeChain']) {
       this[key]?.();
       this[key] = null;
     }

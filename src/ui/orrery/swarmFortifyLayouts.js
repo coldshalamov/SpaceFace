@@ -22,6 +22,11 @@ html body #screens > .k-screen.sf-crucible-fortify {
 .sf-fortify-plan .sf-fortify-reach { fill:none; stroke:currentColor; stroke-width:1; stroke-dasharray:5 5; }
 .sf-fortify-plan .sf-fortify-pair { fill:none; stroke:currentColor; stroke-width:3; }
 .sf-fortify-plan .sf-fortify-footprint { fill:var(--dp-void); stroke:currentColor; stroke-width:3; }
+.sf-fortify-plan .sf-fortify-face { fill:none; stroke:currentColor; stroke-width:2; }
+.sf-fortify-plan .sf-fortify-bank { fill:none; stroke:currentColor; stroke-width:2.5; stroke-dasharray:8 5; }
+.sf-fortify-plan polygon { vector-effect:non-scaling-stroke; }
+.sf-fortify-facings { margin-top:10px; }
+.sf-fortify-facings[hidden] { display:none; }
 .sf-fortify-plan .sf-fortify-pilot { fill:var(--dp-phos); stroke:none; }
 .sf-fortify-plan .sf-fortify-point { fill:var(--dp-void); stroke:var(--dp-ink); stroke-width:1.5; }
 .sf-fortify-plan .sf-fortify-point[data-selected=true] { stroke:var(--dp-hand); stroke-width:3; }

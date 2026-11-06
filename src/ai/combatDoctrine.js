@@ -112,6 +112,30 @@ const BRAWLER_CHARGE_OVERSHOOT_WU = 420;
 // time, and the window may refine inside ±cap but never re-track a dodge.
 const SNIPER_AIM_CORRECTION_RAD = 0.1;
 const SNIPER_CORRIDOR_NOMINAL_SPEED = 340;
+// LW-03: the committed-approach doctrines telegraph a FIRING lane, not a hull heading. The
+// wind-up's first tick stamps the forecast fire solution (the same corridorBearing machinery
+// the ranged corridor uses); the whole run — cue, drawn attackLine, and released volley —
+// refines only inside a bounded wedge of that line. All three read the same stamp, so the
+// warning is the real shot.
+//   Cap sizing: a dodge beats the corridor once the target's lateral offset L outgrows the
+//   wedge — |fresh - stamped| ≈ atan(L / range). The cue is 30 ticks, so a ~60 WU/s lateral
+//   burn puts an early dodge ~30+ WU off the announced line before the run even commits:
+//   interceptor_flyby — a crossing pass; honest fire lands early in the strike band
+//     (~150-300 WU release range). 0.20 rad keeps a held-course pass inside the wedge while
+//     a ~30-45 WU early dodge walks out (30 WU escapes under ~148 WU; 45 WU under ~222).
+//   brawler_commit — a mass-committed collision course: the charge itself compresses range,
+//     so the same offset subtends far more at release. 0.40 rad is the modest mid-run
+//     correction the heavy hull needs to keep a held-course target covered through the pass;
+//     a sustained dodge still escapes (~100 WU beats it under ~245 WU).
+//   A dodge started only a few ticks before release displaces too little to leave either
+//   wedge — that dodge eats the volley.
+const INTERCEPTOR_AIM_CORRECTION_RAD = 0.2;
+const BRAWLER_AIM_CORRECTION_RAD = 0.4;
+// The run corridor spans the wind-up cue and the committed attack phase — the same span the
+// ranged corridor gets across charge_cue -> fire_window. Membership is checked against the
+// record's doctrine id so shared phase names (swarm engine_flare/strike, detonator commit)
+// stay untouched.
+const RUN_CORRIDOR_PHASES = Object.freeze(new Set(['engine_flare', 'strike', 'commit']));
 const BRAWLER_BREAKAWAY_TICKS = 105;
 // Distance-gated egress exits also need a clock: a breakaway that requires separation never
 // happens when the target keeps chasing, and without a hatch the "break" inverts into a hull
@@ -592,8 +616,14 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
     return;
   }
   const age = tick - record.phaseStartedTick;
-  if (record.phase === 'ingress' && distance <= 420) enter(record, 'engine_flare', tick, 'engine_flare');
-  else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  if (record.phase === 'ingress' && distance <= 420) {
+    enter(record, 'engine_flare', tick, 'engine_flare');
+    // LW-03: the flare telegraph IS the firing-lane announcement — commit the corridor now.
+    stampRunCorridor(record, tick, self, target, INTERCEPTOR_AIM_CORRECTION_RAD, STRIKE_CLOSE_CAP_TICKS);
+  } else if (record.phase === 'engine_flare' && runCorridorEscaped(record, tick, self, target)) {
+    // The announced lane is dead before the pass began — wave off into the authored egress.
+    beginEgress(record, 'extend', tick, self, target, 'corridor_escaped');
+  } else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     record.closestDistance = distance;
     enter(record, 'strike', tick, null);
   } else if (record.phase === 'strike') {
@@ -603,6 +633,9 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
       if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
+    // No corridor-escape hatch here: once the pass is flying, the crossing geometry carries
+    // the target off the stamped bearing anyway — the corridor keeps released shots honest
+    // (they can only land inside the warned lane), and the authored pass/timeout ends the run.
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
     (distance >= INTERCEPTOR_EXTEND_DISTANCE_WU || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
     beginReform(record, tick);
@@ -619,8 +652,14 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
 
 function updateBrawler(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
-  if (record.phase === 'ingress' && distance <= 460) enter(record, 'engine_flare', tick, 'engine_flare');
-  else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  if (record.phase === 'ingress' && distance <= 460) {
+    enter(record, 'engine_flare', tick, 'engine_flare');
+    // LW-03: the flare telegraph IS the firing-lane announcement — commit the corridor now.
+    stampRunCorridor(record, tick, self, target, BRAWLER_AIM_CORRECTION_RAD, BRAWLER_COMMIT_MAX_TICKS);
+  } else if (record.phase === 'engine_flare' && runCorridorEscaped(record, tick, self, target)) {
+    // The announced lane is dead before the charge began — wave off into the authored egress.
+    beginEgress(record, 'breakaway', tick, self, target, 'corridor_escaped');
+  } else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     record.closestDistance = distance;
     // Mass commitment: the run drives at a fixed world point — the target's forecast position
     // extended past it — so the charge cannot re-plan around a late sidestep. Overshoot and a
@@ -633,6 +672,9 @@ function updateBrawler(record, tick, self, target, distance) {
     if ((age >= BRAWLER_COMMIT_MIN_TICKS && passed) || age >= BRAWLER_COMMIT_MAX_TICKS) {
       beginEgress(record, 'breakaway', tick, self, target, 'brawler_commit_complete');
     }
+    // No corridor-escape hatch here either: the mass-committed charge drives through a fixed
+    // world point regardless — the corridor clamps the volley to the announced lane (honest
+    // shots, possibly into empty space), and the overshoot/breakaway owns the recovery.
   } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS &&
     (distance >= 600 || age >= BRAWLER_BREAKAWAY_MAX_TICKS)) {
     beginReform(record, tick);
@@ -1073,6 +1115,62 @@ function updateRanged(record, tick, self, target, distance) {
 }
 
 /**
+ * DUST P6 (BS-7): miniboss act variants for the shared `capital_broadside` line. The seven
+ * miniboss capitals all fly the same doctrine id (their encounters stamp it — see
+ * src/missions/capitalBossSpawn.js), so the seam that can differ PER BOSS is the authored
+ * turret-loss edge set (`subsystems.phaseAtTurretsLost` on the enemy row — the only per-enemy
+ * authored field on the doctrine's self view). Each variant row names its boss, matches that
+ * exact edge authoring, and carries its own acts: fire cadence, shift cadence, standoff and
+ * telegraph cue per stage. Bosses without a matching variant (including the Iron Maw, whose
+ * authored [4, 10] edges drive the base table) keep the base CAPITAL_BOSS_CHOREOGRAPHY acts.
+ */
+export const CAPITAL_BROADSIDE_ACT_VARIANTS = Object.freeze({
+  // NEST CARRIER — enemies.js authors phaseAtTurretsLost [1, 2] (her two gunwale mounts; "kill
+  // a mount and that flank of the launch wash goes quiet"). The nest is the lightest hull on
+  // the roster: she trades distance, not volume — long careful shifts while latched, shorter
+  // beats once a bay is bare, and everything at once when both flanks are quiet.
+  nest_carrier: Object.freeze({
+    matchTurretPhaseEdges: Object.freeze([1, 2]),
+    stages: Object.freeze([
+      Object.freeze({ turretsLost: 0, fireTicks: 48, shiftTicks: 120, preferredRange: 300, cue: 'broadside_charge' }),
+      Object.freeze({ turretsLost: 1, fireTicks: 60, shiftTicks: 84, preferredRange: 260, cue: 'wasp_wake' }),
+      Object.freeze({ turretsLost: 2, fireTicks: 90, shiftTicks: 48, preferredRange: 210, cue: 'belly_launch' }),
+    ]),
+  }),
+  // FURNACE MAW — enemies.js authors phaseAtTurretsLost [1, 3] (three jaw mounts; one cold jaw
+  // is radiator trouble, all three is a starving battery). The maw EATS: long committed gnaw
+  // windows with deliberate repositioning, tightening act by act as the jaws go quiet.
+  furnace_maw: Object.freeze({
+    matchTurretPhaseEdges: Object.freeze([1, 3]),
+    stages: Object.freeze([
+      Object.freeze({ turretsLost: 0, fireTicks: 84, shiftTicks: 96, preferredRange: 280, cue: 'heat_bloom' }),
+      Object.freeze({ turretsLost: 1, fireTicks: 72, shiftTicks: 66, preferredRange: 240, cue: 'radiator_vent' }),
+      Object.freeze({ turretsLost: 3, fireTicks: 108, shiftTicks: 36, preferredRange: 190, cue: 'feeding_frenzy' }),
+    ]),
+  }),
+});
+
+/** DUST P6: resolve a miniboss act variant by its authored turret-loss edge set, or null. */
+function capitalActVariantFor(turretPhaseEdges) {
+  if (!Array.isArray(turretPhaseEdges) || !turretPhaseEdges.length) return null;
+  const key = turretPhaseEdges.join(',');
+  for (const variant of Object.values(CAPITAL_BROADSIDE_ACT_VARIANTS)) {
+    if (variant.matchTurretPhaseEdges.join(',') === key) return variant;
+  }
+  return null;
+}
+
+/** The stage list actually driving this capital: a DUST act variant when its edges match, else the choreography table. */
+function resolveCapitalStages(record, self) {
+  const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
+  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+    const variant = capitalActVariantFor(self && self.turretPhaseEdges);
+    if (variant) return variant.stages;
+  }
+  return (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+}
+
+/**
  * Capital broadside + the three boss choreographies. The boss tables (CAPITAL_BOSS_CHOREOGRAPHY
  * in src/data/combatDefs.js) stage the fight by hull fraction: each stage has its own telegraph
  * cue, fire cadence and standoff, so a boss kill reads as acts — not one loop until death. A
@@ -1084,12 +1182,14 @@ function updateRanged(record, tick, self, target, distance) {
  * crossed edge advances one stage (swarmer vent, then the desperation battery). A hull without
  * authored turret edges keeps stage 0 regardless of hull damage — the health bar never drives
  * the fight. The other capital choreographies keep their hull-fraction acts.
+ *
+ * DUST P6: on the shared capital_broadside line, a matching act variant (above) supplies the
+ * stages; the authored edges still drive stage advancement exactly as FB-020 describes.
  */
 function capitalStageFor(record, self) {
-  const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
-  const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+  const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
+  const stages = resolveCapitalStages(record, self);
   if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
-    const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
     if (!edges.length) return stages[0];
     const lost = self && Number.isFinite(self.turretsLost) ? self.turretsLost : 0;
     let level = 0;
@@ -1107,9 +1207,9 @@ function capitalStageFor(record, self) {
 
 function updateCapitalBroadside(record, tick, self, distance) {
   const stage = capitalStageFor(record, self);
-  const stageIndex = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId]
-    ? CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId].stages.indexOf(stage)
-    : 0;
+  // DUST P6: the index must come from the stages actually driving this hull (a matched act
+  // variant supplies its own list) — the base table's indexOf cannot see variant stage objects.
+  const stageIndex = resolveCapitalStages(record, self).indexOf(stage);
   if (stageIndex > (record.bossStage || 0)) {
     // A new act begins: announce it through the charge telegraph even mid-broadside.
     record.bossStage = stageIndex;
@@ -1346,6 +1446,9 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     ramAuthorized: false,
     preferredRange: null,
     aimCommitBearing: null,
+    // LW-03: per-role corridor half-angle and the stamped commit's expiry tick (simTime).
+    aimCommitCapRad: null,
+    aimCommitUntilTick: null,
     // SF-056: the wounded fallback is armed until a subsystem wound spends it; it re-arms only
     // when the wounded subsystem is repaired past the exit band.
     fallbackArmed: true,
@@ -1384,8 +1487,15 @@ function enter(record, phase, tick, telegraphKind, telegraphTicks) {
     || phase === 'lance' || phase === 'mine_drop';
   // A committed firing corridor survives the charge_cue -> fire_window boundary (it IS the
   // corridor), but every other phase change drops it — retreat/reset must never hold a stale
-  // forecast line.
-  if (phase !== 'charge_cue' && phase !== 'fire_window') record.aimCommitBearing = null;
+  // forecast line. The committed-approach doctrines get the same span across their own
+  // wind-up -> fire boundary (engine_flare -> strike/commit).
+  const corridorPhase = phase === 'charge_cue' || phase === 'fire_window'
+    || (runCorridorRecord(record) && RUN_CORRIDOR_PHASES.has(phase));
+  if (!corridorPhase) {
+    record.aimCommitBearing = null;
+    record.aimCommitCapRad = null;
+    record.aimCommitUntilTick = null;
+  }
 }
 
 function advanceCycle(record, tick, phase) {
@@ -1446,8 +1556,10 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       || directive.formation.breakReason === 'onboarding_raid_target'));
   // A committed firing corridor owns the nose as well as the guns: while the cue/window holds a
   // corridor bearing, facing rides it instead of tracking the live contact, so a lateral dodge
-  // leaves both the hull line and the volley stale.
-  const aimCommitted = (phase === 'charge_cue' || phase === 'fire_window')
+  // leaves both the hull line and the volley stale. The committed-approach doctrines run the
+  // same contract across their own cue -> fire span (engine_flare -> strike/commit).
+  const runCorridor = runCorridorRecord(record) && RUN_CORRIDOR_PHASES.has(phase);
+  const aimCommitted = (phase === 'charge_cue' || phase === 'fire_window' || runCorridor)
     && Number.isFinite(record.aimCommitBearing);
   const cutterCommitted = doctrineId === CombatDoctrineId.SCISSORWAKE
     && (phase === 'spool_cue' || phase === 'attach_window') && record.cutterCorridor;
@@ -1698,7 +1810,11 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     faceTarget,
     faceAngle,
     aimCommit: aimCommitted
-      ? Object.freeze({ bearing: record.aimCommitBearing, capRad: SNIPER_AIM_CORRECTION_RAD })
+      ? Object.freeze({
+        bearing: record.aimCommitBearing,
+        capRad: Number.isFinite(record.aimCommitCapRad) ? record.aimCommitCapRad : SNIPER_AIM_CORRECTION_RAD,
+        ...(Number.isInteger(record.aimCommitUntilTick) ? { untilTick: record.aimCommitUntilTick } : {}),
+      })
       : null,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
@@ -1749,12 +1865,17 @@ export function attackLineFor(record, self) {
   const px = finite(self.pos.x);
   const pz = finite(self.pos.z);
   const rot = Number.isFinite(self.rot) ? self.rot : 0;
+  // LW-03: a committed-approach record draws its stamped firing corridor, not the hull's
+  // transient heading — the announced lane IS the lane the volley can still correct inside.
+  const heading = runCorridorRecord(record) && RUN_CORRIDOR_PHASES.has(phase)
+    && Number.isFinite(record.aimCommitBearing) ? record.aimCommitBearing : rot;
 
   if (record && record._cachedAttackLine &&
       record._cachePosX === px &&
       record._cachePosZ === pz &&
       record._cacheRot === rot &&
-      record._cachePhase === phase) {
+      record._cachePhase === phase &&
+      record._cacheAim === heading) {
     return record._cachedAttackLine;
   }
 
@@ -1762,8 +1883,8 @@ export function attackLineFor(record, self) {
   const halfWidth = Math.max(32, (self.radius || 14) + 18);
   const line = Object.freeze({
     origin: Object.freeze({ x: px, z: pz }),
-    heading: rot,
-    dir: Object.freeze({ x: Math.cos(rot), z: Math.sin(rot) }),
+    heading,
+    dir: Object.freeze({ x: Math.cos(heading), z: Math.sin(heading) }),
     range,
     halfWidth,
   });
@@ -1773,6 +1894,7 @@ export function attackLineFor(record, self) {
     record._cachePosZ = pz;
     record._cacheRot = rot;
     record._cachePhase = phase;
+    record._cacheAim = heading;
     record._cachedAttackLine = line;
   }
 
@@ -1968,6 +2090,49 @@ function corridorBearing(self, target) {
     dz + finite(target.vel && target.vel.z) * tof,
     dx + finite(target.vel && target.vel.x) * tof,
   );
+}
+
+/**
+ * LW-03: the two committed-approach doctrines run a firing corridor across their own
+ * wind-up -> fire boundary. Gated on doctrine id — never a shared phase name — so swarm
+ * engine_flare/strike and the detonator's commit stay outside the corridor contract.
+ */
+function runCorridorRecord(record) {
+  const id = record && record.doctrineId;
+  return id === CombatDoctrineId.BRAWLER_COMMIT || id === CombatDoctrineId.INTERCEPTOR_FLYBY;
+}
+
+/**
+ * Stamp the run's committed firing lane at wind-up entry: the forecast fire-solution bearing
+ * (frozen for the whole run — it is never re-solved, which is what makes it baitable), the
+ * role's correction cap, and a worst-case expiry tick. The phase clocks always land first;
+ * the stamp lives in the record so a reload/inspect can see the commitment too.
+ */
+function stampRunCorridor(record, tick, self, target, capRad, runMaxTicks) {
+  record.aimCommitBearing = corridorBearing(self, target);
+  record.aimCommitCapRad = capRad;
+  record.aimCommitUntilTick = Number.isInteger(tick)
+    ? tick + DOCTRINE_TELEGRAPH_TICKS + runMaxTicks : null;
+}
+
+/**
+ * Consulted during the wind-up only. The committed lane is dead when the live re-solved fire
+ * bearing has left the wedge — a dodge carried it out; a held course never does — or the
+ * stamped commit outlived its authored bound (defensive; the phase clocks land first). A dead
+ * lane before release waves the run off into its authored egress: the telegraph promised that
+ * corridor, and flying the pass anyway would spend bolts down a lane the dodge already beat.
+ * Once the run is flying (strike/commit) this check is deliberately not consulted — closing
+ * geometry makes a fixed lateral offset read as a growing angular escape, and the corridor
+ * clamp already keeps those shots inside the announced lane.
+ */
+function runCorridorEscaped(record, tick, self, target) {
+  if (!Number.isFinite(record.aimCommitBearing)) return false;
+  if (Number.isInteger(record.aimCommitUntilTick) && tick > record.aimCommitUntilTick) return true;
+  const fresh = corridorBearing(self, target);
+  if (!Number.isFinite(fresh)) return false;
+  const cap = Number.isFinite(record.aimCommitCapRad)
+    ? Math.abs(record.aimCommitCapRad) : SNIPER_AIM_CORRECTION_RAD;
+  return Math.abs(wrapAngle(fresh - record.aimCommitBearing)) > cap;
 }
 
 /**

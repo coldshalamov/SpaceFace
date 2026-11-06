@@ -10,16 +10,20 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
+import { physics } from '../src/core/physics.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 
 const SECTOR = 'sector_pallas_drift';
 const ANCHOR = Object.freeze({ x: 9000, z: 9000 });
 
-function makeHarness() {
+async function makeHarness() {
   const sim = createSimulation({
     seed: 43,
-    systems: [spawnBudget, encounterDirector],
+    // physics integrates the pods' real conveyor crawl — without it the manifest never
+    // physically reaches the buyer and the deal can never resolve. The default backend is
+    // rapier-dynamic, so the authority must actually be prepared before bodies move.
+    systems: [physics, spawnBudget, encounterDirector],
   });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -32,6 +36,7 @@ function makeHarness() {
   });
   state.playerId = player.id;
   state.player = state.player || { flags: {}, credits: 0, cargo: { items: {} } };
+  assert.equal(await sim.registry.get('physics').prepareBackend(state, true), true);
   const events = [];
   bus.on('comms:log', (p) => events.push({ name: 'comms', payload: p }));
   bus.on('faction:repDelta', (p) => events.push({ name: 'repDelta', payload: p }));
@@ -63,14 +68,14 @@ function castOf(state, live, role) {
 const commsTexts = (events) => events.filter((e) => e.name === 'comms').map((e) => e.payload.text || '');
 const grants = (events) => events.filter((e) => e.name === 'grant');
 
-test('settle: the finality line is spoken once, then the withdraw gesture is dead', () => {
-  const { sim, state, player, events } = makeHarness();
+test('settle: the finality line is spoken once, then the withdraw gesture is dead', async () => {
+  const { sim, state, player, events } = await makeHarness();
   fireHandoff(sim);
   const live = liveOf(state);
   const seller = castOf(state, live, 'hauler')[0];
   player.pos.x = seller.pos.x + 100;
   player.pos.z = seller.pos.z;
-  sim.runTicks(60 * 8); // hold station through the six-second inspection window
+  sim.runTicks(60 * 20); // accept at 6s, then the remaining manifest physically crawls to the buyer
   assert.equal(live.outcome, 'contact_made');
 
   const commit = live.data.custodyCommit;
@@ -96,7 +101,7 @@ test('settle: the finality line is spoken once, then the withdraw gesture is dea
   player.pos.x = seller.pos.x + 4000; // the identical physical gesture that withdrew before
   sim.runTicks(60 * 3);
   const afterTexts = commsTexts(events).slice(commsBefore);
-  assert.ok(!afterTexts.some((t) => t.includes('never met') || t.includes('Drifting already')),
+  assert.ok(!afterTexts.some((t) => t.includes('never met') || t.includes('nothing signed')),
     'the settled deal is never presented as cancelable again — no late withdraw line');
   assert.equal(live.data.withdrawNoted, false, 'the withdraw state never re-arms post-settle');
   assert.equal(live.data.parleyOffered, true, 'the accepted offer stays latched — no re-offer');
@@ -110,8 +115,8 @@ test('settle: the finality line is spoken once, then the withdraw gesture is dea
   assert.equal(escrow.data.committedTo, player.id, 'the commitment is recorded on the body');
 });
 
-test('before settle the same offer is honestly cancelable — withdraw speaks once, acceptance still works', () => {
-  const { sim, state, player, events } = makeHarness();
+test('before settle the same offer is honestly cancelable — withdraw speaks once, acceptance still works', async () => {
+  const { sim, state, player, events } = await makeHarness();
   fireHandoff(sim);
   const live = liveOf(state);
   const seller = castOf(state, live, 'hauler')[0];
@@ -127,7 +132,7 @@ test('before settle the same offer is honestly cancelable — withdraw speaks on
   assert.equal(live.data.withdrawNoted, true, 'the pre-settle cancel is acknowledged');
   assert.equal(live.data.parleySince, null);
   assert.equal(
-    commsTexts(events).filter((t) => t.includes('Drifting already')).length, 1,
+    commsTexts(events).filter((t) => t.includes('nothing signed')).length, 1,
     'the cancel line speaks exactly once — while the deal is still unsettled');
   assert.equal(grants(events).length, 0, 'a withdrawn offer pays nothing');
   assert.equal(live.outcome, null, 'the deal plays on — a declined offer consumed nothing');
@@ -142,9 +147,9 @@ test('before settle the same offer is honestly cancelable — withdraw speaks on
   player.pos.x = seller.pos.x + 2000;
   sim.runTicks(60 * 3);
   assert.equal(commsTexts(events).slice(commsBefore)
-    .filter((t) => t.includes('we never met') || t.includes('Drifting already')).length, 0,
+    .filter((t) => t.includes('we never met') || t.includes('nothing signed')).length, 0,
   'the settled deal never re-speaks the cancel');
   assert.equal(
-    commsTexts(events).filter((t) => t.includes('Drifting already')).length, 1,
+    commsTexts(events).filter((t) => t.includes('nothing signed')).length, 1,
     'the whole run heard the cancel once — only while it was still a cancel');
 });

@@ -20,6 +20,8 @@ const SL = 'html body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload
 /** SL for desktop-only rules, after `html:root:not([data-sf-mobile="1"])`. */
 const SLD = 'body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
+// Back and its keycap reset all properties with !important, so their label voice must match.
+const LABEL_I = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -45,10 +47,17 @@ ${SL} > .k-title .k-t-title { ${DISPLAY} margin:0; font-size:calc(72px * var(--s
   color:rgb(${BONE}) !important; -webkit-text-fill-color:currentColor; background:none !important; text-shadow:0 2px 18px rgb(0 0 0 / .5); }
 ${SL} > .k-title .k-t-emph { ${BODY} margin:calc(12px * var(--sv)) 0 0; font-size:max(13px, calc(16.5px * var(--sv))); line-height:1.35; font-weight:500; color:rgb(${BONE} / .94); }
 
-/* ---- the reading: free type on a pool of shade, no panel ---- */
+/* ---- the reading: a lit face (consoleStandard paints it) with its own inset and hairline ---- */
 ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !important; inset:auto !important; left:auto !important; bottom:auto !important; top:auto !important;
   width:auto !important; max-width:none !important; height:auto; min-height:0; align-self:start; box-sizing:border-box; display:flex; flex-direction:column;
-  gap:calc(12px * var(--sv)); margin:0; padding:calc(10px * var(--sv)) 0 0 !important; overflow:visible !important; ${PLAIN} z-index:2; }
+  gap:calc(12px * var(--sv)); margin:0; overflow:visible !important; ${PLAIN} z-index:2;
+  /* ui-polish-286: consoleStandard paints this reading as a lit face (its ::after) but PLAIN zeroed the
+     padding and hairline it asked for, so every line sat flush on the face's left, top and bottom edges
+     and LOAD hung on its corner. The face keeps its own inset and edge here, and grows outward by its
+     side inset so the reading keeps the title's left edge and its measure (nothing rewraps). */
+  --sv-face-x:clamp(12px, 1.05vw, 20px); margin:0 calc(-1 * var(--sv-face-x));
+  padding:calc(16px * var(--sv)) var(--sv-face-x) calc(18px * var(--sv)) !important;
+  border:1px solid rgb(${BONE} / .12) !important; border-radius:2px; }
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
 ${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(13px, calc(12.5px * var(--sv))); letter-spacing:.06em; line-height:1.35; color:rgb(${BONE} / .86); }
@@ -189,11 +198,11 @@ ${SL} > .k-foot .k-word { ${PLAIN} ${LABEL} display:inline-flex !important; alig
 ${SL} > .k-foot .k-word:not(.sf-back)::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word:not(.sf-back)::after { display:none !important; content:none !important; }
 ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; ${LABEL} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; ${LABEL_I} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_I} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -208,7 +217,7 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
   ${SL} .sf-ledger-k { letter-spacing:.12em; white-space:nowrap; }
   ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
   ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
-  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:0 !important; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
   ${SL} > .k-hang { height:calc(226px * var(--sv)); }
   ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
   ${SL} { row-gap:clamp(8px, 1.4vh, 30px) !important; padding-bottom:clamp(16px, 2.6vh, 84px) !important; }
@@ -327,6 +336,17 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
+/* ui-polish-301: 461–560 tall from 791 wide (960×540) the band above gave LOAD a 10px top margin, so the
+   title hugged the frame edge while the left column kept ~150px spare under the reading. It takes back a real
+   margin there; the ≤460 band keeps its 10px. */
+@media (min-width:791px) and (min-height:461px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:clamp(20px, 4.4vh, 26px) !important; row-gap:8px !important; }
+}
+/* ui-polish-303: 1200–1279 wide up to 560 tall (1200×560) the reading column is ~365px and the actions' 30px
+   tracked gap pushed DELETE onto its own line under LOAD. The three keys close up to a 16px gap and hold one row. */
+@media (min-width:1200px) and (max-width:1279px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions > .k-words { column-gap:16px !important; }
+}
 /* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
    and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
    carries it ("QUICK SAVE · CURRENT · …"). */
@@ -384,6 +404,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+  /* ui-polish-302: at 860×500 a long filed name still broke inside a word ("RECOVE / RY") over five lines;
+     it breaks between words with closer tracking, as it does from 941 (ui-polish-264) and under 640 */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
 }
 /* ui-polish-95: 941–1199 wide above 460 tall, the ~100px stations still ran a filed save's line to four or five
    ragged lines ("Adventure· / Hitch·Helios / Prime·1h / 12m played"), and at ~1000 the context line broke
@@ -418,6 +442,19 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; row-gap:0; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line { display:grid; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:0; }
+}
+/* ui-polish-310: a phone-width page from 821 to 899 tall (390×844, 393×852, 412×890) kept the roomy reading: the
+   short-screen tightening above stops at 820, so the stacked page ran ~895px and scrolled ~50px before EXPORT /
+   IMPORT / BACK showed (the bench cut them in half at the fold). The same tightening reads the whole page, foot
+   included, on one screen; 900 and taller keep the roomy page, 820 and shorter already had this. */
+@media (max-width:520px) and (min-height:821px) and (max-height:899px) {
+  ${SL} .sf-save-ledger .sf-slot-card-title { font-size:calc(38px * var(--sv)); }
+  ${SL} .sf-ledger-facts { row-gap:calc(8px * var(--sv)); margin-top:0 !important; }
+  ${SL} .sf-save-ledger .sf-save-portrait { margin-top:0; }
+  ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
+  ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
+  ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
 }
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }

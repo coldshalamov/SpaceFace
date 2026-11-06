@@ -2,7 +2,7 @@
 // (same renderer, lights, env map, tone mapping and runtime material profiles as flight), from the
 // real chase pose, so a model can be judged by the picture the player actually sees.
 //
-// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> PNG data URL
+// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> JPEG data URL
 //   file   release wholeship path, e.g. 'wholeships/hornet_production_v1.glb' (blueprint path)
 //   defId  ship def id, e.g. 'ship_kestrel' (full visual-factory + authored-boundary path, which
 //          includes every runtime attachment the player sees)
@@ -15,7 +15,7 @@ import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { defaultShipAppearance } from '../core/shipAppearance.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { wrapShipWithAuthoredParts, syncAuthoredInstancePools } from './partsLibrary.js';
+import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
 import { resolveLookPost } from '../data/lookMoods.js';
 
@@ -36,13 +36,8 @@ function stablePreviewId(defId) {
 }
 
 let renderSystem = null;
-let lastPoolSync = null;
 function renderOnce(renderer, scene, cam) {
-  cam.updateMatrixWorld(true);
   if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
-  // The private preview actor is outside the production entity-frame roster. Submit its real
-  // pooled package matrices against this camera immediately before the same shipping draw route.
-  lastPoolSync = syncAuthoredInstancePools(scene, { camera: cam });
   // The shipping post route (bloom / crease ink / tone) when available, so the look matches flight.
   if (renderSystem && typeof renderSystem._renderPostRoute === 'function') {
     try { renderSystem._renderPostRoute(renderSystem._selectPostRoute(), scene, cam, 0); return; } catch (_) {}
@@ -96,6 +91,39 @@ function applySectorLighting(scene, sector, profile, palette) {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Count actual target draws during this preview's final synchronous scene render.
+// onAfterRender also fires when Three's selected-program guard deferred the draw.
+function observePreviewDraw(renderer, root, draw) {
+  const meshes = new Set();
+  root.traverse((object) => { if (object.isMesh) meshes.add(object); });
+  const result = { draws: 0 };
+  const gl = renderer.getContext();
+  const previousRender = renderer.renderBufferDirect;
+  const originals = new Map();
+  let target = false;
+  renderer.renderBufferDirect = function (...args) {
+    const previousTarget = target;
+    target = meshes.has(args[4]);
+    try { return previousRender.apply(this, args); } finally { target = previousTarget; }
+  };
+  try {
+    for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced']) {
+      if (typeof gl[name] !== 'function') continue;
+      const original = gl[name];
+      originals.set(name, original);
+      gl[name] = function (...args) {
+        if (target) result.draws++;
+        return original.apply(this, args);
+      };
+    }
+    draw();
+  } finally {
+    renderer.renderBufferDirect = previousRender;
+    for (const [name, original] of originals) gl[name] = original;
+  }
+  return result;
+}
+
 function blueprintToGroup(blueprint) {
   const group = new THREE.Group();
   // Split-file LOD siblings (kestrel_lod1/_lod2) carry only LOD1_/LOD2_ names; shoot the finest
@@ -117,47 +145,71 @@ const ORIGIN = new THREE.Vector3();
 
 function poseCamera(cam, view, radius, heading, center) {
   const h = (heading || 0) * Math.PI / 180;
+  // The XZ-recentred bounding-sphere centre: aim there, not at the world origin — placed
+  // models (places, kits, rocks) carry a Y offset and unrecentred inspects clipped their tops.
+  const aim = center || ORIGIN;
   const orbit = (dist, elev, az) => cam.position.set(
-    dist * Math.cos(elev) * Math.sin(az), dist * Math.sin(elev), -dist * Math.cos(elev) * Math.cos(az));
-  if (view === 'chase' || view === 'close') {
-    const D = view === 'chase' ? 144 : 58;
-    cam.position.set(0, D * Math.sin(TILT), -D * Math.cos(TILT));
+    aim.x + dist * Math.cos(elev) * Math.sin(az),
+    aim.y + dist * Math.sin(elev),
+    aim.z - dist * Math.cos(elev) * Math.cos(az));
+  if (view === 'chase') {
+    // Gameplay framing: the real 144 WU chase distance, radius-independent by design —
+    // what a player at the default zoom actually sees, however big or small the body is.
+    cam.position.set(0, 144 * Math.sin(TILT), -144 * Math.cos(TILT));
+  } else if (view === 'close') {
+    // Close zoom: the gameplay tilt with the distance fitted to the bounding sphere so the
+    // model fills ~450 px (the documented contract). The old fixed 58 WU was tuned for
+    // standard hulls and made small props specks and big places fill the whole frame.
+    const D = Math.max(radius * 2.2, 6);
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
   } else if (view === 'place') {
     // Whole-place framing: the in-game 60° chase tilt, distance fitted to the bounding sphere so
     // the entire station/place is in frame — the picture a player approaching it actually sees.
-    const c = center || ORIGIN;
     const D = radius * 2.7;
-    cam.position.set(c.x, c.y + D * Math.sin(TILT), c.z - D * Math.cos(TILT));
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
     cam.far = Math.max(cam.far, radius * 20);
     cam.fov = 50;
     cam.near = 0.1;
-    cam.lookAt(c.x, c.y, c.z);
+    cam.lookAt(aim.x, aim.y, aim.z);
     cam.updateProjectionMatrix();
     return;
   } else if (view === 'side') orbit(radius * 3.2, 0.12, Math.PI / 2 + h);
-  else if (view === 'top') cam.position.set(0, radius * 3.4, -0.001);
+  else if (view === 'top') cam.position.set(aim.x, aim.y + radius * 3.4, aim.z - 0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
   else orbit(radius * 2.6, 0.62, 0.7 + h);
   cam.fov = 50;
   cam.near = 0.1;
-  cam.lookAt(0, 0, 0);
+  cam.lookAt(aim.x, aim.y, aim.z);
   cam.updateProjectionMatrix();
 }
 
-async function waitForAuthored(renderer, scene, cam, root, driveFrames = true) {
-  const deadline = performance.now() + 120000;
-  while (performance.now() < deadline) {
-    if (driveFrames) renderOnce(renderer, scene, cam);
+export function inspectFleetLookAuthored(root) {
+  const pending = [];
+  const failed = [];
+  let targetMeshes = 0;
+  root.traverse((o) => {
+    if (o.isMesh && o.geometry && o.material) targetMeshes++;
+    const status = o.userData?.authoredAssetState;
+    if (!status) return;
+    if (['awaiting-authored-admission', 'loading', 'compiling-pipelines', 'procedural-fallback',
+      'authored-prepared', 'same-semantic-fallback-prepared'].includes(status)) {
+      if (pending.length < 12) pending.push(status);
+    } else if (!['authored', 'authored-with-cleanup-error', 'procedural-settled',
+      'same-semantic-fallback'].includes(status)) {
+      if (failed.length < 12) failed.push(String(status).slice(0, 100));
+    }
+  });
+  return { ready: pending.length === 0 && failed.length === 0, pending, failed, targetMeshes };
+}
+
+async function waitForAuthored(renderer, scene, cam, root) {
+  for (let i = 0; i < 150; i++) {
+    renderOnce(renderer, scene, cam);
     await wait(60);
-    let pending = false;
-    root.traverse((o) => {
-      const st = o.userData && o.userData.authoredAssetState;
-      if (st === 'awaiting-authored-admission' || st === 'loading' || st === 'compiling-pipelines'
-        || st === 'procedural-fallback') pending = true;
-    });
-    if (!pending) return true;
+    const verdict = inspectFleetLookAuthored(root);
+    if (verdict.failed.length || verdict.ready) return verdict;
   }
-  return false;
+  return inspectFleetLookAuthored(root);
 }
 
 export function installFleetLook(SF) {
@@ -168,7 +220,6 @@ export function installFleetLook(SF) {
   let savedSize = null;
   let lastPose = null;
   let lastCamera = null;
-  let specialistPreview = null;
 
   function handles() {
     const r = state.render || {};
@@ -203,18 +254,6 @@ export function installFleetLook(SF) {
 
   async function build(opts) {
     const { renderer, scene } = handles();
-    if (opts.specialist && specialistPreview
-      && specialistPreview.kind === String(opts.specialist).split(':')[0]
-      && specialistPreview.root.parent === holder
-      && specialistPreview.root.userData.authoredAssetState === 'authored') {
-      const phase = String(opts.specialist).split(':')[1];
-      if (!['idle', 'windup', 'active', 'recovery'].includes(phase)) throw new Error('invalid specialist preview');
-      const view = specialistPreview.entity.data.swarmSpecialist;
-      view.phase = phase;
-      if (view.kind === 'anchor') view.anchorActive = phase === 'active';
-      specialistPreview.root.position.set(0, 0, 0);
-      return specialistPreview;
-    }
     if (opts.file) {
       const url = opts.file.startsWith('assets/') ? opts.file : RELEASE_ROOT + opts.file;
       const bp = await loadAuthoredPart(url, { renderer, slot: opts.slot || null });
@@ -245,52 +284,14 @@ export function installFleetLook(SF) {
       data: { defId: def.id, appearance: opts.appearance || defaultShipAppearance(def.id) },
       factionId: opts.factionId || undefined,
     };
-    // Render fixture only: exercise the real hostile resolver and stable authored boundary.
-    // A player preview would select the player hull before its hostile identity.
-    if (opts.specialist) {
-      const [kind, phase] = String(opts.specialist).split(':');
-      const ids = { warden: 'warden_escort', jackal: 'mine_layer_jackal', anchor: 'field_anchor_controller' };
-      if (!ids[kind] || !['idle', 'windup', 'active', 'recovery'].includes(phase)) throw new Error('invalid specialist preview');
-      ent.isPlayer = false; ent.team = 1; ent.alive = true;
-      ent.pos = { x: 0, z: 0 }; ent.vel = { x: 0, z: 0 };
-      ent.faction = 'enemy'; ent.radius = kind === 'anchor' ? 28 : 18;
-      delete ent.data.appearance;
-      ent.data.lootTableId = ids[kind];
-      ent.data.swarmSpecialist = { kind, phase, phaseStartedAt: 60, phaseEndsAt: 90,
-        ...(kind === 'warden' ? { targetId: 1, targetX: 62, targetZ: -28, linkHp: 92, linkMaxHp: 92 } : {}),
-        ...(kind === 'jackal' ? { salvoRemaining: 3, salvoPoints: [{ x: -42, z: -32 }, { x: -72, z: -46 }, { x: -102, z: -60 }] } : {}),
-        ...(kind === 'anchor' ? { anchorActive: phase === 'active', anchorRadius: 220, anchorStrength: 88 } : {}),
-      };
-    }
     let mesh = vf.build(ent);
-    // The live factory's visualOverrides already supplies the durable boundary. Wrapping it
-    // twice copies its phase closures, then disposes their owner when the outer wrapper swaps.
-    if (typeof mesh.userData?.requestAuthoredUpgrade !== 'function') {
-      mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
-    }
+    mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
     holder.add(mesh);
     const req = mesh.userData && mesh.userData.requestAuthoredUpgrade;
-    if (typeof req === 'function') req(renderer, scene, opts.specialist ? {
-      admissionVisible: true,
-      // An explicit off-loop preview has no live actor in the flight camera table. Join the
-      // same strict renderer compiler as the final capture instead of starving in its ambient lane.
-      prepareAuthoredPipelines: subject => state.render.compileObjectPipelines(subject, {
-        explicit: true, urgent: true, strict: true, joinOutstanding: true,
-        isActive: () => mesh.parent === holder,
-        onPreparationLeg: leg => { mesh.userData.fleetLookAdmissionLeg = leg; },
-      }),
-      prepareAuthoredGpuResidency: (subject, admission = {}) => state.render.prepareAuthoredGpuResidency(subject, {
-        unSliced: true,
-        isActive: () => mesh.parent === holder
-          && (typeof admission.isResidencyOwnerActive !== 'function' || admission.isResidencyOwnerActive()),
-      }),
-    } : {});
+    if (typeof req === 'function') req(renderer, scene);
     const diagNames = [];
     mesh.traverse((o) => { if (diagNames.length < 12) diagNames.push(`${o.name || o.type}${o.visible ? '' : ':INVIS'}`); });
-    const built = { root: mesh, radius: ent.radius, entity: ent, diagNames };
-    // The phase matrix exercises successive state changes on the same admitted actor.
-    if (opts.specialist) specialistPreview = { ...built, kind: String(opts.specialist).split(':')[0] };
-    return built;
+    return { root: mesh, radius: ent.radius, entity: ent, diagNames };
   }
 
   async function shoot(opts = {}) {
@@ -306,11 +307,7 @@ export function installFleetLook(SF) {
       try { renderSystem?._applySize(); } catch (_) {}
     }
     cam.aspect = width / height;
-    const reuseSpecialist = opts.specialist && specialistPreview?.kind === String(opts.specialist).split(':')[0]
-      && specialistPreview.root.parent === holder && specialistPreview.root.userData.authoredAssetState === 'authored';
-    // Detaching a boundary releases its pool residency. Keep a phase-matrix actor mounted
-    // throughout its consecutive frames instead of re-adding an already-released owner.
-    if (!reuseSpecialist) holder.clear();
+    holder.clear();
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
     built.root.rotation.y = (opts.yaw || 0) * Math.PI / 180;
@@ -329,46 +326,14 @@ export function installFleetLook(SF) {
       if (ab.noBackground) { opts._bg = scene.background; scene.background = null; }
     }
     holder.updateMatrixWorld(true);
-    poseCamera(cam, opts.view || 'inspect', opts.radius || built.radius || 6, opts.heading || 0);
-    let ok = true;
-    // Explicit strict admission owns compile/upload/touch and has bounded pacing fallbacks.
-    // Ordinary file/ship previews still drive frames for their onBeforeRender admission hook.
-    if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root, !opts.specialist);
-    const renderedPackages = [];
-    if (opts.specialist) {
-      if (!ok || built.root.userData.authoredAssetState !== 'authored') {
-        const data = built.root.userData;
-        throw new Error('specialist authored admission incomplete: ' + JSON.stringify({
-          state: data.authoredAssetState, root: data.authoredVisualRoot,
-          reason: data.authoredFailureReason, message: data.authoredFailureMessage,
-          leg: data.fleetLookAdmissionLeg,
-          preparePhase: data.authoredPreparePhase,
-        }));
-      }
-      built.root.traverse(object => {
-        const binding = object.userData?.spacefaceRenderPackage;
-        if (binding) renderedPackages.push({ assetId: binding.assetId, contentHash: binding.contentHash });
-      });
-      const packageId = 'sf.render.swarm-' + String(opts.specialist).split(':')[0];
-      if (!renderedPackages.some(binding => binding.assetId === packageId && /^[a-f0-9]{64}$/.test(binding.contentHash))) {
-        throw new Error('specialist optimized package missing: ' + packageId);
-      }
-      built.root.userData.updateAuthoredMotion?.(built.entity, 1.25, undefined, state);
-      const kind = String(opts.specialist).split(':')[0];
-      const effectName = { warden: 'SF_SWARM_WARDEN_LINK', jackal: 'SF_SWARM_JACKAL_MINE_WAKE', anchor: 'SF_SWARM_ANCHOR_FIELD_EDGE' }[kind];
-      const effect = built.root.getObjectByName(effectName);
-      if (!effect || (String(opts.specialist).endsWith(':active') && !effect.visible)) {
-        throw new Error('specialist phase presentation missing: ' + JSON.stringify({
-          specialist: opts.specialist, effect: !!effect, effectVisible: effect?.visible,
-          driver: built.root.userData.swarmSpecialistVisual?.kind,
-          updater: typeof built.root.userData.updateAuthoredMotion,
-          view: built.entity.data.swarmSpecialist,
-        }));
-      }
-    }
-    // Specialist links and 220 m fields are real effects but are not ship framing bounds.
-    const boundsRoot = opts.specialist ? built.root.userData.swarmVisualContentRoot || built.root : built.root;
-    const box = new THREE.Box3().setFromObject(boundsRoot);
+    let verdict = { ready: true, pending: [], failed: [], targetMeshes: 0 };
+    // Yield one frame before either settle wait: the authored boundary stamps its pending
+    // state asynchronously, and checked too early waitForAuthored sees no pending flags —
+    // the pose below then measures an empty pre-upgrade marker and the frame ships blank.
+    await wait(120);
+    if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
+    const box = new THREE.Box3().setFromObject(built.root);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const radius = opts.radius || sphere.radius || built.radius || 6;
     built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
@@ -385,11 +350,11 @@ export function installFleetLook(SF) {
     });
     // File previews can also expose authored boundaries; settle those before joining the
     // strict renderer admission (compile, upload and exact-target touch).
-    if (opts.file) ok = await waitForAuthored(renderer, scene, cam, built.root);
-    if (!ok) throw new Error('fleet-look authored preview did not settle');
+    if (opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
     const admit = state.render.compileObjectPipelines;
     if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
-    const result = await admit(holder, { explicit: true, urgent: !!opts.specialist, strict: true, joinOutstanding: true,
+    const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
       isActive: () => built.root.parent === holder });
     if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
       throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
@@ -398,36 +363,16 @@ export function installFleetLook(SF) {
     const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
     pose();
-    renderOnce(renderer, scene, cam);
+    scene.updateMatrixWorld(true);
+    const drawObservation = observePreviewDraw(renderer, built.root,
+      () => renderOnce(renderer, scene, cam));
     const url = renderer.domElement.toDataURL('image/png');
-    let captureDiagnostics;
-    if (opts.specialist) {
-      let meshes = 0, visibleMeshes = 0;
-      const pivots = [], effects = [];
-      built.root.traverse(object => {
-        if (object.isMesh) {
-          meshes++;
-          let shown = true;
-          for (let p = object; p; p = p.parent) if (!p.visible) shown = false;
-          if (shown) visibleMeshes++;
-        }
-        if (object.name.startsWith('MOTION_')) pivots.push({ name: object.name, quaternion: object.quaternion.toArray() });
-        if (/^SF_SWARM_/.test(object.name)) effects.push({ name: object.name, visible: object.visible });
-      });
-      captureDiagnostics = { meshes, visibleMeshes, pivots, effects, pools: lastPoolSync,
-        renderedPackages, phaseView: structuredClone(built.entity.data.swarmSpecialist),
-        rootPosition: built.root.position.toArray(), rootVisible: built.root.visible,
-        contentVisible: boundsRoot.visible, cameraPosition: cam.position.toArray(),
-        boxMin: box.min.toArray(), boxMax: box.max.toArray() };
-    }
     lastPose = pose;
     lastCamera = cam;
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
-      url, ok, radius, diagNames: built.diagNames,
-      ...(opts.specialist ? { authoredAssetState: built.root.userData.authoredAssetState,
-        specialist: opts.specialist, captureDiagnostics } : {}),
+      url, ok: verdict.ready, radius, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };

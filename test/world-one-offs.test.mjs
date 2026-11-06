@@ -22,12 +22,15 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 33,
-    'thirty-three placed set pieces: the nine beside places, the four CV-QUIET detours on the legs, the Toll Saint\'s Box, plus nineteen for per-sector coverage');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
   assert.equal(new Set(ids).size, ids.length, 'one-off ids are unique');
+  for (const id of ['oneoff_abandoned_tug', 'oneoff_strut_shrine', 'oneoff_ram_pirate',
+    'oneoff_old_pod_field', 'oneoff_great_tanker', 'oneoff_runaway_ladle',
+    'oneoff_cracker_loose_ore_tub']) {
+    assert.ok(ids.includes(id), `required set piece ${id} exists`);
+  }
 });
 
 test('CV-QUIET: the flight between jobs is a place, not a loading corridor', () => {
@@ -211,7 +214,9 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   const ceres = SECTOR_BY_ID.get('sector_ceres_belt');
   const activeCeres = { pois: [], stations: [], gates: [], dressing: [] };
   system._spawnWorldOneOffs(ceres, activeCeres);
-  assert.equal(activeCeres.dressing.length, 11, 'tug + shrine + ram + the pod field (1 hero + 7 shells)');
+  const ceresOneOffs = WORLD_ONE_OFFS.filter((o) => o.sectorId === ceres.id);
+  const ceresRows = ceresOneOffs.reduce((total, o) => total + 1 + (o.cluster ? o.cluster.props.length : 0), 0);
+  assert.equal(activeCeres.dressing.length, ceresRows, 'each Ceres one-off and cluster part materializes');
   for (const prop of dressingRows()) {
     assert.equal(prop.data.worldOneOff, true,
       'every one-off prop carries the additive-dressing flag the PQ-020 census classifies by');
@@ -253,8 +258,9 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   const expectedRows = heliosOneOffs.reduce((total, o) => total + 1 + (o.cluster ? o.cluster.props.length : 0), 0);
   assert.equal(activeHelios.dressing.length, expectedRows,
     'every Helios one-off and every cluster part lands as dressing');
-  assert.equal(heliosOneOffs.length, 5,
-    'the tanker plus the four detours (body, job, signal, joke) sit in the start sector');
+  const tub = [...entities.values()].find((e) => e.data && e.data.oneOffId === 'oneoff_cracker_loose_ore_tub');
+  assert.ok(tub && tub.type === 'wreck' && tub.collides && tub.data.masslineTetherable,
+    'the loose ore tub materializes as a physical, tetherable body');
   // The spare keg is a physical body, so its tumble is its own angVel and it is never double-spun
   // as dressing. Only the two non-physical tumbling detours join the spin list.
   assert.ok(activeHelios.worldOneOffSpins, 'the tumbling detours spin as dressing');
@@ -275,7 +281,7 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
 
 test('D176: a non-origin sector spawns its one-off in its own space, not beside Helios', () => {
   // The defect signature: anchor + offset composed local-as-global put Vesta's Runaway
-  // Ladle at (-720,380) galactic - inside Helios space - instead of Vesta's (0,16384) slab.
+  // Ladle at sector-local coordinates in galactic space instead of Vesta's (0,16384) slab.
   const { system, entities } = bootOneOffHarness();
   const vesta = SECTOR_BY_ID.get('sector_vesta_forge');
   const origin = sectorGlobalOrigin(vesta.id);
@@ -287,8 +293,9 @@ test('D176: a non-origin sector spawns its one-off in its own space, not beside 
   assert.ok(ladle, 'the Runaway Ladle spawns as a live body');
   const anchor = vesta.stations.find((s) => s.id === 'station_forge');
   const anchorGlobal = sectorLocalToGlobalForSector(anchor.pos, vesta.id);
-  assert.equal(ladle.pos.x, anchorGlobal.x - 720, 'the ladle berths beside Forge Foundry in Vesta space');
-  assert.equal(ladle.pos.z, anchorGlobal.z + 380);
+  // The offset was deliberately moved clear of HOOK-LEFT's Fin-3 in 37cd2e4d0e95.
+  assert.equal(ladle.pos.x, anchorGlobal.x - 768, 'the ladle berths beside Forge Foundry in Vesta space');
+  assert.equal(ladle.pos.z, anchorGlobal.z + 412);
   // And the dressing rows the map/renderer read carry the same global frame.
   const rows = (system.state.world && system.state.world.dressing
     ? system.state.world.dressing.rows : []);

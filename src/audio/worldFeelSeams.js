@@ -1,3 +1,6 @@
+import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+
 // Worldfeel — three emitted events that had a writer and no ear, pad, or voice.
 // Subscribe-only. Emitters stay where they are. Admission uses sim tick, never the wall clock.
 // `flight:sweptHull` reuses one payload object; copy it before the handler returns.
@@ -371,6 +374,63 @@ export function playCargoLossSeam(host, book, eventName, payload) {
   return played || { captionOnly: true };
 }
 
+// The site owner emits one receipt per successful fixed-tick advance, not while the cutter is
+// blocked. A finite drill contact is far less intrusive than a 60 Hz click or an untended loop.
+// Its sample layer ends in about 0.6s; nothing is scheduled after the last real receipt.
+const CERES_CUTTER_STREAM = 'ceres-second-measure-cutter';
+const CERES_CUTTER_GAP_TICKS = 60;
+const CERES_CUTTER_MIN_GAP_TICKS = 36;
+
+export function playCeresCutterContact(host, book, payload) {
+  const state = host?.state;
+  const receipt = payload?.receipt;
+  const tick = receipt?.tick;
+  // The worker replays genuine owner receipts after applying the reply's domains. Its facade
+  // clock may describe the preceding reply or the end of a batch, not this individual advance.
+  // Transport owns reply currency; the receipt tick owns this cue's order and work cadence.
+  if (!book || !Number.isSafeInteger(tick) || tick < 0 || state?.mode !== 'flight'
+    || state.world?.currentSectorId !== CERES_FLEET.sectorId || host.rt?._paused
+    || payload?.siteId !== CERES_FLEET.siteId
+    || !CERES_FLEET.persistence.operationIds.includes(payload.operationId)
+    || receipt?.requestStreamId !== CERES_CUTTER_STREAM
+    || receipt.requestSequence !== tick
+    || !(Number.isFinite(receipt.amountApplied) && receipt.amountApplied > 0)) return null;
+
+  const previous = book.ceresCutterReceiptTick;
+  if (Number.isSafeInteger(previous) && tick <= previous) return null;
+  const resumed = !Number.isSafeInteger(previous) || tick > previous + 1;
+  book.ceresCutterReceiptTick = tick;
+  if (resumed) book.ceresCutterResumed = true;
+  const lastSpoke = book.ceresCutterSpokeTick;
+  const gap = book.ceresCutterResumed ? CERES_CUTTER_MIN_GAP_TICKS : CERES_CUTTER_GAP_TICKS;
+  if (Number.isSafeInteger(lastSpoke) && tick >= lastSpoke && tick - lastSpoke < gap) return null;
+  // A batch can replay many simulation ticks at one audio instant. Keep its contacts from
+  // piling up, using the existing output clock only to limit presentation, never gameplay.
+  const audioTime = host.rt?.ctx?.currentTime;
+  const lastAudioTime = book.ceresCutterAudioTime;
+  if (Number.isFinite(audioTime) && Number.isFinite(lastAudioTime)
+    && audioTime >= lastAudioTime && audioTime - lastAudioTime < CERES_CUTTER_MIN_GAP_TICKS / 60) return null;
+
+  const entities = state.entities;
+  if (!entities || typeof entities.values !== 'function') return null;
+  let head = null;
+  for (const entity of entities.values()) {
+    if (ceresWorkfleetRoleForEntity(entity) !== 'cutterHead' || entity.alive === false
+      || !(entity.hull > 0) || entity.id === state.playerId || entity.playerOwned === true
+      || entity.data?.playerOwned === true || entity.data?.controlLease || entity.data?.disabled === true
+      || !Number.isFinite(entity.pos?.x) || !Number.isFinite(entity.pos?.z)) continue;
+    if (head) return null; // ambiguous world-record identity must not produce a false location
+    head = entity;
+  }
+  if (!head || typeof host.play !== 'function') return null;
+  book.ceresCutterSpokeTick = tick;
+  book.ceresCutterResumed = false;
+  if (Number.isFinite(audioTime)) book.ceresCutterAudioTime = audioTime;
+  return host.play('sfx_mining_drill_contact', {
+    position: { x: head.pos.x, z: head.pos.z }, gain: 0.35, captionOwned: true,
+  });
+}
+
 export function installWorldFeelSeams(host, bus) {
   if (!bus || typeof bus.on !== 'function') return WORLD_FEEL_SEAM_IDS;
   const book = createWorldFeelBook(bus);
@@ -383,5 +443,11 @@ export function installWorldFeelSeams(host, bus) {
   for (const eventName of CARGO_LOSS_SEAM_IDS) {
     bus.on(eventName, (payload) => playCargoLossSeam(host, book, eventName, payload));
   }
+  bus.on('worldSite:operationReceipt', (payload) => playCeresCutterContact(host, book, payload));
+  bus.on('sim:pause', () => {
+    delete book.ceresCutterSpokeTick;
+    delete book.ceresCutterResumed;
+    delete book.ceresCutterAudioTime;
+  });
   return WORLD_FEEL_SEAM_IDS;
 }

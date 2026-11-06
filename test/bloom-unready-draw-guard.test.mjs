@@ -107,6 +107,57 @@ function canonStampedMaterial() {
   return { userData: { spacefaceProgramCanon: 1 } };
 }
 
+test('pending drawable roots gate nested draws without changing the visible light census', () => {
+  const { renderer, compile } = rendererHarness();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const root = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const child = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const spot = new THREE.SpotLight();
+  const sun = new THREE.DirectionalLight();
+  root.layers.enable(2);
+  child.layers.enable(3);
+  root.add(spot, child);
+  child.add(sun);
+  scene.add(root);
+  renderer.userData.spacefacePendingPipelineSubjects = new Set([root]);
+  const census = () => { let count = 0; scene.traverseVisible(o => { if (o.isLight && o.layers.test(camera.layers)) count++; }); return count; };
+  const programs = new WebGLPrograms({ outputColorSpace: THREE.SRGBColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null);
+  const key = () => {
+    let numDirLights = 0, numSpotLights = 0;
+    scene.traverseVisible(o => {
+      if (!o.layers.test(camera.layers)) return;
+      if (o.isDirectionalLight) numDirLights++;
+      if (o.isSpotLight) numSpotLights++;
+    });
+    return programs.getProgramCacheKey({ shaderID: 'physical', isRawShaderMaterial: false,
+      precision: 'highp', numDirLights, numSpotLights, customProgramCacheKey: '' });
+  };
+  const rootMask = root.layers.mask, childMask = child.layers.mask;
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(census(), 2);
+  const originalKey = key();
+  guard.hide(scene);
+  try {
+    assert.equal(census(), 2, 'pending draws must not change the light program key');
+    assert.equal(key(), originalKey, 'Three keys the pending pass to the same light counts');
+    assert.equal(root.layers.test(camera.layers), false);
+    assert.equal(child.layers.test(camera.layers), false);
+  } finally { guard.restore(); }
+  assert.equal(root.layers.mask, rootMask);
+  assert.equal(child.layers.mask, childMask);
+  renderer.userData.spacefacePendingPipelineSubjects.clear();
+  compile(root.material); compile(child.material);
+  guard.hide(scene);
+  try {
+    assert.equal(root.layers.mask, rootMask, 'the root draws again after admission or cancellation');
+    assert.equal(child.layers.mask, childMask, 'the descendant draws again after admission or cancellation');
+  } finally { guard.restore(); }
+  assert.equal(census(), 2);
+  root.geometry.dispose(); root.material.dispose(); child.geometry.dispose(); child.material.dispose();
+});
+
 test('readiness scan skips hidden subtrees that the scene pass cannot draw', async () => {
   const { renderer, admissions } = rendererHarness();
   const guard = createUnreadyDrawableGuard(renderer);
@@ -124,7 +175,7 @@ test('readiness scan skips hidden subtrees that the scene pass cannot draw', asy
   try {
     assert.deepEqual(admissions, [visibleLeaf], 'only a drawable subtree needs readiness work');
     assert.equal(hiddenLeaf.visible, true, 'the hidden parent already excludes its descendants');
-    assert.equal(visibleLeaf.visible, false, 'a cold visible leaf still waits for admission');
+    assert.equal(visibleLeaf.layers.mask, 0, 'a cold visible leaf still waits for admission');
   } finally {
     guard.restore();
     hiddenLeaf.geometry.dispose();
@@ -468,9 +519,9 @@ test('armed readiness records are consumed by a histogram sample and disarm clea
 
   try {
     guard.hide(scene);
-    assert.equal(mesh.visible, false);
+    assert.equal(mesh.layers.mask, 0);
     guard.restore();
-    assert.equal(mesh.visible, true);
+    assert.equal(mesh.layers.mask, 1);
     assert.equal(renderer.__sfLastHiddenDrawables.has(mesh), true, 'the armed pass records only for its sampler');
 
     render._sampleDrawHistogram.call(owner);

@@ -407,6 +407,7 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
       statusFlag: view.status,
       headline: view.headline,
       detail: [view.meta, view.detail].filter(Boolean).join(' — '),
+      deadlineAt: payload.recoveryKind === 'surrendered' ? payload.escapeAt : payload.deadlineAt,
       choices: [],
       // The countdown lives in the custody view; refresh the status each sim second.
       onTick: () => {

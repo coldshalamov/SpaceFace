@@ -33,6 +33,31 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const goal = make('div','race-tape-goal');
   const mapHost = make('div','race-tape-map');
   const row = make('div','race-tape-actions');
+  row.id = 'race-tape-options';
+  const options = make('button', 'race-tape-options-trigger k-word', 'View & circuits');
+  options.type = 'button'; options.style.display = 'none';
+  options.setAttribute('aria-controls', row.id);
+  options.setAttribute('aria-expanded', 'false');
+  let optionsOpen = false;
+  const setOptionsOpen = (open, returnFocus = false) => {
+    const changed = optionsOpen !== !!open;
+    optionsOpen = !!open;
+    panel.dataset.optionsOpen = String(optionsOpen);
+    options.setAttribute('aria-expanded', String(optionsOpen));
+    if (returnFocus) options.focus?.();
+    if (changed) bus?.emit?.('hud:layoutChanged', { key: 'flight-options' });
+  };
+  setOptionsOpen(false);
+  options.addEventListener('click', () => {
+    if (rowLocked) return;
+    setOptionsOpen(!optionsOpen);
+    if (optionsOpen) (view.disabled ? closeOptions : view).focus?.();
+  });
+  panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && optionsOpen) {
+      event.preventDefault(); event.stopPropagation(); setOptionsOpen(false, true);
+    }
+  });
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
   const button = (text, action) => {
     const b = make('button','k-word',text); b.type='button';
@@ -41,12 +66,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
     b.addEventListener('click', (ev) => { action(ev); if (ev?.detail > 0) { try { b.blur(); } catch {} } });
     row.appendChild(b); return b;
   };
-  const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
+  const view = button(`View ${BINDINGS.steeringView.label}`,()=>{ toggleSteeringView(state,bus); if (optionsOpen) setOptionsOpen(false, true); });
   const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
   // AL-HF-04: instant restart is a time-trial-only verb; the missions owner still decides
   // eligibility (tether, mode refusal toasts) — the button just exposes the key's reach.
   const restart = button('Restart',()=>bus?.emit?.('race:restart',{source:'hud'}));
-  const board = button('Circuits',()=>screens?.pushScreen?.('raceBoard'));
+  const board = button('Circuits',()=>{ if (optionsOpen) setOptionsOpen(false); screens?.pushScreen?.('raceBoard'); });
   board.title = 'Routes, local best times and last result';
   const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
   let selection = null;
@@ -55,7 +80,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
       applyWorldObjectSelection(state, selection, 'race-instrument');
   });
   select.hidden = true;
-  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
+  const closeOptions = button('Close', () => setOptionsOpen(false, true));
+  closeOptions.className += ' race-tape-options-close'; closeOptions.style.display = 'none';
+  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,options,row,live); root.appendChild(panel);
   const syncParent = (authored) => {
     // HUD reconstruction can replace the entire dock, so ownership is re-derived each frame —
     // but a tape already inside a live .sf-rightdock under root is correctly placed, and only
@@ -89,6 +116,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
     // canvas and fire) and the tab order, so Circuits cannot open the race board mid-fight.
     panel.dataset.combatLock = locked ? 'true' : 'false';
     row.inert = locked;
+    options.disabled = locked;
+    options.title = locked ? 'Unavailable during combat.' : 'View and circuit options';
+    if (locked && optionsOpen) setOptionsOpen(false);
     if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
   };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
@@ -171,6 +201,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
       const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
       setProperty(panel, 'hidden', !inFlight || st.physicsVenuePublic?.active === true || crucibleLive);
+      if (!inFlight || crucibleLive || authored) { if (optionsOpen) setOptionsOpen(false); }
       if (!inFlight || crucibleLive) return;
       setRowLocked(combatLock.hot(st));
       const now=st.simTime||0;
@@ -178,7 +209,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
       lastTick=now;
       const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
-      setProperty(view, 'textContent', lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      const mobileCompact = !authored && document.documentElement?.dataset?.sfMobile === '1' && document.documentElement?.dataset?.sfMobileFlight === '1';
+      setProperty(view, 'textContent', mobileCompact
+        ? `View: ${viewMode === 'racing' ? 'Chase' : 'Overhead'}${lock ? ' (mission locked)' : ''}`
+        : lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
       setProperty(view, 'disabled', !!lock);
       const pressed=String(viewMode==='racing');
       if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);

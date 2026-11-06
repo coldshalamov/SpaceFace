@@ -128,7 +128,7 @@ export function resetCombatInputMode(state, registry) {
 export async function runNewGameSimBoot({
   state, helpers, bus, registry, opts = {}, newGamePlus = null,
   isCurrent = () => true, nextPaint = async () => {}, nextFrameTick = async () => {},
-  onPhysicsPrep = null, awaitPhysicsPrep = false,
+  onPhysicsPrep = null, awaitPhysicsPrep = false, beforeScenePrepared = null,
 }) {
   // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
   // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
@@ -231,7 +231,13 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
   // Run-specific loadouts and arena placement must exist before visual/GPU admission.
   // Installing them on game:started prepares the wrong hull, then replaces it in flight.
-  bus.emit('game:scenePrepared', opts && opts.crucibleLaunch === true ? { crucibleLaunch: true } : {});
+  const scenePrepared = opts?.crucibleLaunch === true ? { crucibleLaunch: true } : {};
+  if (typeof beforeScenePrepared === 'function') {
+    const setupApplied = await beforeScenePrepared();
+    if (!isCurrent()) return { aborted: true };
+    if (setupApplied === true) scenePrepared.sandboxSetupApplied = true;
+  }
+  bus.emit('game:scenePrepared', scenePrepared);
   if (!isCurrent()) return { aborted: true };
   const physicsSystem = registry.get('physics');
   if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {

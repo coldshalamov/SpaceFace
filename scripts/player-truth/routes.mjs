@@ -241,6 +241,31 @@ async function waitForFirstLightInputRelease(page) {
   return true;
 }
 
+// Cinematic-loop only: resolves when a present First light either becomes visible (opening) or
+// releases its input fence (closing). Other callers keep the strict release wait above.
+async function waitForFirstLightOpenOrRelease(page, timeout) {
+  try {
+    const outcomeHandle = await page.waitForFunction(() => {
+      const root = document.getElementById('sf-confirm-root');
+      const dialog = root?.querySelector('[role="dialog"]');
+      const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+      if (dialog && title !== 'First light') return { superseded: true, title: title || 'another confirmation' };
+      if (dialog) return root.classList.contains('sf-confirm--in') ? { opened: true } : false;
+      if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
+      return { released: true };
+    }, null, { timeout });
+    const outcome = await consumePageConditionValue(outcomeHandle);
+    if (outcome?.superseded) {
+      throw new Error(`First light was superseded before input release; preserving ${outcome.title}`);
+    }
+    if (outcome?.opened !== true && outcome?.released !== true) {
+      throw new Error('First light did not open or release its modal input fence');
+    }
+  } catch (error) {
+    if (error?.name !== 'TimeoutError') throw error;
+  }
+}
+
 async function isActiveFirstLightPrompt(page) {
   return page.evaluate(() => {
     const root = document.getElementById('sf-confirm-root');
@@ -278,6 +303,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
       const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
         if (node.id === 'cinematic-splash') return false;
+        // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+        if (node.closest?.('[data-screen="mainMenu"]')) return false;
         if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
         return visible(node);
       });
@@ -302,7 +329,11 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     }
 
     if (last.firstLightDialogPresent) {
-      await waitForFirstLightInputRelease(page);
+      // perf-lane: a present-but-hidden First light is either closing (160 ms fade) or opening
+      // (confirm.js mounts the dialog, then adds sf-confirm--in on the next frame; a busy software-GL
+      // boot can hold that frame for seconds). Waiting only for release timed out on the opening
+      // case, so wait for either outcome and let the loop answer or continue.
+      await waitForFirstLightOpenOrRelease(page, Math.max(1, deadline - Date.now()));
       continue;
     }
 
@@ -328,6 +359,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
         const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
           if (node.id === 'cinematic-splash') return false;
+          // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+          if (node.closest?.('[data-screen="mainMenu"]')) return false;
           if (firstLightDialogPresent && (node === root?.querySelector('[role="dialog"]') || node.contains(title))) return false;
           return visible(node);
         });
@@ -358,6 +391,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
     const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
       if (node.id === 'cinematic-splash') return false;
+      // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+      if (node.closest?.('[data-screen="mainMenu"]')) return false;
       if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
       return visible(node);
     });

@@ -193,7 +193,7 @@ export function fromChronicleMemory(memory) {
 }
 
 function tapeKind(type) {
-  if (type === 'kill') return 'kill';
+  if (type === 'kill' || type === 'chain') return 'kill';
   if (type === 'stunt') return 'stunt';
   if (type === 'damage' || type === 'death') return 'damage';
   if (type === 'boost') return 'boost';
@@ -224,14 +224,14 @@ export function fromAdventureTape(recording) {
     if (relative == null || relative < 0) continue;
     const absolute = Number.isFinite(mark.absoluteTick) ? mark.absoluteTick : baseTick + Math.floor(relative);
     pushEvent(stream, {
-      id: `tape-${kind}-${absolute}`,
+      id: `tape-${mark.type === 'chain' ? 'chain' : kind}-${absolute}`,
       causalityId: null,
       tick: absolute,
       simTime: absolute / stream.tickRate,
       kind,
       actors: Array.isArray(mark.actors) ? mark.actors : [],
       position: mark.position || null,
-      payload: { label: typeof mark.label === 'string' ? mark.label.slice(0, 80) : '' },
+      payload: { label: typeof mark.label === 'string' ? mark.label.slice(0, 80) : '', ...(mark.type === 'chain' ? { tapeKind: 'chain' } : {}) },
       source: 'tape',
     });
   }

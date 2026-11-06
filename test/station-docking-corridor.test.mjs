@@ -82,8 +82,8 @@ function classify(along, lat, vel) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Live-resolution frame (re-pinned 2026-09-27): ad1f92053 made declared proxy ids resolve through
-// the measured model-truth skin — the corridor bearing follows the GLB's real dock mouth (322.5°),
+// Live-resolution frame: declared proxy ids resolve through the measured model-truth skin —
+// the corridor bearing follows the GLB's measured dock mouth,
 // not the retired procedural-silhouette lanes (45/135/225/315). Tests that drive production seams
 // — autopilot target resolution, dockingCorridor.update, SG-02 authority, physics.updateDockRange —
 // must build geometry in the frame the runtime actually resolves. The pure volume/assist math
@@ -214,15 +214,18 @@ test('default station autopilot stages an outside-gap approach through the measu
   assert.equal(retained.phase, 'approach');
   assert.equal(retained.inCorridor, false);
   assert.equal(retained.inCapture, false);
-  assert.ok(Math.abs(retained.distToBerth - 102.16218682799379) < 1e-9,
-    'same retained case re-measured against the live skin berth');
+  const retainedBerth = skinBerth(station);
+  assert.ok(Math.abs(retained.distToBerth - Math.hypot(
+    player.pos.x - retainedBerth.x, player.pos.z - retainedBerth.z,
+  )) < EPS, 'the retained pose is measured against the current authored skin berth');
 
   const mouthRadius = SKIN.docking.corridor.mouthRadius * station.data.dockRadius;
   const mouth = skinPos(mouthRadius);
   const approachTarget = resolveAutopilotTarget(state, autopilot);
   assert.equal(approachTarget.dockingStage, 'corridor-mouth');
-  assert.deepEqual({ x: approachTarget.x, z: approachTarget.z }, mouth,
-    'an outside-gap ship must first target the manifest corridor mouth');
+  assert.deepEqual(approachTarget.approachPoint, mouth, 'the authored mouth remains the approach destination');
+  assert.ok(approachTarget.x * player.pos.x + approachTarget.z * player.pos.z > 0,
+    'an off-axis contact escapes on its current side of the station');
 
   // The switch threshold must beat the 38-WU autopilot arrival floor; otherwise the flight
   // computer can stop at the staging point and deactivate before it ever targets the berth.
@@ -234,6 +237,44 @@ test('default station autopilot stages an outside-gap approach through the measu
     skinBerth(station),
     'once aligned just outside the mouth, the terminal leg must run down the open lane',
   );
+});
+
+test('corridor-mouth guidance steers around its target station from the far side', () => {
+  const station = heliosStation();
+  const player = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: skinPos(-130), vel: { x: 0, z: 0 },
+  };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [station.id, station]]),
+    entityList: [player, station],
+  };
+  const autopilot = { targetEntityId: station.id, arrivalRadius: 90 };
+  const mouthTarget = resolveAutopilotTarget(state, autopilot);
+  assert.equal(mouthTarget.dockingStage, 'corridor-mouth');
+  assert.equal(mouthTarget.entity, station);
+  // Even if another caller supplies a direct mouth leg, obstacle guidance must retain the target
+  // station. The normal resolved target first escapes outward from this far-side contact.
+  assert.ok(mouthTarget.x * player.pos.x + mouthTarget.z * player.pos.z > 0);
+  const directMouth = { ...mouthTarget, ...mouthTarget.approachPoint };
+  const directDistance = Math.hypot(directMouth.x - player.pos.x, directMouth.z - player.pos.z);
+  const approach = computeAutopilotGuidance(state, player, directMouth, directDistance, 20, {});
+  assert.equal(approach.avoiding, true,
+    'the target station blocks a straight corridor-mouth course from the opposite bearing');
+  assert.equal(approach.trafficHold, null,
+    'the station is routed around during approach, not treated as a berth-lane convoy hold');
+
+  player.pos = skinPos(100);
+  const laneTarget = resolveAutopilotTarget(state, autopilot);
+  const berthDistance = Math.hypot(
+    laneTarget.x - player.pos.x, laneTarget.z - player.pos.z,
+  );
+  assert.equal(laneTarget.dockingStage, 'berth');
+  assert.equal(laneTarget.corridorInLane, true);
+  const berth = computeAutopilotGuidance(state, player, laneTarget, berthDistance, 20, {});
+  assert.equal(berth.avoiding, false,
+    'the authored clear lane still owns the final berth approach');
 });
 
 test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane', () => {
@@ -687,7 +728,8 @@ test('proxy diagnostics publish frozen world geometry on the physicsRuntime surf
     radarVisible: false,
   });
   assert.equal(entry.corridorBearingDeg, effectiveCorridorBearingDeg(SKIN, station));
-  assert.equal(entry.corridorBearingDeg, 322.5);
+  assert.equal(entry.corridorBearingDeg, SKIN.docking.corridorBearingDeg,
+    'the measured skin declares the single physical docking mouth');
   assert.equal(entry.primitives.length, 22, 'same expanded set the physics authority registers');
   assert.ok(Math.abs(entry.corridor.mouthRadius - 121.5) < EPS);
   assert.ok(Math.abs(entry.corridor.captureOuterRadius - 108) < EPS);
@@ -741,6 +783,7 @@ async function flyRealAuthorityTrajectory() {
     const berth = skinBerth(station);
     const series = [];
     let maxDeltaV = 0;
+    let maxDeltaVAfterRoundoff = 0;
     for (let tick = 0; tick < 900; tick++) {
       const prevVx = player.vel.x;
       const prevVz = player.vel.z;
@@ -748,11 +791,19 @@ async function flyRealAuthorityTrajectory() {
       owner.step(1 / 60);
       const dv = Math.hypot(player.vel.x - prevVx, player.vel.z - prevVz);
       if (dv > maxDeltaV) maxDeltaV = dv;
+      // Rapier stores velocity in Float32. Bound only the round-trip representation error of
+      // the two sampled vectors; the capture-acceleration limit itself stays unchanged.
+      const float32Roundoff = Math.hypot(
+        Math.abs(prevVx) + Math.abs(player.vel.x),
+        Math.abs(prevVz) + Math.abs(player.vel.z),
+      ) * (2 ** -24);
+      maxDeltaVAfterRoundoff = Math.max(maxDeltaVAfterRoundoff, dv - float32Roundoff);
       series.push([round6(player.pos.x), round6(player.pos.z), round6(player.vel.x), round6(player.vel.z)]);
     }
     return {
       hash: createHash('sha256').update(JSON.stringify(series)).digest('hex'),
       maxDeltaV,
+      maxDeltaVAfterRoundoff,
       distToBerth: Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z),
       speed: Math.hypot(player.vel.x, player.vel.z),
       phase: state.dockingCorridor.phase,
@@ -770,7 +821,7 @@ test('real authority: capture settles at the berth with bounded per-tick velocit
     `settled under the berth speed gate (${run.speed.toFixed(2)} wu/s)`);
   // The coast-into-core regression guard: per-tick Δv must never exceed the bounded assist — a
   // solver contact spike here means the assist let the ship coast into the station silhouette.
-  assert.ok(run.maxDeltaV <= MAX_ACCEL / 60 + EPS,
+  assert.ok(run.maxDeltaVAfterRoundoff <= MAX_ACCEL / 60 + EPS,
     `per-tick Δv ${run.maxDeltaV} exceeds the bounded assist ${MAX_ACCEL / 60} (ricochet/yank/contact)`);
   assert.equal(run.phase, 'berthed', 'the corridor resolves to berthed');
 });

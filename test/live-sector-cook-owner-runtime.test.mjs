@@ -5,17 +5,27 @@ import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as THREE from 'three';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
-import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { touchSubjectOnExactTarget, retryPendingExactTouch } from '../src/render/openingGpuAdmission.js';
+import { isRetiredRigidOpaqueBatch, retireDisposedRigidOpaqueBatchBeforeSceneDraw } from '../src/render/rigidOpaqueBatch.js';
 import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentation.js';
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
-import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { ArcadeStructuralFx } from '../src/render/combat/arcadeStructuralFx.js';
+import { collectFirstFlightEffectRoots } from '../src/render/latePipelineAdmission.js';
+import { isFirstFlightCookEntity, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
-import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { collectStartupGeometries } from '../src/render/startupGpuResidency.js';
+import { retainPackageGeometryCpu } from '../src/render/packageCpuDetach.js';
+import { createOpeningLoadingAdmission, createProgressDeadline, observePipelineAdmission, prepareMobileOpeningFirstPicture, renderWorkProgressMark, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
+import {
+  combineOpeningProducerCensuses,
+  createOpeningProducerCensus,
+  createOpeningSubmissionPlan,
+} from '../src/render/openingSubmissionPlan.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
@@ -24,6 +34,7 @@ let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compil
 const rendererMethodNodes = new Map();
 const cookStretchNodes = new Map();
 const ownerActiveAdmissionMatches = [];
+let geometryLeaseNode;
 function containsOwnedExactTouch(node) {
   if (!node || typeof node !== 'object') return false;
   if (node.type === 'CallExpression' && node.callee?.name === 'submitExactSubjectTouch'
@@ -41,6 +52,7 @@ function walk(node) {
   }
   if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'withSubjectGeometryCpuLease') geometryLeaseNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
     rendererMethodNodes.set(node.key.name, node);
   }
@@ -108,11 +120,13 @@ function bindRendererOwnerMethods(owner) {
   owner._shadowDepthEnabled = rendererMethods._shadowDepthEnabled.bind(owner);
   owner.prepareOpeningFirstPicture = rendererMethods.prepareOpeningFirstPicture.bind(owner);
 }
+const withSubjectGeometryCpuLease = new Function('retainPackageGeometryCpu', 'collectStartupGeometries',
+  `return (${source.slice(geometryLeaseNode.start, geometryLeaseNode.end)});`)(retainPackageGeometryCpu, collectStartupGeometries);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
-    has: (target, key) => key in target || key in globalThis,
+    has: (target, key) => key === 'withSubjectGeometryCpuLease' || key in target || key in globalThis,
     get: (target, key) => key === Symbol.unscopables ? undefined
-      : key in target ? target[key] : globalThis[key],
+      : key in target ? target[key] : key === 'withSubjectGeometryCpuLease' ? withSubjectGeometryCpuLease : globalThis[key],
   });
   return new Function('env', 'with (env) { return (' + code + '); }').call(owner, env);
 }
@@ -217,6 +231,7 @@ function queuedTouchFixture({ detached = false, failTouch = false, serialPacer =
     admissionPaceYield: async () => {},
     refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
     rememberOpeningPreparedLeaves() {}, laneWarn: (...args) => warnings.push(args), emptyCompressedTextureIdentity: () => null,
+    retryPendingExactTouch, isRetiredRigidOpaqueBatch,
   };
   values.ownerInactiveTouchError = evaluate(ownerInactiveTouchCode, owner, values);
   values.isOwnerInactiveTouchError = evaluate(ownerInactiveTouchCheckCode, owner, values);
@@ -355,7 +370,8 @@ for (const failDraw of [false, true]) {
       render() { draws.push(roots.filter(root => root.visible)); if (failDraw) throw new Error('injected grouped draw failure'); } };
     const owner = {};
     const values = { renderer, scene, cam: { obj: new THREE.PerspectiveCamera() }, revealSubjectWithAncestors,
-      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null };
+      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null,
+      state: { render: {} }, retireDisposedRigidOpaqueBatchBeforeSceneDraw };
     values.touchExactTargetSubjects = evaluate(groupTouchCode, owner, values);
     const touchMany = evaluate(settleTouchManyCode, owner, values);
     try {
@@ -406,6 +422,7 @@ function loadingFixture() {
   const begin = evaluate(loadingCode, owner, {
     state, THREE, createOpeningLoadingAdmission, observePipelineAdmission, isInitialAuthoredCompositionEntity,
     rendererGenerationIsActive: () => true, releaseOpeningGraphPublication() {},
+    scene: {}, resumeAuthoredUpgradeQueueForLoadingHulls,
     cam: {}, openingSubmissionCamera: () => null,
     enqueueMissingMeshBuildsSteps: function* () { yield; },
     performance: { now: () => 0 }, yieldToBrowser: async () => {},
@@ -501,6 +518,7 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {},
       entities: new Map([[42, { type: 'ship', alive: true, data: { defId: 'ship_test' } }]]) };
     const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
+    let captureBecameStale = false;
     const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
       roots: [{ id: `uuid:${root.uuid}`, name: 'Hull', role: 'opening-entity-root', blocking: true, drawLeafCount: 0 }],
       drawLeaves: [], resourceIdentityCensusMatches: false,
@@ -509,18 +527,24 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
       blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' },
         { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
     const capture = evaluate(openingCaptureCode, owner, {
-      state, captureLiveSectorCookStale: () => () => stale,
+      state, captureLiveSectorCookStale: () => () => captureBecameStale,
       *buildOpeningSubmissionPlanSteps(onCandidate) {
         onCandidate(root, { role: 'opening-entity-root', entityId: 42 },
           { layers: new THREE.Layers(), frustum: { intersectsObject: () => false, planes: [] } });
         if (scenario === 'replaced') owner._meshes.set(42, new THREE.Group());
-        if (stale) state.world.enterSerial = 5; return plan;
+        if (stale) {
+          state.world.enterSerial = 5;
+          captureBecameStale = true;
+        }
+        return plan;
       },
       scene, cam: { obj: { layers: new THREE.Layers() } }, isRetiredRigidOpaqueBatch: () => false,
       rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
       openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
     });
-    capture().next();
+    const captureSteps = capture();
+    let captureStep = captureSteps.next();
+    while (!captureStep.done) captureStep = captureSteps.next();
     const detail = state.render.openingPlanCaptureFailure;
     assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
     if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
@@ -540,6 +564,153 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
       assert.deepEqual(detail.resourceDifferences.geometryBufferIds.capturedOnly, ['new']);
     }
   }
+});
+
+function openingCapturePlanForRoot(root, scene, camera) {
+  const producer = createOpeningProducerCensus(root, { includeOffscreen: true });
+  const combined = combineOpeningProducerCensuses([producer]);
+  return createOpeningSubmissionPlan({
+    candidates: [{ root, role: 'opening-entity-root', entityId: 42, includeOffscreen: true }],
+    globalProgramKeys: combined.globalProgramKeys,
+    openingProgramKeys: combined.openingProgramKeys,
+    requiredContentHashes: combined.requiredContentHashes,
+    producerCensus: combined,
+    producerResourceIdentitySets: combined.resourceIdentitySets,
+    includeOffscreen: true,
+    scene,
+    camera,
+  });
+}
+
+function openingCaptureFixture(root) {
+  root.userData.flightRenderPackage = {
+    schema: 'spaceface.flightRenderPackage.v1',
+    assetId: 'test-opening-recaptured-wreck',
+    contentHash: 'c'.repeat(64),
+    contentHashVerified: true,
+  };
+  const scene = new THREE.Scene(); scene.add(root);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 10_000);
+  const state = {
+    world: { enterSerial: 4, currentSectorId: 'helios' }, render: {},
+    entities: new Map([[42, { id: 42, type: 'wreck', alive: true, data: { defId: 'wreck_fixture' } }]]),
+  };
+  const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
+  const stamped = [], cohortCaptures = [], selected = [], plans = [];
+  let captureStale = false;
+  const capture = evaluate(openingCaptureCode, owner, {
+    state,
+    scene,
+    cam: { obj: camera },
+    captureLiveSectorCookStale: () => () => captureStale,
+    rendererGenerationIsActive: () => true,
+    isRetiredRigidOpaqueBatch: () => false,
+    stampProducerReceipt: (plan) => stamped.push(plan),
+    openingSubjectIdentity: (subject) => subject.uuid,
+    openingCohort: {
+      capture: (identities) => cohortCaptures.push([...identities]),
+      snapshot: () => ({ identities: cohortCaptures.at(-1) || [] }),
+    },
+    *buildOpeningSubmissionPlanSteps(onCandidate) {
+      selected.push(root);
+      onCandidate(root, { role: 'opening-entity-root', entityId: 42, includeOffscreen: true }, camera);
+      yield;
+      const plan = openingCapturePlanForRoot(root, scene, camera);
+      plans.push(plan);
+      return plan;
+    },
+  });
+  state.render.captureOpeningSubmissionPlanSteps = capture;
+  return { state, root, selected, stamped, cohortCaptures, plans, capture,
+    setCaptureStale(value) { captureStale = value === true; } };
+}
+
+test('opening capture recenses the complete cohort when a selected root gains its first drawable leaf', () => {
+  const root = new THREE.Group(); root.name = 'restored-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+
+  assert.equal(steps.next().done, false, 'first candidate selection yields before producer census');
+  const firstPlanYield = steps.next();
+  assert.equal(firstPlanYield.done, false, 'an empty blocking candidate requests a fresh whole-cohort capture');
+  const firstPlan = f.plans[0];
+  assert.equal(f.selected.length, 1);
+  assert.equal(firstPlan.complete, false);
+  assert.equal(firstPlan.roots[0].drawLeafCount, 0);
+  assert.equal(f.stamped.length, 0, 'the incomplete snapshot is never sealed');
+
+  const restoredLeaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  restoredLeaf.name = 'restored-wreck-hull';
+  root.add(restoredLeaf);
+  assert.equal(steps.next().done, false, 'the retry selects candidates again after the leaf becomes available');
+  const sealedStep = steps.next();
+
+  assert.equal(sealedStep.done, true);
+  const plan = sealedStep.value;
+  assert.equal(f.selected.length, 2, 'whole candidate selection is repeated, not just the leaf walk');
+  assert.strictEqual(plan, f.state.render.openingSubmissionPlan);
+  assert.equal(plan.complete, true);
+  assert.equal(plan.roots[0].drawLeafCount, 1);
+  assert.equal(plan.drawLeaves.length, 1);
+  assert.deepEqual(plan.compileSubjects, [restoredLeaf]);
+  assert.equal(plan.producerCensus.drawLeafIds.length, 1);
+  assert.equal(plan.producerCensus.drawLeafIds[0], plan.drawLeaves[0].id);
+  assert.equal(plan.resourceIdentityCensusMatches, true, 'producer resources are recaptured with the new drawable');
+  assert.equal(f.state.render.openingPlanCaptureFailure, null);
+  assert.deepEqual(f.stamped, [plan], 'only the complete recaptured plan receives a producer receipt');
+  assert.deepEqual(f.cohortCaptures, [[restoredLeaf.uuid]], 'the opening cohort records the recaptured leaf identity');
+  assert.deepEqual(f.state.render.openingAdmissionCohort, { identities: [restoredLeaf.uuid] });
+  assert.notStrictEqual(firstPlan, plan, 'the stale incomplete plan is never published as the final plan');
+  assert.equal(f.plans.length, 2, 'the retry regenerates both plan and producer census');
+});
+
+test('opening capture remains failed when the selected blocking root stays empty through every bounded recapture', () => {
+  const root = new THREE.Group(); root.name = 'persistently-empty-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+  let step = steps.next();
+  let yields = 0;
+  while (!step.done) {
+    yields++;
+    step = steps.next();
+  }
+
+  const plan = step.value;
+  assert.equal(f.selected.length, 3, 'capture makes only the bounded initial attempt plus two retries');
+  assert.ok(yields > 0);
+  assert.equal(plan.complete, false);
+  assert.equal(plan.roots[0].drawLeafCount, 0);
+  assert.strictEqual(plan, f.state.render.openingSubmissionPlan);
+  assert.equal(f.state.render.openingPlanCaptureFailure.reason, 'incomplete-plan');
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRootCount, 1);
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRoots[0].entityId, 42);
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRoots[0].selectedStillCurrent, true);
+  assert.deepEqual(f.stamped, [plan]);
+  assert.deepEqual(f.cohortCaptures, [[]], 'an empty persistent root cannot publish a drawable cohort');
+});
+
+test('opening recapture does not start another producer walk after the selected owner becomes stale at its retry yield', () => {
+  const root = new THREE.Group(); root.name = 'superseded-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+
+  assert.equal(steps.next().done, false, 'initial candidate census yields');
+  assert.equal(steps.next().done, false, 'empty blocking plan yields before bounded recapture');
+  assert.equal(f.selected.length, 1);
+
+  f.state.world.enterSerial = 5;
+  f.setCaptureStale(true);
+  const stale = steps.next();
+
+  assert.equal(stale.done, true);
+  assert.equal(stale.value, null, 'superseded capture cannot return an opening plan');
+  assert.equal(f.selected.length, 1, 'stale ownership is checked before the retry producer walk begins');
+  assert.equal(f.plans.length, 1);
+  assert.equal(f.stamped.length, 0);
+  assert.equal(f.cohortCaptures.length, 0);
+  assert.equal(f.state.render.openingPlanCaptureFailure.reason, 'stale-capture');
+  assert.deepEqual([f.state.render.openingPlanCaptureFailure.expected.enterSerial,
+    f.state.render.openingPlanCaptureFailure.actual.enterSerial], [4, 5]);
 });
 function fixture(providers = []) {
   const frames = [], marks = [];
@@ -919,7 +1090,9 @@ function preflightFixture() {
   f.owner._openingFirstPicturePrepared = true;
   f.state.render.openingGraphPublicationFrozen = true;
   Object.assign(f.values, {
-    releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => false,
+    // Full-sector cook is now the survival path; ordinary Adventure is tested below through
+    // the required-picture owner rather than this broad-cook cancellation fixture.
+    releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => true,
     shouldAwaitOpeningGpuCook: () => true,
     resumeAuthoredUpgradeQueueAfterOpening() {},
     pipelineAdmissions: { resumeAutoFlush() {}, pendingCount: 0 },
@@ -930,6 +1103,7 @@ function preflightFixture() {
     observePipelineAdmission,
     // startupPacing device-scaled budget; the fixture pins the desktop-scale window.
     openingGateBudgetMs: () => 20000,
+    createProgressDeadline, renderWorkProgressMark,
   });
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }
@@ -947,8 +1121,12 @@ test('the actual preflight owner stops at its next await after loading admission
 
 function mobilePreflightFixture() {
   const f = preflightFixture();
+  f.values.survivalRunHoldsArena = () => false;
   f.values.isMobileRenderContext = () => true;
   f.values.prepareMobileOpeningFirstPicture = prepareMobileOpeningFirstPicture;
+  f.values.isFirstFlightCookEntity = isFirstFlightCookEntity;
+  f.values.isInitialAuthoredCompositionEntity = isInitialAuthoredCompositionEntity;
+  f.values.collectFirstFlightEffectRoots = collectFirstFlightEffectRoots;
   f.owner._discardEarlyCrucibleWarm = () => f.marks.push('discard-speculative-warm');
   f.owner._openingAdmissionPendingCount = () => {
     assert.equal(f.state.mode, 'loading', 'the loading shell still owns the first picture');
@@ -973,6 +1151,165 @@ test('mobile preflight admits the exact picture and cleans up its publication gu
   assert.equal(f.state.render.sessionLiveSectorCookedId, 'ceres');
   assert.equal(f.state.render.liveSectorGpuAdmission, false);
   assert.deepEqual(f.marks, ['discard-speculative-warm', 'watch-opening-admissions', 'hold', 'freeze']);
+});
+
+test('ordinary desktop preflight admits required picture resources without a future-roster cook', async () => {
+  const f = mobilePreflightFixture();
+  f.values.isMobileRenderContext = () => false;
+  f.values.waitForOpeningCompositionSettled = () => { throw new Error('broad composition cook ran'); };
+  const result = await evaluate(preflightCode, f.owner, f.values)();
+  assert.equal(result.exactFirstPicture, true);
+  assert.equal(result.mobileFirstPicture, false);
+  assert.equal(result.plan, f.plan);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, 'ceres');
+  assert.deepEqual(f.marks, ['discard-speculative-warm', 'watch-opening-admissions', 'hold', 'freeze']);
+});
+
+test('finite opening waits for its real player plasma admission and rests it before the picture seal', async () => {
+  const f = mobilePreflightFixture(), gate = deferred();
+  const root = { parent: f.values.scene };
+  let picture = false, released = 0;
+  f.state.render.warmupOpeningEffectSubset = options => {
+    assert.deepEqual(options, { playerPlasmaOnly: true });
+    return { plasma: true, plasmaRoot: root, isActive: () => released === 0,
+      releaseWarmSamples() { released++; } };
+  };
+  f.values.admitSubjectPipelines = (subject, options) => {
+    assert.equal(subject, root);
+    assert.equal(options.openingRequired, true); assert.equal(options.strict, true);
+    assert.equal(options.isActive(), true);
+    return gate.promise;
+  };
+  f.state.render.prepareOpeningFirstPicture = async () => {
+    assert.equal(released, 1); picture = true; return true;
+  };
+  const run = evaluate(preflightCode, f.owner, f.values)();
+  await nextTurn(); assert.equal(picture, false);
+  gate.resolve({ ok: true });
+  assert.equal((await run).exactFirstPicture, true);
+  assert.equal(picture, true); assert.equal(released, 1);
+});
+
+test('failed or superseded player plasma admission always releases its captured warm', async () => {
+  for (const cancel of [false, true]) {
+    const f = mobilePreflightFixture(), gate = deferred(), root = { parent: f.values.scene };
+    let released = 0, active = true;
+    f.state.render.warmupOpeningEffectSubset = () => ({ plasma: true, plasmaRoot: root,
+      isActive: () => active, releaseWarmSamples() { released++; } });
+    f.values.admitSubjectPipelines = async () => {
+      await gate.promise;
+      if (!cancel) throw new Error('plasma admission failed');
+      return { ok: true };
+    };
+    const run = evaluate(preflightCode, f.owner, f.values)({ isActive: () => active });
+    await nextTurn(); if (cancel) active = false;
+    gate.resolve();
+    if (cancel) assert.equal((await run).reason, 'sector-superseded');
+    else await assert.rejects(run, /plasma admission failed/);
+    assert.equal(released, 1);
+    assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+    assert.equal(f.marks.includes('watch-opening-admissions'), false);
+  }
+});
+
+test('ordinary desktop preflight refuses incomplete required GPU admission', async () => {
+  const f = mobilePreflightFixture();
+  f.values.isMobileRenderContext = () => false;
+  f.values.waitForOpeningCompositionSettled = () => { throw new Error('broad composition cook ran'); };
+  f.state.render.prepareOpeningGpuResources = async () => ({ skipped: false, partial: true });
+  await assert.rejects(evaluate(preflightCode, f.owner, f.values)(), /GPU resources were not admitted/);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+  assert.deepEqual(f.marks, ['discard-speculative-warm', 'hold', 'freeze']);
+});
+
+function spindlePreflightFixture() {
+  const f = mobilePreflightFixture();
+  f.values.isMobileRenderContext = () => false;
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const spindle = { id: 2, type: 'payload', alive: true, pos: { x: 92, z: 0 },
+    data: { scenarioActorId: 'evidence_spindle_47a', assetRef: 'asset.slice.47a_spindle' } };
+  const distant = { ...spindle, id: 3, pos: { x: 10000, z: 0 } };
+  f.state.playerId = player.id;
+  f.state.entityList = [player, spindle, distant];
+  f.state.entities = new Map(f.state.entityList.map(entity => [entity.id, entity]));
+  f.values.enqueueMissingMeshBuildsSteps = function* (entities, meshes, queued, queue) {
+    for (const entity of entities) if (!meshes.has(entity.id)) { queued.add(entity.id); queue.push(entity.id); }
+  };
+  f.owner._drainMeshBuildQueueSteps = function* () {
+    const id = this._meshBuildQueue[this._meshBuildQueueHead++];
+    this._meshBuildQueuedIds.delete(id);
+    this._meshes.set(id, { userData: { authoredAssetState: 'loading' } });
+    f.marks.push(`build:${id}`);
+  };
+  f.values.requestAuthoredUpgrade = async (root) => {
+    f.marks.push('authored-spindle'); root.userData.authoredAssetState = 'authored';
+  };
+  f.values.admitSubjectPipelines = async (root, options) => {
+    assert.equal(root, f.owner._meshes.get(spindle.id));
+    assert.equal(options.strict, true); assert.equal(options.openingRequired, true);
+    assert.equal(options.isActive(), true);
+    f.marks.push('admit-spindle'); return { ok: true };
+  };
+  const prepare = f.state.render.prepareOpeningFirstPicture;
+  f.state.render.prepareOpeningFirstPicture = async (...args) => {
+    assert.equal(f.owner._meshes.get(spindle.id)?.userData.authoredAssetState, 'authored',
+      'the explicit on-table first-flight actor must exist before the exact picture is frozen');
+    assert.equal(f.marks.includes('admit-spindle'), true, 'its actual GPU admission must have completed');
+    assert.equal(f.owner._meshes.has(distant.id), false, 'distant scenario work stays on the streaming runway');
+    return prepare(...args);
+  };
+  return { ...f, spindle };
+}
+
+test('finite preflight preserves the on-table spindle exception without a future-sector cook', async () => {
+  const f = spindlePreflightFixture();
+  assert.equal(isInitialAuthoredCompositionEntity(f.spindle, f.state), false);
+  assert.equal(isFirstFlightCookEntity(f.spindle, f.state), true);
+  const result = await evaluate(preflightCode, f.owner, f.values)();
+  assert.equal(result.exactFirstPicture, true);
+  assert.ok(f.marks.indexOf('admit-spindle') < f.marks.indexOf('watch-opening-admissions'));
+});
+
+test('finite preflight refuses an unavailable explicit first-flight actor', async () => {
+  const f = spindlePreflightFixture();
+  f.values.requestAuthoredUpgrade = async root => { root.userData.authoredAssetState = 'unavailable'; };
+  await assert.rejects(evaluate(preflightCode, f.owner, f.values)(), /first-flight authored actor/);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+  assert.equal(f.marks.includes('admit-spindle'), false);
+});
+
+test('a cancelled first-flight actor cannot admit or stamp the replacement world', async () => {
+  const f = spindlePreflightFixture();
+  let active = true;
+  f.values.requestAuthoredUpgrade = async root => {
+    root.userData.authoredAssetState = 'authored'; active = false;
+  };
+  const result = await evaluate(preflightCode, f.owner, f.values)({ isActive: () => active });
+  assert.equal(result.reason, 'sector-superseded');
+  assert.equal(f.marks.includes('admit-spindle'), false);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+  assert.equal(f.marks.includes('hold'), false, 'a retired owner cannot freeze the new publication');
+});
+
+test('mobile preflight admits the real dormant structural pools before first input', async () => {
+  const f = mobilePreflightFixture();
+  const scene = new THREE.Scene(), fx = new ArcadeStructuralFx(scene);
+  f.values.scene = scene;
+  let admitted = false;
+  f.values.admitSubjectPipelines = async (root, options) => {
+    assert.equal(root, fx.group);
+    assert.equal(options.strict, true); assert.equal(options.openingRequired, true);
+    assert.equal(options.isActive(), true);
+    assert.equal(fx.getMeshes().every(mesh => mesh.visible === false), true,
+      'warming cannot invent active impacts');
+    admitted = true; return { ok: true };
+  };
+  f.state.render.prepareOpeningFirstPicture = async () => {
+    assert.equal(admitted, true, 'the first synchronous impact must not own initial GPU preparation');
+    return true;
+  };
+  try { assert.equal((await evaluate(preflightCode, f.owner, f.values)()).mobileFirstPicture, true); }
+  finally { fx.dispose(); }
 });
 
 test('mobile preflight rejects a required admission failure and restores the current guards', async () => {
@@ -1009,12 +1346,12 @@ test('preflight same-sector cancellation returns cleanly without stale finalizer
   assert.deepEqual(f.marks, []);
 });
 
-test('preflight prefix error keeps original error and performs current-owner cleanup once', async () => {
+test('survival preflight prefix error keeps original error and performs current-owner cleanup once', async () => {
   const f = preflightFixture();
   const error = new Error('controlled-prefix-failure');
   f.values.bindEnvironmentToStandardMaterialsSteps = function* () { throw error; };
   await assert.rejects(f.preflight(), actual => actual === error);
-  assert.deepEqual(f.marks, ['hold', 'freeze']);
+  assert.deepEqual(f.marks, ['hold'], 'survival retains its existing unfrozen publication policy');
   assert.equal(f.state.render.liveSectorGpuAdmission, false);
 });
 
@@ -1232,7 +1569,7 @@ test('presentation iterator closes when the yielded frame reports context loss',
   assert.deepEqual(log, [1, 'closed']);
 });
 
-test('full cold preflight completes and publishes captured sector', async()=>{
+test('full cold survival preflight completes and publishes captured sector', async()=>{
  const f=preflightFixture();
  f.values.scene.traverse=()=>{};
  f.values.collectMeshPresentationEntities=()=>{};
@@ -1247,7 +1584,7 @@ test('full cold preflight completes and publishes captured sector', async()=>{
  assert.equal(f.owner._liveSectorCookGeneration,1);
  assert.equal(f.owner._sessionLiveSectorCookedId,'ceres');
  assert.equal(f.state.render.sessionLiveSectorCookedId,'ceres');
- assert.deepEqual(f.marks,['hold','freeze']);
+ assert.deepEqual(f.marks,['hold']);
 });
 test('GPU buffer error removes temporary root and preserves original rejection',async()=>{
  const f=gpuFixture(), err=new Error('buffer-failure'), root={};

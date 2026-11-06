@@ -2,8 +2,8 @@
 // changing tells. Comparing cached scalars avoids serializing a steady tell every tick.
 const FIELDS = Object.freeze([
   'kind', 'phase', 'phaseStartedAt', 'phaseEndsAt',
-  'targetId', 'targetX', 'targetZ', 'linkEnergy', 'linkMaxEnergy', 'linkHp', 'linkMaxHp',
-  'linkRange', 'linkReadyAt', 'salvoRemaining', 'nextSalvoTick',
+  'targetId', 'targetX', 'targetZ', 'wardCandidateId', 'linkEnergy', 'linkMaxEnergy', 'linkHp', 'linkMaxHp',
+  'linkRange', 'linkReadyAt', 'salvoCursor', 'salvoStartedAt', 'nextSalvoTick',
   'anchorActive', 'anchorRadius', 'anchorStrength', 'windupSourceX', 'windupSourceZ',
   'interrupted', 'interruptedAt',
 ]);

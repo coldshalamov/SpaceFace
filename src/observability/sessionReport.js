@@ -44,6 +44,9 @@ export const CORE_FIRST_HOUR_STEPS = [
   'firstHeat',
 ];
 
+// Encounter exposure (DUST P1c): how many itemized module ids the report carries in `topIds`.
+export const EXPOSURE_TOP_IDS = 10;
+
 /**
  * Formats a millisecond duration into human-readable MM:SS or HH:MM:SS string.
  * @param {number} ms Duration in milliseconds
@@ -155,6 +158,16 @@ export function buildSessionReportData(session) {
   const creditsSpent = credits.spent || 0;
   const netCredits = creditsEarned - creditsSpent;
 
+  // 5. Encounter exposure (DUST P1c) — which authored encounter modules this session crossed.
+  // Deterministic ordering: count desc, then id asc, so identical inputs give identical reports.
+  const exposure = s.exposure || {};
+  const exposureByEncounter = exposure.byEncounter || {};
+  const exposureTopIds = Object.entries(exposureByEncounter)
+    .map(([id, count]) => ({ id, count: Number.isFinite(count) ? Math.max(0, count) : 0 }))
+    .filter((row) => row.count > 0)
+    .sort((a, b) => (b.count - a.count) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .slice(0, EXPOSURE_TOP_IDS);
+
   return {
     schemaVersion: 1,
     sessionId: s.sessionId || 'unknown',
@@ -218,6 +231,16 @@ export function buildSessionReportData(session) {
       jumps: navigation.jumps || 0,
       sectorsVisited: navigation.sectorsVisited || [],
       sectorsVisitedCount: (navigation.sectorsVisited || []).length,
+    },
+
+    exposure: {
+      presentationsTotal: exposure.presentations || 0,
+      distinctCount: Number.isFinite(exposure.distinctCount)
+        ? exposure.distinctCount
+        : Object.keys(exposureByEncounter).length,
+      overflow: exposure.overflow || 0,
+      byTier: exposure.byTier || {},
+      topIds: exposureTopIds,
     },
 
     cohort: s.cohort || null,
@@ -317,6 +340,12 @@ export function renderSessionReportMarkdown(session) {
   lines.push(`- **Missions:** ${data.missions.completed} completed, ${data.missions.failed} failed (${data.missions.accepted} accepted)`);
   lines.push(`- **Navigation:** ${data.navigation.docks} docks, ${data.navigation.jumps} jumps across ${data.navigation.sectorsVisitedCount} sector(s)`);
   lines.push(`- **Progression:** ${data.progression.techResearched} tech nodes researched, ${data.progression.factionTierUps} faction tier-ups`);
+  // DUST P1c — encounter exposure. Guarded: report data built before this section existed has no
+  // `exposure` key; it reads as zero rather than throwing.
+  const exposureData = data.exposure
+    || { presentationsTotal: 0, distinctCount: 0, overflow: 0, byTier: {}, topIds: [] };
+  const exposureTop = exposureData.topIds.slice(0, 3).map((row) => `\`${row.id}\`×${row.count}`).join(', ');
+  lines.push(`- **Encounter Exposure:** ${exposureData.presentationsTotal} presentation(s) across ${exposureData.distinctCount} distinct module(s)${exposureData.overflow ? ` (+${exposureData.overflow} overflow)` : ''}${exposureTop ? ` — top: ${exposureTop}` : ''}`);
   lines.push(``);
 
   lines.push(`## 5. Release Gate Status (§15.1 Alignment)`);
@@ -347,4 +376,5 @@ export default {
   FUNNEL_TARGETS_S,
   FUNNEL_LABELS,
   CORE_FIRST_HOUR_STEPS,
+  EXPOSURE_TOP_IDS,
 };

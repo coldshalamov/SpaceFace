@@ -87,6 +87,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
   const body = doc.createElement('div'); body.className = 'k-rows';
   el.append(summary, body);
   let selectedId = null, viewedId = null, selectedQuote = null, pending = false, stamp = '', gauge = null;
+  let sparePage = 0, sparesOpen = false;
   let lastViewed = null;
   const offs = [];
   const node = (tag, className, text) => { const out = doc.createElement(tag); out.className = className; out.textContent = text; return out; };
@@ -157,8 +158,14 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
       button(body, 'Back to vessel', () => { if (pending) return; selectedQuote = null; stamp = ''; render(lastViewed); }, {disabled:pending});
       return;
     }
-    const spares = doc.createElement('details'); spares.appendChild(node('summary','k-word k-word--body','Spare components / resale'));
-    for (const item of (ctx.state.player.moduleInventory || []).slice(0,32)) {
+    const spares = doc.createElement('details'); spares.open = sparesOpen;
+    spares.addEventListener('toggle', () => { sparesOpen = spares.open; });
+    spares.appendChild(node('summary','k-word k-word--body','Spare components / resale'));
+    const inventory = ctx.state.player.moduleInventory || [];
+    sparePage = Math.min(sparePage, Math.max(0, Math.ceil(inventory.length / 32) - 1));
+    const end = Math.max(0, inventory.length - sparePage * 32);
+    const start = Math.max(0, end - 32);
+    for (const item of inventory.slice(start,end).reverse()) {
       const definition=componentDefinition(item.defId), evidence=inspectComponentProvenance(ctx.state,item);
       const offer=quoteModuleSale(ctx.state,{instanceId:item.instanceId});
       spares.appendChild(node('p','k-sentence',`${definition?.name || 'Spare component'} · ${Math.round((Number.isFinite(item.condition)?item.condition:1)*100)}% condition${evidence.unresolved?' · disputed source frame':''}`));
@@ -167,7 +174,12 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
       },{disabled:!offer.ok,reason:offer.reason});
       if(!offer.ok)spares.appendChild(node('p','k-t-fine',offer.reason));
     }
-    if(!ctx.state.player.moduleInventory?.length)spares.appendChild(node('p','k-sentence','No spare components. Unfit or extract an exact fitted part to offer it here.'));
+    if(!inventory.length)spares.appendChild(node('p','k-sentence','No spare components. Unfit or extract an exact fitted part to offer it here.'));
+    if (inventory.length > 32) {
+      spares.appendChild(node('p','k-t-fine',`Showing ${start + 1}–${end} of ${inventory.length} parts, newest first.`));
+      if (start > 0) button(spares,'Older parts',() => { sparePage++; sparesOpen = true; stamp = ''; render(lastViewed); });
+      if (sparePage > 0) button(spares,'Newer parts',() => { sparePage--; sparesOpen = true; stamp = ''; render(lastViewed); });
+    }
     body.appendChild(spares);
     if (!model.owned || model.vessel.custodian !== 'player') { line('Observe this frame in flight to negotiate, recover it, or contest custody.'); return; }
     const service = (parent, action, slotIndex = null) => {
@@ -197,6 +209,7 @@ export function createBlackFlagRegistry(ctx, { dockHost = () => true } = {}) {
   };
   const settled = result => {
     if (result?.vesselId && result.vesselId !== selectedId) return;
+    if (result?.ok && result.action === 'extract' && result.status === 'completed') { sparePage = 0; sparesOpen = true; }
     pending = false; selectedQuote = null; stamp = ''; render(lastViewed);
   };
   for (const event of ['shipjack:result','shipjack:yardReceipt','shipjack:fleetReceipt','shipjack:fleetArrived']) {

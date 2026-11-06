@@ -2,6 +2,7 @@ import { NPC_JOB_PHASE } from './npcJobs.js';
 import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+import { isScrapSweeperJob } from './scrapSweeperOps.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -13,10 +14,26 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
+import { RECORD_KIND } from '../world/worldRecords.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { FREIGHT_MARKET_KEYS_FALLBACK, buildCargoManifest } from '../economy/freightCausality.js';
 import { makeShipEntitySpec } from './ships.js';
 import { AMBUSH_LOADED_HAULER_COMMODITY_ID, AMBUSH_LOADED_HAULER_QTY, CERES_AMBUSH_HAULER_SLOT_ID, CIVILIAN_ALARM_FLEE_ROLES, CIVILIAN_ALARM_HOLD_ROLES, CIVILIAN_ALARM_TTL_S, CIVILIAN_DISTRESS_COOLDOWN_S, CIVILIAN_DISTRESS_RADIUS_WU, CIVILIAN_HAULER_DUMP_ROLES, CIVILIAN_MANIFEST_PAYLOAD_TYPE, CIVILIAN_VIOLENCE_RADIUS_SQ, CIVILIAN_VIOLENCE_RING_CAP, DOCK_RANGE, HAULER_SPILL_POD_RADIUS, HAULER_SPILL_VEL_FRACTION, HELIOS_BERTH_MAX_DRIFT, HELIOS_TALLY_COUNT_S, HELIOS_TALLY_LEDGER_CAP, HELIOS_TALLY_REACH, HELIOS_TALLY_STILL, MINER_FIELD_SPREAD_CAP, RESCUE_CALLER_STANDDOWN_S, SALVOR_NOTICE_DELAY_MIN_S, SALVOR_NOTICE_DELAY_SPAN_S, SALVOR_WORK_LEDGER_CAP, SPILL_ANNOUNCE_NOTICE_S, SPILL_POD_CARRIER_RADIUS, STATION_TO_SECTOR, TRAFFIC_ROLES, WELL_DRAG_DANGER, WELL_DRAG_ESCORT_CAP, WELL_DRAG_FULL_HOLD_QTY, WELL_DRAG_PRESSURE_MAX, WELL_DRAG_PRESSURE_MIN, WELL_DRAG_RECOVER_S, WELL_DRAG_REGROUP_S, WELL_DRAG_SEEN_CAP, entityPos, factionHullFor, heliosFreightDisposition, isShipDisabled, isSurvivalCohort, normalizeHeliosFreightTally, pointInHeliosMemorial, setIntent, stationIdentity, validCausalManifest } from './traffic.js';
+
+const SALVOR_INTAKE_QUOTE_INTERVAL_S = 1;
+
+function isTrafficRescuePod(entity) {
+  const data = entity && entity.data;
+  return !!(entity && entity.alive !== false && entity.type === 'payload' && entity.pos && data
+    && !data.playerWreck && data.payloadType === 'survivor_pod'
+    && data.survivorPodCausal && !data.survivorPodCausal.resolved);
+}
+
+function isPlayerTowingRescuePod(state, pod) {
+  const tether = state.player?.tether;
+  // Treat even a stale active player line conservatively: the survivor owner decides custody.
+  return tether?.active === true && tether.targetId === pod.id;
+}
 
 export const trafficRoleOps = {
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
@@ -1138,43 +1155,67 @@ export const trafficRoleOps = {
     if (rescuerId == null) return;
     const rec = this.state.traffic && this.state.traffic.freighters &&
       this.state.traffic.freighters.find((f) => f && f.id === rescuerId);
-    if (!rec) return;
+    const rescuer = this.state.entities && this.state.entities.get(rescuerId);
+    if (!rec || rec.role !== 'rescue' || rec.carryingSurvivor || !rescuer
+      || rescuer.alive === false || rescuer.type !== 'ship'
+      || (rescuer.data?.trafficRole || rescuer.data?.role) !== 'rescue'
+      || (p.rescueHullGeneration != null && p.rescueHullGeneration !== rescuer.occupantGeneration)
+      || p.entityId == null || typeof p.custodyId !== 'string' || !p.custodyId) return;
     rec.carryingSurvivor = true;
-    rec.rescueTargetId = null;
+    rec.rescueCustodyId = p.custodyId;
+    rec.rescueTargetId = p.entityId;
     rec.rescueTargetType = null;
     rec.civilianReaction = 'transporting_survivor';
+    rescuer.data.carryingSurvivor = true;
+    rescuer.data.rescueCustodyId = p.custodyId;
     const stations = this._sectorStations();
     const nearest = this._pickStation(stations);
     if (nearest) rec.targetId = nearest.id;
   },
 
-  _findNearbyRescueTarget(state, rescuer, maxRadius = 2500) {
+  _findNearbyRescuePod(state, rescuer, maxRadius = 2500) {
     if (!state || !rescuer || !rescuer.pos) return null;
     const maxR2 = maxRadius * maxRadius;
 
-    // 1. Scan for unattended survivor pods
+    // Survivor pods are payloads; never sweep unrelated living-world buckets on standby.
     let bestPod = null;
     let bestPodD2 = maxR2;
     const checkPod = (candidate) => {
-      if (!candidate || candidate.alive === false || candidate.id === rescuer.id) return;
-      if (!candidate.pos) return;
-      const data = candidate.data || {};
-      const isPod = candidate.type === 'payload' && (data.payloadType === 'survivor_pod' || data.tetherRole === 'survivor_pod');
-      if (!isPod) return;
+      if (!isTrafficRescuePod(candidate) || candidate.id === rescuer.id
+        || isPlayerTowingRescuePod(state, candidate)) return;
+      // Let another working lifter finish the approach it already chose. This is a steering
+      // preference, not a custody claim; the survivor owner still controls actual boarding.
+      const assigned = state.traffic?.freighters?.some((other) => {
+        if (!other || other.id === rescuer.id || other.role !== 'rescue'
+          || other.carryingSurvivor || other.violenceAlarmed || other.rescueTargetType !== 'pod'
+          || other.rescueTargetId !== candidate.id) return false;
+        const hull = state.entities?.get(other.id);
+        return !!(hull && hull.alive !== false && !hull.data?.jobId
+          && !hull.data?.violenceAlarmed && !isShipDisabled(hull, state));
+      });
+      if (assigned) return;
       const dx = candidate.pos.x - rescuer.pos.x;
       const dz = candidate.pos.z - rescuer.pos.z;
       const d2 = dx * dx + dz * dz;
-      if (d2 <= maxR2 && d2 < bestPodD2) {
+      if (d2 <= maxR2 && (!bestPod || d2 < bestPodD2
+        || (d2 === bestPodD2 && String(candidate.id) < String(bestPod.id)))) {
         bestPodD2 = d2;
         bestPod = candidate;
       }
     };
-    if (state.entities && typeof state.entities.forEach === 'function') {
-      forEachJobInteractable(state, checkPod);
-    }
-    if (bestPod) {
-      return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };
-    }
+    const payloads = Array.isArray(state.entityIndex?.payloads)
+      ? state.entityIndex.payloads : (state.entityList || []);
+    for (let i = 0; i < payloads.length; i++) checkPod(payloads[i]);
+    return bestPod
+      ? { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } }
+      : null;
+  },
+
+  _findNearbyRescueTarget(state, rescuer, maxRadius = 2500) {
+    if (!state || !rescuer || !rescuer.pos) return null;
+    const maxR2 = maxRadius * maxRadius;
+    const pod = this._findNearbyRescuePod(state, rescuer, maxRadius);
+    if (pod) return pod;
 
     // 2. Scan for recent distress call
     const call = state.traffic && state.traffic.lastDistressCall;
@@ -1217,22 +1258,29 @@ export const trafficRoleOps = {
       const aimAngle = Math.atan2(dz, dx);
 
       if (dist < DOCK_RANGE) {
-        // Arrived at station — survivor delivered
+        // The survivor owner must recognize this exact passenger and the physical berth.
+        if (!rec.rescueCustodyId || !this.helpers?.survivorPod?.canDeliver?.(e, rec.rescueCustodyId, target)) {
+          setIntent(e, 0, 0, false, true, null, aimAngle);
+          return true;
+        }
         const podEntityId = rec.rescueTargetId;
+        const receipt = { rescueHullId: e.id, rescueHullGeneration: e.occupantGeneration,
+          custodyId: rec.rescueCustodyId, podEntityId, stationId: target.id, simTime: state.simTime || 0 };
+        this.bus?.emit('survivorPod:delivered', receipt);
+        if (!receipt.custodyAccepted) return true;
+        // The synchronous receipt may retire or recycle this hull. Never write its former
+        // steering or passenger flags onto a new occupant of the same numeric slot.
+        if (state.entities?.get(e.id) !== e || e.occupantGeneration !== receipt.rescueHullGeneration) return true;
         rec.carryingSurvivor = false;
+        rec.rescueCustodyId = null;
         rec.rescueTargetId = null;
         rec.rescueTargetType = null;
         rec.civilianReaction = null;
         rec.waitT = 3.0;
         setIntent(e, 0, 0, false, true, null, aimAngle);
         if (e.data && e.data.intent) e.data.intent.brake = true;
+        if (e.data) { e.data.carryingSurvivor = false; delete e.data.rescueCustodyId; }
         if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('survivorPod:delivered', {
-            rescueHullId: e.id,
-            podEntityId,
-            stationId: target.id,
-            simTime: state.simTime || 0,
-          });
           this.bus.emit('comms:message', {
             sender: (e.data && e.data.trafficLabel) || 'Rescue Craft',
             channel: 'emergency',
@@ -1251,9 +1299,10 @@ export const trafficRoleOps = {
 
     // Phase 2: Active target tracking
     let targetObj = null;
+    let podSearchDone = false;
     if (rec.rescueTargetType === 'pod' && rec.rescueTargetId != null) {
       const candidate = state.entities && state.entities.get ? state.entities.get(rec.rescueTargetId) : null;
-      if (candidate && candidate.alive !== false && candidate.pos) {
+      if (isTrafficRescuePod(candidate) && !isPlayerTowingRescuePod(state, candidate)) {
         targetObj = { kind: 'pod', entity: candidate, pos: candidate.pos };
       } else {
         rec.rescueTargetId = null;
@@ -1299,9 +1348,26 @@ export const trafficRoleOps = {
       }
     }
 
+    // A live caller or disabled hull can hold a lifter indefinitely. A newly ejected survivor
+    // takes priority over that standby, but never interrupts an existing pod approach or custody.
+    if (targetObj && (targetObj.kind === 'disabled' || targetObj.kind === 'distress')
+      && !e.data?.carryingSurvivor) {
+      const found = this._findNearbyRescuePod(state, e, 2500);
+      podSearchDone = true;
+      if (found) {
+        targetObj = found;
+        rec.rescueTargetType = 'pod';
+        rec.rescueTargetId = found.entity.id;
+        rec.rescueTargetPos = null;
+        rec.rescueCallerId = null;
+        rec.rescueOnSceneSimT = null;
+      }
+    }
+
     // Phase 3: Find target if none active
     if (!targetObj) {
       const found = this._findNearbyRescueTarget(state, e, 2500);
+      podSearchDone = true;
       if (found) {
         targetObj = found;
         rec.rescueTargetType = found.kind;
@@ -1376,8 +1442,8 @@ export const trafficRoleOps = {
         rec.civilianReaction = 'responding_distress';
         if (dist < 80) {
           // Reached distress scene — check if any pods appeared
-          const nearbyPod = this._findNearbyRescueTarget(state, e, 400);
-          if (nearbyPod && nearbyPod.kind === 'pod') {
+          const nearbyPod = podSearchDone ? null : this._findNearbyRescuePod(state, e, 400);
+          if (nearbyPod) {
             rec.rescueTargetType = 'pod';
             rec.rescueTargetId = nearbyPod.entity.id;
             rec.rescueTargetPos = null;
@@ -1807,7 +1873,14 @@ export const trafficRoleOps = {
   _deferOrdinaryCleanupClaim(target) {
     if (this._salvageSourceBinding(target)) return false; // authored source owner keeps its existing claim contract
     const state = this.state, player = state.entities?.get(state.playerId);
-    if (!player || player.alive !== true || !(player.hull > 0) || !target || target.alive !== true
+    if (!target || target.alive !== true) return false;
+    // A bound aftermath hull a live contract still retains is the contract's to lose:
+    // aftermathWrecks.gardenFeedMass refuses it to the Understory for the same reason —
+    // a cutter's claim here would fence the only deliverable and strand the pad sale.
+    const aftermath = this._registry?.get?.('aftermathWrecks');
+    if (aftermath && typeof aftermath.contractRetainedWreck === 'function'
+      && aftermath.contractRetainedWreck(target)) return true;
+    if (!player || player.alive !== true || !(player.hull > 0)
       || state.entities.get(target.id) !== target) return false;
     const physics = this._registry?.get?.('physics'), native = physics?._sg02;
     for (const a of Object.values(state.combat?.attachments?.byId || {})) {
@@ -1911,7 +1984,7 @@ export const trafficRoleOps = {
     return best;
   },
 
-  _buildSalvorJobSpec(home, target, sectorId) {
+  _buildSalvorJobSpec(home, target, sectorId, { deferTargetKey = false } = {}) {
     if (!home || !home.pos || !target || !target.pos) return null;
     const targetKind = target.type === 'payload' ? 'payload' : 'hulk';
     const source = this._salvageSourceBinding(target);
@@ -1930,7 +2003,7 @@ export const trafficRoleOps = {
       payload: {
         targetId: target.id,
         targetType: target.type,
-        ...(!source ? { targetKey: this._salvorTargetKey(target) } : {}),
+        ...(!source && !deferTargetKey ? { targetKey: this._salvorTargetKey(target) } : {}),
         ...(source ? {
           salvageSource: source.sourceKey,
           salvagePointId: source.salvagePointId,
@@ -1940,7 +2013,242 @@ export const trafficRoleOps = {
     };
   },
 
-  _resolveSalvorTargetFromWaypoint(waypointId, payload = null) {
+  _isAdoptedScavengerJob(entry, entity = null) {
+    const job = entry?.job;
+    const payload = job?.payload;
+    const targetId = payload?.targetId;
+    return job?.kind === 'salvor'
+      && payload?.role === 'scavenger'
+      && targetId != null
+      && (job.route?.[0]?.id === 'cut:hold' || job.route?.[0]?.id?.startsWith('yard:'))
+      && job.route?.[1]?.id === `hulk:${targetId}`
+      && (!entity || entry.entityId === entity.id);
+  },
+
+  _retainedAdoptedSalvageTarget(entry) {
+    if (!this._isAdoptedScavengerJob(entry)) return undefined;
+    const payload = entry.job.payload;
+    const targetId = payload.targetId;
+    const entities = this.state?.entities;
+    let identity = payload.targetIdentity;
+    if (!identity) {
+      // An early FLEE can begin before the first traffic work probe has persisted the booked
+      // wreck's stable key. Preserve that key from the exact retained booking object even after
+      // the residency owner shelves it; the world owner still verifies the matching live row and
+      // durable record before exposing a pose or promoting a physical target.
+      const booked = entry._salvorBookedTarget;
+      const target = booked?.entity;
+      if (booked?.id === targetId && target?.id === targetId
+        && target.type === payload.targetType) {
+        const data = target.data || {};
+        if (data.markerId) identity = { kind: 'marker', markerId: data.markerId };
+        else {
+          const source = this._salvageSourceBinding(target);
+          if (source?.sourceKey && source.salvagePointId) {
+            identity = { kind: 'salvagePoint', sourceKey: source.sourceKey,
+              salvagePointId: source.salvagePointId };
+          } else if (data.worldRecordId) {
+            identity = { kind: 'worldRecord', worldRecordId: data.worldRecordId };
+          } else if (typeof data.salvorTargetKey === 'string') {
+            identity = { kind: 'salvorTarget', key: data.salvorTargetKey };
+          }
+        }
+        if (identity) payload.targetIdentity = identity;
+      }
+    }
+    if (identity) {
+      const matchesIdentity = (target) => {
+        const data = target?.data || {};
+        if (identity.kind === 'marker') return data.markerId === identity.markerId;
+        if (identity.kind === 'worldRecord') return data.worldRecordId === identity.worldRecordId;
+        if (identity.kind === 'salvorTarget') return data.salvorTargetKey === identity.key;
+        if (identity.kind === 'salvagePoint') {
+          return data.salvagePointId === identity.salvagePointId
+            && data.salvageSourceKey === identity.sourceKey;
+        }
+        return false;
+      };
+      const cached = [entry._salvorBookedTarget?.entity, entry.towTargetRef].find((target) =>
+        target && target.alive !== false && target.type === payload.targetType
+        && entities?.get(target.id) === target && matchesIdentity(target));
+      if (cached && cached.id === targetId && entry.job.route[1]?.id === `hulk:${targetId}`) {
+        // Stable keys are immutable for the lifetime of a live body. The normal work/FLEE path
+        // keeps its route pose and retained refs without rescanning all interactables each tick.
+        return cached;
+      }
+      let found = null, matches = 0;
+      if (identity.kind === 'salvagePoint') {
+        const source = this._salvageSourceBindingFromPayload({
+          salvageSource: identity.sourceKey,
+          salvagePointId: identity.salvagePointId,
+        });
+        found = source && this.helpers?.salvage?.entityForPoint?.(source.salvagePointId, source.sourceKey);
+        matches = found ? 1 : 0;
+      } else {
+        forEachJobInteractable(this.state, (entity) => {
+          if (!entity || entity.alive === false || entity.type !== payload.targetType) return;
+          const data = entity.data || {};
+          const matchesIdentity = identity.kind === 'marker'
+            ? data.markerId === identity.markerId
+            : identity.kind === 'worldRecord'
+              ? data.worldRecordId === identity.worldRecordId
+              : identity.kind === 'salvorTarget'
+                ? data.salvorTargetKey === identity.key
+                : false;
+          if (!matchesIdentity) return;
+          found = entity;
+          matches++;
+        });
+      }
+      if (matches !== 1 || !found || !entities || entities.get(found.id) !== found) return null;
+      const previous = entry._salvorBookedTarget?.entity || entry.towTargetRef || null;
+      const rebound = found !== previous || payload.targetId !== found.id
+        || entry.job.route[1]?.id !== `hulk:${found.id}`;
+      if (rebound) {
+        // Numeric ids are runtime slots. Only a restored/replaced body or stale slot triggers
+        // route repair; ordinary physics drift must not rewrite its authored waypoint pose.
+        payload.targetId = found.id;
+        entry.job.route[1].id = `hulk:${found.id}`;
+        entry.job.route[1].pos = { x: found.pos.x, z: found.pos.z };
+        entry._salvorBookedTarget = { id: found.id, entity: found };
+        entry.towTargetRef = found;
+      }
+      return found.type === payload.targetType ? found : null;
+    }
+
+    const candidates = [entry._salvorBookedTarget?.entity, entry.towTargetRef];
+    for (const target of candidates) {
+      if (!target || target.id !== targetId || target.alive === false
+        || !entities || entities.get(targetId) !== target
+        || target.type !== entry.job.payload.targetType) continue;
+      const data = target.data || {};
+      const source = this._salvageSourceBinding(target);
+      let targetIdentity = null;
+      if (data.markerId) targetIdentity = { kind: 'marker', markerId: data.markerId };
+      else if (source?.sourceKey && source.salvagePointId) {
+        targetIdentity = { kind: 'salvagePoint', sourceKey: source.sourceKey,
+          salvagePointId: source.salvagePointId };
+      } else if (data.worldRecordId) targetIdentity = { kind: 'worldRecord', worldRecordId: data.worldRecordId };
+      else if (typeof data.salvorTargetKey === 'string') {
+        targetIdentity = { kind: 'salvorTarget', key: data.salvorTargetKey };
+      } else {
+        const authoredWorldSite = data.worldSiteStructural || data.worldSiteId || data.worldSitePayloadId
+          || data.worldObjectId || data.siteId || data.poiId || data.authored === true
+          || data.authoredWreckId || data.uniqueWreckId;
+        if ((data.persistenceOwner != null && data.persistenceOwner !== 'worldRecords')
+          || authoredWorldSite) return null;
+        // Truly ownerless targets need the existing world owner's durable stamp so a saved job
+        // can rejoin the same workpiece. Authored marker and salvage-point targets never receive
+        // a second persistence identity here.
+        const sectorId = target.homeSectorId || data.homeSectorId || data.sectorId
+          || entry.sectorId || this.state.world?.currentSectorId;
+        const world = this._registry?.get?.('world');
+        const active = this.state.world?.sectorContents?.[sectorId]
+          || (this.state.world?.currentSectorId === sectorId ? this.state.world?.activeSector : null);
+        const worldRecordId = sectorId && active && typeof world?._assignDurableRecordId === 'function'
+          ? world._assignDurableRecordId(target, sectorId, RECORD_KIND.WRECK,
+            `npc-salvor-target:${entry.job.id}`, active)
+          : null;
+        if (worldRecordId) targetIdentity = { kind: 'worldRecord', worldRecordId };
+      }
+      if (!targetIdentity) return null;
+      entry.job.payload.targetIdentity = targetIdentity;
+      entry._salvorBookedTarget = { id: target.id, entity: target };
+      return target;
+    }
+    return null;
+  },
+
+  _salvorRoleContext(entry, entity, job) {
+    if (this._isAdoptedScavengerJob(entry, entity)) {
+      const worldRecordId = entry.worldRecordId;
+      return worldRecordId != null && entity.data?.worldRecordId === worldRecordId
+        && entity.data?.jobId === job.id && this.state.entities?.get(entity.id) === entity
+        ? { jobId: job.id, worldRecordId, entity, rec: null } : null;
+    }
+    return this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor',
+      isScrapSweeperJob(entry, entity) ? ['sweeper'] : ['salvor']);
+  },
+
+  _salvorOwnsExtractedManifest(job, manifest) {
+    const total = job?.payload?.totalQty;
+    return job?.payload?.extracted === true && Number.isSafeInteger(total) && total > 0
+      && manifest?.role === 'salvor' && validCausalManifest(manifest)
+      && manifest.totalQty > 0 && manifest.totalQty <= total
+      && (!job.payload.salvageManifestId || job.payload.salvageManifestId === manifest.manifestId)
+      && (!job.payload.salvageLotId || job.payload.salvageLotId === manifest.lotId)
+      && (manifest.totalQty === total || (manifest.salvageIntakeHeld === true
+        && Number.isSafeInteger(manifest.salvageIntakeGeneration) && manifest.salvageIntakeGeneration > 0));
+  },
+
+  _holdSalvorIntake(context, manifest, stationId, reason) {
+    if (!context?.entry?.job || !manifest?.totalQty) return;
+    manifest.salvageIntakeHeld = true;
+    context.entry.job.payload.salvageIntakeWait = {
+      status: 'awaiting-intake', reason, stationId,
+      manifestId: manifest.manifestId, lotId: manifest.lotId,
+      generation: manifest.salvageIntakeGeneration || 0,
+    };
+    delete context.entry._salvorIntakeProbe;
+  },
+
+  _salvorIntakeWaitTarget(entry, entity, manifest) {
+    const job = entry.job;
+    let wait = job.payload.salvageIntakeWait;
+    if (!wait) {
+      this._holdSalvorIntake({ entry }, manifest, job.route?.[0]?.id?.slice(5), 'restored-intake-hold');
+      wait = job.payload.salvageIntakeWait;
+    }
+    if (wait.manifestId !== manifest.manifestId || wait.lotId !== manifest.lotId
+        || wait.generation !== (manifest.salvageIntakeGeneration || 0)) return { blocked: true, awaitingIntake: true };
+    if (wait.status === 'returning-to-intake') return null;
+    const now = this.state.simTime || 0;
+    let probe = entry._salvorIntakeProbe;
+    if (!probe || probe.entity !== entity || probe.job !== job || probe.manifest !== manifest
+        || now < probe.checkedAt || now >= probe.nextAt) {
+      // Poll eligibility at a bounded sim cadence. Only an actual accepted quote can restart
+      // a physical intake leg; this never resubmits a refused lot on the native tick cadence.
+      probe = { entity, job, manifest, checkedAt: now, nextAt: now + SALVOR_INTAKE_QUOTE_INTERVAL_S, destination: null };
+      const economy = this._registry?.get?.('economy');
+      let bestQty = 0, bestDistance = Infinity;
+      if (typeof economy?.quoteNpcSalvageIntake === 'function') for (const station of this._sectorStations()) {
+        if (station.alive === false || !station.pos || this.state.entities?.get(station.id) !== station) continue;
+        const id = stationIdentity(station);
+        const quote = economy.quoteNpcSalvageIntake(id, manifest.lines);
+        const qty = quote.ok ? quote.acceptedLines.reduce((sum, line) => sum + line.qty, 0) : 0;
+        const distance = Math.hypot(station.pos.x - entity.pos.x, station.pos.z - entity.pos.z);
+        if (qty > bestQty || (qty > 0 && qty === bestQty && distance < bestDistance)) {
+          bestQty = qty; bestDistance = distance;
+          probe.destination = station;
+        }
+      }
+      entry._salvorIntakeProbe = probe;
+    }
+    const station = probe.destination;
+    if (!station || station.alive === false || this.state.entities?.get(station.id) !== station) return { blocked: true, awaitingIntake: true };
+    return { ...this._salvorTargetDescriptor(entity, station,
+      Math.max(this._salvorReach(entity, station), station.data?.dockRadius || 0)),
+      intakeRetry: { stationId: stationIdentity(station), manifestId: manifest.manifestId,
+        generation: manifest.salvageIntakeGeneration || 0 } };
+  },
+
+  _salvorJobContext(intent) {
+    const jobId = typeof intent?.jobId === 'string' ? intent.jobId : '';
+    const entry = jobId && this.helpers?.npcJobs?.get(jobId);
+    const entity = entry?.entityId != null ? this.state.entities?.get(entry.entityId) : null;
+    if (!entry?.job || !entity || entity.alive === false) return null;
+    const context = this._salvorRoleContext(entry, entity, entry.job);
+    return context ? { ...context, entry } : null;
+  },
+
+  _resolveSalvorTargetFromWaypoint(waypointId, payload = null, entry = null) {
+    // An adopted scavenger's target is a transient exact-object booking, not an ordinary
+    // re-resolvable numeric-id commission. Its sidecar is established by the first real tractor
+    // probe and remains the identity guard across an attachment clear or FLEE excursion.
+    if (payload?.role === 'scavenger') {
+      const target = this._retainedAdoptedSalvageTarget(entry);
+      return target && waypointId === `hulk:${target.id}` ? target : null;
+    }
     // An unavailable authored source is authoritative absence. It must not fall through
     // to the numeric id formerly occupied by that wreck, even in a legacy save.
     if (payload?.salvageSource) {
@@ -2022,7 +2330,7 @@ export const trafficRoleOps = {
     const entry = this.helpers?.npcJobs?.get(context.jobId);
     const job = entry?.job;
     if (!job || entry.control || entry.entityId !== context.entity.id
-      || this._resolveSalvorTargetFromWaypoint(job.route?.[1]?.id, job.payload) !== target
+      || this._resolveSalvorTargetFromWaypoint(job.route?.[1]?.id, job.payload, entry) !== target
       || !this._isSalvageableBody(target) || !this._salvorAtTarget(context.entity, target)) return false;
     const claimant = this._salvorClaimantOf(target);
     if (claimant && claimant !== context.worldRecordId) return false;
@@ -2085,6 +2393,8 @@ export const trafficRoleOps = {
         } : {}),
         extracted: total > 0,
         totalQty: total,
+        ...(total > 0 ? { salvageManifestId: context.entity.data.cargoManifest.manifestId,
+          salvageLotId: context.entity.data.cargoManifest.lotId } : {}),
       };
     }
 
@@ -2170,9 +2480,10 @@ export const trafficRoleOps = {
 
   _salvorWorkTarget(entry, entity) {
     const job = entry?.job;
+    const adoptedScavenger = this._isAdoptedScavengerJob(entry, entity);
     if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
-      || !job.route?.[0]?.id?.startsWith('yard:')) return null;
-    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+      || (!adoptedScavenger && !job.route?.[0]?.id?.startsWith('yard:'))) return null;
+    const context = this._salvorRoleContext(entry, entity, job);
     if (!context || context.entity !== entity || entry.entityId !== entity.id
       || this.helpers.npcJobs?.get(job.id) !== entry) return { blocked: true };
     // Commission is the yard's dispatch paperwork, not a delivery manoeuvre. The cutter
@@ -2180,16 +2491,94 @@ export const trafficRoleOps = {
     // Source work and the loaded return still require the native arrival gates below.
     if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
+    const ownedManifest = entity.data?.cargoManifest || context.rec?.manifest;
+    if (ownedManifest?.salvageIntakeHeld && this._salvorOwnsExtractedManifest(job, ownedManifest)) {
+      const waiting = this._salvorIntakeWaitTarget(entry, entity, ownedManifest);
+      if (waiting) return waiting;
+    }
+    if (adoptedScavenger) {
+      // WORK still requires the exact live, eligible wreck below. After a successful cut,
+      // however, that same body is deliberately drained and marked salvaged. Let only the
+      // extraction recorded on this exact job and its matching finite salvor hold finish LOAD;
+      // otherwise the consumed wreck would block the cutter forever before the RETURN leg.
+      const heldManifest = entity.data?.cargoManifest;
+      const extractedQty = job.payload?.totalQty;
+      const hasExtractedSalvorHold = job.phase === NPC_JOB_PHASE.LOAD
+        && job.payload?.extracted === true
+        && Number.isSafeInteger(extractedQty) && extractedQty > 0
+        && heldManifest?.role === 'salvor'
+        && validCausalManifest(heldManifest)
+        && heldManifest.totalQty === extractedQty;
+      const hasOwnedSalvorHold = this._salvorOwnsExtractedManifest(job, heldManifest);
+
+      // Existing saved jobs still have a cut:hold origin. Once their own finite extraction is
+      // aboard, migrate that destination once to the same salvor home used by new commissions.
+      // The booked wreck must still resolve by its retained identity before it can supply a home.
+      if (hasOwnedSalvorHold && job.route[0]?.id === 'cut:hold') {
+        const retained = this._retainedAdoptedSalvageTarget(entry);
+        if (!retained) return { blocked: true };
+        const home = this._salvorHomeForTarget(this._sectorStations(), entry.sectorId, retained);
+        if (!home) return { blocked: true };
+        job.route[0] = { id: `yard:${stationIdentity(home)}`,
+          pos: { x: home.pos.x, z: home.pos.z }, label: 'Scrap Yard' };
+      }
+      if (hasExtractedSalvorHold) return this._salvorTargetDescriptor(entity, entity, 1);
+      const adoptedReturningHome = hasOwnedSalvorHold
+        && job.route[0]?.id?.startsWith('yard:')
+        && [NPC_JOB_PHASE.RETURN, NPC_JOB_PHASE.APPROACH, NPC_JOB_PHASE.UNLOAD].includes(job.phase);
+
+      // The first native attachment probe establishes the retained object sidecar. Until then,
+      // let the existing explicit booking resolver perform its one normal initial bind. A
+      // persisted identity also authorizes rebinding after Continue; never fall back to the old
+      // numeric slot once that identity exists.
+      if (!adoptedReturningHome) {
+        if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return null;
+        const target = this._retainedAdoptedSalvageTarget(entry);
+        const claimant = target && this._salvorClaimantOf(target);
+        if (target && this._isSalvageableBody(target)
+          && (!claimant || claimant === context.worldRecordId)) {
+          return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+        }
+        if (target) return { blocked: true };
+
+        // A shelved booked hulk still supplies a route pose, never a work body. The world owner
+        // advances that exact far record and requests promotion only when this live worker reaches
+        // the physical-work band. ready:false keeps the job clock stopped until a real native body
+        // is restored; the extraction path continues resolving only active salvageable entities.
+        const world = this._registry?.get?.('world');
+        const workPose = this._salvorBodyState(entity);
+        const targetPose = world?.requestAdoptedSalvorTargetMaterialization?.({
+          jobId: job.id,
+          workerWorldRecordId: context.worldRecordId,
+          targetIdentity: job.payload?.targetIdentity,
+          targetType: job.payload?.targetType,
+          sectorId: entry.sectorId || entity.homeSectorId || entity.data?.homeSectorId
+            || entity.data?.sectorId || this.state.world?.currentSectorId,
+          approachBandWU: this._salvorReach(entity, entry._salvorBookedTarget?.entity
+            || { radius: 0, type: job.payload?.targetType }),
+        });
+        if (!targetPose || !workPose) return { blocked: true };
+        if (targetPose.claimant && targetPose.claimant !== context.worldRecordId) return { blocked: true };
+        const poseTarget = { type: targetPose.type, radius: targetPose.radius, mass: targetPose.mass };
+        return {
+          pos: targetPose.pos,
+          vel: targetPose.vel,
+          workPose,
+          reach: this._salvorReach(entity, poseTarget),
+          salvorPhysical: true,
+          settled: false,
+          ready: false,
+        };
+      }
+    }
     const stationId = job.route[0].id.slice(5);
     const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
-    const manifest = entity.data.cargoManifest || context.rec.manifest;
+    const manifest = entity.data.cargoManifest || context.rec?.manifest;
     const carried = manifest?.totalQty > 0;
     const homeLeg = job.payload?.sourceUnavailable === true || (carried && job.phase !== NPC_JOB_PHASE.LOAD) || job.phase === NPC_JOB_PHASE.RETURN
       || (job.routeIndex === 0 && job.phase !== NPC_JOB_PHASE.TRANSIT);
     if (homeLeg) {
       if (!home) return { blocked: true };
-      if (manifest?.salvageIntakeHeld && this._salvorAtTarget(entity, home,
-        Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0))) return { blocked: true };
       return this._salvorTargetDescriptor(entity, home, Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0));
     }
     // Once the finite load is aboard, the short wrangle act finishes where it was cut.
@@ -2207,11 +2596,22 @@ export const trafficRoleOps = {
 
   _salvorSourceTarget(entry, entity) {
     const job = entry?.job;
+    const adoptedScavenger = this._isAdoptedScavengerJob(entry, entity);
     if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
-      || !job.route?.[0]?.id?.startsWith('yard:')) return undefined;
-    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+      || (!adoptedScavenger && !job.route?.[0]?.id?.startsWith('yard:'))) return undefined;
+    const context = this._salvorRoleContext(entry, entity, job);
     if (!context || context.entity !== entity || entry.entityId !== entity.id
       || this.helpers.npcJobs?.get(job.id) !== entry) return null;
+    if (adoptedScavenger) {
+      // Undefined is the existing opt-in sentinel for the first exact booking lookup. Once the
+      // tractor probe retains the object, null means that exact object is unavailable. A saved
+      // stable identity may rebind after Continue; otherwise do not search for a replacement.
+      if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return undefined;
+      const target = this._retainedAdoptedSalvageTarget(entry);
+      const claimant = target && this._salvorClaimantOf(target);
+      return target && this._isSalvageableBody(target)
+        && (!claimant || claimant === context.worldRecordId) ? target : null;
+    }
     const target = this._resolveSalvorTargetFromWaypoint(job.route[1]?.id, job.payload);
     const claimant = target && this._salvorClaimantOf(target);
     return target && (!claimant || claimant === context.worldRecordId) ? target : null;

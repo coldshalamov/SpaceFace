@@ -1,4 +1,5 @@
-// Phase state for the existing specialist verb owner. No entity, damage, or field writer here.
+// Swarm-only phase state for the existing specialist verb owner. Entity, damage, and field
+// mutations remain with their canonical owners.
 import { SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 
 function phase(view, name, started, ends = null) {
@@ -15,7 +16,6 @@ function viewFor(entity, kind, tick) {
   return data.swarmSpecialist;
 }
 
-/** A broken screen cannot silently choose another ward or restart its recovery every tick. */
 export function breakSwarmGuard(entity, tick) {
   const view = entity?.data?.swarmSpecialist;
   if (view?.kind !== 'warden') return;
@@ -41,15 +41,11 @@ function validWard(ward, guard, state) {
     && (ward.data.lootTableId || ward.data.enemyTypeId) !== 'warden_escort';
 }
 
-/**
- * One custody choice for both the flight doctrine and the guard link. Sensors read this pure
- * resolver before the first approach frame; the verb stores the choice without revealing a link
- * until its tell completes. A live link never silently jumps to a replacement ward.
- */
+/** One deterministic, same-wave ward choice shared by the production AI sensor and verb. */
 export function swarmWardCandidateId(state, entity) {
   const view = entity.data?.swarmSpecialist;
   const boundId = view?.phase === 'active' ? view.targetId : view?.wardCandidateId;
-  const inRange = (ward) => validWard(ward, entity, state)
+  const inRange = ward => validWard(ward, entity, state)
     && Math.hypot(ward.pos.x - entity.pos.x, ward.pos.z - entity.pos.z)
       <= SWARM_SPECIALIST_TUNING.warden.linkRange;
   const bound = boundId != null ? state.entities?.get(boundId) : null;
@@ -60,9 +56,9 @@ export function swarmWardCandidateId(state, entity) {
   for (const candidate of roster) {
     if (!inRange(candidate)) continue;
     const distance = Math.hypot(candidate.pos.x - entity.pos.x, candidate.pos.z - entity.pos.z);
-    if (distance > best
-      || (distance === best && selected && String(candidate.id) >= String(selected.id))) continue;
-    selected = candidate; best = distance;
+    if (distance > best || (distance === best && selected && String(candidate.id) >= String(selected.id))) continue;
+    selected = candidate;
+    best = distance;
   }
   return selected?.id ?? null;
 }
@@ -71,7 +67,6 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
   const tuning = SWARM_SPECIALIST_TUNING.warden;
   const view = viewFor(entity, 'warden', tick);
   const ward = view.targetId != null ? state.entities?.get(view.targetId) : null;
-  // Read the prior phase before any in-place stamp: disable must buy a full recovery too.
   const wasActive = view.phase === 'active';
   if (wasActive && (disabled || doctrinePhase !== 'screen_hold'
     || tick - view.phaseStartedAt >= tuning.activeTicks
@@ -93,7 +88,8 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
       return null;
     }
     if (!view.relinkWindupStarted) {
-      view.phase = 'windup'; view.phaseStartedAt = tick;
+      view.phase = 'windup';
+      view.phaseStartedAt = tick;
       view.phaseEndsAt = tick + tuning.windupTicks;
       view.relinkWindupStarted = true;
       return null;
@@ -106,16 +102,11 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
     phase(view, 'idle', tick);
     return null;
   } else if (doctrinePhase !== 'screen_hold') {
-    if (doctrinePhase === 'shield_dart') {
-      breakSwarmGuard(entity, tick);
-    } else {
-      phase(view, doctrinePhase === 'screen_deploy' ? 'windup' : 'idle', started,
-        doctrinePhase === 'screen_deploy' ? started + tuning.windupTicks : null);
-    }
+    if (doctrinePhase === 'shield_dart') breakSwarmGuard(entity, tick);
+    else phase(view, doctrinePhase === 'screen_deploy' ? 'windup' : 'idle', started,
+      doctrinePhase === 'screen_deploy' ? started + tuning.windupTicks : null);
     return null;
-  } else if (view.phase !== 'active') {
-    phase(view, 'active', started, started + tuning.activeTicks);
-  }
+  } else if (view.phase !== 'active') phase(view, 'active', started, started + tuning.activeTicks);
 
   if (view.targetId == null) {
     const selected = view.wardCandidateId != null ? state.entities?.get(view.wardCandidateId) : null;
@@ -128,7 +119,8 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
   }
   const currentWard = view.targetId != null ? state.entities?.get(view.targetId) : null;
   if (!currentWard?.pos) return null;
-  view.targetX = currentWard.pos.x; view.targetZ = currentWard.pos.z;
+  view.targetX = currentWard.pos.x;
+  view.targetZ = currentWard.pos.z;
   return { verb: 'ward_screen', ok: true, targetId: currentWard.id };
 }
 
@@ -136,29 +128,37 @@ export function updateSwarmAnchor(state, entity, doctrinePhase, started, tick, d
   const tuning = SWARM_SPECIALIST_TUNING.anchor;
   const view = viewFor(entity, 'anchor', tick);
   if (doctrinePhase === 'approach') {
-    delete view.windupSourceX; delete view.windupSourceZ;
-    delete view.interrupted; delete view.interruptedAt;
+    delete view.windupSourceX;
+    delete view.windupSourceZ;
+    delete view.interrupted;
+    delete view.interruptedAt;
   }
   const committing = doctrinePhase === 'field_spool' || doctrinePhase === 'anchor_hold';
+  const holdExpired = doctrinePhase === 'anchor_hold'
+    && tick - started >= tuning.activeTicks;
   if (committing && view.windupSourceX == null) {
-    view.windupSourceX = entity.pos.x; view.windupSourceZ = entity.pos.z;
+    view.windupSourceX = entity.pos.x;
+    view.windupSourceZ = entity.pos.z;
   }
-  if (committing && !view.interrupted && (disabled
+  if (committing && !view.interrupted && !holdExpired && (disabled
     || Math.hypot(entity.pos.x - view.windupSourceX, entity.pos.z - view.windupSourceZ)
       >= tuning.interruptDisplacement)) {
-    view.interrupted = true; view.interruptedAt = tick;
+    view.interrupted = true;
+    view.interruptedAt = tick;
   }
-  if (view.interrupted && committing) {
-    phase(view, 'recovery', view.interruptedAt, view.interruptedAt + tuning.recoveryTicks);
-  } else {
+  if ((view.interrupted || holdExpired) && committing) {
+    const recoveryStarted = view.interrupted ? view.interruptedAt : started + tuning.activeTicks;
+    phase(view, 'recovery', recoveryStarted, recoveryStarted + tuning.recoveryTicks);
+  }
+  else {
     const name = doctrinePhase === 'field_spool' ? 'windup' : doctrinePhase === 'anchor_hold' ? 'active'
       : doctrinePhase === 'recover' ? 'recovery' : 'idle';
     phase(view, name, started, name === 'windup' ? started + tuning.windupTicks
       : name === 'active' ? started + tuning.activeTicks
         : name === 'recovery' ? started + tuning.recoveryTicks : null);
   }
-  const result = fields.setAnchorArmed(state, entity.id,
-    doctrinePhase === 'anchor_hold' && !disabled && !view.interrupted, tick);
+  const result = fields?.setAnchorArmed?.(state, entity.id,
+    doctrinePhase === 'anchor_hold' && !disabled && !view.interrupted && !holdExpired, tick);
   if (!result) { view.anchorActive = false; return null; }
   view.anchorActive = result.armed === true && tick >= result.activateTick;
   view.anchorRadius = result.radius;

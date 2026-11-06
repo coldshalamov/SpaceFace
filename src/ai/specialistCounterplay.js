@@ -547,7 +547,8 @@ export function applySpecialistCounterplay({
     const incapacitated = specialistIncapacitated(state, specialist);
     if (isSwarmSpecialistRun(state) && specialist.data?.runCohort === 'survival') {
       return updateSwarmAnchor(state, specialist, doctrinePhase,
-        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick, tick, incapacitated, fields);
+        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick,
+        tick, incapacitated, fields);
     }
     const armedWanted = !incapacitated && (doctrinePhase === 'field_spool' || doctrinePhase === 'anchor_hold');
     const result = fields.setAnchorArmed(state, specialist.id, armedWanted, tick);
@@ -568,8 +569,8 @@ export function applySpecialistCounterplay({
     if (!player) return null;
     if (isSwarmSpecialistRun(state) && specialist.data?.runCohort === 'survival') {
       return updateSwarmWarden(state, specialist, doctrinePhase,
-        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick, tick,
-        specialistIncapacitated(state, specialist, 'drive'));
+        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick,
+        tick, specialistIncapacitated(state, specialist, 'drive'));
     }
     // Screen targets resolve to hulls — wardScreenTarget gates on type==='ship', so the
     // stations lane is dead iteration: every member is rejected at the type check. The

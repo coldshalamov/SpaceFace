@@ -1297,11 +1297,11 @@ function difference(actual, allowed) {
   return [...actual].filter((item) => !allowed.has(item)).sort();
 }
 
-function* currentPlanResourceIdentitySetsSteps(plan) {
+function* currentPlanResourceIdentitySetsSteps(plan, camera = undefined) {
   const leaves = new Set(Array.isArray(plan && plan.compileSubjects) ? plan.compileSubjects : []);
   if (plan && plan.scene) {
     const sceneLeaves = yield* collectOpeningSubmissionLeavesSteps(plan.scene, {
-      camera: plan.camera,
+      camera: camera === undefined ? plan.camera : camera,
       live: true,
     });
     for (const leaf of sceneLeaves) leaves.add(leaf);
@@ -1314,8 +1314,8 @@ function* currentPlanResourceIdentitySetsSteps(plan) {
   return collectResourceIdentitySets([...leaves], plan && plan.route || {}, explicitTextures);
 }
 
-function currentPlanResourceIdentitySets(plan) {
-  const iterator = currentPlanResourceIdentitySetsSteps(plan);
+function currentPlanResourceIdentitySets(plan, camera = undefined) {
+  const iterator = currentPlanResourceIdentitySetsSteps(plan, camera);
   let step = iterator.next();
   while (!step.done) step = iterator.next();
   return step.value;
@@ -1411,7 +1411,12 @@ export function captureOpeningSubmissionValidationState(receipt, renderer, curre
   });
 }
 
-export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCensus = null, observation = null) {
+// `options.camera` is the camera snapshot of the frame about to submit. The plan's own camera is
+// frozen when the plan is cooked; the opening hold can keep the picture refused for seconds while
+// the live camera keeps moving, so a pre-submit census taken through the frozen frustum misses
+// resident leaves that rotate into view and the post-submit check then reads them as uncaptured
+// first-draw resources. Pre-submit callers pass the live snapshot; the default keeps plan.camera.
+export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCensus = null, observation = null, options = {}) {
   const info = renderer && renderer.info || {};
   const memory = info.memory || {};
   const currentCounts = observation ? observation.currentCounts : {
@@ -1423,7 +1428,8 @@ export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCen
   const before = receipt && receipt.before || {};
   const required = receipt && receipt.required || {};
   const currentResources = observation
-    ? observation.currentResources : currentPlanResourceIdentitySets(receipt && receipt.plan);
+    ? observation.currentResources
+    : currentPlanResourceIdentitySets(receipt && receipt.plan, options && options.camera);
   const currentProgramKeys = observation ? observation.programKeys : rendererProgramKeys(renderer);
   const allowedProgramKeys = unionSet(before.programCacheKeys, required.programCacheKeys);
   const allowedGeometryIds = unionSet(before.geometryBufferIds, required.geometryBufferIds);

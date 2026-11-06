@@ -13,6 +13,14 @@ import { bombs } from '../src/systems/bombs.js';
 import { FIELD_DEFS, FIELD_FLAGS } from '../src/data/fields.js';
 import { BOMB_DEFS } from '../src/data/bombs.js';
 import { massSeedLaunchPlan } from '../src/systems/massSeed.js';
+import {
+  BOMB_PROPULSION_DIALS as systemChargeDials,
+  chargeThrowPlan as systemChargeThrowPlan,
+} from '../src/systems/impulseCharges.js';
+import {
+  BOMB_PROPULSION_DIALS as previewChargeDials,
+  chargeThrowPlan as previewChargeThrowPlan,
+} from '../src/data/impulseChargeReadModel.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import { POWER_VERBS, setHeldPower } from '../src/systems/powerVerbs.js';
 import {
@@ -58,6 +66,19 @@ function body(sim, x, z, { mass = 2, type = 'wreck', radius = 4, team = 9 } = {}
     data: { majorDebris: true },
   });
 }
+
+test('charge deployment and preview keep one canonical read-only plan binding', () => {
+  assert.strictEqual(previewChargeThrowPlan, systemChargeThrowPlan);
+  assert.strictEqual(previewChargeDials, systemChargeDials);
+
+  const state = {
+    input: { actions: {}, aimAngle: Math.PI / 3 },
+    player: { activeShipIndex: 0, ownedShips: [{ fittings: [] }], researchedNodes: [] },
+    entities: new Map(),
+  };
+  const player = { pos: { x: 4, z: -3 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12 };
+  assert.deepEqual(previewChargeThrowPlan(state, player), systemChargeThrowPlan(state, player));
+});
 
 const ids = (plan) => plan.moves.map((m) => m.id);
 

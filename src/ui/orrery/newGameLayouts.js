@@ -158,6 +158,19 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage::before { left:24%; width:52%; top:61%; }
 }
 
+/* At compact desktop sizes keep the rear names below the ring and away from the LINE dial. */
+@media (min-width:801px) and (max-width:1366px) and (max-height:800px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 38px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
+}
+@media (min-width:801px) and (max-width:1080px) and (max-height:800px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 24px !important; }
+}
+@media (min-width:1081px) and (max-width:1180px) and (max-height:800px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front):has(~ .is-front) { translate:18px 38px !important; }
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 38px !important; }
+}
+
 /* the same band at ≤460 tall (844×390, 900×420, 1024×440): the stage had ~305px for the name, the fittings,
    the ring and the run, so the yard was forced up over the hull's name and the fittings, and the form column
    showed only CASUAL. The frame's margin closes to 20px, the run's scale stands down to the accessibility
@@ -320,6 +333,13 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { letter-spacing:.08em !important; }
   /* the narrower ring there brings the rear ends close to the front name: the rear hulls go by name only */
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
+}
+/* ≤380px: BACK ESC and LAUNCH are 331px side by side in a 288–324px foot, so LAUNCH ran past the right edge
+   (cut off at 320): a tighter gap, ESC margin and key padding/tracking bring them to ~280px */
+@media (max-width:380px) {
+  ${NGD} > .sf-ng-footer.k-foot { gap:12px !important; }
+  ${NGD} > .sf-ng-footer .k-word.sf-back::after { margin-left:12px !important; }
+  ${NGD} > .sf-ng-footer .sf-ng-launch:has(> .orr-lampkey__word) { padding:0 22px 0 16px !important; letter-spacing:.1em !important; margin-left:auto !important; }
 }
 `;
 

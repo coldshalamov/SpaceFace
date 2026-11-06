@@ -27,7 +27,7 @@ import {
   presentationAllowsPlayerFacingAction,
   presentationAllowsTargetLock,
 } from '../core/presentationAdmission.js';
-import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { isPirateDisengaged } from '../systems/pirateDisengage.js';
@@ -46,7 +46,7 @@ import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { laneInputWrite } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection, laneTargetWritePending } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
@@ -160,9 +160,6 @@ import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
 const SCREEN_MODULES = [
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
-  // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
-  // instance with the dock's shipworks destination (§0.5 — one WebGL mount, two hosts).
-  { path: './ship/shipScreen.js', load: () => import('./ship/shipScreen.js'), name: 'shipScreen' },
   { path: './screens/range.js', load: () => import('./screens/range.js'), name: 'rangeScreen' },
   // THE FOOTPRINT (frontend program §11.12 J10 / SCREENS_C §2): the board you trace (F3).
   { path: './screens/footprint.js', load: () => import('./screens/footprint.js'), name: 'footprintScreen' },
@@ -170,10 +167,6 @@ const SCREEN_MODULES = [
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
   { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
-  // Asteroid works: the drill lens grown into the site-engineering surface (screen id stays
-  // 'drill'; src/ui/asteroid/ supersedes screens/drill.js as the live module — that file remains
-  // for its exported input-controller/particle helpers and checks, like stationHub before it).
-  { path: './asteroid/asteroidScreen.js', load: () => import('./asteroid/asteroidScreen.js'), name: 'asteroidScreen' },
   { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
   { path: './screens/motionAsk.js', load: () => import('./screens/motionAsk.js'), name: 'motionAskScreen' },
@@ -214,6 +207,19 @@ const STATION_SCREEN_MODULE = {
   path: './station/stationScreen.js',
   load: () => import('./station/stationScreen.js'),
   name: 'stationScreen',
+};
+const DRILL_SCREEN_MODULE = {
+  path: './asteroid/asteroidScreen.js',
+  load: () => import('./asteroid/asteroidScreen.js'),
+  name: 'asteroidScreen',
+};
+// THE SHIP keeps one shared screen instance for both F2 and the dock destination. Its large
+// screen-only closure is requested only by a live F2 intent; the literal import remains visible
+// to esbuild so packaged builds resolve the same chunk as the development server.
+const SHIP_SCREEN_MODULE = {
+  path: './ship/shipScreen.js',
+  load: () => import('./ship/shipScreen.js'),
+  name: 'shipScreen',
 };
 
 // Title / pause / death must win the first parse wave. Galaxy map and shipworks are huge modules;
@@ -625,6 +631,12 @@ export const ui = {
     this.proExperiences = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
+    this._shipScreenRegistration = null;
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     this.windowTitle?.stop();
     this.windowTitle = null;
@@ -732,6 +744,7 @@ export const ui = {
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
     this._screenPrewarmQueue = [];
     this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -797,7 +810,12 @@ export const ui = {
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the
     // input router after a prompt would let that earlier prompt act before the fence could stop it.
-    this.input = createUiInput(ctx, this.screenManager);
+    this.input = createUiInput(ctx, this.screenManager, {
+      isShipScreenRequestPending: () => !!this._shipScreenOpenRequest,
+      toggleShipScreenRequest: () => this._toggleShipScreenOpenRequest(),
+      cancelShipScreenRequest: () => this._cancelShipScreenOpenRequest(),
+    });
+    this._bindShipScreenRequestInvalidation();
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
@@ -1604,9 +1622,11 @@ export const ui = {
 
     this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
       if (asteroidId == null || attachmentId == null) return;
+      if (this._pendingScreenRetry?.id === 'drill') this._cancelPendingScreenRetry();
       activeDrillApproach = { asteroidId, attachmentId };
       laneInputWrite(this.state, 'input.blocked', true);
       showDockFade('drill');
+      this._ensureDrillScreenRegistered().catch(() => {});
 
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(-0.45, 1.2);
@@ -1616,11 +1636,17 @@ export const ui = {
     this.bus.on('drill:approachCompleted', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      laneInputWrite(this.state, 'input.blocked', false);
       if (!this.state.ui) this.state.ui = {};
       this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
-      this._pushScreenWhenRegistered('drill', 200);
-      setTimeout(() => hideDockFade('drill'), 50);
+      const settle = (opened) => {
+        if (!opened && this.state.ui?.pendingDrillAsteroidId === payload.asteroidId) {
+          this.state.ui.pendingDrillAsteroidId = null;
+          this.bus.emit('toast', { text: 'Drill controls unavailable. Try again.', kind: 'warn', ttl: 4 });
+        }
+        laneInputWrite(this.state, 'input.blocked', false);
+        hideDockFade('drill');
+      };
+      this._pushScreenWhenRegistered('drill', 200, { onSettled: settle });
     });
 
     this.bus.on('drill:approachCancelled', (payload) => {
@@ -1653,13 +1679,10 @@ export const ui = {
     // CRUCIBLE (PQ-133 CRU-018): results open for BOTH endings — a death (run:ended) and a
     // victory (a terminal phase transition, which emits no run:ended).
     this.bus.on('run:resultsReady', (payload) => {
-      // An abort is the player walking out through the pause menu, which closes every screen and
-      // replaces them with the main menu in the same handler chain — so a results plate pushed here
-      // is built and destroyed in one breath. They chose to leave; do not flash a scoreboard at them.
-      // Exception: the arena failing to build a wave also publishes 'aborted' (stopReason
-      // 'wave_plan_failed'), and that one MUST open the plate — it is the loud end of the run that
-      // explains the stop, and without it the player sits in an empty arena with no message.
-      if (payload && payload.outcome === 'aborted' && payload.stopReason !== 'wave_plan_failed') return;
+      // A direct Main Menu abort still leaves immediately. Explicit End run waits for this
+      // authoritative debrief, as does a wave-build failure that needs a visible explanation.
+      if (payload && payload.outcome === 'aborted'
+        && !['wave_plan_failed', 'player_retired'].includes(payload.stopReason)) return;
       if (this._crucibleResultsShown) return;
       this._crucibleResultsShown = true;
       this._pushScreenWhenRegistered('crucibleResults', 60);
@@ -1865,10 +1888,11 @@ export const ui = {
     if (pending.timerId != null) clearTimeout(pending.timerId);
     pending.timerId = null;
     if (this._pendingScreenRetry === pending) this._pendingScreenRetry = null;
+    pending.onSettled?.(false);
     return true;
   },
 
-  _pushScreenWhenRegistered(id, maxAttempts = 60) {
+  _pushScreenWhenRegistered(id, maxAttempts = 60, options = {}) {
     this._cancelPendingScreenRetry();
     const registrationCycle = this._screenRegistrationCycle;
     const screenManager = this.screenManager;
@@ -1881,29 +1905,33 @@ export const ui = {
       isLive: (owner) => screenPushRequestIsLive(owner, id),
       timerId: null,
       cancelled: false,
+      onSettled: options.onSettled,
     };
     this._screenRetryToken = request.token;
     this._pendingScreenRetry = request;
-    const finish = () => {
+    const finish = (opened) => {
       request.timerId = null;
       if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+      request.onSettled?.(opened);
     };
     const tryOpen = (attempts) => {
       if (!isCurrentScreenPushRequest(this, request)) {
         request.cancelled = true;
         if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+        request.onSettled?.(false);
         return;
       }
       if (this._registeredScreens && this._registeredScreens.has(id)) {
-        finish();
-        if (screenManager && typeof screenManager.top === 'function' && screenManager.top() === id) return;
-        try { screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+        try {
+          if (!(screenManager && typeof screenManager.top === 'function' && screenManager.top() === id)) screenManager.pushScreen(id);
+          finish(typeof screenManager.top !== 'function' || screenManager.top() === id);
+        } catch (e) { console.error(`[ui] open ${id}`, e); finish(false); }
         return;
       }
       if (id === 'station' && typeof this._ensureStationScreenRegistered === 'function') {
         this._ensureStationScreenRegistered();
       }
-      if (attempts > maxAttempts) { finish(); console.warn(`[ui] ${id} screen never registered`); return; }
+      if (attempts > maxAttempts) { finish(false); console.warn(`[ui] ${id} screen never registered`); return; }
       request.timerId = setTimeout(() => {
         request.timerId = null;
         tryOpen(attempts + 1);
@@ -1911,6 +1939,123 @@ export const ui = {
     };
     tryOpen(0);
     return request.token;
+  },
+
+  _cancelShipScreenOpenRequest({ cue = true } = {}) {
+    const request = this._shipScreenOpenRequest;
+    if (!request) return false;
+    request.cancelled = true;
+    this._shipScreenOpenRequest = null;
+    if (cue) this.bus?.emit?.('audio:cue', { id: 'ui_back' });
+    return true;
+  },
+
+  _bindShipScreenRequestInvalidation() {
+    this._shipModeOff?.();
+    this._shipModeOff = this.bus?.on?.('mode:changed', ({ mode } = {}) => {
+      if ((mode && mode !== 'flight') || this.state?.mode !== 'flight') {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = this.bus?.on?.('ui:screenTop', ({ id } = {}) => {
+      const request = this._shipScreenOpenRequest;
+      if (request && id !== 'ship' && id !== request.initiatingTop) {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+  },
+
+  _isCurrentShipScreenOpenRequest(request) {
+    const currentStack = Array.isArray(this.state?.ui?.screenStack) ? this.state.ui.screenStack : null;
+    const sameStack = request?.stackSnapshot == null || (currentStack != null
+      && currentStack.length === request.stackSnapshot.length
+      && currentStack.every((id, index) => id === request.stackSnapshot[index]));
+    const currentTop = this.screenManager?.top?.() ?? null;
+    return !!(request
+      && this._shipScreenOpenRequest === request
+      && !request.cancelled
+      && request.registrationCycle === this._screenRegistrationCycle
+      && request.screenManager === this.screenManager
+      && isScreenRegistrationCycleCurrent(request.registrationCycle)
+      && sameStack
+      && currentTop === request.initiatingTop
+      && this.state?.mode === 'flight');
+  },
+
+  _toggleShipScreenOpenRequest() {
+    if (this._shipScreenOpenRequest) {
+      this._cancelShipScreenOpenRequest();
+      return 'cancelled';
+    }
+    if (this.state?.mode !== 'flight' || !this.screenManager) return 'ignored';
+    if (this._registeredScreens?.has('ship')) {
+      try {
+        if (this.screenManager.top?.() !== 'ship') this.screenManager.pushScreen('ship');
+        if (this.screenManager.top?.() === 'ship') {
+          this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+          return 'opened';
+        }
+      } catch (error) {
+        console.error('[ui] open ship', error);
+      }
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+      return 'failed';
+    }
+
+    const request = {
+      registrationCycle: this._screenRegistrationCycle,
+      screenManager: this.screenManager,
+      initiatingTop: this.screenManager.top?.() ?? null,
+      stackSnapshot: Array.isArray(this.state?.ui?.screenStack) ? [...this.state.ui.screenStack] : null,
+      cancelled: false,
+    };
+    this._shipScreenOpenRequest = request;
+    this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+    this._ensureShipScreenRegistered().then(() => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      if (!this._registeredScreens?.has('ship')) throw new Error('Shipworks module did not register');
+      this.screenManager.pushScreen('ship');
+      if (this.screenManager.top?.() !== 'ship') throw new Error('Shipworks screen did not open');
+      this._shipScreenOpenRequest = null;
+    }).catch((error) => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      this._shipScreenOpenRequest = null;
+      console.warn('[ui] Shipworks request failed', error);
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+    });
+    return 'requested';
+  },
+
+  _ensureShipScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('ship')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._shipScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._shipScreenRegistration === record && !this._registeredScreens?.has('ship')) {
+        this._shipScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve()
+      .then(() => this._registerScreenEntry(SHIP_SCREEN_MODULE))
+      .then((value) => {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return false;
+        if (!this._registeredScreens?.has('ship')) {
+          clearFailedRegistration();
+          throw new Error('Shipworks module failed to register');
+        }
+        return value;
+      }, (error) => {
+        clearFailedRegistration();
+        throw error;
+      });
+    this._shipScreenRegistration = record;
+    return record.promise;
   },
 
   _ensureStationScreenRegistered() {
@@ -1940,6 +2085,27 @@ export const ui = {
         throw error;
       });
     this._stationScreenRegistration = record;
+    return record.promise;
+  },
+
+  _ensureDrillScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('drill')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._drillScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._drillScreenRegistration === record && this._screenRegistrationCycle === registrationCycle
+        && isScreenRegistrationCycleCurrent(registrationCycle) && !this._registeredScreens?.has('drill')) {
+        this._drillScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve().then(() => this._registerScreenEntry(DRILL_SCREEN_MODULE))
+      .then(value => { clearFailedRegistration(); return value; }, error => { clearFailedRegistration(); throw error; });
+    this._drillScreenRegistration = record;
     return record.promise;
   },
 
@@ -1979,7 +2145,7 @@ export const ui = {
             if (this._hudHiddenByDock && typeof this.hud.arrive === 'function') this.hud.arrive();
           }
           this._hudHiddenByDock = false;
-          this.hud.frame(dt);
+          this.hud.frame(dt, true);
         } else {
           this._hudHiddenByDock = docked;
           if (this.hud.tickHidden) this.hud.tickHidden(dt);
@@ -2004,6 +2170,8 @@ export const ui = {
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
+      // Coalesce this paint's receipt, prompt, alert and caption mutations after their owners tick.
+      if (hudVisible) this.hud?.flushReceiptLane?.();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
@@ -2023,6 +2191,11 @@ export const ui = {
     this.blackFlagPrompt = null;
     this.logbookRecap?.dispose();
     this.logbookRecap = null;
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
@@ -2036,6 +2209,8 @@ export const ui = {
     this._screenRegistrationCycle = null;
     this._screenRegistrationSettledGeneration = null;
     this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
+    this._shipScreenRegistration = null;
     this._registerScreenEntry = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -2168,7 +2343,7 @@ function clearCombatTarget(state, bus) {
 // check:save-schema). The pure cycle/enumeration lives in interactionDescriptors; this handler owns
 // the state write, target-change rebind, and player feedback. A null/absent selection leaves every
 // verb resolving exactly as before, so this is inert until the player opts in.
-function cycleTargetComponent(state, dir, bus) {
+export function cycleTargetComponent(state, dir, bus) {
   const targetId = state.player && state.player.targetId;
   const target = targetId != null && state.entities && state.entities.get ? state.entities.get(targetId) : null;
   if (!target || target.alive === false) {
@@ -2191,14 +2366,7 @@ function cycleTargetComponent(state, dir, bus) {
 }
 
 function setComponentSelection(state, target, next) {
-  if (!state.ui) state.ui = {};
-  state.ui.componentSelection = (target && next) ? {
-    targetId: target.id,
-    stableKey: stableEntityKey(target),
-    componentId: next.componentId,
-    kind: next.kind,
-    verb: next.verb,
-  } : null;
+  laneSetComponentSelection(state, target, next);
 }
 
 function isScannerHostileLock(player, state, entity) {
@@ -2333,6 +2501,7 @@ function collectAcquisitionCandidates(state, player) {
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
   if (state.input?.targetAssistDisabled === true) return;
+  if (options.quiet && laneTargetWritePending(state)) return;
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;

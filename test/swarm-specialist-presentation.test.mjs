@@ -5,7 +5,37 @@ import * as THREE from 'three';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { applySpawnInfos, applyEntityVitals, createReadModel } from '../scripts/lib/simReadModel.mjs';
 import { attachSwarmSpecialistVisual } from '../src/render/swarmSpecialistVisuals.js';
+import { wrapShipWithAuthoredParts, disposeDetachedObject } from '../src/render/partsLibrary.js';
 import { swarmSpecialistPresentationFrame, foldSwarmSpecialistPresentation } from '../src/data/swarmSpecialistPresentation.js';
+
+test('specialist tells stay off the fallback boundary while authored admission is pending', () => {
+  const actor = { id: 91, type: 'ship', alive: true, radius: 8, pos: { x: 0, z: 0 },
+    data: { lootTableId: 'warden_escort', swarmSpecialist: { kind: 'warden', phase: 'active',
+      targetX: 50, targetZ: 0, linkHp: 10, linkMaxHp: 10 } } };
+  const fallback = new THREE.Group();
+  fallback.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+  const boundary = wrapShipWithAuthoredParts(actor, fallback, { releaseMode: true });
+  boundary.userData.updateAuthoredMotion(actor, 1, {}, {});
+  assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
+  assert.equal(boundary.getObjectByName('SF_SWARM_WARDEN_LINK'), undefined);
+});
+
+test('specialist tell resources follow the authored boundary teardown', () => {
+  const actor = { data: { lootTableId: 'warden_escort', swarmSpecialist: {
+    kind: 'warden', phase: 'active', targetX: 50, targetZ: 0, linkHp: 10, linkMaxHp: 10,
+  } }, pos: { x: 0, z: 0 } };
+  const root = new THREE.Group();
+  assert.equal(attachSwarmSpecialistVisual(root, actor), true);
+  root.userData.swarmSpecialistVisual.update(actor, 1);
+  const link = root.getObjectByName('SF_SWARM_WARDEN_LINK');
+  assert.equal(link.visible, true);
+  let geometryDisposed = 0, materialDisposed = 0;
+  link.geometry.addEventListener('dispose', () => geometryDisposed++);
+  link.material.addEventListener('dispose', () => materialDisposed++);
+  disposeDetachedObject(root);
+  assert.equal(geometryDisposed, 1);
+  assert.equal(materialDisposed, 1);
+});
 
 test('production worker transports changing tells into existing rendered specialist ships', async (t) => {
   const lane = createSimHost();
@@ -26,7 +56,7 @@ test('production worker transports changing tells into existing rendered special
       targetId: 999, targetX: 180, targetZ: 15, linkEnergy: 92, linkMaxEnergy: 92, linkHp: 92, linkMaxHp: 92,
     }],
     ['jackal', 'mine_layer_jackal', 'SF_SWARM_JACKAL_MINE_WAKE', {
-      salvoRemaining: 3, nextSalvoTick: 138,
+      salvoCursor: 0, salvoStartedAt: 120, nextSalvoTick: 138,
       salvoPoints: [{ x: -120, z: 50 }, { x: -190, z: 85 }, { x: -260, z: 120 }],
     }],
     ['anchor', 'field_anchor_controller', 'SF_SWARM_ANCHOR_FIELD_EDGE', {
@@ -107,6 +137,7 @@ test('production worker transports changing tells into existing rendered special
   assert.equal(actors[0].row.data.swarmSpecialist.linkHp, 31);
   assert.equal(actors[0].row.data.swarmSpecialist.targetX, 212);
   assert.equal(actors[1].row.data.swarmSpecialist.salvoPoints[1].z, 97);
+  assert.equal(actors[1].row.data.swarmSpecialist.salvoStartedAt, 120);
 
   for (const actor of actors) Object.assign(actor.native.data.swarmSpecialist, {
     phase: 'recovery', phaseStartedAt: 300, phaseEndsAt: 390, anchorActive: false,
@@ -122,6 +153,7 @@ test('production worker transports changing tells into existing rendered special
     actor.mesh.userData.swarmSpecialistVisual.update(actor.row, 5.3);
     assert.equal(actor.mesh.getObjectByName(actor.overlay).visible, true);
     delete actor.native.data.swarmSpecialist;
+    if (actor.kind === 'warden') delete actor.native.data.lootTableId;
   }
   await drain();
   for (const actor of actors) {

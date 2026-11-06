@@ -15,6 +15,7 @@
 // numbers, not captures. This harness measures; it does not tune the game.
 
 import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,6 +82,11 @@ import { pirateDisengage } from '../src/systems/pirateDisengage.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
 import { bandRadio } from '../src/systems/bandRadio.js';
+import { rookBooth } from '../src/systems/rookBooth.js';
+import { kesslerScale } from '../src/systems/kesslerScale.js';
+import { furnaceIntake } from '../src/systems/furnaceIntake.js';
+import { understoryGardens } from '../src/systems/faction_understory.js';
+import { bombs } from '../src/systems/bombs.js';
 import { onboarding } from '../src/systems/onboarding.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { COMBAT_FLAGS, MASSLINE2_FLAGS, TRAVEL_FLAGS } from '../src/data/featureFlags.js';
@@ -135,12 +141,34 @@ const tacticalAI = createTacticalAISystem();
 const chronicler = createChronicler({
   shouldObserve: (state) => !isRunSealed(state),
 });
+// Name the system whose update traps (wasm panics carry no call site). Runs 93-103:
+// RuntimeError: unreachable inside world.step at tick ~98058 — ~3000 anonymous
+// alienEcology wreck rows (the playerHullEcho mint/shelve twin pile) mass-promoted into
+// one coincident heap and detonated the solver. The trap escapes sim.step unattributed.
+const namePanic = (sys) => {
+  if (!sys || typeof sys.update !== 'function' || !process.env.STRANGER_PILOT_TRACE) return sys;
+  const orig = sys.update;
+  const wrapped = Object.create(sys);
+  wrapped.update = function (dt, state) {
+    try { return orig.call(this, dt, state); }
+    catch (e) {
+      console.log(`    [PANIC] system=${sys.name} tick=${state && state.tick} t=${Math.round(state && state.simTime || 0)}: ${e && e.message}`);
+      throw e;
+    }
+  };
+  return wrapped;
+};
+
 const sim = createSimulation({
   seed,
   systems: [
-    actions, flightV3, weapons, physics, combat, cargo,
+    actions, flightV3, weapons, bombs, physics, combat, cargo,
     economy, missions, story, save,
     world, mining, fields, traffic, salvage, lootShards,
+    // understoryGardens follows lootShards in the production manifest: it owns the
+    // authored Compost receiver, the quiet ledger, and the garden feed/digest loop —
+    // without it the b2 compost waypoint resolves but no garden ever spawns.
+    understoryGardens,
     tetherGameplay, masslineImpacts, masslineThrow, masslineSnares, masslineThreats,
     tensionDirector, encounterDirector, aiEncounter, tacticalAI, aiPorts,
     // Chain-parity block: the combat→aftermath→salvage→economy→law route needs the real
@@ -156,10 +184,16 @@ const sim = createSimulation({
     // Band radio sits where registry.js puts it (late, before onboarding): without it the harness
     // could never observe the tuner seam the bark census measures (PQ-207.02).
     bandRadio,
+    // Book-1 worksites: the Scale 4 weigh + the CR-FEED furnace mouth the post-B1
+    // story waypoints point at live in these systems — without them the markers
+    // resolve but no ring, read pass, or intake capture exists.
+    // rookBooth precedes the worksites in registry order: its market pass owns the wreck-sale
+    // receipts cinderRoute's marked-hull delivery waits on — without it a resting hull never sells.
+    rookBooth, kesslerScale, furnaceIntake,
     // Onboarding runs LAST (registry parity): it only reads state and drives the tutorial UI,
     // but its beat FSM must be live for the stranger archetype — the pilot follows the rail.
     onboarding,
-  ],
+  ].map(namePanic),
 });
 const { state, bus, registry } = sim;
 
@@ -201,12 +235,135 @@ bus.emit('game:started', {});
 // or flightV3's authority commands have no bodies to act on (see scripts/check-autopilot-v3.mjs).
 const physicsReady = await registry.get('physics').prepareBackend(state, { reset: true });
 if (!physicsReady) throw new Error('physics backend did not prepare headless');
+// Phase probe for the post-sale Rapier trap: names whether "unreachable" fires inside
+// the native world.step or in the surrounding reconcile/command application.
+if (process.env.STRANGER_PILOT_TRACE) {
+  const phys = registry.get('physics');
+  const owner = phys && phys._sg02;
+  if (owner && typeof owner.step === 'function') {
+    const ostep = owner.step.bind(owner);
+    owner.step = (dt, tick) => {
+      const tag = (tick | 0) >= 97000;
+      if (tag) console.log(`    [phys] step-enter tick=${tick}`);
+      const r = ostep(dt, tick);
+      if (tag) console.log(`    [phys] step-exit tick=${tick}`);
+      return r;
+    };
+    // Lifecycle tap: name which entity's removal or spawn borders the solver trap.
+    for (const [ev, tag] of [['entity:destroyed', 'destroyed'], ['entity:spawned', 'spawned'], ['entity:killed', 'killed']]) {
+      bus.on(ev, (p = {}) => {
+        if ((state.tick | 0) >= 96000) {
+          const e = p.entity || {};
+          console.log(`    [phys] ${tag} id=${p.id ?? e.id} type=${p.type ?? e.type} reason=${p.reason ?? '-'} tick=${state.tick}`);
+          // Ship-churn attribution (run104: ~1 mint→virtualize/tick for ~25k ticks): print the
+          // identity fields a lean far row keeps/drops so the owning system is nameable.
+          if (tag === 'spawned' && (e.type === 'ship') && !e.isPlayer) {
+            const d = e.data || {};
+            console.log(`    [phys] ship-data id=${e.id} pos=${e.pos ? `${Math.round(e.pos.x)},${Math.round(e.pos.z)}` : '-'} `
+              + `wr=${d.worldRecordId || '-'} job=${d.jobId || '-'} role=${d.trafficRole || d.role || '-'} `
+              + `ctx=${(d.ai && d.ai.spawnContext) || '-'} arch=${(d.ai && d.ai.archetype) || '-'} `
+              + `home=${e.homeSectorId || d.homeSectorId || '-'} itin=${(d.itinerary && d.itinerary.kind) || '-'} `
+              + `tug=${d.yardTug === true ? 1 : '-'} salv=${d.generalSalvor === true ? 1 : '-'} nursery=${d.nurseryClaimCrew || '-'} `
+              + `slot=${d.activityActorSlotId || '-'} site=${d.worldSiteId || '-'} keys=${Object.keys(d).sort().join('|')}`);
+            const stack = (new Error()).stack || '';
+            const frames = stack.split('\n')
+              .map((l) => l.trim())
+              .filter((l) => /src[\\/]|missionSpawningOps|traffic|alienEcology|farActor|world\./.test(l))
+              .slice(0, 5)
+              .join(' <= ');
+            if (frames) console.log(`    [phys] ship-src id=${e.id} ${frames}`);
+          }
+        }
+      });
+    }
+    bus.on('world:farActorShelved', (p = {}) => {
+      if ((state.tick | 0) >= 96000 && p.type === 'ship') {
+        console.log(`    [phys] shelved id=${p.id} job=${p.jobId || '-'} role=${p.trafficRole || '-'} home=${p.homeSectorId || '-'}`);
+      }
+    });
+    // Call-site probe: name which Rapier call traps (solver step vs cleanup lookups).
+    const rw = owner.world;
+    if (rw) {
+      for (const m of ['step', 'removeRigidBody', 'removeCollider', 'removeImpulseJoint',
+        'getRigidBody', 'getCollider', 'getImpulseJoint', 'propagateRigidBodyPositions']) {
+        if (typeof rw[m] === 'function') {
+          const om = rw[m].bind(rw);
+          rw[m] = (...a) => {
+            try { return om(...a); }
+            catch (e) { console.log(`    [phys] TRAP world.${m} tick=${state.tick} t=${Math.round(state.simTime || 0)}`); throw e; }
+          };
+        }
+      }
+      // Graph sweep: a joint or collider whose endpoint/parent body was freed survives removal
+      // only to trap the next solver island rebuild — validate the sets each windowed tick.
+      const ostep2 = owner.step;
+      let seenRecIds = new Set();
+      let dumpDone = false;
+      owner.step = (dt, tick) => {
+        if ((tick | 0) >= 98000) {
+          let joints = 0, badJoints = 0, colliders = 0, badParents = 0, recs = 0, badRecs = 0;
+          if (rw.impulseJoints && typeof rw.impulseJoints.getAll === 'function') {
+            for (const j of rw.impulseJoints.getAll()) {
+              joints++;
+              try { j.body1(); j.body2(); } catch { badJoints++; }
+            }
+          }
+          if (rw.colliders && typeof rw.colliders.forEach === 'function') {
+            rw.colliders.forEach((c) => {
+              colliders++;
+              try { c.parent(); } catch { badParents++; }
+            });
+          }
+          const newRecs = [];
+          for (const rec of owner.records.values()) {
+            recs++;
+            try { rec.body.linvel(); } catch { badRecs++; }
+            if (!seenRecIds.has(rec.entity)) { seenRecIds.add(rec.entity); newRecs.push(rec); }
+          }
+          // Burst capture: the trap needs the real population — write every record's
+          // spawn spec + pose so the fatal step's population replays offline.
+          if (!dumpDone && newRecs.length > 200) {
+            dumpDone = true;
+            try {
+              const dump = [];
+              for (const rec of owner.records.values()) {
+                const e = rec.entity || {};
+                const d = e.data || {};
+                dump.push({
+                  id: e.id, type: e.type, pos: e.pos, vel: e.vel, rot: e.rot, angVel: e.angVel,
+                  radius: e.radius, mass: e.mass, collides: e.collides, hull: e.hull, hullMax: e.hullMax,
+                  team: e.team, isPlayer: e.isPlayer === true || undefined,
+                  physicsBody: e.physicsBody,
+                  data: {
+                    proportions: d.proportions, wreckClass: d.wreckClass, hulkOfDefId: d.hulkOfDefId,
+                    worldRecordId: d.worldRecordId, markerId: d.markerId, salvagePointId: d.salvagePointId,
+                    trafficRole: d.trafficRole, sectorId: d.sectorId, homeSectorId: d.homeSectorId,
+                    parentType: d.parentType, persistenceOwner: d.persistenceOwner, defId: d.defId,
+                    silhouette: d.silhouette, dockRadius: d.dockRadius, collisionProxy: d.collisionProxy,
+                    hullDefId: d.hullDefId, shipDefId: d.shipDefId, typeId: d.typeId,
+                  },
+                  colliderCount: Array.isArray(rec.colliders) ? rec.colliders.length : 1,
+                });
+              }
+              writeFileSync(new URL('../.devshots/burst-dump.json', import.meta.url), JSON.stringify(dump));
+              console.log(`    [phys] burst-dump records=${dump.length} tick=${tick}`);
+            } catch (e) { console.log(`    [phys] burst-dump-fail ${e.message}`); }
+          }
+          const wb = (typeof rw.bodies?.len === 'function') ? rw.bodies.len() : -1;
+          const wc = (typeof rw.colliders?.len === 'function') ? rw.colliders.len() : -1;
+          console.log(`    [phys] joints=${joints} badJoints=${badJoints} colliders=${colliders} badParents=${badParents} recs=${recs} badRecs=${badRecs} worldBodies=${wb} worldColliders=${wc} tick=${tick}`);
+        }
+        return ostep2(dt, tick);
+      };
+    }
+  }
+}
 
 const ledger = createPlaythroughLedger({ state, bus, archetype, seed });
 // clock: dockAt consults the live tick and the prospector's undock cooldown through this ref.
 const servicesRef = { current: null };
 const services = createServices({
-  state, bus, ledger, econ: registry.get('economy'),
+  state, bus, ledger, econ: registry.get('economy'), missions: registry.get('missions'),
   clock: {
     tick: () => state.tick,
     undockCooldownUntil: () => (servicesRef.current ? servicesRef.current.undockCooldownUntilTick : 0),

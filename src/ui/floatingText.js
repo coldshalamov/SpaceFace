@@ -106,8 +106,9 @@ const COMMS_TOAST_TTL = 5;
 
 export function commsToastSpec(payload = {}) {
   if (!payload || typeof payload.text !== 'string' || !payload.text.trim()) return null;
-  if (COMMS_SELF_TOASTED_KINDS.has(payload.kind)) return null;
-  const from = String(payload.from || '').trim().toUpperCase();
+  // These atmospheric catalog entries live in the Comms backlog, not the receipt lane.
+  if (COMMS_SELF_TOASTED_KINDS.has(payload.kind) || payload.kind === 'special500') return null;
+  const from = String(payload.from || payload.sender || payload.speaker || '').trim().toUpperCase();
   const text = (from ? from + ': ' : '') + payload.text.trim();
   return { text: text.length > 140 ? text.slice(0, 137) + '...' : text, kind: 'info', ttl: COMMS_TOAST_TTL };
 }

@@ -51,7 +51,11 @@ function fire(h) {
 const bloomOf = (live) => live.data.bloom;
 const ent = (h, id) => h.state.entities.get(id);
 const grants = (h) => h.events.filter((e) => e.name === 'grant').map((e) => e.payload.amount);
-const resolved = (h) => h.events.filter((e) => e.name === 'resolved').map((e) => e.payload.outcome);
+// Ambient sector traffic (patrol scans and other offers) may live and resolve alongside the
+// authored bloom — only the bloom's own resolutions are evidence here.
+const resolved = (h) => h.events
+  .filter((e) => e.name === 'resolved' && e.payload.shape === SHAPE)
+  .map((e) => e.payload.outcome);
 const said = (h) => h.events.filter((e) => e.name === 'voice').map((e) => e.payload.text);
 let pulseSeq = 0;
 const scanAt = (h, pos, over = {}) => h.bus.emit('scan:pulse', {

@@ -156,17 +156,21 @@ test('source: consumers bind sector:exit continuous handoff (no dead sector:leav
   for (const rel of [
     'src/systems/spawnBudget.js',
     'src/systems/encounterDirector.js',
-    'src/systems/missions.js',
+    // missions.js binds sector:exit but delegates the handler into the storyOps mixin —
+    // the continuous branch lives there (missions.js:1489 spreads missionStoryOps).
+    'src/systems/missions.js|src/systems/missionStoryOps.js',
     'src/systems/automation.js',
     'src/systems/traffic.js',
     'src/systems/wingmen.js',
     'src/systems/ambushSignatures.js',
     'src/systems/gateControlDirector.js',
   ]) {
-    const src = read(rel);
-    assert.match(src, /sector:exit/, rel + ' must listen for sector:exit');
-    assert.doesNotMatch(src, /bus\.on\(['"]sector:leave['"]/, rel + ' must not listen for dead sector:leave');
-    assert.match(src, /continuous/, rel + ' must branch on continuous handoff');
+    const [listenerRel, handlerRel] = rel.split('|');
+    const src = read(listenerRel);
+    assert.match(src, /sector:exit/, listenerRel + ' must listen for sector:exit');
+    assert.doesNotMatch(src, /bus\.on\(['"]sector:leave['"]/, listenerRel + ' must not listen for dead sector:leave');
+    const branch = read(handlerRel || listenerRel);
+    assert.match(branch, /continuous/, (handlerRel || listenerRel) + ' must branch on continuous handoff');
   }
   const director = read('src/systems/encounterDirector.js');
   assert.match(director, /sector:enter/, 'encounterDirector must listen for sector:enter');

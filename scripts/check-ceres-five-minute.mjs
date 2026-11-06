@@ -48,6 +48,10 @@ async function main() {
   // The generic broker appends --diagnostic to acceptance-authored manifest args.
   // An explicit diagnostic always wins and remains non-promoting/no-claim.
   const acceptance = acceptanceRequested && !diagnostic;
+  const baselineSource = readArg('baseline-source');
+  if (baselineSource && (preflight || acceptance || runtimeKind !== 'browser')) {
+    return usage('--baseline-source is available only for a non-promoting Browser diagnostic');
+  }
   if (acceptance && readArg('seed') != null) {
     return usage('acceptance seed overrides are forbidden; the manifest owns fixed seed 47');
   }
@@ -88,6 +92,7 @@ async function main() {
       manifest,
       mode: acceptance ? 'acceptance' : 'diagnostic',
       outputRoot,
+      baselineSourcePath: baselineSource,
       brokerClaimToken: process.env.SF_BROKER_CLAIM || null,
       log: (line) => console.log(`[ceres-five-minute:${runtimeKind}] ${line}`),
     });
