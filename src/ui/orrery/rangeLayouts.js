@@ -39,14 +39,18 @@ const CSS = `
   ${T} .sf-range__ladder {
     column-gap: 8px;
     max-height: max(56px, calc(100dvh - 300px));
-    overflow: auto hidden;
+    /* Wide ladders wrap into rows; narrow ladders run horizontally. Both axes must remain
+       scrollable once height is bounded, otherwise later wrapped rungs cannot be reached. */
+    overflow: auto;
+    scroll-padding: 6px;
+    overscroll-behavior: contain;
     scrollbar-width: thin;
     min-height: 0;
   }
   ${T} .sf-range__ladder::before { height: 6px; margin-bottom: 0; }
   ${T} .sf-range__ladder > li { padding-bottom: 5px; }
   ${T} .sf-range__ladder > li::before { height: 5px; bottom: 0; }
-  ${T} .sf-range__ladder .sf-range__word { padding: 1px 0; letter-spacing: .04em; font-size: 12px; }
+  ${T} .sf-range__ladder .sf-range__word { min-height: 28px; padding: 1px 0; letter-spacing: .04em; font-size: 12px; }
   ${T} .sf-range__dossier { padding: 2px 2px; font-size: 12px; gap: 12px; letter-spacing: .08em; }
   ${T} .sf-range__tabs {
     display: flex; flex-wrap: wrap; align-items: center;
