@@ -119,7 +119,7 @@ test('the profile lists agree with the owners of the same domains', () => {
 const CHANGES = {
   root: { uiScale: 1.25, locale: 'fr-FR', showDamageNumbers: false, glassPreset: 'fighter' },
   gameplay: {
-    autosaveIntervalS: 300,
+    autosaveIntervalS: 60,
     tutorialHints: false,
     controlScheme: 'classic',
     controlSchemeV2: true,
