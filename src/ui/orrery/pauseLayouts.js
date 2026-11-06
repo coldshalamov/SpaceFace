@@ -103,16 +103,16 @@ ${P} .orr-svg .orr-arcrail__rule { stroke-opacity:1; }
 ${PH} > .dp-frame__body {
   background:linear-gradient(180deg, rgb(4 6 9 / .72), rgb(4 6 9 / .62) 70%, rgb(4 6 9 / .5)) !important;
   border-radius:4px; box-shadow:0 0 0 10px rgb(4 6 9 / .5) !important; }
-${PH} .k-words__group {
+${PH} :is(.k-words__group, .dp-lit__group) {
   color:rgb(${BONE} / .78) !important; letter-spacing:.08em !important;
   margin:calc(14px * var(--dp-s, 1)) 0 6px !important; }
 ${PH} .k-words__group::after { background:rgb(${BONE} / .28) !important; }
-${PH} .sf-pause-words .k-word {
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item) {
   color:rgb(${BONE} / .88) !important; min-height:40px !important; }
 ${PH} .sf-pause-words .k-word:is(:hover, :focus-visible, [aria-current="true"], .is-lit, [data-awake]) {
   color:rgb(${HOT}) !important; }
-${PH} .sf-pause-words .k-word.k-word--primary,
-${PH} .sf-pause-words .k-word[data-action="pause-0"] {
+${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
   color:rgb(${HOT}) !important;
   text-shadow:0 0 1px rgb(255 226 178 / .45), 0 0 14px rgb(255 217 140 / .28) !important; }
 ${PH} .sf-pause-brief { margin:0 0 20px !important; padding-bottom:4px !important; }
@@ -121,7 +121,7 @@ ${PH} .sf-pause-brief .sf-slot-name { font-size:21px !important; line-height:1.2
 ${PH} .orr-brief__kind { display:block !important; margin:0 0 4px !important; line-height:16px !important; }
 ${PH} .sf-pause-brief .dp-copy { font-size:14.5px !important; color:rgb(${BONE} / .86) !important; }
 ${PH} .k-words--row { gap:12px 22px !important; row-gap:10px !important; }
-${PH} .sf-pause-words .k-word { letter-spacing:.05em !important; }
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item) { letter-spacing:.05em !important; }
 
 /* ---------- foot: real keycap boxes + verb labels (settings rail grammar) ---------- */
 ${BOTH} > .sf-pause-foot {
@@ -292,10 +292,10 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${PH} .orr-brief__read { margin-top:2px !important; gap:6px !important; }
   ${PH} .orr-brief__ring { width:26px !important; height:26px !important; }
   ${PH} .orr-brief__read b { font-size:18px !important; }
-  ${PH} .k-words__group { margin:7px 0 3px !important; line-height:12px !important; }
-  ${PH} .sf-pause-words .k-word { min-height:34px !important; }
-  ${PH} .sf-pause-words .k-word.k-word--primary,
-  ${PH} .sf-pause-words .k-word[data-action="pause-0"] { min-height:40px !important; }
+  ${PH} :is(.k-words__group, .dp-lit__group) { margin:7px 0 3px !important; line-height:12px !important; }
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item) { min-height:34px !important; }
+  ${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] { min-height:40px !important; }
   ${PH} .k-words--row { gap:4px 14px !important; row-gap:2px !important; }
   ${PH} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:8px !important; }
   ${PH} > .sf-pause-foot .sf-pause-foot__keys { padding:4px 0 6px !important; }
@@ -332,13 +332,25 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${PN} .orr-brief__read { margin-top:2px !important; gap:6px !important; }
   ${PN} .orr-brief__ring { width:26px !important; height:26px !important; }
   ${PN} .orr-brief__read b { font-size:18px !important; }
-  ${PN} .k-words__group { margin:7px 0 3px !important; line-height:12px !important; }
-  ${PN} .sf-pause-words .k-word { min-height:34px !important; }
-  ${PN} .sf-pause-words .k-word.k-word--primary,
-  ${PN} .sf-pause-words .k-word[data-action="pause-0"] { min-height:40px !important; }
+  ${PN} :is(.k-words__group, .dp-lit__group) { margin:7px 0 3px !important; line-height:12px !important; }
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item) { min-height:34px !important; }
+  ${PN} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] { min-height:40px !important; }
   ${PN} .k-words--row { flex-wrap:wrap !important; gap:4px 14px !important; row-gap:2px !important; }
   ${PN} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:8px !important; }
   ${PN} > .sf-pause-foot .sf-pause-foot__keys { padding:4px 0 6px !important; }
+}
+/* The column already scrolls as one surface. Coarse-pointer users keep a full touch target
+   even when the compact first-paint spacing would otherwise reduce menu keys to 34px. */
+@media (any-pointer:coarse) {
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item),
+  ${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"],
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item),
+  ${PN} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:44px !important; scroll-margin-block:12px;
+  }
 }
 `;
 
