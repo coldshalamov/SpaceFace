@@ -199,6 +199,7 @@ import {
   firstFlightRockCookRadiusWu,
   isFirstFlightCookEntity,
   isInitialAuthoredCompositionEntity,
+  isStartupPackagedContactEntity,
   preloadAuthoredAssetsForEntity,
   preloadAuthoredPartLibrary,
   cancelAuthoredUpgradeQueue,
@@ -1532,6 +1533,10 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   // roots are still not submitted; the keep is memory only).
   if (shouldKeepPersistentLandmarkResident(entity,
     scan ? _landmarkKeepOptsForScan(entity, state, scan) : _landmarkKeepOptsFor(entity, state))) return true;
+  // Packaged opening contacts pin a wider startup runway than the flight glass/runway
+  // envelope admits: a member that missed the loading build window must still be built —
+  // otherwise it parks in openingPending forever and pops in only on a close approach.
+  if (isStartupPackagedContactEntity(entity, state)) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
   const inboundDecode = isInboundDecodeHull(entity, state, radius, scan && scan.env);

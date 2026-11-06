@@ -17,7 +17,13 @@ function deferred() {
 }
 
 async function flush() {
-  for (let i = 0; i < 30; i++) await Promise.resolve();
+  // The admission chain crosses macrotask drains (paced resume, GPU settlement
+  // hops): a microtask-only loop can never let those fire, so each hop yields a
+  // real turn of the event loop as well.
+  for (let i = 0; i < 30; i++) {
+    await Promise.resolve();
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+  }
 }
 
 function stationFixture(loadPart) {

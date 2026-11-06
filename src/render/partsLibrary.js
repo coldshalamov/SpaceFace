@@ -1203,6 +1203,20 @@ export function isOpeningFlightGateEntity(entity, state) {
   return isInitialAuthoredCompositionEntity(entity, state);
 }
 
+/**
+ * Packaged-contact slice of the opening composition: the wreck/drone/veil-pinned
+ * payload rows whose authored upgrade can only begin once a mesh exists. The
+ * flight relevance gates are narrower than the startup runway these contacts
+ * pin, so without this check they stay meshless (and pending) forever.
+ * Ships, places, and story actors keep their own streaming lanes.
+ */
+export function isStartupPackagedContactEntity(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entity.type !== 'wreck' && entity.type !== 'drone'
+      && !startupPayloadOwnsVeilPin(entity, state)) return false;
+  return startupAuthoredContactOnRunway(entity, state);
+}
+
 /** Opening-shot quality gate: nearby actors settle behind loading, distant world stays on-demand. */
 export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;

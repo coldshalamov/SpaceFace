@@ -96,7 +96,9 @@ async function flushFramesUntil(predicate, scheduledFrames, message) {
   for (let turn = 0; turn < 100; turn++) {
     if (predicate()) return;
     while (scheduledFrames.length) scheduledFrames.shift()(0);
-    await Promise.resolve();
+    // Paced admission drains cross real timers, not just microtasks — a bare
+    // Promise.resolve() turn can never let those callbacks fire.
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
   }
   assert.fail(message);
 }
@@ -303,8 +305,11 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
 
     assert.equal(scheduledFrames.length, 1);
     scheduledFrames.shift()(0);
+    // The flag stamps before the staged compile's resume lands the call — wait
+    // on the call itself, the same rule the hub leg below already follows.
     await flushFramesUntil(
-      () => playerBoundary.userData.authoredAssetState === 'compiling-pipelines',
+      () => playerBoundary.userData.authoredAssetState === 'compiling-pipelines'
+        && compiledRoots.length >= 1,
       scheduledFrames,
       'the player must finish CPU composition and stage its exact pipeline promise',
     );
