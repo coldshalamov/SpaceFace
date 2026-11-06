@@ -42,6 +42,52 @@ const lodBand = (threshold) => Math.max(HYSTERESIS_PX, threshold * HYSTERESIS_RA
 
 const _v = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
+const _shipViewPos = new THREE.Vector3();
+
+// Conservative diameter of the drawn sphere in CSS pixels. The near side of the sphere is
+// deliberately used for the bound, including off-axis perspective enlargement.
+export function projectedShipDiameterPx(pos, radius, camera, viewport) {
+  const height = Number(viewport?.height);
+  const r = Number(radius);
+  if (!pos || !camera?.matrixWorldInverse || !camera?.projectionMatrix || !(height > 0) || !(r > 0)) return Infinity;
+  _shipViewPos.set(Number(pos.x), Number(pos.y) || 0, Number(pos.z)).applyMatrix4(camera.matrixWorldInverse);
+  const { x, y, z } = _shipViewPos;
+  const p = camera.projectionMatrix.elements;
+  if (![x, y, z, p[0], p[5]].every(Number.isFinite)) return Infinity;
+  const depth = -z;
+  if (depth - r <= Math.max(0, Number(camera.near) || 0)) return Infinity;
+  if (camera.isOrthographicCamera) return r * height * Math.max(Math.abs(p[5]), Math.abs(p[0]) * (Number(viewport.width) || height) / height);
+  if (!camera.isPerspectiveCamera) return Infinity;
+  const aspect = (Number(viewport.width) || height) / height;
+  const vertical = Math.abs(p[5]) * (depth + Math.abs(y));
+  const horizontal = Math.abs(p[0]) * aspect * (depth + Math.abs(x));
+  return r * height * Math.max(vertical, horizontal) / (depth * (depth - r));
+}
+
+// Kept on the stable boundary rather than individual sibling roots.
+export function createShipLodState(initialLevel = 'lod0') {
+  let level = initialLevel === 'lod1' || initialLevel === 'lod2' ? initialLevel : 'lod0';
+  let pending = null, since = 0;
+  const swaps = [];
+  return {
+    get level() { return level; },
+    resolve(px, nowS, protectedBody = false) {
+      if (protectedBody || !Number.isFinite(px)) { level = 'lod0'; pending = null; return level; }
+      let next = level;
+      if (level === 'lod0' && px < 96) next = px < 32 ? 'lod2' : 'lod1';
+      else if (level === 'lod1') next = px > 128 ? 'lod0' : px < 32 ? 'lod2' : level;
+      else if (level === 'lod2') next = px > 128 ? 'lod0' : px > 56 ? 'lod1' : level;
+      if (next === level) { pending = null; return level; }
+      // Close promotions are urgent; distant changes dwell and are rate limited.
+      if (next === 'lod0') { level = next; pending = null; return level; }
+      if (pending !== next) { pending = next; since = nowS; return level; }
+      if (!Number.isFinite(nowS) || nowS - since < LOD_DWELL_S) return level;
+      while (swaps.length && nowS - swaps[0] >= LOD_SWAP_WINDOW_S) swaps.shift();
+      if (swaps.length >= LOD_SWAP_CAP) return level;
+      swaps.push(nowS); level = next; pending = null; return level;
+    },
+  };
+}
 
 /**
  * Estimate an entity's projected screen-space width in pixels from its world radius and the camera.

@@ -9,6 +9,7 @@ const EMPTY_POSE = Object.freeze({});
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const smooth = value => { const t = clamp01(value); return t * t * (3 - 2 * t); };
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
+const wrapPi = angle => Math.atan2(Math.sin(angle), Math.cos(angle));
 
 export const IRON_KRAKEN_ARM_MOTION = Object.freeze({
   chainLength: 4.7,
@@ -62,8 +63,8 @@ function drift(time, seed) {
 /**
  * Fill one articulated chain in mantle-local coordinates.
  *
- * pose: {time, jet, rake, ink, inkActive, inkCurl, inkLift, mantle, reducedMotion}.
- * `jet`, `rake`, `inkCurl`, `inkLift` and `mantle` may be the render owner's eased values.
+ * pose: {time, jet, rake, ink, inkActive, inkCurl, inkLift, mantle, trawl, reducedMotion}.
+ * `jet`, `rake`, `inkCurl`, `inkLift`, `trawl` and `mantle` may be the render owner's eased values.
  * When inkCurl/inkLift are absent, the same values are derived from ink + inkActive.
  * points contains (links + 1) XYZ triples from pointOffset. Optional frames contains `links`
  * 3x3 column-major bases from frameOffset: X lateral, Y along the link, Z dorsal. Put suction
@@ -84,6 +85,12 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const ink = clamp01(pose.ink);
   const inkCurl = finite(pose.inkCurl, (pose.inkActive ? -0.64 : 0.36) * ink);
   const inkLift = finite(pose.inkLift, (pose.inkActive ? -0.28 : 0.65) * ink);
+  const trawl = clamp01(pose.trawl);
+  // The wake trawl is a stern scoop: only the sleeves rooted aft of the beam answer — they
+  // gather toward the hull's drag line and trail open where the painted sector sweeps. The
+  // fore hemisphere keeps its authored pose so the beat reads as a drag net behind the hull,
+  // never the rake's bilateral spread or the jet's full-hull stream.
+  const trawlWeight = trawl * smooth((-rootCos + 0.15) / 1.15);
   const reachDrift = quiet ? drift(time * 0.13 + PHASE[index], 149 + index * 31) : 0;
   const curlDrift = quiet ? drift(time * 0.18 + PHASE[index] * 0.71, 769 + index * 43) : 0;
   const rollDrift = quiet ? drift(time * 0.11 + PHASE[index] * 1.31, 1543 + index * 61) : 0;
@@ -108,7 +115,10 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   // reach and the rest silhouette are untouched; folding it into `bend` lets the jet's
   // stream pose supersede it like every other rake term.
   const rakeMidClearance = index === 5 ? -0.40 : 0;
-  const yaw = angle + (SWEEP[index] + reachDrift * 0.065 + rakeYawClearance) * (1 - jet);
+  const yaw = angle + (SWEEP[index] + reachDrift * 0.065 + rakeYawClearance) * (1 - jet)
+    // The gathered pairs spread aft of the beam — a widening net mouth, never a convergence
+    // that could fold adjacent sleeves into each other.
+    + wrapPi(angle - Math.PI) * trawlWeight * 0.4;
   const totalLength = IRON_KRAKEN_ARM_MOTION.chainLength * LENGTH[index];
   const proximalCount = Math.min(PROXIMAL_LENGTHS.length, links);
   let proximalLength = 0;
@@ -117,9 +127,9 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const proximalScale = fineCount ? 1 : IRON_KRAKEN_ARM_MOTION.chainLength / proximalLength;
   const fineScale = fineCount ? (IRON_KRAKEN_ARM_MOTION.chainLength - proximalLength)
     / (fineCount * (0.245 + 0.060) * 0.5) : 0;
-  const coilTurns = (CURL[index] + curlDrift * 0.48) * (1 + inkCurl * 0.30);
+  const coilTurns = (CURL[index] + curlDrift * 0.48) * (1 + inkCurl * 0.30) * (1 - trawlWeight * 0.5);
   const shoulder = SHOULDER[index] + reachDrift * 0.07 + forearmTuck * 0.12;
-  const droop = DROOP[index] + reachDrift * 0.10 + mantle * 0.04;
+  const droop = DROOP[index] + reachDrift * 0.10 + mantle * 0.04 + trawlWeight * 0.30;
   const planeBase = PLANE[index] + rollDrift * 0.18 - forearmTuck * (0.65 + tuckDrift * 0.08)
     - rakeRollClearance;
   let x = rootCos * IRON_KRAKEN_ARM_MOTION.rootRadius;

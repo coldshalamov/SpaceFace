@@ -290,6 +290,131 @@ Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/gu
 all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
 left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
 before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
+Inbox (Lane 2, noticed 2026-11-05): src/systems/swarmJuice.js `_onKilled` reads
+`payload.provenance?.actorId` as a fallback, but no `entity:killed` emitter sets
+`provenance` (combat/damage/kernel/careerCohorts all carry killerId) — a dead fallback line.
+SWEPT 2026-11-05 (support commit, sha in the body): re-verified every `entity:killed`
+emitter (combat/damage/kernel/careerCohorts/tallyho carry killerId; survivalWave's bare
+{id,tick} receipt carries neither field, so the fallback never answered it either) and the
+dead read is gone; impactorId was not substituted.
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-reinforce-tell (WF-02/WF-14): a mid-wave reinforcement names its count and bearing while
+  the pack is still on approach — "Three more inbound — out of the south" — one line per 8 s
+  gap, max 2/wave, inside the per-wave budget, never a pill (85a4c46e01e1).
+- inf-hive-tide-close (WF-19 repair): kill every spawn sac and the emptied Hive room stops
+  paying crowd cost for nobody — the done gate reads the tide's heartbeat instead of a budget
+  zero that kept full per-tick machinery on zero bodies until the wave refit (fc4cffbb1769).
+- inf-brood-grief (WF-16 integration): a kill into the swarm is a kill the room notices — the
+  authored BLOOM cascade finally runs: filament flinch recoils 26 wu/s along the web, a
+  credited kill arms neighbors inside the 220 wu reach and each bends toward its corpse for
+  5 s; LED-drawn windups kill lateral velocity at the stamp so the tells stay true under any
+  shove. Panic/aggression remain authored-but-unwired, named next steps (5ae61ff7f7ec).
+Resolved investigation: the named tether-latched-pair-in-a-field-zone A/B is HONEST —
+512c12e88b49, test/inf-tether-field-ab.test.mjs: fixed-seed lab on the real SG-02 rope joint,
+end-COM velocity = v0 + ΣJ/M exactly, rope held inside its envelope, tension reads the
+differential pull, same-seed replay identical. Candidate (not claim) from the free arm: a
+light hull slung into a heavy one can end ticks interpenetrated with ball colliders —
+production hulls use compound proxies; contact-domain owner should look.
+Verified already deep, wave 7: boss-phase honesty (capitalBossScore stamps behavior per
+phase), brood death residue (six authored remains families spawn real latched bodies),
+aftershock honesty (chunks carry parent velocity + angular momentum), pursuit-leash break
+(mercy stand-down + patrol intervention + staggered despawn receipts). Candidate wires for a
+future tell: swarm:hiveSacKilled / swarm:broodReserve have no production consumer.
+
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picked wire is the sac answer, the reserve wire
+left untouched by rotation):
+- inf-sac-mourn (WF-16 integration): bursting a Hive sac answers now — the arena hands the
+  corpse to the brood engine's hiveSacFell seam and the authored grief loop arms at it
+  (BROOD_CASCADE_EVENTS already named swarm:hiveSacKilled a cascade seam), and the combat
+  net says the tide law once per run: "The sac bursts — the tide it was feeding dies with
+  it." The sacs are the room's win lever; the first burst names what it took (610226462a43,
+  test/inf-sac-answer.test.mjs).
+- inf-panic-cascade (WF-16 completion): the authored panic scatter/knot finally runs — one
+  credited kill of a body at or above BROOD_PANIC_KILL_MASS (90: a wake eel, a bellows)
+  bolts every living neighbor inside the cascade reach outward from the corpse for its own
+  seeded slice of the authored 1.5–2.5 s band, then the knot converges back onto it for
+  BROOD_PANIC_REFORM_S; the cascade replaces the ordinary jitter for its window (never the
+  room's fields), outranks grief while live, publishes BROOD_CASCADE_PANIC, and a blast
+  nobody credits breaks nothing (cfbda7130a09, test/inf-panic-cascade.test.mjs). Aggression
+  remains the one authored-but-unwired cascade.
+- inf-bank-cascade-yield (WF-02 repair): the grief loop and the composition bank fought —
+  a corpse beside the staged slot armed the bend on the STAGED body, the second charger
+  mourned into the hull scrum the first pass had just made and died by collision before
+  its stage called it (test/swarm-bank.test.mjs red since the grief loop landed, verified
+  red on the pre-session tree). The engine's own law — the attack language outranks the
+  cascade — now covers the bank's staged slot: it neither mourns nor panics while held;
+  unstaged cells keep the full answer and a live grief resumes when the bank releases
+  (5589d8173643, test/inf-bank-cascade-yield.test.mjs; read-only _bank() seam beside
+  _machine()).
+Resolved candidate: the light-into-heavy contact question is HONEST on production —
+e1329b354e88, test/inf-light-heavy-contact.test.mjs: the fixed-seed SG-02 lab with the
+owner's solid-contact sampler shows craft-to-craft capsules, a thrown hull into the Ceres
+breaker's 13 authored primitives, and the Borrowed Voice recorder (a production dynamic
+compound hull) all holding min separation at rounding error with zero penetrating ticks,
+no tunneling, the shove landing, resting end states — at 140 wu/s, dead-center and
+offset-bearing; even the toy ball path is honest in this lab. Lab lesson recorded: a
+thrower spawned inside a compound's authored footprint reads phantom overlap — spawn
+clearance owns that case, not the contact solve. Shove-recovery honesty (tossed hull into
+wall/asteroid) stays covered by the committed wave subjects: native contact spin
+preservation c16e43dd6c24, INF-027 tumble recovery, and wave-5 ricochet causality.
+
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-aggression-cascade (WF-16 completion): the last authored-but-unwired BLOOM cascade
+  finally runs — a hit on the brood's relay node (the Queen champion, or the Tendril's head,
+  the two relay loot ids the data contract stamps) turns every living neighbor inside the
+  authored BROOD_CASCADE_RADIUS onto the player for BROOD_AGGRESSION_S at
+  BROOD_AGGRESSION_ACCEL, tracking the player's live position for the whole window; the
+  arena forwards the relay's ordinary `combat:damage` receipt to a new engine `relayHit`
+  seam, the arm receipts as `swarm:broodAggression`, and the view publishes the authored
+  BROOD_CASCADE_AGGRESSION kind — panic outranks the rush, the rush outranks grief, the
+  attack language outranks both, and every hit re-arms (sha below,
+  test/inf-aggression-cascade.test.mjs). Note for Lane 1: broodPresentation's
+  resolveBroodCascadeFlush still returns null for the now-live aggression kind — the
+  authored "filaments flush red" read is its deliberate follow-up; no colors were invented
+  on Lane 2's side.
+- inf-brood-reserve-tell (WF-14 integration): the brood reserve's landing finally has a
+  voice — the wave's held-back second breath (B5) lands mid-wave as one gate clump at the
+  165 wu arrival ring and its `swarm:broodReserve` receipt had no consumer; the only word
+  near the drop was the family telegraph, which speaks a behavior line for ANY commitment
+  and carries no count and no bearing. survivalAnnounce now reads the receipt with the
+  reinforce tell's own sentence and machinery — the count and the compass word where the
+  clump landed ("Six more inbound — out of the north.", read against the pilot position so
+  the word stays true on screen), the same 8 s gap coalescing a multi-tick drop to one
+  line, the same 2/wave cap and shared counters, warn/finite-ttl, counted in the hard
+  per-wave bound; a landing nobody can read still says the count (sha below,
+  test/inf-brood-reserve-tell.test.mjs). `swarm:broodReserve` now has a production
+  consumer; the wave-7 candidate note is closed.
+- inf-tacticalai-lane-scans (WF-19 repair): the tactical owner's fixed-step universe walks
+  ride the entity index lanes the code already prefers — the incoming-mass cue (every tick,
+  before the quiet latch) reads the physics-owned body lane with the same speed/type/
+  tumbling/dynamic predicate shared verbatim by the unready-index fallback (a scripted
+  presentation mover the schema opts out of physics was never a thrown body the warning
+  owed), and the body-launcher enemy walk rides shipLike (a launcher is ship-only), so the
+  same hulls are admitted on both paths. Matched within-session A/B on the committed wave-15
+  crowd fixture (seed 4242, 300 warmup + 400 measured, one session): tacticalAI 4.859 →
+  4.747/4.698 ms/tick across two patched blocks, sim-step mean 22.906 → 22.063/22.131 ms;
+  the win is the universe the lanes skip (rocks, FX, wrecks) and grows with sector clutter
+  (sha below, test/inf-tacticalai-lane-scans.test.mjs).
+- Verified already true, wave 9 (no unit taken): C10's five named physics faults checked
+  against today's code — NPC bolts hurt NPCs (npcCrossfireAdmits reckless/grudge law), AI
+  throws bodies (stepHostileBodyLaunches, npc_body_launch provenance + incoming-mass tell),
+  _retaliate covers NPC victims (lawSecurity) beside the AL-FIGHT-1 grudge, and fields are
+  read by every brood family (current-rider shipped); racing rivals are career/ghost records
+  with no live Massline-anchor overlap to finish. The shove-into-field zone-kill question is
+  honest — every reachable zone has an explicit attribution law (collision/crusher read the
+  toss provenance; storm discharge reads the wire; kilnback reads its owner; brood pools and
+  the metronome beam burn only the player), and weapon knock is per-weapon authored identity
+  (PQ-009 impulsePerHit on one physical delivery), not a shared shove table. Found gap,
+  named next step: the bloomLadder route-memory tide (BLOOM_TIDE_SECTORS policies,
+  bloomTidePlan, the persisted {kills,lastX,lastZ,seq} record) is authored and unwired —
+  the header's named adventure-side owner (src/systems/faction_bloom.js) does not exist.
+  Complete unit scope: sector tide stream + persisted route-memory record + kill tracking
+  riding the fauna spawn path; the tide cadence per class (endemic/tidal/incursion) has no
+  authored numbers, so the clock is an E-packet design decision before code.
 
 ## Traps
 

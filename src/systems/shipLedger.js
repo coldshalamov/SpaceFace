@@ -628,6 +628,30 @@ function collectCandidates(state, options = {}) {
     if (probe && probe.done) return probeResult();
   }
 
+  // inf-war-ledger-page — a war the player leaned on gets a page: the contested front's latest
+  // turn, dated at the flip. factions stamps the flip-time lean magnitude onto its own durable
+  // conflict record (the same fact its rep swing credits), so the page files only a front the
+  // PLAYER pressed — a pure NPC-power flip, and any record without the stamp, files nothing.
+  // The ledger stays a pure projection: no war state is written here.
+  for (const pairKey of Object.keys((state && state.conflicts) || {})) {
+    const record = state.conflicts[pairKey];
+    const flip = record && record.lastFlip;
+    const leanMag = flip && Number(flip.playerLeanMag);
+    if (!flip || !flip.flipId || !Number.isFinite(leanMag) || leanMag <= 0) continue;
+    add({
+      type: 'war',
+      sourceId: String(flip.flipId),
+      sourceKind: 'player.conflictFlip',
+      at: flip.t,
+      tokens: {
+        sector: sectorName(flip.sectorId),
+        winner: factionName(flip.newOwner),
+        loser: factionName(flip.previousOwner),
+      },
+    });
+    if (probe && probe.done) return probeResult();
+  }
+
   const vestaCache = state && state.world && state.world.vestaOreCache;
   const vestaReceipt = vestaCache && vestaCache.receipt;
   if (vestaReceipt && vestaReceipt.id && vestaCache.recordId) {

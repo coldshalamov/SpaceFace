@@ -1085,8 +1085,18 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
   }
   // This pass yields before queued uploads execute. Keep each selected CPU payload alive
-  // until the pass finishes, including while other residency owners run between slices.
+  // until the texture phase finishes, including while other residency owners run between slices.
   const releaseTextureLeases = retainPresentedTextureLeases(textures);
+  const releaseTexturePhase = () => {
+    releaseTextureLeases();
+    // Detachment attempted while our lease was held is deferred until this phase ends.
+    // Other upload owners retain their own leases and the existing shared-source guards.
+    for (const texture of textures) {
+      if (!textureGpuResident(texture, renderer)) continue;
+      detachPackageTexture(texture);
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+    }
+  };
   try {
   // Clones retain a copied package mark but are not canonical manifest entries. Rehydrating
   // that manifest alone leaves their own mip arrays empty; refill the exact upload subjects too.
@@ -1240,6 +1250,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     const outcome = await flushUploads();
     if (outcome) return { ...outcome, textures: uploads.length, uploads, residentTextures };
   }
+  // All queued texture submissions have settled. Geometry uses texture-free proxies, so
+  // completed texture mirrors need not overlap its census, compile and buffer uploads.
+  releaseTexturePhase();
   let geometryResidency;
   if (hitDeadline) {
     geometryResidency = { skipped: true, reason: 'loading-deadline' };
@@ -1277,13 +1290,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     geometryResidency,
   };
   } finally {
-    releaseTextureLeases();
-    // Detachment attempted while the lease was held is intentionally deferred until now.
-    for (const texture of textures) {
-      if (!textureGpuResident(texture, renderer)) continue;
-      detachPackageTexture(texture);
-      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
-    }
+    // Keep exceptional exits and any payloads refilled during geometry under the original
+    // final cleanup. Releasing this phase's lease again is idempotent.
+    releaseTexturePhase();
   }
 }
 

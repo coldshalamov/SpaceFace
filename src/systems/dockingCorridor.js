@@ -219,8 +219,8 @@ export const dockingCorridor = {
     const out = this._corridorReadout || (this._corridorReadout = {
       schemaVersion: DOCKING_CORRIDOR_SCHEMA_VERSION,
       stationId: null, proxyId: null, phase: 'none', distToBerth: null, distCenter: null,
-      speed: null, headingOk: null, inCorridor: false, inCapture: false, berthed: false,
-      berth: null, assist: null,
+      speed: null, speed01: null, headingOk: null, inCorridor: false, inCapture: false,
+      berthed: false, berth: null, assist: null,
     });
     out.stationId = best ? best.station.data && best.station.data.stationId || null : null;
     out.proxyId = best ? best.manifest.id : null;
@@ -228,6 +228,14 @@ export const dockingCorridor = {
     out.distToBerth = corridor ? corridor.distToBerth : null;
     out.distCenter = corridor ? corridor.distCenter : null;
     out.speed = corridor ? corridor.speed : null;
+    // The picture's speed read is normalized here, where the authored gates live: 1.0 is the
+    // capture gate (the lane's own "you are flying it hot" reference), so the cradle never
+    // re-derives a gate number that a manifest edit would silently outdate.
+    out.speed01 = corridor
+      ? clamp01(corridor.speed / positive(
+        best && best.manifest && best.manifest.docking && best.manifest.docking.capture
+          ? best.manifest.docking.capture.speedGate : 0, 26))
+      : null;
     out.headingOk = corridor ? corridor.headingOk : null;
     out.inCorridor = corridor ? corridor.inCorridor : false;
     out.inCapture = corridor ? corridor.inCapture : false;
@@ -337,6 +345,13 @@ export const dockingCorridor = {
       publicReadout.proxyId = readout.proxyId;
       publicReadout.phase = readout.phase;
       publicReadout.berth = readout.berth;
+      // The cradle's own-motion read consumes the same gates truth the sim classified with:
+      // lane membership + speed + heading, normalized against the capture gate (speed01).
+      publicReadout.speed = readout.speed;
+      publicReadout.speed01 = readout.speed01;
+      publicReadout.headingOk = readout.headingOk;
+      publicReadout.inCorridor = readout.inCorridor;
+      publicReadout.inCapture = readout.inCapture;
       view.readout = publicReadout;
     } else view.readout = null;
     state.dockingPresentation = view;
@@ -355,6 +370,10 @@ function finite(value, fallback = 0) {
 
 function positive(value, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function clamp01(value) {
+  return Number.isFinite(value) ? (value < 0 ? 0 : value > 1 ? 1 : value) : 0;
 }
 
 export default dockingCorridor;

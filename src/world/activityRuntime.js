@@ -580,6 +580,8 @@ function playerIntentPins(state, player, out = null) {
   return result;
 }
 
+const EMPTY_FACT_BAG = Object.freeze({});
+
 function rebuildPinFacts(state, player, facts, simTime) {
   const playerId = player && player.id;
   const cache = facts._cache || (facts._cache = {
@@ -672,22 +674,22 @@ function rebuildPinFacts(state, player, facts, simTime) {
   for (let i = 0; i < scan.length; i++) {
     const e = scan[i];
     if (!e || e.alive === false) continue;
-    const data = e.data || {};
+    const data = e.data || EMPTY_FACT_BAG;
     if (data.tracked === true || data.scannerTracked === true
       || (data.scanStatus === 'tracked' && data.scanned === true)) {
       trackedScratch.push(e.id);
     }
-    const combat = data.combat || {};
-    const ai = ownerAiRecord(e) || {};
-    const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : {};
-    if (playerId != null && (
-      combat.targetId === playerId
-      || combat.lockTarget === playerId
-      || activity.targetId === playerId
-      || ai.retaliationTargetId === playerId
-      || ai.securityTargetId === playerId
-    )) {
-      aggroScratch.push(e.id);
+    if (playerId != null) {
+      const combat = data.combat || EMPTY_FACT_BAG;
+      const ai = ownerAiRecord(e) || EMPTY_FACT_BAG;
+      const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : EMPTY_FACT_BAG;
+      if (combat.targetId === playerId
+        || combat.lockTarget === playerId
+        || activity.targetId === playerId
+        || ai.retaliationTargetId === playerId
+        || ai.securityTargetId === playerId) {
+        aggroScratch.push(e.id);
+      }
     }
   }
   if (facts.targetId != null) aggroScratch.push(facts.targetId);
@@ -1112,10 +1114,38 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
     });
     shelved.pass += 1;
     const indexVersion = entityIndexVersion(state);
-    const stale = shelved.cells === null
+    const auditDue = (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
+    // A membership-only bump (projectile/debris spawn or despawn) used to force the full O(list)
+    // cell rebuild every tick. The unstamped scan above already collected every newly added
+    // entity, and dead members are skipped by the alive checks, so bucketing just those new
+    // entities keeps the cells equivalent until the next epoch change or audit rebuild.
+    let incrementalBump = false;
+    if (shelved.cells !== null && !auditDue
+      && shelved.epoch === PHYSICS_PARTITION_EPOCH
+      && shelved.indexVersion !== indexVersion
+      && Number.isFinite(indexVersion) && Number.isFinite(shelved.indexVersion)
+      && shelved.listRef === list
+      && shelved.syncedMembership === runtime.classifiedMembership) {
+      incrementalBump = true;
+      for (let i = 0; i < unstamped.length; i++) {
+        const entity = unstamped[i];
+        if (!entity || entity.alive === false || !entity.pos) continue;
+        if (entity._physicsPartition === 1 || entity._physicsPartition === 2) continue;
+        const presence = entityPresenceRadius(entity);
+        if (presence > shelved.maxPresence) shelved.maxPresence = presence;
+        const key = Math.floor(finite(entity.pos.x) / CLASSIFY_DISCOVERY_CELL_WU) * 131072
+          + Math.floor(finite(entity.pos.z) / CLASSIFY_DISCOVERY_CELL_WU);
+        let bucket = shelved.cells.get(key);
+        if (!bucket) { bucket = new Set(); shelved.cells.set(key, bucket); }
+        bucket.add(entity);
+      }
+      shelved.indexVersion = indexVersion;
+    }
+    shelved.syncedMembership = indexVersion;
+    const stale = !incrementalBump && (shelved.cells === null
       || shelved.epoch !== PHYSICS_PARTITION_EPOCH
       || shelved.indexVersion !== indexVersion
-      || (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
+      || auditDue);
     if (stale) {
       shelved.walks += 1;
       const cells = new Map();
@@ -1148,6 +1178,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       shelved.maxPresence = maxPresence;
       shelved.epoch = PHYSICS_PARTITION_EPOCH;
       shelved.indexVersion = indexVersion;
+      shelved.listRef = list;
       // The rebuilt cells index every member's live pos — any silent-write marks retire here.
       if (runtime.shelvedDiscoveryMoved) runtime.shelvedDiscoveryMoved.clear();
     } else {

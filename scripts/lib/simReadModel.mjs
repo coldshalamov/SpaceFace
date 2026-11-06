@@ -37,7 +37,8 @@ import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
 import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
-import { projectNpcJobsById } from './npcJobsMirror.mjs';
+import { projectNpcJobsById, projectLanternWard, LANTERN_WARD_VITAL_KEYS,
+  lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
 import { latestPlayerImpactFromTrace } from '../../src/combat/presentationImpact.js';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
@@ -157,6 +158,37 @@ function foldPallasSeamVitals(row, fields) {
   }
 }
 
+// The visuals retain this data object. Update it from the authoritative work phase, including
+// explicit cleared flags, and reject a delayed update for a prior occupant or another record.
+function foldLanternWardVitals(row, fields, life = row.occupantGeneration) {
+  if (fields.lanternWardLife !== life || !Number.isSafeInteger(life) || life < 1
+    || fields.lanternWardRecordId !== row.data?.worldRecordId
+    || lanternWardPresentationLife({ type: row.type, data: row.data, occupantGeneration: life }) == null) return;
+  const data = row.data;
+  const projected = { worldRecordId: data.worldRecordId };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (!Object.hasOwn(fields, key)) return;
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') projected[key] = fields[key];
+  }
+  projected.lanternWardCustody = { holder: fields.lanternWardCustodyHolder };
+  projected.cargoManifest = { custody: { holderId: fields.lanternWardCargoHolderId } };
+  const candidate = { data: projected };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (lanternWardVitalValue(candidate, key, life) !== fields[key]) return;
+  }
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') data[key] = fields[key];
+  }
+  if (fields.lanternWardCustodyHolder != null) {
+    // The mirror describes custody; native attachment receipts remain private to the worker.
+    data.lanternWardCustody = { holder: fields.lanternWardCustodyHolder,
+      ...(data.lanternWardSerial ? { serial: data.lanternWardSerial } : {}) };
+  } else delete data.lanternWardCustody;
+  if (data.cargoManifest) data.cargoManifest.custody = { holderId: fields.lanternWardCargoHolderId };
+}
+
 // Retain one small presentation object per deployment so VFX can follow later replies.
 function foldCountermeasureVitals(row, fields) {
   if (fields.cmEffectId === undefined) return;
@@ -174,6 +206,7 @@ function foldCountermeasureVitals(row, fields) {
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
+    rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
     weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
@@ -266,6 +299,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldAiState(row, info.vitals);
       foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
+      foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -300,6 +334,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       // map) can stamp them 'ready' exactly as on the main lane.
       initializePresentationAdmission(row);
       readModel.entities.set(info.entityId, row);
+      readModel.rosterVersion++;
     }
     if (state && Object.hasOwn(info, 'ceresCradleReceipt')) {
       bindCeresCradlePublicLayout(target, state, info.ceresCradleReceipt, worldGeneration);
@@ -326,8 +361,8 @@ export function revokeCeresCradleReceipts(readModel, state) {
  * prevPos, and the yaw/bank/pitch rotation tuple. The journal IS the pose truth
  * the presentation lane consumes, so the facade answers the same values.
  */
-export function applyFacadePose(readModel, entityId, pose) {
-  const row = readModel && readModel.entities.get(entityId);
+export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
+  const row = knownRow || (readModel && readModel.entities.get(entityId));
   if (!row || !pose || typeof pose !== 'object') return;
   if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
   if (Number.isFinite(pose.x)) { row.prevPos.x = row.pos.x; row.pos.x = pose.x; }
@@ -346,6 +381,23 @@ export function applyFacadePose(readModel, entityId, pose) {
  * Stage-8: apply the vitals diff channel — [entityId, fields] pairs replacing
  * named scalar fields on the facade row (null entity ids / unknown facades skip).
  */
+// 0 = plain scalar assigned onto the row; 1 = fold family key that is also
+// assigned; 2 = fold-only key (never assigned). The fold functions read only
+// names under these prefixes plus vx/vz, so any other key can skip them.
+const VITAL_KEY_KIND = new Map();
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
+const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
+  'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
+function classifyVitalKey(key) {
+  if (VITAL_FOLD_ONLY.has(key) || LANTERN_WARD_VITAL_SET.has(key)) return 2;
+  if (key === 'vx' || key === 'vz') return 1;
+  for (let i = 0; i < VITAL_FOLD_PREFIXES.length; i++) {
+    if (key.startsWith(VITAL_FOLD_PREFIXES[i])) return 1;
+  }
+  return 0;
+}
+
 export function applyEntityVitals(readModel, vitals, state = null, worldGeneration = null) {
   if (!Array.isArray(vitals) || !vitals.length) return;
   for (const entry of vitals) {
@@ -356,13 +408,27 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     const row = readModel.entities.get(id);
     if (!row) continue;
     if (!seekerVitalsMatch(row, fields)) continue;
-    foldNemesisHullVitals(row, fields);
-    for (const key of Object.keys(fields)) {
-      if (key === 'ceresCradlePublic' || key === 'ceresWorkfleetPublic' || key === 'orchardPodPublic') continue;
+    // One key pass: plain scalars (hull, shield, pose...) assign directly; only a
+    // key from a fold family (prefix table below) arms the fold chain, so the
+    // common pose/vitals entry skips a dozen no-op fold calls.
+    // Nemesis decode compares against the row's previous JSON, so it runs before assignment.
+    if (fields.nemesisLivingHullJson !== undefined) foldNemesisHullVitals(row, fields);
+    let needsFold = false;
+    for (const key in fields) {
+      let kind = VITAL_KEY_KIND.get(key);
+      if (kind === undefined) {
+        kind = classifyVitalKey(key);
+        VITAL_KEY_KIND.set(key, kind);
+      }
+      if (kind !== 0) {
+        needsFold = true;
+        if (kind === 2) continue;
+      }
       const v = fields[key];
       if (v === undefined) delete row[key];
       else row[key] = v;
     }
+    if (!needsFold) continue;
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
@@ -374,6 +440,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldAiState(row, fields);
     foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
+    foldLanternWardVitals(row, fields);
     foldOrchardPodVitals(row, fields);
     if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
       const update = fields.ceresCradlePublic;
@@ -446,7 +513,7 @@ export function applyDestroyIds(readModel, ids, state = null) {
       bindCeresWorkfleetPublicActuation(row, state, null, null);
       row.alive = false;
     }
-    readModel.entities.delete(id);
+    if (readModel.entities.delete(id)) readModel.rosterVersion++;
   }
 }
 
@@ -516,7 +583,7 @@ export function applyAuxRemovals(readModel, ids) {
     const facade = prev.kind === 'dressing' && readModel.entities.get(id);
     if (facade?.data?.warmFreighterHostMarkerId) {
       facade.alive = false;
-      readModel.entities.delete(id);
+      if (readModel.entities.delete(id)) readModel.rosterVersion++;
     }
     const bucket = readModel.auxCells.get(prev.cell);
     if (bucket) {
@@ -824,6 +891,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // The case board is authored by the simulation and shared by station and Codex readers.
   'shipLedger.board',
   'dockingPresentation',
+  // Hail and the Ward's contact readers need a bounded account of the actual work history.
+  'npcJobs.lanternWard',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -892,6 +961,7 @@ export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
 export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
+  'npcJobs.lanternWard': 6,
   sites: 10,
   salvageOutfits: 10,
   cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,
@@ -1060,6 +1130,10 @@ function domainLeafViewFor(segs) {
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
       || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId')) {
     return NPC_JOBS_MIRROR_RULE;
+  }
+  if ((segs.length === 1 && segs[0] === 'npcJobs.lanternWard')
+      || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'lanternWard')) {
+    return { project: 'lanternWard', hotPresentation: true };
   }
   for (const rule of activeDomainConfig.leafViews) {
     if (segs.length !== rule.leafSegs) continue;
@@ -1378,6 +1452,7 @@ function projectDomainLeaf(rule, v, state) {
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
+  if (rule?.project === 'lanternWard') return projectLanternWard(v);
   if (rule && rule.project === 'marketLive') return projectMarketLive(v);
   if (rule && rule.project === 'combatPause') return projectCombatTraceForPause(v, state && state.playerId);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;

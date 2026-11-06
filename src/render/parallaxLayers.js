@@ -4,6 +4,7 @@ import {
   resolveDebrisFinish,
 } from './deepFieldPresentation.js';
 import { getReadyRockSurfaceTextures, waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
+import { resolveSectorWind, lerpedWindUniforms } from './sectorWind.js';
 import { CAMERA_ZOOM_MAX, PHYSICS_EARNED_SPEED_ZOOM_MAX, CONTEXT_ZOOM_MAX, BOOST_CAMERA_ZOOM_TARGET } from './camera.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
@@ -75,6 +76,10 @@ const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
 const MID_SPIN_PARAMS_ATTRIBUTE = 'aParallaxSpinParams';
 const MID_SPIN_SHADER_KEY = 'spaceface-parallax-mid-debris-gpu-spin-v2';
 const INSTANCE_WRAP_SHADER_KEY = 'spaceface-parallax-instance-wrap-v2';
+// inf-belt-wind: only the DRIFT sheet (the near-field dust above the flight plane) rides the
+// sector wind — far/mid/near chips are geology, not weather, and stay put.
+const DRIFT_WIND_ATTRIBUTE = 'aParallaxWindPhase';
+const DRIFT_WIND_SHADER_KEY = 'spaceface-parallax-drift-wind-v1';
 const EMPTY_OBJECT = {};
 
 let active = null;
@@ -168,12 +173,21 @@ class ParallaxLayers {
       tailTime: { value: 0 },
     };
 
+    // inf-belt-wind — the drift sheet's weather clock. The wind lerps alongside the palette
+    // transition; the TIME accumulation is the motion clock (frozen under reduced motion —
+    // animation, not membership: the sheet stays put on screen, it just stops drifting).
+    this._windFrom = resolveSectorWind(this._paletteIdentity);
+    this._windTo = this._windFrom;
+    this._windUniform = { x: 0, z: 0, speedWuPerS: this._windFrom.speedWuPerS };
+    this._windTime = 0;
+
     this._createFarDust();
     this._createMidDebris();
     this._createNearMotes();
     this._createDriftSheet();
     this._syncQuality();
     this._applyPaletteColor(this._colorCurrent);
+    this._applyWindUniform();
   }
 
   update(dt) {
@@ -205,6 +219,8 @@ class ParallaxLayers {
 
     this._updatePalette(frameDt);
     this._updateDebris(frameDt);
+    if (!this._motionReduce) this._windTime += frameDt;
+    if (this._driftWindUniforms) this._driftWindUniforms.windTime.value = this._windTime;
   }
 
   dispose() {
@@ -265,6 +281,10 @@ class ParallaxLayers {
   }
 
   _createDriftSheet() {
+    this._driftWindUniforms = {
+      wind: { value: new THREE.Vector2(this._windUniform.x, this._windUniform.z) },
+      windTime: { value: 0 },
+    };
     const band = this._spawnChipBand({
       spec: DRIFT,
       name: 'Parallax_DriftSheet',
@@ -273,12 +293,14 @@ class ParallaxLayers {
       seed: 0x9d3f17,
       colorMul: 0.34,
       spin: true,
+      windUniforms: this._driftWindUniforms,
     });
     this._driftGroup = band.group;
     this._driftMesh = band.mesh;
+    this._applyWindUniform();
   }
 
-  _spawnChipBand({ spec, name, layer, renderOrder, seed, colorMul, spin }) {
+  _spawnChipBand({ spec, name, layer, renderOrder, seed, colorMul, spin, windUniforms }) {
     const group = new THREE.Group();
     group.name = name;
     group.renderOrder = renderOrder;
@@ -299,6 +321,7 @@ class ParallaxLayers {
       material,
       motionUniforms,
       spin ? this._debrisSpinUniforms : null,
+      windUniforms || null,
     );
 
     decorateDebrisMaterial(material, spin);
@@ -313,6 +336,14 @@ class ParallaxLayers {
         .setUsage(THREE.StaticDrawUsage);
       geometry.setAttribute(MID_SPIN_AXIS_ATTRIBUTE, spinAxes);
       geometry.setAttribute(MID_SPIN_PARAMS_ATTRIBUTE, spinParams);
+    }
+    let windPhase = null;
+    if (windUniforms) {
+      // Per-grain shear phase: the sheet drifts along the wind at staggered rates instead of
+      // marching in lockstep (a lockstep sheet reads as a conveyor, not weather).
+      windPhase = new THREE.InstancedBufferAttribute(new Float32Array(spec.count), 1)
+        .setUsage(THREE.StaticDrawUsage);
+      geometry.setAttribute(DRIFT_WIND_ATTRIBUTE, windPhase);
     }
 
     const mesh = new THREE.InstancedMesh(geometry, material, spec.count);
@@ -361,6 +392,7 @@ class ParallaxLayers {
         spinParams.array[offset + 1] = 0.02 + rnd() * 0.08;
         spinParams.array[offset + 2] = layer === 'midDebris' && i >= MID_LOW_COUNT ? 1 : 0;
       }
+      if (windPhase) windPhase.array[i] = rnd();
     }
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3).setUsage(THREE.StaticDrawUsage);
@@ -481,6 +513,12 @@ class ParallaxLayers {
     this._finishTarget = resolveDebrisFinish(palette);
     this._colorStart.copy(this._colorCurrent);
     resolvePaletteColor(this._colorTarget, palette);
+    // The weather hands over with the sky: the sheet's wind swings on the short arc between
+    // the outgoing and incoming sector's own wind, at the same eased 1.5 s transition.
+    this._windFrom = { dirX: this._windUniform.x / (this._windUniform.speedWuPerS || 1),
+      dirZ: this._windUniform.z / (this._windUniform.speedWuPerS || 1),
+      speedWuPerS: this._windUniform.speedWuPerS };
+    this._windTo = resolveSectorWind(palette);
     this._paletteElapsed = 0;
     this._paletteActive = true;
   }
@@ -497,11 +535,20 @@ class ParallaxLayers {
     this._finishCurrent.metalness = from.metalness + (to.metalness - from.metalness) * t;
     this._finishCurrent.normalStrength = from.normalStrength + (to.normalStrength - from.normalStrength) * t;
     this._applyPaletteColor(this._colorCurrent);
+    this._windUniform = lerpedWindUniforms(this._windFrom, this._windTo, t);
+    this._applyWindUniform();
     if (rawT >= 1) {
       this._paletteActive = false;
       this._colorCurrent.copy(this._colorTarget);
       this._applyPaletteColor(this._colorCurrent);
+      this._windUniform = lerpedWindUniforms(this._windTo, this._windTo, 1);
+      this._applyWindUniform();
     }
+  }
+
+  _applyWindUniform() {
+    if (!this._driftWindUniforms) return;
+    this._driftWindUniforms.wind.value.set(this._windUniform.x, this._windUniform.z);
   }
 
   _applyPaletteColor(color) {
@@ -543,10 +590,11 @@ function createChipMaterial(maps, colorMul) {
   }), SHARED_MATERIAL_ROLE.ROCK);
 }
 
-function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms = null) {
+function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms = null, windUniforms = null) {
   const originalOnBeforeCompile = material.onBeforeCompile;
   const originalProgramCacheKey = material.customProgramCacheKey();
   const spin = !!spinUniforms;
+  const wind = !!windUniforms;
 
   material.onBeforeCompile = function parallaxBandGpuMotion(shader, renderer) {
     if (typeof originalOnBeforeCompile === 'function') originalOnBeforeCompile.call(this, shader, renderer);
@@ -557,6 +605,10 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
     if (spin) {
       shader.uniforms.uParallaxPrimaryTime = spinUniforms.primaryTime;
       shader.uniforms.uParallaxTailTime = spinUniforms.tailTime;
+    }
+    if (wind) {
+      shader.uniforms.uParallaxWind = windUniforms.wind;
+      shader.uniforms.uParallaxWindTime = windUniforms.windTime;
     }
 
     const declarations = [
@@ -576,6 +628,13 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
         '  float s = sin(angle);',
         '  return point * c + cross(axis, point) * s + axis * dot(axis, point) * (1.0 - c);',
         '}',
+      );
+    }
+    if (wind) {
+      declarations.push(
+        `attribute float ${DRIFT_WIND_ATTRIBUTE};`,
+        'uniform vec2 uParallaxWind;',
+        'uniform float uParallaxWindTime;',
       );
     }
     shader.vertexShader = replaceRequiredShaderSource(
@@ -602,21 +661,32 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
     // Wrap + edge shrink run before project_vertex so the chip can be scaled into nothing as it
     // approaches the wrap-cell edge. A chip that dissolves before the boundary cannot pop across
     // it, and the empty region outside the cell can never show a chip vanishing mid-screen.
+    // The drift sheet subtracts its sector wind (staggered per grain) inside the same wrap, so
+    // weather rides the identical dissolve-at-the-boundary guarantee.
+    const wrapLines = [
+      '#include <begin_vertex>',
+      'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
+    ];
+    if (wind) {
+      wrapLines.push(
+        `vec2 sfParallaxWindDrift = uParallaxWind * (uParallaxWindTime * (0.6 + 0.8 * ${DRIFT_WIND_ATTRIBUTE}));`,
+        'sfParallaxBaseCenter -= sfParallaxWindDrift;',
+      );
+    }
+    wrapLines.push(
+      'vec2 sfParallaxWrappedCenter = mod(',
+      '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
+      '  uParallaxTile',
+      ') - uParallaxTile * 0.5;',
+      'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',
+      'float sfParallaxEdge = max(abs(sfParallaxWrappedCenter.x), abs(sfParallaxWrappedCenter.y))',
+      '  / (uParallaxTile * 0.5);',
+      'transformed *= 1.0 - smoothstep(0.78, 0.97, sfParallaxEdge);',
+    );
     shader.vertexShader = replaceRequiredShaderSource(
       shader.vertexShader,
       '#include <begin_vertex>',
-      [
-        '#include <begin_vertex>',
-        'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
-        'vec2 sfParallaxWrappedCenter = mod(',
-        '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
-        '  uParallaxTile',
-        ') - uParallaxTile * 0.5;',
-        'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',
-        'float sfParallaxEdge = max(abs(sfParallaxWrappedCenter.x), abs(sfParallaxWrappedCenter.y))',
-        '  / (uParallaxTile * 0.5);',
-        'transformed *= 1.0 - smoothstep(0.78, 0.97, sfParallaxEdge);',
-      ].join('\n'),
+      wrapLines.join('\n'),
       'wrapped instance center + edge shrink',
     );
 
@@ -636,6 +706,7 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
     originalProgramCacheKey,
     INSTANCE_WRAP_SHADER_KEY,
     spin ? MID_SPIN_SHADER_KEY : '',
+    wind ? DRIFT_WIND_SHADER_KEY : '',
   ].filter(Boolean).join('|'));
   material.customProgramCacheKey = () => familyKey;
   material.userData = {
@@ -652,6 +723,13 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
         axisAttribute: MID_SPIN_AXIS_ATTRIBUTE,
         paramsAttribute: MID_SPIN_PARAMS_ATTRIBUTE,
         uniforms: spinUniforms,
+      },
+    } : {}),
+    ...(wind ? {
+      spacefaceParallaxDriftWind: {
+        version: 1,
+        phaseAttribute: DRIFT_WIND_ATTRIBUTE,
+        uniforms: windUniforms,
       },
     } : {}),
   };

@@ -12,6 +12,8 @@ export function createSaveStage() {
     repairs.dataset.portraitField = 'repairs';
     const titles = el('p', 'k-sentence k-t-fine sf-portrait-titles', '');
     titles.dataset.portraitField = 'titles';
+    const standing = el('p', 'k-sentence k-t-fine sf-portrait-standing', '');
+    standing.dataset.portraitField = 'standing';
     const rapSheet = el('p', 'k-sentence k-t-fine sf-portrait-rap', '');
     rapSheet.dataset.portraitField = 'rapSheet';
     const grudge = el('p', 'k-sentence k-t-fine sf-portrait-grudge', '');
@@ -19,6 +21,7 @@ export function createSaveStage() {
     portrait.appendChild(scars);
     portrait.appendChild(repairs);
     portrait.appendChild(titles);
+    portrait.appendChild(standing);
     portrait.appendChild(rapSheet);
     portrait.appendChild(grudge);
     const objective = el('p', 'k-sentence k-sentence--emph sf-slot-detail', '');
@@ -32,5 +35,5 @@ export function createSaveStage() {
     caption.appendChild(fine);
     caption.appendChild(actions);
     stage.appendChild(caption);
-    return { stage, caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge, objective, credits, fine, actions };
+    return { stage, caption, shipName, portrait, scars, repairs, titles, standing, rapSheet, grudge, objective, credits, fine, actions };
 }

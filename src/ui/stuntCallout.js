@@ -960,6 +960,18 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
         && payload?.hostId !== st.playerId) return;
       if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
         && payload?.shipId !== st.playerId) return;
+      // Durable world bookkeeping is global; Adventure's personal register is not.
+      // Read the canonical receipt's involvement/ownership facts, never a current
+      // occupant of a victim id or an invented proximity/witness relationship.
+      if (scope.adventure && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) {
+        const record = payload || {};
+        const playerCause = record.killedByPlayer === true;
+        const ownHull = record.playerWreck === true || record.source === 'player:death'
+          || record.sitePlayerOwned === true;
+        const ownAutomation = eventName === 'lossLedger:recorded'
+          && (record.source === 'automation:assetLost' || record.source === 'automation:outpostRaided');
+        if (!playerCause && !ownHull && !ownAutomation) return;
+      }
       // Swarm's cause lane already files this same kill word, including its run count.
       // The two durable world records need no additional flight-register receipt during
       // this fast arena: their owners still record them normally.

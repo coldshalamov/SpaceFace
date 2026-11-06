@@ -19,6 +19,8 @@ import { autoUpdate, computePosition, flip, offset, shift, size } from '@floatin
 import { el } from '../kit/index.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { disabledServiceWhy, disabledVitalActHtml, factionPresenceServiceRows, runFactionPresenceDockAction } from './serviceQuotes.js';
+import { decantQuote } from '../../systems/stationServices.js';
+import { localizeText } from '../../localization/sourceText.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
@@ -1273,15 +1275,38 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   /**
    * U5 self-serve decant: the fuel vital's second verb, offered only while the hold carries
    * fuel cells and the tank has room. It needs no station service — the pilot is the crew —
-   * so it renders even at the outposts the chart marks "no refuel".
+   * so it renders even at the outposts the chart marks "no refuel". The key names the fuel it
+   * will move BEFORE the press (inf-decant-quote): the same pre-commit read the verb resolves,
+   * so the label never promises a pour the yard's pump or a sealed manifest would refuse.
+   * New copy goes through localizeText.
    */
   function decantActHtml(s, fuel) {
-    const held = Math.floor(Number(s && s.player && s.player.cargo && s.player.cargo.items
-      && s.player.cargo.items.cmdty_fuel_cells) || 0);
+    const quote = decantQuote(s);
+    const held = quote && Number.isFinite(quote.held)
+      ? quote.held
+      : Math.floor(Number(s && s.player && s.player.cargo && s.player.cargo.items
+        && s.player.cargo.items.cmdty_fuel_cells) || 0);
     const room = Math.max(0, (Number(fuel && fuel.max) || 0) - (Number(fuel && fuel.current) || 0));
     if (held <= 0 || room <= 0) return '';
+    const count = { count: held, word: held === 1 ? 'cell' : 'cells' };
+    if (quote && quote.ok && quote.cells > 0) {
+      const aria = localizeText('Decant carried fuel cells into the tank — {count} {word} moves {units} fuel',
+        { count: quote.cells, word: quote.cells === 1 ? 'cell' : 'cells', units: quote.units });
+      return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
+        ` aria-label="${aria}">${localizeText('Decant +{units}', { units: quote.units })}</button>`;
+    }
+    // A press that would refuse still renders: the refusal speaks its reason out loud. The
+    // accessible name carries the same why before the click, not only after it.
+    const aria = quote && !quote.ok && quote.reason === 'pump_owns_tank'
+      ? localizeText('Decant refused — the paid pump owns {booked} of this tank, {count} {word} held', { ...count, booked: quote.booked })
+      : quote && !quote.ok && quote.reason === 'tank_room'
+        ? localizeText('Decant refused — {left} left in the tank and a fuel cell needs {cellUnits}, {count} {word} held',
+          { ...count, left: quote.left, cellUnits: quote.cellUnits })
+        : quote && !quote.ok && quote.reason === 'cells_sealed'
+          ? localizeText('Decant refused — every cell aboard is sealed, {count} {word} held', count)
+          : localizeText('Decant carried fuel cells into the tank — {count} {word} held', count);
     return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
-      ` aria-label="Decant carried fuel cells into the tank — ${held} cell${held === 1 ? '' : 's'} held">Decant</button>`;
+      ` aria-label="${aria}">${localizeText('Decant', {})}</button>`;
   }
 
   // A vital is one static kit row: the label at body 62 %, the value at emphasis (data-tone kept:

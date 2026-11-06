@@ -100,7 +100,7 @@ function envelopeFor(data, seed = SEED) {
 test('PQ-156.01: seed matches the packet', () => {
   assert.equal(SEED, 15610);
   assert.equal(SAVE_PORTRAIT_SEED, 15610);
-  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
+  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'repairs', 'titles', 'standing', 'rapSheet', 'grudge']);
   assert.equal(shipLabel('ship_kestrel'), 'Hitch');
   assert.equal(shipLabel('ship_pelican'), 'Pelican');
   assert.equal(shipLabel('ship_wasp'), 'Wasp');

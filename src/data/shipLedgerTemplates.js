@@ -34,6 +34,9 @@ export const SHIP_LEDGER_ENTRY_TYPES = Object.freeze([
   // FB-127 — career origin and ladder decisions. {record} is the story owner's fact text
   // ("hauler was offered and declined"), {career} the career's name; {citation} the fact's cite.
   'career',
+  // inf-war-ledger-page — a front the player leaned on files its latest turn. {sector} is the
+  // contested sector, {winner} the faction that took it, {loser} the one that held it before.
+  'war',
 ]);
 
 export const SHIP_LEDGER_TEMPLATES = deepFreeze({
@@ -130,6 +133,15 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     'The hull keeps the {career} file: {record}.',
     'A decision on the road file: {record}.',
     'Page for {career}: {record}. Filed, not celebrated.',
+  ]),
+  // inf-war-ledger-page — the turn of a front this hull leaned on. Dry on purpose: the map
+  // already cheered; the book keeps the receipt.
+  war: variants('war', [
+    'The front at {sector} turned: {winner} took it off {loser}. This hull leaned on the scale.',
+    'War page: {sector} changed hands — {winner} holds what {loser} drilled on. Filed, not cheered.',
+    '{sector} flipped while our wake was still on it. {winner} up, {loser} out. The book keeps the turn.',
+    'Filed the only war receipt that matters: {sector} flew to {winner}. {loser} kept the debt.',
+    'A front we pressed gave way. {sector} is {winner} ground now; {loser} remembers the weight.',
   ]),
 });
 

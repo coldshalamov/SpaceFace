@@ -16,9 +16,11 @@ with unchanged source and no failures/timeouts. This is not an FPS comparison. L
 no longer wait for an older reply while simulation deadlines advance; the existing watchdog retains
 real progress accounting. Packaged props no longer inherit a second procedural root scale: the
 actual beacon wrapper is28WU rather than1680WU, with procedural transforms/materials retained.
-Ordinary Ring obstruction/input and Counterweight admission checks now move to this candidate;
-their older failures and changed-build look limits remain in INTEGRATION_COVERAGE.md. Startup,
-frame targets, physical iPhone and signed-update acceptance remain open.
+Actualc4 Ring obstruction is absent and public throttle moves the ship; entry guidance is now
+connected in8398e7c8d2b1, with its ordinary Mouth/ribs look pending. Exactc4 production now serves
+the public demo; fresh public-origin WebKit NewGame reaches visible advancing flight in28.800s.
+The stock touch-capability gate still fails/maxTouchPoints0 and physical iPhone remains UNKNOWN.
+Loading23–29s, frame targets, actual Counterweight courses and signed-update acceptance remain open.
 
 **Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
 JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
@@ -554,8 +556,100 @@ Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit eac
   absorbed strikes never touch the scar-history book (5244ade5f3a7).
 Verified already deep, wave 5: Massline cable tension feedback (masslinePresentation.js —
 load swell, strain chatter, overload heat, parting ferrules, whip/reel glow at pixel numbers).
-Defect on this lane's paths, recorded: visualFactory.js animateStation pulses nav blinkers on
-wall clock, not sim time — frozen sims keep blinking (pre-existing; fix with next touching).
+Defect retracted (controller trace, wave 6): the animateStation wall-clock report was wrong —
+nowSec() prefers the presentation clock the renderer pushes every frame
+(renderer.js setFactoryPresentationNow(state.simTime)); wall clock is only the documented
+headless fallback, so a frozen sim holds its blinkers with the world. No change made.
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-gate-departure (WF-12 integration): leaving through a gate plays the commit — aperture
+  swells as the drive bites, swirl runs hot through the tunnel, the ring collapses behind the
+  hull with the wake snapping shut, then rebounds to idle; reduced motion halves travel,
+  keeps every phase (b9ff98db42ef).
+- inf-mayday-pod (WF-11 repair): the survivor pod is an authored ejection lifeboat — blunt
+  capsule, nose-viewport burn, foam collar, dead retro — carrying a distress lamp group whose
+  period tightens 1.6 s → 0.55 s as the oxygen drains; wreck squatters keep the canister;
+  flashReduce keeps the steady burn, never silences (4f94db085335).
+- inf-mayday-flare (WF-12 integration): a causal eject reads at the kill site — white retro
+  flash, cold vent whiff, and the lamp-red beacon star that outlives the flash 3:1, with a
+  director-owned mayday event light reaching gameplay range; a sector re-entry is not an
+  ejection (b49b2e7edc99).
+- inf-pod-worth (WF-11 repair): a drop's own price grades its light — junk rests dimmer, the
+  median drop keeps today's read bit-exactly, rich lots burn hotter and build a second
+  counter-precessing inner band; unpriceable drops read plain, never dim on a guess
+  (fe4cd12a0718).
+Verified already deep, wave 6: shield-break membrane distinctness (uFlash rupture punch +
+ordered weld-network collapse), asteroid split pop (conchoidal cleavage + parent-scaled
+dust + event light), NPC jump departure surface (fov punch, trauma, travel cues, portal
+spin-up), station apron night family.
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-corridor-speed-read (WF-12 repair): the dock pad reads your own approach speed — a hot
+  lane holds the pad visible in caution amber with a quickened pulse, brackets and chevrons
+  march at your closing speed, a settled berth calms the read; reduced motion keeps the calm
+  sweep (c48c5c7e77eb; also un-nulled cradle engagement on anonymous rows, pre-existing red
+  in the quiet-skip suite).
+- inf-belt-wind (WF-11): sitting still, the near-field dust now rides a slow wind keyed to
+  the sector's palette class — core drift, brisk belt flow, cold fringe pull, wrong-heading
+  anomaly shear — handing over with the sky on the same eased transition; reduced motion
+  freezes the weather clock, never the membership (71384b4fa8c6).
+- inf-storm-crossing (WF-12 integration): the hazard zone you are dying in reads on the hull —
+  a charge beat at the boundary line keyed by the bite, then sparse deterministic static
+  crawling the hull in the family hue while you ride it (8cc0fcb90268).
+- inf-storm-body (WF-11): hazard zones have a body from two rings out — counter-rotating
+  broken arc rings plus orbiting motes in the family hue, brightness keyed on LIVE intensity
+  so the Ashfall boss-defeat aftermath visibly thins the storm on screen (7752cec23d3d).
+Verified already deep, wave 7: mining-at-rock camera read (contact flash, chips, steam,
+carved scars, seam lock pulse, fracture anticipation), capital boss death (authored debris
+families + staged breakup). Skipped: wreck aging (adjacent to a committed subject), zoom
+honesty (lives in foreign-modified LOD owners).
+
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picture side answering wave-8's brood sim):
+- inf-brood-burst-read (WF-12 integration): a brood bomb's death blast finally reads — the
+  `swarm:broodBurst` receipt had no render consumer anywhere — white-hot core flash in the
+  family's hue, a vent drifting over the blast's actual reach, a star beat outliving the
+  flash, an event light reach-keyed; strain pops wear the strain's mark tint (57011e5ee7f2).
+- inf-sac-death-voice (WF-11 repair): a burst Hive sac — the room's win lever — died an
+  anonymous rock's death; the shatter now reads the hiveSac tag: marker-green light plus a
+  two-beat membrane tear, acid breath, lit star outliving the tear 3:1; untagged rocks keep
+  today's read bit-exactly (e43025097ad9).
+- inf-brood-cascade-flush (WF-12 integration): the panic cascade and grief loop ran as motion
+  only — the view contract itself names the renderer's duty; PANIC sweeps hot pale acid green
+  with a staggered urgent pulse, GRIEF sinks to mourning slate on a slow breath; reduced
+  motion holds floor weight; unwired aggression leaves colors bit-identical (074343829194).
+- inf-jettison-claim (WF-11 repair): when YOU jettison, the pod's own transponder carries the
+  claim window — a hot parting beat easing to a steady claim burn for the embargo, relaxing
+  to anonymous exactly when the embargo lapses; per-pod cloned material, shared siblings pay
+  nothing; reduced flash drops the spike, keeps the claim (1880c12be806).
+Verified already true, wave 8: muzzle smoke in vacuum (weaponDischargePool draws flash + gas,
+no smoke card — the honesty read is already authored). Boundary noted: volatile jettison pods
+route to buildVolatilePod and carry the hazard voice, not the claim window.
+
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-brood-aggression-flush (WF-12 repair, the named wave-9 follow-up): shoot the Queen and
+  the pack rushes you burning red — the authored "filaments flush red" now reads, keyed to the
+  sim's published aggression kind, hotter and faster than panic's beat; reduced motion holds
+  a floor; unwired kinds stay bit-identical (c21d734d5545).
+- inf-storm-departure (WF-12 integration): leaving the storm sheds one last flicker of its
+  hue — thinner and slower than the entry charge, release light capped at contact grade,
+  gated on the picture actually seeing the storm ride; no lie about the damage model after
+  the line (4c0eae8a19f2).
+- inf-hull-dust-wake (WF-11 integration): a hull at cruise combs the belt's own dust off its
+  flanks, shearing away downwind with the weather — the biggest moving object in the sky no
+  longer ignores the medium; engages past 55% of the hull's own max speed (0cb50b88811e).
+- inf-gate-emergence (WF-11 integration): the gate you emerged from rebounds — discharge
+  rings shed off the throat, ion blue for gates and violet for wormholes; drive jumps land
+  far past the emergence radius and honestly get no read; transform-free, the gate mesh
+  stays owned (d82ae72db1f5).
+Verified already true, wave 9: wreck-field census (the despawn law IS the census — cap 8,
+farthest retirement with receipts), yard tow (the corridor/cradle family is the committed
+subject; no live yard-tow sim seam found). Defects for owners: `jump:arrive` omits `via`
+(world.js — presentation works around it geometrically); environmental machinery hazard
+boundaries carry no entityId (Cinder Sluice machines stay silent both directions).
 
 ## Traps — measured and rejected; do not repeat
 

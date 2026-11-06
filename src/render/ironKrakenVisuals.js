@@ -78,6 +78,9 @@ export function ironKrakenAnimationPose(fight, simTime=0, a11y={}, out={}) {
   out.rake = beat?.id==='arm_rake' ? (active?1:charge*.65) : 0;
   out.ink = beat?.id==='ink_ring' ? (active?1:charge*.6) : 0;
   out.inkActive = beat?.id==='ink_ring' && active;
+  // The wake trawl gets its own stern-gather scalar — it shares ink_ring's maw.stern cue family,
+  // so the arm scoop is what lets the pilot tell a drag net from the broken ring.
+  out.trawl = beat?.id==='mantle_trawl' ? (active?1:charge*.8) : 0;
   // Begin venting at the end of the committed attack so the vulnerable recovery aperture
   // is already readable when its damage bonus starts; the simulation still owns the window.
   out.mantle = live && fight.phase==='recovery' ? smooth((fight.nextAt-fight.clock)/18)
@@ -164,7 +167,7 @@ export function createIronKrakenVisual(entity) {
   const shellMeshes=[shell,shellDetail,shellAccent,shellMetal,shellGlass];
   let interior=null,disposed=false,lastTime=null,lastClock=null,lastA11y='',jetBlend=0,mantleBlend=0;
   let lastWorkerFrame=null,workerFight=null;
-  let rakeBlend=0,inkCurlBlend=0,inkLiftBlend=0;
+  let rakeBlend=0,inkCurlBlend=0,inkLiftBlend=0,trawlBlend=0;
   let detailLevel='close';
   const viewPoint=new THREE.Vector3();
   const ownerId=entity.id;
@@ -214,10 +217,11 @@ export function createIronKrakenVisual(entity) {
     rakeBlend+=(pose.rake-rakeBlend)*blend;
     inkCurlBlend+=((pose.inkActive?-.64:.36)*pose.ink-inkCurlBlend)*blend;
     inkLiftBlend+=((pose.inkActive?-.28:.65)*pose.ink-inkLiftBlend)*blend;
+    trawlBlend+=(pose.trawl-trawlBlend)*blend;
     const t=pose.time,quiet=pose.reducedMotion?0:1;
     motionPose.time=t;motionPose.reducedMotion=pose.reducedMotion;
     motionPose.jet=jetBlend;motionPose.rake=rakeBlend;motionPose.mantle=mantleBlend;
-    motionPose.inkCurl=inkCurlBlend;motionPose.inkLift=inkLiftBlend;
+    motionPose.inkCurl=inkCurlBlend;motionPose.inkLift=inkLiftBlend;motionPose.trawl=trawlBlend;
     ironKrakenBodyPose(motionPose,bodyPose);
     body.position.y=bodyPose.liftY*profile.coreRadius;
     body.rotation.x=bodyPose.rollX;

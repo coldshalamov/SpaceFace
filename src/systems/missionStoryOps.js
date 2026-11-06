@@ -16,6 +16,8 @@ import { EGRESS_DISTANCE_WU, EGRESS_FADE_S, fleeOrderActive } from '../ai/egress
 import { hash32 } from '../core/rng.js';
 import { addCargo } from './cargo.js';
 import { normalizeBlackFlagJobs } from '../missions/blackFlagMissions.js';
+import { normalizeLanternWardReward } from '../missions/lanternWardStory.js';
+import { normalizeLanternWardConversation } from '../missions/lanternWardConversation.js';
 import { normalizeStandingOrders } from './captainStandingOrders.js';
 import { ADVENTURE_SPEED_CONTRACTS } from '../data/adventureSpeedContracts.js';
 import { RED_KITE } from '../data/redKite.js';
@@ -2656,6 +2658,8 @@ export const missionStoryOps = {
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
+    delete state.missions.lanternWardReward;
+    delete state.missions.lanternWardConversation;
     delete state.missions.setPieceSettlements;
     delete state.missions.adventureSpeedCompleted;
     delete state.missions.standingOrders;
@@ -2821,6 +2825,10 @@ export const missionStoryOps = {
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
+    const wardReward = normalizeLanternWardReward(m.lanternWardReward);
+    if (wardReward) serialized.lanternWardReward = wardReward;
+    const wardConversation = normalizeLanternWardConversation(m.lanternWardConversation);
+    if (wardConversation) serialized.lanternWardConversation = wardConversation;
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
       serialized.starterJobStep = { ...m.starterJobStep };
     }
@@ -2896,6 +2904,12 @@ export const missionStoryOps = {
       && Number.isFinite(arkReward.at) && arkReward.at >= 0) {
       state.missions.ilexArkReward = { ...arkReward, deliveredVaultIds: [...arkReward.deliveredVaultIds] };
     } else delete state.missions.ilexArkReward;
+    const wardReward = normalizeLanternWardReward(data.lanternWardReward);
+    if (wardReward) state.missions.lanternWardReward = wardReward;
+    else delete state.missions.lanternWardReward;
+    const wardConversation = normalizeLanternWardConversation(data.lanternWardConversation);
+    if (wardConversation) state.missions.lanternWardConversation = wardConversation;
+    else delete state.missions.lanternWardConversation;
     const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
     if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
     else delete state.missions.setPieceSettlements;

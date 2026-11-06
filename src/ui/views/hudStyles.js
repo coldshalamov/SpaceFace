@@ -564,6 +564,15 @@ export const HUD_CSS = `
   .sf-momentum-sink__axis::after { right:0; border-right:1px solid var(--hud-amber); transform:rotate(45deg); }
   .sf-momentum-sink__label { position:absolute; left:50%; top:60px; transform:translateX(-50%);
     color:var(--hud-amber); font-size:var(--k-fs-data); white-space:nowrap; }
+  /* A sink a hostile frame wrote onto the pilot's hull (the Kraken's wake trawl) keeps the same
+     bracket grammar in the hostile slot — shape unchanged, tone names the hauler. */
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket { border-right-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::after { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::after { border-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
 
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
@@ -2763,6 +2772,7 @@ export const HUD_CSS = `
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
   #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
+  #hud .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
   #hud .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--hud-paper); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 

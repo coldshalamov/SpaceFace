@@ -50,6 +50,7 @@ import { WRECK_AFTERMATH_MODELS } from '../data/wreckAftermathDressing.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { queuePhysicsImpulse, syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FACTION_ID = 'faction_pitborn';
 const BALLAST_BY_ID = Object.fromEntries(PITBORN_BALLAST_BALLS.map((b) => [b.id, b]));
@@ -2160,9 +2161,9 @@ export const pitbornCull = {
       pit.crowd.score = Math.max(0, pit.crowd.score - PITBORN_CULL.decayPerS * dt);
       pit.crowd.tier = crowdTierFor(pit.crowd.score).id;
     }
-    this._accreteBalls(state);
+    if (strideDt(this, 'balls', dt, 3, state) > 0) this._accreteBalls(state);
     this._tickBallastMatch(state, dt);
-    this._tickYardmasters(state);
+    if (strideDt(this, 'yard', dt, 3, state) > 0) this._tickYardmasters(state);
     // ── The book ──
     this._tickClaims(state);
     this._tickClaimPosts(state);

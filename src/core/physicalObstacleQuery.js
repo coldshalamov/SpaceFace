@@ -11,12 +11,32 @@ function nativeDressingSpec(e) {
   return spec && !PHYSICS_MATERIALS[spec.material]?.ghost ? spec : null;
 }
 
+// Cold dressing is static: the manifest hull walk is pure in these inputs, so memoize per row.
+const FX_RADIUS_CACHE = new WeakMap();
+
 export function physicalObstacleRadius(e) {
   if (!e || e.alive === false || e.collides === false || !e.pos
     || e.type === 'projectile' || e.type === 'pickup') return null;
   if (e.type === 'fx') {
     const spec = nativeDressingSpec(e);
     if (!spec) return null;
+    const data = e.data;
+    const dockRadius = data ? data.dockRadius : undefined;
+    const proxyId = data ? data.collisionProxy : undefined;
+    const defId = data ? data.defId : undefined;
+    const hit = FX_RADIUS_CACHE.get(e);
+    if (hit && hit.spec === spec && hit.radius === e.radius && hit.dockRadius === dockRadius
+      && hit.proxyId === proxyId && hit.defId === defId && hit.data === data) return hit.value;
+    const value = fxObstacleRadius(e, spec);
+    FX_RADIUS_CACHE.set(e, { spec, radius: e.radius, dockRadius, proxyId, defId, data, value });
+    return value;
+  }
+  const radius = Number.isFinite(e.radius) ? e.radius : 0;
+  return radius > 0 || ['station', 'asteroid', 'wreck', 'ship'].includes(e.type) ? radius : null;
+}
+
+function fxObstacleRadius(e, spec) {
+  {
     const manifest = resolveCollisionProxyManifest(e);
     let hullReach = 0;
     for (const vertex of manifest?.compactHull || []) {
@@ -27,8 +47,6 @@ export function physicalObstacleRadius(e) {
     return Math.max(Number.isFinite(e.radius) ? e.radius : 0, spec.radius,
       manifest ? Math.max(proxyOuterRadiusWu(manifest, e), hullReach * proxyScaleFor(e, manifest)) : 0);
   }
-  const radius = Number.isFinite(e.radius) ? e.radius : 0;
-  return radius > 0 || ['station', 'asteroid', 'wreck', 'ship'].includes(e.type) ? radius : null;
 }
 
 // Bound views describe contacts without replacing the original row or its life token.

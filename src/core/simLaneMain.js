@@ -423,7 +423,19 @@ export function createSimLaneRuntime({
   const laneWeaponVfxProjectiles = [];
   state.weaponVfxProjectiles = laneWeaponVfxProjectiles;
   state.entities = readModel.entities;
+  // The list only changes shape when the facade roster mutated (spawn/despawn bump
+  // rosterVersion) or weapon-VFX rows exist (their alive flags flip per reply).
+  // Otherwise the O(entities) refill is skipped; length/size checks guard against
+  // an outside writer touching the shared array or map.
+  let reconciledRoster = -1;
+  let reconciledEntityCount = -1;
+  let reconciledListLength = -1;
+  let reconciledVfxSize = -1;
   function reconcileEntities() {
+    if (readModel.weaponVfxProjectiles.size === 0 && reconciledVfxSize === 0
+      && readModel.rosterVersion === reconciledRoster
+      && readModel.entities.size === reconciledEntityCount
+      && laneEntityList.length === reconciledListLength) return;
     laneEntityList.length = 0;
     laneWeaponVfxProjectiles.length = 0;
     for (const row of readModel.entities.values()) {
@@ -433,6 +445,10 @@ export function createSimLaneRuntime({
     for (const row of readModel.weaponVfxProjectiles.values()) {
       if (row && row.alive !== false) laneWeaponVfxProjectiles.push(row);
     }
+    reconciledRoster = readModel.rosterVersion;
+    reconciledEntityCount = readModel.entities.size;
+    reconciledListLength = laneEntityList.length;
+    reconciledVfxSize = readModel.weaponVfxProjectiles.size;
   }
 
   // Event payloads cross the wire deep-flattened — live entities collapse to
@@ -489,14 +505,16 @@ export function createSimLaneRuntime({
     const segs = u.segs.length === 1 && u.segs[0].indexOf('.') !== -1
       ? u.segs[0].split('.') : u.segs;
     const root = segs[0];
-    domainAppliedKeys[segs.join('.')] = (domainAppliedKeys[segs.join('.')] || 0) + 1;
+    const appliedKey = segs.length === 1 ? root : segs.join('.');
+    domainAppliedKeys[appliedKey] = (domainAppliedKeys[appliedKey] || 0) + 1;
     domainHolder.clear();
     domainHolder.set(root, state[root]);
     // `touched` guards repeated visits within one source graph. Each wire update
     // is a separate merge, so stale entries would make the next nested snapshot
     // replace its already-mirrored root instead of mutating it in place.
     domainTouched.clear();
-    applyDomainPathUpdate(domainHolder, { ...u, segs }, domainTouched);
+    if (segs === u.segs) applyDomainPathUpdate(domainHolder, u, domainTouched);
+    else applyDomainPathUpdate(domainHolder, { ...u, segs }, domainTouched);
     state[root] = domainHolder.get(root);
   }
   function applyDomainUpdates(updates) {
@@ -514,8 +532,10 @@ export function createSimLaneRuntime({
       // Do this only for a true -> false edge and an empty local screen stack:
       // a nested modal remains a real pause owner and must not receive a resume
       // edge merely because the dock latch changed.
-      const updatePath = Array.isArray(u?.segs) ? u.segs.join('.') : '';
-      const wasDocked = updatePath === 'ui.docked' && state.ui?.docked === true;
+      const useg = u?.segs;
+      const wasDocked = Array.isArray(useg)
+        && (useg.length === 1 ? useg[0] === 'ui.docked' : useg.length === 2 && useg[0] === 'ui' && useg[1] === 'docked')
+        && state.ui?.docked === true;
       applyDomainUpdate(u);
       if (wasDocked && state.ui?.docked !== true
         && !(Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length > 0)) {
@@ -591,11 +611,19 @@ export function createSimLaneRuntime({
       });
       for (const [id, life] of finalLives) if (!life.alive) applyDestroyIds(readModel, [id], state);
     }
+    const entityMap = readModel.entities;
+    const TRANSFORM = PRESENTATION_JOURNAL_KINDS.TRANSFORM;
     journal.visitRange(start, end, recordScratch, (rec) => {
-      const life = finalLives?.get(rec.entityId);
-      if (rec.kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM
-        && (!life || (life.alive && life.generation === rec.generation))) {
-        applyFacadePose(readModel, rec.entityId, rec);
+      if (rec.kind === TRANSFORM) {
+        if (finalLives) {
+          const life = finalLives.get(rec.entityId);
+          if (life && !(life.alive && life.generation === rec.generation)) return;
+        }
+        // Inlined applyFacadePose: skips the readModel lookup indirection and
+        // the per-record argument validation (rec is the journal scratch).
+        const row = entityMap.get(rec.entityId);
+        if (!row) return;
+        applyFacadePose(readModel, rec.entityId, rec, row);
       } else if (!finalLives && rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
         applyDestroyIds(readModel, [rec.entityId], state);
       }

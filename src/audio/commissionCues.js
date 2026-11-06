@@ -1,6 +1,8 @@
 // Presentation-only vocabulary for accepted commission moments. Physical line and
 // cash voices remain with their existing owners; these are not gameplay events.
 export const COMMISSION_CUES = Object.freeze({
+  'commission.lantern.clamp': Object.freeze({ recipe: 'sfx_lantern_jaws', gain: 0.3, caption: 'Cradle jaws close.' }),
+  'commission.lantern.power': Object.freeze({ recipe: 'sfx_lantern_relay', gain: 0.35, caption: 'The family lamp relay closes.' }),
   'commission.counterweight.start': Object.freeze({ recipe: 'sfx_mission_accept', gain: 0.55, caption: 'Counterweight attempt ready.' }),
   'commission.counterweight.complete': Object.freeze({ recipe: 'sfx_mission_complete', gain: 0.65, caption: 'Counterweight attempt complete.' }),
   'commission.counterweight.failed': Object.freeze({ recipe: 'sfx_ui_error', gain: 0.55, caption: 'Counterweight attempt failed.' }),

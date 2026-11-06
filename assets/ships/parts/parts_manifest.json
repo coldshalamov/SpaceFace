@@ -8032,6 +8032,11 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_dart.glb",
+      "lodFamily": {
+        "lod0": "wholeships/ashline_dart.glb",
+        "lod1": "wholeships/ashline_dart_lod1.glb",
+        "lod2": "wholeships/ashline_dart_lod2.glb"
+      },
       "tris": 38474,
       "bytes": 2246292,
       "textureSize": 1024,
@@ -8137,6 +8142,11 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/ashline_rig.glb",
+      "lodFamily": {
+        "lod0": "wholeships/ashline_rig.glb",
+        "lod1": "wholeships/ashline_rig_lod1.glb",
+        "lod2": "wholeships/ashline_rig_lod2.glb"
+      },
       "tris": 37724,
       "bytes": 2365116,
       "textureSize": 1024,
