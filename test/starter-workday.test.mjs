@@ -1,15 +1,18 @@
 import { forEachFieldRock } from '../src/world/livingWorldViews.js';
-import { captureOrchardWorkDamage } from '../src/combat/orchardWorkDamage.js';
+import * as worldRecords from '../src/world/worldRecords.js';
+import { isLanternWardHardwareEntity } from '../src/data/lanternWardHardware.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { starterWorkSite, authoredStarterSite, starterBuoySpec, starterMiningFocus, starterMiningReceiptMatches, starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord, STARTER_WORKDAY_VERSION, registerStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { activeOwnedShip, nextStarterStep } from '../src/data/starterJobs.js';
 import * as cinderRoute from '../src/missions/cinderRoute.js';
+import { isSpineBreakOperation } from '../src/missions/spineBreakWorksite.js';
+import { loseMawBody } from '../src/missions/mawWorksite.js';
 import { registerMassScaleTow } from '../src/systems/cargoCustody.js';
 const src = p => readFileSync(new URL('../'+p, import.meta.url),'utf8');
 const loadOps = (p, name, deps) => {
- deps={forEachFieldRock,registerStarterBuoyTow,...deps};
+ deps={forEachFieldRock,registerStarterBuoyTow,isSpineBreakOperation,loseMawBody,...deps};
  if(p==='src/systems/missionSpawningOps.js')deps={...cinderRoute,registerMassScaleTow,...deps};
  const code=src(p).replace(/\r\n/g,'\n').replace(/^import[\s\S]*?;\n/gm,'').replace(`export const ${name}`,`const ${name}`);
  return Function(...Object.keys(deps),code+`;return ${name};`)(...Object.values(deps));
@@ -18,7 +21,7 @@ const mission=(job='starter_pelican',step=1,type='tow_recovery')=>({id:`work-${j
 const global=(p)=>({x:p.x+10000,z:p.z-20000});
 test('three real recoveries expand from lane to claim to outer yard, in the sector frame',()=>{
  const bodies=[1,2,3].map(n=>starterBuoySpec(mission('starter_pelican',n),global));
- assert.deepEqual(bodies.map(b=>b.mass),[40,65,90]);
+ assert.deepEqual(bodies.map(b=>b.mass),[18,19,20]);
  assert.deepEqual(bodies[0].pos,{x:10310,z:-20035});
  assert.ok(bodies[1].vel.z>0);assert.ok(bodies[2].vel.x>0);
  for(const b of bodies){assert.equal(b.type,'payload');assert.equal(b.physicsBody.dynamic,true);assert.equal(b.physicsBody.mass,b.mass);assert.equal(b.data.packagedPropFile,'places/place_lane_beacon.glb');assert.equal(b.data.tetherPayload,true);}
@@ -169,16 +172,12 @@ test('production physics normalization resolves explicit buoy masses rather than
  for(const step of [1,2,3]){
    const e=starterBuoySpec(mission('starter_pelican',step),global);
    const body=resolve(e);
-   assert.equal(body.mass,[40,65,90][step-1]);assert.equal(body.dynamic,true);assert.equal(body.ccd,true);
+   assert.equal(body.mass,[18,19,20][step-1]);assert.equal(body.dynamic,true);assert.equal(body.ccd,true);
    assert.equal(body.radius,10);assert.ok(body.inertiaY>0);
  }
 });
 test('actual durable capture/normalize/restore preserves moved damaged buoy and rejects corrupt markers',()=>{
- const code=src('src/world/worldRecords.js').replace(/^import[^]*?;\n/gm,'').replace(/export /g,'');
- const deps={captureOrchardWorkDamage,starterBuoyRecordMarker,starterBuoyFromRecord,isStarterBuoyRecord,claimsTallyAssessor:()=>false,
-   ceresWorkfleetRoleForEntity:()=>null,isCeresWorkfleetRecordIdentity:()=>false,
-   SIM_TIER:{S0_EXACT:'S0_EXACT'},normalizeIntent:()=>null,SECTORS:[],SHIPS:[],PLANET_SITE:{}};
- const records=Function(...Object.keys(deps),code+';return {captureEntityRecord,normalizeRecord,spawnSpecFromRecord,bindEntityToRecord,missionIdentityOf,ensureWorldRecords,recordsForSector,entityIsDurableCandidate,upsertRecord,RECORD_KIND};')(...Object.values(deps));
+ const records=worldRecords;
  for(const step of [1,2,3]){
    const m=mission('starter_pelican',step);
    const e={...starterBuoySpec(m,global),alive:true,id:90,homeSectorId:m.destSectorId};
@@ -195,7 +194,7 @@ test('actual durable capture/normalize/restore preserves moved damaged buoy and 
 
    const start=worldSource.indexOf('  _captureSectorDurableRecords(sectorId, opts = {}) {');
    const method=worldSource.slice(start,worldSource.indexOf('\n  /**',start));
-   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,captureBolusRib:()=>{},TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
+   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,isLanternWardHardwareEntity,captureBolusRib:()=>{},TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
    const capture=Function(...Object.keys(captureDeps),`return ({${method}})._captureSectorDurableRecords;`)(...Object.values(captureDeps));
    const ordinaryPayload={...e,id:91,data:{...e.data,starterWorkdayVersion:undefined,worldRecordId:'ordinary_payload'}};
    const captureState={world:{currentSectorId:m.destSectorId},entityList:[e,ordinaryPayload],entities:new Map([[90,e],[91,ordinaryPayload]]),
@@ -216,7 +215,7 @@ test('actual durable capture/normalize/restore preserves moved damaged buoy and 
    assert.equal(restored.type,'payload');assert.equal(restored.data.worldRecordId,e.data.worldRecordId);
    assert.equal(restored.data.identityKey,e.data.identityKey);assert.equal(restored.data.physicalRole,'slag_core');
    assert.deepEqual(restored.pos,e.pos);assert.deepEqual(restored.vel,e.vel);assert.equal(restored.hull,67);
-   assert.equal(restored.rot,1.2);assert.equal(restored.angVel,0.5);assert.equal(restored.physicsBody.mass,[40,65,90][step-1]);
+   assert.equal(restored.rot,1.2);assert.equal(restored.angVel,0.5);assert.equal(restored.physicsBody.mass,[18,19,20][step-1]);
    const fn=(name)=>Function(`return (${src('src/systems/missions.js').match(new RegExp(`export function ${name}\\([^]*?\\n}`))[0].replace('export ', '')});`)();
    const views=Function(src('src/world/livingWorldViews.js').replace(/export /g,'')+';return {forEachJobInteractable,forEachLivingWorldActor};')();
    const missionDeps={...views,authoredStarterSite,starterBuoySpec,missionIdentityOf:records.missionIdentityOf,

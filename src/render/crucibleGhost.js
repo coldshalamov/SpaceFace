@@ -7,6 +7,7 @@ import {
   ghostPoseAt,
 } from '../systems/survivalRecords.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
+import { retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree } from './staticBatchGeometryCache.js';
 
 export const CRUCIBLE_GHOST_OPACITY = 0.32;
 
@@ -120,6 +121,7 @@ export function createCrucibleGhostPresentation() {
 
   function disposeRoot() {
     if (root && root.parent) root.parent.remove(root);
+    releaseStaticBatchGeometryTree(root);
     for (let i = 0; i < clonedMaterials.length; i += 1) {
       const mat = clonedMaterials[i];
       if (mat && typeof mat.dispose === 'function') {
@@ -168,34 +170,40 @@ export function createCrucibleGhostPresentation() {
     } finally {
       for (const [obj, data] of originals) obj.userData = data;
     }
-    // A source frozen while hidden mints an unposeable ghost — the tape drives
-    // this transform from sync(), never the live writers.
-    root.matrixAutoUpdate = true;
-    clonedMaterials = [];
-    root.traverse((obj) => {
-      if (!obj) return;
-      obj.castShadow = false;
-      obj.receiveShadow = false;
-      if (!obj.material) return;
-      if (Array.isArray(obj.material)) {
-        obj.material = obj.material.map((mat) => {
-          const next = applyGhostMaterial(mat);
-          if (next && next !== mat) clonedMaterials.push(next);
-          return next;
-        });
-      } else {
-        const next = applyGhostMaterial(obj.material);
-        if (next && next !== obj.material) clonedMaterials.push(next);
-        obj.material = next;
-      }
-    });
-    if (!root.userData) root.userData = {};
-    root.userData.crucibleGhost = true;
-    clonedFrom = playerMesh;
-    clonedChildren = new Set(playerMesh.children || []);
-    mintDefers = 0;
-    warmPending = true;
-    if (scene && typeof scene.add === 'function') scene.add(root);
+    retainStaticBatchGeometryTree(root);
+    try {
+      // A source frozen while hidden mints an unposeable ghost — the tape drives
+      // this transform from sync(), never the live writers.
+      root.matrixAutoUpdate = true;
+      clonedMaterials = [];
+      root.traverse((obj) => {
+        if (!obj) return;
+        obj.castShadow = false;
+        obj.receiveShadow = false;
+        if (!obj.material) return;
+        if (Array.isArray(obj.material)) {
+          obj.material = obj.material.map((mat) => {
+            const next = applyGhostMaterial(mat);
+            if (next && next !== mat) clonedMaterials.push(next);
+            return next;
+          });
+        } else {
+          const next = applyGhostMaterial(obj.material);
+          if (next && next !== obj.material) clonedMaterials.push(next);
+          obj.material = next;
+        }
+      });
+      if (!root.userData) root.userData = {};
+      root.userData.crucibleGhost = true;
+      clonedFrom = playerMesh;
+      clonedChildren = new Set(playerMesh.children || []);
+      mintDefers = 0;
+      warmPending = true;
+      if (scene && typeof scene.add === 'function') scene.add(root);
+    } catch (error) {
+      disposeRoot();
+      throw error;
+    }
   }
 
   return {

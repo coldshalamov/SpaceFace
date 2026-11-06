@@ -202,7 +202,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2574032a3daf77ae11aa9171c51f08a4a4a431105189887511faee4efc217288",
+  "contentHash": "3f5737459f23026d1a3cee365f8e070d4392cb47c483dcd0868d3f7005bea066",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-armor.dynamic",
@@ -1496,14 +1496,14 @@
       "uri": "towline_odo_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 365236,
-    "sha256": "721d8c3216f2e8190035b47f7ca4bf57fe6a83979fa01ed6e6f6b3007208710b",
+    "bytes": 365288,
+    "sha256": "543f7e52cf807dbeb9fd0af9831b97277e654d7f3d2ffcfadc734b939ecc3463",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1606,6 +1606,117 @@
       },
       {
         "matrix": [
+          2.399142026901245,
+          0,
+          0,
+          0,
+          0,
+          2.399142026901245,
+          0,
+          0,
+          0,
+          0,
+          2.399142026901245,
+          0,
+          -8.000000238418579,
+          3.249998986721039,
+          -0.00013560056686401367,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_WINCH_Armor",
+        "planIndex": 11,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_WINCH_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_WINCH_Armor",
+            "recordIds": [
+              "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.874067783355713,
+          0,
+          0,
+          0,
+          0,
+          1.874067783355713,
+          0,
+          0,
+          0,
+          0,
+          1.874067783355713,
+          0,
+          -7.999538421630859,
+          3.2498282194137573,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_WINCH_Livery",
+        "planIndex": 13,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_WINCH_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_WINCH_Livery",
+            "recordIds": [
+              "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.399142026901245,
+          0,
+          0,
+          0,
+          0,
+          2.399142026901245,
+          0,
+          0,
+          0,
+          0,
+          2.399142026901245,
+          0,
+          -8,
+          3.25,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_WINCH_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_WINCH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_WINCH_MechanicalDark",
+            "recordIds": [
+              "sf.render.towline-odo-lod1.node.lod1-motion-towline-winch-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1624,7 +1735,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1676,7 +1787,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 15,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1728,7 +1839,7 @@
           1
         ],
         "name": "SOCKET_Massline",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1780,7 +1891,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1863,17 +1974,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 14,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
+        "planIndex": 16,
         "role": "mechanical"
       }
     ],
@@ -1883,7 +1994,7 @@
       "sha256": "93be3ea9d537bd3e426876cdc48a55f0b96a666ec1fb93b7c9d6a42b89baaf4b",
       "uri": "assets/ships/motions/towline-odo.motion.json"
     },
-    "nodeCount": 18,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -2086,8 +2197,8 @@
           -0.00013560056686401367,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_WINCH_Armor",
-        "planIndex": 11,
+        "name": "LOD1_MOTION_TOWLINE_WINCH_Armor_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2115,8 +2226,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_WINCH_Livery",
-        "planIndex": 12,
+        "name": "LOD1_MOTION_TOWLINE_WINCH_Livery_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2144,8 +2255,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_WINCH_MechanicalDark",
-        "planIndex": 13,
+        "name": "LOD1_MOTION_TOWLINE_WINCH_MechanicalDark_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2158,7 +2269,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_odo_lod1.glb"
   },
-  "runtimeHash": "dc0ec2f3f741fed6ef77e8f50de261151401185f85a8d29e362dd3c9b0ebd2d4",
+  "runtimeHash": "490828dc95ecee7a434691824faaa0ab4f92ba556230e6d7077b0640f9b3cf14",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

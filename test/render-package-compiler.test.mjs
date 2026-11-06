@@ -8,12 +8,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Document, NodeIO } from '@gltf-transform/core';
-import { KHRMeshPrimitiveRestart } from '@gltf-transform/extensions';
+import { ALL_EXTENSIONS, KHRMeshPrimitiveRestart } from '@gltf-transform/extensions';
+import { MeshoptDecoder } from 'meshoptimizer';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
   RENDER_PACKAGE_SCHEMA,
   RENDER_PACKAGE_SOURCE_SCHEMA,
+  renderPackageContentIdentity,
+  renderPackageRuntimeIdentity,
   validateRenderPackage,
 } from '../src/contracts/renderPackage.js';
 import {
@@ -29,6 +32,12 @@ import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js'
 const HASH = '0'.repeat(64);
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 const COMPILE_SCRIPT = fileURLToPath(new URL('../scripts/compile-render-packages.mjs', import.meta.url));
+
+async function readCompiledGlb(path) {
+  await MeshoptDecoder.ready;
+  return new NodeIO().registerExtensions(ALL_EXTENSIONS)
+    .registerDependencies({ 'meshopt.decoder': MeshoptDecoder }).read(path);
+}
 
 function minimalPackage() {
   return {
@@ -464,7 +473,8 @@ function mergeMorphManifest() {
 async function parseGlb(path) {
   const bytes = await readFile(path);
   const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  return new GLTFLoader().parseAsync(arrayBuffer, '');
+  await MeshoptDecoder.ready;
+  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(arrayBuffer, '');
 }
 
 function findRawNode(root, rawName) {
@@ -485,13 +495,21 @@ function assertMatrixClose(actual, expected, message) {
   }
 }
 
-function positionAxisRange(primitive, axis) {
-  const position = primitive.getAttribute('POSITION');
+function meshNodeFor(node) {
+  if (node.getMesh()) return node;
+  const matches = node.listChildren().filter((child) => child.getMesh());
+  assert.equal(matches.length, 1, 'semantic node has one decoded mesh child');
+  return matches[0];
+}
+
+function positionAxisRange(node, axis) {
+  const position = node.getMesh().listPrimitives()[0].getAttribute('POSITION');
+  const matrix = node.getWorldMatrix();
   const values = [];
   const point = [0, 0, 0];
   for (let index = 0; index < position.getCount(); index++) {
     position.getElement(index, point);
-    values.push(point[axis]);
+    values.push(matrix[axis] * point[0] + matrix[4 + axis] * point[1] + matrix[8 + axis] * point[2] + matrix[12 + axis]);
   }
   return [Math.min(...values), Math.max(...values)];
 }
@@ -542,6 +560,28 @@ test('render-package schema rejects unknown fields, duplicate IDs, and broken se
     new Set(validateRenderPackage(unsupported).issues.map((issue) => issue.rule)),
     new Set(['schema']),
   );
+});
+
+test('optional shared KTX2 resource descriptors are strict and legacy package identity stays unchanged', () => {
+  const legacy = minimalPackage();
+  assert.deepEqual(renderPackageContentIdentity(legacy).render, {
+    sha256: legacy.render.sha256,
+    bytes: legacy.render.bytes,
+  });
+
+  const valid = minimalPackage();
+  valid.render.resources = [{ uri: `../_shared/images/${'a'.repeat(64)}.ktx2`, mimeType: 'image/ktx2', sha256: 'a'.repeat(64), bytes: 12 }];
+  assert.equal(validateRenderPackage(valid).ok, true);
+  assert.notDeepEqual(renderPackageContentIdentity(valid).render, renderPackageContentIdentity(legacy).render);
+  legacy.runtime = { schema: 'spaceface.renderPackageRuntime.v1' };
+  valid.runtime = structuredClone(legacy.runtime);
+  assert.notDeepEqual(renderPackageRuntimeIdentity(valid).render, renderPackageRuntimeIdentity(legacy).render);
+  const invalid = structuredClone(valid);
+  invalid.render.resources[0].uri = '../../outside/image.ktx2';
+  assert.ok(validateRenderPackage(invalid).issues.some((issue) => issue.rule === 'resource-uri'));
+  const stale = structuredClone(valid);
+  stale.render.resources[0].uri = `../_shared/images/${'b'.repeat(64)}.ktx2`;
+  assert.ok(validateRenderPackage(stale).issues.some((issue) => issue.rule === 'resource-hash'));
 });
 
 test('semantic IDs, anchors, and dynamic groups are canonical across source declaration order', async () => {
@@ -677,12 +717,12 @@ test('compiler keeps strip primitives separate so merge groups cannot bridge top
       outputDir,
     });
 
-    const compiled = await new NodeIO().read(join(outputDir, 'render.glb'));
+    const compiled = await readCompiledGlb(join(outputDir, 'render.glb'));
     const hull = compiled.getRoot().listNodes().find((node) => node.getName() === 'Hull');
     const wing = compiled.getRoot().listNodes().find((node) => node.getName() === 'Wing');
     assert.equal(wing.getMesh(), null);
     assert.deepEqual(
-      hull.getMesh().listPrimitives().map((primitive) => ({
+      meshNodeFor(hull).getMesh().listPrimitives().map((primitive) => ({
         mode: primitive.getMode(),
         vertices: primitive.getAttribute('POSITION').getCount(),
         indices: primitive.getIndices().getCount(),
@@ -714,16 +754,14 @@ test('compiler promotes quantized normal and tangent streams before baking produ
       outputDir,
     });
 
-    const compiled = await new NodeIO().read(join(outputDir, 'render.glb'));
+    const compiled = await readCompiledGlb(join(outputDir, 'render.glb'));
     const primitive = compiled.getRoot().listMeshes()[0].listPrimitives()[0];
     const normal = primitive.getAttribute('NORMAL');
     const tangent = primitive.getAttribute('TANGENT');
-    assert.equal(normal.getComponentType(), 5126);
-    assert.equal(normal.getNormalized(), false);
-    assert.equal(tangent.getComponentType(), 5126);
-    assert.equal(tangent.getNormalized(), false);
-    assert.deepEqual(Array.from(normal.getArray()), [0, 0, 1, 0, 0, 1, 0, 0, 1]);
-    assert.deepEqual(Array.from(tangent.getArray()), [1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1]);
+    for (let i = 0; i < 3; i++) {
+      assert.deepEqual(normal.getElement(i, []), [0, 0, 1]);
+      assert.deepEqual(tangent.getElement(i, []), [1, 0, 0, 1]);
+    }
     assert.ok(primitive.getIndices(), 'offline promotion must preserve indexed geometry');
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -810,12 +848,14 @@ test('meshless transform carriers preserve anchors and runtime moving-group comp
     const sourcePath = join(root, 'source.glb');
     const outputDir = join(root, 'output');
     await createCarrierFixture(sourcePath);
-    await compileRenderPackage({
+    const build = await compileRenderPackage({
       assetId: 'fixture.ship',
       sourceGlbPath: sourcePath,
       semanticManifest: carrierManifest(),
       outputDir,
     });
+    assert.ok(build.package.geometry.some((entry) => entry.nodeId === 'fixture.turret'),
+      'the decode child retains geometry metadata under the dynamic semantic owner');
 
     const [source, compiled] = await Promise.all([
       parseGlb(sourcePath),
@@ -870,7 +910,7 @@ test('geometry prune removes detached pre-bake meshes while preserving live morp
       outputDir,
     });
 
-    const compiled = await new NodeIO().read(join(outputDir, 'render.glb'));
+    const compiled = await readCompiledGlb(join(outputDir, 'render.glb'));
     assert.equal(compiled.getRoot().listMeshes().length, 1, 'detached source mesh is not serialized');
     assert.equal(compiled.getRoot().listAccessors().length, 4, 'only live position, normal, index, and morph streams remain');
     const mesh = compiled.getRoot().listMeshes()[0];
@@ -956,7 +996,7 @@ test('two builds are byte-identical and preserve indexed geometry by default', a
     assert.equal(report.ok, true);
     assert.equal(report.byteIdentical, true);
 
-    const compiled = await new NodeIO().read(join(outputA, 'render.glb'));
+    const compiled = await readCompiledGlb(join(outputA, 'render.glb'));
     const primitives = compiled.getRoot().listMeshes().flatMap((mesh) => mesh.listPrimitives());
     assert.ok(primitives.length > 0);
     assert.ok(primitives.every((primitive) => primitive.getIndices()), 'indexed source geometry stays indexed');
@@ -975,8 +1015,8 @@ test('two builds are byte-identical and preserve indexed geometry by default', a
     assert.deepEqual(Array.from(trail.getWorldTranslation()), [1.5, 0, -1], 'carrier preserves the anchor world pose');
     assert.deepEqual(Array.from(turret.getTranslation()), [0, 0.25, 0], 'dynamic group transform remains separate');
     assert.equal(wing.getMesh(), null, 'merged semantic nodes retain identity without a duplicate draw');
-    assert.deepEqual(positionAxisRange(hull.getMesh().listPrimitives()[0], 0), [2, 5]);
-    assert.deepEqual(positionAxisRange(turret.getMesh().listPrimitives()[0], 0), [0, 1]);
+    assert.deepEqual(positionAxisRange(meshNodeFor(hull), 0), [2, 5]);
+    assert.deepEqual(positionAxisRange(meshNodeFor(turret), 0), [0, 1]);
     assert.deepEqual(
       buildA.package.nodes.find((entry) => entry.id === 'fixture.body').localTransform,
       [...IDENTITY],

@@ -31,10 +31,10 @@
       "career": "hauler",
       "minutes": 30,
       "seed": 3232800769,
-      "credits": 32328,
-      "netWorth": 40328,
-      "earnedValue": 27328,
-      "creditsPerMin": 910.93,
+      "credits": 32666,
+      "netWorth": 40666,
+      "earnedValue": 27666,
+      "creditsPerMin": 922.2,
       "completedLoops": 1,
       "completedContracts": 18,
       "failedContracts": 2,
@@ -62,10 +62,10 @@
       "career": "hauler",
       "minutes": 60,
       "seed": 3232800769,
-      "credits": 29756,
-      "netWorth": 64756,
-      "earnedValue": 59756,
-      "creditsPerMin": 995.93,
+      "credits": 30503,
+      "netWorth": 65503,
+      "earnedValue": 60503,
+      "creditsPerMin": 1008.38,
       "completedLoops": 1,
       "completedContracts": 39,
       "failedContracts": 2,
@@ -93,10 +93,10 @@
       "career": "hauler",
       "minutes": 90,
       "seed": 3232800769,
-      "credits": 103634,
-      "netWorth": 138634,
-      "earnedValue": 133634,
-      "creditsPerMin": 1484.82,
+      "credits": 104281,
+      "netWorth": 139281,
+      "earnedValue": 134281,
+      "creditsPerMin": 1492.01,
       "completedLoops": 1,
       "completedContracts": 54,
       "failedContracts": 5,
@@ -308,10 +308,10 @@
       "career": "prospector",
       "minutes": 90,
       "seed": 3232808963,
-      "credits": 2781,
-      "netWorth": 22468,
-      "earnedValue": 14181,
-      "creditsPerMin": 157.57,
+      "credits": 2827,
+      "netWorth": 22514,
+      "earnedValue": 14227,
+      "creditsPerMin": 158.08,
       "completedLoops": 6,
       "completedContracts": 6,
       "failedContracts": 0,
@@ -347,10 +347,10 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 32328,
-        "earnedValue": 27328,
-        "creditsPerMin": 910.93,
-        "netWorth": 40328,
+        "endingCapital": 32666,
+        "earnedValue": 27666,
+        "creditsPerMin": 922.2,
+        "netWorth": 40666,
         "completedLoops": 1,
         "completedContracts": 18,
         "failedContracts": 2,
@@ -398,10 +398,10 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 29756,
-        "earnedValue": 59756,
-        "creditsPerMin": 995.93,
-        "netWorth": 64756,
+        "endingCapital": 30503,
+        "earnedValue": 60503,
+        "creditsPerMin": 1008.38,
+        "netWorth": 65503,
         "completedLoops": 1,
         "completedContracts": 39,
         "failedContracts": 2,
@@ -414,8 +414,8 @@
             "price": 35000,
             "reason": "buyShip:ship_mule",
             "atS": 2336.9,
-            "creditsBefore": 40984,
-            "creditsAfter": 5984,
+            "creditsBefore": 41322,
+            "creditsAfter": 6322,
             "authority": "ships.buyShip"
           }
         ],
@@ -460,10 +460,10 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 103634,
-        "earnedValue": 133634,
-        "creditsPerMin": 1484.82,
-        "netWorth": 138634,
+        "endingCapital": 104281,
+        "earnedValue": 134281,
+        "creditsPerMin": 1492.01,
+        "netWorth": 139281,
         "completedLoops": 1,
         "completedContracts": 54,
         "failedContracts": 5,
@@ -476,8 +476,8 @@
             "price": 35000,
             "reason": "buyShip:ship_mule",
             "atS": 2336.9,
-            "creditsBefore": 40984,
-            "creditsAfter": 5984,
+            "creditsBefore": 41322,
+            "creditsAfter": 6322,
             "authority": "ships.buyShip"
           }
         ],
@@ -824,10 +824,10 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 2781,
-        "earnedValue": 14181,
-        "creditsPerMin": 157.57,
-        "netWorth": 22468,
+        "endingCapital": 2827,
+        "earnedValue": 14227,
+        "creditsPerMin": 158.08,
+        "netWorth": 22514,
         "completedLoops": 6,
         "completedContracts": 6,
         "failedContracts": 0,
@@ -840,8 +840,8 @@
             "price": 15000,
             "reason": "buyShip:ship_pelican",
             "atS": 4203.2,
-            "creditsBefore": 17415,
-            "creditsAfter": 2415,
+            "creditsBefore": 17461,
+            "creditsAfter": 2461,
             "authority": "ships.buyShip"
           }
         ],
@@ -899,24 +899,24 @@
     "ok": true,
     "fails": [],
     "warns": [
-      "extreme_cross_disparity_30m ratio=6.66",
-      "extreme_cross_disparity_90m ratio=9.42"
+      "extreme_cross_disparity_30m ratio=6.74",
+      "extreme_cross_disparity_90m ratio=9.44"
     ],
     "disparity": {
       "30": {
         "min": 136.73,
-        "max": 910.93,
-        "ratio": 6.66
+        "max": 922.2,
+        "ratio": 6.74
       },
       "60": {
         "min": 179.18,
-        "max": 995.93,
-        "ratio": 5.56
+        "max": 1008.38,
+        "ratio": 5.63
       },
       "90": {
-        "min": 157.57,
-        "max": 1484.82,
-        "ratio": 9.42
+        "min": 158.08,
+        "max": 1492.01,
+        "ratio": 9.44
       }
     }
   },
@@ -939,9 +939,9 @@
       {
         "seed": 3232800769,
         "ok": true,
-        "endingCapital": 32328,
-        "earnedValue": 27328,
-        "creditsPerMin": 910.93,
+        "endingCapital": 32666,
+        "earnedValue": 27666,
+        "creditsPerMin": 922.2,
         "completedLoops": 1,
         "completedContracts": 18,
         "assertionFails": []
@@ -949,9 +949,9 @@
       {
         "seed": 3232800785,
         "ok": true,
-        "endingCapital": 16102,
-        "earnedValue": 11102,
-        "creditsPerMin": 370.07,
+        "endingCapital": 16205,
+        "earnedValue": 11205,
+        "creditsPerMin": 373.5,
         "completedLoops": 1,
         "completedContracts": 17,
         "assertionFails": []
@@ -959,9 +959,9 @@
       {
         "seed": 3232800801,
         "ok": true,
-        "endingCapital": 36381,
-        "earnedValue": 31381,
-        "creditsPerMin": 1046.03,
+        "endingCapital": 37147,
+        "earnedValue": 32147,
+        "creditsPerMin": 1071.57,
         "completedLoops": 1,
         "completedContracts": 15,
         "assertionFails": []
@@ -1013,9 +1013,9 @@
       {
         "seed": 3232808979,
         "ok": true,
-        "endingCapital": 7388,
-        "earnedValue": 3788,
-        "creditsPerMin": 126.27,
+        "endingCapital": 7416,
+        "earnedValue": 3816,
+        "creditsPerMin": 127.2,
         "completedLoops": 2,
         "completedContracts": 2,
         "assertionFails": []
@@ -1023,9 +1023,9 @@
       {
         "seed": 3232808995,
         "ok": true,
-        "endingCapital": 7687,
-        "earnedValue": 4087,
-        "creditsPerMin": 136.23,
+        "endingCapital": 7716,
+        "earnedValue": 4116,
+        "creditsPerMin": 137.2,
         "completedLoops": 2,
         "completedContracts": 2,
         "assertionFails": []
@@ -1166,8 +1166,8 @@
           "price": 35000,
           "reason": "buyShip:ship_mule",
           "atS": 2336.9,
-          "creditsBefore": 40984,
-          "creditsAfter": 5984,
+          "creditsBefore": 41322,
+          "creditsAfter": 6322,
           "authority": "ships.buyShip"
         }
       ],
@@ -1199,8 +1199,8 @@
           "price": 15000,
           "reason": "buyShip:ship_pelican",
           "atS": 4203.2,
-          "creditsBefore": 17415,
-          "creditsAfter": 2415,
+          "creditsBefore": 17461,
+          "creditsAfter": 2461,
           "authority": "ships.buyShip"
         }
       ],

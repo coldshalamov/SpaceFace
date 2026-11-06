@@ -61,7 +61,7 @@ test('seed 4242 one cruise:engaged plays the lane-lock voice exactly once', () =
     h.bus.emit('cruise:engaged', { playerId: 1 });
     h.bus.flush(); // presentation:cue is deferred to the end-of-step flush
 
-    const laneLocks = h.plays.filter((id) => id === 'sfx_travel_lane_lock');
+    const laneLocks = h.plays.filter((id) => id === 'sfx_travel_motif');
     assert.equal(laneLocks.length, 1, 'exactly one lane-lock play per engage');
     assert.equal(
       h.plays.filter((id) => id === 'sfx_engine_boost').length, 0,

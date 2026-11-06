@@ -8,7 +8,7 @@ import { heatClearSecondsForLevel, heatLevelFor, isPlayerWanted } from '../../sy
 import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
-import { playerYardJobs } from './serviceQuotes.js';
+import { playerYardSummary } from './serviceQuotes.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -212,9 +212,9 @@ function departureHullChip(state) {
 // charged up front, and undocking aborts the job with no refund. The chip warns before the
 // player commits; it never hard-blocks (warnings never do, here).
 function departureYardChip(state) {
-  const jobs = playerYardJobs(state);
-  if (!jobs.length) return null;
-  const head = jobs[0];
+  const summary = playerYardSummary(state);
+  if (!summary?.count || !summary.head) return null;
+  const head = summary.head;
   const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
   const started = head.status === 'active' && head.applied > 0;
   const pct = head.total > 0 ? Math.round(clamp01(head.applied / head.total, 0) * 100) : 0;

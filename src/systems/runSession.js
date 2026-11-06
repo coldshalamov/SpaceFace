@@ -108,6 +108,7 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:beginRequested', (payload) => this.begin(payload)));
     this._unsubs.push(this.bus.on('run:transitionRequested', (payload) => this.transition(payload)));
     this._unsubs.push(this.bus.on('run:endRequested', (payload) => this.end(payload)));
+    this._unsubs.push(this.bus.on('run:retireRequested', (payload) => this.retire(payload)));
     this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
     this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
     this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
@@ -157,6 +158,8 @@ export const runSession = {
       next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
     }
     if (next.kind === 'survival') {
+      this._retireSerial = (this._retireSerial || 0) + 1;
+      next.retireToken = this._retireSerial;
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
       const profile = loadCrucibleMeta();
       next.telemetry.hangar = migrateHangar(profile && profile.hangar);
@@ -210,6 +213,15 @@ export const runSession = {
       reason: request && request.reason != null ? request.reason : null,
       tick: request && request.tick != null ? request.tick : 0,
     });
+  },
+
+  retire(request) {
+    const run = this._liveRun();
+    if (!run || run.kind !== 'survival' || run.phase === 'inactive'
+      || run.phase === 'ended' || run.phase === 'victory'
+      || !Number.isSafeInteger(request?.token) || request.token !== run.retireToken) return false;
+    this.end({ outcome: 'aborted', reason: 'player_retired', tick: this.state?.tick });
+    return this.state.run?.result?.reason === 'player_retired';
   },
 
   end(request) {

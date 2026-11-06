@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
-import { makeEntity } from '../src/core/entity.js';
+import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
 import {
   FLIGHT_DRILL_BEATS,
   FLIGHT_DRILL_BURST_SHOTS,
@@ -11,6 +11,8 @@ import {
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
 import { onboarding, BEATS as ROUTE_BEATS, taughtVerbLine } from '../src/systems/onboarding.js';
 import { freshRescueState, RESCUE_ESCAPE_WU } from '../src/onboarding/rescueOpening.js';
+import { cargo } from '../src/systems/cargo.js';
+import { mining } from '../src/systems/mining.js';
 
 // The route table is authored in onboarding.js; drive the FSM by key so the test tracks the
 // lesson content, not the production order (the order audits live in check-first-hour).
@@ -230,6 +232,83 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
     pos: { x: rock.pos.x, z: rock.pos.z },
   });
   assert.ok(state.onboarding.beatDoneAt.seam != null, 'three units from the marked rock complete mining');
+});
+
+test('the first wreck releases its two electronics on its own moving vector, collected only through cargo', () => {
+  const bus = createBus();
+  const state = makeState();
+  state.player.cargo = { items: {}, capVolume: 100, usedVolume: 0, usedMass: 0 };
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = makeEntity(spec);
+      entity.id = state.nextEntityId++;
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+  };
+  const owner = Object.create(onboarding);
+  owner.init({ state, bus, helpers, registry: null });
+  state.onboarding = freshOnboarding();
+  state.onboarding.currentBeat = beatIndex('tether');
+  owner._spawnDerelict();
+  const wreck = state.entities.get(owner._derelictId);
+  wreck.pos.x = 400; wreck.pos.z = -250;
+  wreck.vel.x = 37; wreck.vel.z = -21;
+  bus.emit('tether:reel', { targetId: wreck.id, before: 80, after: 58 });
+  bus.emit('tether:broke', { targetId: wreck.id });
+  bus.emit('tether:released', { targetId: wreck.id });
+  assert.equal(state.entityList.filter(e => e.type === 'pickup').length, 0);
+  bus.emit('tether:reel', { targetId: wreck.id, before: 80, after: 58 });
+  bus.emit('tether:released', { targetId: wreck.id });
+  const pickups = state.entityList.filter(e => e.type === 'pickup');
+  assert.equal(pickups.length, 2);
+  for (const item of pickups) {
+    assert.equal(item.data.commodityId, 'cmdty_salvage_electronics');
+    assert.equal(item.data.amount, 1);
+    assert.ok(Math.hypot(item.pos.x - wreck.pos.x, item.pos.z - wreck.pos.z) <= 20);
+    assert.ok(Math.hypot(item.vel.x - wreck.vel.x, item.vel.z - wreck.vel.z) <= 4);
+  }
+  assert.equal(state.player.cargo.items.cmdty_salvage_electronics || 0, 0);
+  bus.emit('tether:released', { targetId: wreck.id });
+  assert.equal(state.entityList.filter(e => e.type === 'pickup').length, 2);
+  const cargoOwner = Object.create(cargo);
+  cargoOwner.init({ state, bus, helpers });
+  const collector = Object.create(mining);
+  collector.state = state; collector.bus = bus;
+  const result = collector._collectPickupViaEvent(pickups[0], state.entities.get(state.playerId));
+  assert.equal(result.accepted, 1);
+  assert.equal(state.player.cargo.items.cmdty_salvage_electronics, 1);
+  assert.equal(pickups[0].alive, false);
+  assert.equal(pickups[1].alive, true);
+  cargoOwner.destroy();
+});
+
+test('a recycled training wreck life cannot receive an old reel and release', () => {
+  const bus = createBus();
+  const state = makeState();
+  const helpers = { spawnEntity(spec) {
+    const entity = makeEntity(spec);
+    entity.id = state.nextEntityId++;
+    stampOccupantGeneration(state, entity);
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+    return entity;
+  } };
+  const owner = Object.create(onboarding);
+  owner.init({ state, bus, helpers, registry: null });
+  state.onboarding = freshOnboarding();
+  state.onboarding.currentBeat = beatIndex('tether');
+  owner._spawnDerelict();
+  const wreck = state.entities.get(owner._derelictId);
+  bus.emit('tether:reel', { targetId: wreck.id, before: 80, after: 58 });
+  stampOccupantGeneration(state, wreck); // same id and object, a different body life
+  bus.emit('tether:released', { targetId: wreck.id });
+  assert.equal(state.onboarding.beatDoneAt.tether, undefined);
+  assert.equal(state.entityList.filter(e => e.type === 'pickup').length, 0);
+  owner._resolveProximityDone();
+  assert.equal(state.onboarding.tetherReeled, false);
+  assert.notEqual(owner._derelictId, wreck.id);
 });
 
 test('a spent flyby pass restages instead of walling the focus beat', () => {

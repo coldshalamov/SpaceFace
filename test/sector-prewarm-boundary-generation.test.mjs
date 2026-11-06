@@ -1,28 +1,32 @@
+import {
+  authoredBoundaryPreparationSignature,
+  createSectorBoundaryGenerationManager,
+  publishPreparedSectorBoundary,
+  disposePreparedSectorBoundary,
+} from '../src/render/runtime/sectorBoundaryLifecycle.js';
+import {
+  SECTOR_BOUNDARY_PREPARATION_STATE,
+  isLiveSectorBoundaryRecordCurrent,
+  pruneSettledSectorBoundaryRecords,
+  reconcileSettledSectorBoundaryRecords,
+  promoteSectorPrewarmAbortQuarantine,
+  promoteSectorPrewarmGenerationInvalidation,
+  createSectorPrewarmCertification,
+  sectorPrewarmCertificationIsCurrent,
+  settleSectorPrewarmPopulationFixpoint,
+  publishSectorBoundaryRecordSnapshot,
+  validateSectorPrewarmPopulationCoverage,
+  settleLiveSectorBoundaryAdmissions,
+} from '../src/render/runtime/sectorPrewarmPopulation.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as THREE from 'three';
 
 import {
-  SECTOR_BOUNDARY_PREPARATION_STATE,
-  authoredBoundaryPreparationSignature,
-  createSectorPrewarmCertification,
-  createSectorBoundaryGenerationManager,
-  disposePreparedSectorBoundary,
-  isLiveSectorBoundaryRecordCurrent,
-  promoteSectorPrewarmAbortQuarantine,
-  promoteSectorPrewarmGenerationInvalidation,
-  pruneSettledSectorBoundaryRecords,
-  publishSectorBoundaryRecordSnapshot,
-  publishPreparedSectorBoundary,
-  reconcileSettledSectorBoundaryRecords,
   bodyIsInsideSectorArrivalBand,
   entityHasOwnSectorPrewarmPlan,
   sectorPrewarmPopulationNeedsSynchronousRefresh,
-  sectorPrewarmCertificationIsCurrent,
-  settleLiveSectorBoundaryAdmissions,
-  settleSectorPrewarmPopulationFixpoint,
-  validateSectorPrewarmPopulationCoverage,
 } from '../src/render/renderer.js';
 import {
   isInsideSectorArrivalBand,

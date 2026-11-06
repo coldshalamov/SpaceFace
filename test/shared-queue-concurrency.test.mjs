@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { openingCompileIssueKey, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { beginScenePipelineReadinessBatch, compileScenePipelinesForRenderTarget, scenePipelineReadinessBatchOpen } from '../src/render/bloom.js';
 import { makeGpuQueuePacer, makeGpuQueueSubmitter } from '../src/render/gpuQueuePace.js';
 import { collectUniqueCompileSubjects, compileSubjectsAcrossPresents,

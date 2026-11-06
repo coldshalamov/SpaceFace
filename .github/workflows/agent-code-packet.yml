@@ -56,8 +56,10 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          # Ceiling stays at 256 MiB. Tighten scripts/lib/agent_code_packet_selection.py
+          # (DENIED_PREFIXES / DENIED_EXT) when selected source grows — do not raise this.
           MAX_FILE_BYTES: '8388608'       # 8 MiB per tracked file
-          MAX_SOURCE_BYTES: '268435456'   # 256 MiB raw selected-source ceiling (tracked source grew past 200 MiB on 2026-09-30: 218.4 MB selected)
+          MAX_SOURCE_BYTES: '268435456'   # 256 MiB raw selected-source ceiling
         run: |
           set -euo pipefail
 
@@ -68,80 +70,45 @@ jobs:
           tree_sha="$(git -C source rev-parse 'FETCH_HEAD^{tree}')"
           gh api "/repos/${GITHUB_REPOSITORY}/git/trees/${tree_sha}?recursive=1" > tree.json
 
+          # Hydrate just the shared selector (one blob) so the workflow and the local check script
+          # cannot drift. Blob:none fetch means only this path is downloaded.
+          git -C source checkout --quiet FETCH_HEAD -- scripts/lib/agent_code_packet_selection.py
+
           python3 - <<'PY'
           import json
           import os
           import pathlib
           import subprocess
+          import sys
           from datetime import datetime, timezone
+
+          sys.path.insert(0, str(pathlib.Path('source/scripts/lib').resolve()))
+          import agent_code_packet_selection as acp
 
           repo = pathlib.Path('source')
           max_file = int(os.environ['MAX_FILE_BYTES'])
           max_source = int(os.environ['MAX_SOURCE_BYTES'])
-
-          # Deliberately omit heavyweight/renderable media. Textual asset manifests and metadata
-          # remain eligible, including files under assets/, so code can still be reasoned about.
-          denied_ext = {
-              # 3D / DCC / geometry
-              '.glb', '.gltf', '.fbx', '.obj', '.blend', '.blend1', '.dae', '.3ds',
-              '.ply', '.stl', '.usd', '.usda', '.usdc', '.usdz',
-              # textures / raster images / GPU texture containers
-              '.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tga', '.tif',
-              '.tiff', '.dds', '.ktx', '.ktx2', '.hdr', '.exr', '.ico', '.icns',
-              # audio / video
-              '.wav', '.mp3', '.ogg', '.flac', '.m4a', '.aac', '.mp4', '.mov',
-              '.webm', '.mkv', '.avi',
-              # archives, binary payloads, native/runtime binaries and fonts
-              '.zip', '.7z', '.rar', '.tar', '.gz', '.bz2', '.xz', '.zst',
-              '.bin', '.exe', '.dll', '.so', '.dylib', '.node', '.wasm',
-              '.ttf', '.otf', '.woff', '.woff2', '.pdf',
-              # generated run artifacts (CPU profiles, build/run logs) — heavyweight
-              # proof material, not engineering surface an agent reasons over
-              '.cpuprofile', '.log',
-          }
-
-          # Generated artifact/evidence lanes inside otherwise-eligible trees: the same
-          # heavyweight proof material, denied by path segment rather than extension.
-          # Coordination files beside them (IMPORT.md, DONE.md, patches/, reports) stay.
-          denied_segments = (
-              ('design/program/vm-drop/', '/artifacts/'),
-              ('design/genie-returns/', '/evidence/'),
-          )
-
-          tree = json.loads(pathlib.Path('tree.json').read_text(encoding='utf-8'))
-          if tree.get('truncated'):
+          if max_file != acp.MAX_FILE_BYTES or max_source != acp.MAX_SOURCE_BYTES:
               raise SystemExit(
-                  'GitHub recursive tree response was truncated; fail closed rather than publish an '
-                  'incomplete packet that an agent could mistake for the repository.'
+                  f'workflow ceilings ({max_file}/{max_source}) disagree with '
+                  f'scripts/lib/agent_code_packet_selection.py '
+                  f'({acp.MAX_FILE_BYTES}/{acp.MAX_SOURCE_BYTES}); keep them equal and '
+                  f'tighten DENIED_* instead of raising the ceiling'
               )
 
-          selected = []
-          omitted = []
-          selected_bytes = 0
-          omitted_bytes = 0
+          tree = json.loads(pathlib.Path('tree.json').read_text(encoding='utf-8'))
+          result = acp.select_from_github_tree(tree)
+          selected = result['selected']
+          omitted = result['omitted']
+          selected_bytes = result['selected_bytes']
+          omitted_bytes = result['omitted_bytes']
 
-          for item in tree.get('tree', []):
-              if item.get('type') != 'blob':
-                  continue
-              path = item['path']
-              size = int(item.get('size') or 0)
-              suffix = pathlib.PurePosixPath(path).suffix.lower()
-
-              reason = None
-              if suffix in denied_ext:
-                  reason = 'heavy-or-binary-extension'
-              elif size > max_file:
-                  reason = 'file-over-8MiB'
-              elif any(path.startswith(prefix) and segment in path
-                       for prefix, segment in denied_segments):
-                  reason = 'generated-run-artifact'
-
-              if reason:
-                  omitted.append((path, size, reason))
-                  omitted_bytes += size
-              else:
-                  selected.append(path)
-                  selected_bytes += size
+          print(
+              f'selected_files={len(selected)} selected_bytes={selected_bytes} '
+              f'selected_mib={selected_bytes / 1024 / 1024:.1f} '
+              f'ceiling_bytes={max_source} margin_bytes={max_source - selected_bytes} '
+              f'omitted_files={len(omitted)} omitted_bytes={omitted_bytes}'
+          )
 
           if selected_bytes > max_source:
               raise SystemExit(
@@ -191,7 +158,8 @@ jobs:
               'omittedFileCount': len(omitted),
               'omittedTrackedBytes': omitted_bytes,
               'maxIndividualTrackedFileBytes': max_file,
-              'selectionPolicy': 'all tracked blobs <= 8 MiB except heavyweight/binary media extensions and generated run-artifact/evidence lanes',
+              'maxSelectedTrackedBytes': max_source,
+              'selectionPolicy': acp.SELECTION_POLICY,
               'note': 'Missing paths may still exist in the full repository; consult .agent-omitted-files.tsv.',
           }
           (repo / '.agent-packet.json').write_text(

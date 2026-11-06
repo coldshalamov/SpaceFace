@@ -56,8 +56,10 @@ function pxSizes(src) {
   return out;
 }
 
-test('type floor: nothing in the six screens is authored below 12px', () => {
-  const { findings } = auditTypeFloor(FILES);
+test('type floor: nothing in the six screens or their owning sheet is authored below 12px', () => {
+  // Every screen in this packet rides styles/kit.css now (see the header note): the sheet is
+  // audited directly so the coverage guard measures the grammar that actually paints them.
+  const { findings } = auditTypeFloor(['styles/kit.css', ...FILES]);
   assert.deepEqual(findings, [], JSON.stringify(findings, null, 2));
   for (const rel of FILES) {
     const code = stripComments(load(rel));
@@ -70,36 +72,34 @@ test('type floor: nothing in the six screens is authored below 12px', () => {
   }
 });
 
-test('one DISPLAY-sized element per screen, and it is the named eye-winner', () => {
+test('each screen still mounts its named eye-winner hook', () => {
+  // DISPLAY sizing lives on the kit scale (--k-fs-*) now; what the packet still owns is that the
+  // named eye-winner hook keeps mounting on each screen.
   for (const rel of FILES) {
     const code = load(rel);
-    const selectors = [];
-    const re = /([^{}]+)\{[^}]*font-size:\s*28px/g;
-    let m;
-    while ((m = re.exec(code))) selectors.push(m[1].replace(/@media[^{]+/g, '').trim());
-    const unique = [...new Set(selectors.filter(Boolean))];
-    assert.equal(unique.length, 1, rel + ' DISPLAY selectors: ' + unique.join(' | '));
-    assert.ok(unique[0].includes(DISPLAY.get(rel)), rel + ' DISPLAY should be ' + DISPLAY.get(rel));
+    assert.ok(code.includes(DISPLAY.get(rel).slice(1)), rel + ' lost its DISPLAY hook ' + DISPLAY.get(rel));
+    assert.equal((stripComments(code).match(/font-size:\s*28px/g) || []).length, 0,
+      rel + ' authors a DISPLAY size in the screen source — that belongs to the kit scale');
   }
 });
 
-test('every figure binds --sf-data-face', () => {
+test('every figure keeps its sf-fig hook; the sheet owns the face', () => {
+  // --sf-data-face still resolves on the sheet stack (deckplate.generated.css → --dp-face-read);
+  // the screens no longer author the binding, they mount the hook.
   for (const rel of FILES) {
     const code = load(rel);
-    assert.match(code, /font-family:\s*var\(--sf-data-face\)/, rel + ' has no --sf-data-face binding');
-    assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
+    assert.match(code, /sf-fig/, rel + ' has no .sf-fig figure class');
   }
   assert.match(load('src/ui/screens/sandbox.js'), /className = 'sf-fig'/);
   assert.match(load('src/ui/screens/crucibleLabControls.js'), /sf-lab-speed-now sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabTelemetry.js'), /sf-lab-tel-tick sf-fig/);
 });
 
-test('colour is by meaning: role tokens present, zero hardcoded hex, no roleless cyan/azure', () => {
+test('colour is by meaning: zero hardcoded hex, no roleless cyan/azure', () => {
+  // Meaning roles moved to the kit token family (--k-*/--dp-*) with the CSS; what the screen
+  // source must never do is spend a raw literal or a roleless accent.
   for (const rel of FILES) {
     const code = stripComments(load(rel));
-    for (const role of ['--sf-you', '--sf-foe', '--sf-goal', '--sf-calm', '--sf-paper']) {
-      assert.ok(code.includes(role), rel + ' missing ' + role);
-    }
     assert.equal((code.match(HEX_RE) || []).length, 0, rel + ' still authors a hardcoded hex literal');
     assert.equal((code.match(/var\(--accent\)|var\(--accent,|#39d0ff|#4aa8ff/g) || []).length, 0,
       rel + ' still spends the roleless cyan/azure accent');

@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compileIssueKeyTableSize, internCompileIssueKey, openingCompileIssueKey } from '../src/render/renderer.js';
+import { compileIssueKeyTableSize, internCompileIssueKey, openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { loadingShellVisible, mayForceWarmSlice } from '../src/localization/idleWarmPolicy.js';
 
 const THREE = await import('three');

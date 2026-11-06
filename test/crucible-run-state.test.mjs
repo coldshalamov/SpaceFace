@@ -28,7 +28,7 @@ const EXPECTED_PHASES = Object.freeze([
 ]);
 
 const EXPECTED_RUN_KEYS = Object.freeze([
-  'schemaVersion', 'kind', 'ruleset', 'seed', 'arenaId', 'phase', 'wave', 'block', 'act',
+  'schemaVersion', 'kind', 'ruleset', 'seed', 'arenaId', 'phase', 'retireToken', 'wave', 'block', 'act',
   'wavePlanId', 'threatBudget', 'spawnedThreat', 'resolvedThreat', 'credits', 'xp', 'level',
   'score', 'style', 'modifiers', 'draftHistory', 'shopHistory', 'arenaMutators', 'buildCode',
   'result', 'practice', 'telemetry',
@@ -189,12 +189,35 @@ test('every §27.4 legal transition is accepted and six illegal ones are rejecte
   }
 });
 
+test('legacy run envelopes remain valid without inventing a retirement identity', () => {
+  const { state, bus } = bootSession();
+  const legacy = createRunState({ kind: 'survival', ruleset: 'swarm', seed: 7 });
+  legacy.phase = 'active';
+  delete legacy.retireToken;
+  assert.equal(validateRunState(legacy).ok, true);
+  for (const bad of [undefined, 0, -1, 1.5, '1']) {
+    assert.equal(validateRunState({ ...legacy, retireToken: bad }).ok, false);
+  }
+  const incomplete = { ...legacy }; delete incomplete.wave;
+  assert.equal(validateRunState(incomplete).ok, false, 'other required fields stay required');
+  state.run = legacy;
+  assert.equal(runSession.retire({ token: 1 }), false);
+  runSession.transition({ expectedPhase: 'active', nextPhase: 'cleanup' });
+  assert.equal(state.run.phase, 'cleanup');
+  assert.equal(Object.hasOwn(state.run, 'retireToken'), false, 'live legacy state is not assigned a new identity');
+  bus.emit('save:restoring', {});
+  assert.equal(state.run.kind, 'adventure');
+  assert.equal(state.run.phase, 'inactive');
+  assert.equal(state.run.retireToken, null, 'Continue resets to the canonical fresh envelope');
+});
+
 test('createGameState(1).run exists, is inactive, and is fresh per call', () => {
   const a = createGameState(1);
   const b = createGameState(1);
   assert.ok(a.run);
   assert.equal(a.run.phase, 'inactive');
   assert.equal(a.run.kind, 'adventure');
+  assert.equal(a.run.retireToken, null);
   assert.notEqual(a.run, b.run);
   assert.deepEqual(Object.keys(a.run), [...EXPECTED_RUN_KEYS]);
   const aNodes = [];

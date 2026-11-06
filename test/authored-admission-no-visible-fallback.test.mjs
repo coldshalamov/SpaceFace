@@ -8,7 +8,10 @@ import {
   authoredCriticalVisualReadiness,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  asteroidFirstFlightCookKey,
   collectFirstFlightCookEntities,
+  collectFirstFlightCookEntitiesSteps,
+  FIRST_FLIGHT_ROCK_COOK_CAP,
   isFirstFlightCookEntity,
   isInitialAuthoredCompositionEntity,
   isOpeningFlightGateEntity,
@@ -1277,6 +1280,11 @@ test('the default Helios relay settles inside the loading-time authored runway',
     ]),
   };
   const cookedIds = collectFirstFlightCookEntities(rockState).map((entity) => entity.id);
+  const steppedCook = collectFirstFlightCookEntitiesSteps(rockState, 2);
+  let stepped = steppedCook.next();
+  while (!stepped.done) stepped = steppedCook.next();
+  assert.deepEqual(stepped.value.map((entity) => entity.id), cookedIds,
+    'the synchronous drain preserves the paced collector membership and order');
   assert.equal(cookedIds.includes(spindle.id), true);
   assert.equal(cookedIds.includes(nearRock.id), true);
   assert.equal(cookedIds.includes(sameVariantRock.id), false,
@@ -1286,6 +1294,41 @@ test('the default Helios relay settles inside the loading-time authored runway',
   assert.equal(cookedIds.includes(farRock.id), false);
   assert.equal(cookedIds.includes(nearbyWreck.id), true,
     'the on-table packaged wreck cooks with the opening composition');
+
+  const cappedRocks = [];
+  for (let typeIndex = 0; typeIndex < 6; typeIndex++) {
+    const variants = new Set();
+    for (let id = 0; id < 200 && variants.size < 5; id++) {
+      const rock = {
+        id: `cap-${typeIndex}-${id}`,
+        alive: true,
+        type: 'asteroid',
+        pos: { x: 20 + cappedRocks.length * 0.1, z: 0 },
+        data: { typeId: `cap-type-${typeIndex}` },
+      };
+      const key = asteroidFirstFlightCookKey(rock);
+      if (variants.has(key)) continue;
+      variants.add(key);
+      cappedRocks.push(rock);
+    }
+    assert.equal(variants.size, 5, `type ${typeIndex} exposes the five authored cook variants`);
+  }
+  const cappedState = {
+    ...rockState,
+    entityList: [player, ...cappedRocks],
+    entities: new Map([[player.id, player], ...cappedRocks.map((rock) => [rock.id, rock])]),
+  };
+  const cappedIds = collectFirstFlightCookEntities(cappedState)
+    .filter((entity) => entity.type === 'asteroid').map((entity) => entity.id);
+  assert.equal(cappedIds.length, FIRST_FLIGHT_ROCK_COOK_CAP,
+    'the canonical walk keeps the existing distinct-variant cap');
+  assert.deepEqual(cappedIds, cappedRocks.slice(0, FIRST_FLIGHT_ROCK_COOK_CAP).map((rock) => rock.id),
+    'the capped result retains nearest-first ordering');
+  const cappedSteps = collectFirstFlightCookEntitiesSteps(cappedState, 3);
+  let cappedStep = cappedSteps.next();
+  while (!cappedStep.done) cappedStep = cappedSteps.next();
+  assert.deepEqual(cappedStep.value.filter((entity) => entity.type === 'asteroid').map((entity) => entity.id), cappedIds,
+    'paced and synchronous drains keep identical capped membership and order');
 });
 
 test('the critical Helios hub joins the startup set inside the authored decode runway', () => {

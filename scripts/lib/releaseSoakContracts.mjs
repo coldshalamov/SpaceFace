@@ -99,6 +99,11 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
         const requested = envelope.sourceOverlay?.requested;
         const served = envelope.sourceOverlay?.served;
         const servedAtEnd = envelope.sourceOverlay?.servedAtEnd;
+        if (requested?.strictRuntimeIsolation !== true
+            || served?.strictRuntimeIsolation !== true
+            || servedAtEnd?.strictRuntimeIsolation !== true) {
+          failures.push('full-runtime source overlay did not prove strict runtime isolation');
+        }
         if (!sourceOverlayIdentityMatches(requested, served)
             || !sourceOverlayIdentityMatches(requested, servedAtEnd)) {
           failures.push('full-runtime source overlay identity was not stable for the entire capture');
@@ -106,8 +111,8 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
         if (envelope.sourceStability?.mode !== 'served-overlay'
             || envelope.sourceStability?.pass !== true
             || envelope.sourceStability?.uncoveredRuntimeInputsStable !== true
-            || envelope.sourceStability?.uncoveredHeadStable !== true) {
-          failures.push('full-runtime source overlay did not prove uncovered runtime-input and HEAD stability');
+            || typeof envelope.sourceStability?.uncoveredHeadStable !== 'boolean') {
+          failures.push('full-runtime source overlay did not prove uncovered runtime-input stability and record HEAD status');
         }
         if (envelope.runtimeInputs?.scope !== 'uncovered-runtime-inputs'
             || !Array.isArray(envelope.runtimeInputs?.changedPaths)
@@ -206,8 +211,9 @@ function validateChecks(checks, primary, failures) {
 
 function sourceOverlayIdentityMatches(expected, observed) {
   if (!expected || !observed) return false;
-  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
-    .every((field) => expected[field] === observed[field]);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
 }
 
 function validateCycles(cycles, primary, failures) {
@@ -347,18 +353,35 @@ function validateErrors(errors, failures) {
   }
 }
 
-function validateContextLoss(contextLoss, failures) {
+export function validateContextLoss(contextLoss, failures) {
   if (!contextLoss || typeof contextLoss !== 'object') {
     failures.push('context-loss evidence is required');
     return;
   }
-  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'recovered']) {
+  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'worldSubmissionAdvanced', 'recovered']) {
     if (contextLoss[key] !== true) failures.push(`contextLoss.${key} must be true`);
   }
   if (contextLoss.meshRebuilt !== true && contextLoss.meshRetained !== true) {
     failures.push('contextLoss must prove either rebuilt or retained mesh identity');
   }
   if (contextLoss.before !== false || contextLoss.after !== false) failures.push('context must be live before and after the controlled loss');
+  const pixels = contextLoss.pixelAdvancement;
+  if (pixels?.pass !== true || pixels.firstNonblank !== true || pixels.secondNonblank !== true
+      || !Number.isSafeInteger(pixels.width) || pixels.width <= 0 || !Number.isSafeInteger(pixels.height) || pixels.height <= 0
+      || !Number.isSafeInteger(pixels.sampleWidth) || pixels.sampleWidth <= 0 || !Number.isSafeInteger(pixels.sampleHeight) || pixels.sampleHeight <= 0
+      || !Number.isSafeInteger(pixels.changedPixels) || pixels.changedPixels <= 0
+      || pixels.changedPixels > pixels.sampleWidth * pixels.sampleHeight
+      || !Number.isSafeInteger(pixels.firstWorldSubmittedFrames) || pixels.firstWorldSubmittedFrames < 0
+      || !Number.isSafeInteger(pixels.secondWorldSubmittedFrames)
+      || pixels.worldFrameDelta !== pixels.secondWorldSubmittedFrames - pixels.firstWorldSubmittedFrames
+      || pixels.worldFrameDelta <= 0) failures.push('context loss requires changing nonblank pixels and advancing world submissions in matching captures');
+  const tail = contextLoss.tailAdvancement;
+  if (tail?.pass !== true || !Number.isSafeInteger(tail.start?.tick) || !Number.isSafeInteger(tail.end?.tick)
+      || !Number.isSafeInteger(tail.start?.worldSubmittedFrames) || !Number.isSafeInteger(tail.end?.worldSubmittedFrames)
+      || tail.tickDelta !== tail.end.tick - tail.start.tick || tail.tickDelta <= 0
+      || tail.worldFrameDelta !== tail.end.worldSubmittedFrames - tail.start.worldSubmittedFrames || tail.worldFrameDelta <= 0) {
+    failures.push('context recovery tail requires advancing simulation and world submissions');
+  }
 }
 
 export function validateCleanupEvidence(cleanup, { runtimeKind = 'browser' } = {}) {
@@ -463,7 +486,11 @@ export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}
  * This intentionally ignores Git metadata and harness/docs churn while remaining
  * sensitive to tracked, staged, unstaged, deleted, and non-ignored untracked runtime files.
  */
-export async function strictRuntimeInputFingerprint(root, { excludePaths = [], includeFileHashes = false } = {}) {
+export async function strictRuntimeInputFingerprint(root, {
+  excludePaths = [],
+  includeFileHashes = false,
+  strictOverlayIsolation = false,
+} = {}) {
   const digest = createHash('sha256');
   const excluded = new Set(excludePaths.map(normalizeFingerprintPath));
   if ([...excluded].some((relative) => !relative)) {
@@ -481,7 +508,14 @@ export async function strictRuntimeInputFingerprint(root, { excludePaths = [], i
     'scripts/lib/electronTestIsolation.mjs',
     'scripts/lib/browser-issues.mjs',
     'scripts/lib/playwrightCspPolling.mjs',
-  ]).has(relative)).filter((relative) => !excluded.has(relative)).sort();
+  ]).has(relative))
+    .filter((relative) => !isGuidanceInputPath(relative))
+    .filter((relative) => !excluded.has(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .filter((relative) => strictOverlayIsolation !== true
+      || !isStrictOverlayRuntimePath(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .sort();
   const rootPath = path.resolve(root);
   const files = includeFileHashes ? [] : null;
   for (const relative of paths) {
@@ -538,6 +572,32 @@ export function normalizeFingerprintPath(value) {
   const segments = normalized.split('/');
   if (segments.includes('..')) return null;
   return normalized;
+}
+
+function isGuidanceInputPath(relative) {
+  const name = path.posix.basename(relative).toUpperCase();
+  return name === 'AGENTS.MD' || name === 'CLAUDE.MD';
+}
+
+// These modules execute in the Node host and are imported directly by the launchers/server;
+// an HTTP source overlay cannot freeze the code that is serving that overlay.
+const STRICT_OVERLAY_HOST_INPUTS = new Set([
+  'scripts/lib/gameServer.cjs',
+  'scripts/lib/visualProbeServer.mjs',
+  'scripts/lib/staticCachePolicy.cjs',
+  'scripts/lib/playerSaveStore.cjs',
+  'scripts/lib/userContentStore.cjs',
+]);
+
+function isStrictOverlayHostInputPath(relative) {
+  return STRICT_OVERLAY_HOST_INPUTS.has(relative);
+}
+
+function isStrictOverlayRuntimePath(relative) {
+  if (relative === 'index.html' || relative === 'vendor/three.module.js') return true;
+  if (relative.startsWith('src/')) return /\.(?:js|json)$/i.test(relative);
+  if (relative.startsWith('scripts/lib/')) return /\.(?:js|mjs|cjs)$/i.test(relative);
+  return relative.startsWith('styles/');
 }
 
 async function hashFilteredGitRecords(cwd, args, hash, label, excluded, kind) {

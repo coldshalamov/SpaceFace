@@ -98,7 +98,7 @@ function mergeStatic(group, keep = []) {
     if (!buckets.has(key)) buckets.set(key, { material: child.material, shadow: child.castShadow, parts: [] });
     buckets.get(key).parts.push(g); gone.push(child);
   }
-  for (const child of gone) { group.remove(child); child.geometry.dispose(); }
+  for (const child of gone) { child.castShadow = false; group.remove(child); child.geometry.dispose(); }
   for (const { material, shadow, parts } of buckets.values()) {
     const merged = mergeGeometries(parts, false);
     parts.forEach(g => g.dispose());

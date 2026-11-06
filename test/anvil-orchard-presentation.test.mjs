@@ -11,6 +11,18 @@ import { authoredPayloadDrawScale, authoredPayloadFileForEntity, authoredPayload
   upgradeAuthoredPlaceBoundaryForProbe } from '../src/render/partsLibrary.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
 import { wreckPackagedFile } from '../src/render/visualFactory.js';
+import { registerOrchardPoseReader, isCurrentOrchardPoseReader } from '../src/core/anvilOrchardNative.js';
+import { readOrchardNativePose } from '../src/core/orchardPoseReader.js';
+
+test('native registration and presentation share one current Orchard pose reader', () => {
+  const state = {}, entity = {}, first = { readOrchardFramePose: value => ({ value }) };
+  registerOrchardPoseReader(state, first);
+  assert.deepEqual(readOrchardNativePose(state, entity), { value: entity });
+  const replacement = { readOrchardFramePose: () => null };
+  registerOrchardPoseReader(state, replacement);
+  assert.equal(isCurrentOrchardPoseReader(state, first), false);
+  assert.equal(readOrchardNativePose(state, entity), null);
+});
 
 function frame() {
   const e={id:'orchard-frame',type:'wreck',alive:true,hull:1000,radius:G.radius,

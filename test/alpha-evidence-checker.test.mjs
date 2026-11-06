@@ -296,27 +296,28 @@ async function runRepositoryWiringAssertions() {
 
   const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');
   const authorityHead = rootAgents.split(/\r?\n/).slice(0, 18).join('\n');
-  assert.match(authorityHead, /build_map\.md[\s\S]*single program map/i,
-    'root orientation routes multi-plan work through the canonical program map');
-  const programRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Program map, "next N"')) || '';
+  // The front door now routes through the Finish Program (three lane boards); the retired
+  // build_map/single-program-map chain is historical. Pin the live routing, not the old one.
+  assert.match(authorityHead, /design\/program\/finish\/README\.md/i,
+    'root orientation routes multi-plan work through the canonical Finish program');
   assert.ok(
-    programRoute.indexOf('build_map.md') < programRoute.indexOf('design/program/NOW.md'),
-    'program routing reads the canonical map before live NOW state',
+    rootAgents.indexOf('design/program/finish/README.md') < rootAgents.indexOf('design/program/NOW.md'),
+    'program routing reads the canonical program before live NOW state',
   );
-  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product or system design')) || '';
+  const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product or system intent')) || '';
   assert.match(
     productRoute,
-    /design\/GDD_2_0\.md.*spec2\/spec3/i,
-    'product design starts at the GDD and then selects the relevant spec slice',
+    /design\/VISION\.md.*design\/GDD_2_0\.md/i,
+    'product design starts at the vision and the GDD before the selected spec section',
   );
   const authorityTokens = [
     'user direction',
     'ARCHITECTURE.md',
+    'design/VISION.md',
     'design/GDD_2_0.md',
-    'design/program/',
-    'activated plan/spec',
+    'Finish board',
   ];
-  const authoritySection = rootAgents.slice(rootAgents.indexOf('When sources disagree:'));
+  const authoritySection = rootAgents.slice(rootAgents.indexOf('Authority and contracts'));
   const authorityIndexes = authorityTokens.map((token) => authoritySection.indexOf(token));
   assert.ok(authorityIndexes.every((index) => index >= 0),
     'root orientation names every current authority tier');

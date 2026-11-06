@@ -4,7 +4,7 @@
 // because only the catcher's custody HEAD was a collider. These tests prove the authored rails and
 // arrestor are real physics: an overspeed load is refused by the kernel AND arrested by the steel (it
 // never reaches the rear plane and never crosses a rail line), capture stays reachable afterwards,
-// the player's PQ-137.11 give contract is untouched, and the colliders live exactly as long as the
+// native player wall stopping preserves heading, and the colliders live exactly as long as the
 // facility is materialized.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -208,9 +208,9 @@ test('after a refusal the load is still alive and a slow approach still settles'
   assert.ok(p.speed <= BREAKAWAY_CAPTURE_FORK.settleSpeed, `settled speed ${p.speed}`);
 });
 
-// ── the player's give contract is unmodified ────────────────────────────────────────────────────
+// ── fixed steel stops inward motion without taking the player's heading ─────────────────────────
 
-test('a player hull driven into a rail gets bounded give and no heading kick', async () => {
+test('a player hull driven head-on into a rail stops without gaining energy or a heading kick', async () => {
   const t = await boot();
   t.receiver = receiver(t);
   const mouth = projectBreakawayForkMouth(BREAKAWAY_CAPTURE_FORK);
@@ -226,19 +226,15 @@ test('a player hull driven into a rail gets bounded give and no heading kick', a
   t.player.vel.x = lx * cruise; t.player.vel.z = lz * cruise;
   t.player.rot = Math.atan2(-lz, lx);
   t.player.angVel = 0;
-  const course0 = Math.atan2(t.player.vel.z, t.player.vel.x);
   const rot0 = t.player.rot;
 
-  let maxSpeedDelta = 0;
-  let maxCourseChange = 0;
+  let maxSpeed = 0;
   let maxRotChange = 0;
   let maxLat = 0;
   for (let i = 0; i < 120; i++) {
     t.sim.step(SIM_DT);
     const speed = Math.hypot(t.player.vel.x, t.player.vel.z);
-    maxSpeedDelta = Math.max(maxSpeedDelta, Math.abs(speed - cruise));
-    maxCourseChange = Math.max(maxCourseChange,
-      Math.abs(wrap(Math.atan2(t.player.vel.z, t.player.vel.x) - course0)));
+    maxSpeed = Math.max(maxSpeed, speed);
     maxRotChange = Math.max(maxRotChange, Math.abs(wrap(t.player.rot - rot0)));
     const p = local(t, t.player);
     maxLat = Math.max(maxLat, Math.abs(p.lateral));
@@ -247,8 +243,11 @@ test('a player hull driven into a rail gets bounded give and no heading kick', a
   assert.ok(maxLat > 8, `the player actually reached the rail (lateral ${maxLat.toFixed(2)})`);
   assert.ok(maxLat < BREAKAWAY_CAPTURE_FORK.halfWidth,
     `the rail blocks the hull (lateral ${maxLat.toFixed(2)})`);
-  assert.ok(maxSpeedDelta <= 0.10 * cruise + 0.75,
-    `bounded give: max speed change ${maxSpeedDelta.toFixed(3)} <= 10% of ${cruise}`);
-  assert.ok(maxCourseChange < 0.05, `no course kick (${maxCourseChange.toFixed(4)} rad)`);
+  assert.ok(maxSpeed <= cruise + 0.75,
+    `passive steel adds no kinetic energy (max speed ${maxSpeed.toFixed(3)})`);
+  const finalSpeed = Math.hypot(t.player.vel.x, t.player.vel.z);
+  assert.ok(finalSpeed < 1,
+    `native fixed-wall braking stops the head-on hull (${finalSpeed.toFixed(3)})`);
+  // Course is undefined at rest. The pilot's chosen hull heading remains meaningful.
   assert.ok(maxRotChange < 0.05, `no heading kick (${maxRotChange.toFixed(4)} rad)`);
 });

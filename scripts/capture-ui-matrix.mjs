@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, orderForOneBoot } from './ui-grammar-surfaces.mjs';
+import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, mapAliasProvenance, matchesMapAliasProvenance, orderForOneBoot } from './ui-grammar-surfaces.mjs';
 import { RESPONSIVE_WIDTHS } from './ui-grammar-thresholds.mjs';
 import {
   UI_AUXILIARY_RAF_SCOPE,
@@ -58,14 +58,14 @@ const BUDGET_SAMPLE_MS = 600;
 const BUDGET_SAMPLE_ATTEMPTS = 4;
 let BUDGET_PROBE_ACTIVE = false;
 // Frontend Task A (design/frontend/direction/KIT_SPEC.md §11.7, §13): a `--world` run photographs
-// the live 3D picture instead of the neutral ground. Chromium gets real GL flags, the neutral
-// ground is skipped, and every kit screen (`.k-screen[data-screen]`) is waited on until its
-// `data-k-ready="1"` — the attribute a kit screen sets when its 3D mount has drawn a first frame.
-// Without `--world` nothing here changes, so the committed regression baseline stays valid.
+// the live 3D picture instead of the neutral ground. Readiness follows the visible surface's
+// declared world contract: a screen-owned stage uses its stage marker; overlays and intentional
+// empty stages use a fresh submission from the live renderer. Without `--world` nothing here
+// changes, so the committed regression baseline stays valid.
 let WORLD_CAPTURE = false;
 const WORLD_GL_ARGS = Object.freeze(['--use-gl=angle', '--ignore-gpu-blocklist', '--mute-audio']);
 const WORLD_READY_TIMEOUT_MS = 15_000;
-/** Surfaces whose kit root never reported `data-k-ready="1"` in this run (review defect list). */
+/** Surfaces that did not meet their declared world-readiness contract in this run. */
 const HULL_ABSENT = [];
 export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-references');
 /**
@@ -82,6 +82,11 @@ export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-referenc
  * exactly which frames are current.
  */
 export const UI_FRAME_PROVENANCE_FILE = path.join(UI_FRAME_REFERENCE_DIR, 'provenance.json');
+
+/** A live-world capture needs an actual renderer submission after its surface opens. */
+export function worldSubmissionAdvanced(before, after) {
+  return Number.isFinite(before) && Number.isFinite(after) && after > before;
+}
 
 /**
  * THE UNIVERSE SEED, pinned.
@@ -285,10 +290,11 @@ export function readReferenceProvenance(file = UI_FRAME_PROVENANCE_FILE) {
  * A frame that fails either is reported MISSING, never diffed, and re-shot even under
  * `--fill-missing`.
  */
-export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATRIX_GROUND } = {}) {
+export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATRIX_GROUND, alias = null } = {}) {
   if (!record) return false;
   if (seed != null && record.seed !== seed) return false;
   if (ground != null && record.ground !== ground) return false;
+  if (!matchesMapAliasProvenance(record.alias, alias)) return false;
   return true;
 }
 
@@ -297,11 +303,12 @@ export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATR
  * written only after the last frame would turn any interruption into a baseline whose provenance is
  * unknown — which is the same lie in a different place.
  */
-function recordReferenceProvenance(name, provenance) {
+function recordReferenceProvenance(name, provenance, alias = null) {
   provenance.frames[name] = {
     seed: UI_MATRIX_SEED,
     ground: UI_MATRIX_GROUND,
     capturedAt: new Date().toISOString(),
+    ...(alias ? { alias } : {}),
   };
   provenance.seed = UI_MATRIX_SEED;
   provenance.ground = UI_MATRIX_GROUND;
@@ -392,6 +399,13 @@ export function buildFramePlan(filter = null) {
 
 export function frameFileName({ surface, mode, width, height }) {
   return `${surface}-${mode}-${width}x${height}.png`;
+}
+
+// Keep per-cell failures independently of whether any mode produced a surface budget row.
+export function buildCaptureSummary({ plan, captures, failures, hullAbsent = [] }) {
+  return { planned: plan.length, produced: captures.length, failures: failures.map((failure) => ({ ...failure })),
+    hullAbsent: [...hullAbsent], aliases: captures.filter((capture) => capture.alias)
+      .map(({ name, alias }) => ({ name, ...alias })) };
 }
 
 export async function captureUiMatrix(options = {}) {
@@ -632,18 +646,22 @@ export async function captureUiMatrix(options = {}) {
             for (const mode of needed) {
               try {
                 await isolated.page.emulateMedia(mode.emulate);
+                const worldSubmissionBaseline = WORLD_CAPTURE && surface.worldReadiness
+                  ? await readWorldSubmissionCount(isolated.page)
+                  : null;
                 const opened = await openSurface(isolated.page, surface);
                 if (!opened.ok) {
-                  failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+                  failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
                   continue;
                 }
                 await isolated.page.waitForTimeout(surface.settleMs);
                 await stabilizeSurfaceForCapture(isolated.page, surface.id);
                 await captureSurfaceScreenshot({
                   page: isolated.page, outputDir, captures, surface, modeId: mode.id, viewport, restTwinDir, promoteReference, provenance,
+                  worldSubmissionBaseline,
                 });
               } catch (error) {
-                failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+                failures.push({ surface: surface.id, mode: mode.id, viewport, stage: 'capture', route: surface.entry.kind, reason: error.message });
               }
               // Re-open for the next mode from a KNOWN state. Verified, like everywhere else: a
               // screen left open would be photographed again under the next mode's name.
@@ -729,10 +747,10 @@ export async function captureUiMatrix(options = {}) {
   }
   if (WORLD_CAPTURE && !quiet) {
     if (HULL_ABSENT.length) {
-      console.warn(`\n--world: ${HULL_ABSENT.length} surface(s) never reported data-k-ready="1" (capture defect, not a frame verdict):`);
+      console.warn(`\n--world: ${HULL_ABSENT.length} surface(s) did not meet their world-readiness contract (capture defect, not a frame verdict):`);
       for (const label of HULL_ABSENT) console.warn(`  hull absent: ${label}`);
     } else {
-      console.log('\n--world: every kit screen reported data-k-ready="1" before its frame.');
+      console.log('\n--world: every planned surface met its declared readiness contract before capture.');
     }
   }
 
@@ -820,6 +838,7 @@ export async function captureUiMatrix(options = {}) {
       ...(sourceOverlay ? { sourceOverlay: result.sourceOverlay } : {}),
       surfaces,
       missing,
+      captureSummary: buildCaptureSummary({ plan, captures: enriched, failures, hullAbsent: HULL_ABSENT }),
     };
     mkdirSync(path.dirname(budgetsOut), { recursive: true });
     writeFileSync(budgetsOut, `${JSON.stringify(baseline, null, 2)}\n`);
@@ -845,7 +864,7 @@ function printCaptureFailures(failures, planned, produced) {
   }
   for (const [surface, reasons] of bySurface) {
     console.log(`  ${surface} (${reasons.length})`);
-    console.log(`    ${reasons[0]}`);
+    for (const reason of reasons) console.log(`    ${reason}`);
   }
 }
 
@@ -902,9 +921,12 @@ async function captureModeSet({
   for (let index = 0; index < surfaces.length; index += 1) {
     const surface = surfaces[index];
     try {
+      const worldSubmissionBaseline = WORLD_CAPTURE && surface.worldReadiness
+        ? await readWorldSubmissionCount(page)
+        : null;
       const opened = await openSurface(page, surface);
       if (!opened.ok) {
-        failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+        failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
       } else {
         await page.waitForTimeout(surface.settleMs);
         await stabilizeSurfaceForCapture(page, surface.id);
@@ -918,17 +940,18 @@ async function captureModeSet({
           restTwinDir,
           promoteReference,
           provenance,
+          worldSubmissionBaseline,
         });
       }
     } catch (error) {
-      failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+      failures.push({ surface: surface.id, mode: mode.id, viewport, stage: 'capture', route: surface.entry.kind, reason: error.message });
     }
     // Recovery is mandatory and VERIFIED, not best-effort: a radial or drawer left open would be
     // photographed on top of the next surface — and it would eat the Escape that opens pause — so
     // every later frame in this mode would show a defect that is really this one.
     const closed = await closeSurface(page, surface).catch((error) => ({ ok: false, reason: error.message }));
     if (!closed.ok) {
-      failures.push({ surface: surface.id, mode: mode.id, viewport, reason: closed.reason });
+      failures.push({ ...closed, surface: surface.id, mode: mode.id, viewport, stage: 'close', route: surface.entry.kind });
       recordSkippedRest({ surfaces, index, mode, viewport, failures, cause: `${surface.id} did not close` });
       return;
     }
@@ -937,6 +960,7 @@ async function captureModeSet({
     } catch (error) {
       failures.push({
         surface: surface.id, mode: mode.id, viewport,
+        stage: 'return-to-flight', route: surface.entry.kind,
         reason: `could not return to idle flight after this surface: ${error.message}`,
       });
       recordSkippedRest({ surfaces, index, mode, viewport, failures, cause: `flight never came back after ${surface.id}` });
@@ -963,6 +987,7 @@ function recordBootFailure({ failures, surfaces, modes, viewport, reason }) {
         surface: surface.id,
         mode: mode.id,
         viewport,
+        stage: 'boot', route: surface.entry.kind,
         skipped: true,
         reason: `skipped: ${reason}, so this surface was never opened at this width`,
       });
@@ -976,6 +1001,7 @@ function recordSkippedRest({ surfaces, index, mode, viewport, failures, cause })
       surface: surfaces[i].id,
       mode: mode.id,
       viewport,
+      stage: 'skipped', route: surfaces[i].entry.kind,
       skipped: true,
       reason: `skipped: ${cause}, so this surface was never opened in this pass`,
     });
@@ -1025,6 +1051,10 @@ export async function openSurface(page, surface, context = {}) {
           await page.keyboard.press(normalizeKey(entry.key));
         }
         break;
+      }
+      case 'map-alias': {
+        await ensureFlightIdle(page);
+        return await openMapAlias(page, entry);
       }
       case 'nested': {
         const parent = SURFACE_BY_ID.get(entry.parent) || null;
@@ -1076,8 +1106,32 @@ export async function openSurface(page, surface, context = {}) {
     await waitForAnyVisible(page, selectors, visibleMs, `${surface.id} visible`);
     return { ok: true, route: entry.kind };
   } catch (error) {
-    return { ok: false, reason: error && error.message ? error.message : String(error) };
+    return { ok: false, stage: 'open', route: entry.kind, reason: error && error.message ? error.message : String(error) };
   }
+}
+
+// The legacy ID is sent through the real UI event bridge, not pushed directly onto ScreenManager.
+// This is a fixture-level redirect check; it does not claim a public input route was exercised.
+export async function openMapAlias(page, entry) {
+  const alias = mapAliasProvenance(entry);
+  await page.evaluate((id) => {
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.emit !== 'function') throw new Error('map alias: ui:pushScreen bus unavailable');
+    bus.emit('ui:pushScreen', { id });
+  }, alias.legacyId);
+  await page.waitForFunction(({ destination, focus }) => {
+    const sf = window.SF;
+    const ui = sf && sf.registry && sf.registry.get('ui');
+    const manager = ui && ui.screenManager;
+    const root = document.querySelector('#sf-galaxymap');
+    const selected = root && root.querySelector(`.gm-scale-btn[data-focus="${focus}"][aria-pressed="true"]`);
+    if (!manager || typeof manager.top !== 'function' || manager.top() !== destination || !root || !selected) return false;
+    const style = getComputedStyle(root);
+    const rect = root.getBoundingClientRect();
+    return !root.hidden && style.display !== 'none' && style.visibility !== 'hidden'
+      && parseFloat(style.opacity || '1') > 0.01 && rect.width > 4 && rect.height > 4;
+  }, { destination: alias.destination, focus: alias.focus }, { timeout: 20_000 });
+  return { ok: true, route: 'map-alias', alias };
 }
 
 /**
@@ -1682,7 +1736,7 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
           if (surface !== stage) {
             const opened = await openSurface(page, surface, { stage: stageId });
             if (!opened.ok) {
-              failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+              failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
               continue;
             }
           }
@@ -1695,7 +1749,7 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
           await page.waitForTimeout(surface.settleMs);
           await captureSurfaceScreenshot({ page, outputDir, captures, surface, modeId: mode.id, viewport, restTwinDir, promoteReference, provenance });
         } catch (error) {
-          failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+          failures.push({ surface: surface.id, mode: mode.id, viewport, stage: `menu:${stageId}`, route: surface.entry.kind, reason: error.message });
         } finally {
           if (surface !== stage && stage) await returnToStage(page, stage).catch(() => {});
         }
@@ -1708,13 +1762,66 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
 /** How long the surface is left alone between the frame and its rest twin. */
 const REST_TWIN_BEAT_MS = 400;
 
+/** Read the renderer's existing completed-world counter; this never walks the scene. */
+async function readWorldSubmissionCount(page) {
+  return page.evaluate(() => {
+    const frames = window.SF?.state?.render?.worldSubmittedFrames;
+    return Number.isFinite(frames) ? frames : null;
+  });
+}
+
 /**
- * `--world` only: wait for the visible kit screen's 3D mount to draw its first frame
- * (`data-k-ready="1"`). A screen with no kit root resolves at once. A timeout never aborts the
- * matrix — it is recorded as `hull absent: <surface>` for the receipt and the run continues.
+ * `--world` only: wait for the readiness signal named by the surface's visible-world contract.
+ * Stage-owned screens use their own `data-k-ready`; overlays and vacant stages wait for a fresh
+ * renderer submission instead. A timeout remains a named capture defect and never changes a frame
+ * verdict or silently promotes a missing world.
  */
-async function waitForWorldReady(page, label) {
+async function waitForWorldReady(page, label, surface, worldSubmissionBaseline) {
   try {
+    const contract = surface && surface.worldReadiness;
+    if (contract) {
+      const ready = await page.waitForFunction(({ mode, screenId, before }) => {
+        const screen = screenId ? document.querySelector(`[data-screen="${screenId}"]`) : null;
+        if (!screen || screen.getAttribute('aria-hidden') === 'true'
+          || screen.getClientRects().length === 0) return false;
+        const frames = window.SF?.state?.render?.worldSubmittedFrames;
+        const advanced = Number.isFinite(before) && Number.isFinite(frames) && frames > before;
+        if (mode === 'live-world') {
+          return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+        }
+        if (mode === 'preview-or-live-world') {
+          if (screen.dataset.slotState === 'filed') {
+            return screen.dataset.kReady === '1'
+              ? { kind: 'screen-preview', worldSubmittedFrames: frames } : false;
+          }
+          if (screen.dataset.slotState === 'open' || screen.dataset.slotState === 'empty') {
+            return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+          }
+          return false;
+        }
+        if (mode === 'stage-or-live-world') {
+          if (Object.prototype.hasOwnProperty.call(screen.dataset, 'kStage')) {
+            return screen.dataset.kReady === '1'
+              ? { kind: 'screen-stage', worldSubmittedFrames: frames } : false;
+          }
+          return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+        }
+        return false;
+      }, { mode: contract, screenId: surface.screenId, before: worldSubmissionBaseline }, {
+        timeout: WORLD_READY_TIMEOUT_MS,
+      });
+      try {
+        const observation = await ready.jsonValue();
+        if (observation?.kind === 'live-world'
+          && !worldSubmissionAdvanced(worldSubmissionBaseline, observation.worldSubmittedFrames)) {
+          throw new Error('live world submission did not advance');
+        }
+      } finally {
+        await ready.dispose().catch(() => {});
+      }
+      return;
+    }
+
     await page.waitForFunction(() => {
       const roots = [...document.querySelectorAll('.k-screen[data-screen]')]
         .filter((el) => el.style.display !== 'none' && el.getAttribute('aria-hidden') !== 'true');
@@ -1723,7 +1830,7 @@ async function waitForWorldReady(page, label) {
     }, null, { timeout: WORLD_READY_TIMEOUT_MS });
   } catch (_) {
     HULL_ABSENT.push(label);
-    console.warn(`hull absent: ${label}`);
+    console.warn(`world readiness not observed: ${label}`);
   }
 }
 
@@ -1737,7 +1844,9 @@ async function captureSurfaceScreenshot({
   restTwinDir = null,
   promoteReference = null,
   provenance = null,
+  worldSubmissionBaseline = null,
 }) {
+  const alias = mapAliasProvenance(surface.entry);
   const entry = {
     surface: surface.id,
     mode: modeId,
@@ -1746,7 +1855,12 @@ async function captureSurfaceScreenshot({
   };
   const name = frameFileName(entry);
   const dest = path.join(outputDir, name);
-  if (WORLD_CAPTURE) await waitForWorldReady(page, `${surface.id} (${modeId}, ${viewport.width}x${viewport.height})`);
+  if (WORLD_CAPTURE) await waitForWorldReady(
+    page,
+    `${surface.id} (${modeId}, ${viewport.width}x${viewport.height})`,
+    surface,
+    worldSubmissionBaseline,
+  );
   const shoot = async (target) => {
     if (surface.captureMode === 'element') {
       // Crop to the overlay's own box. Playwright's element screenshot is the honest frame for a
@@ -1818,12 +1932,12 @@ async function captureSurfaceScreenshot({
     // — or shot over the live 3D picture rather than the neutral ground — has to be re-shot even
     // under --fill-missing, or the gap it represents stays invisible.
     const current = existsSync(target)
-      && !!provenance && isFrameCurrent(provenance.frames[name]);
+      && !!provenance && isFrameCurrent(provenance.frames[name], { alias });
     if (promoteReference === 'fill-missing' && current) {
       reference = 'kept';
     } else {
       copyFileSync(dest, target);
-      if (provenance) recordReferenceProvenance(name, provenance);
+      if (provenance) recordReferenceProvenance(name, provenance, alias);
       reference = 'written';
     }
   }
@@ -1834,7 +1948,7 @@ async function captureSurfaceScreenshot({
     await page.waitForTimeout(REST_TWIN_BEAT_MS);
     await shoot(path.join(restTwinDir, name));
   }
-  captures.push({ name, path: dest, reference, surface: surface.id, budget });
+  captures.push({ name, path: dest, reference, surface: surface.id, budget, ...(alias ? { alias } : {}) });
 }
 
 async function firstVisibleHandle(page, selectors) {
@@ -2370,7 +2484,8 @@ async function stabilizeSurfaceForCapture(page, surfaceId) {
   }
   // Both chart focuses are the same animated screen; both need the scan/iris animation parked or
   // the 0.5% repeatability floor flakes on paint timing.
-  if (surfaceId === 'chart' || surfaceId === 'chart-galaxy') {
+  if (surfaceId === 'chart' || surfaceId === 'chart-galaxy'
+    || surfaceId === 'localmap-legacy' || surfaceId === 'starmap-legacy') {
     await stabilizeChartScreen(page);
   }
 }

@@ -1,18 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { objectiveIsOffSector } from '../src/ui/objectiveSector.js';
+import { missions } from '../src/systems/missions.js';
 import { firstWaspRouteFocus } from '../src/missions/starterWaspRoute.js';
 import { STARTER_JOBS, starterRamSentence, starterRamKill, shipCarriesModule } from '../src/data/starterJobs.js';
 const source = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
-// Execute the actual complete waypoint method. First-writ routing must return before
-// unrelated mission-family owners; missing dependencies make accidental fallthrough fail.
-const start = source.indexOf('  _missionWaypoint(m) {');
-const end = source.indexOf('\n  _firstLiveMissionTarget(m)', start);
-const method = source.slice(start, end).trim().replace(/,$/, '');
-const waypoint = Function('firstWaspRouteFocus','SECTOR_BY_ID','STATION_INFO','missionNavReason',
-  'return ({'+method+'})._missionWaypoint;')(firstWaspRouteFocus,
-  new Map([['sector_helios_prime',{name:'Helios Prime'}]]),
-  new Map([['station_helios',{name:'Helios Station'}]]),m=>starterRamSentence(m.params));
+// Use the production mission owner, including its current shared routing policy.
+const waypoint = missions._missionWaypoint;
 const mission = () => ({id:'starter-starter_wasp-1',status:'active',source:'starterJob',type:'bounty_hunt',
   title:'Ram the gate runner',destSectorId:'sector_helios_prime',destStationId:'station_helios',
   params:{starterJobId:'starter_wasp',starterStep:1,requiredModule:'mod_ram_plate',markName:'Nim Gatecut'},
@@ -91,9 +86,9 @@ test('actual HUD consumer aims at every authored runner instead of station-first
   const ns=readFileSync(process.env.WASP_ROUTE_NAV_SOURCE || new URL('../src/ui/navigationWaypoint.js',import.meta.url),'utf8');
   const resolve=Function('resolveEntitySelection','SECTORS',ns.replace(/^import[^;]+;\n/gm,'').replace(/export /g,'')+';return resolveWaypointPresentationPosition;')(
     (s,stable)=>s.entities.get(stable.id),[]);
-  const consume=Function('resolveNavStation','resolveWaypointPresentationPosition',
-    'return function(state){let wp=null,wpLabel=null,navMeta=null;'+evidence.slice(a,b)+';return {wp,wpLabel};}')(
-    ()=>({pos:{x:1280,z:-420}}),resolve);
+  const consume=Function('objectiveIsOffSector','resolveNavStation','resolveWaypointPresentationPosition',
+    'return function(state){const arrow=null,elNavReadout=null,setDisplay=()=>{},setClass=()=>{};let wp=null,wpLabel=null,navMeta=null;'+evidence.slice(a,b)+';return {wp,wpLabel};}')(
+    objectiveIsOffSector,()=>({pos:{x:1280,z:-420}}),resolve);
   for (const step of STARTER_JOBS.find(job => job.id === 'starter_wasp').steps) {
     const m=mission(),e=body(),s=state(e);
     m.id=`starter-starter_wasp-${step.step}`;

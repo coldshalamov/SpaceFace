@@ -1,4 +1,3 @@
-import { firstBuoyReceivingItem, firstBuoyReceivingReceipt } from '../missions/starterBuoyAftermath.js';
 import { ceresFurnaceInspectionItem, ceresFurnaceInspectionReceipt } from '../missions/ceresFurnaceAftermath.js';
 // stationSideEventDirector.js — BP-11 packet A6 "Station Side-Events", the SEEDED DIRECTOR.
 // (See design/revamp/detail/A_sector_station.md packet A6.)
@@ -31,6 +30,7 @@ import { ceresFurnaceInspectionItem, ceresFurnaceInspectionReceipt } from '../mi
 // imported read-only where needed, never edited.
 
 import { planStationSideEvents, rushHourSideEvents, SIDE_EVENTS, SIDE_EVENT_IDS } from '../data/stationSideEvents.js';
+import { firstBuoyReceivingItem, firstBuoyReceivingReceipt } from '../missions/starterBuoyAftermath.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -40,7 +40,7 @@ const DAY_SECONDS = 600;        // sector-day contract (mirrors encounterDirecto
 const MIN_SPACING_S = 25;       // min gap between fired side-events at a station
 const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
-const MAX_SEEN_BUOY_RECEIPTS = 10; // match the bounded canonical recent-receipt window
+const MAX_SEEN_BUOY_RECEIPTS = 10;
 const MAX_SEEN_CERES_INSPECTIONS = 10;
 const RECEIVING_CONTEXT_BY_STEP = Object.freeze({
   1: '44-C receiving check — berth intake',
@@ -189,18 +189,19 @@ export const stationSideEventDirector = {
     }
   },
 
-  // Existing receiving-bay machinery answers the exact recently settled delivery.
-  // Transient session identity only: Continue can show ongoing work within its original window.
+  // Reuse the existing paced station-event queue for the exact recently settled Pelican delivery.
+  // This is a transient, budget-free visual operation; it does not repair or pay out the lane.
   _planBuoyReceiving(state, station, now) {
     const s = ensureState(state);
     const receipt = firstBuoyReceivingReceipt(state, now);
     const currentMissionId = receipt && !hasSeenBuoyReceiving(s, receipt.missionId)
       ? receipt.missionId : null;
-    s.pending = s.pending.filter(item => !item.receivingMissionId
+    s.pending = s.pending.filter((item) => !item.receivingMissionId
       || item.receivingMissionId === currentMissionId);
+
     const item = firstBuoyReceivingItem(state, station, now);
     if (!item || hasSeenBuoyReceiving(s, item.receivingMissionId)
-      || s.pending.some(pending => pending.receivingMissionId === item.receivingMissionId)) return;
+      || s.pending.some((pending) => pending.receivingMissionId === item.receivingMissionId)) return;
     s.pending.push(item);
   },
 
@@ -282,11 +283,9 @@ export const stationSideEventDirector = {
     const geom = pathPoints(station, item);
 
     if ((item.budget | 0) <= 0) {
-      this._emitSeam(item, station, geom, []);              // cosmetic: seam only, no budget, no entity
-      // A queued operation may be cleared on sector exit before it can be seen.
-      // Remember presentation only after the existing seam has actually fired.
-      if (item.receivingMissionId) rememberBuoyReceiving(s, item.receivingMissionId);
-      if (item.ceresFurnaceMissionId) rememberCeresInspection(s, item.ceresFurnaceMissionId);
+      const emitted = this._emitSeam(item, station, geom, []); // cosmetic: seam only, no budget, no entity
+      if (emitted && item.receivingMissionId) rememberBuoyReceiving(s, item.receivingMissionId);
+      if (emitted && item.ceresFurnaceMissionId) rememberCeresInspection(s, item.ceresFurnaceMissionId);
       s.nextFireAt = now + MIN_SPACING_S;
       return;
     }
@@ -335,7 +334,7 @@ export const stationSideEventDirector = {
   // Additive seam for the graphics lane: draw the mover along from→to. entityIds populated for the
   // budgeted patrol (decorate that ship) or [] for a cosmetic mover (conjure a dressing mover).
   _emitSeam(item, station, geom, entityIds) {
-    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return false;
     this.bus.emit('station:sideEvent', {
       eventId: item.eventId,
       kind: item.kind,
@@ -347,10 +346,13 @@ export const stationSideEventDirector = {
       from: { x: geom.from.x, z: geom.from.z },
       to: { x: geom.to.x, z: geom.to.z },
       entityIds: entityIds || [],
-      ...(item.receivingMissionId ? { contextLabel: item.contextLabel || '44-C receiving check — berth intake',
-        receivingMissionId: item.receivingMissionId } : {}),
       ...(item.ceresFurnaceMissionId ? { ceresFurnaceMissionId: item.ceresFurnaceMissionId } : {}),
+      ...(item.receivingMissionId ? {
+        contextLabel: item.contextLabel || '44-C receiving check — berth intake',
+        receivingMissionId: item.receivingMissionId,
+      } : {}),
     });
+    return true;
   },
 
   // Budget release — idempotent via the active-map lookup (mirrors encounterDirector._onEntityGone).
@@ -477,8 +479,16 @@ export function pathPoints(station, item) {
 // ── state + small helpers ──────────────────────────────────────────────────────────────────────
 
 function freshState() {
-  return { accum: 0, plannedKeys: {}, pending: [], anchorId: null, nextFireAt: 0, active: {},
-    buoyReceivingSeenMissionIds: [], ceresFurnaceInspectionSeenMissionIds: [] };
+  return {
+    accum: 0,
+    plannedKeys: {},
+    pending: [],
+    anchorId: null,
+    nextFireAt: 0,
+    active: {},
+    buoyReceivingSeenMissionIds: [],
+    ceresFurnaceInspectionSeenMissionIds: [],
+  };
 }
 
 function hasSeenBuoyReceiving(s, missionId) {
@@ -490,15 +500,11 @@ function hasSeenBuoyReceiving(s, missionId) {
 function rememberBuoyReceiving(s, missionId) {
   if (typeof missionId !== 'string' || !missionId) return;
   if (!Array.isArray(s.buoyReceivingSeenMissionIds)) s.buoyReceivingSeenMissionIds = [];
-  if (!s.buoyReceivingSeenMissionIds.includes(missionId)) {
-    s.buoyReceivingSeenMissionIds.push(missionId);
-  }
+  if (!s.buoyReceivingSeenMissionIds.includes(missionId)) s.buoyReceivingSeenMissionIds.push(missionId);
   if (s.buoyReceivingSeenMissionIds.length > MAX_SEEN_BUOY_RECEIPTS) {
     s.buoyReceivingSeenMissionIds.splice(0,
       s.buoyReceivingSeenMissionIds.length - MAX_SEEN_BUOY_RECEIPTS);
   }
-  // Keep the former one-entry session marker for backward-compatible inspection.
-  s.buoyReceivingMissionId = missionId;
 }
 
 function hasSeenCeresInspection(s, missionId) {
@@ -521,7 +527,6 @@ function rememberCeresInspection(s, missionId) {
 
 function isValidBuoyReceivingSeenList(ids) {
   if (!Array.isArray(ids) || ids.length > MAX_SEEN_BUOY_RECEIPTS) return false;
-  // Normal 0–10-entry session state is checked in place; avoid per-tick copy/Set allocation.
   for (let i = 0; i < ids.length; i++) {
     if (typeof ids[i] !== 'string' || !ids[i]) return false;
     for (let j = 0; j < i; j++) if (ids[j] === ids[i]) return false;
@@ -542,11 +547,6 @@ export function ensureState(state) {
   else if (!isValidBuoyReceivingSeenList(s.buoyReceivingSeenMissionIds)) {
     s.buoyReceivingSeenMissionIds = [...new Set(s.buoyReceivingSeenMissionIds
       .filter((id) => typeof id === 'string' && id))].slice(-MAX_SEEN_BUOY_RECEIPTS);
-  }
-  // Existing in-session state used this single marker; migrate it into the bounded list.
-  if (typeof s.buoyReceivingMissionId === 'string' && s.buoyReceivingMissionId
-    && !hasSeenBuoyReceiving(s, s.buoyReceivingMissionId)) {
-    rememberBuoyReceiving(s, s.buoyReceivingMissionId);
   }
   if (!Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)) s.ceresFurnaceInspectionSeenMissionIds = [];
   else if (!isValidCeresInspectionSeenList(s.ceresFurnaceInspectionSeenMissionIds)) {

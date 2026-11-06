@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { SHIPS } from '../src/data/ships.js';
 import { MODULES } from '../src/data/modules.js';
 import { buildSlotList } from '../src/systems/ships.js';
+import { offerDraft } from '../src/data/survivalDraft.js';
 import {
   EVOLUTION_OFFER_KIND,
   SURVIVAL_EVOLUTIONS,
@@ -20,7 +21,7 @@ const MODULE_BY_ID = new Map(MODULES.map((def) => [def.id, def]));
 const NEW_EVOLUTIONS = [
   { id: 'snap_whip', defId: 'mod_snap_whip_s', consumes: ['mod_elastic_whip_m', 'mod_winch_hd'] },
   { id: 'battering_ram', defId: 'mod_battering_ram_s', consumes: ['mod_afterburner_m', 'mod_ram_plate'] },
-  { id: 'greedy_tractor', defId: 'mod_tractor_beam_s', consumes: ['mod_tractor_beam_m', 'mod_gravity_bumper_s'] },
+  { id: 'greedy_tractor', defId: 'mod_tractor_beam_s', consumes: ['mod_mass_flail_rig_m', 'mod_gravity_bumper_s'] },
   { id: 'serrated_sweep', defId: 'mod_serrated_sweep_s', consumes: ['mod_monofilament_sweep_m', 'mod_charge_rack'] },
 ];
 
@@ -46,7 +47,17 @@ test('w-270: each new evolution consumes real parts and lands a real, wired modu
 test('w-270: each new evolution offers exactly when the build holds every part', () => {
   const hawser = SHIP_BY_ID.get('ship_hawser');
   const slots = buildSlotList(hawser);
+  const fittings = ['wpn_pulse_laser_m', null, null, null, null, null, null, null];
+  const shelf = offerDraft({
+    seed: 4242, wave: 30, ruleset: 'swarm', hullId: hawser.id,
+    fittings, count: 10000,
+  });
+  assert.equal(shelf.ok, true);
+  const purchasable = new Set(shelf.offers.map(row => row.defId));
   for (const evo of NEW_EVOLUTIONS) {
+    for (const part of evo.consumes) {
+      assert.ok(purchasable.has(part), `${evo.id}: ${part} must be obtainable on the actual Swarm shelf`);
+    }
     const held = evolutionOffersFor({
       hullId: 'ship_hawser', slots,
       fittings: ['wpn_pulse_laser_m', null, null, null, null, null, null, null],

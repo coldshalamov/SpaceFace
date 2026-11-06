@@ -1,41 +1,47 @@
-// A short receiving operation, not a repaired-lane flag or another mission owner.
-// Revision 1 is deliberate: a future authored buoy must qualify on its own evidence.
+// A short station receiving scene tied to the physical settlement receipt for the authored
+// Pelican buoy tickets. This is presentation provenance, not a repaired-lane flag or reward.
 export const FIRST_BUOY_RECEIVING_WINDOW_S = 180;
+
 const PELICAN_BUOY_STEPS = new Set([1, 2, 3]);
 
-export function firstBuoyReceiptFields(m, outcome) {
-  const p = m?.params;
-  if (outcome !== 'completed' || m?.source !== 'starterJob' || m.type !== 'tow_recovery'
-    || m.destStationId !== 'station_helios' || m.destSectorId !== 'sector_helios_prime'
-    || p?.starterWorkdayVersion !== 1 || p.starterJobId !== 'starter_pelican'
-    || !PELICAN_BUOY_STEPS.has(p.starterStep) || p.requiredModule !== 'mod_winch_hd'
-    || !['tow_in', 'sling_in'].includes(p.completionMethod)) return {};
-  return { starterBuoyRecovery: { version: 1, jobId: 'starter_pelican', step: p.starterStep,
-    completionMethod: p.completionMethod } };
+export function firstBuoyReceiptFields(mission, outcome) {
+  const params = mission && mission.params;
+  if (outcome !== 'completed' || mission?.source !== 'starterJob' || mission.type !== 'tow_recovery'
+    || mission.destStationId !== 'station_helios' || mission.destSectorId !== 'sector_helios_prime'
+    || params?.starterWorkdayVersion !== 1 || params.starterJobId !== 'starter_pelican'
+    || !PELICAN_BUOY_STEPS.has(params.starterStep) || params.requiredModule !== 'mod_winch_hd'
+    || !['tow_in', 'sling_in'].includes(params.completionMethod)) return {};
+
+  return {
+    starterBuoyRecovery: {
+      version: 1,
+      jobId: 'starter_pelican',
+      step: params.starterStep,
+      completionMethod: params.completionMethod,
+    },
+  };
 }
 
 export function firstBuoyReceivingReceipt(state, now) {
-  // Campaign receiving stays excluded until the run owner clears survival, even after it ends.
-  if (state?.run?.kind === 'survival') return null;
-  if (state?.world?.currentSectorId !== 'sector_helios_prime' || !Number.isFinite(now)) return null;
+  if (state?.run?.kind === 'survival' || state?.world?.currentSectorId !== 'sector_helios_prime'
+    || !Number.isFinite(now)) return null;
   const receipts = state.missions?.receipts;
   if (!Array.isArray(receipts)) return null;
-  // The canonical recent-receipt owner caps this at ten; bound malformed inputs too. Select by
-  // receipt time rather than array order so duplicated/reordered history cannot replay an older
-  // operation after a newer one has taken priority. Mission ID is the stable tie-break.
+
   let latest = null;
-  for (const r of receipts.slice(0, 10)) {
-    const marker = r?.starterBuoyRecovery;
-    if (!r || typeof r.missionId !== 'string' || !r.missionId
-      || r.outcome !== 'completed' || r.source !== 'starterJob' || r.type !== 'tow_recovery'
-      || r.destStationId !== 'station_helios' || r.destSectorId !== 'sector_helios_prime'
+  for (const receipt of receipts.slice(0, 10)) {
+    const marker = receipt?.starterBuoyRecovery;
+    if (!receipt || typeof receipt.missionId !== 'string' || !receipt.missionId
+      || receipt.outcome !== 'completed' || receipt.source !== 'starterJob' || receipt.type !== 'tow_recovery'
+      || receipt.destStationId !== 'station_helios' || receipt.destSectorId !== 'sector_helios_prime'
       || marker?.version !== 1 || marker.jobId !== 'starter_pelican' || !PELICAN_BUOY_STEPS.has(marker.step)
       || !['tow_in', 'sling_in'].includes(marker.completionMethod)
-      || !Number.isFinite(r.rewardCr) || r.rewardCr <= 0
-      || !Number.isFinite(r.at_s) || r.at_s < 0 || now < r.at_s
-      || now >= r.at_s + FIRST_BUOY_RECEIVING_WINDOW_S) continue;
-    if (!latest || r.at_s > latest.at_s
-      || (r.at_s === latest.at_s && r.missionId < latest.missionId)) latest = r;
+      || !Number.isFinite(receipt.rewardCr) || receipt.rewardCr <= 0
+      || !Number.isFinite(receipt.at_s) || receipt.at_s < 0 || now < receipt.at_s
+      || now >= receipt.at_s + FIRST_BUOY_RECEIVING_WINDOW_S) continue;
+
+    if (!latest || receipt.at_s > latest.at_s
+      || (receipt.at_s === latest.at_s && receipt.missionId < latest.missionId)) latest = receipt;
   }
   return latest;
 }
@@ -45,9 +51,17 @@ export function firstBuoyReceivingItem(state, station, now) {
     || station.id == null || station.alive === false || !station.pos) return null;
   const receipt = firstBuoyReceivingReceipt(state, now);
   if (!receipt) return null;
-  return { eventId: `sse:44c-receiving:${receipt.missionId}`, kind: 'repair_drone',
-    budget: 0, path: 'hull-crawl', bearing: 0, dueAt: now,
+
+  return {
+    eventId: `sse:44c-receiving:${receipt.missionId}`,
+    kind: 'repair_drone',
+    budget: 0,
+    path: 'hull-crawl',
+    bearing: 0,
+    dueAt: now,
     durationS: Math.min(90, receipt.at_s + FIRST_BUOY_RECEIVING_WINDOW_S - now),
-    sectorId: 'sector_helios_prime', stationId: String(station.id),
-    receivingMissionId: receipt.missionId };
+    sectorId: 'sector_helios_prime',
+    stationId: String(station.id),
+    receivingMissionId: receipt.missionId,
+  };
 }

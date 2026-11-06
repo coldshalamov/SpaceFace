@@ -4,12 +4,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
-import { retailBundleAliases } from '../scripts/lib/retailBundleAliases.mjs';
+import { retailBundleAliases, retailThreeCorePlugin } from '../scripts/lib/retailBundleAliases.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rel = (p) => relative(ROOT, p).split(sep).join('/');
@@ -27,6 +26,7 @@ async function bundleRetail(contents) {
     mainFields: ['browser', 'module', 'main'],
     conditions: ['browser', 'import'],
     alias: retailBundleAliases(ROOT),
+    plugins: [retailThreeCorePlugin(ROOT)],
     logLevel: 'silent',
   });
   return { inputs: Object.keys(result.metafile.inputs), text: result.outputFiles.map((f) => f.text).join('\n') };
@@ -34,8 +34,9 @@ async function bundleRetail(contents) {
 
 test('build-bundle.mjs applies the retail alias map', () => {
   const src = readFileSync(join(ROOT, 'scripts/build-bundle.mjs'), 'utf8');
-  assert.match(src, /import\s*\{\s*retailBundleAliases\s*\}\s*from\s*'\.\/lib\/retailBundleAliases\.mjs'/);
+  assert.match(src, /import\s*\{\s*retailBundleAliases\s*,\s*retailThreeCorePlugin\s*\}\s*from\s*'\.\/lib\/retailBundleAliases\.mjs'/);
   assert.match(src, /alias:\s*retailBundleAliases\(ROOT\)/);
+  assert.match(src, /plugins:\s*\[retailThreeCorePlugin\(ROOT\)\]/);
 });
 
 test('the importmap and the retail alias point three/addons GLTFLoader at the same vendor file', () => {
@@ -45,30 +46,21 @@ test('the importmap and the retail alias point three/addons GLTFLoader at the sa
   assert.equal(rel(retailBundleAliases(ROOT)['three/addons/loaders/GLTFLoader.js']), 'vendor/addons/loaders/GLTFLoader.js');
 });
 
-test('retail resolution bundles the vendored GLTFLoader (with #168) and node_modules three', async () => {
+test('retail resolves the vendored core and GLTFLoader while other addons stay on npm', async () => {
   const { inputs, text } = await bundleRetail(
     "export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\n"
     + "export { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';\n",
   );
   assert.ok(inputs.includes('vendor/addons/loaders/GLTFLoader.js'), inputs.join(', '));
   assert.ok(!inputs.some((p) => p.endsWith('examples/jsm/loaders/GLTFLoader.js')), 'stock GLTFLoader must not be bundled');
-  // One THREE instance: the vendored loader's `three` import still resolves to the npm package.
-  assert.ok(inputs.some((p) => /node_modules\/three\/build\/three\.(module|core)\.js$/.test(p)));
-  assert.ok(!inputs.some((p) => p.startsWith('vendor/three.')), 'vendor three core must not enter the retail bundle');
+  // The loader and app share the same vendored core; its relative three.core import stays intact.
+  assert.ok(inputs.includes('vendor/three.module.js'), inputs.join(', '));
+  assert.ok(inputs.includes('vendor/three.core.js'), inputs.join(', '));
+  assert.ok(!inputs.some((p) => p.startsWith('node_modules/three/build/')), 'npm Three core must not be bundled');
   // Other addons keep resolving from node_modules.
   assert.ok(inputs.some((p) => p.endsWith('node_modules/three/examples/jsm/libs/meshopt_decoder.module.js')));
   // #168 in-place GLB body reads survive minification (property names are not mangled).
   for (const marker of ['glbBodyRange', 'glbBodySliceRange', 'bodyRange', 'bodyByteOffset']) {
     assert.ok(text.includes(marker), `bundle must contain ${marker}`);
   }
-});
-
-test('vendored three addons track the npm three revision the retail bundle links against', () => {
-  // The alias mixes vendor/addons/loaders/GLTFLoader.js with node_modules three. Bumping one without
-  // the other must fail here, not in a player's build.
-  const require = createRequire(import.meta.url);
-  const threeEntry = require.resolve('three'); // node_modules/three/build/three.cjs
-  const npmVersion = JSON.parse(readFileSync(join(dirname(threeEntry), '..', 'package.json'), 'utf8')).version;
-  const vendorRevision = readFileSync(join(ROOT, 'vendor/three.core.js'), 'utf8').match(/const REVISION = '(\d+)'/)[1];
-  assert.equal(npmVersion.split('.')[1], vendorRevision, `npm three ${npmVersion} vs vendor r${vendorRevision}`);
 });

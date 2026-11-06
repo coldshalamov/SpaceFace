@@ -4,30 +4,13 @@ import { globalToSectorLocalForSector } from '../../data/sectorCoordinates.js';
 import { sellableCargoQuantity } from '../../systems/cargo.js';
 import { captureEntitySelection } from '../../ui/sim/stableSelection.js';
 import { TENDER_CONFIG, TENDER_STAGES } from './model.js';
+export { salvageTenderWholeShipVisual, salvageTenderRequiresAuthoredHull } from './visualIdentity.js';
 
 const COMMODITY_NAMES = new Map(COMMODITIES.map((row) => [row.id, row.name]));
 const SUPPLIES = Object.freeze(['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells']);
-const TENDER_VISUAL = Object.freeze({
-  file: 'wholeships/repair_tender.glb',
-  assetId: 'SF_WHOLESHIP_REPAIR_TENDER',
-  roleId: 'personal_salvage_tender',
-  required: true,
-});
 const EMPTY = Object.freeze([]);
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
 const count = (value) => Math.max(0, Math.floor(finite(value)));
-
-/** Insert before generic ship selection in partsLibrary.wholeShipVisualForEntity.
- * A render-only identity avoids trafficRole: traffic must never adopt the player's home. */
-export function salvageTenderWholeShipVisual(entity) {
-  return entity?.type === 'ship'
-    && entity.data?.persistenceOwner === 'salvageTender'
-    && entity.data?.salvageTenderBody === 'tender' ? TENDER_VISUAL : null;
-}
-
-export function salvageTenderRequiresAuthoredHull(entity) {
-  return salvageTenderWholeShipVisual(entity) !== null;
-}
 
 function actualBody(state, id) {
   const body = state?.entities?.get?.(id);

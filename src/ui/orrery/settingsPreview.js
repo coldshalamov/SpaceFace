@@ -266,10 +266,10 @@ const CSS = `
 .orr-set-hud__fovread > i { font-style:normal; ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .72); }
 /* the bind dial: a glass disc inside a lit annulus, the key at its centre */
 .orr-set-dial__key { position:absolute; left:50%; top:50%; transform:translate(-50%, -58%); max-width:52%; text-align:center;
-  font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; font-size:92px; line-height:.9;
+  font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 250; font-weight:250; font-size:min(92px, calc(var(--orr-set-side, 420px) * .25)); line-height:.9;
   color:rgb(248 244 234); letter-spacing:-.01em; white-space:nowrap; text-shadow:0 0 22px rgb(0 0 0 / .5); }
-.orr-set-dial__key.is-mid { font-size:58px; }
-.orr-set-dial__key.is-long { font-size:34px; white-space:normal; line-height:1.05; }
+.orr-set-dial__key.is-mid { font-size:min(58px, calc(var(--orr-set-side, 420px) * .15)); }
+.orr-set-dial__key.is-long { font-size:min(34px, calc(var(--orr-set-side, 420px) * .09)); white-space:normal; line-height:1.05; }
 .orr-set-dial__verb { position:absolute; left:50%; top:50%; transform:translate(-50%, 0); margin-top:calc(var(--orr-set-side, 420px) * .11); ${LABEL} font-size: 12px; letter-spacing:.2em;
   color:rgb(${BONE} / .76); white-space:nowrap; text-align:center; max-width:46%; overflow:hidden; text-overflow:ellipsis; }
 .orr-set-dial .orr-set-dial__band { stroke:rgb(${BONE} / .26); transition:stroke .2s linear; }

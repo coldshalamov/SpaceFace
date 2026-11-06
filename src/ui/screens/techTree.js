@@ -18,6 +18,7 @@
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createConstellation } from '../orrery/constellation.js';
 import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { injectTechTreeScreens } from '../orrery/tech-treeLayouts.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { reducedMotion } from '../kit/motion.js';
@@ -235,7 +236,7 @@ export const techTreeScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectConstellationScreens();
+    this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
     injectTechTreeScreens();
     this._ctx = ctx;
     this._root = rootEl;
@@ -451,7 +452,7 @@ export const techTreeScreen = {
         settle(this._regions.foot, { from: 'bottom', state: 'techTree:open' });
       } catch (e) { /* motion is cosmetic */ }
     }
-    if (this._root) this._root.dataset.kReady = '1';
+    if (this._markCssReady) this._markCssReady();
     // keyboard and pad land on the chosen star
     const focus = () => { if (this._sky && this._root && this._root.isConnected) this._sky.focusChosen(); };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focus)); else focus();

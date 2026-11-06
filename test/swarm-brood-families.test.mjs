@@ -413,7 +413,7 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   const scene = { objects: [], add(o) { this.objects.push(o); }, remove(o) { const i = this.objects.indexOf(o); if (i >= 0) this.objects.splice(i, 1); } };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: 0 });
-  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
+  assert.equal(scene.objects.length, 10, 'bodies + marks + pools + lines + lanes + lobs + tendril segs + machine links/beams/auras');
   const [mesh, rings, pools, lines, lanes, lobs, segs] = scene.objects;
   assert.equal(segs.count, 0, 'no champion wave, no worm — the chain mesh stays empty');
   assert.equal(mesh.count, engine.census().alive);

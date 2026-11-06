@@ -163,6 +163,7 @@ function emptyPinFacts() {
     projectileThreat: new Set(),
     tracked: new Set(),
     fieldDriven: new Set(),
+    physicalInterest: new Set(),
     damagedByPlayerUntil: new Map(),
     damagedPlayerUntil: new Map(),
     _intentPinsScratch: { dockId: null, hailId: null, targetId: null },
@@ -485,7 +486,12 @@ function applyStamp(entity, classified, simTime, runtime) {
   const wasExact = isExactTier(prior);
   let tier = classified.simTier;
   let nowExact = isExactTier(tier);
-  if (wasExact && !nowExact) {
+  if (wasExact && !nowExact && runtime.physicsInterestWithdrawals?.has(entity)) {
+    // This explicit authority has an absolute lifetime; ordinary proximity hysteresis
+    // must not silently extend it after expiry/withdrawal.
+    rec.graceUntilT = -1;
+    rec.lastExactT = simTime;
+  } else if (wasExact && !nowExact) {
     if (!(rec.graceUntilT >= 0)) rec.graceUntilT = simTime + DEFAULT_GRACE_S;
     if (simTime <= rec.graceUntilT) {
       tier = prior;
@@ -573,6 +579,8 @@ function playerIntentPins(state, player, out = null) {
   result.targetId = targetId;
   return result;
 }
+
+const EMPTY_FACT_BAG = Object.freeze({});
 
 function rebuildPinFacts(state, player, facts, simTime) {
   const playerId = player && player.id;
@@ -666,22 +674,22 @@ function rebuildPinFacts(state, player, facts, simTime) {
   for (let i = 0; i < scan.length; i++) {
     const e = scan[i];
     if (!e || e.alive === false) continue;
-    const data = e.data || {};
+    const data = e.data || EMPTY_FACT_BAG;
     if (data.tracked === true || data.scannerTracked === true
       || (data.scanStatus === 'tracked' && data.scanned === true)) {
       trackedScratch.push(e.id);
     }
-    const combat = data.combat || {};
-    const ai = ownerAiRecord(e) || {};
-    const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : {};
-    if (playerId != null && (
-      combat.targetId === playerId
-      || combat.lockTarget === playerId
-      || activity.targetId === playerId
-      || ai.retaliationTargetId === playerId
-      || ai.securityTargetId === playerId
-    )) {
-      aggroScratch.push(e.id);
+    if (playerId != null) {
+      const combat = data.combat || EMPTY_FACT_BAG;
+      const ai = ownerAiRecord(e) || EMPTY_FACT_BAG;
+      const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : EMPTY_FACT_BAG;
+      if (combat.targetId === playerId
+        || combat.lockTarget === playerId
+        || activity.targetId === playerId
+        || ai.retaliationTargetId === playerId
+        || ai.securityTargetId === playerId) {
+        aggroScratch.push(e.id);
+      }
     }
   }
   if (facts.targetId != null) aggroScratch.push(facts.targetId);
@@ -869,6 +877,85 @@ export function requestActivityReclassify(state, entity, options = null) {
   }
 }
 
+function physicalInterestGeneration(entity) {
+  return entity?.occupantGeneration ?? null;
+}
+
+function physicalInterestEntityCurrent(state, entity, id, generation) {
+  return !!entity && entity.alive !== false && entity.id === id
+    && state.entities?.get?.(id) === entity
+    && physicalInterestGeneration(entity) === generation;
+}
+
+function physicalInterestCurrent(state, record) {
+  return Number.isFinite(state.simTime) && state.simTime < record.expiresAt
+    && state.world?.currentSectorId === record.sectorId
+    && physicalInterestEntityCurrent(state, record.owner, record.ownerId, record.ownerGeneration)
+    && physicalInterestEntityCurrent(state, record.target, record.targetId, record.targetGeneration)
+    && shouldSyncPhysicsBodyEntity(record.target) && isDynamicPhysicsBodyEntity(record.target);
+}
+
+function refreshPhysicalInterestTarget(state, runtime, target, targetId) {
+  const ids = runtime.pinFacts.physicalInterest;
+  const before = ids.has(targetId);
+  let active = false;
+  for (const record of runtime.physicsInterests.values()) {
+    if (record.targetId === targetId) { active = true; break; }
+  }
+  if (active) ids.add(targetId);
+  else ids.delete(targetId);
+  if (active === before) return;
+  runtime.pinFacts._revision = (runtime.pinFacts._revision | 0) + 1;
+  const currentTarget = state.entities?.get?.(targetId) || target;
+  if (active) runtime.physicsInterestWithdrawals?.delete(currentTarget);
+  else (runtime.physicsInterestWithdrawals || (runtime.physicsInterestWithdrawals = new Set())).add(currentTarget);
+  requestActivityReclassify(state, currentTarget, { physicsPublication: true });
+}
+
+function prunePhysicalInterests(state, runtime) {
+  if (!runtime.physicsInterests?.size) return;
+  for (const [lease, record] of runtime.physicsInterests) {
+    if (physicalInterestCurrent(state, record)) continue;
+    runtime.physicsInterests.delete(lease);
+    refreshPhysicalInterestTarget(state, runtime, record.target, record.targetId);
+  }
+}
+
+/** Transient pre-contact demand, not job membership or an attachment. The opaque receipt
+ * lives only in this state's runtime. Repeated requests cannot extend its first expiry. */
+export function requestActivityPhysicsInterest(state, owner, target, { expiresAt, sectorId } = {}) {
+  if (!state || !owner || !target || owner.id == null || target.id == null || owner === target || !Number.isFinite(expiresAt)
+    || !Number.isFinite(state.simTime) || expiresAt <= state.simTime
+    || typeof sectorId !== 'string' || sectorId !== state.world?.currentSectorId) return null;
+  const ownerGeneration = physicalInterestGeneration(owner), targetGeneration = physicalInterestGeneration(target);
+  if ([ownerGeneration, targetGeneration].some(value => value !== null && (!Number.isSafeInteger(value) || value < 0))) return null;
+  const record = { owner, ownerId: owner.id, ownerGeneration, target, targetId: target.id, targetGeneration, expiresAt, sectorId };
+  if (!physicalInterestCurrent(state, record)) return null;
+  const runtime = ensureRuntime(state);
+  prunePhysicalInterests(state, runtime);
+  if (!runtime.physicsInterests) runtime.physicsInterests = new Map();
+  for (const [lease, prior] of runtime.physicsInterests) {
+    if (prior.owner === owner && prior.target === target) {
+      prior.expiresAt = Math.min(prior.expiresAt, expiresAt);
+      return lease;
+    }
+  }
+  const lease = Object.freeze({});
+  runtime.physicsInterests.set(lease, record);
+  refreshPhysicalInterestTarget(state, runtime, target, target.id);
+  return lease;
+}
+
+/** Only the issuing owner and exact receipt can release its demand. */
+export function releaseActivityPhysicsInterest(state, owner, lease) {
+  const runtime = state && RUNTIMES.get(state);
+  const record = runtime?.physicsInterests?.get(lease);
+  if (!record || record.owner !== owner) return false;
+  runtime.physicsInterests.delete(lease);
+  refreshPhysicalInterestTarget(state, runtime, record.target, record.targetId);
+  return true;
+}
+
 /**
  * Weapons fire mid-tick and bump the entity-index version. Re-running classifyWorld
  * for those shots is the crowded-combat hitch. Projectiles always need physics
@@ -1027,10 +1114,38 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
     });
     shelved.pass += 1;
     const indexVersion = entityIndexVersion(state);
-    const stale = shelved.cells === null
+    const auditDue = (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
+    // A membership-only bump (projectile/debris spawn or despawn) used to force the full O(list)
+    // cell rebuild every tick. The unstamped scan above already collected every newly added
+    // entity, and dead members are skipped by the alive checks, so bucketing just those new
+    // entities keeps the cells equivalent until the next epoch change or audit rebuild.
+    let incrementalBump = false;
+    if (shelved.cells !== null && !auditDue
+      && shelved.epoch === PHYSICS_PARTITION_EPOCH
+      && shelved.indexVersion !== indexVersion
+      && Number.isFinite(indexVersion) && Number.isFinite(shelved.indexVersion)
+      && shelved.listRef === list
+      && shelved.syncedMembership === runtime.classifiedMembership) {
+      incrementalBump = true;
+      for (let i = 0; i < unstamped.length; i++) {
+        const entity = unstamped[i];
+        if (!entity || entity.alive === false || !entity.pos) continue;
+        if (entity._physicsPartition === 1 || entity._physicsPartition === 2) continue;
+        const presence = entityPresenceRadius(entity);
+        if (presence > shelved.maxPresence) shelved.maxPresence = presence;
+        const key = Math.floor(finite(entity.pos.x) / CLASSIFY_DISCOVERY_CELL_WU) * 131072
+          + Math.floor(finite(entity.pos.z) / CLASSIFY_DISCOVERY_CELL_WU);
+        let bucket = shelved.cells.get(key);
+        if (!bucket) { bucket = new Set(); shelved.cells.set(key, bucket); }
+        bucket.add(entity);
+      }
+      shelved.indexVersion = indexVersion;
+    }
+    shelved.syncedMembership = indexVersion;
+    const stale = !incrementalBump && (shelved.cells === null
       || shelved.epoch !== PHYSICS_PARTITION_EPOCH
       || shelved.indexVersion !== indexVersion
-      || (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
+      || auditDue);
     if (stale) {
       shelved.walks += 1;
       const cells = new Map();
@@ -1040,20 +1155,21 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       for (let i = 0; i < list.length; i++) {
         const entity = list[i];
         if (!entity || entity.alive === false || !entity.pos) continue;
+        let presence = null;
         // Partition 1/2 members ride the physics lanes the hash already sees — only
         // partition-0 members need a cell. Buckets key on pos at build time; the
         // per-candidate test below still reads the entity's live pos, so a member
         // moved inside a stale cell is envelope-tested wherever the query finds it.
         if (entity._physicsPartition !== 1 && entity._physicsPartition !== 2) {
-          const pres = entityPresenceRadius(entity);
-          if (pres > maxPresence) maxPresence = pres;
+          presence = entityPresenceRadius(entity);
+          if (presence > maxPresence) maxPresence = presence;
           const key = cellKey(finite(entity.pos.x), finite(entity.pos.z));
           let bucket = cells.get(key);
           if (!bucket) { bucket = new Set(); cells.set(key, bucket); }
           bucket.add(entity);
         }
         if (seen.has(entity.id)) continue;
-        const limit = discover + entityPresenceRadius(entity);
+        const limit = discover + (presence == null ? entityPresenceRadius(entity) : presence);
         const dx = finite(entity.pos.x) - origin.x;
         const dz = finite(entity.pos.z) - origin.z;
         if (dx * dx + dz * dz <= limit * limit) add(entity);
@@ -1062,6 +1178,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       shelved.maxPresence = maxPresence;
       shelved.epoch = PHYSICS_PARTITION_EPOCH;
       shelved.indexVersion = indexVersion;
+      shelved.listRef = list;
       // The rebuilt cells index every member's live pos — any silent-write marks retire here.
       if (runtime.shelvedDiscoveryMoved) runtime.shelvedDiscoveryMoved.clear();
     } else {
@@ -1161,6 +1278,7 @@ const PIN_REASON_BIT = Object.freeze({
   [PIN_REASON.IMMINENT_COLLISION]: 8192,
   [PIN_REASON.VISIBLE_ON_GLASS]: 16384,
   [PIN_REASON.FIELD_DRIVEN]: 32768,
+  [PIN_REASON.PHYSICAL_INTEREST]: 65536,
 });
 
 function pinBitsOf(pins) {
@@ -1532,6 +1650,7 @@ function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin,
   if (stamp.presentationTier !== expectedPres) return false;
 
   let bits = 0;
+  if (facts.physicalInterest.has(entity.id)) bits |= PIN_REASON_BIT[PIN_REASON.PHYSICAL_INTEREST];
   if (onGlass) bits |= PIN_REASON_BIT[PIN_REASON.VISIBLE_ON_GLASS];
   const tether = facts.tether.has(entity.id)
     || !!(entity.flags && entity.flags.tethered)
@@ -1799,6 +1918,7 @@ function classifyWorld(state, runtime) {
     ctx.hostileAggro = facts.aggro.has(entity.id);
     ctx.projectileThreat = facts.projectileThreat.has(entity.id);
     ctx.fieldDriven = facts.fieldDriven.has(entity.id);
+    ctx.physicalInterest = facts.physicalInterest.has(entity.id);
     ctx.tetherOrAttachment = facts.tether.has(entity.id)
       || !!(entity.flags && entity.flags.tethered)
       || data.tethered === true;
@@ -2048,6 +2168,9 @@ function classifyWorld(state, runtime) {
 export function ensureActivityClassified(state) {
   if (!state || typeof state !== 'object') return null;
   const runtime = ensureRuntime(state);
+  // Before same-tick/quiet returns: death, recycling and absolute expiry withdraw
+  // native admission even when membership, player pose and camera have not changed.
+  prunePhysicalInterests(state, runtime);
   const tick = state.tick | 0;
   // Sanctioned membership moves through the entity index: spawnEntity/removeEntityIndex bump
   // `version` immediately, so a mid-tick spawn must be admitted to this same tick's owner views —
@@ -2072,6 +2195,7 @@ export function ensureActivityClassified(state) {
     return runtime;
   }
   classifyWorld(state, runtime);
+  runtime.physicsInterestWithdrawals?.clear();
   runtime.classifiedTick = tick;
   runtime.classifiedMembership = membership;
   runtime.classifiedStaticAuthority = staticAuthority;
@@ -2105,6 +2229,11 @@ export function resetActivityRuntimeForRestore(state) {
   if (!state || typeof state !== 'object') return false;
   const runtime = RUNTIMES.get(state);
   if (!runtime) return false;
+  if (runtime.physicsInterests?.size) {
+    const targets = new Map([...runtime.physicsInterests.values()].map(record => [record.targetId, record.target]));
+    runtime.physicsInterests.clear();
+    for (const [id, target] of targets) refreshPhysicalInterestTarget(state, runtime, target, id);
+  }
   runtime.ready = false;
   runtime.classifiedTick = -1;
   runtime.classifiedStaticAuthority = null;

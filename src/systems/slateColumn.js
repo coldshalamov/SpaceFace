@@ -12,11 +12,33 @@
 import { SLATE_COLUMN } from '../data/slate.js';
 import { slateWeldSpike, slateColumnInRange, slateColumnLine } from '../characters/slateRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+
+const SLATE_COLUMN_GLOBAL_POS = Object.freeze(
+  sectorLocalToGlobalForSector(SLATE_COLUMN.pos, SLATE_COLUMN.sectorId),
+);
+
+function isLegacyLocalSlateColumnPosition(pos) {
+  return !!pos && pos.x === SLATE_COLUMN.pos.x && pos.z === SLATE_COLUMN.pos.z;
+}
+
+function moveToSlateColumnGlobalPosition(pos) {
+  if (typeof pos?.set === 'function') {
+    pos.set(SLATE_COLUMN_GLOBAL_POS.x, pos.y, SLATE_COLUMN_GLOBAL_POS.z);
+    return pos;
+  }
+  if (pos && typeof pos === 'object' && !Object.isFrozen(pos)) {
+    pos.x = SLATE_COLUMN_GLOBAL_POS.x;
+    pos.z = SLATE_COLUMN_GLOBAL_POS.z;
+    return pos;
+  }
+  return { ...pos, ...SLATE_COLUMN_GLOBAL_POS };
+}
 
 export function slateColumnSpec() {
   return {
     type: 'beacon',
-    pos: { ...SLATE_COLUMN.pos }, vel: { x: 0, z: 0 },
+    pos: { ...SLATE_COLUMN_GLOBAL_POS }, vel: { x: 0, z: 0 },
     radius: 14, mass: 1e6, hull: 1, hullMax: 1,
     collides: false,
     homeSectorId: SLATE_COLUMN.sectorId,
@@ -101,7 +123,15 @@ export function createSlateColumn() {
     _sync() {
       if (!this.state?.story) return;
       if (!(this._adventure() && this._inSector())) { this._removeOwned(); return; }
-      if (!this._beacon() && this.helpers.spawnEntity) this.helpers.spawnEntity(slateColumnSpec());
+      const beacon = this._beacon();
+      if (!beacon && this.helpers.spawnEntity) this.helpers.spawnEntity(slateColumnSpec());
+      else if (beacon && isLegacyLocalSlateColumnPosition(beacon.pos)) {
+        // Older saves stored the authored Vesta-local point as a galactic-global entity.
+        // Migrate only this owned beacon and only when it still has that exact legacy point.
+        // Reset interpolation history too, so restore cannot lerp from the old sector frame.
+        beacon.pos = moveToSlateColumnGlobalPosition(beacon.pos);
+        if (beacon.prevPos) beacon.prevPos = moveToSlateColumnGlobalPosition(beacon.prevPos);
+      }
       const flags = this._flags();
       if (flags && flags[SLATE_COLUMN.announceFlag] !== true) {
         flags[SLATE_COLUMN.announceFlag] = true;
@@ -140,7 +170,8 @@ export function createSlateColumn() {
       const s = state || this.state;
       if (!s || !(this._adventure() && this._inSector())) return;
       const player = this._player();
-      const inside = !!(player && player.alive !== false && slateColumnInRange(player.pos));
+      const inside = !!(player && player.alive !== false
+        && slateColumnInRange(player.pos, SLATE_COLUMN_GLOBAL_POS));
       if (!inside) { if (player) this._readArmed = true; return; }
       if (!this._readArmed) return;
       this._readArmed = false;

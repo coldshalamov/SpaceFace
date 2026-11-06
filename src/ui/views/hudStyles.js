@@ -7,12 +7,7 @@ import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
 
-export function injectHudCss() {
-  if (document.getElementById(HUD_STYLE_ID)) return;
-  injectDeckplate();
-  const s = document.createElement('style');
-  s.id = HUD_STYLE_ID;
-  s.textContent = `
+export const HUD_CSS = `
   /* ===== SpaceFace flight HUD ===== */
   #hud { font-size:calc(var(--k-fs-data) * var(--ui-scale, 1)); }
   #hud > * { pointer-events:none; }
@@ -569,6 +564,15 @@ export function injectHudCss() {
   .sf-momentum-sink__axis::after { right:0; border-right:1px solid var(--hud-amber); transform:rotate(45deg); }
   .sf-momentum-sink__label { position:absolute; left:50%; top:60px; transform:translateX(-50%);
     color:var(--hud-amber); font-size:var(--k-fs-data); white-space:nowrap; }
+  /* A sink a hostile frame wrote onto the pilot's hull (the Kraken's wake trawl) keeps the same
+     bracket grammar in the hostile slot — shape unchanged, tone names the hauler. */
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket { border-right-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::after { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::after { border-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
 
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
@@ -997,6 +1001,7 @@ export function injectHudCss() {
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
   .sf-mission-tracker { position:relative; width:290px; max-width:calc(100vw - 32px);
     padding:10px 12px; border-left:1px solid var(--k-hair); pointer-events:none; contain:layout paint style; }
+  .sf-mt-compact, .sf-mt-details-button, .sf-mt-details { display:none; }
   .sf-mt-title { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-amber);
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sf-mt-obj { font-family:var(--hud-data); font-size:var(--k-fs-data); line-height:1.35; color:var(--hud-paper); margin-bottom:5px; }
@@ -2767,6 +2772,7 @@ export function injectHudCss() {
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
   #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
+  #hud .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
   #hud .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--hud-paper); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 
@@ -3308,5 +3314,12 @@ export function injectHudCss() {
   }
   ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
+
+export function injectHudCss() {
+  if (document.getElementById(HUD_STYLE_ID)) return;
+  injectDeckplate();
+  const s = document.createElement('style');
+  s.id = HUD_STYLE_ID;
+  s.textContent = HUD_CSS;
   document.head.appendChild(s);
 }

@@ -8,6 +8,8 @@
 // owner's Windows has animation effects off, and inheriting that silently stripped every effect in
 // the game once already (2026-09-20). Reduce is a choice the player makes in Settings.
 
+import { injectConsoleStandard } from './consoleStandard.js';
+
 export const ORRERY_STYLE_ID = 'sf-orrery-style';
 
 export const ORRERY_CSS = `
@@ -30,21 +32,37 @@ export const ORRERY_CSS = `
   --dp-face-numeral:"Archivo", "Instrument Sans", system-ui, sans-serif;
   --dp-face-label:"Archivo", "Instrument Sans", system-ui, sans-serif;
   --dp-face-code:"Spline Sans Mono", ui-monospace, monospace;
+  /* STATION_STANDARD §2: the ledger face. Every money amount, price, quantity, percentage and
+     coordinate reads in this, tabular, so figures align in a column and never change width as
+     they tick. Declared on the global root so every screen inherits it, not only the station. */
+  --dp-face-num:"Spline Sans Mono", ui-monospace, Consolas, monospace;
   --dp-ease-out:cubic-bezier(.16, 1, .3, 1);
   --dp-ease-over:cubic-bezier(.34, 1.36, .64, 1);
   --dp-d-in:520ms;
   --dp-d-out:180ms;
 }
 
-/* Typographic roles */
+/* Typographic roles. STATION_STANDARD §2 (owner 2026-10-30): labels are ≥13px with tracking
+   ≤.08em; the old 12px/.12em instance was the "tiny tracked low-resolution caps" the owner named.
+   Sentence case beats caps for anything longer than two words — keep uppercase only for one-word
+   section heads. Figures (money, counts, coordinates) are tabular monospace. */
 .orr-numeral {
   font-family:var(--dp-face-numeral); font-stretch:100%; font-weight:280;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; line-height:.86;
   color:var(--dp-phos, #dfeeff);
 }
 .orr-label {
-  font-style:normal; font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px;
-  letter-spacing:.12em; text-transform:uppercase; line-height:1; color:var(--dp-ink-dim, #b7b4a6);
+  font-style:normal; font-family:var(--dp-face-label); font-stretch:100%; font-weight:600; font-size: 13px;
+  letter-spacing:.06em; text-transform:uppercase; line-height:1.15; color:var(--dp-ink-dim, #b7b4a6);
+}
+/* a quantity or unit: the ledger face, right-aligned by the container that lays it out */
+.orr-figure {
+  font-family:var(--dp-face-code, "Spline Sans Mono", ui-monospace, monospace);
+  font-variant-numeric:tabular-nums; font-weight:500; letter-spacing:0;
+}
+.orr-note {
+  font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-size:14px; line-height:1.5; letter-spacing:0; color:var(--dp-ink-dim, #b7b4a6);
 }
 .orr-value {
   font-family:var(--dp-face-numeral); font-stretch:100%; font-weight:520; font-size:15px;
@@ -69,7 +87,7 @@ export const ORRERY_CSS = `
 .orr-svg .orr-hand { stroke:var(--dp-hand); }
 .orr-svg .orr-threat { stroke:var(--dp-danger, #ff5038); }
 .orr-svg .orr-ice { stroke:var(--dp-ice); }
-.orr-svg text { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; letter-spacing:.14em; fill:var(--dp-ink-dim, #b7b4a6); }
+.orr-svg text { font-family:var(--dp-face-label); font-stretch:100%; font-weight:600; letter-spacing:.07em; fill:var(--dp-ink-dim, #b7b4a6); }
 /* engraved micro-lettering on rings: equipment labelling, not reading text */
 .orr-svg .orr-micro text { font-weight:600; letter-spacing:.32em; fill:rgb(232 226 212 / .42); }
 .orr-svg .orr-micro--hi text { letter-spacing:.28em; fill:rgb(232 226 212 / .62); }
@@ -115,6 +133,9 @@ html.sf-reduce-motion .orr-counter__digit > span { transition:none; }
 
 export function injectOrrery(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById(ORRERY_STYLE_ID)) return;
+  // The console standard is the shared floor (focus, keycaps, figures, panels, keys, tables);
+  // it lands before this sheet and before any screen's layout sheet, so every screen out-specifies it.
+  injectConsoleStandard(doc);
   const style = doc.createElement('style');
   style.id = ORRERY_STYLE_ID;
   style.textContent = ORRERY_CSS;

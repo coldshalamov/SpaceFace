@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
-  enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { applyFirstPlayablePaintRelease, releaseOpeningGraphPublication, enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -48,6 +48,7 @@ function loadingOwnerFixture() {
     world: { currentSectorId: 'sector_helios_prime', enterSerial: 1 },
     render: { admissionRunGeneration: 1, renderer: {} }, contextRestoreSeq: 0 };
   const built = [];
+  const scene = new THREE.Scene();
   const owner = { state, _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [],
     _meshBuildQueueHead: 0, _sessionLiveSectorCookedId: 'sector_helios_prime',
     _frameMembrane: { toLocal(pos, out) { out.x = pos.x; out.z = pos.z; return out; } },
@@ -66,11 +67,11 @@ function loadingOwnerFixture() {
   new Function('state', 'cam', 'THREE', 'openingSubmissionCamera', '_meshLocalXZ',
     'rendererGenerationIsActive', 'releaseOpeningGraphPublication', 'createOpeningLoadingAdmission',
     'enqueueMissingMeshBuildsSteps', 'observePipelineAdmission', 'yieldToBrowser',
-    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', source.slice(start, end))
+    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', 'resumeAuthoredUpgradeQueueForLoadingHulls', 'scene', source.slice(start, end))
     .call(owner, state, { obj: { updateMatrixWorld() {} } }, THREE,
       () => ({ frustum: { intersectsSphere: () => false } }), {}, () => true, () => {},
       createOpeningLoadingAdmission, enqueueMissingMeshBuildsSteps, promise => promise,
-      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity);
+      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls, scene);
   let loadingListener;
   const listenerStart = source.indexOf("onBus('mode:changed', ({ mode } = {}) => {");
   const listenerEnd = source.indexOf("onBus('jump:arrive'", listenerStart);
@@ -858,6 +859,16 @@ test('incomplete plans, partial residency and failed resources cannot accept fli
     assert.notEqual(state.render.requiredPackageAdmission?.status, 'accepted');
     assert.notEqual(state.render.openingFirstPictureReady, true);
   }
+});
+
+test('strict picture failure retains its capture diagnostic for teardown', async () => {
+  const detail = { reason: 'incomplete-plan', blockingReasons: [{ role: 'player', reason: 'no-leaves' }] };
+  const { state } = fixture({ captureOpeningSubmissionPlan: () => {
+    state.render.openingPlanCaptureFailure = detail;
+    return { complete: false };
+  } });
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), /opening submission plan is incomplete/);
+  assert.equal(state.render.openingFirstPicturePlanFailure, detail);
 });
 
 test('a bounded readiness deadline stops late submission without authorizing flight', async (t) => {

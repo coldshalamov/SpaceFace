@@ -322,10 +322,11 @@ test('the default renderer admits one verified live writer and keeps overlapping
     data: { defId: 'ship_wasp', lootTableId: 'wasp_swarmer' },
   };
   const state = {
-    mode: 'active', contextRestoreSeq: 0,
+    mode: 'flight', contextRestoreSeq: 0,
     entities: new Map([[id, entity]]),
     world: { enterSerial: 1, currentSectorId: 'fixture' },
     render: {
+      firstPlayableFrameAt: 1,
       admissionRunGeneration: 1,
       compileObjectPipelines: () => ({ pipelines: {}, gpuResidency: {}, geometryResidency: {}, results: {} }),
     },

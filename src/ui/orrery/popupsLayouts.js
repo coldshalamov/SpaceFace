@@ -166,6 +166,16 @@ const CSS = `
   .sf-drawer--entity .sf-drawer__deck > .sf-drawer__apron { margin-top: auto; }
 }
 
+/* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
+   row and the taller apron buried POWERS under its fade with no sign the record went on. The sheet
+   holds 480px, its column starts 12px nearer the fade, and the verbs tighten (same keys, same order) so the three sit on one row. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
+  .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
+  .sf-drawer--entity .sf-drawer__apron { column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
+}
+
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
 /* The quiet etched chevron — the door mark. Bone at rest, the lamp under the hand; it slides a
    few px toward the exit it names. */

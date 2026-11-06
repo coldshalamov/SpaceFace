@@ -1,4 +1,4 @@
-// SEED-ST-02 — the starter pick's "Line … wu/s" stat names what it measures.
+// SEED-ST-02 — the starter pick's "Line … u/s" stat names what it measures.
 //
 // The stat has two live render paths (the hull ring and the fallback arc cells); both must carry
 // the gloss, and the ring must render an entry's gloss only when one exists. No jsdom here: the
@@ -30,7 +30,7 @@ test('all three starters carry the gloss on both render paths (per-starter pin)'
   const ringRows = NG_SRC.slice(NG_SRC.indexOf('const ringStatsMix'), NG_SRC.indexOf('const ringStats ='));
   assert.match(ringRows, /name === 'Line' \? \{ gloss: STARTER_LINE_GLOSS \}/, 'ring path must gloss Line');
   const cellRows = NG_SRC.slice(NG_SRC.indexOf("const rows = [['Mass'"), NG_SRC.indexOf('host.textContent'));
-  assert.match(cellRows, /'Line', 'lineWuPerS', 'wu\/s', STARTER_LINE_GLOSS/, 'cell path must gloss Line');
+  assert.match(cellRows, /'Line', 'lineWuPerS', 'u\/s', STARTER_LINE_GLOSS/, 'cell path must gloss Line');
   assert.match(NG_SRC, /gloss \? `<span class="orr-ng-stat__gloss">\$\{gloss\}<\/span>` : ''/, 'cell path must render the gloss span');
 });
 

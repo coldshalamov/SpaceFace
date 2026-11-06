@@ -65,6 +65,11 @@ async function shoot(page, id, outDir, base) {
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file, timeout: args.timeoutMs });
   const report = await page.evaluate(() => window.BENCH.report());
+  const effectiveMode = await page.evaluate(() => ({
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    forcedColors: matchMedia('(forced-colors: active)').matches,
+    locale: document.documentElement.dataset.locale || document.documentElement.lang,
+  }));
   console.log(`\n${id}  ${path.relative(ROOT, file)}  ${((Date.now() - started) / 1000).toFixed(1)}s`);
   if (report.broken) {
     console.log(`  NOT MOUNTABLE  ${report.broken}\n  Live route: node scripts/ui-look.mjs --only=${id}`);
@@ -76,14 +81,17 @@ async function shoot(page, id, outDir, base) {
   if (args.probe) await probe(page, args.probe);
   const walked = args.walk ? await walk(page, id, outDir) : null;
   findingCount += walked?.actions.reduce((n, row) => n + (row.controlReachability?.length || 0), 0) || 0;
-  return { ok: !walked || walked.complete, report, findingCount, file: path.relative(ROOT, file), walk: walked,
+  return { ok: !walked || walked.complete, report, effectiveMode, findingCount, file: path.relative(ROOT, file), walk: walked,
     visualReview: 'required; empty geometry findings do not prove a good picture' };
 }
 
 async function settleAnimations(page) {
   await page.evaluate(async () => {
     for (let pass = 0; pass < 3; pass++) {
-      const running = document.getAnimations().filter(a => a.playState === 'running');
+      // Scroll- and view-driven animations show where the scroller sits; finishing one paints its
+      // end state (e.g. Help's section row faded on its left edge at scroll 0), so leave them.
+      const running = document.getAnimations()
+        .filter(a => a.playState === 'running' && (!a.timeline || a.timeline === document.timeline));
       for (const animation of running) {
         if (animation.effect?.getTiming?.().iterations === Infinity) animation.pause();
         else { try { animation.finish(); } catch { /* unresolved effect */ } }
@@ -173,7 +181,7 @@ async function walk(page, id, outDir) {
       await page.evaluate(shotId => window.BENCH.goto(shotId), id);
       await settleAnimations(page);
       const arrival = await page.evaluate(() => window.BENCH.signature());
-      const hoveredControl = await page.evaluate(key => window.BENCH.hover(key), identity);
+      const hoveredControl = await controlFromInventory(page, 'hover', inventory);
       if (!hoveredControl.found) {
         row.missingAt = 'arrival';
         const message = `inventory control "${inventoryLabel || '(unlabeled)'}" is absent after reset; left untried`;
@@ -196,7 +204,7 @@ async function walk(page, id, outDir) {
         await settleAnimations(page);
       }
       const beforeClick = await page.evaluate(() => window.BENCH.signature());
-      const clickedControl = await page.evaluate(key => window.BENCH.click(key), identity);
+      const clickedControl = await controlFromInventory(page, 'click', inventory);
       if (!clickedControl.found) {
         row.missingAt = 'click';
         const message = `inventory control "${label || '(unlabeled)'}" disappeared before click; click left untried`;
@@ -205,6 +213,7 @@ async function walk(page, id, outDir) {
         continue;
       }
       row.attempted = true;
+      row.activationMethod = 'HTMLElement.click() — behavior-only; pointer reachability is measured separately';
       await page.waitForTimeout(160);
       await settleAnimations(page);
       const clicked = await page.evaluate(() => window.BENCH.signature()), clickEffect = describe(beforeClick, clicked);
@@ -212,21 +221,39 @@ async function walk(page, id, outDir) {
       row.status = 'attempted';
       row.controlReachability = await page.evaluate(() => window.BENCH.reachability());
       for (const finding of row.controlReachability) console.log(`  UNREACHABLE after ${label}  ${finding}`);
-      if (clickEffect === 'no visible change' || clickEffect === 'disabled') { console.log(`  ${name} ${clickEffect}`); continue; }
+      if (clickEffect === 'no visible change' || clickEffect === 'disabled') {
+        console.log(`  ${name} synthetic activation  ${clickEffect}`);
+        continue;
+      }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
       await page.screenshot({ path: clickFile, timeout: args.timeoutMs }); row.clickFile = path.relative(ROOT, clickFile);
-      console.log(`  ${name} click  ${clickEffect}  ${row.clickFile}`);
+      console.log(`  ${name} synthetic activation  ${clickEffect}  ${row.clickFile}`);
     } catch (error) {
       const message = error.message.split('\n')[0];
       errors.push({ index, identity, kind: 'probe-error', message });
       console.log(`  control ${index + 1} probe failed: ${message}`);
     }
   }
-  console.log('  Open every PNG this walk printed. Each line is one control, tried from the arrival screen.');
+  console.log('  Open every PNG this walk printed. Each line is one control synthetically activated from the arrival screen; this is behavior evidence, not pointer proof.');
   const attempted = actions.filter(row => row.attempted).length;
   return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted,
-    untried: controls.length - attempted, actions, errors };
+    untried: controls.length - attempted,
+    activation: 'HTMLElement.click() behavior only; it does not prove a trusted pointer can reach the control',
+    actions, errors };
 }
+
+async function controlFromInventory(page, action, { index, identity }) {
+  return page.evaluate(({ action, index, identity }) => {
+    const resolve = window.BENCH[action];
+    const semantic = resolve(identity);
+    if (semantic.found) return semantic;
+    // Duplicate identities are intentionally not resolved by the generic helper. Use their saved
+    // position only when a fresh inventory confirms the exact same identity still occupies it.
+    if (window.BENCH.controls()[index]?.identity === identity) return resolve(index);
+    return semantic;
+  }, { action, index, identity });
+}
+
 function describe(before, after) {
   if (after.disabled) return 'disabled';
   const notes = [];

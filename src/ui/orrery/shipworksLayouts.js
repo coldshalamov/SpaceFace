@@ -132,7 +132,7 @@ ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { visibility:visible 
   display:flex !important; flex-wrap:nowrap !important; justify-content:center !important; align-items:baseline !important; gap:0 18px !important; ${PLAIN}
   font-size:12px !important; white-space:nowrap; color:var(--dp-ice, #8fcbff) !important; }
 ${W}.orr-sw--jig .sx-sw__delta > * { position:static !important; transform:none !important; margin:0 !important; }
-${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 ${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
 /* while choosing, the screen's own verbs and the instruction step back */
 ${W}.orr-sw--jig.is-choosing .sx-sw-verbs { visibility:hidden !important; }
@@ -159,7 +159,7 @@ ${W}.orr-sw--jig .sx-sw__stage { flex:1 1 auto !important; min-height:0; }
 ${W} .sx-sw__rail { ${PLAIN} }
 ${W} .sx-sw__rail .sx-seg { gap:0 22px !important; margin:0 0 14px !important; }
 ${W} .sx-sw__rail .sx-seg__btn { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 8px !important;
-  font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .58) !important; }
+  font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .58) !important; }
 ${W} .sx-sw__rail .sx-seg__btn::before, ${W} .sx-sw__rail .sx-seg__btn::after { display:none !important; }
 ${W} .sx-sw__rail .sx-seg__btn.is-on { color:rgb(248 244 234) !important; background-image:linear-gradient(rgb(${BONE} / .9), rgb(${BONE} / .9)) !important;
   background-size:16px 2px !important; background-position:0 100% !important; background-repeat:no-repeat !important; }
@@ -183,7 +183,7 @@ ${W} .sx-sw-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240)
 ${W} .sx-sw__name { color:rgb(248 244 234) !important; }
 ${W} .sx-sw__condition, ${W} .sx-sw__conditionVerb { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-sw__blurb { color:rgb(${BONE} / .78) !important; }
-${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
+${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { ${PLAIN} padding:0 !important; border-radius:0 !important; }
@@ -210,8 +210,11 @@ ${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !im
 }
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
+/* Keep the focused bid field's outline clear of its label on narrow station panes. */
+${W} .sx-sw-lotdesk__bid label { display:inline-flex; align-items:center; gap:8px; }
+${W} .sx-sw-lotdesk__bid input { width:120px; max-width:100%; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
-${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 
 /* ---- the handling: no plate; the figures quieter; the bars as scales of light ---------------- */
@@ -224,13 +227,13 @@ ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
 ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 560 !important;
   font-weight:560 !important; font-size:clamp(24px, 2.6vh, 32px) !important; line-height:1 !important; letter-spacing:.01em !important; color:rgb(248 244 234) !important;
   text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-band__meta { color:rgb(${BONE} / .6) !important; }
-${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-bar { ${PLAIN} padding:6px 0 !important; min-height:0 !important; }
 ${W} .sx-sw-bar .k-row__name { font-size:12.5px !important; color:rgb(${BONE} / .8) !important; min-width:84px; }
 ${W} .sx-sw-bar .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -256,15 +259,24 @@ ${W} .sx-sw-verb:disabled { color:rgb(${BONE} / .45) !important; }
 ${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 12px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .75) !important; }
+  letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-chooser__kicker { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; line-height:1.5 !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
-${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
+${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; padding:0 !important; }
+/* The phone station body is the scroller; the chooser list must not collapse inside it. */
+@media (max-width:960px) {
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__panel,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__list {
+    flex:none !important; height:auto !important; max-height:none !important; overflow:visible !important;
+  }
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser { padding-bottom:0 !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
 ${W} .sx-modrow { ${PLAIN} display:block !important; position:relative; padding:9px 0 11px 26px !important; min-height:0 !important; height:auto !important; cursor:pointer; }
 ${W} .sx-modrow::after { display:none !important; }
 ${W} .sx-modrow::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:17px !important; width:8px !important; height:1px !important;
@@ -274,18 +286,17 @@ ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:11p
 ${W} .sx-modrow:is(:focus-within, :hover)::before { background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
 ${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
 ${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(143 203 255 / .7) !important; }
 ${W} .sx-modrow .sx-modrow__role { font-size: 12px !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__metrics { font-size: 12px !important; color:rgb(${BONE} / .78) !important; }
-${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow .sx-modrow__meta { display:block !important; font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:"\\A"; white-space:pre; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
-${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
+${W} .sx-modrow .sx-modrow__act { display:block !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important; min-width:0 !important; height:auto !important;
   padding:2px 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__buy::after { display:none !important; }
@@ -324,7 +335,7 @@ ${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; to
 ${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
-${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) { ${PLAIN} padding:5px 0 !important; min-height:0 !important; }
   /* the flow rows keep the Ladder's 26px left gutter: station.css draws the spine and the
      ::before tick inside it, and a flush-left row puts the name's first glyph under the tick. */
@@ -339,11 +350,6 @@ ${W} .sx-sw-circuit__instruction { font-size:12.5px !important; color:rgb(${BONE
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__name { font-size:13px !important; color:rgb(${BONE} / .85) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .55) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__num { color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]) { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important;
-  font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::after { display:none !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${W} .sx-sw__side .k-t-fine, ${W} .sx-sw__side .k-sentence { color:rgb(${BONE} / .7) !important; }
 
 /* ================================ ROUND 6 ==================================================== */
@@ -368,11 +374,10 @@ ${W}.orr-sw--jig .sx-sw-bar { grid-template-columns:62px minmax(0, 1fr) auto; }
 ${W} .sx-sw-bar__track { height:9px !important; background:linear-gradient(rgb(${BONE} / .26), rgb(${BONE} / .26)) 0 50% / 100% 1px no-repeat,
   repeating-linear-gradient(90deg, rgb(${BONE} / .36) 0 1px, transparent 1px 10%) 0 50% / 100% 9px no-repeat !important; }
 ${W} .sx-sw-bar__track > .k-bar__fill { height:3px !important; margin-top:-1.5px; }
-/* the chooser: one line per module at rest; the one in hand unfolds; the Hand is on the hull */
+/* Keep the chooser's actions and description seated while the Hand moves between rows. */
 ${W} .sx-modrow { padding:7px 0 7px 26px !important; }
 ${W} .sx-modrow .sx-modrow__body { gap:2px; }
-${W} .sx-modrow .sx-modrow__role:not(.k-38) { display:none !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__role:not(.k-38) { display:block !important; }
+${W} .sx-modrow .sx-modrow__role:not(.k-38) { display:block !important; }
 ${W} .sx-modrow:is(:focus-within, :hover)::before { background:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:none !important; display:none !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chips { display:block; margin-top:4px; }
@@ -399,14 +404,14 @@ ${W} .sx-sw-side__hero { ${PLAIN} padding:0 !important; margin:8px 0 14px !impor
 ${W} .sx-sw-side__hero::before, ${W} .sx-sw-side__hero::after { display:none !important; }
 ${W} .sx-sw-side__hero .k-hero__n { display:block; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important;
   font-weight:300 !important; font-size:48px !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-spec { ${PLAIN} }
 ${W} .sx-spec > li { ${PLAIN} display:grid !important; grid-template-columns:96px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:6px 0 !important; min-height:0 !important; }
 ${W} .sx-spec > li > .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-spec > li > .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; white-space:normal !important; text-align:left !important; justify-self:start; overflow:visible !important;
   text-overflow:clip !important; max-width:none !important; line-height:1.4; }
 ${W} .sx-buybar { ${PLAIN} margin-top:16px !important; }
-${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
+${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
 /* the rack: two sockets on a short scale, a dashed ring where nothing is loaded */
 ${W} .sx-sw-rack { border-top:0 !important; margin-top:18px !important; padding-top:0 !important; }
 ${W} .sx-sw-rack__cells { display:flex !important; gap:0 22px !important; margin:6px 0 0 !important; }
@@ -415,7 +420,7 @@ ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important
   border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important; transform:none !important; clip-path:none !important; margin:0 !important; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
-${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
+${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
 ${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size: 12px !important; }
 ${W} .sx-sw-rack__cell .k-row__sub { font-size: 12px !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) { outline:none !important; }
@@ -614,17 +619,22 @@ ${W} .sx-sw-rack__cell.is-empty .k-row__name { display:none !important; }
 ${W} .sx-sw-rack__cell.is-empty { flex-direction:row !important; align-items:center !important; gap:8px; }
 /* a loss is dim bone with its sign; ice is the moving figure that gains */
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(${BONE} / .62) !important; }
-/* the chosen module reads as a hero: its lead figure at reading size, the rest at label size */
-${W} .sx-modrow:focus-within .sx-modrow__metrics { display:flex !important; flex-wrap:wrap; align-items:baseline; gap:2px 14px; margin-top:4px; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child { display:flex; flex-direction:column-reverse; flex-basis:100%; gap:0; margin-bottom:2px; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
-  font-size:46px !important; line-height:1 !important; letter-spacing:-.01em; color:rgb(248 244 234) !important; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-style:normal; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+/* Focus highlights the value without changing the dimensions of adjacent controls. */
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
 /* the chooser's list runs to the rail on a short screen; the fold sits on its last visible row */
 @media (max-height:800px) {
-  ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; }
+  /* The outer wrapper's 48px fade pad consumes this short viewport's list allocation. The list
+     below is the real scroller and keeps its own fade/padding; reserve the full rail for it. */
+  ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; padding-bottom:0 !important; }
   ${W} .sx-chooser__list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; overflow:hidden auto !important; }
+  /* The focused row can be much taller than the compact list while its Buy/lock action is in view.
+     Keep the item name pinned in that list's own scrollport so nested action focus never loses the
+     identity of the module being previewed. */
+  ${W} .sx-modrow .sx-modrow__body { overflow:visible !important; }
+  ${W} .sx-modrow__body > .sx-modrow__name { position:sticky !important; top:0 !important; z-index:2 !important;
+    display:block !important; width:100% !important; box-sizing:border-box !important; padding:3px 0 4px !important;
+    background:rgb(8 11 16 / .96) !important; }
   ${W} .sx-chooser__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; }
   ${W} .sx-chooser__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
   ${W} .sx-sw__chooser { -webkit-mask-image:none !important; mask-image:none !important; }
@@ -651,7 +661,6 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 /* the side column takes the width the dial's words need on a tall screen; the dial sits near its axis */
 @media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
 /* a short screen: the chosen module's sentence folds so its key stays above the fold */
-@media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
 
 /* ================================ ROUND 11 =================================================== */
 /* the mode words carry no underline: weight says which is open */
@@ -708,7 +717,7 @@ ${W} .sx-sw__stage.has-salering > .sx-sw__poster { z-index:1; -webkit-mask-image
 /* the view words are marks on the ring's upper arc; the current one lit */
 ${W} .sx-sw__stage.has-salering .sx-sw__camera { position:absolute !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; width:0; height:0; margin:0 !important; padding:0 !important; overflow:visible; display:block !important; z-index:3; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera > li { position:absolute; left:0; top:0; }
-${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(248 244 234) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:""; display:block; width:1.5px; height:8px; margin:0 auto 3px; background:rgb(${BONE} / .4); }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before { background:rgb(248 244 234); height:12px; }
@@ -716,11 +725,6 @@ ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before 
 ${W} .sx-sw-verbs { white-space:nowrap; }
 /* the For Sale ladder folds its last rung when more hang below */
 ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; }
-/* a short screen's chooser keeps the two delta lines and folds the sentence */
-@media (max-height:800px) {
-  ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; }
-  ${W} .sx-modrow:focus-within .sx-modrow__meta .sx-modrow__sentence { display:none !important; }
-}
 
 /* a ghost for the worse is dim bone; ice is the gain's colour alone */
 ${W} .sx-sw-ghost.is-loss, ${W} .sx-sw-gauge .sx-sw-ghost.is-loss { color:rgb(146 143 135) !important; }
@@ -1015,14 +1019,15 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
     transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
   ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
     flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
-  /* at phone height the stack keeps the smaller floor — equal specificity to the ≤899 jig
-     floor above and later in the sheet, so 240px still wins here */
-  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
-  /* the crest keeps its place on the hero, but the voice's full run cannot share a 240px stage
-     with the slot callouts: bound it where the markers stand clear and let the rest scroll */
-  ${W} .sx-sw__nameplate { padding-right:0 !important; max-width:min(64%, 300px) !important; }
-  ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:72px !important; overflow:hidden auto !important; pointer-events:auto !important;
-    font-size:12px !important; line-height:1.45 !important; }
+  /* Give the nameplate its own top band. At phone widths a 240px stage puts its description in
+     the same space as the hull's system leaders; a taller scrollable stage keeps both readable. */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage {
+    flex:0 0 420px !important; height:420px !important; min-height:420px !important; }
+  ${W} .sx-sw__stage > .sx-sw__nameplate { position:relative !important; inset:auto !important; z-index:5 !important;
+    width:100% !important; max-width:100% !important; margin:0 !important; padding:8px 10px 10px !important;
+    box-sizing:border-box; background:rgb(5 7 10 / .88) !important; }
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:44px !important; overflow:hidden auto !important; pointer-events:auto !important;
+    font-size:12px !important; line-height:1.28 !important; }
 }
 
 /* the seat bail's own fallback — NOT media-gated. seatVerbs/seatSaleStats measure the STAGE and
@@ -1038,24 +1043,34 @@ ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto
   flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw__stats--unseated),
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) { overflow:auto !important; }
-/* 960×540: unseated verbs sit in flow under the stage, clear of Tessera and the destination rail */
+/* A short desktop berth scrolls the Shipworks instrument inside its tab cell: keep the hull large
+   enough for its authored callouts, then leave the readouts and every verb in the same scroll flow. */
 @media (max-width:1100px) and (max-height:800px) {
-  /* verbs pin to the berth panel foot; main absolutely fills the 192px cell */
+  /* Keep the tab rail fixed beside the internal scroll area; its contents may exceed the cell. */
   ${W}.orr-sw--jig { position:relative !important; overflow:hidden !important; }
   ${W}.orr-sw--jig .sx-sw__main,
   ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw-verbs--unseated),
   ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw__stats--unseated) {
-    overflow:hidden !important; min-height:0 !important; position:absolute !important;
+    overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; min-height:0 !important; position:absolute !important;
     left:0 !important; right:0 !important; top:0 !important; bottom:0 !important;
-    width:auto !important; height:auto !important; max-height:none !important; display:block !important; }
-  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { position:absolute !important; inset:0 0 30px 0 !important;
-    height:auto !important; width:auto !important; min-height:0 !important; max-height:none !important; }
-  ${W}.orr-sw--jig .sx-sw__stats { display:none !important; }
-  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:absolute !important; left:8px !important; right:8px !important; bottom:4px !important;
-    top:auto !important; z-index:6; width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
-    flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
-    background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
+    width:auto !important; height:auto !important; max-height:none !important; display:flex !important;
+    flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { position:relative !important; inset:auto !important; flex:0 0 240px !important;
+    height:240px !important; width:100% !important; min-height:240px !important; max-height:none !important; }
+  ${W}.orr-sw--jig .sx-sw__stats { display:block !important; position:relative !important; inset:auto !important; transform:none !important;
+    flex:0 0 auto !important; width:auto !important; max-width:100% !important; max-height:none !important; overflow:visible !important; }
+  ${W}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; inset:auto !important; z-index:auto !important;
+    flex:0 0 auto !important; width:auto !important; max-width:100% !important; margin:0 !important; padding:4px 4px 12px !important;
+    flex-direction:row !important; flex-wrap:wrap !important; justify-content:flex-start !important; gap:4px 12px !important;
+    background:none !important; }
   ${W} .sx-sw-verb { font-size:12px !important; letter-spacing:.1em !important; }
+}
+@media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { flex-basis:340px !important; height:340px !important; min-height:340px !important; }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__side { position:relative !important; inset:auto !important; transform:none !important;
+    width:auto !important; max-width:none !important; max-height:none !important; height:auto !important; overflow:visible !important;
+    flex:0 0 auto !important; pointer-events:auto !important; }
+  ${W} .orr-sw-node__name { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 }
 /* ≤1100×≤640 desktop (960×540): the dock stage is ~162px tall and the left callout column shares
    it with the nameplate and the camera words, so long system names landed on "Name this hull" and
@@ -1294,7 +1309,7 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 }
 /* 960×540 / 1024×768 desktop: the local foot also applies before the first ring
    measurement, when the rack has not yet received its unseated class. */
-@media (min-width:901px) and (max-width:1100px) and (max-height:800px) {
+@media (min-width:901px) and (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${D}.orr-sw--jig .sx-sw-verbs {
     position:absolute !important; left:8px !important; right:8px !important; top:auto !important; bottom:4px !important;
     width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
@@ -1306,25 +1321,6 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${D}.orr-sw--jig { grid-template-rows:minmax(0, 1fr) !important; }
 }
-/* 901-1100 x 461-640 (960x540): the stage is ~160px tall and the centred verb row takes its
-   foot, so a column of three two-line cards (Cargo · Weapon · Mining) ran down onto TAKE THE
-   HITCH TO THE RANGE. One-line cards, as at <=460 tall: each column stands in half the height. */
-@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
-  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
-    line-height:15px !important; padding-block:1px !important; }
-  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
-  /* …and the live hull drawing's own callouts (1024×640, 1100×640): four two-line labels in the right
-     column needed ~210px of a ~200px band, so the Drive label ran under the verb row and its
-     "STOCK · M" was cut by the foot's fade. Name and state share one line; the solver measures them. */
-  ${W} .orr-sw-jig .orr-sw-node { padding:2px 0 3px !important; }
-  ${W} .orr-sw-jig .orr-sw-node__body { flex-direction:row !important; align-items:baseline !important; gap:0 8px !important; }
-  ${W} .orr-sw-jig .orr-sw-node.is-left .orr-sw-node__body { justify-content:flex-end !important; }
-  ${W} .orr-sw-jig .orr-sw-node__name { flex:0 1 auto !important; }
-  ${W} .orr-sw-jig .orr-sw-node__state { flex:none !important; }
-  /* the right column grows away from the ring (its left edge is the solver's), so a long name like
-     Vector Reaction Drive M reads whole beside STOCK · M instead of "Vector Rea…" in 220px */
-  ${W} .orr-sw-jig .orr-sw-node.is-right { width:max-content !important; max-width:300px !important; }
-}
 /* 1001-1100 x 461-640 (1024×640): the identity (STARTER · 1/7 systems fitted · 0 t modules) wrapped in
    its 220px box and its second line sat on the hull drawing's top-right numeral (05, Mining). Keep it to
    one line beside DOCKED. Not at 960×540, where the hardpoint cards rise to the nameplate's line and the
@@ -1332,6 +1328,15 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 @media (min-width:1001px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
   ${W}.orr-sw--jig > .sx-sw__side { max-width:none !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+}
+/* Short desktop fleet: give the roster and the independently scrollable readings
+   separate seats, and make the pinned Save Fit band cover readings passing behind it. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
 }
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */

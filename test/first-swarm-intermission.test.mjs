@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { firstSwarmIntermission } from '../src/ui/firstSwarmIntermission.js';
-import { crucibleDraftScreen, swarmNextLine, swarmForecastForRun } from '../src/ui/screens/crucibleDraft.js';
+import { firstSwarmIntermission, crucibleDraftScreen, swarmNextLine, swarmForecastForRun } from '../src/ui/screens/crucibleDraft.js';
 import { createRunState } from '../src/core/runState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';

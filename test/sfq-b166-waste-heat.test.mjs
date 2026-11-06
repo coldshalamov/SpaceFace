@@ -12,6 +12,8 @@ import {
 import {
   deserializeAlienEcologyState,
   handleAlienEcologyEvent,
+  handleWarmHeatAction,
+  invalidateWarmHeatOffer,
   serializeAlienEcologyState,
   tickAlienEcology,
 } from '../src/systems/alienEcology.js';
@@ -25,6 +27,7 @@ function worldAt(x, z) {
   const state = {
     meta: { seed: 7 },
     simTime: 10,
+    mode: 'flight',
     playerId: 1,
     entities: new Map(),
     entityList: [],
@@ -73,7 +76,12 @@ function worldAt(x, z) {
     },
     helpers: { spawnEntity() { return null; }, removeEntity() {} },
   };
-  return { state, world, events, player };
+  const host = { pos: { ...ship.center }, occupantGeneration: 1 };
+  world.registry = { get: name => name === 'aftermathWrecks' ? {
+    siteWreckBinding: id => id === ship.siteId
+      && host.available !== false ? { host, occupantGeneration: host.occupantGeneration, pose: { ...host.pos } } : null,
+  } : null };
+  return { state, world, events, player, host };
 }
 
 function move(pack, x, z) {
@@ -95,9 +103,71 @@ function onlineOf(state) {
   return !(rec && rec.heatOnline === false);
 }
 
+function chooseHeat(pack, verb) {
+  const offer = pack.events.findLast(e => e.type === 'siteEvidence:offer' && e.payload.interactionId === 'warm-freighter-standby')?.payload;
+  assert.ok(offer);
+  return handleWarmHeatAction(pack.world, { siteId: ship.siteId, interactionId: offer.interactionId,
+    requestId: offer.requestId, expectedOnline: offer.expectedOnline, verb });
+}
+
 function offered(state) {
   return state.missions.boards.station_field_desk.slots.map((slot) => slot.id).sort();
 }
+
+test('cold freighter arrival follows the live displaced host and waits for its binding', () => {
+  const pack = worldAt(ship.center.x, ship.center.z);
+  const { world, state, host, events } = pack;
+  host.pos.x += 5000;
+  host.available = false;
+  tickAlienEcology(world, 0.1);
+  const rec = recOf(state);
+  rec.heatOnline = false;
+  assert.notEqual(rec.beats.long, true);
+  assert.notEqual(rec.beats.mid, true);
+  assert.notEqual(rec.beats.close, true);
+  host.available = true;
+  tickAlienEcology(world, 0.1);
+  assert.notEqual(rec.beats.long, true, 'the abandoned map coordinate is not the host');
+  const arrivals = () => events.filter(e => e.type === 'toast'
+    && Object.values(ship.arrivalLinesOffline).includes(e.payload.text)).map(e => e.payload.text);
+  for (const distance of [2100, 1200, 400]) {
+    move(pack, host.pos.x + distance, host.pos.z);
+    tickAlienEcology(world, 0.1);
+  }
+  assert.deepEqual(arrivals(), [ship.arrivalLinesOffline.long, ship.arrivalLinesOffline.mid, ship.arrivalLinesOffline.close]);
+  assert.deepEqual([rec.beats.long, rec.beats.mid, rec.beats.close], [true, true, true]);
+  tickAlienEcology(world, 0.1);
+  assert.equal(arrivals().length, 3, 'arrival beats remain once-only');
+  assert.ok(!events.some(e => e.type === 'toast' && Object.values(ship.arrivalLines).includes(e.payload.text)));
+});
+
+test('heat offer tokens are independent per state and remain fresh after invalidation', () => {
+  const first = worldAt(ship.center.x, ship.center.z);
+  const second = worldAt(ship.center.x, ship.center.z);
+  const other = worldAt(ship.center.x, ship.center.z);
+  const scan = pack => {
+    handleAlienEcologyEvent(pack.world, 'scan:completed', { sectorId: ship.sectorId });
+    return pack.events.findLast(e => e.type === 'siteEvidence:offer'
+      && e.payload.interactionId === 'warm-freighter-standby').payload;
+  };
+  const firstOffer = scan(first);
+  scan(other); scan(other); scan(other);
+  const secondOffer = scan(second);
+  assert.equal(firstOffer.requestId, 1);
+  assert.equal(secondOffer.requestId, firstOffer.requestId);
+  const request = offer => ({ siteId: ship.siteId, interactionId: offer.interactionId,
+    requestId: offer.requestId, expectedOnline: offer.expectedOnline, verb: 'heat-off' });
+  assert.equal(handleWarmHeatAction(first.world, request(firstOffer)).ok, true);
+  assert.equal(handleWarmHeatAction(second.world, request(secondOffer)).ok, true);
+  assert.equal(handleWarmHeatAction(first.world, request(firstOffer)).ok, false);
+  const old = scan(first);
+  invalidateWarmHeatOffer(first.state);
+  const fresh = scan(first);
+  assert.equal(fresh.requestId, old.requestId + 1);
+  const restore = offer => ({ ...request(offer), verb: 'heat-on' });
+  assert.equal(handleWarmHeatAction(first.world, restore(old)).ok, false);
+  assert.equal(handleWarmHeatAction(first.world, restore(fresh)).ok, true);
+});
 
 test('waste heat shelters the cysts and holds the eels, and cutting it swaps that', () => {
   assert.equal(ship.siteId, HEAT_SITE_ID);
@@ -134,7 +204,7 @@ test('waste heat shelters the cysts and holds the eels, and cutting it swaps tha
   assert.equal(offNotice.toLowerCase().includes('eels are no longer held'), true);
 });
 
-test('a scan cuts the standby, a reload keeps it, and the survey stays posted', () => {
+test('a scan reads standby, a deliberate choice persists, and the survey stays posted', () => {
   const outside = { x: ship.center.x + CLOSE * 2, z: ship.center.z };
   const inside = { x: ship.center.x, z: ship.center.z };
   const onRadius = { x: ship.center.x + CLOSE, z: ship.center.z };
@@ -173,6 +243,8 @@ test('a scan cuts the standby, a reload keeps it, and the survey stays posted', 
   move(first, inside.x, inside.z);
   tickAlienEcology(first.world, 0.5);
   handleAlienEcologyEvent(first.world, 'scan:completed', { sectorId: ship.sectorId });
+  assert.equal(onlineOf(first.state), true);
+  assert.equal(chooseHeat(first, 'heat-off').ok, true);
   assert.equal(onlineOf(first.state), false);
   assert.equal(heatLogs(first.events).filter((e) => e.payload.text === HEAT_OFF).length, 1);
   assert.equal(wasteHeatSupport(false).actors.lantern_cyst.hurt, true);
@@ -191,6 +263,7 @@ test('a scan cuts the standby, a reload keeps it, and the survey stays posted', 
   const posted = worldAt(inside.x, inside.z);
   const blob = serializeAlienEcologyState(first.state);
   blob.sites[ship.siteId].offersEmitted = {};
+  blob.sites[ship.siteId].offerArmed = false;
   deserializeAlienEcologyState(posted.state, blob);
   tickAlienEcology(posted.world, 0.5);
   assert.equal(onlineOf(posted.state), false);
@@ -198,6 +271,8 @@ test('a scan cuts the standby, a reload keeps it, and the survey stays posted', 
   assert.ok(wantOffers.every((id) => offered(posted.state).includes(id)));
 
   handleAlienEcologyEvent(first.world, 'scan:completed', { sectorId: ship.sectorId });
+  assert.equal(onlineOf(first.state), false);
+  assert.equal(chooseHeat(first, 'heat-on').ok, true);
   assert.equal(onlineOf(first.state), true);
   assert.equal(heatLogs(first.events).filter((e) => e.payload.text === HEAT_ON).length, 3);
   tickAlienEcology(first.world, 0.5);
@@ -211,6 +286,7 @@ test('a scan cuts the standby, a reload keeps it, and the survey stays posted', 
   assert.equal(heatLogs(first.events).filter((e) => e.payload.text === HEAT_ON).length, 4);
 
   handleAlienEcologyEvent(first.world, 'scan:completed', { sectorId: ship.sectorId });
+  assert.equal(chooseHeat(first, 'heat-off').ok, true);
   move(first, outside.x, outside.z);
   tickAlienEcology(first.world, 30);
   handleAlienEcologyEvent(first.world, 'scan:completed', { sectorId: ship.sectorId });

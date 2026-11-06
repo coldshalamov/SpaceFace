@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { createBus } from '../src/core/eventBus.js';
+import { fakeDom } from './helpers/fake-dom.mjs';
 import {
   applyDomainPathUpdate,
   configureDomainMirroring,
@@ -18,6 +19,7 @@ import {
   circuitRoundFor,
   createCircuitState,
 } from '../src/systems/survivalCircuit.js';
+import { CRUCIBLE_PURCHASE_SPEND_REASON, CRUCIBLE_REROLL_SPEND_REASON } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { difficultyForWave } from '../src/data/survivalActs.js';
 import { summarizeRunBuild } from '../src/data/runModifiers.js';
@@ -137,6 +139,7 @@ function armoryFor(run, preview) {
 
 function refitFor(run, preview) {
   const bus = eventBus();
+  const rowAttributes = new Map();
   const state = {
     run,
     rng: { calls: 0, next() { this.calls += 1; return 0.5; } },
@@ -149,7 +152,11 @@ function refitFor(run, preview) {
   const ctx = { state, registry: { get: () => offers }, bus };
   const screen = Object.assign(Object.create(crucibleRefitScreen), {
     _ctx: ctx,
-    _rows: { innerHTML: '', children: [] },
+    _rows: {
+      innerHTML: '', children: [],
+      setAttribute(name, value) { rowAttributes.set(String(name), String(value)); },
+      getAttribute(name) { return rowAttributes.get(String(name)) ?? null; },
+    },
     _preview: preview,
     _root: null,
     _jig: null,
@@ -406,6 +413,40 @@ test('Armory and Refit refresh with changed plans, without touching the run or i
   }
 });
 
+test('legacy card waits for canonical purchase notice, including a delayed stale-quote rejection', async () => {
+  const oldDocument = globalThis.document;
+  globalThis.document = {
+    activeElement: null,
+    createElementNS: undefined,
+    createElement: () => ({
+      textContent: '', dataset: {}, children: [], classList: { toggle() {} },
+      setAttribute() {}, removeAttribute() {},
+      appendChild(child) { this.children.push(child); },
+      addEventListener(type, callback) { this[type] = callback; },
+    }),
+  };
+  try {
+    const armory = armoryFor(runAtShop(), previewNode());
+    armory.screen.onShow(armory.ctx);
+    const card = armory.screen._buildCard(armory.ctx, {
+      id: 'repair', kind: 'repair', name: 'Hull repair', available: true, price: 80,
+    }, 1);
+    card.click();
+    assert.doesNotMatch(armory.screen._note.textContent, /Bought/);
+    assert.equal(armory.screen._flash, undefined, 'an available quote is not a completed purchase');
+    armory.publish({ notice: 'Not enough run credits. Save for the next round.' });
+    armory.bus.emit('run:spendRejected', { offerId: 'repair', reason: CRUCIBLE_PURCHASE_SPEND_REASON });
+    await flushUiMicrotasks();
+    assert.equal(armory.screen._note.textContent, 'Not enough run credits. Save for the next round.');
+    assert.doesNotMatch(armory.screen._note.textContent, /Bought/);
+    armory.publish({ notice: 'Hull repaired. Buy again or launch the next round.' });
+    armory.bus.emit('run:shopPurchased', { offerId: 'repair', price: 80 });
+    await flushUiMicrotasks();
+    assert.equal(armory.screen._note.textContent, 'Hull repaired. Buy again or launch the next round.');
+    armory.screen.onHide();
+  } finally { globalThis.document = oldDocument; }
+});
+
 test('Armory and Refit repaint once from delayed worker receipts and unbind across visibility changes', async () => {
   const oldDocument = globalThis.document;
   globalThis.document = {
@@ -435,7 +476,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     armory.bus.emit('run:spendRejected', { reason: 'unrelated_wallet_spend' });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, afterOpen + 1, 'unrelated spend receipts are ignored');
-    armory.bus.emit('run:spendRejected', { reason: 'crucible:draftReroll' });
+    armory.bus.emit('run:spendRejected', { reason: CRUCIBLE_REROLL_SPEND_REASON });
     armory.bus.emit('run:draftRerollRejected', { reason: 'insufficient_credits' });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, afterOpen + 2, 'the rejection pair coalesces into one repaint');
@@ -489,6 +530,21 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refitRun.phase = 'refit';
     refitRun.wave = 10;
     const refit = refitFor(refitRun, previewNode());
+    // Install the actual mount-owned acknowledgement listener, then retain this test's
+    // lightweight read-model widgets for its repaint and visibility assertions.
+    const fixtureFields = { ...refit.screen };
+    const doc = fakeDom();
+    const createNode = doc.createElement;
+    doc.createElement = tag => {
+      const node = createNode(tag);
+      node.style.removeProperty = name => { delete node.style[name]; };
+      Object.defineProperty(node, 'parentElement', { get() { return this.parentNode; } });
+      return node;
+    };
+    doc.createElementNS = (_namespace, tag) => doc.createElement(tag);
+    globalThis.document = doc;
+    refit.screen.mount(doc._make('div'), refit.ctx);
+    Object.assign(refit.screen, fixtureFields);
     let refitRefreshes = 0;
     const refitRefresh = refit.screen.refresh.bind(refit.screen);
     refit.screen.refresh = (...args) => {
@@ -497,10 +553,14 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     };
     refit.screen.onShow(refit.ctx);
     refit.screen.refresh(refit.ctx);
-    assert.equal(refit.bus.listenerCount('run:refitChanged'), 1);
+    assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
 
     const beforeRefitIntent = refitRefreshes;
+    let fitRequest;
+    const offFit = refit.bus.on('run:refitFitRequested', payload => { fitRequest = payload; });
     refit.screen._emitIntentAndRefresh(refit.ctx, 'run:refitFitRequested', { slotIndex: 0, instanceId: 'spare-1' });
+    offFit();
+    assert.ok(fitRequest?.requestId, 'the actual screen emits a correlated request');
     assert.equal(refitRefreshes, beforeRefitIntent + 1);
     const oldNotice = refit.screen._note.textContent;
     refit.publish({ credits: 280, notice: 'That fitting will not fit this hardpoint.' });
@@ -509,7 +569,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     assert.equal(refitRefreshes, beforeRefitIntent + 1, 'periodic refresh still returns early');
     assert.equal(refit.screen._note.textContent, oldNotice, 'periodic refresh cannot paint an unacknowledged read');
     assert.equal(refit.screen._bankNote.textContent, oldBankNote, 'periodic refresh cannot paint the changed purse');
-    refit.bus.emit('run:refitChanged', { wave: 1, slotIndex: 0, action: 'fit', ok: false, reason: 'wrong_size' });
+    refit.bus.emit('run:refitChanged', { wave: 1, slotIndex: 0, action: 'fit', ok: false, reason: 'wrong_size', requestId: fitRequest.requestId });
     await flushUiMicrotasks();
     assert.equal(refitRefreshes, beforeRefitIntent + 2);
     assert.equal(refit.screen._note.textContent, 'That fitting will not fit this hardpoint.');
@@ -540,9 +600,9 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     assert.equal(refitRefreshes, beforeRefund + 1);
 
     const syncRefitBase = refitRefreshes;
-    const offSyncRefit = refit.bus.on('run:refitStripRequested', () => {
+    const offSyncRefit = refit.bus.on('run:refitStripRequested', (request) => {
       refit.publish({ notice: 'Stripped.' });
-      refit.bus.emit('run:refitChanged', { wave: 1, slotIndex: 0, action: 'strip', ok: true });
+      refit.bus.emit('run:refitChanged', { wave: 1, slotIndex: 0, action: 'strip', ok: true, requestId: request.requestId });
     });
     refit.screen._emitIntentAndRefresh(refit.ctx, 'run:refitStripRequested', { slotIndex: 0 });
     offSyncRefit();
@@ -555,7 +615,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refit.screen.onHide();
     await flushUiMicrotasks();
     assert.equal(refitRefreshes, hiddenRefitBase);
-    assert.equal(refit.bus.listenerCount('run:refitChanged'), 0);
+    assert.equal(refit.bus.listenerCount('run:refitChanged'), 1);
     // A successful worker fit can complete while the modal is hidden. No event is retained, so
     // reopening must synchronously consume the latest public snapshot and canonical run fields.
     const lateRows = [{ slotIndex: 0, slotType: 'weapon', defId: 'wpn_concussion_cannon_m', name: 'Concussion Cannon', spares: [] }];
@@ -576,7 +636,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     assert.match(refit.screen._bankNote.textContent, /59 cr moves to the hangar chest now.*59 cr stays in the purse/);
     assert.match(refit.screen._preview.textContent, /Round 11 .*clear 27/);
     refit.screen.onShow(refit.ctx);
-    assert.equal(refit.bus.listenerCount('run:refitChanged'), 1);
+    assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
     const reopenedRefitBase = refitRefreshes;
     refit.bus.emit('run:refitChanged', { wave: 1, slotIndex: 0, action: 'fit', ok: true });
     await flushUiMicrotasks();

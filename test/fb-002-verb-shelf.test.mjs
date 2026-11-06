@@ -123,7 +123,13 @@ function boot() {
     },
     registry: null,
   });
-  return { bus, state, sys, firstUse };
+  // Same-tick verb bursts queue FIFO behind the 7 s first-use window; this bare-state harness
+  // owns its own clock, so drain steps simTime past the window and lets the queue speak in order.
+  const drain = (seconds = 8) => {
+    state.simTime += seconds;
+    sys._drainHintQueue();
+  };
+  return { bus, state, sys, firstUse, drain };
 }
 
 function addHostile(state, x, z, targetPlayer = true) {
@@ -280,12 +286,14 @@ test('beacon/collector/jettison receipts each speak their verb exactly once', ()
   h.bus.emit('planet:collector', { on: false });
   assert.equal(h.firstUse.length, 1, 'closing the scoop is not the lesson');
   h.bus.emit('planet:collector', { on: true });
+  h.drain();
   assert.equal(h.firstUse.length, 2);
   assert.equal(h.firstUse[1].verbId, 'shelf:toggleSkimCollector');
   // The scoop opens from RIG (5) inside a planet band since the five powers.
   assert.equal(h.firstUse[1].text, 'The scoop harvests a band — 5.');
 
   h.bus.emit('cargo:jettisoned', { count: 3 });
+  h.drain();
   assert.equal(h.firstUse.length, 3);
   assert.equal(h.firstUse[2].verbId, 'shelf:jettisonLot');
   h.bus.emit('cargo:jettisoned', { count: 1 });
@@ -303,6 +311,7 @@ test('module:equipped on the player ship speaks bulletTime; a shroud fit speaks 
   assert.equal(h.firstUse.length, 1, 'a foreign ship fit teaches the player nothing');
   h.state.player.ownedShips[0].fittings = ['mod_cloak_mk1'];
   h.bus.emit('module:equipped', { shipId: 1, defId: 'mod_cloak_mk1' });
+  h.drain();
   assert.equal(h.firstUse.length, 2);
   assert.equal(h.firstUse[1].verbId, 'shelf:cloak');
   assert.equal(h.firstUse[1].text, 'The shroud is fitted — `.');

@@ -1,3 +1,4 @@
+import { CINDERGLASS_JOB_COMBAT_PROFILE, CINDERGLASS_JOB_MOUNT_DEFINITION } from '../features/cinderglassJob/definition.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 import { LAST_ARGUMENT_SUBSYSTEMS, LAST_ARGUMENT_COMBAT_PROFILE } from './lastArgumentCombat.js';
 // SG-03 canonical combat grammar. Pure data: no DOM, renderer, wall clock, or runtime imports.
@@ -367,6 +368,7 @@ export const SUBSYSTEM_DEFS = Object.freeze([
 ]);
 
 export const ATTACHMENT_DEFS = Object.freeze([
+  CINDERGLASS_JOB_MOUNT_DEFINITION,
   {
     id: 'attachment_snarl', version: 1,
     sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
@@ -490,6 +492,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
+  CINDERGLASS_JOB_COMBAT_PROFILE,
   LAST_ARGUMENT_COMBAT_PROFILE,
   {
     id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],
@@ -542,6 +545,17 @@ export const COMBAT_PROFILES = Object.freeze([
     subsystemIds: [],
     sockets: [{ id: 'socket_tether_payload', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 }],
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
+  },
+  {
+    // A civic load seat can secure the finite lamp through the same native attachment owner.
+    // Opt-in only: ordinary payloads do not gain powered clamps or a drive.
+    id: 'combat_profile_lantern_hardware', version: 1, entityTypes: ['payload'],
+    heat: { max: 0, dissipationPerTick: 0 }, immunityTags: [], subsystemIds: [],
+    sockets: [
+      { id: 'socket_lantern_clamp', tags: ['transport_clamp'], localPos: [0, 0], maxAttachments: 1 },
+      { id: 'socket_lantern_tow', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+    ],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: true, transport_clamp: true },
   },
   {
     id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor', 'mine', 'gate'],

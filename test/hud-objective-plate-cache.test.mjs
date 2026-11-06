@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { createFlightTextObstacleCache } from '../src/ui/hud.js';
+import { MOBILE_FLIGHT_LAYOUT_CSS } from '../src/ui/orrery/mobileFlightLayouts.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const hudSrc = readFileSync(join(root, 'src/ui/hud.js'), 'utf8');
@@ -43,4 +45,37 @@ test('resize-only gate eliminates settled-edge layout reads', () => {
   refresh();
   assert.equal(resizeOnlyReads, 6);
   assert.ok(legacyReads / resizeOnlyReads >= 10, `expected ≥10× fewer reads; legacy=${legacyReads} modern=${resizeOnlyReads}`);
+});
+
+test('flight text obstacle cache returns frozen owner-labelled geometry without rebuilding on reads', () => {
+  const cache = createFlightTextObstacleCache();
+  const empty = cache.read();
+  assert.strictEqual(cache.read(), empty, 'the empty snapshot is reused');
+  assert.ok(Object.isFrozen(empty));
+
+  const snapshot = cache.publish([
+    { owner: 'objective', rect: { left: 10, top: 20, right: 210, bottom: 84, width: 200, height: 64 } },
+    { owner: 'stunt', rect: { left: 16, top: 110, right: 144, bottom: 148, width: 128, height: 38 } },
+    { owner: 'hidden', rect: { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 } },
+  ]);
+  assert.strictEqual(cache.read(), snapshot, 'the getter returns the same cached array');
+  assert.ok(Object.isFrozen(snapshot));
+  assert.ok(snapshot.every(Object.isFrozen));
+  assert.deepEqual(snapshot, [
+    { owner: 'objective', left: 10, top: 20, right: 210, bottom: 84, width: 200, height: 64 },
+    { owner: 'stunt', left: 16, top: 110, right: 144, bottom: 148, width: 128, height: 38 },
+  ]);
+});
+
+test('the HUD getter is cached, and receipts can use its live-objective bands', () => {
+  assert.match(hudSrc, /function getFlightTextObstacles\(\)\s*\{\s*return flightTextObstacleCache\.read\(\);\s*\}/);
+  assert.match(hudSrc, /getFlightTextObstacles,/);
+  assert.match(hudSrc, /\.sf-stuntcall:not\(\[hidden\]\)/, 'stunt is an obstacle for lower-priority captions and receipts');
+  assert.match(hudSrc, /flightTextObstaclesStale = true/);
+  const toastRules = [...MOBILE_FLIGHT_LAYOUT_CSS.matchAll(/#toasts[^{}]*\{([^}]*)\}/g)].map((m) => m[1]);
+  assert.ok(toastRules.length >= 2, 'portrait and compact-landscape receipt fallbacks remain');
+  for (const rule of toastRules) {
+    assert.doesNotMatch(rule, /(?:top|left|right|bottom|width)\s*:[^;]*!important/,
+      'the existing allocator inline placement must be able to clear the live objective');
+  }
 });

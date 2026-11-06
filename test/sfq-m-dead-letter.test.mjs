@@ -46,9 +46,14 @@ function fire(h) {
 
 const pOf = (live) => live.data.letter;
 const ent = (h, id) => h.state.entities.get(id);
-const grants = (h) => h.events.filter((e) => e.name === 'grant').map((e) => e.payload.amount);
-const reps = (h) => h.events.filter((e) => e.name === 'rep').map((e) => e.payload.delta);
-const resolved = (h) => h.events.filter((e) => e.name === 'resolved').map((e) => e.payload.outcome);
+// Ambient life still runs in the sector — a quiet-travel cadence scan can fire and resolve
+// 'clean' inside a test window. Only the dead letter's own outcomes/payments count.
+const grants = (h) => h.events.filter((e) => e.name === 'grant'
+  && String(e.payload.reason || '').startsWith('dead_letter')).map((e) => e.payload.amount);
+const reps = (h) => h.events.filter((e) => e.name === 'rep'
+  && String(e.payload.reason || '').startsWith('dead_letter')).map((e) => e.payload.delta);
+const resolved = (h) => h.events.filter((e) => e.name === 'resolved'
+  && e.payload.shape === SHAPE).map((e) => e.payload.outcome);
 const said = (h) => h.events.filter((e) => e.name === 'voice').map((e) => e.payload.text);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const letters = (h) => [...h.state.entities.values()]

@@ -53,6 +53,9 @@ export async function productionContinueFixture({
   const deps = {
     resetCombatInputMode, createTimeEffects, laneCommandSink, laneSetMode,
     GameStartReadinessError, describeGameStartFailure, holdOpeningPresentationUntilPaint, openingGateBudgetMs,
+    // Production imports captured by the extracted finalizer. Locale preparation and accessibility
+    // are outside this fixture's contract, so provide deterministic ports instead of omitting the bindings.
+    ensureLocaleReady: async () => true, startupLocale: 'en-US', applyAccessibility() {},
     // Presentation ports, deliberately outside the Node manifest.
     releaseUiStage() {}, _loadingClearColor: {}, nextFrame: nextHostTurn,
     nextPaintSliced: nextHostTurn, nowMs: () => performance.now(),

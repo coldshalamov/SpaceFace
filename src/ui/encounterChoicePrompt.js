@@ -34,6 +34,7 @@ export function createEncounterChoicePrompt(ctx = {}) {
       kind: 'info',
       sender: 'ENCOUNTER DECISION',
       headline: String(payload.title || payload.kind || 'ENCOUNTER DECISION'),
+      detail: payload.detail || null,
       deadlineAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
       choices,
       onChoose: (choiceId, source) => {
@@ -62,10 +63,10 @@ export function createEncounterChoicePrompt(ctx = {}) {
       id: 'encounter:' + payload.encounterId,
       kind: 'info',
       sender: 'ENCOUNTER',
-      headline: 'OBSERVING',
-      detail: payload.reason === 'observe_battle'
+      headline: String(payload.title || 'ENCOUNTER'),
+      detail: payload.detail || (payload.reason === 'observe_battle'
         ? 'Both sides are fighting. Hold position.'
-        : 'Waiting on the outcome.',
+        : 'Waiting on the outcome.'),
       deadlineAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
       ttlAt: Number.isFinite(payload.deadlineAt) ? Number(payload.deadlineAt) : null,
       choices: [],

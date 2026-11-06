@@ -1,6 +1,7 @@
 import { ORCHARD_GEOMETRY as G } from '../data/anvilOrchardBody.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
-import { readOrchardNativePose } from '../core/physics.js';
+import { readOrchardNativePose } from '../core/orchardPoseReader.js';
+import { createOrchardWorkGuides } from './anvilOrchardGuides.js';
 
 const visualOwners = new WeakMap();
 
@@ -63,12 +64,14 @@ export function createOrchardVisualDriver(root, entity) {
   // Its suspended native read is fenced from all successor pose writes/cleanup.
   visualOwners.get(root)?.dispose();
   for (const entry of rigs) { entry.rest = entry.node.quaternion.clone(); entry.visible = entry.node.visible; }
+  const guides = createOrchardWorkGuides(root);
   const id = entity.id, life = entity.occupantGeneration;
   let retired = false;
   const lease = {}, owns = () => visualOwners.get(root) === lease;
   const withdraw = () => {
     if (!owns()) return;
     for (const { node, rest } of rigs) { node.quaternion.copy(rest); node.visible = false; node.updateMatrix(); }
+    guides.hide();
     delete root.userData.orchardNativePose;
   };
   const dispose = () => {
@@ -76,6 +79,7 @@ export function createOrchardVisualDriver(root, entity) {
     retired = true;
     if (!owns()) return;
     for (const { node, rest, visible } of rigs) { node.quaternion.copy(rest); node.visible = visible; node.updateMatrix(); }
+    guides.dispose();
     delete root.userData.orchardNativePose;
     visualOwners.delete(root);
   };
@@ -119,6 +123,7 @@ export function createOrchardVisualDriver(root, entity) {
         node.updateMatrix();
       }
       root.userData.orchardNativePose = pose;
+      guides.update(live, state, pose);
     },
     dispose,
   };

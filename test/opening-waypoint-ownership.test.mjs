@@ -25,10 +25,15 @@ import {
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
+import { commitCoursePayload } from '../src/ui/galaxyMap.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { world as worldProto } from '../src/systems/world.js';
 
 function harness({ tutorialHints = true, seed = 47 } = {}) {
   const state = createGameState(seed);
   state.mode = 'flight';
+  // Recovery may select only a body in the contract's actual sector.
+  state.world.currentSectorId = 'sector_helios_prime';
   state.simTime = 0;
   state.playerId = 1;
   state.settings.gameplay.tutorialHints = tutorialHints;
@@ -140,6 +145,94 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
   );
   assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
   assert.match(actions[0].title, /Follow the anomaly/i);
+});
+
+test('automatic tether entry yields to an armed player course, which can explicitly retarget the derelict', () => {
+  const h = harness();
+  h.bus.emit('game:started');
+  const derelict = {
+    id: 5, type: 'wreck', alive: true, pos: { x: 40, z: -25 },
+    data: { kind: 'derelict', onboarding: true },
+  };
+  h.state.entities.set(derelict.id, derelict);
+  h.state.entityList.push(derelict);
+  h.onboarding._derelictId = derelict.id;
+  h.state.onboarding.active = true;
+  h.state.onboarding.finished = false;
+  h.state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
+  h.state.onboarding.beatAction = BEATS[h.state.onboarding.currentBeat].line;
+
+  const helioCourse = {
+    kind: 'nav', label: 'Helios Station', targetEntityId: 4,
+    pos: { x: -420, z: 100 },
+  };
+  const helioAutopilot = {
+    active: true, status: 'braking', label: 'Helios Station', targetEntityId: 4,
+    target: { x: -420, z: 100 },
+  };
+  h.state.nav.waypoint = { ...helioCourse };
+  h.state.nav.autopilot = { ...helioAutopilot };
+
+  // This is the production automatic lesson-entry path, including its forced objective stamp.
+  h.onboarding._enterBeat(BEATS[h.state.onboarding.currentBeat]);
+  assert.deepEqual(h.state.nav.waypoint, helioCourse,
+    'the tether lesson must not replace the active player-selected route');
+  assert.deepEqual(h.state.nav.autopilot, helioAutopilot,
+    'lesson entry leaves the canonical autopilot target alone');
+  assert.equal(h.state.onboarding.active, true, 'the tutorial remains live');
+  assert.equal(h.state.entities.get(derelict.id), derelict,
+    'the objective actor remains available to track from the map');
+
+  // The real map course resolver marks an asteroid as a local course. Its canonical waypoint
+  // kind carries course ownership even though it is not `nav` and autopilot later stops.
+  const mapCourse = commitCoursePayload(h.state, {
+    kind: 'asteroid', entityId: h.asteroid.id,
+    x: h.asteroid.pos.x, z: h.asteroid.pos.z,
+    name: 'Training asteroid',
+  });
+  assert.equal(mapCourse.waypointKind, 'local');
+  const world = Object.assign({}, worldProto, { state: h.state, bus: h.bus });
+  h.bus.on('ui:setCourse', (payload) => world._onSetCourse(payload || {}));
+  h.bus.emit('ui:setCourse', mapCourse);
+  assert.equal(h.state.nav.waypoint.kind, 'local');
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id);
+  assert.equal(h.state.nav.autopilot.active, true);
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'tutorial refresh preserves the active map-issued local asteroid course');
+
+  // Arrival is the real ownership boundary: flightV3 clears its transient target id, but
+  // the player's local waypoint remains until the player clears or replaces it.
+  const flight = Object.assign({}, flightV3);
+  flight.init({ state: h.state, bus: h.bus });
+  const player = h.state.entities.get(h.state.playerId);
+  player.pos.x = h.asteroid.pos.x;
+  player.pos.z = h.asteroid.pos.z;
+  player.vel = { x: 0, z: 0 };
+  h.state.input = { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false };
+  flight._stepCraft(player, h.state.input, 1 / 60, h.state, true);
+  assert.equal(h.state.nav.autopilot.active, false);
+  assert.equal(h.state.nav.autopilot.status, 'arrived');
+  assert.equal(h.state.nav.autopilot.targetEntityId, null);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'arrival clears only the transient autopilot bind');
+
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, h.asteroid.id,
+    'tutorial refresh preserves an actual map-issued local asteroid course after arrival');
+  assert.equal(h.state.nav.waypoint.onboarding, undefined,
+    'the preserved waypoint remains the player course, not a tutorial objective');
+
+  // Reuse the canonical public course owner: explicitly selecting the tutorial actor still works.
+  h.bus.emit('ui:setCourse', {
+    kind: 'nav', label: 'Derelict', pos: derelict.pos, targetEntityId: derelict.id,
+  });
+  assert.equal(h.state.nav.waypoint.kind, 'nav');
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id);
+  assert.equal(h.state.nav.autopilot.targetEntityId, derelict.id);
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id,
+    'later automatic lesson refreshes preserve the pilot’s explicit objective course');
 });
 
 test('tutorial:finished hands nav ownership back to the tracked 47-A mission', () => {

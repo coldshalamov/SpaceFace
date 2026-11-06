@@ -151,6 +151,10 @@ export default defineFlavorPack({
         { id: 'margin_63', text: 'A freighter written off as sinking berthed herself a week later. Her crew had already filed the loss. The ledger kept the original.' },
         { id: 'margin_64', text: 'A Ceres clerk confessed to a manifest theft his own ledger had already cleared. He asked for the sentence in writing. He is still asking.' },
         { id: 'margin_65', text: 'A Drift desk sells a grain that will not reseed. Every sowing is a first purchase. The desk calls it yield.' },
+        { id: 'margin_66', eventKey: 'player.downed_hunter', text: 'Tessera put down a bonded hunter. The bond office logged it as a policy outcome and raised the premium.' },
+        { id: 'margin_67', eventKey: 'player.downed_hunter', text: 'A licensed hunter stopped answering mid-contract. The Tessera was the last thing on his scope. The office has already posted the next one.' },
+        { id: 'margin_68', eventKey: 'player.downed_raider', text: 'Tessera dropped a raider off the claim lanes. The claim office filed it as routine clearance. We filed the name.' },
+        { id: 'margin_69', eventKey: 'player.downed_raider', text: "Another wing went down under the Tessera's guns. The bounty desk paid half the posted rate. We are asking who kept the other half." },
       ],
     },
     {
@@ -231,6 +235,8 @@ export default defineFlavorPack({
         { id: 'static_70', text: 'A pale giant runs the cut game behind the Bazaar. He says he will never die. The pot keeps taking challengers.' },
         { id: 'static_71', text: 'The stone changed pockets nine times dockside in one night. It left in the tool roll of a man who still thinks he won it.' },
         { id: 'static_72', text: 'A loan man called Chili took a deckhand\u2019s coat on the vig. The coat fit better than the debt.' },
+        { id: 'static_73', eventKey: 'player.downed_raider', repBand: 'hostile', text: 'Tessera put one of ours down. The next toll on that lane buys their hull.' },
+        { id: 'static_74', eventKey: 'player.downed_raider', repBand: 'neutral', text: 'Word is the Tessera sank a raider wing today. Nobody has priced that name yet. Yet.' },
       ],
     },
     {

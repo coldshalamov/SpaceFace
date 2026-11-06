@@ -22,4 +22,5 @@
 //      (data.longBerth) persist across Continue.
 // v21: physical industry experiences retain original bodies, progress and settlement receipts.
 // v22: loss-owned survey custody and scanner-sidecar recognition survive Continue.
-export const CURRENT_VERSION = 22;
+// v23: Lantern Ward finite work/custody and once-only service settlement.
+export const CURRENT_VERSION = 23;

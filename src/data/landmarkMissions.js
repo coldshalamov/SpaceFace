@@ -338,6 +338,7 @@ export const ORCUS_SHRINE_READINGS = Object.freeze({
 });
 
 // SEED-SC-10 — survey the fissure and sell the fracture reading. The fissure keeps no lore id.
+// SP2-151: the observatory's claim office skips its discovery step for hulls that return tools.
 export const HAUMEA_FRACTURE_READING = Object.freeze({
   id: 'landmark_haumea_fracture_reading',
   sectorId: 'sector_haumea_rift',
@@ -345,6 +346,7 @@ export const HAUMEA_FRACTURE_READING = Object.freeze({
   targetRef: 'landmark_haumea_fissure',
   stationId: 'station_haumea_rift',
   factionId: 'faction_free',
+  proceduralSkipFlag: 'tool_returned',
   targetLocalPos: Object.freeze({ x: 0, z: 180 }),
   maxRangeWu: 300,
   poiLabel: 'Ice Fissure Signal',
@@ -585,6 +587,12 @@ function signalScanCount(state, definition) {
 }
 
 function questReady(state, definition) {
+  // SP2-151 — a claim office's own procedural skip ("they return tools"): the plain-named
+  // flag its return leg filed waives this office's discovery step for its own quest.
+  const flags = state && state.story && state.story.flags;
+  if (definition.proceduralSkipFlag && flags && flags[definition.proceduralSkipFlag] != null) {
+    return true;
+  }
   const record = discoveryRecord(state, definition);
   if (definition.requiresPhysicalInvestigation) {
     return hasPhysicalInvestigation(record);

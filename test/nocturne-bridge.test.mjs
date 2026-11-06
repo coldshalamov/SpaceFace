@@ -38,9 +38,9 @@ function census(scene) {
   return counts;
 }
 
-test('real VFX, weapon and engine adapters share eight GPU points and three spots', () => {
+test('real VFX, weapon and engine adapters share three GPU points and one spot', () => {
   const h = harness();
-  const expected = { points: 8, spots: 3, shadowSpots: 1 };
+  const expected = { points: 3, spots: 1, shadowSpots: 1 };
   assert.deepEqual(census(h.scene), expected);
   const weapons = new WeaponLightPool(h.scene);
   const overhead = createFlightOverheadPresentation(h.scene);
@@ -73,6 +73,30 @@ test('normalized existing event priorities retain their gameplay meaning', () =>
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 
+test('Nocturne shadow admission starts from settings and follows later toggle changes', () => {
+  const scene = new THREE.Scene();
+  const renderer = { shadowMap: { enabled: false } };
+  const state = { settings: { video: { nocturne: true, nocturneShadows: false } } };
+  const headlights = new HeadlightPool(scene);
+  const runtime = new NocturneRuntime({ scene, renderer, state, headlights });
+  assert.equal(runtime.shadowConfigured, true, 'the structural spot-light census remains mounted');
+  assert.equal(renderer.shadowMap.enabled, true, 'the structural shader key remains pinned');
+  assert.equal(runtime.shadowsEnabled, false, 'default-off settings do not request a depth pass');
+  assert.equal(runtime._directorOptions.shadowEnabled, false);
+
+  state.settings.video.nocturneShadows = true;
+  runtime.setEnabled(true);
+  assert.equal(runtime.shadowsEnabled, true, 'the local-shadow option can be enabled live');
+  assert.equal(runtime._directorOptions.shadowEnabled, true);
+
+  state.settings.video.nocturne = false;
+  runtime.setEnabled(false);
+  assert.equal(runtime.shadowsEnabled, false, 'disabling Nocturne disables its shadow contribution');
+  assert.equal(runtime._directorOptions.enabled, false);
+  runtime.dispose();
+  headlights.dispose();
+});
+
 test('material contact stays secondary while a gyre payload uses the normalized major-event priority', () => {
   const h = harness();
   const materialRoot = new THREE.Group(); h.scene.add(materialRoot);
@@ -90,7 +114,7 @@ test('material contact stays secondary while a gyre payload uses the normalized 
   assert.equal(major.admissionPriority, 0.9);
   assert.equal(major.obj._nocturneSource.priority, 3);
   assert.equal(major.obj._nocturneSource.importance, 1.9);
-  assert.deepEqual(census(h.scene), { points: 8, spots: 3, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
   unregisterMaterialOwner(materialOwner); materialRoot.removeFromParent();
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
@@ -146,7 +170,7 @@ test('manual lighting controls apply to an immediate flush and respect the saved
   h.runtime.setEnabled(false); h.runtime.setEnabled(true); h.runtime.flush(h.camera);
   assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
   assert.equal(effect.intensity, 8000, 'logical emitter remains authored while contribution is disabled');
-  assert.deepEqual(census(h.scene), { points: 8, spots: 3, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 
@@ -161,7 +185,7 @@ test('actual save, game and sector boundaries clear transient light without remo
     h.bus.emit(event, {});
     assert.equal(effect.intensity, 0, event);
     assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
-    assert.deepEqual(census(h.scene), { points: 8, spots: 3, shadowSpots: 1 });
+    assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
   }
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
@@ -189,7 +213,7 @@ test('exiting to menu retires VFX CPU envelopes before the next light update', (
   h.runtime.flush(h.camera);
   assert.equal(slot.obj.intensity, 0, 'the next menu update cannot resurrect the old flash');
   assert.ok(h.runtime.pointLights.every(light => light.intensity === 0));
-  assert.deepEqual(census(h.scene), { points: 8, spots: 3, shadowSpots: 1 });
+  assert.deepEqual(census(h.scene), { points: 3, spots: 1, shadowSpots: 1 });
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 
@@ -214,7 +238,7 @@ test('retained runtime handles release old world references and dispose only onc
     shadow.map.addEventListener('dispose', () => mapDisposals++);
     h.runtime.dispose({ disposeGpu });
     h.runtime.dispose({ disposeGpu: true });
-    assert.equal(pointDisposals, disposeGpu ? 8 : 0, 'a later dispose cannot enter a retired GPU generation');
+    assert.equal(pointDisposals, disposeGpu ? 3 : 0, 'a later dispose cannot enter a retired GPU generation');
     assert.equal(mapDisposals, disposeGpu ? 1 : 0);
     assert.equal(shadow.map, null);
     for (const key of ['scene', 'state', 'renderer', 'gpu', 'bloom', 'graph', 'shadowLight', 'atmosphere']) {

@@ -12,7 +12,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
-import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import { createRenderPackageLoader, fetchVerifiedRenderResources } from '../src/render/renderPackageLoader.js';
 import {
   createPackageDetachManifest,
   assertPackageTextureRefillReady,
@@ -26,6 +26,7 @@ import {
   rehydrateDetachedTextures,
   resetPackageDetachManifestsForTests,
   retainPresentedTextureLeases,
+  measureLivePackageCpuPayloads,
 } from '../src/render/packageCpuDetach.js';
 import {
   claimSharedImageTexture,
@@ -37,6 +38,34 @@ import {
 import { prepareStartupGpuResidency } from '../src/render/startupGpuResidency.js';
 
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+test('live CPU accounting separates unique detachable bytes from kept and cloned payloads', () => {
+  resetPackageDetachManifestsForTests();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  geometry.setIndex(new THREE.Uint16BufferAttribute([0, 1, 2], 1));
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  createPackageDetachManifest({ contentHash: 'live-byte-accounting', resources: [geometry, texture] }, {
+    redecode: () => {}, collectResources: value => value.resources,
+  });
+  try {
+    const cohort = { geometries: [geometry], textures: [texture] };
+    const one = measureLivePackageCpuPayloads([cohort, cohort]);
+    assert.equal(one.liveCpuBufferBytes, 82); // positions36 + normals36 + indices6 + pixels4
+    assert.equal(one.incrementalCpuBufferBytes, 40); // normal + map; positions/index already kept
+    assert.equal(one.uniqueBuffers, 4);
+    assert.deepEqual(one.textureFormats, [{ format: THREE.RGBAFormat, type: THREE.UnsignedByteType,
+      compressed: false, textures: 1 }]);
+    const clone = texture.clone();
+    assert.equal(clone.source, texture.source);
+    const shared = measureLivePackageCpuPayloads([cohort, { geometries: [], textures: [clone] }]);
+    assert.equal(shared.liveCpuBufferBytes, 82, 'canonical Source pixels count once across clones');
+    assert.equal(shared.incrementalCpuBufferBytes, 36,
+      'an uncovered clone already requires its shared pixels, so its bytes are not an incremental lease cost');
+    assert.equal(shared.opaqueImages, 0);
+  } finally { resetPackageDetachManifestsForTests(); }
+});
 
 function packageMetadata(assetId = 'fixture.detach') {
   const metadata = {
@@ -136,6 +165,104 @@ function freshLoader(loadGlb, residency = createAssetResidencyRegistry()) {
   return createRenderPackageLoader({ residency, loadGlb });
 }
 
+test('startup texture upload retains its compressed payload across the paced yield', async () => {
+  let live;
+  const loader = freshLoader(async () => { const fresh = decodedFixture(); live ||= fresh; return fresh; });
+  const loaded = await loader.load(packageMetadata('fixture.startup-texture-race'), { baseUrl: 'https://fixtures.test/' });
+  live.compressed.needsUpdate = true;
+  let retired = false;
+  const renderer = { initTexture(texture) {
+    if (texture === live.compressed) assert.ok(texture.mipmaps.length > 0, 'upload requires its compressed mip chain');
+  } };
+  try {
+    await prepareStartupGpuResidency(renderer, loaded.createInstance().root, {
+      includeGeometry: false,
+      yieldToMain: async () => {
+        if (!retired) { retired = true; detachPackageTexture(live.compressed); }
+      },
+    });
+    assert.equal(retired, true);
+    assert.equal(isPackageTextureDetached(live.compressed), true, 'the upload lease releases after the pass');
+  } finally { loader.dispose(); }
+});
+
+test('cockpit package texture survives competing detach while startup residency is paced', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  const { registerEmbeddedKtx2Textures } = await import('../src/render/embeddedKtx2Textures.js');
+  await MeshoptDecoder.ready;
+  const dir = new URL('../assets/ships/release/render-packages/aftermath-aft-cockpit-section/', import.meta.url);
+  const bytes = await readFile(new URL('render.glb', dir));
+  const metadata = JSON.parse(await readFile(new URL('render-package.json', dir), 'utf8'));
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+  // Match the browser decoder's verified sidecar registration before the KTX2 plugin.
+  // Native Node reads the same published bytes locally instead of fetching file: URLs.
+  const verifiedResources = await fetchVerifiedRenderResources(
+    async (url) => new Response(await readFile(new URL(url))), new URL('render.glb', dir).href, metadata,
+  );
+  gltfLoader.register((parser) => {
+    parser.verifiedExternalKtx2Resources = verifiedResources;
+    return { name: 'SpaceFaceVerifiedExternalKtx2Resources' };
+  });
+  gltfLoader.register(registerEmbeddedKtx2Textures);
+  // Node has no GPU transcoder; decode the real package and model the transcoder's mip output.
+  let transcodes = 0;
+  gltfLoader.setKTX2Loader({ parse(ktxBytes, onLoad) {
+    assert.deepEqual([...new Uint8Array(ktxBytes).subarray(0, 12)],
+      [0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
+    transcodes++;
+    const texture = new THREE.CompressedTexture(compressedBytes(2048), 4, 4, THREE.RGBAFormat);
+    texture.needsUpdate = true;
+    onLoad(texture);
+  } });
+  const decode = () => gltfLoader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  const loader = freshLoader(decode);
+  const loaded = await loader.load(metadata, { baseUrl: 'https://fixtures.test/' });
+  assert.ok(transcodes > 0, 'the real verified shared KTX2 bytes reached the transcoder');
+  const texture = loaded.resources.find(value => value.isCompressedTexture && value.name === 'forge_machinery_albedo');
+  assert.ok(texture, 'the actual cockpit package exposes its machinery albedo');
+  let retired = false, uploads = 0;
+  const renderer = { initTexture(value) {
+    if (value === texture) { uploads++; assert.ok(value.mipmaps.length > 0); }
+  } };
+  try {
+    await prepareStartupGpuResidency(renderer, loaded.createInstance().root, {
+      includeGeometry: false,
+      yieldToMain: async () => { if (!retired) { retired = true; detachPackageTexture(texture); } },
+    });
+    assert.equal(uploads, 1);
+    assert.equal(isPackageTextureDetached(texture), true, 'the package payload can retire after upload');
+  } finally { loader.dispose(); }
+});
+
+test('startup residency refills a detached texture for a restored context', async () => {
+  let live;
+  const loader = freshLoader(async () => { const fresh = decodedFixture(); live ||= fresh; return fresh; });
+  const loaded = await loader.load(packageMetadata('fixture.restored-texture'), { baseUrl: 'https://fixtures.test/' });
+  live.compressed.needsUpdate = true;
+  let records = new Map(), uploads = 0;
+  const renderer = {
+    properties: { get: texture => records.get(texture) },
+    initTexture(texture) {
+      if (texture === live.compressed) {
+        assert.ok(texture.mipmaps.length, 'restored context upload needs real mips');
+        uploads++;
+      }
+      records.set(texture, { __version: texture.version, __webglTexture: {} });
+    },
+  };
+  try {
+    const root = loaded.createInstance().root;
+    await prepareStartupGpuResidency(renderer, root, { includeGeometry: false, yieldToMain: async () => {} });
+    assert.equal(isPackageTextureDetached(live.compressed), true);
+    records = new Map();
+    await prepareStartupGpuResidency(renderer, root, { includeGeometry: false, yieldToMain: async () => {} });
+    assert.equal(uploads, 2, 'a restored context must get a new upload, not a stale resident receipt');
+  } finally { loader.dispose(); }
+});
+
 test('an exact-target refill keeps this renderer\'s current live GPU copy without decoding it again', async () => {
   let decodes = 0, live;
   const loader = freshLoader(async () => { decodes++; const fresh = decodedFixture(); live ||= fresh; return fresh; });
@@ -215,9 +342,10 @@ test('package textures detach their CPU payloads after a proven residency upload
   loader.dispose();
 });
 
-test('a detached texture is treated as resident and never re-uploaded empty', async () => {
+test('a detached texture is refilled before a changed-version or new-context upload', async () => {
   const decoded = decodedFixture();
-  const loader = freshLoader(async () => decoded);
+  let decodeCount = 0;
+  const loader = freshLoader(async () => decodeCount++ === 0 ? decoded : decodedFixture());
   const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
   const subject = loaded.createInstance().root;
 
@@ -226,24 +354,23 @@ test('a detached texture is treated as resident and never re-uploaded empty', as
   assert.equal(renderer.uploads.length, 3);
   assert.equal(isPackageTextureDetached(decoded.compressed), true);
 
-  // A version bump (needsUpdate) invalidates the stamp — the detached guard must still block
-  // the empty upload that would otherwise overwrite the live GPU copy.
+  // A version bump invalidates the stamp; a new upload must refill before touching the GPU.
   decoded.compressed.needsUpdate = true;
   const receipt = await prepareStartupGpuResidency(renderer, subject, {
     includeGeometry: false,
     yieldToMain: async () => {},
   });
-  assert.equal(renderer.uploads.length, 3, 'no texture re-uploaded while detached');
-  assert.equal(receipt.residentTextures, 3);
+  assert.ok(renderer.uploads.slice(3).includes(decoded.compressed), 'the changed texture is refilled and uploaded');
+  assert.equal(receipt.skipped, false);
 
-  // A different renderer (fresh stamp map) still cannot push empty bytes onto a detached texture.
+  // A different renderer has no prior GPU copy and needs real payloads for each upload.
   const foreign = stubRenderer();
   const foreignReceipt = await prepareStartupGpuResidency(foreign, subject, {
     includeGeometry: false,
     yieldToMain: async () => {},
   });
-  assert.equal(foreign.uploads.length, 1, 'only the never-detached empty texture uploads');
-  assert.equal(foreignReceipt.residentTextures, 2);
+  assert.equal(foreign.uploads.length, 3);
+  assert.equal(foreignReceipt.residentTextures, 0);
   loader.dispose();
 });
 
@@ -661,6 +788,34 @@ test('a copied detach mark refills from the manifest before texStorage reads mip
   assert.equal(clone.mipmaps[0].width, 4);
   assert.ok(decodes.n >= 2, 'the manifest re-decoded so the clone had a donor chain');
   loader.dispose();
+});
+
+test('restored-context residency refills a copied empty mip chain after canonical package rehydrate', async () => {
+  let live;
+  const loader = freshLoader(async () => { const decoded = decodedFixture(); live ||= decoded; return decoded; });
+  const loaded = await loader.load(packageMetadata('fixture.restore-copy'), { baseUrl: 'https://fixtures.test/' });
+  try {
+    await prepareStartupGpuResidency(stubRenderer(), loaded.createInstance().root, {
+      includeGeometry: false, yieldToMain: async () => {},
+    });
+    const clone = live.compressed.clone();
+    clone.needsUpdate = true;
+    assert.equal(clone.mipmaps.length, 0);
+    const receipt = await rehydrateDetachedPackages();
+    assertPackageTextureRefillReady([clone], receipt);
+    assert.equal(clone.mipmaps.length, 0, 'canonical refill and identity gate leave the copied chain empty');
+    let uploads = 0;
+    const renderer = { initTexture(texture) {
+      // This is the first native texStorage2D argument read for compressed textures.
+      assert.equal(texture.mipmaps[0].width, 4);
+      assert.ok(texture.mipmaps[0].data.byteLength > 0);
+      uploads++;
+    } };
+    await prepareStartupGpuResidency(renderer, clone, {
+      ignoreResidentStamps: true, includeGeometry: false, yieldToMain: async () => {},
+    });
+    assert.equal(uploads, 1);
+  } finally { loader.dispose(); }
 });
 
 test('an upload lease keeps a refilled chain through a later release', async () => {

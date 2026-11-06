@@ -90,11 +90,11 @@ test('public route surfaces use the shared localization adapter', () => {
 
 
 test('pseudo locale installs one dynamic DOM bridge while default play remains observer-free', () => {
-  const gameSource = fs.readFileSync('src/localization/gameLocalization.js', 'utf8');
+  const gameSource = fs.readFileSync('src/localization/sourceText.js', 'utf8');
   const bridgeSource = fs.readFileSync('src/localization/domBridge.js', 'utf8');
   const browserSource = fs.readFileSync('scripts/check-localization-reachability.mjs', 'utf8');
 
-  assert.match(gameSource, /startupLocale !== DEFAULT_LOCALE/);
+  assert.match(gameSource, /locale !== DEFAULT_LOCALE \|\| bridgeActive/);
   assert.match(gameSource, /installLocalizedDocumentBridge/);
   assert.match(gameSource, /setGameLocale/);
   assert.match(gameSource, /LANGUAGE_OPTIONS/);

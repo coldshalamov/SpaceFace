@@ -461,18 +461,18 @@ export const trafficRecoveryOps = {
     // General salvor: WORK finishes the cut; value is claimed here so a mid-LOAD kill still drops
     // the taken cargo via the civilian-manifest payload path.
     if (intent.kind === 'salvor') {
-      const context = this._jobTrafficContext(intent, 'salvor');
+      const context = this._salvorJobContext(intent);
       if (!context) return false;
       const carried = context.entity.data && context.entity.data.cargoManifest
-        || context.rec.manifest;
+        || context.rec?.manifest;
       // A rejected yard keeps custody on the cutter. When the cyclic job reaches another wreck,
       // do not overwrite that conserved lot; it must return to an eligible intake first.
       if (carried && Array.isArray(carried.lines) && carried.totalQty > 0) return true;
       const waypointId = typeof intent.field === 'string' ? intent.field
         : (typeof intent.waypointId === 'string' ? intent.waypointId : '');
-      const job = this.helpers?.npcJobs?.get(context.jobId)?.job;
+      const job = context.entry.job;
       if (!job || waypointId !== job.route?.[1]?.id) return false;
-      const target = this._resolveSalvorTargetFromWaypoint(waypointId, job.payload);
+      const target = this._resolveSalvorTargetFromWaypoint(waypointId, job.payload, context.entry);
       if (!target || target.alive === false) {
         // Player beat the cutter (or the body despawned) — depart empty, no mint.
         const source = this._salvageSourceBindingFromPayload(job.payload);
@@ -585,7 +585,7 @@ export const trafficRecoveryOps = {
   _onNpcJobLoad(intent) {
     if (!intent || intent.completed !== true || intent.kind !== 'salvor') return false;
     if (this._ceresActivityIntentClaimsOwnership(intent)) return false;
-    const context = this._jobTrafficContext(intent, 'salvor');
+    const context = this._salvorJobContext(intent);
     if (!context) return false;
     const hasCargo = context.entity.data
       && context.entity.data.cargoManifest
@@ -593,9 +593,9 @@ export const trafficRecoveryOps = {
       && context.entity.data.cargoManifest.totalQty > 0;
     if (hasCargo) return true;
     const origin = typeof intent.origin === 'string' ? intent.origin : '';
-    const job = this.helpers?.npcJobs?.get(context.jobId)?.job;
+    const job = context.entry.job;
     if (!job || origin !== job.route?.[1]?.id) return false;
-    const target = this._resolveSalvorTargetFromWaypoint(origin, job.payload);
+    const target = this._resolveSalvorTargetFromWaypoint(origin, job.payload, context.entry);
     if (!target || target.alive === false || !this._isSalvageableBody(target)) return false;
     return this._takeSalvageValueOntoSalvor(context, intent, target);
   },

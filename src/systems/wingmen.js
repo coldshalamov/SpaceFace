@@ -80,6 +80,17 @@ const WINGMAN_ARCHETYPE_BY_ORDER = {
   idle: 'fleeing_trader', // idle = hang back, defensive only
 };
 
+// ── inf-wing-gap-press — the gap a lost wingman leaves is felt, not toasted ──────────
+// A wingman's death used to be one toast and a ledger row: the survivor never said the
+// name, never flew differently, and a lost mining watch ended in silence. Now the seat
+// beside him says his name on the band and presses the hull that did it for one bounded
+// window — the formation flies a man short AND answers it. A fresh player order cancels
+// the grief (the player's voice outranks it); the window ends on its own clock, on the
+// killer's death, or when the survivor is ordered home.
+const WING_GAP_PRESS_S = 14;
+const WING_GAP_PRESS_LEASH_WU = 1400;
+const WING_GAP_PREFERRED_RANGE_WU = 140;
+
 // Asset-guard intercept: a guard answers hostiles closing on its asset (team-1 hulls,
 // or any hull actively targeting the asset), leashed to the asset — never a pursuit.
 export const GUARD_INTERCEPT_WU = 700;
@@ -125,6 +136,10 @@ export const wingmen = {
     this._braceRuntime = new Map();
 
     this._wingmenQuiet = null; // FB-090 quiet latch
+    // inf-wing-gap-press: capture who put the wingman hull in the drift. The ledger-side
+    // death route fires later and carries no killer, so the entity receipt is the witness.
+    this._wingDeaths = new Map();
+    this.bus.on('entity:killed', (p) => this._onWingmanEntityKilled(p));
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
     // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
     // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
@@ -155,7 +170,8 @@ export const wingmen = {
     // FLT-02: a stunt the braced wingman witnesses spikes morale + earns a callsign.
     this.bus.on('story:stuntIncidentRecorded', (p) => { if (p) this._onBraceSharedStunt(p); });
     this.bus.on('story:stuntIncidentUpdated', (p) => { if (p) this._onBraceSharedStunt(p); });
-    this.bus.on('save:loaded', () => { this._wingmenQuiet = null; });
+    this.bus.on('save:loaded', () => { this._wingmenQuiet = null; this._trackedDeploymentPending = true; });
+    this.bus.on('dock:undocked', () => { this._trackedDeploymentPending = true; });
     this.bus.on('game:started', () => { this._wingmenQuiet = null; });
   },
 
@@ -172,6 +188,10 @@ export const wingmen = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    if (this._trackedDeploymentPending && !state.ui?.docked && state.entities?.get(state.playerId)?.alive) {
+      this._trackedDeploymentPending = false;
+      this._spawnWingmen();
+    }
     const fleet = state.automation && state.automation.fleet;
     if (!fleet || !fleet.length) {
       if (this._wingmenQuiet) { this._wingmenQuiet = null; }
@@ -220,6 +240,7 @@ export const wingmen = {
         // One named line per death. Clearing _liveId below keeps later ticks silent.
         const name = (fs.customName || fs.name) || 'Wingman';
         this.bus.emit('toast', { text: 'Wingman down — ' + name, kind: 'error', ttl: 4 });
+        this._feelWingmanLoss(fs, orderedFleet, name);
         fs._liveId = null;
         continue;
       }
@@ -234,6 +255,91 @@ export const wingmen = {
       fs.hp = fs.hullPct;
       fs.status = e.alive ? (fs.order || 'escort') : 'lost';
     }
+  },
+
+  // ── inf-wing-gap-press ────────────────────────────────────────────────────────────────
+
+  /** The kill receipt is the only witness: the ledger route's own hitAsset carries no killer. */
+  _onWingmanEntityKilled(payload) {
+    const state = this.state;
+    if (!payload || payload.id == null || !state || !state.entities) return;
+    const entity = state.entities.get(payload.id)
+      || (Number.isFinite(Number(payload.id)) ? state.entities.get(Number(payload.id)) : null);
+    if (!entity || !entity.data || entity.data.isWingman !== true || entity.data.wingmanOf == null) return;
+    const killerId = payload.killerId != null ? payload.killerId : null;
+    if (this._wingDeaths.size > 16) this._wingDeaths.clear();
+    this._wingDeaths.set(entity.data.wingmanOf, { killerId, at: Number(state.simTime) || 0 });
+  },
+
+  /**
+   * The loss beat: the surviving wing beside the fallen says the name on the band and
+   * presses the killer for one bounded window. The press lives on the live entity's AI
+   * (transient sim state — never the fleet ledger); the player's next order cancels it.
+   */
+  _feelWingmanLoss(fs, orderedFleet, lostName) {
+    const state = this.state;
+    const now = Number(state.simTime) || 0;
+    const death = this._wingDeaths.get(fs.id) || null;
+    this._wingDeaths.delete(fs.id);
+
+    // The seat beside him: the next live row in wing order, else the first live row.
+    let survivorRow = null;
+    const deadIndex = orderedFleet.indexOf(fs);
+    for (let step = 1; step <= orderedFleet.length && !survivorRow; step++) {
+      const row = orderedFleet[(deadIndex + step) % orderedFleet.length];
+      if (row === fs || !row || !row._liveId) continue;
+      const entity = state.entities.get(row._liveId);
+      if (entity && entity.alive !== false) survivorRow = row;
+    }
+    if (!survivorRow) {
+      this._wingDeaths.delete(fs.id);
+      return;
+    }
+    const survivor = state.entities.get(survivorRow._liveId);
+    const survivorName = (survivorRow.customName || survivorRow.name) || 'Wingman';
+    const ai = survivor.data.ai || (survivor.data.ai = {});
+
+    const killerId = death && death.killerId != null ? death.killerId : null;
+    const killer = killerId != null ? state.entities.get(killerId) : null;
+    const killerValid = killer && killer.alive !== false && killer.type === 'ship'
+      && killerId !== state.playerId;
+
+    if (killerValid) {
+      ai.wingGapPress = {
+        killerId: killer.id,
+        lostId: fs.id,
+        until: now + WING_GAP_PRESS_S,
+        commandId: survivorRow.wingOrder ? survivorRow.wingOrder.commandId : null,
+        stamped: false,
+      };
+      this.bus.emit('comms:log', {
+        from: survivorName,
+        text: `${lostName} is down. I have his arc — pressing the hull that did it.`,
+        kind: 'encounter',
+      });
+    } else {
+      this.bus.emit('comms:log', {
+        from: survivorName,
+        text: `${lostName} is gone quiet. Flying the arc alone now.`,
+        kind: 'encounter',
+      });
+    }
+    if ((fs.order || survivorRow.order) === 'mine') {
+      this.bus.emit('comms:log', {
+        from: survivorName,
+        text: `Nobody is cutting ${lostName}'s seam now.`,
+        kind: 'encounter',
+      });
+    }
+    this.bus.emit('wingmen:gap', {
+      lostId: fs.id,
+      survivorId: survivor.id,
+      survivorRowId: survivorRow.id,
+      killerId: killerValid ? killer.id : null,
+      pressUntil: killerValid ? now + WING_GAP_PRESS_S : 0,
+      lostOrder: fs.order || null,
+      t: now,
+    });
   },
 
   _spawnWingmen() {
@@ -256,10 +362,16 @@ export const wingmen = {
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;
-      const e = this.helpers.spawnEntity(spec);
+      const owned = this.registry?.get('ships')?.fleetOwnedHull?.(fs.id);
+      if (owned?.vesselId && state.ui?.docked) continue;
+      const e = owned?.vesselId
+        ? this.registry?.get('shipjack')?.spawnFleetVessel?.(fs, spec)
+        : this.helpers.spawnEntity(spec);
+      if (!e) continue;
       fs._liveId = e.id;
       e.data.wingmanOf = fs.id; // link live entity → fleet ledger entry
       e.data.isWingman = true;  // flag for render/AI (friend marker, no bounty, no loot)
+      if (!owned?.vesselId) this.registry?.get('ships')?.configureFleetHull?.(e, fs);
       this._applyWingOrder(fs, e, player, ordered.indexOf(fs), ordered.length);
       spawned++;
     }
@@ -273,10 +385,16 @@ export const wingmen = {
     const state = this.state;
     const fleet = state.automation && state.automation.fleet;
     if (!fleet) return;
+    this._wingDeaths.clear(); // a sector boundary ends the grief press with the hulls
     for (const fs of fleet) {
       if (fs._liveId && state.entities) {
         this._clearBrace(fs, state.entities.get(fs._liveId));
         const e = state.entities.get(fs._liveId);
+        if (e?.data?.vesselId) this.registry?.get('shipjack')?.parkFleetVessel?.(fs, e);
+        const ships = this.registry?.get('ships');
+        if (ships?.fleetOwnedHull?.(fs.id) && e?.data?.wingmanOf === fs.id) {
+          fs.parkedBody = ships.fleetHullCondition(e) || fs.parkedBody;
+        }
         // Capture the last hit even when a hard transition lands before our next update.
         // This is the same persisted fraction used by the normal live synchronization.
         if (e && e.hullMax > 0) {
@@ -399,6 +517,38 @@ export const wingmen = {
       intent.fireGroup = null;
       combat.targetId = null;
       return;
+    }
+
+    // inf-wing-gap-press: the grief press owns the hull until it ends — on its own clock,
+    // on the killer's death, or the moment the player issues a fresh order (a new commandId).
+    // Clearing the stamp falls through, and the stale-activity check below re-derives the
+    // standing order without any extra revert path.
+    const press = ai.wingGapPress;
+    if (press) {
+      const now = Number(this.state.simTime) || 0;
+      const killer = press.killerId != null ? this.state.entities.get(press.killerId) : null;
+      const orderedHome = press.commandId != null && fs.wingOrder
+        && fs.wingOrder.commandId !== press.commandId;
+      if (!killer || killer.alive === false || now >= press.until || orderedHome) {
+        delete ai.wingGapPress;
+      } else {
+        if (press.stamped !== true) {
+          press.stamped = true;
+          setEntityDoctrine(entity, {
+            activity: {
+              kind: 'attack_run',
+              reason: 'wing_gap:press',
+              anchor: { x: player.pos.x, z: player.pos.z },
+              leashRadius: WING_GAP_PRESS_LEASH_WU,
+              preferredRange: WING_GAP_PREFERRED_RANGE_WU,
+              targetId: killer.id,
+              startedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+            },
+            roe: 'weapons_free',
+          });
+        }
+        return;
+      }
     }
 
     if (fs.wingOrder.kind === WING_ORDER.ATTACK) {
@@ -637,6 +787,14 @@ export const wingmen = {
   // wingman works until trouble arrives, deals with it like an escort, and the
   // anchor pulls it back to the face when the sky clears.
   _applyMiningOrder(fs, entity, player, dt, state) {
+    const ownedHull = this.registry?.get('ships')?.fleetOwnedHull?.(fs.id);
+    if (ownedHull && !entity.data?.miningBeam) {
+      fs._mineRockId = null;
+      if (entity.data) entity.data.wingmanMining = null;
+      this._mineToast(fs, 'nobeam', 'No mining beam fitted — return me to the hangar to refit.');
+      this._applyWingOrder(fs, entity, player, 0, 1);
+      return;
+    }
     const rock = this._mineTargetRock(fs, entity, player, state);
     if (!rock) {
       if (entity.data) entity.data.wingmanMining = null;
@@ -676,7 +834,7 @@ export const wingmen = {
       return;
     }
     const mining = this.registry && this.registry.get && this.registry.get('mining');
-    const beam = ensureWingmanMineBeam(entity);
+    const beam = ownedHull ? entity.data.miningBeam : ensureWingmanMineBeam(entity);
     const dist = Math.hypot(entity.pos.x - rock.pos.x, entity.pos.z - rock.pos.z);
     if (mining && typeof mining.applyMining === 'function'
       && dist <= (beam.range || 0) + (rock.radius || 0)) {

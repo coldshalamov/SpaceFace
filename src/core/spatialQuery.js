@@ -30,20 +30,29 @@ function liveEntityForId(state, id) {
   return entity && entity.alive ? entity : null;
 }
 
-function candidateMatches(entity, entityType, team, eligible = null) {
+function candidateMatches(
+  entity,
+  entityType,
+  team,
+  eligible = null,
+  eligibleForRequest = null,
+  request = null,
+  state = null,
+) {
   return !!(entity && entity.pos
     && (entityType == null || entity.type === entityType)
     && (team == null || entity.team === team)
-    && (!eligible || eligible(entity)));
+    && (!eligible || eligible(entity))
+    && (!eligibleForRequest || eligibleForRequest(entity, request, state)));
 }
 
-function considerNearest(state, request, id, entityType, team, eligible, diagnostics = null) {
+function considerNearest(state, request, id, entityType, team, eligible, eligibleForRequest, diagnostics = null) {
   if (id == null || id === request.sourceEntityId || request.seenIds.has(id)) return;
   request.seenIds.add(id);
   if (diagnostics) diagnostics.queryCandidates++;
 
   const entity = liveEntityForId(state, id);
-  if (!candidateMatches(entity, entityType, team, eligible)) return;
+  if (!candidateMatches(entity, entityType, team, eligible, eligibleForRequest, request, state)) return;
   const dx = entity.pos.x - request.x;
   const dz = entity.pos.z - request.z;
   const distanceSq = dx * dx + dz * dz;
@@ -64,6 +73,7 @@ export function findNearestEntityIdFullScan(state, request, options = {}) {
   const entityType = options.entityType ?? null;
   const team = options.team ?? null;
   const eligible = typeof options.eligible === 'function' ? options.eligible : null;
+  const eligibleForRequest = typeof options.eligibleForRequest === 'function' ? options.eligibleForRequest : null;
   const source = state && Array.isArray(state.entityList) ? state.entityList : [];
   const radius = positive(request && request.r);
   const x = Number(request && request.x);
@@ -75,7 +85,7 @@ export function findNearestEntityIdFullScan(state, request, options = {}) {
   for (let index = 0; index < source.length; index++) {
     const sourceEntity = source[index];
     const entity = liveEntityForId(state, sourceEntity && sourceEntity.id);
-    if (!candidateMatches(entity, entityType, team, eligible)
+    if (!candidateMatches(entity, entityType, team, eligible, eligibleForRequest, request, state)
       || entity.id === request.sourceEntityId) continue;
     const dx = entity.pos.x - x;
     const dz = entity.pos.z - z;
@@ -95,12 +105,15 @@ export function findNearestEntityIdFullScan(state, request, options = {}) {
  * Create one bounded nearest-entity batch owner around the existing SpatialHash. Request objects,
  * candidate arrays, and dedupe sets grow to a high-water mark and are then reused. Candidate object
  * references are cleared before execute() returns; callers retain only scalar request/result IDs.
+ * `eligible` is a shared candidate gate; optional `eligibleForRequest(candidate, request, state)`
+ * handles observer-specific filtering before nearest/tie selection. Do not retain the pooled request.
  */
 export function createNearestEntityQueryService(initialState, options = {}) {
   let state = initialState;
   const entityType = options.entityType ?? null;
   const team = options.team ?? null;
   const eligible = typeof options.eligible === 'function' ? options.eligible : null;
+  const eligibleForRequest = typeof options.eligibleForRequest === 'function' ? options.eligibleForRequest : null;
   const fallbackIndex = typeof options.fallbackIndex === 'string' ? options.fallbackIndex : null;
   const shadow = options.shadow === true;
   const rejectShadowMismatch = options.rejectShadowMismatch !== false;
@@ -280,14 +293,18 @@ export function createNearestEntityQueryService(initialState, options = {}) {
         const entry = requests[requestIndex];
         for (let candidateIndex = 0; candidateIndex < entry.out.length; candidateIndex++) {
           const candidate = entry.out[candidateIndex];
-          considerNearest(state, entry, candidate && candidate.id, entityType, team, eligible, diagnostics);
+          considerNearest(
+            state, entry, candidate && candidate.id, entityType, team, eligible, eligibleForRequest, diagnostics,
+          );
         }
       }
       for (let candidateIndex = 0; candidateIndex < exceptionalEntityIds.length; candidateIndex++) {
         const id = exceptionalEntityIds[candidateIndex];
         for (let requestIndex = 0; requestIndex < requestCount; requestIndex++) {
           diagnostics.exceptionalCandidates++;
-          considerNearest(state, requests[requestIndex], id, entityType, team, eligible, diagnostics);
+          considerNearest(
+            state, requests[requestIndex], id, entityType, team, eligible, eligibleForRequest, diagnostics,
+          );
         }
       }
     } else {
@@ -297,7 +314,9 @@ export function createNearestEntityQueryService(initialState, options = {}) {
         const candidate = source[candidateIndex];
         const id = candidate && candidate.id;
         for (let requestIndex = 0; requestIndex < requestCount; requestIndex++) {
-          considerNearest(state, requests[requestIndex], id, entityType, team, eligible, diagnostics);
+          considerNearest(
+            state, requests[requestIndex], id, entityType, team, eligible, eligibleForRequest, diagnostics,
+          );
         }
       }
     }
@@ -305,7 +324,9 @@ export function createNearestEntityQueryService(initialState, options = {}) {
     for (let candidateIndex = 0; candidateIndex < spawnedEntityIds.length; candidateIndex++) {
       const id = spawnedEntityIds[candidateIndex];
       for (let requestIndex = 0; requestIndex < requestCount; requestIndex++) {
-        considerNearest(state, requests[requestIndex], id, entityType, team, eligible, diagnostics);
+        considerNearest(
+          state, requests[requestIndex], id, entityType, team, eligible, eligibleForRequest, diagnostics,
+        );
       }
     }
     diagnostics.spawnSupplements += spawnedEntityIds.length;
@@ -318,7 +339,7 @@ export function createNearestEntityQueryService(initialState, options = {}) {
       if (entry.resultId != null) diagnostics.queryResults++;
       if (shadow) {
         diagnostics.shadowChecks++;
-        const expected = findNearestEntityIdFullScan(state, entry, { entityType, team, eligible });
+        const expected = findNearestEntityIdFullScan(state, entry, { entityType, team, eligible, eligibleForRequest });
         if (expected !== entry.resultId) {
           diagnostics.shadowMismatches++;
           if (!mismatch) {

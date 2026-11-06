@@ -51,8 +51,8 @@ test('annex wave 2 is exactly 200 entries, all SPX-E ids, unique inside 750', ()
   assert.equal(SPECIAL500.length, 500, 'the ratified catalog still reads 500');
   assert.equal(SPECIAL500_ANNEX.length, 50, 'wave 1 stays at 50');
   assert.equal(SPECIAL500_ANNEX_2.length, 200, 'wave 2 lands at 200');
-  assert.equal(SPECIAL500_ALL.length, 750, 'the sweep set is the union');
-  assert.deepEqual([...new Set(SPECIAL500_ALL.map((e) => e.id))].length, 750, 'no id collisions across waves');
+  assert.equal(SPECIAL500_ALL.length, 767, 'the sweep set is the union');
+  assert.deepEqual([...new Set(SPECIAL500_ALL.map((e) => e.id))].length, 767, 'no id collisions across waves');
   for (const e of SPECIAL500_ANNEX_2) {
     assert.match(e.id, /^SPX-E-\d{3}$/, `${e.id} follows the wave-2 id convention`);
   }

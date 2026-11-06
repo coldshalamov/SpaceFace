@@ -842,7 +842,7 @@ function stepSquadWithdrawal(squad, tick, perceptions, focus, leaderPerception) 
   const wounded = [];
   for (const perception of perceptions) {
     const self = perception && perception.self;
-    if (!self || self.alive === false || self.disabled) continue;
+    if (!self || self.alive === false || self.disabled || self.arenaPursuit === true) continue;
     if (!(self.hullFraction <= WITHDRAWAL_HULL)) continue;
     if (released.has(self.id)) continue;
     wounded.push(perception);

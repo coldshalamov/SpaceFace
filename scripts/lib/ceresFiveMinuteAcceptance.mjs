@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { createConnection } from 'node:net';
+import { createRequire } from 'node:module';
 import {
   mkdir,
   readFile,
@@ -25,8 +26,11 @@ import {
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
-import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
-import { SECTOR_ZONES } from '../../src/data/sectorZones.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+} from '../../src/data/sectorCoordinates.js';
+import { SECTOR_ZONES, zoneAt } from '../../src/data/sectorZones.js';
 
 import {
   closeOwnedResources,
@@ -48,6 +52,7 @@ import {
 import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './playwrightCspPolling.mjs';
+import { dismissCinematicIntro, installFirstLightPromptHandler } from '../player-truth/routes.mjs';
 import {
   PQ020_ROUTE_TARGETS,
   pq020FunctionalRouteDrivers,
@@ -74,6 +79,8 @@ import {
   writeJsonAtomically,
 } from './validationAtomicWrite.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
+
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./gameServer.cjs');
 
 export const CERES_FIVE_MINUTE_RUNTIME_SCHEMA =
   'spaceface.ceresFiveMinuteRuntimeEvidence.v1';
@@ -389,26 +396,28 @@ export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
   const director = baseline?.director;
   if (baseline?.playerEntityId == null || baseline.playerEntityId !== prebound?.playerEntityId
       || initial.length < 1 || initial.length > 2
-      || bound.length !== initial.length || authority.length !== initial.length
-      || director?.durablePhase !== 'revealed'
-      || director?.live?.id !== 'ceres:activity:throughline-ambush'
-      || director.live.phase !== 'conflict'
-      || !Number.isSafeInteger(director.live.initialCount)
-      || director.live.initialCount < 1 || director.live.initialCount > 2
-      || director.live.initialCount !== initial.length
+      || bound.length < initial.length || bound.length > 2 || authority.length !== bound.length
+      || !['revealed', 'done'].includes(director?.durablePhase)
+      || (director?.live && (director.live.id !== 'ceres:activity:throughline-ambush'
+        || director.live.phase !== 'conflict'
+        || !Number.isSafeInteger(director.live.initialCount)
+        || director.live.initialCount !== bound.length))
       || !ceresHostileOpportunityPass(initial)) return false;
   const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const authorityPairs = authority.filter((row) => (
     row?.exactPairAlive === true && row?.terminalMissing !== true
   )).map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
-  const liveIds = [...new Set((director.live.entityIds || []).map((entityId) => entityId))]
+  const liveIds = [...new Set((director.live?.entityIds || initial.map((row) => row.entityId))
+    .map((entityId) => entityId))]
     .sort((left, right) => String(left).localeCompare(String(right)));
   const boundIds = bound.map((row) => row.entityId)
     .sort((left, right) => String(left).localeCompare(String(right)));
-  return stableJson(initialPairs) === stableJson(boundPairs)
-    && stableJson(authorityPairs) === stableJson(boundPairs)
-    && stableJson(liveIds) === stableJson(boundIds);
+  return new Set(boundPairs).size === boundPairs.length
+    && stableJson(initialPairs) === stableJson(authorityPairs)
+    && initialPairs.every((pair) => boundPairs.includes(pair))
+    && liveIds.every((id) => boundIds.includes(id))
+    && initial.every((row) => liveIds.includes(row.entityId));
 }
 
 async function readCeresToolkitConflictBaseline(page, prebound) {
@@ -417,7 +426,7 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
     const player = state?.entities?.get(state.playerId);
     const director = state?.encounterDirector || {};
     const encounterId = 'ceres:activity:throughline-ambush';
-    const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
+    const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row]));
     const records = state?.world?.records?.byId || {};
     const boundAuthority = authority.boundHostiles.map((expected) => {
       const entity = state?.entities?.get(expected.entityId);
@@ -425,7 +434,8 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
         ? records.get(expected.worldRecordId)
         : records[expected.worldRecordId];
       const exactPairAlive = entity?.alive !== false && entity?.type === 'ship'
-        && entity?.data?.worldRecordId === expected.worldRecordId;
+        && entity?.data?.worldRecordId === expected.worldRecordId
+        && (entity?.occupantGeneration ?? null) === (expected.generation ?? null);
       return {
         entityId: expected.entityId,
         worldRecordId: expected.worldRecordId,
@@ -439,12 +449,14 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
     });
     const initialHostiles = (state?.entityList || []).filter((entity) => (
       entity?.alive !== false && entity?.type === 'ship'
-      && bound.get(entity.id) === entity.data?.worldRecordId
+      && bound.get(entity.id)?.worldRecordId === entity.data?.worldRecordId
+      && (bound.get(entity.id)?.generation ?? null) === (entity.occupantGeneration ?? null)
       && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
       && entity.data?.ai?.squadId === 'zone_ceres_ambush'
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId,
+      generation: entity.occupantGeneration ?? null,
       ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
       team: entity.team ?? entity.data?.team ?? null,
       factionId: entity.factionId || entity.data?.factionId || null,
@@ -558,13 +570,14 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     if (tick < waitStartTick) {
       fail('toolkit conflict authority simulation tick moved backwards');
     }
-    if (baseline?.director?.durablePhase === 'done') {
-      fail(`toolkit conflict authority already reached durable done (${baseline.director.durableOutcome || 'unknown'})`);
-    }
     const terminalMissing = (baseline?.boundAuthority || [])
       .filter((row) => row?.terminalMissing === true);
-    if (terminalMissing.length > 0) {
-      fail('toolkit conflict authority lost an exact prebound hostile cohort member');
+    if (terminalMissing.length === prebound.boundHostiles.length) {
+      fail('toolkit conflict authority lost all original prebound hostile cohort members');
+    }
+    if (baseline?.director?.durablePhase === 'done'
+        && !ceresToolkitConflictAuthorityPass(baseline, prebound)) {
+      fail(`toolkit conflict authority already reached durable done (${baseline.director.durableOutcome || 'unknown'})`);
     }
     if (deadlineTick <= waitStartTick) {
       fail('toolkit hostile classification exhausted the exact route horizon');
@@ -844,7 +857,7 @@ export function validateCeresPilotSources(sources = {}) {
     [/\b(?:window\.)?SF\s*\.\s*bus\s*\.\s*emit\s*\(/, 'direct event-bus emission'],
     [/\brequestSandboxGame\s*\(/, 'direct Sandbox launch invocation'],
     [/\b(?:lab|labBridge)\s*\.\s*(?:step|stepTicks|load)\s*\(/, 'lab stepping or loading'],
-    [/\btimeScale\s*=|\.timeScale\s*=/, 'time-scale mutation'],
+    [/\btimeScale\s*=(?!=)|\.timeScale\s*=(?!=)/, 'time-scale mutation'],
     [/\b(?:teleport|enterSector|relocatePlayerInSector)\s*\(/, 'direct position or sector mutation'],
     [/\bdispatchEvent\s*\(/, 'synthetic DOM/event injection'],
     [/\bstate\s*\.\s*player\s*\.\s*(?:pos|targetId)\b[^\n;]*=/, 'direct player-state assignment'],
@@ -858,25 +871,31 @@ export function validateCeresPilotSources(sources = {}) {
 }
 
 export async function disableCeresTutorialThroughPublicSettings(page) {
-  if (!page || typeof page.getByRole !== 'function' || typeof page.getByLabel !== 'function') {
+  if (!page || typeof page.getByRole !== 'function') {
     throw new TypeError('Ceres tutorial setup requires a live public page');
   }
   await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 20_000 });
   await waitForVisibleScreen(page, 'settings', 20_000);
   await page.getByRole('tab', { name: 'Gameplay', exact: true }).click({ timeout: 20_000 });
-  const toggle = page.getByLabel('Tutorial hints', { exact: true });
-  const before = await toggle.getAttribute('aria-pressed');
+  const toggle = page.getByRole('list', { name: 'Tutorial hints', exact: true });
+  const on = toggle.getByRole('button', { name: 'On', exact: true });
+  const off = toggle.getByRole('button', { name: 'Off', exact: true });
+  const before = await on.getAttribute('aria-pressed');
   if (before !== 'true' && before !== 'false') {
-    throw new Error('public Tutorial hints control lacks exact pressed state');
+    throw new Error('public Tutorial hints On control lacks exact pressed state');
   }
-  if (before !== 'false') await toggle.click({ timeout: 20_000 });
+  // Select the explicit Off choice even if an earlier render showed it pressed;
+  // a stale DOM observation must not skip the current public setting intent.
+  await off.click({ timeout: 20_000 });
   await page.waitForFunction(() => (
     window.SF?.state?.settings?.gameplay?.tutorialHints === false
   ), null, { timeout: 20_000 });
   const observed = await page.evaluate(() => ({
     tutorialHints: window.SF?.state?.settings?.gameplay?.tutorialHints ?? null,
   }));
-  await page.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 20_000 });
+  // The screen styles add a visible arrow/ESC hint around the authored Back label; keep the
+  // semantic public control lookup tolerant of that generated accessible-name decoration.
+  await page.getByRole('button', { name: /Back/i }).click({ timeout: 20_000 });
   await waitForVisibleScreen(page, 'mainMenu', 20_000);
   if (observed.tutorialHints !== false) {
     throw new Error('public Settings did not disable onboarding before Ceres launch');
@@ -1056,6 +1075,7 @@ function readCeresExactActiveTetherAuthority(page, authority) {
         alive: target.alive === true,
         type: target.type || null,
         worldRecordId: target.data?.worldRecordId || null,
+        generation: target.occupantGeneration ?? null,
       } : null,
       attachment: attachment ? {
         id: attachment.id || null,
@@ -1085,6 +1105,7 @@ function ceresExactActiveTetherAuthorityPass(snapshot, authority, deadlineTick) 
     && snapshot.target.alive === true
     && snapshot.target.type === 'ship'
     && snapshot.target.worldRecordId === authority.targetWorldRecordId
+    && (snapshot.target.generation ?? null) === (authority.targetGeneration ?? null)
     && snapshot?.attachment?.id === authority.attachmentId
     && snapshot.attachment.state === 'active'
     && snapshot.attachment.ownerId === authority.playerEntityId
@@ -1147,6 +1168,7 @@ export async function waitForCeresExactActiveTetherAuthority(page, authority, {
         && target.alive === true
         && target.type === 'ship'
         && target.data?.worldRecordId === expected.targetWorldRecordId
+        && (target.occupantGeneration ?? null) === (expected.targetGeneration ?? null)
         && attachment?.id === expected.attachmentId
         && attachment.state === 'active'
         && attachment.ownerId === expected.playerEntityId
@@ -1808,13 +1830,13 @@ export async function runCeresFiveMinutePublicRoute({
 
   try {
     await page.bringToFront();
+    await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
     await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry),
       null, { timeout: 60_000 });
-    const splash = page.locator('#cinematic-splash');
-    if (await splash.isVisible().catch(() => false)) await page.keyboard.press('Space');
+    await dismissCinematicIntro(page, (name, _ok, detail) => mark(name, { note: detail }), { timeout: 15_000 });
     await waitForVisibleScreen(page, 'mainMenu', 30_000);
     const tutorialSetup = await disableCeresTutorialThroughPublicSettings(page);
-    await page.getByRole('button', { name: 'Sandbox', exact: true }).click({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Free flight sandbox', exact: true }).click({ timeout: 20_000 });
     await waitForVisibleScreen(page, 'sandbox', 20_000);
     await page.getByRole('button', { name: /^Ceres Reference Pocket\b/ }).click({ timeout: 20_000 });
     await waitForCeresFlight(page, fixedSeed, 180_000);
@@ -1872,6 +1894,9 @@ export async function runCeresFiveMinutePublicRoute({
       const remaining = observerBounds.endTick - await readTick(page);
       if (remaining <= legReserveTicks) break;
       routeCycle += 1;
+      const firstZoneEventSeq = leg.target.zoneId
+        ? await page.evaluate(() => window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq ?? 1)
+        : null;
       await mark(`select-${leg.slug}`, { pocketId: leg.pocketId, cycle: routeCycle });
       await pq020FunctionalRouteDrivers.selectMapTarget(page, {
         ...leg.target,
@@ -1885,17 +1910,71 @@ export async function runCeresFiveMinutePublicRoute({
           deadlineTick: legDeadlineTick,
         });
       }
-      const arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, leg.target, {
+      let arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, leg.target, {
         deadlineTick: legDeadlineTick,
       });
       if (leg.target.zoneId) {
-        assert.equal(arrival.currentZone?.id, leg.target.zoneId,
-          `${leg.target.name} public arrival entered ${arrival.currentZone?.id || 'no zone'}`);
+        // The worker owns currentZone; this bounded main-side world mirror intentionally omits
+        // that object. Keep the two-tick zone-label scan, then require the worker's canonical
+        // zone-entry event for this leg instead of inferring membership from waypoint radius.
+        const zoneScanTick = await waitForCeresFixedTicks(page, 2, 20_000);
+        assert.ok(zoneScanTick < legDeadlineTick,
+          `${leg.target.name} exhausted its route horizon before the next zone-label scan`);
+        const zoneReceipt = await page.evaluate(({ zoneId, firstSeq }) => {
+          const events = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+          const row = events.find((event) => event.event === 'world:zoneEntered'
+            && event.zoneId === zoneId && event.seq >= firstSeq);
+          const known = row || [...events].reverse().find((event) => (
+            event.event === 'world:zoneEntered' && event.zoneId === zoneId
+          ));
+          return known ? { seq: known.seq, zoneId: known.zoneId, zoneName: known.zoneName,
+            enteredThisLeg: known.seq >= firstSeq } : null;
+        }, { zoneId: leg.target.zoneId, firstSeq: firstZoneEventSeq });
+        const arrivalLocal = globalToSectorLocalForSector(arrival.player?.pos, arrival.sectorId);
+        const geometricZone = zoneAt(arrival.sectorId, arrivalLocal.x, arrivalLocal.z);
+        assert.equal(geometricZone?.id, leg.target.zoneId,
+          `${leg.target.name} arrival coordinates fall in ${geometricZone?.id || 'no zone'}`);
+        assert.equal(zoneReceipt?.zoneId, leg.target.zoneId,
+          `${leg.target.name} has no canonical zone-entry receipt in this run`);
+        arrival = { ...arrival, currentZone: {
+          id: geometricZone.id,
+          name: geometricZone.name,
+          source: zoneReceipt.enteredThisLeg
+            ? 'worker-world:zoneEntered'
+            : 'worker-zone-entry+arrival-coordinates',
+          eventSeq: zoneReceipt.seq,
+          globalPos: { ...arrival.player.pos },
+          sectorLocalPos: arrivalLocal,
+        } };
       }
       if (leg.target === PQ020_ROUTE_TARGETS.cathedral) {
         await pq020FunctionalRouteDrivers.waitForShipSettled(page, {
           deadlineTick: legDeadlineTick,
         });
+      }
+      if (leg.pocketId === 'ceres_working_seam') {
+        // The public station waypoint may finish in its berth on either side of the
+        // hull. Leave outward and go around its visible navigation ring before aiming
+        // at the seam; a straight W/Shift line from the far berth crosses the station.
+        // The functional arrival receipt deliberately omits the navigation target coordinates.
+        // Read the still-retained public autopilot target separately and bind it to that receipt.
+        const navigation = await page.evaluate(() => {
+          const autopilot = window.SF?.state?.nav?.autopilot;
+          return autopilot ? {
+            label: autopilot.label, status: autopilot.status, active: autopilot.active,
+            arrivalRadius: autopilot.arrivalRadius,
+            target: autopilot.target && { x: autopilot.target.x, z: autopilot.target.z },
+          } : null;
+        });
+        const departure = planCeresWorkingSeamDeparture(arrival, {
+          minRemainingTicks: legReserveTicks, navigation,
+        });
+        const receipts = [];
+        await mark('clear-belt-outpost', { pocketId: leg.pocketId, waypoints: departure.waypoints.length });
+        for (const waypoint of departure.waypoints) {
+          receipts.push(await drivePublicToCeresPoint(page, waypoint, observerBounds.endTick));
+        }
+        routeLog.push({ phase: 'station-departure', pocketId: leg.pocketId, departure, receipts });
       }
       await drivePublicToPocketAnchor(page, leg.pocketId, observerBounds.endTick, {
         minRemainingTicks: legReserveTicks,
@@ -1925,11 +2004,21 @@ export async function runCeresFiveMinutePublicRoute({
           targetId: egressTarget.targetId,
           guaranteedPublicEgressWU: egressTarget.guaranteedPublicEgressWU,
         });
-        const egress = await drivePublicToCeresPoint(page, egressTarget, observerBounds.endTick);
+        // The public map course owns obstacle avoidance on the return through the dense field.
+        // A straight manual burn to the same station center can grind against intervening rocks.
+        await pq020FunctionalRouteDrivers.selectMapTarget(page, {
+          ...PQ020_ROUTE_TARGETS.beltOutpost, method: 'pointer', activate: true, screenshot,
+          screenshotName: `${String(routeCycle).padStart(2, '0')}-working-seam-egress-map.png`,
+        });
+        const egress = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(
+          page, PQ020_ROUTE_TARGETS.beltOutpost,
+          { deadlineTick: observerBounds.endTick - egressTarget.minRemainingTicks },
+        );
+        validateCeresWorkingSeamEgressArrival(egress, egressTarget);
         routeLog.push({
           phase: 'egress',
           pocketId: leg.pocketId,
-          source: 'public-flight-controls',
+          source: 'public-map-autopilot',
           target: egressTarget,
           receipt: egress,
         });
@@ -2080,6 +2169,7 @@ export async function runCeresFiveMinutePublicRoute({
         runtimeKind,
         fixedSeed,
         phase,
+        errorStack: String(error?.stack || '').split('\n').slice(0, 10),
         observerBounds,
         routeTail: routeLog.slice(-16),
         snapshot: error.ceresRouteFailureSnapshot,
@@ -2209,6 +2299,7 @@ export async function runCeresFiveMinuteAcceptance({
   outputRoot,
   brokerClaimToken = process.env.SF_BROKER_CLAIM || null,
   routeOptions = null,
+  baselineSourcePath = null,
   log = () => {},
 } = {}) {
   const repoRoot = path.resolve(String(root || ''));
@@ -2222,6 +2313,10 @@ export async function runCeresFiveMinuteAcceptance({
   }
   if (!['acceptance', 'diagnostic'].includes(mode)) {
     throw new TypeError('Ceres acceptance mode must be acceptance or diagnostic');
+  }
+  const baselineSource = resolveStrictRuntimeSourceOverlay(baselineSourcePath, repoRoot);
+  if (baselineSource && (runtimeKind !== 'browser' || mode !== 'diagnostic')) {
+    throw new TypeError('Ceres source overlays are limited to non-promoting Browser diagnostics');
   }
   if (manifest.fixedSeed !== CERES_FIVE_MINUTE_FIXED_SEED) {
     throw new Error('Ceres acceptance manifest must own fixed seed 47');
@@ -2250,9 +2345,9 @@ export async function runCeresFiveMinuteAcceptance({
   }
 
   const startFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (startFingerprint.changedFileCount !== 0
+  if (!baselineSource && (startFingerprint.changedFileCount !== 0
       || startFingerprint.digest !== digests.worktreeDigest
-      || startFingerprint.head !== digests.worktreeHead) {
+      || startFingerprint.head !== digests.worktreeHead)) {
     return blockedCeresResult('candidate-worktree-is-not-the-clean-claimed-source');
   }
 
@@ -2279,7 +2374,8 @@ export async function runCeresFiveMinuteAcceptance({
 
   const consumeDigests = await computeGateDigestsFromManifest({ root: repoRoot, manifest });
   const consumeFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (!sameCandidateAuthority(digests, consumeDigests, startFingerprint, consumeFingerprint)) {
+  if (!baselineSource
+      && !sameCandidateAuthority(digests, consumeDigests, startFingerprint, consumeFingerprint)) {
     return blockedCeresResult('candidate-changed-before-claim-consumption');
   }
 
@@ -2315,7 +2411,8 @@ export async function runCeresFiveMinuteAcceptance({
   await mkdir(runDir, { recursive: true });
   const launchDigests = await computeGateDigestsFromManifest({ root: repoRoot, manifest });
   const launchFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (!sameCandidateAuthority(digests, launchDigests, startFingerprint, launchFingerprint)) {
+  if (!baselineSource
+      && !sameCandidateAuthority(digests, launchDigests, startFingerprint, launchFingerprint)) {
     return {
       pass: false,
       blocked: false,
@@ -2336,6 +2433,7 @@ export async function runCeresFiveMinuteAcceptance({
         root: repoRoot,
         executablePath: browserExecutable,
         resources,
+        baselineSource,
       });
     } else {
       await launchCeresElectronRuntime({ root: repoRoot, runId, resources });
@@ -2387,6 +2485,18 @@ export async function runCeresFiveMinuteAcceptance({
   }
 
   const endFingerprint = await strictWorktreeFingerprint(repoRoot);
+  const sourceOverlayReceipt = baselineSource ? {
+    ...(resources.sourceOverlay || projectSourceOverlayReceipt(baselineSource, null)),
+    assetsOutsidePin: 'served from the live working tree',
+    localHarness: {
+      source: 'live working tree',
+      harnessDigest: digests.harnessDigest,
+    },
+    localWorktree: {
+      start: projectWorktreeIdentity(startFingerprint),
+      end: projectWorktreeIdentity(endFingerprint),
+    },
+  } : null;
   const portReceipts = await inspectOwnedPortClosures(resources);
   const cleanup = normalizeCeresCleanup(
     runtimeKind,
@@ -2398,10 +2508,10 @@ export async function runCeresFiveMinuteAcceptance({
   const lifecycleFailures = [];
   if (runError) lifecycleFailures.push(`${runError.routePhase || 'runtime'}: ${runError.message || runError}`);
   if (!routeResult?.pass) lifecycleFailures.push('public five-minute Ceres route did not pass');
-  if (routeFingerprint && !sameWorktreeFingerprint(startFingerprint, routeFingerprint)) {
+  if (!baselineSource && routeFingerprint && !sameWorktreeFingerprint(startFingerprint, routeFingerprint)) {
     lifecycleFailures.push('worktree changed during the public route');
   }
-  if (!sameWorktreeFingerprint(startFingerprint, endFingerprint)) {
+  if (!baselineSource && !sameWorktreeFingerprint(startFingerprint, endFingerprint)) {
     lifecycleFailures.push('worktree changed before owned cleanup completed');
   }
   if (!cleanup.pass) lifecycleFailures.push(...cleanup.failures.map((failure) => `cleanup: ${failure}`));
@@ -2424,6 +2534,7 @@ export async function runCeresFiveMinuteAcceptance({
       failureSnapshot: runError?.ceresRouteFailureSnapshot || null,
       observerBounds: runError?.ceresRouteObserverBounds || null,
       routeTail: runError?.ceresRouteTail || null,
+      ...(sourceOverlayReceipt ? { sourceOverlay: sourceOverlayReceipt } : {}),
       ...boundedRouteDiagnostics,
       cleanup,
     };
@@ -2497,6 +2608,7 @@ export async function runCeresFiveMinuteAcceptance({
     cleanup,
     consumedLedger,
     electronProvisioning,
+    ...(sourceOverlayReceipt ? { sourceOverlay: sourceOverlayReceipt } : {}),
     primaryAcceptance: mode === 'acceptance',
   });
   const machineCandidate = mode === 'acceptance'
@@ -2817,7 +2929,7 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
       'massSeed:deployed', 'massSeed:deployDenied', 'massSeed:locked',
       'fields:deployed', 'fields:deployDenied',
       'combat:fire', 'projectile:hit', 'combat:damage', 'combat:statusApplied',
-      'save:completed', 'save:loaded',
+      'save:completed', 'save:loaded', 'world:zoneEntered',
       'mining:npcExtraction', 'aiTrader:requestTrade',
       'freight:arrival', 'freight:loss', 'traffic:jobActionReceipt',
       'npcjobs:commission', 'npcjobs:depart', 'npcjobs:transit', 'npcjobs:approach',
@@ -2860,6 +2972,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
           killerId: payload.killerId ?? null,
           aId: payload.aId ?? null,
           bId: payload.bId ?? null,
+          aGeneration: Number.isSafeInteger(payload.aGeneration) ? payload.aGeneration : null,
+          bGeneration: Number.isSafeInteger(payload.bGeneration) ? payload.bGeneration : null,
           aType: impactA?.type ?? null,
           aWorldRecordId: impactA?.data?.worldRecordId ?? null,
           aAnchorSlotId: impactA?.data?.activityCollisionAnchorSlotId ?? null,
@@ -2894,6 +3008,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
           asteroidId: payload.asteroidId ?? null,
           fieldId: payload.fieldId ?? null,
           sectorId: payload.sectorId ?? null,
+          zoneId: payload.zoneId ?? null,
+          zoneName: payload.name ?? null,
           stationId,
           commodityId,
           side: payload.side ?? null,
@@ -3414,6 +3530,47 @@ async function provePublicFlightInput(page) {
   return receipt;
 }
 
+export function planCeresWorkingSeamDeparture(arrival, { minRemainingTicks = 120, navigation } = {}) {
+  // Only the player's accepted arrival and the public station navigation target are
+  // used here. No scan of hidden actors or collision bodies guides the input actor.
+  const source = arrival?.player?.pos;
+  const station = navigation?.target;
+  const ring = Number(arrival?.autopilot?.arrivalRadius);
+  if (arrival?.sectorId !== CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId
+      || arrival?.player?.alive !== true || arrival?.autopilot?.label !== 'Belt Outpost'
+      || arrival?.autopilot?.active !== false || arrival?.autopilot?.status !== 'arrived'
+      || navigation?.label !== arrival.autopilot.label || navigation?.status !== 'arrived'
+      || navigation?.active !== false || navigation?.arrivalRadius !== arrival.autopilot.arrivalRadius
+      || ![source?.x, source?.z, station?.x, station?.z, ring].every(Number.isFinite)
+      || ring <= 0 || !Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120) {
+    throw new Error('Working Seam departure requires the accepted public Belt Outpost navigation receipt');
+  }
+  const targetPos = CERES_POCKET_TARGETS.ceres_working_seam.targetPos;
+  const dx = source.x - station.x, dz = source.z - station.z;
+  if (Math.hypot(dx, dz) < 1e-6) throw new Error('Belt Outpost departure has no outward arrival bearing');
+  const startAngle = Math.atan2(dz, dx);
+  const targetAngle = Math.atan2(targetPos.z - station.z, targetPos.x - station.x);
+  const sweep = Math.atan2(Math.sin(targetAngle - startAngle), Math.cos(targetAngle - startAngle));
+  // The existing 90-WU station completion ring is public navigation geometry, not a
+  // replacement collision radius. At three rings, <=60-degree chords and their
+  // half-ring completion discs remain outside that ring, including their endpoints.
+  const radius = ring * 3;
+  const steps = Math.ceil(Math.abs(sweep) / (Math.PI / 3));
+  const waypoints = Array.from({ length: steps + 1 }, (_, index) => {
+    const angle = startAngle + (steps ? sweep * index / steps : 0);
+    return Object.freeze({
+      pocketId: 'ceres_working_seam', targetId: `belt-outpost-clearance-${index}`,
+      targetName: index ? 'Belt Outpost outer departure' : 'Belt Outpost outward clearance',
+      targetPos: Object.freeze({ x: station.x + Math.cos(angle) * radius, z: station.z + Math.sin(angle) * radius }),
+      arrivalRadiusWU: ring / 2, minRemainingTicks, allowBoost: false, controlClock: 'fixed-tick',
+    });
+  });
+  return Object.freeze({ source: 'public-player-and-navigation-receipt',
+    sourceArrivalPos: Object.freeze({ x: source.x, z: source.z }),
+    stationPos: Object.freeze({ x: station.x, z: station.z }),
+    stationCompletionRadiusWU: ring, targetPos, waypoints: Object.freeze(waypoints) });
+}
+
 export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   minRemainingTicks = 120,
 } = {}) {
@@ -3466,46 +3623,224 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   });
 }
 
+export function validateCeresWorkingSeamEgressArrival(arrival, target) {
+  const pos = arrival?.player?.pos;
+  if (arrival?.player?.alive !== true || arrival?.autopilot?.active !== false
+      || arrival?.autopilot?.status !== 'arrived' || arrival?.autopilot?.label !== 'Belt Outpost'
+      || ![pos?.x, pos?.z, target?.targetPos?.x, target?.targetPos?.z,
+        target?.arrivalRadiusWU].every(Number.isFinite)
+      || Math.hypot(pos.x - target.targetPos.x, pos.z - target.targetPos.z) > target.arrivalRadiusWU) {
+    throw new Error('Working Seam egress requires a live public arrival inside the authored station gate');
+  }
+}
+
 export function planCeresThroughlineToolkitReposition({
   minRemainingTicks = CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+  liveIntercept = null,
+  preferredCohortEntityId = null,
 } = {}) {
   if (!Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120
       || minRemainingTicks >= CERES_FIVE_MINUTE_FIXED_TICKS) {
     throw new Error('toolkit camera reposition requires a valid fixed-tick reserve');
   }
+  const waypoints = [
+    Object.freeze({
+      targetId: 'ceres-throughline-toolkit-impact-settle',
+      targetName: 'Throughline toolkit impact settle',
+      targetPos: CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+      allowArrivalCone: true,
+    }),
+    Object.freeze({
+      targetId: 'ceres-throughline-toolkit-camera-clearance',
+      targetName: 'Throughline toolkit camera clearance',
+      targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+    }),
+  ];
+  let intercept = null;
+  if (liveIntercept) {
+    intercept = planCeresLiveCohortCameraIntercept(liveIntercept, preferredCohortEntityId);
+    waypoints.push(Object.freeze({
+      targetId: 'ceres-throughline-live-cohort-camera-intercept',
+      targetName: 'Live Throughline cohort camera intercept',
+      targetPos: intercept.targetPos,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+      settleOnArrival: false,
+      exactCohortEntityId: intercept.entityId,
+      exactCohortWorldRecordId: intercept.worldRecordId,
+    }));
+  } else {
+    waypoints.push(Object.freeze({
+      targetId: 'ceres-throughline-toolkit-camera-stage',
+      targetName: 'Throughline toolkit camera stage',
+      targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+    }));
+  }
   return Object.freeze({
     source: 'public-flight-controls',
     reason: 'fixed-camera-hostile-acquisition',
-    waypoints: Object.freeze([
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-impact-settle',
-        targetName: 'Throughline toolkit impact settle',
-        targetPos: CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-camera-clearance',
-        targetName: 'Throughline toolkit camera clearance',
-        targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-camera-stage',
-        targetName: 'Throughline toolkit camera stage',
-        targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-    ]),
+    liveIntercept: intercept,
+    waypoints: Object.freeze(waypoints),
   });
+}
+
+function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = null) {
+  const playerPos = snapshot?.playerPos;
+  const camera = snapshot?.camera;
+  const candidates = Array.isArray(snapshot?.candidates) ? snapshot.candidates : [];
+  const finiteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+  if (![playerPos?.x, playerPos?.z].every(finiteNumber)
+      || !Array.isArray(camera?.view) || camera.view.length !== 16
+      || !camera.view.every(finiteNumber)
+      || !Array.isArray(camera?.projection) || camera.projection.length !== 16
+      || !camera.projection.every(finiteNumber)
+      || ![camera?.frameOrigin?.x, camera?.frameOrigin?.z].every(finiteNumber)
+      || !candidates.length) {
+    throw new Error('live Throughline intercept requires current player, camera, and cohort poses');
+  }
+  const rows = candidates.filter((row) => row?.alive === true && row.entityId != null
+    && String(row.worldRecordId || '')
+    && finiteNumber(row.pos?.x) && finiteNumber(row.pos?.y) && finiteNumber(row.pos?.z))
+    .sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId))
+      || String(left.entityId).localeCompare(String(right.entityId)));
+  if (!rows.length) throw new Error('live Throughline intercept has no surviving bound cohort member');
+
+  // Candidate pilot positions keep a deliberate ~145 WU separation from the hostile while
+  // placing it inside the settled fixed camera. The exact current view/projection matrices
+  // score each candidate; movement remains a normal fixed-tick public-control route.
+  const offsets = [
+    [0, 60], [0, -60], [60, 0], [-60, 0],
+    [45, 45], [-45, 45], [45, -45], [-45, -45],
+    [120, 80], [-120, 80], [120, -80], [-120, -80],
+    [100, 105], [-100, 105], [100, -105], [-100, -105],
+    [135, 55], [-135, 55], [135, -55], [-135, -55],
+  ];
+  let best = null;
+  let currentPointable = null;
+  for (const row of rows) {
+    const currentSeparationWU = Math.hypot(
+      row.pos.x - playerPos.x,
+      row.pos.z - playerPos.z,
+    );
+    const collisionClearanceWU = Number(snapshot.playerRadiusWU) + Number(row.radiusWU);
+    if (Number.isFinite(collisionClearanceWU) && currentSeparationWU > collisionClearanceWU
+        && currentSeparationWU <= 320) {
+      const currentNdc = projectCeresPointAfterPlayerTranslation(
+        row.pos,
+        playerPos,
+        playerPos,
+        camera.view,
+        camera.projection,
+        camera.frameOrigin,
+      );
+      if (currentNdc && Math.abs(currentNdc.x) <= 0.98 && Math.abs(currentNdc.y) <= 0.98) {
+        const pointable = {
+          entityId: row.entityId,
+          worldRecordId: String(row.worldRecordId),
+          separationWU: currentSeparationWU,
+          ndc: currentNdc,
+        };
+        if (!currentPointable || pointable.separationWU < currentPointable.separationWU) {
+          currentPointable = pointable;
+        }
+      }
+    }
+    for (const [offsetX, offsetZ] of offsets) {
+      const targetPos = { x: row.pos.x - offsetX, z: row.pos.z - offsetZ };
+      const separationWU = Math.hypot(offsetX, offsetZ);
+      if (separationWU > 320) continue;
+      if (Number.isFinite(collisionClearanceWU)
+          && separationWU <= collisionClearanceWU + CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU) continue;
+      const ndc = projectCeresPointAfterPlayerTranslation(
+        row.pos,
+        playerPos,
+        targetPos,
+        camera.view,
+        camera.projection,
+        camera.frameOrigin,
+      );
+      if (!ndc || Math.abs(ndc.x) > 0.98 || Math.abs(ndc.y) > 0.98) continue;
+      // Arrival may occur anywhere inside the existing stage radius, not only at
+      // targetPos. Require the target to remain visible throughout that region.
+      const radius = CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU;
+      const arrivalVisible = [-radius, radius].every((x) => [-radius, radius].every((z) => {
+        const atArrival = projectCeresPointAfterPlayerTranslation(
+          row.pos, playerPos, { x: targetPos.x + x, z: targetPos.z + z },
+          camera.view, camera.projection, camera.frameOrigin,
+        );
+        return atArrival && Math.abs(atArrival.x) <= 0.98 && Math.abs(atArrival.y) <= 0.98;
+      }));
+      if (!arrivalVisible) continue;
+      const travelWU = Math.hypot(targetPos.x - playerPos.x, targetPos.z - playerPos.z);
+      const margin = Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
+      const identitySwitchPenalty = preferredCohortEntityId != null
+        && row.entityId !== preferredCohortEntityId ? 200 : 0;
+      const score = travelWU + margin * 20 + identitySwitchPenalty;
+      if (!best || score < best.score) {
+        best = {
+          score,
+          targetPos,
+          entityId: row.entityId,
+          worldRecordId: String(row.worldRecordId),
+          separationWU,
+          ndc,
+          travelWU,
+        };
+      }
+    }
+  }
+  if (!best && !currentPointable) throw new Error('no live exact Throughline cohort intercept fits the settled camera');
+  const selected = currentPointable || best;
+  return Object.freeze({
+    targetPos: Object.freeze(currentPointable
+      ? { x: playerPos.x, z: playerPos.z }
+      : best.targetPos),
+    entityId: selected.entityId,
+    worldRecordId: selected.worldRecordId,
+    separationWU: selected.separationWU,
+    ndc: Object.freeze(selected.ndc),
+    travelWU: currentPointable ? 0 : best.travelWU,
+    currentPointable: currentPointable ? Object.freeze(currentPointable) : null,
+  });
+}
+
+function projectCeresPointAfterPlayerTranslation(point, playerPos, targetPlayerPos, view, projection, frameOrigin) {
+  const dx = targetPlayerPos.x - playerPos.x;
+  const dz = targetPlayerPos.z - playerPos.z;
+  // Simulation/navigation poses stay global; the existing render camera matrices are local
+  // to the canonical frame origin. Translation deltas are origin-independent.
+  const worldX = point.x - frameOrigin.x;
+  const worldY = point.y;
+  const worldZ = point.z - frameOrigin.z;
+  const vx = view[0] * worldX + view[4] * worldY + view[8] * worldZ + view[12]
+    - view[0] * dx - view[8] * dz;
+  const vy = view[1] * worldX + view[5] * worldY + view[9] * worldZ + view[13]
+    - view[1] * dx - view[9] * dz;
+  const vz = view[2] * worldX + view[6] * worldY + view[10] * worldZ + view[14]
+    - view[2] * dx - view[10] * dz;
+  const vw = view[3] * worldX + view[7] * worldY + view[11] * worldZ + view[15]
+    - view[3] * dx - view[11] * dz;
+  const cx = projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12] * vw;
+  const cy = projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13] * vw;
+  const cw = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15] * vw;
+  if (!Number.isFinite(cw) || cw <= 0) return null;
+  const x = cx / cw;
+  const y = cy / cw;
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
 }
 
 export function planCeresToolkitTransitHandoff({
@@ -3562,6 +3897,8 @@ export function planCeresToolkitTransitHandoff({
 export function chooseCeresPocketApproachAction(status, {
   arrivalRadiusWU = 90,
   allowBoost = true,
+  settleOnArrival = true,
+  allowArrivalCone = false,
 } = {}) {
   const distanceWU = status?.distanceWU;
   const headingError = status?.headingError;
@@ -3572,7 +3909,9 @@ export function chooseCeresPocketApproachAction(status, {
       || !Number.isFinite(arrivalRadiusWU) || arrivalRadiusWU <= 0) {
     return Object.freeze({ kind: 'invalid' });
   }
-  if (distanceWU <= arrivalRadiusWU && speed <= 1) return Object.freeze({ kind: 'complete' });
+  if (distanceWU <= arrivalRadiusWU && (speed <= 1 || settleOnArrival === false)) {
+    return Object.freeze({ kind: 'complete' });
+  }
   if (distanceWU <= arrivalRadiusWU && speed > 1) {
     return Object.freeze({
       kind: 'settle',
@@ -3580,7 +3919,14 @@ export function chooseCeresPocketApproachAction(status, {
       boost: false,
     });
   }
-  if (Math.abs(headingError) > 0.08) {
+  // For the impact-settle dogleg, a stopped hull need not repeatedly turn to
+  // an exact bearing when its heading already passes safely through the gate.
+  // Require observed low yaw as well as low speed: missing yaw stays strict.
+  const headingTolerance = allowArrivalCone && speed <= 1
+    && Number.isFinite(status?.angularVelocity) && Math.abs(status.angularVelocity) <= 0.05
+    ? Math.max(0.08, Math.min(0.2, Math.asin(Math.min(1, arrivalRadiusWU / (2 * distanceWU)))))
+    : 0.08;
+  if (Math.abs(headingError) > headingTolerance) {
     const turnMagnitude = Math.abs(headingError);
     return Object.freeze({
       kind: 'turn',
@@ -3602,6 +3948,77 @@ export function chooseCeresPocketApproachAction(status, {
     durationMs: 160,
     boost: allowBoost !== false && distanceWU > 220 && speed < 120,
   });
+}
+
+// Use the native keyboard transport to release before observing simulation state. Waiting for
+// a browser tick while a key is down can extend a short correction by many simulation ticks.
+export async function pressCeresPublicPointAction(page, action) {
+  try {
+    if (action.boost) await page.keyboard.down('Shift');
+    await page.keyboard.press(action.key, { delay: action.durationMs });
+  } finally {
+    if (action.boost) await page.keyboard.up('Shift').catch(() => {});
+  }
+}
+
+export function ceresTurnPulseDuration(action, previousTurn, headingError) {
+  if (action.kind !== 'turn') return { durationMs: action.durationMs, misses: 0 };
+  const unchanged = previousTurn && Math.abs(headingError - previousTurn.headingError) < 0.001;
+  const misses = unchanged ? previousTurn.misses + 1 : 0;
+  return { durationMs: Math.min(160, action.durationMs * 2 ** Math.min(misses, 3)), misses };
+}
+
+export function ceresPointPulseDuration(action, pulse, distanceWU, arrivalRadiusWU) {
+  // Native key release is followed by a neutral observation, during which thrust decays. Keep
+  // useful progress on open legs; near the gate retain the shorter pulse for controlled arrival.
+  return action.kind === 'thrust' && distanceWU > arrivalRadiusWU + 45
+    ? Math.min(480, action.durationMs * 3) : pulse.durationMs;
+}
+
+async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
+  return page.evaluate((rows) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    const camera = state?.render?.camera;
+    if (!player || !camera?.matrixWorldInverse?.elements || !camera?.projectionMatrix?.elements) {
+      return null;
+    }
+    const playerX = player.pos?.x;
+    const playerZ = player.pos?.z;
+    const view = Array.from(camera.matrixWorldInverse.elements);
+    const projection = Array.from(camera.projectionMatrix.elements);
+    const originX = state.world?.frameOrigin?.x;
+    const originZ = state.world?.frameOrigin?.z;
+    if (typeof playerX !== 'number' || !Number.isFinite(playerX)
+        || typeof playerZ !== 'number' || !Number.isFinite(playerZ)
+        || view.length !== 16 || !view.every(Number.isFinite)
+        || projection.length !== 16 || !projection.every(Number.isFinite)
+        || ![originX, originZ].every(value => typeof value === 'number' && Number.isFinite(value))) return null;
+    const bound = new Map((rows || []).map((row) => [row.entityId, row]));
+    return {
+      playerPos: { x: playerX, z: playerZ },
+      playerRadiusWU: Number(player.radius),
+      camera: { view, projection, frameOrigin: { x: originX, z: originZ } },
+      candidates: (state.entityList || []).flatMap((entity) => {
+        if (entity?.alive === false || entity?.type !== 'ship'
+            || bound.get(entity.id)?.worldRecordId !== entity.data?.worldRecordId
+            || (bound.get(entity.id)?.generation ?? null) !== (entity.occupantGeneration ?? null)
+            || entity.data?.ai?.zoneId !== 'zone_ceres_ambush'
+            || entity.data?.ai?.squadId !== 'zone_ceres_ambush') return [];
+        const x = entity.pos?.x;
+        const y = entity.pos?.y;
+        const z = entity.pos?.z;
+        if (![x, y, z].every((value) => typeof value === 'number' && Number.isFinite(value))) return [];
+        return [{
+          entityId: entity.id,
+          worldRecordId: entity.data.worldRecordId,
+          alive: entity.alive !== false,
+          radiusWU: Number(entity.radius),
+          pos: { x, y, z },
+        }];
+      }),
+    };
+  }, authorityRows);
 }
 
 async function readCeresPocketApproachStatus(page, point, terminalTick) {
@@ -3636,6 +4053,7 @@ async function readCeresPocketApproachStatus(page, point, terminalTick) {
       distanceWU,
       headingError,
       speed,
+      angularVelocity: finiteNumber(player.angVel),
       radialSpeed: geometryValid && velocityValid
         ? (distanceWU > 0 ? (velocity.x * dx + velocity.z * dz) / distanceWU : 0)
         : null,
@@ -3668,37 +4086,45 @@ export async function settleCeresPocketApproach(page, {
     throw new Error('Ceres public settle requires a valid fixed-tick reserve');
   }
   await page.keyboard.down('Digit0');
+  const deadlineMs = Date.now() + 10_000;
   try {
-    await page.waitForFunction(({ terminalTick, reserveTicks }) => {
-      const state = window.SF?.state;
-      const player = state?.entities?.get(state.playerId);
-      if (!player?.pos) return true;
-      const tick = Number(state.tick);
-      const invalidGeometry = typeof player.pos.x !== 'number' || !Number.isFinite(player.pos.x)
-        || typeof player.pos.z !== 'number' || !Number.isFinite(player.pos.z)
-        || typeof player.rot !== 'number' || !Number.isFinite(player.rot);
-      const velocityX = player.vel?.x;
-      const velocityZ = player.vel?.z;
-      const invalidMotion = typeof velocityX !== 'number' || !Number.isFinite(velocityX)
-        || typeof velocityZ !== 'number' || !Number.isFinite(velocityZ);
-      const speed = invalidMotion ? null : Math.hypot(velocityX, velocityZ);
-      return invalidGeometry || invalidMotion || speed <= 1 || !Number.isSafeInteger(tick)
-        || tick >= terminalTick - reserveTicks;
-    }, { terminalTick: endTick, reserveTicks: minRemainingTicks }, { timeout: 10_000 });
-    const status = await readCeresPocketApproachStatus(page, point, endTick);
-    if (status.missing) throw new Error(`${targetName} settle lost the player`);
-    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
-      throw new Error(`${targetName} settle exhausted the exact route horizon`);
+    for (;;) {
+      const remainingMs = deadlineMs - Date.now();
+      if (remainingMs <= 0) throw new Error(`${targetName} public brake did not settle the player`);
+      await page.waitForFunction(({ terminalTick, reserveTicks }) => {
+        const state = window.SF?.state;
+        const player = state?.entities?.get(state.playerId);
+        if (!player?.pos) return true;
+        const tick = Number(state.tick);
+        const invalidGeometry = typeof player.pos.x !== 'number' || !Number.isFinite(player.pos.x)
+          || typeof player.pos.z !== 'number' || !Number.isFinite(player.pos.z)
+          || typeof player.rot !== 'number' || !Number.isFinite(player.rot);
+        const velocityX = player.vel?.x;
+        const velocityZ = player.vel?.z;
+        const invalidMotion = typeof velocityX !== 'number' || !Number.isFinite(velocityX)
+          || typeof velocityZ !== 'number' || !Number.isFinite(velocityZ);
+        const speed = invalidMotion ? null : Math.hypot(velocityX, velocityZ);
+        return invalidGeometry || invalidMotion || speed <= 1 || !Number.isSafeInteger(tick)
+          || tick >= terminalTick - reserveTicks;
+      }, { terminalTick: endTick, reserveTicks: minRemainingTicks }, { timeout: remainingMs });
+      const status = await readCeresPocketApproachStatus(page, point, endTick);
+      if (status.missing) throw new Error(`${targetName} settle lost the player`);
+      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
+        throw new Error(`${targetName} settle exhausted the exact route horizon`);
+      }
+      if (!Number.isFinite(status.distanceWU) || !Number.isFinite(status.headingError)
+          || !Number.isFinite(status.radialSpeed)
+          || !Number.isFinite(status.playerPos?.x) || !Number.isFinite(status.playerPos?.z)) {
+        throw new Error(`${targetName} settle observed invalid navigation telemetry`);
+      }
+      if (!Number.isFinite(status.speed)) {
+        throw new Error(`${targetName} public brake did not settle the player`);
+      }
+      // The simulation can advance between the predicate and this authoritative sample.
+      // Keep the same brake held and deadline if the speed rose again in that interval.
+      if (status.speed > 1) continue;
+      return status;
     }
-    if (!Number.isFinite(status.distanceWU) || !Number.isFinite(status.headingError)
-        || !Number.isFinite(status.radialSpeed)
-        || !Number.isFinite(status.playerPos?.x) || !Number.isFinite(status.playerPos?.z)) {
-      throw new Error(`${targetName} settle observed invalid navigation telemetry`);
-    }
-    if (!Number.isFinite(status.speed) || status.speed > 1) {
-      throw new Error(`${targetName} public brake did not settle the player`);
-    }
-    return status;
   } finally {
     await page.keyboard.up('Digit0').catch(() => {});
   }
@@ -3716,9 +4142,13 @@ function createCeresPublicPointApproachReceipt(status, {
     schema: 'spaceface.ceresPublicPointApproachReceipt.v1',
     pass: true,
     source: target.controlClock === 'fixed-tick'
-      ? 'public-keyboard-fixed-tick' : 'public-keyboard-wall-time',
+      ? 'public-keyboard-wall-pulse-fixed-observation' : 'public-keyboard-wall-time',
+    actuationClock: 'wall-time',
+    observationClock: target.controlClock === 'fixed-tick' ? 'fixed-tick' : 'wall-time',
     targetId: target.targetId,
     targetName: target.targetName,
+    exactCohortEntityId: target.exactCohortEntityId ?? null,
+    exactCohortWorldRecordId: target.exactCohortWorldRecordId ?? null,
     targetPos: Object.freeze({
       x: Number(target.targetPos.x),
       z: Number(target.targetPos.z),
@@ -3755,23 +4185,34 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
     throw new Error('Ceres public point approach requires a valid fixed-tick reserve');
   }
   let approachPulses = 0;
+  let previousTurn = null;
+  let preferredCohortEntityId = target.exactCohortEntityId ?? null;
   const holdPulse = async (durationMs) => {
-    if (target.controlClock === 'fixed-tick') {
-      const ticks = Math.max(1, Math.round(
-        Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
-      ));
-      await waitForCeresFixedTicks(page, ticks, 20_000);
-      return;
-    }
     await page.waitForTimeout(durationMs);
   };
   try {
     for (; approachPulses < 220;) {
-      const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
+      let activeTarget = target;
+      if (Array.isArray(target.liveCohortAuthority)) {
+        const liveIntercept = await readCeresLiveCohortCameraSnapshot(
+          page,
+          target.liveCohortAuthority,
+        );
+        const livePlan = planCeresThroughlineToolkitReposition({
+          minRemainingTicks,
+          liveIntercept,
+          preferredCohortEntityId,
+        });
+        activeTarget = livePlan.waypoints.at(-1);
+        preferredCohortEntityId = activeTarget.exactCohortEntityId;
+      }
+      const status = await readCeresPocketApproachStatus(page, activeTarget.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
       const action = chooseCeresPocketApproachAction(status, {
         arrivalRadiusWU,
-        allowBoost: target.allowBoost !== false,
+        allowBoost: activeTarget.allowBoost !== false,
+        settleOnArrival: activeTarget.settleOnArrival !== false,
+        allowArrivalCone: activeTarget.allowArrivalCone === true,
       });
       recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
@@ -3782,7 +4223,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       }
       if (action.kind === 'complete') {
         return createCeresPublicPointApproachReceipt(status, {
-          target,
+          target: activeTarget,
           diagnostic,
           deadlineTick: endTick,
           arrivalRadiusWU,
@@ -3792,7 +4233,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       if (action.kind === 'settle') {
         diagnostic.counts.settleHolds += 1;
         const settled = await settleCeresPocketApproach(page, {
-          point: target.targetPos,
+          point: activeTarget.targetPos,
           endTick,
           minRemainingTicks,
           targetName: target.targetName,
@@ -3800,7 +4241,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         recordCeresPocketApproachDecision(diagnostic, settled, 'settle-result');
         if (settled.distanceWU <= arrivalRadiusWU) {
           return createCeresPublicPointApproachReceipt(settled, {
-            target,
+            target: activeTarget,
             diagnostic,
             deadlineTick: endTick,
             arrivalRadiusWU,
@@ -3811,6 +4252,20 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       }
       approachPulses += 1;
       diagnostic.counts.totalPulses += 1;
+      if (target.controlClock === 'fixed-tick') {
+        if (action.kind === 'turn') diagnostic.counts.turnPulses += 1;
+        else if (action.kind === 'decelerate') diagnostic.counts.deceleratePulses += 1;
+        else diagnostic.counts.thrustPulses += 1;
+        if (action.boost) diagnostic.counts.boostPulses += 1;
+        const pulse = ceresTurnPulseDuration(action, previousTurn, status.headingError);
+        previousTurn = action.kind === 'turn'
+          ? { headingError: status.headingError, misses: pulse.misses } : null;
+        await pressCeresPublicPointAction(page, { ...action, durationMs: ceresPointPulseDuration(
+          action, pulse, status.distanceWU, arrivalRadiusWU,
+        ) });
+        await waitForCeresFixedTicks(page, 1, 20_000);
+        continue;
+      }
       if (action.kind === 'turn') {
         diagnostic.counts.turnPulses += 1;
         await page.keyboard.down(action.key);
@@ -3830,12 +4285,6 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         } finally {
           await page.keyboard.up('Shift').catch(() => {});
           await page.keyboard.up(action.key).catch(() => {});
-        }
-        // A fixed-tick dash is edge-triggered on public Shift release. Sample one wholly neutral
-        // simulation tick after both key-up edges so completion cannot be credited to the held
-        // frame. Non-boost steering retains its existing cadence.
-        if (action.boost && target.controlClock === 'fixed-tick') {
-          await waitForCeresFixedTicks(page, 1, 20_000);
         }
       }
     }
@@ -3865,6 +4314,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   const normalizedBoundHostiles = boundHostiles.map((row) => ({
     entityId: row?.entityId ?? null,
     worldRecordId: String(row?.worldRecordId || ''),
+    generation: row?.generation ?? null,
   })).sort((left, right) => (
     String(left.entityId).localeCompare(String(right.entityId))
       || left.worldRecordId.localeCompare(right.worldRecordId)
@@ -3887,13 +4337,17 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     const observedBoundHostiles = expectedBoundHostiles.flatMap((expected) => {
       const entity = state?.entities?.get(expected.entityId);
       if (entity?.alive === false || entity?.type !== 'ship'
-          || entity?.data?.worldRecordId !== expected.worldRecordId) return [];
-      return [{ entityId: entity.id, worldRecordId: entity.data.worldRecordId }];
+          || entity?.data?.worldRecordId !== expected.worldRecordId
+          || (entity?.occupantGeneration ?? null) !== expected.generation) return [];
+      return [{ entityId: entity.id, worldRecordId: entity.data.worldRecordId,
+        generation: entity.occupantGeneration ?? null }];
     });
     return {
       tick: Number(state?.tick),
       nextEventSeq: Number(window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq),
       playerEntityId: player?.id ?? null,
+      anchorPresent: !!anchor,
+      anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? null,
       anchorEntityId: anchor?.data?.activityCollisionAnchorSlotId
         === 'ceres_throughline_collision_anchor' ? anchor.id : null,
       boundHostiles: observedBoundHostiles,
@@ -3906,23 +4360,39 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   if (!Number.isSafeInteger(start.tick) || !Number.isSafeInteger(start.nextEventSeq)
       || start.nextEventSeq < 1 || start.tick < anchorImpactTick
       || start.nextEventSeq <= anchorImpactSeq
-      || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId
-      || stableJson(start.boundHostiles) !== stableJson(normalizedBoundHostiles)) {
-    throw new Error('toolkit camera reposition lost the exact collision authority');
+      || start.playerEntityId !== playerEntityId || start.boundHostiles.length === 0) {
+    const reason = start.boundHostiles.length === 0
+      ? 'lost all original prebound hostile cohort members'
+      : 'lost the exact collision authority';
+    throw new Error(`toolkit camera reposition ${reason}: ${JSON.stringify({
+      expected: { playerEntityId, anchorEntityId, anchorImpactSeq, anchorImpactTick,
+        boundHostiles: normalizedBoundHostiles },
+      observed: start,
+    })}`);
   }
-  const plan = planCeresThroughlineToolkitReposition();
+  const doglegPlan = planCeresThroughlineToolkitReposition();
   const receipts = [];
-  for (const waypoint of plan.waypoints) {
+  for (const waypoint of doglegPlan.waypoints.slice(0, 2)) {
     receipts.push(await drivePublicToCeresPoint(page, waypoint, endTick));
   }
+  const liveInterceptSnapshot = await readCeresLiveCohortCameraSnapshot(
+    page,
+    normalizedBoundHostiles,
+  );
+  const livePlan = planCeresThroughlineToolkitReposition({ liveIntercept: liveInterceptSnapshot });
+  receipts.push(await drivePublicToCeresPoint(page, {
+    ...livePlan.waypoints.at(-1),
+    liveCohortAuthority: normalizedBoundHostiles,
+  }, endTick));
   const completedAtTick = Number(receipts.at(-1)?.tick);
   if (!Number.isSafeInteger(completedAtTick) || completedAtTick < start.tick) {
     throw new Error('toolkit camera reposition lacks an ordered completion tick');
   }
   return Object.freeze({
     pass: true,
-    source: plan.source,
-    reason: plan.reason,
+    source: livePlan.source,
+    reason: livePlan.reason,
+    liveIntercept: livePlan.liveIntercept,
     startTick: start.tick,
     movementEndTick: completedAtTick,
     playerEntityId,
@@ -3931,7 +4401,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     anchorImpactTick,
     boundHostiles: Object.freeze(normalizedBoundHostiles.map((row) => Object.freeze({ ...row }))),
     impactCaptureStartSeq: start.nextEventSeq,
-    waypoints: plan.waypoints,
+    waypoints: livePlan.waypoints,
     receipts: Object.freeze(receipts.map((receipt) => Object.freeze({ ...receipt }))),
   });
 }
@@ -3944,6 +4414,7 @@ export async function drivePublicToPocketAnchor(page, pocketId, endTick, {
   return drivePublicToCeresPoint(page, {
     ...target,
     minRemainingTicks,
+    controlClock: 'fixed-tick',
   }, endTick);
 }
 
@@ -4218,7 +4689,9 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
       ? Math.hypot(approach.playerVel.x, approach.playerVel.z) : null;
     return approach?.schema === 'spaceface.ceresPublicPointApproachReceipt.v1'
       && approach?.pass === true
-      && approach?.source === 'public-keyboard-fixed-tick'
+      && approach?.source === 'public-keyboard-wall-pulse-fixed-observation'
+      && approach?.actuationClock === 'wall-time'
+      && approach?.observationClock === 'fixed-tick'
       && approach?.targetId === plan.targetId
       && approach?.targetName === plan.targetName
       && Number.isFinite(approach?.targetPos?.x)
@@ -4579,6 +5052,7 @@ function recordCeresPocketApproachDecision(diagnostic, status, action) {
     action,
     distanceWU: status.distanceWU,
     speed: status.speed,
+    angularVelocity: status.angularVelocity,
     radialSpeed: status.radialSpeed,
     headingError: status.headingError,
   };
@@ -4677,6 +5151,13 @@ function physicalArrivalReceipt({
   };
 }
 
+export function shouldBrakeCeresAnchorApproach(status) {
+  const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
+    || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
+  return openingOrOrbiting && (status.speed > 45
+    || (status.hullGapWU <= status.recoveryMarginWU && status.speed > 1));
+}
+
 export async function drivePublicAnchorCollision(page, endTick, {
   minRemainingTicks = 120,
 } = {}) {
@@ -4698,12 +5179,20 @@ export async function drivePublicAnchorCollision(page, endTick, {
     return player && anchor ? {
       playerId: player.id,
       anchorEntityId: anchor.id,
+      playerGeneration: player.occupantGeneration ?? null,
+      anchorGeneration: anchor.occupantGeneration ?? null,
+      playerType: player.type ?? null,
+      anchorType: anchor.type ?? null,
+      anchorWorldRecordId: anchor.data?.worldRecordId ?? null,
       collides: anchor.collides !== false && Number(anchor.mass) > 0,
       startTick: Number(state?.tick),
       startSeq: Number(trace?.nextEventSeq),
     } : null;
   }, slotId);
-  if (!setup || setup.collides !== true || !Number.isSafeInteger(setup.startTick)
+  if (!setup || setup.collides !== true
+      || !Number.isSafeInteger(setup.playerGeneration) || !Number.isSafeInteger(setup.anchorGeneration)
+      || setup.playerType !== 'ship' || setup.anchorType !== 'asteroid'
+      || setup.anchorWorldRecordId != null || !Number.isSafeInteger(setup.startTick)
       || !Number.isSafeInteger(setup.startSeq) || setup.startSeq < 1) {
     throw new Error('Throughline collision anchor lacks a live collider and fresh event cursor');
   }
@@ -4715,8 +5204,10 @@ export async function drivePublicAnchorCollision(page, endTick, {
   let pulses = 0;
   let boostPulses = 0;
   let brakePulses = 0;
+  let missingAnchorWaits = 0;
   let lastStatus = null;
   let lastAction = null;
+  const decisionTail = [];
   const fixedPulseTicks = (durationMs) => Math.max(1, Math.round(
     Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
   ));
@@ -4744,6 +5235,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
     brakePulses,
     lastStatus,
     lastAction,
+    decisionTail,
   });
   const projectCollisionStatus = (status) => boundCeresRouteFailureDiagnosticValue({
     tick: status?.tick,
@@ -4761,14 +5253,19 @@ export async function drivePublicAnchorCollision(page, endTick, {
     anchorX: status?.anchorX,
     anchorZ: status?.anchorZ,
     anchorRadiusWU: status?.anchorRadiusWU,
+    anchorVelocityX: status?.anchorVelocityX,
+    anchorVelocityZ: status?.anchorVelocityZ,
+    input: status?.input,
     distanceWU: status?.distanceWU,
     contactDistanceWU: status?.contactDistanceWU,
     hullGapWU: status?.hullGapWU,
     recoveryMarginWU: status?.recoveryMarginWU,
     radialClosingSpeedWUPerS: status?.radialClosingSpeedWUPerS,
+    relativeClosingSpeedWUPerS: status?.relativeClosingSpeedWUPerS,
     tangentialSpeedWUPerS: status?.tangentialSpeedWUPerS,
     headingError: status?.headingError,
     speed: status?.speed,
+    relatedEvents: status?.relatedEvents,
   });
 
   try {
@@ -4777,6 +5274,11 @@ export async function drivePublicAnchorCollision(page, endTick, {
         targetSlotId,
         playerId,
         anchorEntityId,
+        playerGeneration,
+        anchorGeneration,
+        playerType,
+        anchorType,
+        anchorWorldRecordId,
         startTick,
         startSeq,
       }) => {
@@ -4787,20 +5289,62 @@ export async function drivePublicAnchorCollision(page, endTick, {
             && entity.id === anchorEntityId
             && entity.data?.activityCollisionAnchorSlotId === targetSlotId
         ));
-        const impact = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => {
-          const playerIsA = event.aId === playerId && event.bId === anchorEntityId;
-          const playerIsB = event.bId === playerId && event.aId === anchorEntityId;
-          if (event.event !== 'physics:impact'
-              || Number(event.seq) < startSeq || Number(event.tick) < startTick
-              || playerIsA === playerIsB) return false;
+        const events = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+        const relatedEvents = events.filter((event) => Number(event.seq) >= startSeq && (
+          (event.event === 'physics:impact'
+            && (event.aId === anchorEntityId || event.bId === anchorEntityId))
+          || (['entity:killed', 'entity:destroyed'].includes(event.event)
+            && (event.entityId === anchorEntityId || event.targetId === anchorEntityId))
+        )).slice(-8).map((event) => ({
+          seq: event.seq, tick: event.tick, event: event.event, reason: event.reason,
+          entityId: event.entityId, targetId: event.targetId,
+          aId: event.aId, bId: event.bId, aType: event.aType, bType: event.bType,
+          aAnchorSlotId: event.aAnchorSlotId, bAnchorSlotId: event.bAnchorSlotId,
+          aWorldRecordId: event.aWorldRecordId, bWorldRecordId: event.bWorldRecordId,
+        }));
+        let impact = null;
+        for (const raw of events) {
+          const playerIsA = raw.aId === playerId && raw.bId === anchorEntityId;
+          const playerIsB = raw.bId === playerId && raw.aId === anchorEntityId;
+          if (raw.event !== 'physics:impact'
+              || Number(raw.seq) < startSeq || Number(raw.tick) < startTick
+              || playerIsA === playerIsB) continue;
           const playerSide = playerIsA ? 'a' : 'b';
           const anchorSide = playerIsA ? 'b' : 'a';
-          return event[`${playerSide}Type`] === 'ship'
+          if (Number.isSafeInteger(playerGeneration) && Number.isSafeInteger(anchorGeneration)
+              && (raw[`${playerSide}Generation`] !== playerGeneration
+                || raw[`${anchorSide}Generation`] !== anchorGeneration)) continue;
+          const event = { ...raw };
+          // Worker impacts can arrive after the main mirror removed the body.
+          // Recover only the pre-impact snapshot bound to the exact native lives.
+          if (Number.isSafeInteger(playerGeneration) && Number.isSafeInteger(anchorGeneration)
+              && event[`${playerSide}Generation`] === playerGeneration
+              && event[`${anchorSide}Generation`] === anchorGeneration
+              && playerType === 'ship' && anchorType === 'asteroid'
+              && anchorWorldRecordId == null) {
+            if (event[`${playerSide}Type`] == null || event[`${anchorSide}Type`] == null
+                || event[`${anchorSide}AnchorSlotId`] == null) {
+              event.rawParticipantMetadata = {
+                aType: raw.aType ?? null, aAnchorSlotId: raw.aAnchorSlotId ?? null,
+                aWorldRecordId: raw.aWorldRecordId ?? null,
+                bType: raw.bType ?? null, bAnchorSlotId: raw.bAnchorSlotId ?? null,
+                bWorldRecordId: raw.bWorldRecordId ?? null,
+              };
+              event.metadataProvenance = 'pre-impact-id-and-generation-snapshot';
+              event[`${playerSide}Type`] ??= playerType;
+              event[`${anchorSide}Type`] ??= anchorType;
+              event[`${anchorSide}AnchorSlotId`] ??= targetSlotId;
+            }
+          }
+          if (event[`${playerSide}Type`] === 'ship'
             && event[`${playerSide}AnchorSlotId`] == null
             && event[`${anchorSide}Type`] === 'asteroid'
             && event[`${anchorSide}WorldRecordId`] == null
-            && event[`${anchorSide}AnchorSlotId`] === targetSlotId;
-        });
+            && event[`${anchorSide}AnchorSlotId`] === targetSlotId) {
+            impact = event;
+            break;
+          }
+        }
         const telemetry = {
           playerX: Number(player?.pos?.x),
           playerZ: Number(player?.pos?.z),
@@ -4811,19 +5355,27 @@ export async function drivePublicAnchorCollision(page, endTick, {
           anchorX: Number(anchor?.pos?.x),
           anchorZ: Number(anchor?.pos?.z),
           anchorRadiusWU: Number(anchor?.radius),
+          anchorVelocityX: Number.isFinite(anchor?.vel?.x) ? anchor.vel.x : null,
+          anchorVelocityZ: Number.isFinite(anchor?.vel?.z) ? anchor.vel.z : null,
         };
         const statusIdentity = {
           tick: Number(state?.tick),
           impact,
+          relatedEvents,
+          playerMissing: !player,
           playerEntityId: player?.id ?? playerId,
           anchorEntityId: anchor?.id ?? anchorEntityId,
           anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? targetSlotId,
+          input: { moveZ: state?.input?.moveZ ?? null, brake: state?.input?.brake === true,
+            actionBrake: state?.input?.actions?.brake === true },
           ...telemetry,
         };
         if (!player || !anchor) {
           return { ...statusIdentity, missing: true, invalidTelemetry: false };
         }
-        if (Object.values(telemetry).some((value) => !Number.isFinite(value))) {
+        if (Object.entries(telemetry).some(([key, value]) => (
+          key !== 'anchorVelocityX' && key !== 'anchorVelocityZ' && !Number.isFinite(value)
+        ))) {
           return { ...statusIdentity, missing: false, invalidTelemetry: true };
         }
         const {
@@ -4846,6 +5398,10 @@ export async function drivePublicAnchorCollision(page, endTick, {
         const radialClosingSpeedWUPerS = distanceWU > 0
           ? (velocityX * dx + velocityZ * dz) / distanceWU
           : 0;
+        const relativeClosingSpeedWUPerS = distanceWU > 0
+          && telemetry.anchorVelocityX != null && telemetry.anchorVelocityZ != null
+          ? ((velocityX - telemetry.anchorVelocityX) * dx
+            + (velocityZ - telemetry.anchorVelocityZ) * dz) / distanceWU : null;
         const tangentialSpeedWUPerS = distanceWU > 0
           ? Math.abs((-velocityX * dz + velocityZ * dx) / distanceWU)
           : 0;
@@ -4863,12 +5419,25 @@ export async function drivePublicAnchorCollision(page, endTick, {
           hullGapWU: distanceWU - playerRadiusWU - anchorRadiusWU,
           recoveryMarginWU,
           radialClosingSpeedWUPerS,
+          relativeClosingSpeedWUPerS,
           tangentialSpeedWUPerS,
           headingError,
           speed: Math.hypot(velocityX, velocityZ),
         };
       }, { targetSlotId: slotId, ...setup });
       lastStatus = projectCollisionStatus(status);
+      const reason = status?.missing ? 'missing' : status?.invalidTelemetry ? 'invalid'
+        : status?.impact ? 'impact' : shouldBrakeCeresAnchorApproach(status) ? 'brake'
+          : Math.abs(status.headingError) > 0.09 ? 'turn' : 'thrust';
+      const { relatedEvents: _relatedEvents, ...decisionStatus } = lastStatus;
+      const reasonDetail = reason === 'brake'
+        ? (status.radialClosingSpeedWUPerS <= 0 ? 'opening' : 'tangential') : null;
+      const intendedAction = reason === 'brake' ? { key: 'Digit0' }
+        : reason === 'turn' ? { key: status.headingError > 0 ? 'KeyD' : 'KeyA' }
+          : reason === 'thrust' ? { key: 'KeyW', boost: status.distanceWU > 45 && status.speed < 90 }
+            : null;
+      decisionTail.push({ ...decisionStatus, reason, reasonDetail, intendedAction, previousAction: lastAction });
+      if (decisionTail.length > 24) decisionTail.shift();
       if (!Number.isSafeInteger(status?.tick) || status.tick >= collisionDeadlineTick) {
         throw new Error('Throughline collision attempt exhausted the five-minute horizon');
       }
@@ -4897,6 +5466,11 @@ export async function drivePublicAnchorCollision(page, endTick, {
           anchorEntityId: setup.anchorEntityId,
           startTick: setup.startTick,
           startSeq: setup.startSeq,
+          playerGeneration: setup.playerGeneration,
+          anchorGeneration: setup.anchorGeneration,
+          playerType: setup.playerType,
+          anchorType: setup.anchorType,
+          anchorWorldRecordId: setup.anchorWorldRecordId,
           completionTick: status.tick,
           pulses,
           boostPulses,
@@ -4908,11 +5482,17 @@ export async function drivePublicAnchorCollision(page, endTick, {
           impact: status.impact,
         };
       }
-      if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      const nearContact = status.hullGapWU <= status.recoveryMarginWU;
-      const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
-        || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
-      if (nearContact && openingOrOrbiting && status.speed > 1) {
+      if (status.missing) {
+        // The main-side entity mirror and worker events can arrive on different frames. Allow
+        // a short neutral handoff, but still require the same exact post-cursor impact receipt.
+        if (!status.playerMissing && missingAnchorWaits++ < 3) {
+          await holdFixedPulse(2);
+          continue;
+        }
+        throw new Error('Throughline collision target disappeared before impact');
+      }
+      missingAnchorWaits = 0;
+      if (shouldBrakeCeresAnchorApproach(status)) {
         const ticks = fixedPulseTicks(100);
         await preflightFixedPulse(ticks);
         await page.keyboard.down('Digit0');
@@ -5300,6 +5880,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId,
+      generation: entity.occupantGeneration ?? null,
     })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
     return {
       playerEntityId: player?.id ?? null,
@@ -5328,7 +5909,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
       || collisionProof.selectedImpactTick !== Number(collisionProof.impact?.tick)) {
     throw new Error('toolkit exercise requires the exact preceding collision receipt');
   }
-  const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
+  let cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
     playerEntityId: collisionProof.playerEntityId,
     anchorEntityId: collisionProof.anchorEntityId,
     anchorImpactSeq: collisionProof.selectedImpactSeq,
@@ -5338,12 +5919,31 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick, {
     deadlineTick: toolkitActionDeadlineTick,
   });
+  const currentPointing = await readCeresHostilePointingSnapshot(
+    page,
+    prebound.boundHostiles,
+  );
+  const currentPointable = currentPointing.candidates.some((row) => (
+    row.alive === true && row.pointable === true && row.distanceWU <= 320
+  ));
+  if (!currentPointable) {
+    const liveStage = cameraReposition.waypoints.at(-1);
+    const refreshReceipt = await drivePublicToCeresPoint(page, {
+      ...liveStage,
+      liveCohortAuthority: prebound.boundHostiles,
+    }, endTick);
+    cameraReposition = Object.freeze({
+      ...cameraReposition,
+      conflictIntercept: Object.freeze({ ...refreshReceipt }),
+    });
+  }
   baseline.cameraReposition = cameraReposition;
   const target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick, {
     deadlineTick: toolkitActionDeadlineTick,
   });
   if (!target || !baseline.initialHostiles.some((row) => row.entityId === target.id
-      && row.worldRecordId === target.worldRecordId)) {
+      && row.worldRecordId === target.worldRecordId
+      && (row.generation ?? null) === (target.generation ?? null))) {
     throw new Error('toolkit exercise could not point at a declared Throughline hostile');
   }
   await page.mouse.move(
@@ -5378,6 +5978,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     playerEntityId: baseline.playerEntityId,
     targetId: target.id,
     targetWorldRecordId: target.worldRecordId,
+    targetGeneration: target.generation ?? null,
     attachmentId: attached.attachmentId,
     latchedTick: latched.tick,
     latchedSeq: latched.seq,
@@ -5432,9 +6033,11 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   const combatTarget = await pointPublicAtCeresHostile(page, [{
     entityId: target.id,
     worldRecordId: target.worldRecordId,
+    generation: target.generation ?? null,
   }], endTick, { deadlineTick: toolkitActionDeadlineTick });
   if (!combatTarget || combatTarget.id !== target.id
-      || combatTarget.worldRecordId !== target.worldRecordId) {
+      || combatTarget.worldRecordId !== target.worldRecordId
+      || (combatTarget.generation ?? null) !== (target.generation ?? null)) {
     throw new Error('toolkit combat could not reacquire the exact released Throughline hostile');
   }
   await page.mouse.move(
@@ -5758,11 +6361,12 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
     if (!state || !player || !camera) {
       return { tick: Number(state?.tick), candidates: [] };
     }
-    const bound = new Map((authorityRows || []).map((row) => [row.entityId, row.worldRecordId]));
+    const bound = new Map((authorityRows || []).map((row) => [row.entityId, row]));
     const candidates = (state.entityList || []).filter((entity) => (
       entity?.alive !== false
         && entity?.type === 'ship'
-        && bound.get(entity.id) === entity.data?.worldRecordId
+        && bound.get(entity.id)?.worldRecordId === entity.data?.worldRecordId
+        && (bound.get(entity.id)?.generation ?? null) === (entity.occupantGeneration ?? null)
         && (entity.data?.ai?.zoneId === 'zone_ceres_ambush'
           && entity.data?.ai?.squadId === 'zone_ceres_ambush')
     )).map((hostile) => {
@@ -5775,6 +6379,7 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
       const row = {
         id: hostile.id,
         worldRecordId: hostile.data?.worldRecordId || null,
+        generation: hostile.occupantGeneration ?? null,
         alive: hostile.alive !== false,
         pos: {
           x: Number(hostile.pos?.x),
@@ -5821,6 +6426,7 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
   }, (boundHostiles || []).map((row) => ({
     entityId: row.entityId,
     worldRecordId: row.worldRecordId,
+    generation: row.generation ?? null,
   })));
 }
 
@@ -5879,7 +6485,7 @@ export function selectCeresTetherCombatStatus(snapshot, authority) {
 }
 
 async function readCeresTetherCombatStatus(page, target, attachmentId) {
-  const snapshot = await page.evaluate(({ targetId, worldRecordId }) => {
+  const snapshot = await page.evaluate(({ targetId, worldRecordId, generation }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const entity = state?.entities?.get(targetId);
@@ -5893,7 +6499,7 @@ async function readCeresTetherCombatStatus(page, target, attachmentId) {
         targetId: state.player.tether.targetId ?? null,
         attachmentId: state.player.tether.attachmentId || null,
       } : null,
-      candidates: entity ? [{
+      candidates: entity && (entity.occupantGeneration ?? null) === generation ? [{
         id: entity.id,
         worldRecordId: entity.data?.worldRecordId || null,
         expectedWorldRecordId: worldRecordId,
@@ -5911,6 +6517,7 @@ async function readCeresTetherCombatStatus(page, target, attachmentId) {
   }, {
     targetId: target.id,
     worldRecordId: target.worldRecordId,
+    generation: target.generation ?? null,
   });
   return selectCeresTetherCombatStatus(snapshot, {
     targetId: target.id,
@@ -6271,8 +6878,17 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
         slotId: entity.data.activityObjectSlotId,
         entityId: entity.id,
         worldRecordId: entity.data.worldRecordId || null,
+        homeSectorId: entity.homeSectorId || entity.data?.homeSectorId || entity.data?.sectorId || null,
       })).sort((left, right) => left.slotId.localeCompare(right.slotId));
-    const objects = objectEntities.map((row) => row.slotId);
+    // A sector can retain structural activity objects while resident as a neighbor. The setup
+    // contract is the current sector's authored object cohort, not every live resident in the
+    // world; keep off-sector rows in the snapshot for diagnosis without counting them as extras.
+    const currentSectorId = state?.world?.currentSectorId || null;
+    const objects = objectEntities
+      .filter((row) => !row.homeSectorId || row.homeSectorId === currentSectorId)
+      .map((row) => row.slotId);
+    const offSectorObjects = objectEntities
+      .filter((row) => row.homeSectorId && row.homeSectorId !== currentSectorId);
     const anchors = entities.filter((entity) => entity.data?.activityCollisionAnchorSlotId).map((entity) => ({
       slotId: entity.data.activityCollisionAnchorSlotId,
       entityId: entity.id,
@@ -6347,7 +6963,7 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
         phase: state?.encounterDirector?.stats?.ceresActivityAmbush?.phase || null,
         outcome: state?.encounterDirector?.stats?.ceresActivityAmbush?.outcome || null,
       },
-      census: { actors, objects, objectEntities, anchors, hostiles, hostileTombstones },
+      census: { actors, objects, objectEntities, offSectorObjects, anchors, hostiles, hostileTombstones },
     };
   }, expectedHostileWorldRecordIds);
 }
@@ -6535,15 +7151,26 @@ function summarizeCeresRouteObservations({
     .filter((entityId) => entityId != null))]
     .sort((left, right) => String(left).localeCompare(String(right)));
   const playerEntityIdSet = new Set(playerEntityIds);
+  const selectedImpact = collisionProof?.impact;
+  const projectSelectedImpact = (event) => (
+    selectedImpact?.metadataProvenance === 'pre-impact-id-and-generation-snapshot'
+      && event.seq === selectedImpact.seq && event.tick === selectedImpact.tick
+      && event.aId === selectedImpact.aId && event.bId === selectedImpact.bId
+      && event.aGeneration === selectedImpact.aGeneration
+      && event.bGeneration === selectedImpact.bGeneration
+      ? { ...selectedImpact } : event
+  );
   const playerImpacts = trace.events.filter((event) => event.event === 'physics:impact'
     && Number.isSafeInteger(event.tick)
     && event.tick >= trace.bounds.startTick && event.tick <= trace.bounds.endTick
-    && (playerEntityIdSet.has(event.aId) || playerEntityIdSet.has(event.bId)));
+    && (playerEntityIdSet.has(event.aId) || playerEntityIdSet.has(event.bId)))
+    .map(projectSelectedImpact);
   const selectedCollisionIdentity = collisionProof?.impact
     ? ceresImpactIdentity(collisionProof.impact) : null;
   const anchorImpacts = trace.events.filter((event) => event.event === 'physics:impact'
     && (event.aId === targetAnchorId || event.bId === targetAnchorId)
-    && (event.aId === setup.playerId || event.bId === setup.playerId));
+    && (event.aId === setup.playerId || event.bId === setup.playerId))
+    .map(projectSelectedImpact);
   const selectedAnchorImpactCount = selectedCollisionIdentity == null ? 0
     : anchorImpacts.filter((event) => (
       ceresImpactIdentity(event) === selectedCollisionIdentity
@@ -6784,11 +7411,19 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
       const state = window.SF?.state;
       const player = state?.entities?.get(state.playerId);
       const active = state?.player?.ownedShips?.[state.player.activeShipIndex];
+      const overlay = document.getElementById('boot-overlay');
+      const bootReady = !overlay || (overlay.classList.contains('hidden')
+        && overlay.getAttribute('aria-busy') !== 'true'
+        && getComputedStyle(overlay).display === 'none');
+      const runtimeScale = state?.timeScale;
       return state?.mode === 'flight'
         && state.world?.currentSectorId === 'sector_ceres_belt'
         && state.meta?.seed === seed
         && active?.defId === 'ship_hornet'
         && player && player.alive !== false && Number(player.hull) > 0
+        // Flight mode and an allocated player appear before loading/first-frame handoff finishes.
+        // Require the same live condition that assertCeresSetup depends on, not just ownership.
+        && runtimeScale === 1 && Number.isFinite(state.tick) && state.tick > 0 && bootReady
         && !document.body.classList.contains('ui-modal-open');
     }, fixedSeed, { timeout });
   } catch (error) {
@@ -6797,6 +7432,12 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
       const player = state?.entities?.get?.(state?.playerId) || null;
       const activeShipIndex = state?.player?.activeShipIndex;
       const active = state?.player?.ownedShips?.[activeShipIndex] || null;
+      const overlay = document.getElementById('boot-overlay');
+      const loadingOverlay = overlay ? {
+        hiddenClass: overlay.classList.contains('hidden'),
+        ariaBusy: overlay.getAttribute('aria-busy'),
+        display: getComputedStyle(overlay).display,
+      } : null;
       const visibleScreens = [...document.querySelectorAll('[data-screen]')]
         .filter((element) => {
           if (element.hidden) return false;
@@ -6815,6 +7456,10 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
         mode: state?.mode ?? null,
         sectorId: state?.world?.currentSectorId ?? null,
         seed: state?.meta?.seed ?? null,
+        tick: Number.isFinite(state?.tick) ? state.tick : null,
+        simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+        timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+        loadingOverlay,
         playerId: state?.playerId ?? null,
         playerFound: !!player,
         playerAlive: player ? player.alive !== false : null,
@@ -6833,6 +7478,9 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
           mode: 'flight',
           sectorId: 'sector_ceres_belt',
           seed,
+          minTick: 1,
+          timeScale: 1,
+          loadingOverlayHidden: true,
           activeShipDefId: 'ship_hornet',
           playerAlive: true,
           playerHullPositive: true,
@@ -6843,6 +7491,12 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
           mode: actual.mode === 'flight',
           sectorId: actual.sectorId === 'sector_ceres_belt',
           seed: actual.seed === seed,
+          tickAdvanced: Number.isFinite(actual.tick) && actual.tick > 0,
+          running: actual.timeScale === 1,
+          loadingOverlayHidden: actual.loadingOverlay === null
+            || (actual.loadingOverlay.hiddenClass
+              && actual.loadingOverlay.ariaBusy !== 'true'
+              && actual.loadingOverlay.display === 'none'),
           activeShipDefId: actual.activeShipDefId === 'ship_hornet',
           playerAlive: actual.playerFound && actual.playerAlive === true,
           playerHullPositive: Number.isFinite(actual.playerHull) && actual.playerHull > 0,
@@ -6858,6 +7512,8 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
 
 async function waitForVisibleScreen(page, id, timeout) {
   await page.waitForFunction((screenId) => {
+    const screenManager = window.SF?.ctx?.screenManager;
+    if (!screenManager || typeof screenManager.top !== 'function' || screenManager.top() !== screenId) return false;
     const element = document.querySelector(`[data-screen="${screenId}"]`);
     if (!element || element.hidden) return false;
     const style = getComputedStyle(element);
@@ -6894,10 +7550,80 @@ async function releasePublicInput(page) {
   }
 }
 
-async function launchCeresBrowserRuntime({ root, executablePath, resources }) {
-  const ownedServer = await acquireVisualProbeServer({ root });
+function resolveStrictRuntimeSourceOverlay(value, root) {
+  if (!value) return null;
+  const resolved = path.resolve(root, String(value));
+  const relative = path.relative(root, resolved).replace(/\\/g, '/');
+  if (!relative.startsWith('.devshots/')) {
+    throw new TypeError('Ceres --baseline-source must point inside .devshots/');
+  }
+  const overlay = loadSourceOverlayManifest(resolved);
+  if (overlay.identity.strictRuntimeIsolation !== true) {
+    throw new TypeError('Ceres --baseline-source requires an all-runtime source manifest');
+  }
+  return Object.freeze({
+    path: resolved,
+    relative,
+    identity: projectSourceOverlayIdentity(overlay.identity),
+  });
+}
+
+function projectSourceOverlayIdentity(identity) {
+  return {
+    schema: identity?.schema || null,
+    sourceCommit: identity?.sourceCommit || null,
+    sourceOverlayDigest: identity?.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity?.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity?.totalBytes) ? identity.totalBytes : null,
+    strictRuntimeIsolation: identity?.strictRuntimeIsolation === true,
+  };
+}
+
+function projectSourceOverlayReceipt(baselineSource, served) {
+  return {
+    manifest: baselineSource.relative,
+    requested: baselineSource.identity,
+    served: served ? projectSourceOverlayIdentity(served) : null,
+  };
+}
+
+function projectWorktreeIdentity(fingerprint) {
+  return fingerprint ? {
+    id: fingerprint.id || null,
+    head: fingerprint.head || null,
+    branch: fingerprint.branch || null,
+    digest: fingerprint.digest || null,
+    changedFileCount: Number.isSafeInteger(fingerprint.changedFileCount)
+      ? fingerprint.changedFileCount : null,
+  } : null;
+}
+
+async function readAndVerifySourceOverlayIdentity(baseUrl, baselineSource) {
+  const response = await fetch(new URL('/__source_overlay_identity', baseUrl));
+  if (!response.ok) throw new Error(`source overlay identity endpoint returned HTTP ${response.status}`);
+  const observed = projectSourceOverlayIdentity(await response.json());
+  const expected = baselineSource.identity;
+  for (const field of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes', 'strictRuntimeIsolation']) {
+    if (observed[field] !== expected[field]) {
+      throw new Error(`served source overlay ${field} does not match requested baseline`);
+    }
+  }
+  return projectSourceOverlayReceipt(baselineSource, observed);
+}
+
+async function launchCeresBrowserRuntime({ root, executablePath, resources, baselineSource = null }) {
+  const ownedServer = await acquireVisualProbeServer({
+    root,
+    sourceOverlay: baselineSource?.path || null,
+  });
   resources.server = ownedServer;
   resources.rootUrl = ownedServer.baseUrl;
+  if (baselineSource) {
+    resources.sourceOverlay = await readAndVerifySourceOverlayIdentity(
+      ownedServer.baseUrl,
+      baselineSource,
+    );
+  }
   const { chromium } = await loadPlaywright();
   resources.browserServer = await chromium.launchServer({
     headless: false,
@@ -7143,6 +7869,7 @@ function createCeresRuntimeEvidence({
   cleanup,
   consumedLedger,
   electronProvisioning,
+  sourceOverlay = null,
   primaryAcceptance,
 }) {
   const observations = {
@@ -7169,6 +7896,7 @@ function createCeresRuntimeEvidence({
     primaryAcceptance: primaryAcceptance === true,
     generatedAt: new Date().toISOString(),
     runtimeKind,
+    ...(sourceOverlay ? { sourceOverlay } : {}),
     runtimeScope: runtimeKind === 'electron' ? 'source-native-electron' : 'source-browser',
     packagedElectronClaim: false,
     controllerParityClaim: false,
@@ -8583,7 +9311,9 @@ function validateToolkitCameraReposition(receipt, route, failures) {
     return projection;
   }
   if (!boundHostiles || !initialHostiles
-      || stableJson(boundHostiles.pairs) !== stableJson(initialHostiles.pairs)) {
+      || initialHostiles.pairs.some((row) => !boundHostiles.pairs.some((bound) => (
+        bound.entityId === row.entityId && bound.worldRecordId === row.worldRecordId
+      )))) {
     failures.push('toolkit camera reposition lacks exact prebound hostile identity');
   }
   const expectedWaypoints = planCeresThroughlineToolkitReposition().waypoints.map((waypoint) => ({

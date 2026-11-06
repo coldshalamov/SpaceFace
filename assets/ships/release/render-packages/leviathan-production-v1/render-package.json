@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7673fae7df7e915f25ae6d70a5364549882236fe1612cd08d85791f5a34dd6e5",
+  "contentHash": "f156c560d7db037c0422d9a8ca1d7bb8eaa9fdace092900520c8a51f27fe2a3a",
   "dynamicGroups": [
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -3272,14 +3272,14 @@
       "uri": "leviathan_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1125568,
-    "sha256": "157fd96aeffc202f96a8cf495053733b9c8ef2f7ed1af746c7f15fd4e9871b42",
+    "bytes": 1125784,
+    "sha256": "27ea80cdb331ce814a49d95cb5f4920a23f6a832e591a2b636c028324c68c1b7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3377,6 +3377,453 @@
       },
       {
         "matrix": [
+          3.092848777770996,
+          0,
+          0,
+          0,
+          0,
+          3.092848777770996,
+          0,
+          0,
+          0,
+          0,
+          3.092848777770996,
+          0,
+          -18.09784984588623,
+          0.8700000047683716,
+          -10.5,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
+        "planIndex": 7,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          15.684399604797363,
+          0,
+          0,
+          0,
+          0,
+          15.684399604797363,
+          0,
+          0,
+          0,
+          0,
+          15.684399604797363,
+          0,
+          -26.650105476379395,
+          0.34999996423721313,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 9,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.255001068115234,
+          0,
+          0,
+          0,
+          0,
+          25.255001068115234,
+          0,
+          0,
+          0,
+          0,
+          25.255001068115234,
+          0,
+          3.854999542236328,
+          1.1684999987483025,
+          -8.925000667572021,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.255001068115234,
+          0,
+          0,
+          0,
+          0,
+          25.255001068115234,
+          0,
+          0,
+          0,
+          0,
+          25.255001068115234,
+          0,
+          3.854999542236328,
+          1.1684999987483025,
+          8.925000667572021,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 13,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.9405002593994141,
+          0,
+          0,
+          0,
+          0,
+          0.9405002593994141,
+          0,
+          0,
+          0,
+          0,
+          0.9405002593994141,
+          0,
+          -12.400000095367432,
+          1.2290000021457672,
+          -10.350500106811523,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor",
+        "planIndex": 15,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8580002784729004,
+          0,
+          0,
+          0,
+          0,
+          0.8580002784729004,
+          0,
+          0,
+          0,
+          0,
+          0.8580002784729004,
+          0,
+          -12.400000095367432,
+          1.5787999629974365,
+          -9.937999725341797,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Lights_Cyan",
+        "planIndex": 17,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Lights_Cyan",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8579998016357422,
+          0,
+          0,
+          0,
+          0,
+          0.8579998016357422,
+          0,
+          0,
+          0,
+          0,
+          0.8579998016357422,
+          0,
+          -12.399999618530273,
+          1.1828000247478485,
+          -10.399999618530273,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Livery",
+        "planIndex": 19,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Livery",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.2109999656677246,
+          0,
+          0,
+          0,
+          0,
+          2.2109999656677246,
+          0,
+          0,
+          0,
+          0,
+          2.2109999656677246,
+          0,
+          -12.399999618530273,
+          1.063999980688095,
+          -11.818999767303467,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 21,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.2505998611450195,
+          0,
+          0,
+          0,
+          0,
+          2.2505998611450195,
+          0,
+          0,
+          0,
+          0,
+          2.2505998611450195,
+          0,
+          -12.399999618530273,
+          0.882500022649765,
+          -11.858599662780762,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 23,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.6499996185302734,
+          0,
+          0,
+          0,
+          0,
+          1.6499996185302734,
+          0,
+          0,
+          0,
+          0,
+          1.6499996185302734,
+          0,
+          -13.514999866485596,
+          12.75,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Armor",
+        "planIndex": 25,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Armor",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-sensor-spire-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          -12.800000190734863,
+          14.449999809265137,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_glow_red",
+        "planIndex": 27,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_glow_red",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_glow_red",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-sensor-spire-glow-red"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          0,
+          0,
+          0,
+          1.5,
+          0,
+          -12.800000190734863,
+          12.300000190734863,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Mechanical",
+        "planIndex": 29,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Mechanical",
+            "recordIds": [
+              "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-sensor-spire-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3395,7 +3842,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 26,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3447,7 +3894,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 27,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3499,7 +3946,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 28,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3551,7 +3998,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 29,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3603,7 +4050,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 30,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3655,7 +4102,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 31,
+        "planIndex": 43,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3707,7 +4154,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 32,
+        "planIndex": 44,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3759,7 +4206,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 33,
+        "planIndex": 45,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3811,7 +4258,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 34,
+        "planIndex": 46,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3863,7 +4310,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 35,
+        "planIndex": 47,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3915,7 +4362,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 36,
+        "planIndex": 48,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3967,7 +4414,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 37,
+        "planIndex": 49,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4026,28 +4473,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 8,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
@@ -4056,18 +4488,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4076,38 +4498,18 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "signal"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "accent"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4116,7 +4518,52 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 25,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
         "role": "mechanical"
       }
     ],
@@ -4126,7 +4573,7 @@
       "sha256": "f669f9213ca546f3c64b2ef1793710279d9c015f3da851bae9c3ec7e2f302be7",
       "uri": "assets/ships/motions/leviathan-production-v1.motion.json"
     },
-    "nodeCount": 38,
+    "nodeCount": 50,
     "primitives": [
       {
         "canopy": false,
@@ -4232,8 +4679,8 @@
           -10.5,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
-        "planIndex": 7,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull_1",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -4261,8 +4708,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4308,8 +4755,8 @@
           -8.925000667572021,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4337,8 +4784,8 @@
           8.925000667572021,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4366,8 +4813,8 @@
           -10.350500106811523,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor",
-        "planIndex": 11,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Armor_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4395,8 +4842,8 @@
           -9.937999725341797,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Lights_Cyan",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Lights_Cyan_1",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4424,8 +4871,8 @@
           -10.399999618530273,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Livery",
-        "planIndex": 13,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Livery_1",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4453,8 +4900,8 @@
           -11.818999767303467,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
-        "planIndex": 14,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical_1",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4482,8 +4929,8 @@
           -11.858599662780762,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
-        "planIndex": 15,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark_1",
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4511,8 +4958,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Armor",
-        "planIndex": 16,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Armor_1",
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4540,8 +4987,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_glow_red",
-        "planIndex": 17,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_glow_red_1",
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4569,8 +5016,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Mechanical",
-        "planIndex": 18,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_SPIRE_Mechanical_1",
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4599,7 +5046,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 19,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4627,7 +5074,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
-        "planIndex": 20,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4655,7 +5102,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_gold",
-        "planIndex": 21,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4683,7 +5130,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4711,7 +5158,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Livery",
-        "planIndex": 23,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4739,7 +5186,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 24,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4767,7 +5214,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4779,7 +5226,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb"
   },
-  "runtimeHash": "e41cfecc842e65142ee20e18c7150b8a339185a75bcdce14daf736d822a7cccc",
+  "runtimeHash": "c1a20024cbb0008a5bf7beab60c4c4769188fe4e88cd4d324105aa30f01c4cc1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { objectiveIsOffSector } from '../src/ui/objectiveSector.js';
 
 import { world } from '../src/systems/world.js';
 import { captureEntityRecord, RECORD_KIND } from '../src/world/worldRecords.js';
@@ -9,7 +10,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { createCampaign47aState } from '../src/story/campaign47a/campaignSchema.js';
 import { missions, CONTRACT_47A_B2_TAG } from '../src/systems/missions.js';
-import { missionMapAction, recommendedActions, missionLogScreen } from '../src/ui/screens/missionLog.js';
+import { missionMapAction, recommendedActions, missionLogScreen, mapOpenIntentFromButton } from '../src/ui/screens/missionLog.js';
 import { resolveHudNavStation } from '../src/ui/hud.js';
 import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 import { applyMapOpenIntentToView, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
@@ -30,21 +31,15 @@ const arrowAt = hudSource.indexOf('  function updateObjectiveArrow(p, slow) {');
 const hudStart = hudSource.indexOf('    if (state.nav && state.nav.waypoint) {', arrowAt);
 const hudEnd = hudSource.indexOf('    if (!wp && m)', hudStart);
 assert.ok(arrowAt >= 0 && hudStart > arrowAt && hudEnd > hudStart, 'HUD waypoint consumer seam exists');
-const consumeHudWaypoint = Function('resolveHudNavStation', 'resolveWaypointPresentationPosition',
+const consumeHudWaypoint = Function('objectiveIsOffSector', 'resolveHudNavStation', 'resolveWaypointPresentationPosition',
   'return function(state) {'
-    + ' const resolveNavStation = (nw) => resolveHudNavStation(state, nw.stationId);'
+    + ' const arrow=null,elNavReadout=null,setDisplay=()=>{},setClass=()=>{}; const resolveNavStation = (nw) => resolveHudNavStation(state, nw.stationId);'
     + ' let wp = null, wpLabel = null, navMeta = null;'
     + hudSource.slice(hudStart, hudEnd)
     + ' return { pos: wp, label: wpLabel };'
     + '};'
-)(resolveHudNavStation, resolveWaypointPresentationPosition);
-const missionLogSource = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
-const decoderStart = missionLogSource.indexOf('function mapOpenIntentFromButton(btn) {');
-const decoderEnd = missionLogSource.indexOf('\nfunction openMapScreen', decoderStart);
-assert.ok(decoderStart >= 0 && decoderEnd > decoderStart, 'Mission Log button decoder seam exists');
-const decodeMissionLogMapButton = Function('MAP_FOCUS',
-  missionLogSource.slice(decoderStart, decoderEnd) + ';return mapOpenIntentFromButton;'
-)(MAP_FOCUS);
+)(objectiveIsOffSector, resolveHudNavStation, resolveWaypointPresentationPosition);
+const decodeMissionLogMapButton = mapOpenIntentFromButton;
 
 function addStation(state, id, x, z, name) {
   const entity = {
@@ -458,6 +453,7 @@ test('Mission Log map anchors retain explicit destination/return stations when n
   scaleState.story.campaign47a = createCampaign47aState();
   scaleState.story.campaign47a.stepProgress['1'] = { completed: ['alloy_run'], updatedAtS: 12 };
   const scaleActions = recommendedActions(scaleState, [], null);
-  assert.match(scaleActions[0].title, /Scale 4|Weigh-In/i,
-    'the existing Scale 4 Mission Log fallback remains the same reader');
+  assert.equal(scaleActions[0].meta, 'Scale 4');
+  assert.match(scaleActions[0].body, /Scale 4.*8 WU\/s/,
+    'the current Scale 4 guidance keeps its actual cargo and speed requirements');
 });

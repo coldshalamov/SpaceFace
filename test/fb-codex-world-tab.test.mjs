@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fakeDom, textLines } from './helpers/fake-dom.mjs';
 import { codexScreen, worldCodexEntries, requestCodexTab } from '../src/ui/screens/codex.js';
+import { requestCodexTab as requestCodexTabFromMailbox } from '../src/ui/codexRequests.js';
 import { knownAces } from '../src/data/namedAces.js';
 import { uniqueWreckById } from '../src/data/uniqueWrecks.js';
 
@@ -137,7 +138,9 @@ test('fb-037: the World tab renders its entries through the same entry path ever
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: worldState() });
-    assert.equal(codexScreen._sections.length, 6, 'the four world sections plus decoded clauses and named losses');
+    assert.equal(codexScreen._sections.length, 63,
+      'the four world sections, decoded clauses, named losses, the sealed side, the gate receipt,'
+      + ' and the fifty-five special-500 receipt sections (batches 12, 13, 14 and 14b)');
     assert.equal(codexScreen._entries.length, 5, 'the named loss also earns its memorial entry');
     assert.ok(codexScreen._entries.some(entry => entry.id === 'world:dead:f1'));
     for (const entry of codexScreen._entries) {
@@ -153,6 +156,7 @@ test('fb-037: the World tab renders its entries through the same entry path ever
 });
 
 test('fb-037: requestCodexTab(\'World\') deep-links to the new tab', () => {
+  assert.equal(requestCodexTabFromMailbox, requestCodexTab, 'the screen keeps its existing request export');
   const state = worldState();
   const previous = {
     activeTab: codexScreen._activeTab, body: codexScreen._body,
@@ -161,7 +165,7 @@ test('fb-037: requestCodexTab(\'World\') deep-links to the new tab', () => {
   try {
     codexScreen._body = null;
     codexScreen._activeTab = 'Story';
-    requestCodexTab('World');
+    requestCodexTabFromMailbox('World');
     codexScreen.onShow({ state });
     assert.equal(codexScreen._activeTab, 'World', 'the deep link lands on the world tab');
   } finally {

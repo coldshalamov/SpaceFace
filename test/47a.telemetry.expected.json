@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.telemetryEnvelope.v1",
-  "id": "47a-phase0-live-envelope",
+  "id": "47a-phase0-live-envelope-measured-hull-v1",
   "scenario": "47-A: The Mass Discrepancy",
   "seed": 47,
   "sourceInputTape": "test/47a.inputs.json",
@@ -43,19 +43,19 @@
     "audio:cue"
   ],
   "phase0ObservedTraceCounts": {
-    "audio:cue": 4,
-    "camera:shake": 2,
-    "combat:damage": 5,
+    "audio:cue": 3,
+    "camera:shake": 1,
+    "combat:damage": 2,
     "combat:fire": 17,
     "economy:tick": 2,
-    "presentation:audioCue": 3,
-    "presentation:cameraCue": 2,
-    "presentation:caption": 3,
-    "presentation:cue": 8,
-    "presentation:cueApplied": 8,
-    "presentation:uiCue": 3,
-    "presentation:vfxCue": 3,
-    "projectile:hit": 5,
+    "presentation:audioCue": 2,
+    "presentation:cameraCue": 1,
+    "presentation:caption": 2,
+    "presentation:cue": 4,
+    "presentation:cueApplied": 4,
+    "presentation:uiCue": 2,
+    "presentation:vfxCue": 2,
+    "projectile:hit": 2,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "67b74289db0ec320b13146c8ce07ac6622bdeeca46023403107273701c1dfd95",
+    "authoritativeHash": "560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -91,7 +91,7 @@
     "Of the other 27: $.meta.version 11->12; new $.input.autoTargetPath and autoTargetVector; new entity data field appearance; new entity data field masslineBreakPolicy 'extreme_overload' (the protected near-unbreakable Massline landing).",
     "And: the re-authored 47-A mass-variance contract copy and params, the starting cmdty_unclassified_composite sample with its 0.0031 cargo mass, and one enemy's hull 150 -> 149.704 and shield 34.043 -> 20.667.",
     "ZERO fields under any entity pos / vel / rot / angVel / prevPos changed after 720 ticks. The flight and physics contract is bit-identical to the 2026-07-14 record; this re-record papers over no physics regression.",
-    "If a future re-record of this file cannot state that last sentence with evidence, it is not a re-record, it is a bug. Diff the snapshots before you edit the hash.",
+    "Historical guard from the previous record: snapshot diffs were required before changing its hash. This guard called motion drift a bug at that time; it did not account for the later measured-hull inertia contract.",
     "The nine trace-count changes are one new cue, not nine. combat:fire / projectile:hit / combat:damage are unchanged at 17 / 11 / 11.",
     "At tick 417 the eleventh hit now lands on hull instead of shield because the target's shield collapses, which fires shield.collapse plus its cameraCue / vfx / audio / ui / caption fanout.",
     "Cause: commit f277c5e7 (Build Sprint 1, 2026-07-16) set src/data/combatDefs.js DAMAGE_MODEL.subsystemShare 0.75 -> 0.35; its own comment records that 0.75 made starter pulse lasers take hundreds of hits.",
@@ -243,6 +243,11 @@
     "Paired final snapshots differ in 45 leaves: meta.version 18->21, giverId/clientId nulls, 34 pulse dmg/packet leaves (8->5, packet x5/8), warden shield 99.492->110 (regen). ZERO pos/vel/rot diffs; traces identical.",
     "The prior authoritativeHash was 9fa0743e0ed3bf03f1f41485b08fe76a2e6570a228e8db34206aadfe12bd0daf.",
     "2026-10-26 deliberate update: save v21->22 and original-life attackSource {id:1,life:1,team:0} on 12 surviving projectiles. Every other final canonical field, metric and event count matches clean master 0d1a8f792bea.",
-    "Seed47/tick720 canonicalization at 600. Normalizing only those metadata fields reproduces the exact prior hash. Ordinary repeat/reload checks remain required; bounds, repeat minimum, input tape and event families are unchanged."
+    "Seed47/tick720 canonicalization at 600. Normalizing only those metadata fields reproduces the exact prior hash. Ordinary repeat/reload checks remain required; bounds, repeat minimum, input tape and event families are unchanged.",
+    "2026-11-02 deliberate measured-hull migration: commit 48c2d6b09bb9 changes native yaw inertia to mass times the authored planar hull polar moment.",
+    "This includes the length-squared scale omitted by the former handling-only heuristic and intentionally changes Rapier contact response; the delta is not metadata-only.",
+    "The prior legacy hash was 67b74289db0ec320b13146c8ce07ac6622bdeeca46023403107273701c1dfd95; restoring the old formula reproduces it exactly. Measured hash: 560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448.",
+    "Measured legacy outcome: hits/damage 5->2, cues 8->4; the tether stays attached and unbroken. Player position changes (276.573059,58.802704)->(278.157532,56.679245); spindle position changes (305.144806,111.763725)->(311.028656,122.274368).",
+    "The migration preserves seed 47, the input tape, 720 ticks, required event families, acceptance bounds, five-run minimum, and reload@600 canonicalization. The new envelope ID names the measured-hull contract; the prior hash is retained here as history."
   ]
 }

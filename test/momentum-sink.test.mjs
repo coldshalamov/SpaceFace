@@ -30,7 +30,7 @@ import {
   tryPlantMomentumSinkFromHit,
   weapons,
 } from '../src/systems/weapons.js';
-import { fillActiveMassCouplingTargets } from '../src/ui/momentumSinkOverlay.js';
+import { fillActiveMassCouplingTargets, momentumSinkAttribution } from '../src/ui/momentumSinkOverlay.js';
 
 const WEAPON_ID = 'wpn_momentum_sink_s';
 
@@ -292,6 +292,52 @@ test('Rapier applies the bungee snap without taking over flight state', async ()
   } finally {
     owner.dispose();
   }
+});
+
+test('a hostile-sourced sink earns a marker with its own attribution, not YOUR FRAME', () => {
+  const player = bodyEntity(1, 0, 40, { x: 0, z: 0 });
+  const boss = bodyEntity(9, 1, 900, { x: -80, z: 0 });
+  boss.data.scanLabel = 'Iron Kraken';
+  const wingman = bodyEntity(7, 1, 60, { x: 40, z: 0 });
+  const state = combatState(player, boss, wingman);
+  // The trawl's authored write: the boss's own id lands on the gripped hull's frame.
+  state.combat.entities = {
+    [String(player.id)]: { statuses: { [MOMENTUM_SINK_STATUS_ID]: { attackerId: boss.id, expiresTick: state.tick + 90 } } },
+    [String(wingman.id)]: { statuses: { [MOMENTUM_SINK_STATUS_ID]: { attackerId: boss.id, expiresTick: state.tick + 90 } } },
+  };
+  const gravity = [];
+  const momentum = [];
+  const found = fillActiveMassCouplingTargets(state, player.id, gravity, momentum, 6, 6);
+  assert.deepEqual(momentum.map((entity) => entity.id).sort(), [1, 7].sort(),
+    'the overlay scan surfaces hostile hauls on the player and on third hulls alike');
+  assert.equal(found, 2);
+  assert.equal(gravity.length, 0, 'gravity marks still only answer the pilot\'s own authoring');
+
+  const status = state.combat.entities[String(player.id)].statuses[MOMENTUM_SINK_STATUS_ID];
+  const attribution = momentumSinkAttribution(state, status, player.id);
+  assert.equal(attribution.hostile, true);
+  assert.equal(attribution.label, 'IRON KRAKEN', 'the resolvable hauler is named, not just INBOUND');
+  assert.equal(momentumSinkAttribution(state,
+    { attackerId: player.id, expiresTick: state.tick + 90 }, player.id).label, 'YOUR FRAME',
+    'player-authored setup work keeps its existing attribution');
+  const anonymous = momentumSinkAttribution(state, { attackerId: 77, expiresTick: state.tick + 90 }, player.id);
+  assert.equal(anonymous.hostile, true);
+  assert.equal(anonymous.label, 'INBOUND', 'a hauler that cannot be resolved still reads inbound');
+
+  // The marker pool is capped: the pilot's own gripped frame outranks foreign sinks on other hulls.
+  const crowded = combatState(bodyEntity(1, 1, 60, { x: 5, z: 0 }), bodyEntity(2, 1, 60, { x: 6, z: 0 }),
+    bodyEntity(9, 0, 40, { x: 0, z: 0 }));
+  const sunk = { statuses: { [MOMENTUM_SINK_STATUS_ID]: { attackerId: 77, expiresTick: crowded.tick + 90 } } };
+  crowded.combat.entities = { '1': sunk, '2': sunk, '9': sunk };
+  const only = [];
+  fillActiveMassCouplingTargets(crowded, 9, [], only, 0, 1);
+  assert.deepEqual(only.map((entity) => entity.id), [9],
+    'a one-marker budget still goes to the pilot\'s own hull, not the earliest runtime key');
+
+  // An expired sink earns nothing — the marker dies on the status's own clock.
+  state.combat.entities[String(player.id)].statuses[MOMENTUM_SINK_STATUS_ID].expiresTick = state.tick - 1;
+  state.combat.entities[String(wingman.id)].statuses[MOMENTUM_SINK_STATUS_ID].expiresTick = state.tick - 1;
+  assert.equal(fillActiveMassCouplingTargets(state, player.id, gravity, momentum, 6, 6), 0);
 });
 
 function rockEntity(id, mass) {

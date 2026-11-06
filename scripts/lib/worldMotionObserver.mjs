@@ -85,3 +85,61 @@ export function readWorldMotionObserver(page) {
 export function disposeWorldMotionObserver(page) {
   return page.evaluate(() => globalThis.__SF_DRAW_MOTION__?.dispose() || null);
 }
+
+// Observe actual GL calls for the live player root, not Three's attempted submissions.
+// Kept separate from the motion sampler, whose existing samples describe transforms.
+export function installPlayerDrawObserver(page) {
+  return page.evaluate(() => {
+    const s = globalThis.SF?.state;
+    const owner = globalThis.SF?.registry?.get?.('render');
+    const renderer = owner?.renderer || s?.render?.renderer;
+    if (!renderer || !owner?.scene) throw new Error('live renderer unavailable');
+    const gl = renderer.getContext();
+    const direct = renderer.renderBufferDirect;
+    const originals = new Map();
+    const observation = { draws: 0, markedDraws: 0, lastFrameBeforeDraw: null, lastFrameBeforeMarkedDraw: null };
+    let target = false, marked = false;
+    const under = (object, root) => {
+      for (let node = object; node; node = node.parent) if (node === root) return true;
+      return false;
+    };
+    const wrapped = function (camera, scene, geometry, material, object) {
+      const oldTarget = target, oldMarked = marked;
+      const state = globalThis.SF?.state;
+      const root = owner._meshes?.get(state?.playerId) || state?.entities?.get(state.playerId)?.mesh;
+      target = !!root && scene === owner.scene && camera === (owner.camera || state?.render?.camera)
+        && under(object, root);
+      marked = target && !!material?.userData?.spacefaceHullStencils?.decalId
+        && material.userData.spacefaceHullStencils.decalId !== 'none';
+      try { return Reflect.apply(direct, this, arguments); }
+      finally { target = oldTarget; marked = oldMarked; }
+    };
+    renderer.renderBufferDirect = wrapped;
+    for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced']) {
+      if (typeof gl[name] !== 'function') continue;
+      const original = gl[name];
+      const hook = function (...args) {
+        const result = Reflect.apply(original, this, args);
+        if (target) {
+          observation.draws++;
+          observation.lastFrameBeforeDraw = globalThis.SF?.state?.render?.worldSubmittedFrames ?? 0;
+          if (marked) {
+            observation.markedDraws++;
+            observation.lastFrameBeforeMarkedDraw = observation.lastFrameBeforeDraw;
+          }
+        }
+        return result;
+      };
+      originals.set(name, { original, hook });
+      gl[name] = hook;
+    }
+    globalThis.__SF_PLAYER_DRAW_OBSERVER__ = {
+      snapshot: () => ({ ...observation }),
+      dispose() {
+        if (renderer.renderBufferDirect === wrapped) renderer.renderBufferDirect = direct;
+        for (const [name, { original, hook }] of originals) if (gl[name] === hook) gl[name] = original;
+        delete globalThis.__SF_PLAYER_DRAW_OBSERVER__;
+      },
+    };
+  });
+}

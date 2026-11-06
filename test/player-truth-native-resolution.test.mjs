@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installPlayerTruthReader } from '../src/testing/playerTruth/reader.js';
 import { rebuildDeepFieldStars } from '../src/render/deepFieldStars.js';
+import {
+  asteroidInstanceMembership,
+  createAsteroidInstancePool,
+  disposeAsteroidInstancePool,
+  registerAsteroidBaseLeaf,
+  syncAsteroidInstancePool,
+} from '../src/render/asteroidInstancePool.js';
 import { checkBackdrop } from '../scripts/player-truth/checks.mjs';
 
 function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
@@ -95,6 +102,89 @@ test('preparation keeps scalar state without staging-model draws, census scans o
     assert.ok(f.frame().px, 'flight still receives the binding native pixel measurements');
     assert.ok(f.reads.length > 0);
   } finally { f.dispose(); }
+});
+
+test('popping transition diagnostics capture bounded root ownership and actual pool submission only on transitions', () => {
+  const f = fixture({ enemies: 0 });
+  const geometry = new THREE.IcosahedronGeometry(1, 1);
+  const material = new THREE.MeshBasicMaterial();
+  const entity = { id: 584, occupantGeneration: 1, type: 'asteroid', alive: true, radius: 8,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { asteroidKind: 'silicate' } };
+  const pool = createAsteroidInstancePool(f.scene);
+  const root = new THREE.Group();
+  root.name = 'Asteroid_584';
+  root.userData.authoredAssetState = 'loading';
+  root.userData.authoredGeologySkin = true;
+  root.userData.authoredFallbackActive = true;
+  root.userData.authoredFallbackAdmittedOnce = true;
+  root.userData.sfAdmittedOnce = true;
+  let owner = f.scene;
+  for (let i = 0; i < 14; i++) {
+    const parent = new THREE.Group();
+    parent.name = `presentation-owner-${i}`;
+    owner.add(parent);
+    owner = parent;
+  }
+  owner.add(root);
+  const leaf = new THREE.Mesh(geometry, material);
+  leaf.userData.asteroidInstanceTypeId = 'ast_common_rock';
+  leaf.userData.asteroidInstanceVariant = 0;
+  root.userData.asteroidInstanceBody = leaf;
+  root.add(leaf);
+  f.scene.updateMatrixWorld(true);
+  f.state.entityList.push(entity);
+  f.state.render.meshes.set(entity.id, root);
+  let reads = 0;
+  f.state.render.asteroidInstanceMembershipForEntity = (id) => {
+    reads++;
+    return asteroidInstanceMembership(pool, id);
+  };
+  assert.equal(registerAsteroidBaseLeaf(pool, entity, root), true);
+  try {
+    syncAsteroidInstancePool(pool);
+    const first = f.frame().visibilityTransitions;
+    assert.equal(first.length, 1);
+    assert.equal(first[0].id, entity.id);
+    assert.equal(first[0].generation, entity.occupantGeneration);
+    assert.equal(first[0].from, null);
+    assert.equal(first[0].to, 3);
+    assert.equal(first[0].poolMembership.registered, true);
+    assert.equal(first[0].poolMembership.adopted, true);
+    assert.equal(first[0].poolMembership.submitted, true);
+    assert.equal(first[0].poolMembership.draw.visible, true);
+    assert.equal(first[0].ownerChainTruncated, true, JSON.stringify(first[0].ownerChain));
+    assert.equal(first[0].ownerChainReachesScene, false);
+    assert(first[0].ownerChain.length <= 12);
+    assert.equal(first[0].renderableCount, 1);
+    assert.equal(first[0].renderables[0].adopted, true);
+    assert.equal(leaf.visible, false, 'the source leaf is hidden after its pool instance is submitted');
+
+    assert.equal(f.frame().visibilityTransitions, undefined, 'steady frames add no diagnostic DTO');
+    assert.equal(reads, 1, 'steady frames do not query pool membership');
+
+    root.visible = false;
+    syncAsteroidInstancePool(pool);
+    const hidden = f.frame().visibilityTransitions[0];
+    assert.equal(hidden.from, 3);
+    assert.equal(hidden.to, 1);
+    assert.equal(hidden.visibilityOwner, 'Asteroid_584');
+    assert.equal(hidden.poolMembership.submitted, false);
+    assert.equal(hidden.poolMembership.draw.visible, false);
+
+    root.visible = true;
+    syncAsteroidInstancePool(pool);
+    const shown = f.frame().visibilityTransitions[0];
+    assert.equal(shown.from, 1);
+    assert.equal(shown.to, 3);
+    assert.equal(shown.poolMembership.submitted, true);
+    assert.equal(reads, 3);
+    assert.equal(JSON.stringify(shown).includes('[object Object]'), false, 'receipt is scalar data, not an entity reference');
+  } finally {
+    f.state.render.asteroidInstanceMembershipForEntity = null;
+    disposeAsteroidInstancePool(pool);
+    geometry.dispose(); material.dispose();
+    f.dispose();
+  }
 });
 
 function setPixel(pixels, width, height, x, y, value) {

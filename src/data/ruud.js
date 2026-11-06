@@ -1,5 +1,7 @@
 // HOOK-LEFT / Ruud. A living work-suit still plumbed to radiator fin Fin-3.
 // Content and save normalization only. Nineteen hours is a stamp, not a clock.
+// (No yardContracts import here: sectors.js reads RUUD's anchor positions, and the yard
+// data reads sectors.js — the stamped tow-assist quote lives in systems/ruud.js instead.)
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 
 const FIN = Object.freeze({ x: -800, z: 830 });
@@ -62,6 +64,13 @@ export const RUUD_LINES = Object.freeze({
   memorial: 'HOOK-LEFT: Serial 14-K is on the hook. The left gantry stays shut.',
   weapon: 'HOOK-LEFT: The filing is closed. The root is still cherry.',
 });
+
+// SP2-123 "Ruud's Nineteen Hours" — the one new sentence, only this once, after ten
+// sector-days away. Ruud says it exactly as before, then adds this; the fin's radiator ray
+// flickers once, which is the closest a fin comes to applause. (Own const, not a RUUD_LINES
+// key: the line table's key inventory is a pinned manifest — this is the variant, added.)
+export const RUUD_RETURN_STAMP_LINE = 'HOOK-LEFT: Nineteen hours is a stamp, not a clock. '
+  + '\u2014 and one new sentence, only this once: You came back. Stamps like that.';
 
 const PARTS = Object.freeze(['fin', 'suit', 'buoy']);
 const finite = (v, fallback, min, max) => Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;

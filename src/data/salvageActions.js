@@ -3,6 +3,7 @@
 // Wreck salvage should read as a puzzle verb, not just asteroid mining with a different mesh. This
 // file is pure data plus pure helpers: parentType/wreck metadata -> action readout and deterministic
 // salvage pool. The system layer annotates entities and handles timers.
+import { crackerRunLoadRecovery, CRACKER_RUN_LOAD_RECOVERY } from './worldOneOffs.js';
 
 export const SALVAGE_ACTIONS = Object.freeze({
   cut_panel: Object.freeze({
@@ -44,12 +45,19 @@ export const SALVAGE_ACTIONS = Object.freeze({
 });
 
 export const SALVAGE_ACTION_IDS = Object.freeze(Object.keys(SALVAGE_ACTIONS));
+const LOAD_RECOVERY_ACTION = Object.freeze({
+  ...SALVAGE_ACTIONS.cut_panel,
+  verb: 'recover ore', label: 'Recover Ore',
+  hint: 'Hold the beam to dismantle the intact tub. Its ore releases together; the tub is consumed.',
+  pool: Object.freeze({ [CRACKER_RUN_LOAD_RECOVERY.commodityId]: CRACKER_RUN_LOAD_RECOVERY.amount }),
+});
 
 export function actionById(id) {
   return SALVAGE_ACTIONS[id] || null;
 }
 
 export function actionForWreck(entity) {
+  if (crackerRunLoadRecovery(entity)) return LOAD_RECOVERY_ACTION;
   const data = entity && entity.data || {};
   const parentType = data.parentType || data.kind || data.poiType || 'debris';
   if (data.unstableReactor === true || (data.unstableReactor && typeof data.unstableReactor === 'object') || parentType === 'reactor') {

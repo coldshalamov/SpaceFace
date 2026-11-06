@@ -6,7 +6,6 @@ import { createGameState } from './core/gameState.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
-import { createPresentationRegistry } from './runtime/presentationRegistry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
@@ -14,9 +13,7 @@ import { entityIsJournaled } from './world/presentationSources.js';
 import { configureRacingCorridorSession } from './world/racingCorridor.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
-import { installLiveClipDirector } from './ui/screens/clips.js';
-
-import { makeEnemySpawnSpec } from './systems/combat.js';
+import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
 
 import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
 import { createTelemetry } from './systems/telemetry.js';
@@ -59,7 +56,7 @@ import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPac
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 import { loadModelTruthCensus } from './data/modelTruth.js';
-import { ensureLocalizationReady } from './localization/gameLocalization.js';
+import { ensureLocaleReady, setGameLocale, startupLocale } from './localization/sourceText.js';
 import { runtimeAssetUrl } from './core/runtimeAssetUrl.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
@@ -95,10 +92,7 @@ async function boot() {
   installGlobalErrorBoundary();
   try {
     const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
-    const runtimeDataReady = Promise.all([
-      loadModelTruthCensus(modelTruthCensusUrl),
-      ensureLocalizationReady(),
-    ]);
+    const runtimeDataReady = loadModelTruthCensus(modelTruthCensusUrl);
     // Kick the scenario-contract fetch+hash at boot top: it is consumed only at helpers
     // construction below, so the fetch RTT overlaps everything in between instead of
     // serializing ahead of registry init.
@@ -116,6 +110,10 @@ async function boot() {
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
     bootstrapProfileSettingsBeforeRegistry(state);
+    // English source copy needs no inventory. A saved language/URL choice is prepared before
+    // registry initialization can mount its first interactive localized screen.
+    await ensureLocaleReady(state.settings?.locale || startupLocale);
+    setGameLocale(state.settings?.locale || startupLocale);
     // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
     // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
     if (!state.settings.gameplay) state.settings.gameplay = {};
@@ -151,6 +149,7 @@ async function boot() {
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
     const helpers = {
+      prepareLocale: ensureLocaleReady,
       modelTruthCensusUrl,
       scenarioContract: contract.document,
       scenarioContractPath: contract.path,
@@ -173,7 +172,13 @@ async function boot() {
     };
 
     const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
-    let registry = ctx.simLane === 'worker' ? createPresentationRegistry(ctx) : await createFullRegistry();
+    let registry;
+    if (ctx.simLane === 'worker') {
+      const { createPresentationRegistry } = await import('./runtime/presentationRegistry.js');
+      registry = createPresentationRegistry(ctx);
+    } else {
+      registry = await createFullRegistry();
+    }
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
@@ -950,6 +955,10 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     continuePhysicsPrep.catch(() => {});
   }
   try {
+    const restoredSettings = state.settings;
+    await ensureLocaleReady(restoredSettings?.locale || startupLocale);
+    if (!runTransitionGuard.isCurrent(transitionToken) || state.settings !== restoredSettings) return { stale: true };
+    applyAccessibility(restoredSettings);
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
       progress: 0.25,

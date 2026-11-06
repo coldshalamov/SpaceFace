@@ -91,6 +91,23 @@ export function createScarBook(capacity = 24) {
   return { capacity, slots: [], serial: 1 };
 }
 
+/** Store the striking weapon's identity color on a scar slot (null when unnamed). */
+function scarWeaponColor(slot, weapon) {
+  const wr = weapon ? num(weapon[0]) : NaN;
+  const wg = weapon ? num(weapon[1]) : NaN;
+  const wb = weapon ? num(weapon[2]) : NaN;
+  if (Number.isFinite(wr) && Number.isFinite(wg) && Number.isFinite(wb)) {
+    slot.wr = Math.min(1, Math.max(0, wr));
+    slot.wg = Math.min(1, Math.max(0, wg));
+    slot.wb = Math.min(1, Math.max(0, wb));
+  } else {
+    // Slots are reused objects: an unnamed strike must clear the previous life's weapon.
+    slot.wr = null;
+    slot.wg = null;
+    slot.wb = null;
+  }
+}
+
 export function noteHullScar(book, hit) {
   if (!book || hit == null || hit.hullId == null) return null;
   const lx = num(hit.lx);
@@ -103,6 +120,9 @@ export function noteHullScar(book, hit) {
     if (slot.hullId !== hit.hullId) continue;
     if (Math.hypot(slot.lx - lx, slot.lz - lz) <= 1.2) {
       slot.severity = Math.max(slot.severity, num(hit.severity));
+      // A fresh strike on an existing wound re-heats it and re-names the weapon that made it.
+      slot.born = num(hit.now);
+      scarWeaponColor(slot, hit.weapon);
       return slot;
     }
   }
@@ -125,7 +145,33 @@ export function noteHullScar(book, hit) {
   slot.severity = num(hit.severity) || 0.2;
   slot.born = num(hit.now);
   slot.serial = book.serial++;
+  scarWeaponColor(slot, hit.weapon);
   return slot;
+}
+
+/** Seconds a fresh scar glows in the striking weapon's own colors before cooling to burn amber. */
+export const SCAR_WEAPON_COOL_S = 2.6;
+
+const BURN_SCAR_RGB = Object.freeze([0.86, 0.62, 0.34]);
+
+/**
+ * Draw color of one hull scar: a fresh wound still glows in the weapon's own colors, so a crowd
+ * of scars reads as who is hitting whom with what; the cooled scar wears the shared burn amber
+ * every old mark has always worn. Writes [r,g,b] into `out` and returns it. No allocation.
+ */
+export function scarDrawColor(slot, now, out) {
+  out[0] = BURN_SCAR_RGB[0];
+  out[1] = BURN_SCAR_RGB[1];
+  out[2] = BURN_SCAR_RGB[2];
+  if (!slot || slot.wr == null) return out;
+  const age = Math.max(0, num(now) - num(slot.born));
+  const heat = 1 - Math.min(1, age / SCAR_WEAPON_COOL_S);
+  if (heat <= 0) return out;
+  const glow = heat * heat * (3 - 2 * heat);
+  out[0] = BURN_SCAR_RGB[0] + (slot.wr - BURN_SCAR_RGB[0]) * glow;
+  out[1] = BURN_SCAR_RGB[1] + (slot.wg - BURN_SCAR_RGB[1]) * glow;
+  out[2] = BURN_SCAR_RGB[2] + (slot.wb - BURN_SCAR_RGB[2]) * glow;
+  return out;
 }
 
 export function scarHalfLength(slot, now) {

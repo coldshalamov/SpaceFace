@@ -1,15 +1,21 @@
 // PQ-131.01 — authored Rover source/release/package and live-wire contract.
-// This is intentionally filesystem-only: the browser capture proves the player route separately,
-// while these checks pin the exact GLB identity, LOD boundary, named hooks, and lifecycle seam.
+// Headless native coverage for the authored Rover asset identity, exact hooks, and async owner
+// lifecycle. The browser route separately proves the player-facing surface and appearance.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { runInNewContext } from 'node:vm';
 
 import { WORKS_PARTS } from '../src/ui/asteroid/worksPartLoader.js';
 import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 
 const ROOT = new URL('../', import.meta.url);
+const require = createRequire(import.meta.url);
+const { parse } = require(require.resolve('@babel/parser', {
+  paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()],
+}));
 const SOURCE_PATH = 'assets/ships/parts/works/place_works_rover.glb';
 const RELEASE_PATH = 'assets/ships/release/parts/works/place_works_rover.glb';
 const PACKAGE_META_PATH = 'assets/ships/release/render-packages/works-rover/render-package.json';
@@ -22,6 +28,98 @@ const REQUIRED_HOOKS = [
 
 function pathUrl(path) {
   return new URL(path, ROOT);
+}
+
+const RENDERER_SOURCE = readFileSync(pathUrl('src/ui/asteroid/asteroidRenderer3d.js'), 'utf8');
+
+function productionFunctionSource(name) {
+  let found = null;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === name) found = node;
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object' && value.type) visit(value);
+    }
+  };
+  visit(parse(RENDERER_SOURCE, { sourceType: 'module' }));
+  assert.ok(found, `${name} must remain an executable renderer function`);
+  return RENDERER_SOURCE.slice(found.start, found.end);
+}
+
+const LOAD_AUTHORED_ROVER = productionFunctionSource('loadAuthoredRover');
+const ADMIT_TERRAIN = productionFunctionSource('admitTerrain');
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+function roverLoadFixture({ assetPromise, pipelinePromise = Promise.resolve(true) }) {
+  const events = [];
+  const logs = [];
+  const state = { group: null, loadPromise: null, ready: false, failed: false };
+  const rover = { visible: false };
+  const pipelineStarted = deferred();
+  const loader = {
+    loadWorksPart(id) { events.push(`load:${id}`); return assetPromise; },
+    releaseWorksPart(group) { events.push('release'); return group; },
+  };
+  const scope = {
+    authoredRoverState: state,
+    authoredRoverGen: 0,
+    worksTearingDown: false,
+    disposed: false,
+    glTeardownDone: false,
+    ensureWorksLoader: () => loader,
+    installAuthoredRover(group) {
+      state.group = group;
+      rover.visible = !!group;
+      return true;
+    },
+    queueWorksPipelines() {
+      pipelineStarted.resolve();
+      return pipelinePromise;
+    },
+    rover,
+    console: { error(...args) { logs.push(args); } },
+  };
+  return {
+    load: runInNewContext(`(${LOAD_AUTHORED_ROVER})`, scope),
+    events,
+    logs,
+    pipelineStarted: pipelineStarted.promise,
+    scope,
+    state,
+    rover,
+  };
+}
+
+function terrainFixture({ pipelinePromise }) {
+  const logs = [];
+  const pipelineStarted = deferred();
+  const scope = {
+    terrainGeneration: 0,
+    terrainReady: false,
+    terrainFailed: false,
+    worksTearingDown: false,
+    disposed: false,
+    glTeardownDone: false,
+    rockGroup: {},
+    queueWorksPipelines() {
+      pipelineStarted.resolve();
+      return pipelinePromise;
+    },
+    console: { error(...args) { logs.push(args); } },
+  };
+  return {
+    admit: runInNewContext(`(${ADMIT_TERRAIN})`, scope),
+    logs,
+    pipelineStarted: pipelineStarted.promise,
+    scope,
+  };
 }
 
 function bytes(path) {
@@ -125,6 +223,75 @@ test('works loader and renderer use the single-flight authored seam with no proc
   assert.match(rendererSource, /releaseWorksPart\(group\)/u);
   assert.doesNotMatch(rendererSource, /\bmakeRover\b/u);
   assert.doesNotMatch(previewSource, /export function makeRover/u);
+});
+
+test('Rover and terrain continuations honor live ownership while preserving active failures', async () => {
+  const canceledNull = deferred();
+  const canceledLoad = roverLoadFixture({ assetPromise: canceledNull.promise });
+  const canceledNullResult = canceledLoad.load();
+  canceledLoad.scope.worksTearingDown = true;
+  canceledLoad.scope.authoredRoverGen += 1;
+  canceledNull.resolve(null);
+  assert.equal(await canceledNullResult, null);
+  assert.equal(canceledLoad.state.failed, false);
+  assert.deepEqual(canceledLoad.logs, [], 'a cancelled null load is not an authored-asset failure');
+
+  const canceledReject = deferred();
+  const canceledRejectedLoad = roverLoadFixture({ assetPromise: canceledReject.promise });
+  const canceledRejectResult = canceledRejectedLoad.load();
+  canceledRejectedLoad.scope.disposed = true;
+  canceledRejectedLoad.scope.authoredRoverGen += 1;
+  canceledReject.reject(new Error('context retired'));
+  assert.equal(await canceledRejectResult, null);
+  assert.equal(canceledRejectedLoad.state.failed, false);
+  assert.deepEqual(canceledRejectedLoad.logs, [], 'a cancelled load rejection is silent');
+
+  const activeFailure = deferred();
+  const activeLoad = roverLoadFixture({ assetPromise: activeFailure.promise });
+  const activeFailureResult = activeLoad.load();
+  activeFailure.reject(new Error('active asset failure'));
+  assert.equal(await activeFailureResult, null);
+  assert.equal(activeLoad.state.failed, true, 'a live load failure remains observable in readiness');
+  assert.equal(activeLoad.logs.length, 1, 'a live load failure keeps its diagnostic');
+
+  const latePipeline = deferred();
+  const oldGroup = { id: 'old' };
+  const lateLoad = roverLoadFixture({
+    assetPromise: Promise.resolve(oldGroup),
+    pipelinePromise: latePipeline.promise,
+  });
+  const lateResult = lateLoad.load();
+  await lateLoad.pipelineStarted;
+  const newerGroup = { id: 'new' };
+  lateLoad.scope.authoredRoverGen += 1;
+  lateLoad.state.group = newerGroup;
+  lateLoad.state.ready = false;
+  lateLoad.rover.visible = true;
+  latePipeline.resolve(true);
+  assert.equal(await lateResult, null);
+  assert.equal(lateLoad.state.group, newerGroup, 'an old admission cannot replace the current group');
+  assert.equal(lateLoad.state.ready, false, 'an old admission cannot publish readiness for its successor');
+  assert.deepEqual(lateLoad.logs, []);
+
+  const canceledTerrainPipeline = deferred();
+  const canceledTerrain = terrainFixture({ pipelinePromise: canceledTerrainPipeline.promise });
+  canceledTerrain.admit();
+  await canceledTerrain.pipelineStarted;
+  canceledTerrain.scope.worksTearingDown = true;
+  canceledTerrainPipeline.reject(new Error('context retired'));
+  await Promise.resolve();
+  assert.equal(canceledTerrain.scope.terrainFailed, false);
+  assert.deepEqual(canceledTerrain.logs, [], 'teardown compile cancellation is not a terrain failure');
+
+  const activeTerrainPipeline = deferred();
+  const activeTerrain = terrainFixture({ pipelinePromise: activeTerrainPipeline.promise });
+  activeTerrain.admit();
+  await activeTerrain.pipelineStarted;
+  activeTerrainPipeline.reject(new Error('active pipeline failure'));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(activeTerrain.scope.terrainFailed, true);
+  assert.equal(activeTerrain.logs.length, 1, 'a live pipeline failure keeps its diagnostic');
 });
 
 test('Rover render package is content-addressed to the selected release', () => {

@@ -1,6 +1,8 @@
 // SLOT ON THE TRADE LANE — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Tethys Trade Hub card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { stationLine } from '../communityPersonality.js';
 
 const spec = {
   "id": "lived_trade_lane_wreck_mule_trader_literalized",
@@ -29,17 +31,17 @@ const spec = {
     {
       "id": "a",
       "label": "Read the plate",
-      "playerLine": "I will read the slot plate before anyone starts the tow."
+      "playerLine": "I’ll read the slot plate before anyone quotes the wreck."
     },
     {
       "id": "b",
       "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "playerLine": "I’ll hold it clear while the desk checks its standing."
     },
     {
       "id": "c",
       "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the slot out of my route."
+      "playerLine": "Not my lien. Let the slot keep its account."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +54,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "MOSS: The slot is stamped on a wreck at trade lane. Do not cut yet.",
+      "line": "MOSS: That wreck’s slot stamp is exchange property. The board is live; no cutting.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +69,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The hull number stops halfway through the last digit.",
+      "line": "The hull number stops mid-digit, like a quote interrupted mid-war.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +83,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "MOSS keeps the cutting torch pointed at the deck.",
+      "line": "MOSS keeps the torch pointed at the deck until the desk certifies the shadow.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +97,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The slot has a serial someone still loves.",
+      "line": "The slot has a standing account. Dead hulls keep worse credit than live ones.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +111,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "The noise in trade lane was running before your drive.",
+      "line": stationLine('station_tethys', 3) || 'The board quotes the wreck daily; the wreck never replies.',
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "MOSS: Holding. The work decides when it is done.",
+      "line": "MOSS: Holding. The delay splits; my patience is the smaller half.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +150,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Plate read. The registry lists a shift, not a final owner.",
+      "line": "Plate read. The exchange lists a shift, a lien, and no final owner.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +177,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Wreck held. The next registry pass can happen without drift.",
+      "line": "Wreck held. DESK logged the hold as a delay, split two ways.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +197,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left it. The slot keeps its slow turn at trade lane.",
+      "line": "You left it. The slot keeps its slow turn, accruing.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +248,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SLOT ON THE TRADE LANE",
-  "primaryLine": "MOSS: The slot is stamped on a wreck at trade lane. Do not cut yet.",
+  "primaryLine": "MOSS: That wreck’s slot stamp is exchange property. The board is live; no cutting.",
   "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
       "label": "Read the plate",
-      "playerLine": "I will read the slot plate before anyone starts the tow."
+      "playerLine": "I’ll read the slot plate before anyone quotes the wreck."
     },
     {
       "id": "b",
       "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "playerLine": "I’ll hold it clear while the desk checks its standing."
     },
     {
       "id": "c",
       "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the slot out of my route."
+      "playerLine": "Not my lien. Let the slot keep its account."
     }
   ],
   "timeoutChoice": "c",

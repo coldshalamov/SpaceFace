@@ -13,7 +13,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
-import { makeEnemySpawnSpec } from './combat.js';
+import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
@@ -291,6 +291,9 @@ export function materializeWaveBatch(ctx, request) {
         spec.pos = open;
       }
       spec.data = spec.data || {};
+      // Initial pose is spawn-owned. The eight-arm rig and the first locked tell share +X
+      // forward, without a runtime transform correction fighting the native helm.
+      if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
       // Admission owns the initial hold: the AI may run before the next wave update.

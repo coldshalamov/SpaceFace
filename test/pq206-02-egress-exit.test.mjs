@@ -107,11 +107,60 @@ test('protected hulls never egress: moraleImmune, arena survival, encounter-owne
   for (const e of cases) assert.equal(e.data.despawnAt, undefined, `entity ${e.id} must not egress`);
 });
 
+test('mission-owned bodies never egress: their exits belong to the contract', () => {
+  const cases = [
+    ship(30, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true }, data: { missionPinned: true, missionId: 'm_5' } }),
+    ship(31, { pos: { x: 2000, z: 0 }, ai: { fsm: 'flee' }, data: { missionTag: 'm_5' } }),
+    ship(32, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true }, data: { missionId: 'm_5' } }),
+  ];
+  cases[1].flags = { missionPinned: true };
+  const state = makeState({ entities: cases });
+  stepEgressExits(state, state.entityList, makeBus());
+  for (const e of cases) {
+    assert.equal(e.data.despawnAt, undefined,
+      `entity ${e.id}: a fleeing mission mark must stay reachable — the contract owns its exit`);
+  }
+});
+
+test('a stamp placed before pinning releases once the contract owns the body', () => {
+  const mark = ship(33, { pos: { x: 1500, z: 0 }, ai: { forceFlee: true } });
+  const state = makeState({ entities: [mark] });
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.ok(mark.data.despawnAt != null);
+  mark.data.missionId = 'm_5';
+  mark.data.missionPinned = true; // contract stamped the hull after the bound saw it
+  state.tick += EGRESS_SCAN_TICKS;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(mark.data.despawnAt, undefined);
+  assert.equal(mark.data._egressExitAt, undefined);
+});
+
 test('encounter roster membership is protected even without a data marker', () => {
   const scripted = ship(20, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true } });
   const state = makeState({ entities: [scripted], live: { enc_1: { phase: 'conflict', ids: [20] } } });
   stepEgressExits(state, state.entityList, makeBus());
   assert.equal(scripted.data.despawnAt, undefined);
+});
+
+test('a live job owns its fleeing worker and releases only a prior egress stamp', () => {
+  const worker = ship(21, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true },
+    data: { jobId: 'job:worker', worldRecordId: 'worker' } });
+  const state = makeState({ entities: [worker] });
+  const entry = { job: { id: 'job:worker' }, entityId: worker.id, entityRef: worker, worldRecordId: 'worker' };
+  state.npcJobs = { byId: { 'job:worker': entry } };
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, undefined);
+  worker.data.despawnAt = worker.data._egressExitAt = 105;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, undefined, 'adoption revokes a prior ambient egress');
+  worker.data.despawnAt = 500;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, 500, 'a foreign deadline stays with its owner');
+  delete worker.data.despawnAt;
+  entry.entityRef = { ...worker };
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, state.simTime + EGRESS_FADE_S,
+    'a recycled occupant cannot borrow the former worker job');
 });
 
 test('the scan is cadence-gated: off-tick calls do not stamp or release', () => {

@@ -1,3 +1,4 @@
+import { mountCinderglassJobContracts } from '../../../features/cinderglassJob/integration.js';
 import { briefingDiagramHtml, contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
 import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
@@ -51,6 +52,9 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
+// DUST P5: mission-type tag chips — a small type glyph plus the type's own label leads each
+// board row, so the board scans by verb instead of by reading every authored title.
+import { missionTypeChipHtml, missionTypeGlyphSvg } from '../../icons/index.js';
 import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
 import { injectOrreryStationContracts } from '../../orrery/station-contractsLayouts.js';
 import { arcGauge } from '../../orrery/instruments.js';
@@ -525,6 +529,7 @@ export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
+  const cinderglassContact = mountCinderglassJobContracts(ctx, el);
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
   const standingEl = document.createElement('p');
   standingEl.className = 'k-sentence';
@@ -655,8 +660,8 @@ export function createContractsScreen(ctx) {
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',
-        headline: 'No missions posted at this berth.',
-        fills: 'Boards fill when a station has cargo it cannot move itself. Try a mission desk or black-market contact at another berth.',
+        headline: 'The board is blank tonight.',
+        fills: 'This berth can move everything it owns. Desks with freight they cannot shift post at busier stations — or wait a shift; boards answer to whoever gets desperate.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
@@ -733,6 +738,9 @@ export function createContractsScreen(ctx) {
             // not inside the title: the title's overflow:hidden would clip it entirely.
             (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
+              // DUST P5: the type chip leads the title (glyph is decorative; the type word is
+              // real content, so the spoken row names its verb before its prose).
+              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type) })}` +
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
@@ -1374,8 +1382,8 @@ export function createContractsScreen(ctx) {
       endHold();
       mountDataState(dossierEl, 'empty', {
         code: 'BRIEF_UNSELECTED',
-        headline: 'No mission selected.',
-        fills: 'Pick a job to open its briefing.',
+        headline: 'Nothing under seal yet.',
+        fills: 'The board only talks about what you point at. Pick a job to read its terms.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-brief' }),
@@ -1426,7 +1434,7 @@ export function createContractsScreen(ctx) {
           const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-              `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
@@ -1437,6 +1445,7 @@ export function createContractsScreen(ctx) {
   }
 
   function renderAll(state) {
+    cinderglassContact.frame(state);
     renderBoard(state);
     renderDossier(state);
     renderActive(state);
@@ -1637,6 +1646,7 @@ export function createContractsScreen(ctx) {
       endHold();
     },
     dispose() {
+      cinderglassContact.destroy();
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       releaseTarget?.removeEventListener?.('pointerup', onPointerReleased, true);
       releaseTarget?.removeEventListener?.('pointercancel', onPointerCancelled, true);

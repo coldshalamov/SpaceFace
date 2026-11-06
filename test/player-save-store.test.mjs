@@ -349,6 +349,7 @@ test('keepalive is only requested when the UTF-8 body fits the Chromium budget',
 
   const seen = [];
   globalThis.fetch = async (url, opts) => {
+    assert.equal(opts.headers.Prefer, 'return=minimal');
     seen.push(opts.keepalive);
     return { ok: true, status: 200 };
   };
@@ -398,11 +399,25 @@ test('two game servers sharing a store directory see the same slots', async (t) 
     body: JSON.stringify({ keys: { 'sf.save.quick': payload } }),
   });
   assert.equal(put.status, 200);
+  assert.deepEqual(await put.json(), { ok: true, keys: { 'sf.save.quick': payload } },
+    'default PUT retains the full response contract');
+
+  const minimal = await fetch(`http://127.0.0.1:${ports[0]}${PLAYER_STORE_ROUTE}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ keys: { 'sf.settings.profile.v1': '{"mode":"test"}' } }),
+  });
+  assert.equal(minimal.status, 204);
+  assert.equal(minimal.headers.get('preference-applied'), 'return=minimal');
+  assert.equal(await minimal.text(), '', 'minimal acknowledgement excludes the unrelated quick save');
+  assert.equal(readPlayerStoreKeysSync(dir)['sf.settings.profile.v1'], '{"mode":"test"}',
+    'the write has reached the shared drawer before acknowledgement');
 
   const get = await fetch(`http://127.0.0.1:${ports[1]}${PLAYER_STORE_ROUTE}`);
   assert.equal(get.status, 200);
   const body = await get.json();
   assert.equal(body.keys['sf.save.quick'], payload);
+  assert.equal(body.keys['sf.settings.profile.v1'], '{"mode":"test"}');
 });
 
 test('a store-less server does not expose player saves', async (t) => {

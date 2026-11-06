@@ -9,10 +9,12 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_RECEIPT_TTL_S,
   CONTACT_HAIL_REQUEST_TTL_S,
+  GENERIC_ROLE_LABELS,
   HEAVE_TO_COMPLIANT_ROLES,
   contactHailAvailability,
   createContactHailOffer,
 } from '../data/contactHail.js';
+import { hailRegistrySlot } from '../data/shipRegistry.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
@@ -89,12 +91,18 @@ function roleWord(entity) {
   return String(data.trafficRole || data.role || entity && entity.role || '').trim().toLowerCase();
 }
 
-function callsign(entity) {
+function callsign(entity, seed = 0) {
   const data = entity && entity.data || {};
-  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toUpperCase();
+  const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
+  if (authored) {
+    return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+  // Same registry the hail header reads (src/data/shipRegistry.js): an anonymous hull's deck
+  // label is its painted name and captain, not its job description.
+  const registry = hailRegistrySlot(entity, seed, GENERIC_ROLE_LABELS);
+  if (registry) return String(registry).replace(/\s+/g, ' ').trim().toUpperCase();
+  return String(data.trafficLabel || 'UNIDENTIFIED').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 function resolveFactionId(entity) {
@@ -138,7 +146,7 @@ export function resolveHailVisual(state, payload, availability = null) {
   const kind = String(availability && availability.kind || payload && payload.kind || '').trim();
   const role = roleWord(entity);
   const density = densityForContact(kind, role);
-  const pilot = callsign(entity);
+  const pilot = callsign(entity, state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0);
   const classWord = classWordFromOffer(payload, availability, entity);
   const factionId = resolveFactionId(entity);
   return {

@@ -1,19 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { objectiveIsOffSector } from '../src/ui/objectiveSector.js';
 import { starterBuoyRouteFocus, starterBuoySpec, registerStarterBuoyTow, isOriginalStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
+import { missions } from '../src/systems/missions.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 const src = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const source = src('src/systems/missions.js');
-const start = source.indexOf('  _missionWaypoint(m) {');
-const end = source.indexOf('\n  _firstLiveMissionTarget(m)', start);
-const method = source.slice(start, end).trim().replace(/,$/, '');
-const waypoint = Function('firstWaspRouteFocus', 'starterBuoyRouteFocus', 'SECTOR_BY_ID', 'STATION_INFO', 'missionNavReason',
-  'return ({' + method + '})._missionWaypoint;')(() => null, starterBuoyRouteFocus,
-  new Map([['sector_helios_prime', { name: 'Helios Prime' }]]),
-  new Map([['station_helios', { name: 'Helios Station' }]]), () => 'physical job');
+const waypoint = missions._missionWaypoint;
 const nav = (m, s) => waypoint.call({ state: s }, m);
 function setup(step = 1) {
   const m = { id: `starter-starter_pelican-${step}`, status: 'active', source: 'starterJob',
@@ -108,7 +104,7 @@ test('actual HUD station-priority consumer changes from buoy position to receivi
   const ns=src('src/ui/navigationWaypoint.js');
   const resolve=Function('resolveEntitySelection','SECTORS',ns.replace(/^import[^;]+;\n/gm,'').replace(/export /g,'')+';return resolveWaypointPresentationPosition;')((s,stable)=>s.entities.get(stable.id),[]);
   const home={x:1280,z:-420};
-  const consume=Function('resolveNavStation','resolveWaypointPresentationPosition','return function(state){let wp=null,wpLabel=null,navMeta=null;'+evidence.slice(a,b)+';return {wp,wpLabel};}')(()=>({pos:home}),resolve);
+  const consume=Function('objectiveIsOffSector','resolveNavStation','resolveWaypointPresentationPosition','return function(state){const arrow=null,elNavReadout=null,setDisplay=()=>{},setClass=()=>{};let wp=null,wpLabel=null,navMeta=null;'+evidence.slice(a,b)+';return {wp,wpLabel};}')(objectiveIsOffSector,()=>({pos:home}),resolve);
   for(const step of [1,2,3]) {
     const {m,e,s}=setup(step);s.nav={waypoint:nav(m,s)};
     assert.deepEqual(consume(s).wp,e.pos);

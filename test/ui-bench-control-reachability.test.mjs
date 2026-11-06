@@ -54,6 +54,103 @@ test('a receipt covering BUY is named as the failed centre hit', () => {
   assert.match(measureControlReachability(doc, 'station')[0], /Market BUY.*700×460.*centre.*sx-receipt/);
 });
 
+test('hit testing uses the currently visible intersection instead of a clipped center', () => {
+  const { doc, add } = fixture();
+  const buy = add(BUY, 'BUY 1', [20, 30, 100, 30]);
+  const clip = doc.createElement('div');
+  clip.style.overflowX = 'hidden';
+  clip.getBoundingClientRect = () => ({ left: 20, top: 30, right: 60, bottom: 60, width: 40, height: 30 });
+  clip.clientWidth = 40; clip.clientHeight = 30;
+  clip.appendChild(buy);
+  doc.elementFromPoint = (x) => x <= 60 ? buy : null;
+  assert.deepEqual(measureControlReachability(doc, 'station'), [],
+    'the visible part of a clipped control has a real hit target');
+});
+
+test('a control clipped by a scrollable ancestor is not called intercepted before scrolling', () => {
+  const { doc, add } = fixture();
+  const buy = add(BUY, 'BUY 1', [520, 500, 100, 26]);
+  const scroll = doc.createElement('div');
+  scroll.style.overflowY = 'auto';
+  scroll.getBoundingClientRect = () => ({ left: 500, top: 200, right: 650, bottom: 400, width: 150, height: 200 });
+  scroll.clientWidth = 150; scroll.clientHeight = 200;
+  scroll.scrollWidth = 150; scroll.scrollHeight = 520;
+  scroll.appendChild(buy);
+  doc.elementFromPoint = () => scroll;
+  assert.deepEqual(measureControlReachability(doc, 'station'), [],
+    'the scrollport can reveal this control, so its unscrolled center is not an interception');
+});
+
+test('an inner scrollport can reveal a control through an overlapping fixed outer clip', () => {
+  const { doc, add } = fixture();
+  const buy = add(BUY, 'BUY 1', [520, 500, 100, 26]);
+  const frame = doc.createElement('div');
+  frame.style.overflowY = 'hidden';
+  frame.getBoundingClientRect = () => ({ left: 500, top: 200, right: 650, bottom: 400, width: 150, height: 200 });
+  frame.clientWidth = 150; frame.clientHeight = 200;
+  const scroll = doc.createElement('div');
+  scroll.style.overflowY = 'auto';
+  scroll.getBoundingClientRect = () => ({ left: 510, top: 210, right: 640, bottom: 370, width: 130, height: 160 });
+  scroll.clientWidth = 130; scroll.clientHeight = 160;
+  scroll.scrollWidth = 130; scroll.scrollHeight = 520;
+  scroll.appendChild(buy);
+  frame.appendChild(scroll);
+  doc.elementFromPoint = () => scroll;
+  assert.deepEqual(measureControlReachability(doc, 'station'), [],
+    'the inner scroll can bring the control into the overlapping aperture of both clips');
+});
+
+test('an inner scroll can reveal a control when its scrollport only partly overlaps a fixed outer clip', () => {
+  const { doc, add } = fixture();
+  const buy = add(BUY, 'BUY 1', [520, 450, 100, 26]);
+  const frame = doc.createElement('div');
+  frame.style.overflowY = 'hidden';
+  frame.getBoundingClientRect = () => ({ left: 500, top: 200, right: 650, bottom: 340, width: 150, height: 140 });
+  frame.clientWidth = 150; frame.clientHeight = 140;
+  const scroll = doc.createElement('div');
+  scroll.style.overflowY = 'auto';
+  scroll.getBoundingClientRect = () => ({ left: 510, top: 300, right: 640, bottom: 460, width: 130, height: 160 });
+  scroll.clientWidth = 130; scroll.clientHeight = 160;
+  scroll.scrollWidth = 130; scroll.scrollHeight = 520;
+  scroll.appendChild(buy);
+  frame.appendChild(scroll);
+  doc.elementFromPoint = () => scroll;
+  assert.deepEqual(measureControlReachability(doc, 'station'), [],
+    'the 40px shared aperture can contain the 26px control after inner scrolling');
+});
+
+test('non-scrollable clipping remains a reachability failure', () => {
+  const { doc, add } = fixture();
+  const buy = add(BUY, 'BUY 1', [520, 300, 100, 26]);
+  const clip = doc.createElement('div');
+  clip.style.overflowY = 'hidden';
+  clip.getBoundingClientRect = () => ({ left: 500, top: 200, right: 650, bottom: 260, width: 150, height: 60 });
+  clip.clientWidth = 150; clip.clientHeight = 60;
+  clip.appendChild(buy);
+  doc.elementFromPoint = () => clip;
+  assert.match(measureControlReachability(doc, 'station').join('\n'), /Market BUY.*non-scrollable ancestor/);
+});
+
+test('controls behind an active modal are deferred while its own blocked action is still reported', () => {
+  const { doc, add } = fixture();
+  const behind = add(BUY, 'BUY 1', [520, 410, 100, 26]);
+  const modal = doc.createElement('dialog');
+  modal.getBoundingClientRect = () => ({ left: 150, top: 100, right: 550, bottom: 400, width: 400, height: 300 });
+  const dialogBuy = doc.createElement('button');
+  dialogBuy.textContent = 'BUY confirmation';
+  dialogBuy.getBoundingClientRect = () => ({ left: 300, top: 300, right: 400, bottom: 330, width: 100, height: 30 });
+  modal.appendChild(dialogBuy);
+  modal.contains = node => node === modal || node === dialogBuy;
+  dialogBuy.contains = node => node === dialogBuy;
+  modal.querySelectorAll = selector => selector.includes('button') ? [dialogBuy] : [];
+  doc.querySelectorAll = selector => selector === 'dialog:modal' ? [modal]
+    : selector === BUY ? [behind] : [];
+  doc.elementFromPoint = () => ({ tagName: 'DIV', className: 'dialog-shield' });
+  assert.match(measureControlReachability(doc, 'station').join('\n'), /Active dialog action BUY confirmation.*dialog-shield/);
+  assert.doesNotMatch(measureControlReachability(doc, 'station').join('\n'), /Market BUY BUY 1/,
+    'the underlying station action is not mislabeled as a dialog failure');
+});
+
 test('hidden or non-interactive controls stay in the measure instead of disappearing', () => {
   for (const [property, value] of [['pointerEvents', 'none'], ['visibility', 'hidden'], ['opacity', '0'], ['display', 'none']]) {
     const { doc, add } = fixture();

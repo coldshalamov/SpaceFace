@@ -20,6 +20,7 @@ export const MORROW_LINES = Object.freeze({
   windup: 'MORROW: There. Hold that curve. Leaving the light cancels the push.',
   launched: 'MORROW: Go on. There is more sky.',
   tenth: 'MORROW: Ten departures. Ten arrivals, I hope.',
+  hundredth: 'MORROW: One hundred departures. I have stopped counting arrivals separately. They are the same number. Good. Sit with that a moment. … Go on. There is more sky. There always was.',
   cooldown: 'MORROW: Catching my breath. Old machinery. Very old manners.',
   cancel: 'MORROW: No hurry. The sky keeps.',
   shy: 'MORROW: Please do not make me remember what that sound is.',

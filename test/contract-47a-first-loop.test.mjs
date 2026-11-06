@@ -12,6 +12,7 @@ import {
 
 function harness(seed = 47) {
   const state = createGameState(seed);
+  state.world.currentSectorId = 'sector_helios_prime';
   state.mode = 'flight';
   state.simTime = 10;
   state.playerId = 1;

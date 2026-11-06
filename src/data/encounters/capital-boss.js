@@ -1,5 +1,6 @@
 // LAST_ARGUMENT_INTEGRATION_V1
 import { LAST_ARGUMENT_SCORE } from './capital-boss/last-argument.js';
+import { IRON_KRAKEN_HEAVY, IRON_KRAKEN_COLOSSUS } from './capital-boss/iron-kraken.js';
 // Packet 09: complete authored capitals. Legacy exports and actor recipe fields are preserved.
 // `.score` is executed by capitalBossScore.js; the stock mission spawner alone does NOT execute it.
 import { IRON_MAW } from './capital-boss/iron-maw.js';
@@ -52,6 +53,8 @@ export const CAPITAL_BOSS_YARDMASTER_ENCOUNTER = YARDMASTER;
 export const CAPITAL_BOSS_ADJUDICATOR_ENCOUNTER = ADJUDICATOR_44C;
 export const CAPITAL_BOSS_HIVE_HULK_ENCOUNTER = HIVE_HULK;
 export const CAPITAL_BOSS_ENCOUNTERS = Object.freeze({
+  [IRON_KRAKEN_HEAVY.id]: IRON_KRAKEN_HEAVY,
+  [IRON_KRAKEN_COLOSSUS.id]: IRON_KRAKEN_COLOSSUS,
   [LAST_ARGUMENT_SCORE.id]: LAST_ARGUMENT_SCORE,
   [IRON_MAW.id]: IRON_MAW, [TOLLMAN.id]: TOLLMAN, [ALA.id]: ALA,
   [FOREMAN.id]: FOREMAN, [REGENT.id]: REGENT,

@@ -418,18 +418,21 @@ test('full production native receiver delivers the finite load through Continue 
       }
       if (continued && !residencyChecked && route(r).phase === 'delivery') {
         const held = structuredClone(hold(r)), recordId = anvilWorkerRecordId(f.state, 'receiver');
+        const departure = { ...r.pos };
         f.world.relocatePlayerInSector({ x: r.pos.x + 18000, z: r.pos.z + 18000, heading: 0 },
           { reason: 'anvil-receiver-residency-observation' });
         let farTicks = 0;
         for (; farTicks < 600 && f.state.simTime + 1 / 60 <= routeDeadline; farTicks++) f.step();
         assert.equal(farTicks, 600, 'full ten-second distant residency fits the absolute route deadline');
-        assert.equal(f.actor('receiver'), undefined, 'ordinary residency shelves the distant tender');
-        const retained = f.state.world.records.byId[recordId];
-        assert.deepEqual(hold(retained), held, 'far owner preserves finite cargo, without offscreen delivery');
+        const retained = f.actor('receiver');
+        assert.ok(retained, 'the original active work tender remains physically live at a distance');
+        assert.equal(retained.data.worldRecordId, recordId);
+        assert.ok(f.physics._sg02.records.has(retained.id), 'the distant tender has its native body');
+        assert.ok(Math.hypot(retained.pos.x - departure.x, retained.pos.z - departure.z) > 1,
+          'the distant tender physically advances on its route');
+        assert.deepEqual(hold(retained), held, 'finite cargo remains aboard without an offscreen sale');
         assert.equal(route(retained).phase, 'delivery'); assert.equal(receipts.length, 0);
         relocateAnvilObserver(f, retained, 'anvil-receiver-residency-return');
-        for (let j = 0; j < 120 && !f.actor('receiver') && f.state.simTime + 1 / 60 <= routeDeadline; j++) f.step();
-        assert.ok(f.actor('receiver')); assert.deepEqual(hold(f.actor('receiver')), held);
         residencyChecked = true;
       }
       if (f.state.simTime + 1 / 60 > routeDeadline) break;
@@ -885,7 +888,7 @@ test('observer contamination fails at first participant impulse or penetration',
 
 test('observer chooses another native-clear view when the old offset lands on the receiving tender', () => {
  const player={id:1,pos:{x:0,z:0},vel:{x:0,z:0}},tender={id:2,pos:{x:0,z:180},vel:{x:0,z:0}};
- const playerRecord={entity:player,body:{translation:()=>({x:0,y:0,z:0})},colliders:[{shape:{radius:18},translation:()=>({x:0,y:0,z:0})}]};
+ const playerRecord={entity:player,body:{translation:()=>({x:0,y:0,z:0})},colliders:[{shape:{radius:18},translationWrtParent:()=>({x:0,y:0,z:0})}]};
  const obstacle={entity:tender,body:{linvel:()=>({x:0,z:0}),isDynamic:()=>true},colliders:[{isSensor:()=>false,castShape:()=>null,projectPoint:p=>{
  const d=Math.hypot(p.x,p.z-180);return{isInside:d<=20,point:{x:p.x/d*20,y:0,z:180+(p.z-180)/d*20}};}}]};
  let placed;const f={physics:{_sg02:{RAPIER:{Ball:class{constructor(radius){this.radius=radius;}}},_frameOrigin:{x:0,z:0},records:new Map([[1,playerRecord],[2,obstacle]])}},state:{playerId:1,entities:new Map([[1,player]]),world:{records:{byId:{}}}},actor:()=>tender,world:{relocatePlayerInSector:p=>placed=p}};
@@ -1002,9 +1005,134 @@ test('observer prediction matches production relocation zero velocity instead of
   const player=f.state.entities.get(f.state.playerId);
   player.vel.x=180;player.vel.z=-160;player.angVel=2;
   const selected=relocateAnvilObserver(f,f.actor('collector'),'observer-velocity-reset-regression');
+  assert.ok(Math.abs(selected.hull-f.observerPlacements[0].hull)<1e-6,
+   'native hull envelope is unchanged by a relocation before the next physics step');
   assert.ok(selected.clearance>=32);assert.ok(Math.hypot(selected.pos.x-f.actor('collector').pos.x,
    selected.pos.z-f.actor('collector').pos.z)<=450.000001,'original candidate bounds retained');
   assert.equal(player.vel.x,0);assert.equal(player.vel.z,0);assert.equal(player.angVel,0);
+ }finally{f.close();}
+});
+
+test('native observer follow keeps the loaded collector approach clear through real handoff', async () => {
+ const f=await anvilReceiverFixture(); try {
+  const c=f.actor('collector'), r=f.actor('receiver');
+  f.owner._setTrafficManifest(c,f.state.traffic.freighters.find(x=>x.id===c.id),
+   f.owner._buildMinerManifest(c,0,commodityId,3));
+  c.data.itinerary.phase='return';
+  Object.assign(c.pos,{x:17053.65,z:5762.75}); Object.assign(c.vel,{x:-4.22,z:19.98}); c.rot=2.0057;
+  const native=f.physics._sg02, body=native.records.get(c.id).body, origin=native._frameOrigin;
+  body.setTranslation({x:c.pos.x-origin.x,y:0,z:c.pos.z-origin.z},true);
+  body.setLinvel({x:c.vel.x,y:0,z:c.vel.z},true);
+  let transfer=null; f.runtime.bus.on('traffic:anvilTransfer',p=>{transfer=p;});
+  for(let i=0;i<1200&&!transfer;i++) {
+   if(i%120===0) relocateAnvilObserver(f,c,'handoff-follow');
+   f.step();
+   const contact=receiverContactDepth(f.physics,c);
+   assert.ok(contact.admitted);
+   for(const row of contact.contacts) assertNoObserverContact(f.state,row);
+   assert.notEqual(anvilTrafficYield(f.state,c)?.targetId,f.state.playerId,
+    'the observer must not make the worker yield on its approach');
+  }
+  assert.equal(transfer?.qty,3); assert.equal(transfer?.sourceId,c.id); assert.equal(transfer?.receiverId,r.id);
+  assert.equal(c.data.cargoManifest.totalQty,0); assert.equal(r.data.cargoManifest.totalQty,3);
+ } finally { f.close(); }
+});
+
+test('continued native tender clears the collector before it moves to the lay-by', async () => {
+ const f=await anvilReceiverFixture(); try {
+  let c=f.actor('collector'),r=f.actor('receiver');
+  f.owner._setTrafficManifest(r,f.state.traffic.freighters.find(x=>x.id===r.id),
+   f.owner._buildMinerManifest(r,0,commodityId,1));
+  c.data.itinerary.phase='berthed';
+  Object.assign(r.data.itinerary,{phase:'delivery',destinationStationId:stationId});
+  const save=JSON.parse(JSON.stringify(f.runtime.getSystem('save').serialize('departure-regression')));
+  assert.equal(f.runtime.getSystem('save').loadEnvelope(save),true);
+  f.state.mode='flight'; assert.equal(await f.physics.prepareBackend(f.state),true);
+  c=f.actor('collector');r=f.actor('receiver');
+  const native=f.physics._sg02, origin=native._frameOrigin;
+  for(const [e,p,v,rot] of [[c,{x:17047.282,z:6011.891},{x:.363,z:.509},.567],
+   [r,{x:17095.241,z:6018.601},{x:.259,z:.569},1.531]]) {
+   Object.assign(e.pos,p);Object.assign(e.vel,v);e.rot=rot;
+   const body=native.records.get(e.id).body;
+   body.setTranslation({x:p.x-origin.x,y:0,z:p.z-origin.z},true);
+   body.setLinvel({x:v.x,y:0,z:v.z},true);
+  }
+  const start={...r.pos};
+  for(let i=0;i<360;i++) {
+   if(i%120===0) relocateAnvilObserver(f,r,'departure-follow');
+   f.step();
+   for(const e of [c,r]) {
+    const contact=receiverContactDepth(f.physics,e);assert.ok(contact.admitted);
+    for(const row of contact.contacts) {
+     assertNoObserverContact(f.state,row);
+     if(row.targetId===(e===c?r.id:c.id)) assert.ok(row.distance>=0 && row.impulse===0,
+      'the two original hulls must depart without contact');
+    }
+   }
+  }
+  assert.ok(Math.hypot(r.pos.x-start.x,r.pos.z-start.z)>120,'the tender actually clears the berth');
+  assert.equal(r.data.cargoManifest.totalQty,1);assert.equal(c.data.cargoManifest.totalQty,0);
+  assert.equal(r.data.itinerary.phase,'delivery');
+ } finally {f.close();}
+});
+
+for (const scenario of ['stopped','moving','continue']) test(`native buyer detour clears a ${scenario} Pelican and rejoins the real mouth`, async () => {
+ const {makeShipEntitySpec}=await import('../src/systems/ships.js');
+ const f=await anvilReceiverFixture();try{
+  let r=f.actor('receiver'); const p={x:13351.7,z:8724}, obstacle={x:13316.55,z:8691.83};
+  const ship=f.runtime.spawn(makeShipEntitySpec('ship_pelican',{pos:obstacle,team:2}));f.step();
+  const n=f.physics._sg02,o=n._frameOrigin,body=n.records.get(r.id).body;
+  Object.assign(r.pos,p);Object.assign(r.vel,{x:-1,z:-1});r.rot=-2.35;
+  body.setTranslation({x:p.x-o.x,y:0,z:p.z-o.z},true);body.setLinvel({x:-1,y:0,z:-1},true);
+  if(scenario==='moving')Object.assign(ship.vel,{x:.26,z:-.096});
+  f.owner._setTrafficManifest(r,f.state.traffic.freighters.find(x=>x.id===r.id),
+   f.owner._buildMinerManifest(r,0,commodityId,1));
+  Object.assign(r.data.itinerary,{phase:'delivery',destinationStationId:stationId,buyerIngressReached:true});
+  let planned=false,continued=false,receipt=null;f.runtime.bus.on('economy:freightAccepted',p=>{if(p.source==='anvil_work')receipt=p;});
+  for(let i=0;i<3600&&!receipt;i++){
+   if(i%120===0)relocateAnvilObserver(f,r,'buyer-detour-follow');f.step();
+   planned ||= !!f.owner._anvilBuyerDetour;
+   if(scenario==='continue' && planned && !continued){
+    const prior=r,save=JSON.parse(JSON.stringify(f.runtime.getSystem('save').serialize('buyer-detour-continue')));
+    assert.equal(f.runtime.getSystem('save').loadEnvelope(save),true);f.state.mode='flight';
+    assert.equal(await f.physics.prepareBackend(f.state),true);r=f.actor('receiver');
+    assert.notEqual(r,prior);assert.equal(r.data.cargoManifest.totalQty,1);continued=true;
+    f.step();assert.notEqual(f.owner._anvilBuyerDetour?.entity,prior,'a restored run cannot reuse the old native actor plan');
+   }
+   const contact=receiverContactDepth(f.physics,r);assert.ok(contact.admitted);
+   for(const row of contact.contacts){assertNoObserverContact(f.state,row);
+    assert.ok(row.distance>=0&&row.impulse===0,`buyer detour touched solid ${row.targetId}`);}
+  }
+  assert.ok(planned,'real obstruction selected a physical waypoint');
+  if(scenario==='continue')assert.ok(continued,'the run restored during the physical detour');
+  assert.equal(receipt?.qty,1);assert.equal(r.data.cargoManifest.totalQty,0);
+  assert.equal(r.data.itinerary.phase,'return_berth');
+ }finally{f.close();}
+});
+
+test('native buyer detour brakes or replans when another hull blocks its waypoint', async () => {
+ const {makeShipEntitySpec}=await import('../src/systems/ships.js');
+ const f=await anvilReceiverFixture();try{
+  const r=f.actor('receiver'),p={x:13351.7,z:8724};
+  f.runtime.spawn(makeShipEntitySpec('ship_pelican',{pos:{x:13316.55,z:8691.83},team:2}));f.step();
+  const n=f.physics._sg02,o=n._frameOrigin,body=n.records.get(r.id).body;
+  Object.assign(r.pos,p);Object.assign(r.vel,{x:-1,z:-1});r.rot=-2.35;
+  body.setTranslation({x:p.x-o.x,y:0,z:p.z-o.z},true);body.setLinvel({x:-1,y:0,z:-1},true);
+  f.owner._setTrafficManifest(r,f.state.traffic.freighters.find(x=>x.id===r.id),f.owner._buildMinerManifest(r,0,commodityId,1));
+  Object.assign(r.data.itinerary,{phase:'delivery',destinationStationId:stationId,buyerIngressReached:true});
+  let oldPoint;
+  for(let i=0;i<300&&!oldPoint;i++){if(i%120===0)relocateAnvilObserver(f,r,'buyer-crossing-follow');f.step();
+   if(f.owner._anvilBuyerDetour)oldPoint={...f.owner._anvilBuyerDetour.point};}
+  assert.ok(oldPoint,'obstruction must first produce a native-clear waypoint');
+  const crossing=f.runtime.spawn(makeShipEntitySpec('ship_hornet',{pos:oldPoint,team:2}));
+  for(let i=0;i<60&&!n.records.has(crossing.id);i++)f.step();
+  assert.ok(n.records.has(crossing.id),'the new obstacle must be a real native body');
+  f.step();
+  const plan=f.owner._anvilBuyerDetour;
+  assert.ok(r.data.intent.brake || !plan || plan.point.x!==oldPoint.x || plan.point.z!==oldPoint.z,
+   'the blocked waypoint must not keep receiving thrust');
+  assert.equal(r.data.cargoManifest.totalQty,1);
+  for(const row of receiverContactDepth(f.physics,r).contacts)assert.ok(row.distance>=0&&row.impulse===0);
  }finally{f.close();}
 });
 

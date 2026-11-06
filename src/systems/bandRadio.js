@@ -7,7 +7,7 @@
 import { hash32 } from '../core/rng.js';
 import { weatherForecast } from '../data/seasonalWeather.js';
 import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
-import { localizeText } from '../localization/gameLocalization.js';
+import { localizeText } from '../localization/sourceText.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
@@ -95,6 +95,13 @@ export function numbersBearingDue(programSeed, sequence) {
 }
 
 export function deriveBandEventKeys(event, payload = {}, state = {}) {
+  if (event === 'sector:enter') {
+    // Crossing the closure: the Vael keep their space sealed; a civilian hull entering it is a
+    // deed the Margin reports. `payload.sector` is the live sector def; `sectorId` is the fallback.
+    const sector = payload.sector && typeof payload.sector === 'object' ? payload.sector : null;
+    const factionId = sector ? sector.factionId : null;
+    return factionId === 'faction_vael' ? ['player.cross_vale_closure'] : [];
+  }
   if (event === 'freight:loss') {
     return state.playerId != null && payload.killerId === state.playerId
       ? ['player.destroy_freighter']
@@ -109,6 +116,20 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
       keys.push('player.break_blockade');
     }
     return keys;
+  }
+  if (event === 'warrant:hunterDisabled') {
+    // The Margin reports the kill only when the player's hull did it — a hunter downed by another
+    // party is the bond office's story, not the Tessera's.
+    return payload.byPlayer === true ? ['player.downed_hunter'] : [];
+  }
+  if (event === 'entity:killed') {
+    // The ordinary kill — a hostile wing downed in a running fight — is the deed the band never
+    // mentioned. It reports only when the player's own guns did it and the victim was actually
+    // hostile to them: an accident or a rival's work is somebody else's story.
+    return state.playerId != null && payload.killerId === state.playerId
+      && payload.targetHostileToPlayer === true
+      ? ['player.downed_raider']
+      : [];
   }
   if (event === 'dock:docked') {
     const player = state.entities && typeof state.entities.get === 'function'
@@ -192,13 +213,17 @@ export const bandRadio = {
     this._listen('band:tune', (payload) => this._setChannel(payload && payload.channelId));
     this._listen('band:cycle', () => this._cycleChannel());
     this._listen('band:sourceProximity', (payload) => this._setSourceProximity(payload));
-    this._listen('sector:enter', () => {
+    this._listen('sector:enter', (payload) => {
       this._clearSourceProximity();
       this._nextLandmarkProximitySampleAtS = 0;
+      const own = this._ensureState();
+      for (const eventKey of deriveBandEventKeys('sector:enter', payload || {}, this.state)) {
+        if (BAND_EVENT_KEYS.includes(eventKey)) own.eventKeys[eventKey] = true;
+      }
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {

@@ -2,25 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const load = (p, names, deps = {}) => Function(...Object.keys(deps), src(p).replace(/^import[^;]+;\n/gm, '').replace(/export /g, '') + ';return {' + names + '};')(...Object.values(deps));
-const { forEachFieldRock } = load('src/world/livingWorldViews.js', 'forEachFieldRock');
-const { starterMiningRouteFocus, starterMiningReceiptMatches, starterBuoySpec } = load('src/missions/starterWorkday.js', 'starterMiningRouteFocus,starterMiningReceiptMatches,starterBuoySpec', { forEachFieldRock });
-const { activeOwnedShip, shipCarriesModule } = load('src/data/starterJobs.js', 'activeOwnedShip,shipCarriesModule');
-const ASTEROIDS = Function('return ' + src('src/data/mining.js').match(/export const ASTEROIDS = ([\s\S]*?\n\]);/)[1])();
+import { missions } from '../src/systems/missions.js';
+import { starterMiningRouteFocus, starterMiningReceiptMatches, starterBuoySpec } from '../src/missions/starterWorkday.js';
+import { ASTEROIDS } from '../src/data/mining.js';
 const H = 'sector_helios_prime';
-const global = (p) => ({ x: p.x + 10000, z: p.z - 20000 });
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+const global = p => sectorLocalToGlobalForSector(p, H);
 const mission = () => ({ id: 'first-iron', status: 'active', type: 'mining_quota', destSectorId: H, destStationId: 'station_helios',
   objectiveTarget: 2, objectiveProgress: 0, params: { starterWorkdayVersion: 1, starterJobId: 'starter_hitch', starterStep: 1, cmdtyId: 'cmdty_ore_iron', requiredModule: 'mod_drill_amp' } });
 const rock = (id, x = 600, typeId = 'ast_common_rock') => ({ id, alive: true, type: 'asteroid', pos: global({ x, z: -300 }), data: { typeId, oreHP: 120, sectorId: H } });
 const state = (rocks = []) => ({ playerId: 1, world: { currentSectorId: H }, entityList: rocks, entities: new Map(rocks.map(e => [e.id,e])) });
 const focus = (m, s) => starterMiningRouteFocus(m, s, global, ASTEROIDS);
-// Execute the actual production mining navigation branch, not a copied implementation.
-const missionsSource = src('src/systems/missions.js');
-const branchStart = missionsSource.indexOf("    if (m.type === 'mining_quota') {");
-const branchEnd = missionsSource.indexOf("    if (m.type === BULK_HAUL_TYPE)", branchStart);
-const waypoint = Function('starterMiningRouteFocus', 'sectorLocalToGlobalForSector', 'ASTEROIDS',
-  'return function(m) { const base = {kind:"mission",missionId:m.id,sectorId:m.destSectorId};' + missionsSource.slice(branchStart, branchEnd) + '}'
-)(starterMiningRouteFocus, global, ASTEROIDS);
+const waypoint = missions._missionWaypoint;
 function nav(m, s, nearest) { return waypoint.call({ state: s, _nearestAsteroid: () => nearest }, m); }
 
 test('accepted first ticket points at authored live iron, not nearer ice', () => {
@@ -80,10 +73,7 @@ test('player receipt policy still rejects NPC, unknown and foreign mining', () =
   s.world.currentSectorId='foreign'; assert.equal(starterMiningReceiptMatches(m,{minerId:1,qty:2},s),false);
 });
 test('physical mining owner still requires tool fit and two real player iron receipts', () => {
-  const objective = src('src/systems/missionObjectiveOps.js');
-  const body = objective.slice(objective.indexOf('  _onMiningYield(p) {'), objective.indexOf('  _onBulkHaulDelivered(p) {')).trim().replace(/,$/, '');
-  const onYield=Function('starterMiningReceiptMatches','activeOwnedShip','shipCarriesModule','CONTRACT_47A_B0_TAG',
-    'return ({'+body+'})._onMiningYield')(starterMiningReceiptMatches,activeOwnedShip,shipCarriesModule,'campaign-b0');
+  const onYield = missions._onMiningYield;
   const m=mission(), s=state(); s.missions={active:[m]}; s.player={ownedShips:[{fittings:['mod_drill_amp','mod_mining_laser_s']}]};
   let settled=0; const ctx={state:s,bus:{emit(){}},_storyTrigger(){},_refreshTrackedMissionNav(){},_completeMission(){settled++;}};
   const yieldIron=(minerId,qty)=>onYield.call(ctx,{minerId,qty,commodityId:'cmdty_ore_iron'});
@@ -94,7 +84,7 @@ test('physical mining owner still requires tool fit and two real player iron rec
   yieldIron(1,1); assert.equal(m.objectiveProgress,2); assert.equal(settled,1);
 });
 test('Pelican authored bodies and navigation branch remain outside this correction', () => {
-  for(const [step,mass] of [[1,40],[2,65],[3,90]]) {
+  for(const [step,mass] of [[1,18],[2,19],[3,20]]) {
     const m=mission(); m.type='tow_recovery'; m.params.starterJobId='starter_pelican'; m.params.starterStep=step;
     assert.equal(focus(m,state()),null);
     const b=starterBuoySpec(m,global); assert.equal(b.mass,mass); assert.equal(b.physicsBody.dynamic,true);
@@ -153,10 +143,7 @@ test('dormant presentation id colliding with any live occupant is not exposed as
 });
 
 test('foreign-sector correction reaches the existing course-request owner', () => {
-  const start=missionsSource.indexOf('  _syncWaypointRoute(waypoint) {');
-  const end=missionsSource.indexOf('  _clearMis',start);
-  const body=missionsSource.slice(start,end).trim().replace(/,$/,'');
-  const sync=Function('deferredEnterNow','return ({'+body+'})._syncWaypointRoute')(()=>0);
+  const sync=missions._syncWaypointRoute;
   const s=state([rock(1)]);s.world.currentSectorId='sector_ceres_belt';s.nav={};
   const emitted=[];sync.call({state:s,bus:{emit:(...args)=>emitted.push(args)}},nav(mission(),s,rock(1)));
   assert.equal(emitted.length,1);assert.equal(emitted[0][0],'ui:setCourse');

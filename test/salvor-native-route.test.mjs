@@ -1,6 +1,453 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FORGE_ID, SALVOR_POOL, salvorNativeFixture } from './fixtures/salvorNativeFixture.mjs';
+import { getFarActor, insertFarActor, promoteFarActorForTargetIdentity,
+  restoreFarActorTable, serializeFarActorTable } from '../src/world/farActorTable.js';
+
+test('an adopted scavenger resumes its exact native salvage job after FLEE and delivers its finite hold to its home yard',
+  { timeout: 120_000 }, async () => {
+    const h = await salvorNativeFixture({ adoptedScavenger: true });
+    try {
+      let cutter = h.scavenger();
+      assert.ok(cutter?.data?.jobId,
+        `the real salvage:placed event adopts the field scavenger (role=${cutter?.data?.role}, traffic=${cutter?.data?.trafficRole}, sector=${cutter?.data?.sectorId}/${h.state.world.currentSectorId}, target=${h.wreck.type}/${h.wreck.data?.salvagePool && 'pool'})`);
+      const jobId = cutter.data.jobId;
+      const entry = h.sim.helpers.npcJobs.get(jobId);
+      const target = h.wreck;
+      const targetId = target.id;
+      const worldRecordId = cutter.data.worldRecordId;
+      const generation = cutter.occupantGeneration;
+      const route = structuredClone(entry.job.route);
+      assert.equal(route[0].id, 'cut:hold', 'initial transit begins at the worker\'s real adoption pose');
+      assert.deepEqual(route[0].pos, { x: cutter.pos.x, z: cutter.pos.z },
+        'the yard is not substituted for the worker\'s physical spawn origin');
+      const pool = structuredClone(target.data.salvagePool);
+      const quantity = Object.values(pool).reduce((sum, qty) => sum + qty, 0);
+      const traffic = h.sim.registry.get('traffic');
+      const activeLine = () => Object.values(h.state.combat.attachments.byId || {}).find((line) =>
+        line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === cutter.id && line.targetId === targetId);
+      const reach = () => traffic._salvorReach(cutter, target);
+
+      for (let tick = 0; tick < 180 && !activeLine(); tick += 1) h.step();
+      assert.ok(activeLine(), 'the adopted production job first latches its booked wreck');
+      assert.equal(entry._salvorBookedTarget?.entity, target,
+        'the job retains the exact object generation it originally booked');
+
+      h.sim.bus.emit('combat:damage', {
+        targetId: cutter.id, attackerId: h.player.id,
+        amount: 5, rawTotal: 5, applied: 5,
+      });
+      assert.equal(entry.job.phase, 'flee', 'the canonical damage listener interrupts the booked job');
+      let resumed = false;
+      for (let tick = 0; tick < 900; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        if (entry.job.phase !== 'flee') { resumed = true; break; }
+      }
+      assert.ok(resumed, 'sim-clock threat expiry resumes the original job');
+      assert.equal(cutter.data.worldRecordId, worldRecordId);
+      assert.equal(cutter.occupantGeneration, generation,
+        'this native fixture keeps the same live body generation during the bounded return');
+      let distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+      assert.ok(distance > reach(), `FLEE leaves the actual work radius (distance=${distance.toFixed(1)}, reach=${reach().toFixed(1)})`);
+      assert.equal(entry.job.payload.targetId, targetId);
+      assert.deepEqual(entry.job.route, route);
+      assert.deepEqual(target.data.salvagePool, pool);
+      assert.equal(cutter.data.cargoManifest?.totalQty || 0, 0);
+      assert.equal(activeLine(), undefined, 'the work line clears during FLEE');
+
+      // Work and loading cannot advance while the real hull is outside the booked workface.
+      for (let tick = 0; tick < 120 * 60; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+        if (distance > reach()) {
+          assert.notEqual(entry.job.phase, 'work', `no cut while ${distance.toFixed(1)} WU away`);
+          assert.notEqual(entry.job.phase, 'load', 'no cargo load while the booked source is out of reach');
+        }
+        assert.equal(cutter.data.cargoManifest?.totalQty || 0, 0,
+          'the far worker has no premature cargo');
+        assert.deepEqual(target.data.salvagePool, pool,
+          'the same booked wreck pool remains untouched until physical arrival');
+        if (activeLine() && distance <= reach()) break;
+      }
+      assert.ok(activeLine() && distance <= reach(),
+        `FlightV3 returns the same worker to the same wreck (phase=${entry.job.phase}, routeIndex=${entry.job.routeIndex}, distance=${distance.toFixed(1)}, intent=${JSON.stringify(cutter.data.intent)}, target=${targetId}, booked=${entry._salvorBookedTarget?.id ?? 'none'}, context=${!!traffic._salvorRoleContext(entry, cutter, entry.job)}, physicalTarget=${traffic._salvorWorkTarget(entry, cutter)?.blocked ? 'blocked' : 'present'})`);
+      assert.equal(cutter.data.worldRecordId, worldRecordId);
+      assert.equal(cutter.occupantGeneration, generation);
+      assert.equal(activeLine().targetId, targetId);
+
+      for (let tick = 0; tick < 3600 && h.events.extraction.length === 0; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+        if (distance > reach()) {
+          assert.notEqual(entry.job.phase, 'work', `the cut remains arrival-gated at ${distance.toFixed(1)} WU`);
+          assert.notEqual(entry.job.phase, 'load', 'cargo custody cannot finish away from the wreck');
+          assert.deepEqual(target.data.salvagePool, pool);
+        }
+      }
+      assert.equal(h.events.extraction.length, 1,
+        `the settled native workface completes one real salvage cut (phase=${entry.job.phase}, progress=${entry.job.progress}, distance=${distance.toFixed(1)}, pool=${JSON.stringify(target.data.salvagePool)})`);
+      const extraction = h.events.extraction[0];
+      assert.equal(extraction.jobId, jobId);
+      assert.equal(extraction.salvorId, cutter.id);
+      assert.equal(extraction.targetId, targetId);
+      assert.equal(extraction.totalQty, quantity);
+      assert.deepEqual(target.data.salvagePool, {});
+      assert.equal(target.data.salvorClaimedBy, worldRecordId,
+        'the exact source stays claimed by the worker carrying its salvage');
+      const manifest = cutter.data.cargoManifest;
+      assert.equal(manifest.totalQty, quantity);
+      assert.equal(manifest.role, 'salvor');
+      assert.equal(manifest.lotId, manifest.manifestId);
+      assert.equal(manifest.lines.reduce((sum, line) => sum + line.qty, 0), quantity);
+      assert.equal(entry.job.payload.targetId, targetId);
+      assert.equal(entry.job.route[0].id, `yard:${FORGE_ID}`,
+        'the existing salvor home route replaces the physical origin only after extraction');
+      assert.equal(entry.job.route[1].id, route[1].id, 'the same booked wreck remains the return leg peer');
+
+      // Wrong-yard and stale-job unload intents cannot clear the exact finite hold or release
+      // the adopted worker before the real yard arrival.
+      const heldManifest = structuredClone(cutter.data.cargoManifest);
+      h.sim.bus.emit('npcjobs:unload', { kind: 'salvor', jobId, completed: true,
+        destination: 'yard:wrong_station', seq: 9001 });
+      h.sim.bus.flush();
+      h.sim.bus.emit('npcjobs:unload', { kind: 'salvor', jobId: `${jobId}:stale`, completed: true,
+        destination: entry.job.route[0].id, seq: 9002 });
+      h.sim.bus.flush();
+      assert.deepEqual(cutter.data.cargoManifest, heldManifest);
+      assert.equal(h.sim.helpers.npcJobs.get(jobId), entry);
+      assert.equal(h.events.unload.length, 0,
+        'neither rejected intent reached the canonical salvage intake');
+
+      // The exact extracted hold completes the separate wrangle phase even though WORK drained
+      // and marked its booked wreck. It then starts the ordinary return leg without minting or
+      // replacing the cargo lot.
+      assert.equal(entry.job.phase, 'load');
+      const loadBoundTicks = Math.ceil(entry.job.loadS / (1 / 60)) + 2;
+      for (let tick = 0; tick < loadBoundTicks && entry.job.phase === 'load'; tick += 1) h.step();
+      assert.equal(h.events.load.length, 1,
+        'the native load completion fires once after the real finite extraction');
+      assert.equal(h.events.load[0].completed, true);
+      assert.equal(entry.job.phase, 'return', 'the canonical job kernel advances into RETURN');
+      assert.deepEqual(cutter.data.cargoManifest, manifest,
+        'the same extracted manifest remains aboard across the phase transition');
+      assert.deepEqual(target.data.salvagePool, {}, 'return does not refill the consumed source');
+
+      for (let tick = 0; tick < 240 * 60
+        && !h.events.unload.some(event => event.intakeResult?.ok === true); tick += 1) h.step();
+      const unload = h.events.unload.find(event => event.intakeResult?.ok === true);
+      assert.ok(unload, `the physical return reaches Forge with cargo intact (phase=${entry.job.phase}, pos=${JSON.stringify(cutter.pos)})`);
+      assert.equal(unload.yardId, FORGE_ID);
+      assert.equal(unload.manifestId, manifest.manifestId);
+      assert.equal(unload.intakeResult.qty, quantity,
+        'the canonical economy owner accepts the entire finite hold');
+      const receipt = h.state.economy.appliedSalvageIntakeReceipts.find(row => row.manifestId === manifest.manifestId);
+      assert.ok(receipt, 'the same conserved lot appears in the durable economy intake receipt');
+      assert.equal(receipt.yardId, FORGE_ID);
+      assert.equal(receipt.scrapQty, manifest.lines.find(line => line.commodityId === 'cmdty_scrap_metal')?.qty || 0);
+      assert.equal(cutter.data.cargoManifest.totalQty, 0,
+        'accepted cargo is cleared from the canonical holder only after intake acknowledgment');
+      assert.equal(h.sim.helpers.npcJobs.get(jobId), null,
+        'the completed scavenger job releases its movement and allows its original ecology role to resume');
+      assert.equal(cutter.data.jobId, undefined);
+      assert.equal(cutter.data.jobKind, undefined);
+      assert.equal(cutter.data.towTargetId, undefined);
+      assert.equal(cutter.data.role, 'scavenger');
+      assert.equal(target.data.npcMasslineLatch, undefined,
+        'the booked wreck latch is released after delivery');
+    } finally {
+      h.close();
+    }
+  });
+
+test('an adopted scavenger keeps its finite hold and job when the canonical yard refuses intake',
+  { timeout: 120_000 }, async () => {
+    const h = await salvorNativeFixture({ adoptedScavenger: true });
+    try {
+      const cutter = h.scavenger();
+      const jobId = cutter?.data?.jobId;
+      const entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.ok(cutter && entry, 'the production salvage:placed event adopts this worker');
+
+      for (let tick = 0; tick < 120 * 60 && !(cutter.data.cargoManifest?.totalQty > 0); tick += 1) h.step();
+      const manifest = cutter.data.cargoManifest;
+      assert.ok(manifest?.totalQty > 0, 'the worker physically extracts a finite hold first');
+      assert.deepEqual(h.wreck.data.salvagePool, {}, 'the held lot came from the depleted booked wreck');
+
+      // Make the real economy owner refuse this yard lot because none of its offered lines are
+      // listed. This changes only fixture service state; no cargo, credits, or job state is granted.
+      const market = h.state.economy.markets[FORGE_ID];
+      const offeredListings = Object.fromEntries(manifest.lines.map(line => [line.commodityId, market[line.commodityId]]));
+      for (const line of manifest.lines) delete market[line.commodityId];
+      for (let tick = 0; tick < 240 * 60
+        && !h.events.unload.some(event => event.intakeResult?.reason === 'salvage_listing_unavailable'
+          || event.intakeResult?.ok === true); tick += 1) h.step();
+
+      const refusal = h.events.unload.find(event => event.intakeResult?.reason === 'salvage_listing_unavailable');
+      assert.ok(refusal, 'the canonical economy owner reports unavailable listings at the physical yard');
+      assert.equal(refusal.jobId, jobId);
+      assert.equal(cutter.data.cargoManifest, manifest, 'refusal keeps the identical canonical cargo holder');
+      assert.equal(manifest.totalQty, refusal.lines.reduce((sum, line) => sum + line.qty, 0));
+      assert.equal(manifest.salvageIntakeHeld, true, 'the rejected lot remains marked for custody');
+      assert.equal(h.sim.helpers.npcJobs.get(jobId), entry, 'the adopted job is not released on refusal');
+      assert.equal(cutter.data.jobId, jobId);
+      assert.equal(cutter.data.role, 'scavenger', 'ecology ownership remains suspended until accepted intake');
+      assert.equal((h.state.economy.appliedSalvageIntakeReceipts || []).some(row => row.manifestId === manifest.manifestId), false,
+        'a refusal creates no accepted economy receipt');
+      assert.equal(h.events.unload.some(event => event.intakeResult?.ok === true), false);
+      const hull = cutter.hull, offeredCount = h.events.unload.length;
+      h.step(60 * 60);
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull, 'a refused intake cannot drive the waiting hull into its yard');
+      assert.equal(h.events.unload.length, offeredCount, 'unchanged unavailable listings do not cause resubmissions');
+      assert.equal(entry.job.payload.salvageIntakeWait.status, 'awaiting-intake');
+      assert.ok(Math.hypot(cutter.vel.x, cutter.vel.z) < 1, 'native braking settles the waiting hull');
+      // A real fixture service change restores the same original listings. Cargo and job phase
+      // remain untouched: canonical quotes, physical arrival and intake must finish the work.
+      Object.assign(market, offeredListings);
+      for (let tick = 0; tick < 90 * 60 && cutter.data.jobId; tick++) h.step();
+      assert.equal(cutter.data.cargoManifest.totalQty, 0);
+      assert.equal(cutter.data.jobId, undefined);
+      const accepted = h.events.unload.filter(event => event.intakeResult?.ok);
+      assert.equal(accepted.length, 1);
+      assert.equal(accepted[0].intakeResult.qty, manifest.totalQty);
+    } finally {
+      h.close();
+    }
+  });
+
+test('partial intake holds restricted salvage safely and preserves its exact remainder across Continue',
+  { timeout: 120_000 }, async () => {
+    const h = await salvorNativeFixture({ adoptedScavenger: true, withSave: true,
+      salvagePool: { cmdty_scrap_metal: 1, cmdty_classified_salvage: 1 } });
+    try {
+      let cutter = h.scavenger();
+      const jobId = cutter.data.jobId, recordId = cutter.data.worldRecordId;
+      for (let tick = 0; tick < 360 * 60 && !h.events.unload.some(event => event.intakeResult?.ok); tick++) h.step();
+      const accepted = h.events.unload.find(event => event.intakeResult?.ok);
+      assert.ok(accepted, 'the actual finite cut physically reaches its canonical intake');
+      assert.deepEqual(accepted.intakeResult.acceptedLines, [{ commodityId: 'cmdty_scrap_metal', qty: 1 }]);
+      assert.deepEqual(accepted.intakeResult.ignoredCommodityIds, ['cmdty_classified_salvage']);
+      const remainder = structuredClone(cutter.data.cargoManifest);
+      assert.equal(remainder.totalQty, 1);
+      assert.deepEqual(remainder.lines.map(line => ({ commodityId: line.commodityId, qty: line.qty })),
+        [{ commodityId: 'cmdty_classified_salvage', qty: 1 }]);
+      let entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.equal(entry.job.payload.totalQty, 2, 'original extraction receipt remains two units');
+      assert.equal(entry.job.payload.salvageIntakeWait.status, 'awaiting-intake');
+      const hull = cutter.hull, offers = h.events.unload.length;
+      const quote = h.econ.quoteNpcSalvageIntake;
+      let quotes = 0;
+      h.econ.quoteNpcSalvageIntake = function (...args) { quotes++; return quote.apply(this, args); };
+      try { h.step(120 * 60); } finally { h.econ.quoteNpcSalvageIntake = quote; }
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull);
+      assert.ok(Math.hypot(cutter.vel.x, cutter.vel.z) < 1);
+      assert.equal(h.events.unload.length, offers, 'no repeated same-lot sale attempts during unchanged refusal');
+      assert.ok(quotes < 600, `eligibility polling is bounded, not per native step (${quotes})`);
+      assert.deepEqual(cutter.data.cargoManifest, remainder);
+      for (const station of h.sim.registry.get('traffic')._sectorStations()) {
+        assert.equal(h.econ.quoteNpcSalvageIntake(station.data.stationId, remainder.lines).ok, false,
+          'an existing industrial yard cannot waive classified-cargo legality');
+      }
+      const runtime = h.sim.registry.get('npcJobsRuntime');
+      const virtualJobs = runtime.serialize();
+      const heldPhase = entry.job.phase, heldProgress = entry.job.progress;
+      h.step(2 * 60); // Real native elapsed time, with the cargo still waiting aboard.
+      runtime.deserialize(virtualJobs);
+      h.step(2);
+      entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.equal(entry.job.phase, heldPhase);
+      assert.equal(entry.job.progress, heldProgress,
+        'virtual relink cannot advance an awaiting-intake clock through the elapsed native interval');
+      const savedPhase = entry.job.phase, progress = entry.job.progress;
+      const save = h.sim.registry.get('save');
+      const envelope = JSON.parse(JSON.stringify(save.serialize('native-salvor-partial-hold')));
+      assert.equal(save.loadEnvelope(envelope, 'native-salvor-partial-hold'), true);
+      h.physics._finishNativeRestore(); h.state.mode = 'flight';
+      assert.equal(await h.physics.prepareBackend(h.state), true);
+      h.step(2);
+      cutter = h.state.entityList.find(entity => entity.alive !== false && entity.data?.worldRecordId === recordId);
+      entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.ok(cutter && entry);
+      assert.deepEqual(cutter.data.cargoManifest, remainder, 'Continue retains exactly the refused commodity and intake generation');
+      assert.equal(entry.job.phase, savedPhase);
+      assert.equal(entry.job.progress, progress, 'virtual catch-up cannot finish another unpaid cargo cycle');
+      h.step(10 * 60);
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull);
+      assert.deepEqual(cutter.data.cargoManifest, remainder);
+      assert.equal(cutter.data.jobId, jobId);
+      assert.equal(h.events.unload.length, offers);
+      assert.equal((h.state.economy.appliedSalvageIntakeReceipts || []).filter(row => row.manifestId === remainder.manifestId).length, 1);
+    } finally { h.close(); }
+  });
+
+test('Continue rebinds an adopted scavenger to its saved wreck identity', async () => {
+  const h = await salvorNativeFixture({ adoptedScavenger: true, withSave: true });
+  try {
+    const cutter = h.scavenger();
+    assert.ok(cutter?.data?.jobId);
+    const jobId = cutter.data.jobId;
+    const entry = h.sim.helpers.npcJobs.get(jobId);
+    const target = h.wreck;
+    const targetPosition = { ...target.pos };
+    for (let tick = 0; tick < 120
+      && (!entry._salvorBookedTarget || !entry.job.payload.targetIdentity); tick += 1) h.step();
+    assert.equal(entry._salvorBookedTarget?.entity, target,
+      'the live job first retains the exact target object');
+    assert.equal(entry.job.payload.targetIdentity?.kind, 'worldRecord',
+      'the ownerless wreck receives its durable identity from the world owner');
+
+    const saveOwner = h.sim.registry.get('save');
+    const envelope = JSON.parse(JSON.stringify(saveOwner.serialize('adopted-salvor-target-identity')));
+    const savedTargetRecords = Object.values(envelope.data?.world?.records?.byId || {}).filter((record) =>
+      record.type === 'wreck' && record.pos?.x === targetPosition.x && record.pos?.z === targetPosition.z);
+    assert.equal(savedTargetRecords.length, 1, 'Continue captures one durable record at the booked wreck pose');
+    const targetRecordId = savedTargetRecords[0].recordId;
+    assert.equal(saveOwner.loadEnvelope(envelope, 'adopted-salvor-target-identity'), true);
+
+    const restoredEntry = h.sim.helpers.npcJobs.get(jobId);
+    const restoredCutter = h.scavenger();
+    assert.ok(restoredEntry && restoredCutter, 'the same job and worker rematerialize');
+    const restoredTarget = h.state.entityList.find((entity) =>
+      entity.alive !== false && entity.data?.worldRecordId === targetRecordId);
+    assert.ok(restoredTarget, `the original wreck record rematerializes (${targetRecordId})`);
+
+    // Reuse the stale numeric waypoint for a different live wreck. The saved stable identity
+    // must select the original body and repair both runtime route references before work begins.
+    const decoy = h.sim.spawn({
+      type: 'wreck', pos: { x: restoredTarget.pos.x + 35, z: restoredTarget.pos.z },
+      radius: 4, mass: 160, hull: 100, hullMax: 100, collides: true,
+      flags: { persistent: true },
+      data: { salvagePool: { cmdty_scrap_metal: 99 }, sectorId: h.state.world.currentSectorId,
+        homeSectorId: h.state.world.currentSectorId },
+    });
+    restoredEntry.job.payload.targetId = decoy.id;
+    restoredEntry.job.route[1].id = `hulk:${decoy.id}`;
+    restoredEntry.job.route[1].pos = { x: decoy.pos.x, z: decoy.pos.z };
+
+    const jobs = h.sim.registry.get('npcJobsRuntime');
+    const rebound = jobs._findSalvorTractorTarget(restoredEntry, restoredCutter);
+    assert.equal(rebound, restoredTarget,
+      'the first post-Continue booking resolves the saved durable wreck identity');
+    assert.equal(restoredEntry.job.payload.targetId, restoredTarget.id);
+    assert.equal(restoredEntry.job.route[1].id, `hulk:${restoredTarget.id}`);
+    assert.deepEqual(decoy.data.salvagePool, { cmdty_scrap_metal: 99 },
+      'a replacement numeric occupant receives no salvage work or custody');
+    assert.equal(restoredEntry._salvorBookedTarget?.entity, restoredTarget,
+      'the exact restored object generation becomes the new in-memory sidecar');
+
+    const traffic = h.sim.registry.get('traffic');
+    const routePose = { ...restoredEntry.job.route[1].pos };
+    restoredTarget.pos.x += 30;
+    assert.equal(traffic._retainedAdoptedSalvageTarget(restoredEntry), restoredTarget);
+    assert.deepEqual(restoredEntry.job.route[1].pos, routePose,
+      'a live physics pose change does not rewrite the saved route waypoint');
+
+    for (const data of [
+      { persistenceOwner: 'authoredRecovery', salvagePool: { cmdty_scrap_metal: 2 } },
+      { worldSiteId: 'world_site_authored_wreck', salvagePool: { cmdty_scrap_metal: 2 } },
+    ]) {
+      const protectedTarget = h.sim.spawn({
+        type: 'wreck', pos: { x: restoredTarget.pos.x + 80, z: restoredTarget.pos.z },
+        radius: 4, mass: 160, hull: 100, hullMax: 100, collides: true,
+        flags: { persistent: true },
+        data: { ...data, sectorId: h.state.world.currentSectorId, homeSectorId: h.state.world.currentSectorId },
+      });
+      const protectedEntry = {
+        entityId: restoredEntry.entityId,
+        job: {
+          ...restoredEntry.job,
+          route: [{ id: 'cut:hold', pos: { x: 0, z: 0 } },
+            { id: `hulk:${protectedTarget.id}`, pos: { x: protectedTarget.pos.x, z: protectedTarget.pos.z } }],
+          payload: { role: 'scavenger', targetId: protectedTarget.id, targetType: 'wreck' },
+        },
+        _salvorBookedTarget: { id: protectedTarget.id, entity: protectedTarget },
+      };
+      assert.equal(traffic._retainedAdoptedSalvageTarget(protectedEntry), null);
+      assert.equal(protectedTarget.data.worldRecordId, undefined,
+        'traffic leaves another persistence owner or authored site identity untouched');
+    }
+  } finally {
+    h.close();
+  }
+});
+
+test('an identity-less early-FLEE booking follows its exact shelved wreck by retained stable key', async () => {
+  const h = await salvorNativeFixture({ adoptedScavenger: true });
+  try {
+    const cutter = h.scavenger();
+    const entry = h.sim.helpers.npcJobs.get(cutter.data.jobId);
+    const target = h.wreck;
+    const traffic = h.sim.registry.get('traffic');
+    const world = h.sim.registry.get('world');
+    target.data.salvorTargetKey = `salvor:test:${entry.job.id}`;
+
+    // Model the first explicit booking, followed by damage/FLEE before the normal traffic
+    // work-target callback could save its key. The target's existing world owner supplies its
+    // durable identity before ordinary far-actor shelving.
+    assert.equal(h.sim.registry.get('npcJobsRuntime')._findSalvorTractorTarget(entry, cutter), target);
+    assert.equal(entry._salvorBookedTarget?.entity, target);
+    const sectorId = h.state.world.currentSectorId;
+    const active = h.state.world.sectorContents?.[sectorId] || h.state.world.activeSector;
+    const recordId = world._assignDurableRecordId(target, sectorId, 'wreck',
+      `npc-salvor-target:${entry.job.id}`, active);
+    assert.ok(recordId);
+    delete entry.job.payload.targetIdentity;
+    entry.job.phase = 'flee';
+    assert.equal(traffic._salvorWorkTarget(entry, cutter), null,
+      'FLEE leaves target recovery to the next ordinary work probe');
+    assert.equal(entry.job.payload.targetIdentity, undefined,
+      'the interrupted commission path has not yet saved a key');
+
+    insertFarActor(h.state, target, h.state.simTime, h.sim.helpers);
+    h.sim.helpers.removeEntity(target.id, { immediate: true, reason: 'virtualize' });
+    assert.equal(getFarActor(h.state, target.id)?.data?.worldRecordId, recordId);
+    restoreFarActorTable(h.state, JSON.parse(JSON.stringify(serializeFarActorTable(h.state.world.farActors))));
+    assert.equal(getFarActor(h.state, target.id)?.physicsBody?.dynamic, true,
+      'the save-safe far row retains the target physical-body descriptor');
+    h.step(); // Refresh the surviving worker's native pose without updating world residency.
+    entry.job.phase = 'transit';
+
+    const descriptor = traffic._salvorWorkTarget(entry, cutter);
+    assert.equal(entry.job.payload.targetIdentity?.kind, 'worldRecord',
+      'the exact retained booking contributes its stable key after shelving');
+    assert.equal(entry.job.payload.targetIdentity?.worldRecordId, recordId);
+    assert.deepEqual(descriptor?.pos, { x: target.pos.x, z: target.pos.z },
+      'the world owner returns the same shelved wreck pose');
+    assert.equal(descriptor.ready, false, 'a pose cannot advance work before physical promotion');
+    assert.equal(h.state.entities.has(target.id), false, 'pose following does not revive or replace the wreck');
+    assert.equal(getFarActor(h.state, target.id)?.data?.worldRecordId, recordId,
+      'the durable far row remains authoritative until the worker reaches the promotion band');
+
+    // The canonical home-yard origin is valid only when it names the real current-sector station
+    // at its actual pose. It still follows the same exact shelved workpiece, without moving the
+    // worker to the yard or weakening the source/sector/identity guards.
+    const physicalOrigin = entry.job.route[0];
+    const workerBeforeYardOrigin = { ...cutter.pos };
+    entry.job.route[0] = { id: `yard:${FORGE_ID}`, pos: { x: h.yard.pos.x, z: h.yard.pos.z }, label: 'Scrap Yard' };
+    const yardOriginDescriptor = traffic._salvorWorkTarget(entry, cutter);
+    assert.deepEqual(yardOriginDescriptor?.pos, { x: target.pos.x, z: target.pos.z },
+      'a validated yard origin preserves the same shelved target pose');
+    assert.equal(yardOriginDescriptor.ready, false);
+    assert.deepEqual({ x: cutter.pos.x, y: cutter.pos.y, z: cutter.pos.z }, workerBeforeYardOrigin,
+      'origin validation does not teleport the worker');
+    entry.job.route[0] = physicalOrigin;
+
+    const promoted = promoteFarActorForTargetIdentity(h.state, entry.job.payload.targetIdentity,
+      { type: 'wreck', sectorId }, h.sim.helpers);
+    assert.equal(promoted?.physicsBody?.dynamic, true,
+      'the ordinary stable-identity promotion restores a dynamic physics body');
+    assert.equal(h.sim.registry.get('npcJobsRuntime')._findSalvorTractorTarget(entry, cutter), promoted,
+      'the existing attachment admission recognizes the restored exact wreck');
+  } finally {
+    h.close();
+  }
+});
 
 for (const drifting of [false, true]) {
   test(`public salvor physically completes the ${drifting ? 'drifting' : 'stationary'} finite haul to Forge`,

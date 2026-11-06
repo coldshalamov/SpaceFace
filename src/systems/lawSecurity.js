@@ -78,6 +78,9 @@ import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import { SECTORS } from '../data/sectors.js';
+import { lawHeatChallengeCopy } from '../data/lawChallengeCopy.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+export { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -90,6 +93,7 @@ import {
   entityIndexVersion,
   entityIndexLaneVersion,
 } from '../world/livingWorldViews.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 export const LAW_SECURITY_VERSION = 2;
 
@@ -343,6 +347,7 @@ export const lawSecurity = {
       this._sanctuaryWakeSeq = 0;
     };
     this._onSaveLoaded = () => {
+      this._clearRestoredHeatChallenges(this.state);
       this._resetInspectionTransient();
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
@@ -570,6 +575,13 @@ export const lawSecurity = {
     // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
     delete own.playerSurrender;
     delete own.surrenderRearm;
+    // Heat-challenge stamps name live hull ids too, and entity ids re-bind on load. A stamp
+    // left across the boundary would hold a recycled hull in a ring it never chose, so the
+    // watch re-derives from durable truth (the live heat tier) the same way a cold session does.
+    this._releaseAllHeatChallenges(this.state, 'restore');
+    delete own.heatChallenges;
+    delete own.heatChallengeEpisodeTier;
+    own.nextHeatChallengeTick = 0;
     // Session-scoped response fixtures name live entity ids — and spawned law bodies are
     // never serialized, so every id they hold is stale after a load. Clearing them lets
     // each sync re-derive from durable truth (the impound bill, the heat tier) the same
@@ -608,10 +620,13 @@ export const lawSecurity = {
     if (this._rcChaseEnabled) this._updateWitnessReports(state);
     this._updateWantedCheckpoint(_dt, state);
     this._updateWantedImpound(_dt, state);
+    this._updateHeatChallengeWatch(state);
     const own = ensureState(state);
-    this._enforceSanctuaryWithdrawals(state);
+    if (strideDt(this, 'sanctuary', _dt, 2, state) > 0) this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
-    this._updateCustomsScanCones(_dt, state);
+    // Cone dwell sums dt over seconds: 20 Hz with the accumulated step.
+    const coneDt = strideDt(this, 'cones', _dt, 3, state);
+    if (coneDt > 0) this._updateCustomsScanCones(coneDt, state);
     this._updateCustomsWeir(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
@@ -1048,6 +1063,9 @@ export const lawSecurity = {
     const attacker = entityById(state, payload.attackerId);
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
+    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
+    // carries its responsible actor's id instead; only that actor can be an aggressor.
+    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);
@@ -5312,6 +5330,147 @@ export const lawSecurity = {
       band: 'highsec',
     });
   },
+
+  // ── inf-patrol-challenge — the standing-heat challenge ───────────────────────────────────
+  // Flight-tick watch. Acquires at most ONE new ambient lawful patrol per episode (the nearest
+  // that has not been challenged in this episode), refreshes/releases existing stamps, and
+  // never challenges a hull the incident or custody flow already owns. Deterministic: no RNG
+  // on the acquire path; the copy pick is a seed+id hash (same law as every registry mint).
+  _updateHeatChallengeWatch(state) {
+    const own = ensureState(state);
+    const player = state.player;
+    const tier = wantedTierFor(player && player.heat);
+    if (tier === WANTED_TIER.NONE) {
+      this._releaseAllHeatChallenges(state, 'sheet_clear');
+      return;
+    }
+    const playerEnt = entityById(state, state.playerId);
+    if (!playerEnt || playerEnt.alive === false || !playerEnt.pos) {
+      this._releaseAllHeatChallenges(state, 'no_hull');
+      return;
+    }
+    // A tier change is a new sheet: the episode advances, so the standing stamp re-names it.
+    if (own.heatChallengeEpisodeTier !== tier) {
+      own.heatChallengeEpisodeTier = tier;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+    const episodeId = own.heatChallengeEpisode | 0;
+    const now = Number(state.simTime) || 0;
+    const release2 = LAW_HEAT_CHALLENGE_RELEASE_WU * LAW_HEAT_CHALLENGE_RELEASE_WU;
+    const map = own.heatChallenges && typeof own.heatChallenges === 'object' && !Array.isArray(own.heatChallenges)
+      ? own.heatChallenges : (own.heatChallenges = {});
+    // 1. Release dead, stale-episode, and long-out-of-range stamps.
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      let release = null;
+      if (!hull || hull.alive === false || !hull.data || hull.data.heatChallenge !== stamp) {
+        release = 'hull_gone';
+      } else if (hull.data.jobId || hull.data.claimDepotId || hull.data.itinerary?.kind === 'anvil_work'
+          || hull.data.ai?.securityTargetId != null) {
+        release = 'controller_changed';
+      } else if ((stamp.episodeId | 0) !== episodeId) {
+        release = 'episode_ended';
+      } else {
+        const dx = (hull.pos && hull.pos.x || 0) - playerEnt.pos.x;
+        const dz = (hull.pos && hull.pos.z || 0) - playerEnt.pos.z;
+        if (dx * dx + dz * dz > release2) {
+          if (!Number.isFinite(stamp.beyondSince)) stamp.beyondSince = now;
+          else if (now - stamp.beyondSince >= LAW_HEAT_CHALLENGE_RELEASE_S) release = 'out_of_range';
+        } else {
+          stamp.beyondSince = null;
+        }
+      }
+      if (release) {
+        if (hull && hull.data && hull.data.heatChallenge === stamp) delete hull.data.heatChallenge;
+        delete map[key];
+      }
+    }
+    // 2. Acquire at most one new patrol per watch tick.
+    if ((state.tick | 0) < (own.nextHeatChallengeTick | 0)) return;
+    own.nextHeatChallengeTick = (state.tick | 0) + LAW_HEAT_CHALLENGE_WATCH_TICKS;
+    // The custody cone owns the moment a surrender is open; an incident responder is the
+    // dispatch flow's hull, not the route patrol this challenge is about.
+    const surrender = own.playerSurrender;
+    if (surrender && (surrender.phase === 'holding' || surrender.phase === 'accepted')) return;
+    const acquire2 = LAW_HEAT_CHALLENGE_ACQUIRE_WU * LAW_HEAT_CHALLENGE_ACQUIRE_WU;
+    let best = null;
+    let bestD2 = acquire2;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!entity || entity.id === state.playerId || entity.type === 'station') return;
+      if (entity.alive === false || !entity.pos || !entity.data) return;
+      if (entity.data.heatChallenge) return;
+      if (map[entity.id]) return;
+      const ai = entity.data.ai;
+      if (!ai || ai.lawful !== true) return;
+      if (ai.securityTargetId != null) return;
+      if (entity.data.jobId || entity.data.claimDepotId || entity.data.itinerary?.kind === 'anvil_work') return;
+      const dx = entity.pos.x - playerEnt.pos.x;
+      const dz = entity.pos.z - playerEnt.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    });
+    if (!best) return;
+    const copy = lawHeatChallengeCopy(tier);
+    // An unnamed tier renders nothing: the hull is never stamped with words nobody wrote.
+    if (!copy || !copy.hail) return;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const stamp = {
+      patrolId: best.id,
+      patrolGeneration: occupantGenerationOf(best),
+      episodeId,
+      tier,
+      since: now,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+    };
+    best.data.heatChallenge = stamp;
+    map[best.id] = stamp;
+    this._emit('law:heatChallenge', {
+      patrolId: best.id,
+      tier,
+      line: copy.hail,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+      episodeId,
+      seedKey: hash32(seed >>> 0, 'law-heat-challenge', String(best.id)),
+    });
+    this._emit('comms:log', { from: 'PATROL', text: copy.hail, kind: 'law' });
+    this._emit('toast', { text: copy.text, kind: 'law', ttl: 4 });
+  },
+
+  _releaseAllHeatChallenges(state, reason) {
+    const own = state && state.lawSecurity;
+    const map = own && own.heatChallenges;
+    if (!map || typeof map !== 'object') return;
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      if (hull && hull.data && hull.data.heatChallenge === map[key]) delete hull.data.heatChallenge;
+    }
+    own.heatChallenges = {};
+    if (reason === 'sheet_clear') {
+      // The sheet fell: the next rise is a new episode, not a continuation.
+      own.heatChallengeEpisodeTier = null;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+  },
+
+  _clearRestoredHeatChallenges(state) {
+    // Generic persistent-entity restore clones data after the session map was discarded.
+    // IDs/generations may rebind, so only the current owner's exact tracked stamp can survive.
+    const tracked = state?.lawSecurity?.heatChallenges;
+    if (!state?.entities || typeof state.entities.values !== 'function') return;
+    for (const hull of state.entities.values()) {
+      const stamp = hull?.data?.heatChallenge;
+      if (!stamp || !lawHeatChallengeCopy(stamp.tier) || !Number.isInteger(stamp.episodeId)
+          || !Number.isFinite(stamp.since) || !Number.isFinite(stamp.standoffWu)) continue;
+      if (tracked?.[hull.id] === stamp
+          && incidentOccupant(state, stamp.patrolId, stamp.patrolGeneration) === hull) continue;
+      this.registry?.get('traffic')?._restoreHeatChallengeBrake(hull, stamp);
+      delete hull.data.heatChallenge;
+      // Only traffic can return a matched saved borrow. An unrelated/new intent is unchanged.
+    }
+  },
+
   _syncWantedCheckpoint(state) {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     const own = ensureState(state);
@@ -7676,13 +7835,29 @@ const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler
 /** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
 const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
 /** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
-const LAW_DOCK_FINE_BASE_CR = 150;
-const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
 /** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
 const LAW_FINE_WORK_S = 4;
 /** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */
 const LAW_SURRENDER_HOLD_S = 4;
 const LAW_SURRENDER_MAX_SPEED = 0.75;
+
+// ── inf-patrol-challenge — the standing-heat challenge ─────────────────────────────────────
+// A wanted pilot used to be invisible to the ambient cast: the patrols on their routes kept
+// orbiting as if the sheet were not there, and the first reaction came later, from a hunter
+// wing spawned off-screen. The law now reads its own record EARLY: the ambient lawful patrol
+// that acquires a wanted hull breaks its route, holds a standoff ring off the beam, and names
+// the sheet on the band — once per patrol per heat episode, well before any scan cone or
+// seeded hunter. The challenge is pressure, not a fight: stamped hulls stay passive/HOLD_FIRE
+// (the heat owner owns violence through its own seeded waves), and the stamp is a plain fact
+// traffic's stepper flies to (traffic.js reads data.heatChallenge, never writes it).
+export const LAW_HEAT_CHALLENGE_ACQUIRE_WU = LAW_INCIDENT_WITNESS_RADIUS;
+export const LAW_HEAT_CHALLENGE_STANDOFF_WU = 220;
+export const LAW_HEAT_CHALLENGE_RELEASE_WU = LAW_INCIDENT_WITNESS_RADIUS * 2;
+/** Continuous time outside the release ring before a challenged patrol falls back to its route. */
+export const LAW_HEAT_CHALLENGE_RELEASE_S = 6;
+/** Watch cadence (ticks at 60 Hz), same order as the ambient stamp watch. */
+const LAW_HEAT_CHALLENGE_WATCH_TICKS = 30;
+
 const LAW_COMPOSED_CAP = 24;
 const MEMORIAL_SITE_CAP = 16;
 const OBLIGATION_KINDS = new Set(['toll', 'warrant', 'restitution']);

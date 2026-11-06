@@ -287,6 +287,56 @@ test('the authored heist is boardable on Tethys and reachable only there', () =>
   }
 });
 
+test('redocking refreshes only the standing heist case-file projection', () => {
+  const t = scene();
+  const board = t.board();
+  const offerIndex = board.slots.findIndex((offer) => offer && offer.type === PQ019C_HEIST_TYPE);
+  const offer = board.slots[offerIndex];
+  assert.ok(offer, 'the ordinary Tethys board posts the authored capsule run');
+  assert.equal(offer.params.caseFile.learned, 0);
+  assert.equal(offer.params.methods.length, 2, 'the quiet method stays hidden until the case is ready');
+  const id = offer.id;
+  const payout = offer.reward_cr;
+  const expiresAtEpoch = offer.expiresAtEpoch;
+  const epochPosted = offer.epochPosted;
+  const launchWindowS = offer.params.launchWindowS;
+  let boardUpdates = 0;
+  t.bus.on('mission:updated', (event) => {
+    if (event?.stationId === PQ019C_HEIST_STATION_ID) boardUpdates += 1;
+  });
+
+  // These are learned through the heist facilities owner; the next ordinary board ensure is the
+  // normal docking/board-entry refresh after the player has left to case the route.
+  t.facilities._observeFact('launcher_schedule', 'watch');
+  t.facilities._observeFact('catcher_receiver', 'scan');
+  t.facilities._observeFact('crew_route', 'follow');
+  const refreshed = t.board();
+
+  assert.strictEqual(refreshed.slots[offerIndex], offer, 'refresh preserves the existing row object and index');
+  assert.equal(offer.id, id);
+  assert.equal(offer.reward_cr, payout);
+  assert.equal(offer.expiresAtEpoch, expiresAtEpoch);
+  assert.equal(offer.epochPosted, epochPosted);
+  assert.equal(offer.params.launchWindowS, launchWindowS);
+  assert.deepEqual(offer.params.caseFile, { learned: 3, total: 4, cased: true });
+  assert.equal(offer.params.methods.length, 3);
+  assert.match(offer.params.methods[2], /fence-side leg/i);
+  assert.match(offer.description, /CASE FILE 3\/4/);
+  assert.equal(boardUpdates, 1, 'the existing board publication event repaints the changed offer once');
+
+  t.board();
+  assert.equal(boardUpdates, 1, 'an unchanged ensure is idempotent');
+
+  t.bus.emit('ui:acceptMission', { missionId: offer.id });
+  const active = t.mission();
+  assert.ok(active, 'the refreshed row still accepts through the ordinary mission intent');
+  const acceptedTerms = JSON.stringify({ params: active.params, description: active.description, reward: active.reward_cr });
+  t.facilities._observeFact('fence_receiver', 'scan');
+  t.board();
+  assert.equal(JSON.stringify({ params: active.params, description: active.description, reward: active.reward_cr }), acceptedTerms,
+    'later observations never rewrite the accepted contract terms');
+});
+
 test('procedural generation can never roll the authored heist type', () => {
   const t = scene();
   // Drive many station-epoch rolls and assert the type never appears from _generateOffers.

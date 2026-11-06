@@ -9,6 +9,7 @@ import {
   shouldRedrawAfterLatePresent,
   shouldStartHeavyAdmission,
   shouldStartHeavyAdmissionEventually,
+  HEAVY_ADMISSION_EVENTUAL_SKIP,
   shouldStartWorkAfterLatePresent,
 } from '../src/render/admissionSliceBudget.js';
 
@@ -98,7 +99,7 @@ test('overlay recovery may force the next frame; heavy mesh builds must not', ()
 
 test('sustained late presents still start one heavy item after several skips', () => {
   let skipped = 0;
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < HEAVY_ADMISSION_EVENTUAL_SKIP - 1; i++) {
     const gate = shouldStartHeavyAdmissionEventually(33.3, skipped);
     assert.equal(gate.start, false);
     skipped = gate.skippedCount;
@@ -106,7 +107,7 @@ test('sustained late presents still start one heavy item after several skips', (
   const released = shouldStartHeavyAdmissionEventually(33.3, skipped);
   assert.equal(released.start, true);
   assert.equal(released.skippedCount, 0);
-  const recovered = shouldStartHeavyAdmissionEventually(16.7, 7);
+  const recovered = shouldStartHeavyAdmissionEventually(16.7, 2);
   assert.equal(recovered.start, true);
   assert.equal(recovered.skippedCount, 0);
 });
@@ -163,4 +164,10 @@ test('live speed-line overlay consults the late-present redraw gate', async () =
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/feel.js', import.meta.url), 'utf8');
   assert.match(source, /shouldRedrawAfterLatePresent/);
+});
+
+test('a steady slow host is not late against its own baseline, a spike still is', () => {
+  assert.equal(shouldStartHeavyAdmission(60, 22, 55), true);
+  assert.equal(shouldStartHeavyAdmission(150, 22, 55), false);
+  assert.equal(shouldStartHeavyAdmission(30, 22, null), false);
 });

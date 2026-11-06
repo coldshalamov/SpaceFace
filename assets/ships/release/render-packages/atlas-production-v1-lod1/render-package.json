@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3b8564235b62935ec73731f5d5cdf890bf9dccd8d2ef700114624604d5924c14",
+  "contentHash": "3950d8616c30bd918603bc21b27a69dcef30cdae8c377d716f30c6a11c6f6682",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -3458,14 +3458,14 @@
       "uri": "atlas_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 625912,
-    "sha256": "e2ba3428a4c3eed7944d967b6796261afd626293146889a9df31e26147507488",
+    "bytes": 626092,
+    "sha256": "011fe9d99f6f3a51a0a5042a723348d45a2a8f652ea13dd67c026ea6f1e168fd",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3563,6 +3563,379 @@
       },
       {
         "matrix": [
+          1.3092000484466553,
+          0,
+          0,
+          0,
+          0,
+          1.3092000484466553,
+          0,
+          0,
+          0,
+          0,
+          1.3092000484466553,
+          0,
+          -11.550000190734863,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 10,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          9.952499866485596,
+          0,
+          0,
+          0,
+          0,
+          9.952499866485596,
+          0,
+          0,
+          0,
+          0,
+          9.952499866485596,
+          0,
+          1.117499828338623,
+          1.6877499222755432,
+          -1.3274999856948853,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          8.384999752044678,
+          0,
+          0,
+          0,
+          0,
+          8.384999752044678,
+          0,
+          0,
+          0,
+          0,
+          8.384999752044678,
+          0,
+          2.684999942779541,
+          0.9605000019073486,
+          2.584999978542328,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 14,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2986014857888222,
+          0,
+          0,
+          0,
+          0,
+          0.2986014857888222,
+          0,
+          0,
+          0,
+          0,
+          0.2986014857888222,
+          0,
+          -1.5000828504562378,
+          2.09991717338562,
+          -0.45000001043081284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Hull",
+        "planIndex": 16,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Hull",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.10000002384185791,
+          0,
+          0,
+          0,
+          0,
+          0.10000002384185791,
+          0,
+          0,
+          0,
+          0,
+          0.10000002384185791,
+          0,
+          -1.2400000095367432,
+          2.180000066757202,
+          -0.45000000298023224,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Lights_Warm",
+        "planIndex": 18,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Lights_Warm",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.7489672899246216,
+          0,
+          0,
+          0,
+          0,
+          2.7489672899246216,
+          0,
+          0,
+          0,
+          0,
+          2.7489672899246216,
+          0,
+          -2.0500001311302185,
+          2.459952473640442,
+          -0.000010132789611816406,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+        "planIndex": 20,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.6700292825698853,
+          0,
+          0,
+          0,
+          0,
+          3.6700292825698853,
+          0,
+          0,
+          0,
+          0,
+          3.6700292825698853,
+          0,
+          -2.049999952316284,
+          2.922496199607849,
+          0.00006759166717529297,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+        "planIndex": 22,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.6984360218048096,
+          0,
+          0,
+          0,
+          0,
+          3.6984360218048096,
+          0,
+          0,
+          0,
+          0,
+          3.6984360218048096,
+          0,
+          -2.049999952316284,
+          2.064999580383301,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+        "planIndex": 24,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          0,
+          0,
+          0,
+          0.07999999821186066,
+          0,
+          8.899999618530273,
+          2.930000066757202,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+        "planIndex": 26,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6095042824745178,
+          0,
+          0,
+          0,
+          0,
+          0.6095042824745178,
+          0,
+          0,
+          0,
+          0,
+          0.6095042824745178,
+          0,
+          8.900041103363037,
+          2.2905470728874207,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+        "planIndex": 28,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+            "recordIds": [
+              "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3581,7 +3954,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 27,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3633,7 +4006,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 28,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3685,7 +4058,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 29,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3737,7 +4110,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 30,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3789,7 +4162,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 31,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3841,7 +4214,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 32,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3893,7 +4266,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 33,
+        "planIndex": 43,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3945,7 +4318,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 34,
+        "planIndex": 44,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3997,7 +4370,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 35,
+        "planIndex": 45,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4049,7 +4422,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 36,
+        "planIndex": 46,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4101,7 +4474,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 37,
+        "planIndex": 47,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4153,7 +4526,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 38,
+        "planIndex": 48,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4228,87 +4601,87 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 11,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
         "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 19,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
-        "role": "signal"
+        "planIndex": 21,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
         "role": "warning"
       }
     ],
@@ -4318,7 +4691,7 @@
       "sha256": "dfd97115815b31651f194acb6388d42c72afb6e0ddc58b803fad36bb8574b496",
       "uri": "assets/ships/motions/atlas-production-v1.motion.json"
     },
-    "nodeCount": 39,
+    "nodeCount": 49,
     "primitives": [
       {
         "canopy": false,
@@ -4508,8 +4881,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE001",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4555,8 +4928,8 @@
           -1.3274999856948853,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 11,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT001",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4584,8 +4957,8 @@
           2.584999978542328,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD001",
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4613,8 +4986,8 @@
           -0.45000001043081284,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Hull",
-        "planIndex": 13,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Hull001",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4642,8 +5015,8 @@
           -0.45000000298023224,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Lights_Warm",
-        "planIndex": 14,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Lights_Warm001",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4671,8 +5044,8 @@
           -0.000010132789611816406,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
-        "planIndex": 15,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical001",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4700,8 +5073,8 @@
           0.00006759166717529297,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
-        "planIndex": 16,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark001",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4729,8 +5102,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
-        "planIndex": 17,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning001",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4758,8 +5131,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
-        "planIndex": 18,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon001",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4787,8 +5160,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
-        "planIndex": 19,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical001",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4817,7 +5190,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 20,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4845,7 +5218,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_orange",
-        "planIndex": 21,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4873,7 +5246,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 22,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4901,7 +5274,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Livery",
-        "planIndex": 23,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4929,7 +5302,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 24,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4957,7 +5330,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 25,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4985,7 +5358,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
-        "planIndex": 26,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4997,7 +5370,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
   },
-  "runtimeHash": "002ae0d085a7889ad73f8a31fb510b1a52379eaf3f2d4a3c0658d47ed9091b8d",
+  "runtimeHash": "b546720876508e873a5aa39bb7920c751f832306ba7f7ceb639569f6152a87fd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

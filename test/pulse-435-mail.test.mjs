@@ -40,7 +40,11 @@ const STATS = new Set([
 const EVENT_NAME_SET = new Set(MAIL_EVENT_NAMES);
 // A letter must carry at least one "real event" (bus witness or deed record) or a time
 // window/day conjunct — the done-when's "nothing arrives untriggered".
-const OCCURRENCE_TYPES = new Set(['event', 'day', 'window', 'deed']);
+// A letter must carry at least one "real event" (bus witness or deed record) or a time
+// window/day conjunct — the done-when's "nothing arrives untriggered". Phase 2's serial
+// mail pass (design/program/special-500/PHASE2_PLAN.md) adds flag-triggered letters: the
+// flag IS the occurrence, written by the system leg that owns the moment.
+const OCCURRENCE_TYPES = new Set(['event', 'day', 'window', 'deed', 'flag']);
 
 function baseState(over = {}) {
   return {
@@ -132,6 +136,7 @@ test('every letter is triggered by a real event or a time window — nothing unt
         case 'cargo': assert.ok(CMDTY.has(trigger.commodity), `${letter.id}: commodity ${trigger.commodity}`); break;
         case 'docked': assert.ok(STATION_IDS.has(trigger.station), `${letter.id}: station ${trigger.station}`); break;
         case 'ship': assert.ok(SHIP_IDS.has(trigger.ship), `${letter.id}: ship ${trigger.ship}`); break;
+        case 'ownedShips': assert.ok(Number.isFinite(trigger.gte)); break;
         case 'credits': assert.ok(Number.isFinite(trigger.gte)); break;
         default: assert.fail(`${letter.id}: unknown trigger type ${trigger.type}`);
       }

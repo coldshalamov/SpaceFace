@@ -18,8 +18,8 @@ import { targetPhysicalClassLabel } from '../src/ui/targetPanel.js';
 const VALID_CLASSES = new Set(['ammunition', 'terrain', 'specialist']);
 
 test('FB-121: every roster row declares a physical class', () => {
-  // W-COLOSSI (61bd6689ff9): the 07 §5 roster grew the fleet to 32 rows.
-  assert.equal(ENEMY_TYPES.length, 32);
+  // W-COLOSSI (61bd6689ff9) grew the fleet to 32; the Iron Kraken pair landed 34 (a4d85e9a6dce).
+  assert.equal(ENEMY_TYPES.length, 34);
   for (const def of ENEMY_TYPES) {
     assert.ok(VALID_CLASSES.has(def.physicalClass),
       `${def.id} physicalClass '${def.physicalClass}' — must be ammunition|terrain|specialist`);
@@ -27,8 +27,8 @@ test('FB-121: every roster row declares a physical class', () => {
 });
 
 test('FB-121: every roster row provides non-null counter hint prose', () => {
-  // W-COLOSSI (61bd6689ff9): the 07 §5 roster grew the fleet to 32 rows.
-  assert.equal(ENEMY_TYPES.length, 32);
+  // W-COLOSSI (61bd6689ff9) grew the fleet to 32; the Iron Kraken pair landed 34 (a4d85e9a6dce).
+  assert.equal(ENEMY_TYPES.length, 34);
   for (const def of ENEMY_TYPES) {
     const hint = hintTextFor(def.id);
     assert.ok(typeof hint === 'string' && hint.length > 0,
@@ -57,6 +57,8 @@ test('FB-121: the specialist set is exactly the functional-identity rows', () =>
     'brood_tendril',
     'casket_worm',
     'customs_cutter',
+    'enemy_iron_kraken',
+    'enemy_iron_kraken_colossus',
     'field_anchor_controller',
     'forge_regent',
     'kilnback',

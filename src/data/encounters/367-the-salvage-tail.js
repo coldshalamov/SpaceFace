@@ -95,6 +95,7 @@ function commitTail(d, state, live, own, reason) {
     // The same decision becomes an honest choiceless watch, not an ignored live button.
     d.emit('encounter:waitStarted', {
       encounterId: live.id, reason: 'tail_committed', deadlineAt: live.deadlineAt,
+      title: live.shape.title, detail: 'The Reach pack has committed against the replacement fuel run.',
     });
   }
   if (own.stopped || live.phase === 'done') return;
@@ -259,7 +260,8 @@ export const runtime = Object.freeze({
       w.phase = 'custody';
       if (!w.custodyWaitStarted) {
         w.custodyWaitStarted = true;
-        d.emit('encounter:waitStarted', { encounterId: live.id, reason: 'cargo_custody', deadlineAt: freight.deadlineAt });
+        d.emit('encounter:waitStarted', { encounterId: live.id, reason: 'cargo_custody', deadlineAt: freight.deadlineAt,
+          title: live.shape.title, detail: 'The replacement lot is in a cargo custody window.' });
         if (live.phase === 'done' || !stillCurrent()) return;
       }
       if (!freight.terminal) return;

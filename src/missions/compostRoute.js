@@ -87,9 +87,12 @@ export function compostRouteFocus(owner) {
   const next = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
   const needed = next ? Math.ceil((next.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : 0;
   const fed = Math.max(0, Number(saved.compostFedMass) || 0);
-  const progress = `${receiver.status === 'destroyed' ? 'Destroyed receiver: regrow from zero. ' : ''}${number(biomass)} biomass; ${number(needed)}t feed to the next visible stage. First visible growth opens the Nest.`;
-  const run = saved.compostRunComplete === true ? 'Run paid once; no repeat payment.'
-    : `Optional paid run: ${number(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t; no pay before ${UNDERSTORY_COMPOST_RUN.targetMass}t.`;
+  const regrowth = receiver.status === 'destroyed'
+    ? 'The receiver was destroyed; it regrows only from new feed — 100t from zero to reach stage 2. ' : '';
+  const progress = `${regrowth}${number(biomass)} biomass; ${number(needed)}t feed to the next visible stage. First visible growth opens the Nest.`;
+  const run = saved.compostRunComplete === true
+    ? `Run paid once at ${number(fed)}t; no repeat payment.`
+    : `Your run ${number(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t; ${number(Math.max(0, UNDERSTORY_COMPOST_RUN.targetMass - fed))}t remain. No pay before ${UNDERSTORY_COMPOST_RUN.targetMass}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
   const reason = action => `${action} ${progress} ${run}`;
   if (!next) return { ...base, reason: `The garden is at its last stage; no further growth can show. ${run}` };
   if (state.world?.currentSectorId !== SECTOR) return { ...base,
@@ -152,3 +155,4 @@ export function compostRouteFocus(owner) {
     targetEntityId: face.fieldResident ? null : face.id, pos: { x: face.pos.x, z: face.pos.z },
     reason: reason(`Mine ordinary iron at this face; ${Math.ceil(needed / iron.massPerU)}u would supply ${number(needed)}t or more. Only actual ore collected counts. Once free cargo is aboard, return to Rookside to jettison and Line-feed it; other valid material also works.`) };
 }
+

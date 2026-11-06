@@ -51,6 +51,7 @@ import { ENTRIES_ANNEX2_A } from './entries-annex2-a.js';
 import { ENTRIES_ANNEX2_B } from './entries-annex2-b.js';
 import { ENTRIES_ANNEX2_C } from './entries-annex2-c.js';
 import { ENTRIES_ANNEX2_D } from './entries-annex2-d.js';
+import { ENTRIES_ANNEX_3 } from './entries-annex3.js';
 
 export const SPECIAL500 = Object.freeze([
   ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
@@ -74,8 +75,12 @@ export const SPECIAL500_ANNEX = Object.freeze([...ENTRIES_ANNEX]);
 export const SPECIAL500_ANNEX_2 = Object.freeze([
   ...ENTRIES_ANNEX2_A, ...ENTRIES_ANNEX2_B, ...ENTRIES_ANNEX2_C, ...ENTRIES_ANNEX2_D,
 ]);
+// Annex wave 3: the dock remembers — receipt entries filtered by where.stationId and
+// fired on the Nth dock, so a berth acknowledges a second visit and a signature port
+// stops pretending a fifth. Same director, same flag/memory schema.
+export const SPECIAL500_ANNEX_3 = Object.freeze([...ENTRIES_ANNEX_3]);
 export const SPECIAL500_ALL = Object.freeze([
-  ...SPECIAL500, ...SPECIAL500_ANNEX, ...SPECIAL500_ANNEX_2,
+  ...SPECIAL500, ...SPECIAL500_ANNEX, ...SPECIAL500_ANNEX_2, ...SPECIAL500_ANNEX_3,
 ]);
 
 const BY_ID = new Map(SPECIAL500_ALL.map((e) => [e.id, e]));

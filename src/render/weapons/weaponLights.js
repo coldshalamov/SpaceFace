@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN } from '../vfxColorLightDirector.js';
-import { nocturneForScene } from '../nocturne/bridge.js';
+import { nocturneForScene, NOCTURNE_GPU_POINTS } from '../nocturne/bridge.js';
 
 // P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
 // so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
@@ -9,8 +9,10 @@ import { nocturneForScene } from '../nocturne/bridge.js';
 // admission keeps the two weapon slots honest.
 export const WEAPON_LIGHT_POOL_SIZE = 2;
 
-export function visiblePointLightBudget(eventLightCount) {
-  return (Number(eventLightCount) || 0) + WEAPON_LIGHT_POOL_SIZE;
+// Event + weapon lights are logical proxies multiplexed onto NOCTURNE's fixed GPU points, so the
+// real visible point-light census is that fixed count regardless of the logical pool sizes.
+export function visiblePointLightBudget(_eventLightCount) {
+  return NOCTURNE_GPU_POINTS;
 }
 
 export class WeaponLightPool {

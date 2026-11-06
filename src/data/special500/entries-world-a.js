@@ -121,9 +121,9 @@ export const ENTRIES_WORLD_A = [
     kind: 'world-oneoff',
     title: 'The Confessional Booth',
     sectors: [],
-    trigger: { type: 'receipt', event: 'combat:kill' },
+    trigger: { type: 'flag', requires: 'guilt_filed' },
     channel: 'memory',
-    followup: 'barContacts booth keyed to a moralMemory read (src/systems/moralMemory.js): flat tithe processes the kill record, flag guilt_filed, Choir standing +1; the read-back lands verbatim as a late mail letter on the ending screen — one Choir liturgy, two sacraments, same receipt grammar as the buoy that absolves.',
+    followup: 'the dock-triggered booth reads moralMemory and offers the exact record on the flight decision deck: a 40 cr tithe files it, flag guilt_filed and Choir standing +1; the accepted words return verbatim in mail and on the ending screen when the canonical written finale completes.',
     payload: {
       text: 'In the back of a Choir-berthed bar, a side booth: DISPOSAL OF GUILT, PROFESSIONAL. The acolyte does not offer absolution, only filing: "Guilt is a record with no filing cabinet. We are the cabinet. It will be read back to you once, at the end, and then it is ours."',
     },

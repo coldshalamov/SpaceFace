@@ -32,7 +32,9 @@ import {
 } from '../src/ui/crucibleLaunch.js';
 import {
   crucibleResultsScreen,
+  deathDialSpec,
   killChainRows,
+  resultRows,
   storySentences,
 } from '../src/ui/screens/crucible.js';
 
@@ -368,8 +370,8 @@ test('PQ-174.06 bar 3: best chain, moments, build and build code all come from l
 
   // The plate tells it as sentences: cause, tell, moments, build, code.
   const lines = storySentences(resultA);
-  assert.ok(lines.some((line) => /Maw Brawler/.test(line)), 'the cause is told');
-  assert.ok(lines.some((line) => /ms of warning/.test(line)), 'the tell is told with its lead');
+  assert.match(resultA.headline, /Maw Brawler/, 'the cause remains in the headline');
+  assert.ok(lines.some((line) => /Earlier damage:.*ms before the fatal hit/.test(line)), 'earlier hits retain their timing');
   assert.ok(lines.some((line) => /Best kill chain 11/.test(line)), 'the best kill chain is told');
   assert.ok(lines.some((line) => /Build code W2:Volume \/ W3:Pierce/.test(line)), 'the code is told');
 });
@@ -389,7 +391,7 @@ test('PQ-174.06: the mounted plate carries the story band from live telemetry', 
   assert.ok(text.includes('12 kills'), 'a moment with its number');
   assert.ok(text.includes('You converged on'), 'the converged build');
   assert.ok(text.includes('Build code W2:Volume / W3:Pierce'), 'the shareable code');
-  assert.ok(text.includes('ms of warning') || text.includes('It warned you'), 'the missed tell');
+  assert.match(text, /Earlier damage:.*ms before the fatal hit/, 'earlier damage is not a missed tell');
 });
 
 test('PQ-174.06: the HUD death line names cause and missed tell without a DOM', () => {
@@ -407,10 +409,79 @@ test('PQ-174.06: the kill chain gains the tell rows only when the run recorded o
   const told = new Map(killChainRows({
     attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
     direction: 'AFT', dominantLayer: 'hull', telegraphName: 'Weapon charge', telegraphLeadMs: 800,
+    telegraphSource: 'witnessed',
   }));
-  assert.equal(told.get('It warned you'), 'Weapon charge — 800ms before impact');
+  assert.equal(told.get('Recorded tell'), 'Weapon charge — 800 ms before the fatal hit');
   assert.deepEqual(storyMomentsFor(null), [], 'null-safe moments');
   assert.deepEqual(storyMomentsFor({}), []);
+});
+
+test('PQ-174.06: debrief reader preserves incoming damage instead of inventing a tell', () => {
+  const h = boot(73311);
+  try {
+    beginManual(h, 73311);
+    at(h, 10 - 86 / 60);
+    h.bus.emit('combat:damage', { targetId: h.player.id, attackerId: 9,
+      weaponId: 'wpn_pulse_laser_s', applied: 7, amount: 7 });
+    at(h, 10);
+    h.bus.emit('player:death', { killerId: 9, attacker: 'Wasp Swarmer', weapon: 'Pulse Laser S',
+      direction: 'STARBOARD', dominantLayer: 'hull' });
+    const result = resultsOf(h);
+    assert.equal(result.death.telegraphSource, 'incoming-fire');
+    assert.equal(result.death.telegraphLeadMs, 1433);
+    // A richer old receipt must not override the result's explicit provenance or history.
+    Object.assign(result.defeat, { telegraphSource: 'witnessed', telegraphName: 'Weapon charge', telegraphLeadMs: 800 });
+    const before = structuredClone(result);
+    const expected = 'Earlier damage: Taking Pulse Laser S fire — 1433 ms before the fatal hit';
+    assert.ok(storySentences(result).includes(`${expected}.`));
+    assert.equal(deathDialSpec(result).caption.warn, expected);
+    assert.equal(new Map(killChainRows(result.defeat, result.death)).get('Earlier damage'),
+      'Taking Pulse Laser S fire — 1433 ms before the fatal hit');
+    const text = mountResults(result).lines.join('\n');
+    assert.ok(text.includes(expected));
+    assert.doesNotMatch(text, /It warned you|ms of warning|Wasp Swarmer's tell|Weapon charge/);
+    assert.deepEqual(result, before, 'readers preserve the original death and totals');
+  } finally {
+    survivalRun.destroy(); survivalResults.destroy(); runSession.destroy();
+  }
+});
+
+test('PQ-174.06: debrief reader keeps witnessed tells and legacy events distinct', () => {
+  const defeat = { attacker: 'Wasp Swarmer', weapon: 'Pulse Laser S', direction: 'STARBOARD', dominantLayer: 'hull' };
+  for (const [source, label] of [['witnessed', 'Recorded tell'], ['incoming-fire', 'Earlier damage'],
+    [undefined, 'Recorded event'], ['unknown', 'Recorded event']]) {
+    const death = { telegraphName: 'Weapon charge', telegraphLeadMs: 800,
+      ...(source === undefined ? {} : { telegraphSource: source }) };
+    const result = { defeat: { ...defeat, telegraphSource: 'witnessed', telegraphName: 'Old tell' }, death };
+    const expected = `${label}: Weapon charge — 800 ms before the fatal hit`;
+    assert.equal(deathDialSpec(result).caption.warn, expected);
+    assert.deepEqual(storySentences(result), [`${expected}.`]);
+    assert.equal(new Map(killChainRows(death)).has('Recorded tell'), source === 'witnessed');
+  }
+  const legacy = { ...defeat, telegraphName: 'Weapon charge', telegraphLeadMs: null };
+  assert.equal(deathDialSpec({ defeat: legacy }).caption.warn, 'Recorded event: Weapon charge');
+  assert.equal(deathDialSpec({ defeat: legacy, death: { telegraphSource: 'unrecorded', telegraphName: null } }).caption.warn, '');
+  assert.equal(deathDialSpec({ defeat: { ...legacy, source: { kind: 'environment' } } }).caption.warn, '');
+});
+
+test('PQ-174.06: run purse and defeat banking disclose starting funds without changing totals', () => {
+  const result = { ruleset: 'swarm', outcome: 'defeat', seed: 73311, wave: 1,
+    kills: 9, bestChain: 9, score: 0, level: 1, xp: 24, credits: 799,
+    bankedBounty: 399, hangarBounty: 399, defeat: { attacker: 'Wasp Swarmer' } };
+  const before = structuredClone(result);
+  const rows = new Map(resultRows(result));
+  assert.equal(rows.get('Run purse'), '799 cr');
+  assert.equal(rows.has('Salvage'), false);
+  assert.equal(rows.get('Score'), '0');
+  const text = mountResults(result).lines.join('\n');
+  assert.match(text, /Run purse/);
+  assert.match(text, /399 cr banked into the hangar/);
+  assert.match(text, /Defeat banks 50% of the remaining run purse, including its starting funds/);
+  assert.doesNotMatch(text, /Stunt score|799.*earned/);
+  assert.deepEqual(result, before);
+  for (const outcome of ['extracted', 'victory', 'aborted']) {
+    assert.doesNotMatch(mountResults({ ...result, outcome }).lines.join('\n'), /Defeat banks/);
+  }
 });
 
 /* --- plate mounting against a document stub (as in crucible-results.test.mjs) --- */

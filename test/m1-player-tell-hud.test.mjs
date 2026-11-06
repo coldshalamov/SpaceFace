@@ -76,6 +76,35 @@ test('on-screen tells stay enemy-linked but move clear of the one-objective stac
     'enemy-linked chip yields to the persistent objective');
 });
 
+test('clustered upper-edge threats keep separate bounded labels and stable body offsets', () => {
+  for (const [width,height,points,controls] of [
+    [1460,900,[[875,48],[910,52],[950,70]],[]],
+    [844,390,[[440,24],[458,35],[475,44]],[{x:0,y:250,width:180,height:140},{x:670,y:230,width:174,height:160}]],
+  ]) {
+    const placed=[];
+    for (let i=0;i<points.length;i++) {
+      const p={x:points[i][0],y:points[i][1],onScreen:true};
+      const result=resolveDoctrineTellPlacement(width,height,p,i,[...controls,...placed]);
+      assert.ok(result);
+      const rect=chipRect(result);
+      assert.ok(rect.x>=0&&rect.y>=0&&rect.x+rect.width<=width&&rect.y+rect.height<=height);
+      for(const other of [...controls,...placed])assert.equal(overlaps(rect,other),false);
+      placed.push(rect);
+      const moved={...p,x:p.x+2,y:p.y+1};
+      const held=resolveDoctrineTellPlacement(width,height,moved,i,[...controls,...placed.slice(0,-1)],
+        {x:result.x-p.x,y:result.y-p.y});
+      const translated={...rect,x:rect.x+2,y:rect.y+1};
+      const layout=resolveObjectiveHudLayout(width,height);
+      const blocked=[layout.objective,layout.vitals,layout.action,layout.rightDock,layout.commandDeck,
+        ...controls,...placed.slice(0,-1)].filter(Boolean);
+      if(translated.x>=8&&translated.y>=8&&translated.x+translated.width<=width-8
+        &&translated.y+translated.height<=height-8&&!blocked.some(other=>overlaps(translated,other))){
+        assert.equal(held.x-result.x,2);assert.equal(held.y-result.y,1);
+      }
+    }
+  }
+});
+
 test('HUD uses one accessible announcement and a max-three reduced-effects chip pool', () => {
   const start = hudSource.indexOf('// ---- M1 doctrine player-tells');
   const end = hudSource.indexOf('// ---- HUD meta-arc', start);

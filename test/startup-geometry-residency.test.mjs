@@ -379,9 +379,20 @@ test('late admission uploads count-0 instanced pool buffers before activation', 
   assert.equal(submitted[0].geometry, poolGeometry);
   assert.equal(submitted[0].instanceMatrix, dormantPool.instanceMatrix,
     'the proxy submits the production capacity-sized instance buffer, not a throwaway');
-  assert.equal(submitted[0].count, 0, 'the dormant pool stays dormant in the proxy pass');
+  assert.equal(submitted[0].count, 1, 'the scratch proxy reaches Three’s actual upload branch');
+  assert.equal(dormantPool.count, 0, 'the live pool stays dormant');
   assert.equal(poolGeometry.userData.spacefaceGpuResident, true,
     'the dormant pool geometry is stamped so first activation is not a first upload');
+});
+
+test('zero-capacity instanced geometry is not falsely sealed as uploaded', async () => {
+  const geometry = new THREE.BoxGeometry();
+  const pool = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), 0);
+  const harness = createRendererHarness();
+  await prepareStartupGeometryResidency(harness.renderer, pool, {
+    includeEmpty: true, yieldToMain: async () => {}, paceQueue: async () => {},
+  });
+  assert.notEqual(geometry.userData.spacefaceGpuResident, true);
 });
 
 test('every residency admission lane admits dormant instanced pools', () => {

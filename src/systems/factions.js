@@ -891,8 +891,12 @@ export const factions = {
     if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
       const previousOwner = state.world.sectors[sectorId].owner;
       c.flipSequence = Math.max(0, Math.floor(Number(c.flipSequence) || 0)) + 1;
+      // playerLeanMag rides the flip receipt: the lean magnitude at the moment the front turned,
+      // the same fact the rep swing below credits. Readers (the ship's ledger war page) use it to
+      // witness a front the PLAYER pressed; a pure NPC-power flip files under nobody.
       c.lastFlip = { pairKey: key, sectorId, previousOwner, newOwner: winner,
-        t: Number(state.simTime) || 0, flipId: `front:${key}:${c.flipSequence}` };
+        t: Number(state.simTime) || 0, flipId: `front:${key}:${c.flipSequence}`,
+        playerLeanMag: Math.abs(Number(c.playerLean) || 0) };
       state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
       if (this.bus) {
         this.bus.emit('conflict:flip', { ...c.lastFlip });
@@ -1092,6 +1096,15 @@ export const factions = {
     if (!data) return;
     state.factions = data.factions || {};
     state.conflicts = data.conflicts || {};
+    // Migration (inf-war-ledger-page): lastFlip.playerLeanMag is a flip-time stamp a save written
+    // before it simply lacks — that stays absent, and a corrupted value heals to absent, so a
+    // war page is never filed from a lean nobody witnessed.
+    for (const record of Object.values(state.conflicts)) {
+      if (record && record.lastFlip
+        && !Number.isFinite(Number(record.lastFlip.playerLeanMag))) {
+        delete record.lastFlip.playerLeanMag;
+      }
+    }
     // Heal any missing fields / new factions added since the save was written.
     for (const id of FACTION_IDS) ensureFaction(state, id);
   },

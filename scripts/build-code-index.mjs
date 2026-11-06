@@ -106,6 +106,8 @@ evLines.push('> **Do not edit by hand.** Regenerate with `npm run build:indexes`
 evLines.push("> `bus.emit`/`.on`/`add('event', ...)` sites. Use this to trace any event end-to-end:");
 evLines.push('> who emits it, who subscribes. Companion to `docs/MODULE_MAP.md` and');
 evLines.push('> `design/EVENT_TAXONOMY.md` (which covers only the telemetry-sink subset).');
+evLines.push('> This is a static source index: dynamic names, bus taps, and consumers in scripts or tests');
+evLines.push('> are not listed. A missing endpoint does not establish that an event is unused.');
 evLines.push('>');
 evLines.push(`> Generated: ${now} · ${events.length} events · ${[...byEvent.values()].reduce((a, e) => a + e.emitters.length + e.subscribers.length, 0)} routing sites.`);
 evLines.push('');
@@ -120,7 +122,7 @@ for (const ev of events) {
   evLines.push(`| \`${ev}\` | ${e} | ${s} |`);
 }
 evLines.push('');
-evLines.push('## Events with no emitter (likely dead, or emitted dynamically)');
+evLines.push('## Events with no statically indexed emitter');
 evLines.push('');
 const dead = events.filter((e) => byEvent.get(e).emitters.length === 0);
 if (dead.length) {
@@ -129,7 +131,7 @@ if (dead.length) {
   evLines.push('(none)');
 }
 evLines.push('');
-evLines.push('## Events with no subscriber (likely dead, or subscribed dynamically)');
+evLines.push('## Events with no statically indexed subscriber');
 evLines.push('');
 const orphan = events.filter((e) => byEvent.get(e).subscribers.length === 0);
 if (orphan.length) {

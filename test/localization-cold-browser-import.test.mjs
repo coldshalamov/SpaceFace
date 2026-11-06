@@ -9,6 +9,7 @@ test('cold browser import waits for the sidecar before synchronous language and 
     new URL('../src/localization/barks.generated.json', import.meta.url), 'utf8'));
   const previousProcess = globalThis.process;
   const previousFetch = globalThis.fetch;
+  const previousDocument = globalThis.document;
   let calls = 0;
   const pendingFetches = new Map();
   const fetched = [];
@@ -16,6 +17,7 @@ test('cold browser import waits for the sidecar before synchronous language and 
   globalThis.__SPACEFACE_PRODUCTION__ = false;
   globalThis.process = undefined;
   globalThis.window = { location: { search: '?locale=es-ES' } };
+  globalThis.document = { baseURI: 'https://game.example/' };
   globalThis.self = {
     ...globalThis.window,
     location: { href: 'https://game.example/src/core/wholeSimBrowserWorker.js' },
@@ -52,4 +54,6 @@ test('cold browser import waits for the sidecar before synchronous language and 
   assert.equal(localization.localizeText('Continue'), 'Continue');
   globalThis.process = previousProcess;
   globalThis.fetch = previousFetch;
+  if (previousDocument === undefined) delete globalThis.document;
+  else globalThis.document = previousDocument;
 });
