@@ -25,7 +25,7 @@ function cargoScene(offsetZ = -1800) {
   const player = source.spawn(makeShipEntitySpec('ship_hawser', { isPlayer: true, player: s.player,
     pos: { x: 0, z: 0 }, fittings: [] })); s.playerId = player.id;
   external(source, () => source.getSystem('world').enterSector(C.sectors[0], { continuous: false,
-    noTeleport: true, placePlayer: false }));
+    placePlayer: false }));
   const station = s.entityIndex.stations.find(e => e.data?.stationId === 'station_ceres'); assert.ok(station);
   // The load is a real ordinary purchase and dump through the existing single writers.
   // The encounter creates no cargo, bonus stock, or free victim pallet.
@@ -70,21 +70,21 @@ test('ordinary purchased-and-jettisoned cargo earns one production Pallet Jack; 
   const { source, s, player } = cargoScene();
   let target = null;
   try {
-    // Wait through the director's real quiet phase before discarding the moving load.
-    // A 60 WU/s jettison during recovery leaves the 700 WU search radius before admission.
+    // Wait through the director's real quiet phase with the pilot at rest. The ordinary
+    // jettison then has the authored 60 WU/s aft eject, while the separate fast-dump case below
+    // retains its moving-load escape contract.
     assert.equal(await source.getSystem('physics').prepareBackend(s, { reset: true }), true);
     advance(source, () => readTensionPolicy(s)?.allowCombat && !encounterPacingBlockReason(s.encounterDirector, s, ENCOUNTERS[C.encounterId], s.simTime),
-      7200, () => ({ policy: s.tensionDirector?.policy, pressure: s.encounterDirector?.pressure }));
-    // Match the ordinary aft eject speed with real forward flight, leaving catchable freight.
-    source.getSystem('input')._keys.KeyW = true;
-    advance(source, () => player.vel.x >= 55, 600, () => ({ velocity: player.vel, input: s.input }));
-    source.getSystem('input')._keys.KeyW = false;
+      // A real minor slot can remain occupied for the director's 600-second rolling window.
+      // Wait through one window plus the normal quiet interval, without resetting its ledger.
+      60 * 720, () => ({ policy: s.tensionDirector?.policy, pressure: s.encounterDirector?.pressure }));
+    assert.ok(Math.hypot(player.vel.x, player.vel.z) < 1,
+      `success fixture must dump from rest; current speed=${Math.hypot(player.vel.x, player.vel.z)}`);
     assert.equal(external(source, () => source.getSystem('cargo').jettison('cmdty_electronics', 3)), 3);
     const cargo = s.entityList.find(e => e.alive && e.data?.jettisonedCargo && e.data.commodityId === 'cmdty_electronics');
     assert.ok(cargo); const mass = cargo.mass, identity = structuredClone(cargo.data.cargoIdentity);
-    external(source, () => source.getSystem('world').relocatePlayerInSector({ x: cargo.pos.x + 250,
-      z: cargo.pos.z + 200, heading: Math.PI }, { reason: 'pallet-jack-contest-pocket' }));
-    assert.equal(await source.getSystem('physics').prepareBackend(s, { reset: true }), true);
+    assert.ok(Math.hypot(cargo.pos.x - player.pos.x, cargo.pos.z - player.pos.z) <= C.searchRadius,
+      'the moving original load remains physically in the Pallet Jack search pocket');
     const owner = source.getSystem('palletJack'), director = source.getSystem('encounterDirector'), requests = [];
     const request = director.requestAuthoredEncounter;
     director.requestAuthoredEncounter = function(p) {
@@ -94,6 +94,11 @@ test('ordinary purchased-and-jettisoned cargo earns one production Pallet Jack; 
         tension: s.tensionDirector?.policy?.phase, policyReason: s.tensionDirector?.policy?.reason,
         hull: player.hull / player.hullMax }); return out; };
     advance(source, () => owner.serialize().introduced, 7200, () => ({ requests,
+      time: s.simTime, lastMeaningfulAt: s.encounterDirector?.lastMeaningfulAt,
+      window: s.encounterDirector?.window, pending: s.encounterDirector?.pending?.map(item => ({
+        encounterId: item.encounterId, shapeId: item.shapeId, dueAt: item.dueAt,
+        palletJackRequest: item.palletJackRequest, palletJackQueueExpiresAt: item.palletJackQueueExpiresAt,
+      })),
       eligible: owner._eligible(), candidate: owner._candidate()?.id, cargoAlive: cargo.alive,
       cargo: { pos: cargo.pos, data: cargo.data }, player: player.pos, director: s.encounterDirector?.pressure }));
     let actor = owner._find('actor'); assert.ok(actor); let row = owner._row.incident;
@@ -105,7 +110,7 @@ test('ordinary purchased-and-jettisoned cargo earns one production Pallet Jack; 
     advance(source, () => !!owner._line(), 3600, () => ({ phase: row.phase, actor: actor.pos,
       cargo: cargo.pos, rotation: actor.rot, view: actor.data.palletJack,
       activity: actor.activity, ai: actor.data.ai, intent: actor.data.intent, velocity: actor.vel,
-      motor: source.getSystem('tacticalAI').inspect({entityId: actor.id}).maneuver,
+      decision: source.getSystem('tacticalAI').inspect({entityId: actor.id}).lastResult?.decisions?.find(row => row.entityId === actor.id),
       sensedCargo: source.getSystem('tacticalAI').inspect({entityId: actor.id}).perception.contacts.find(e => e.id === cargo.id) }));
     assert.equal(palletJackPresentation(s, actor).loaded, true);
     assert.deepEqual(cargo.data.cargoIdentity, identity); assert.equal(cargo.mass + actor.mass, mass + 100);

@@ -299,6 +299,35 @@ test('manifestHash includes selected flight/AI backends (different backends → 
   assert.equal(v3.manifestHash, v3Again.manifestHash);
 });
 
+test('a supplied system lookup fingerprints the actual AI and flight slot when slots are omitted', () => {
+  const production = resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: true });
+  const lookupFor = (aiSlot, flightSlot) => {
+    const lookup = new Map(production.authoritativeSystemIds.map((id) => [id, { name: id }]));
+    lookup.set('aiSlot', aiSlot);
+    lookup.set('flightSlot', flightSlot);
+    return lookup;
+  };
+  const tacticalV3 = resolveRuntimeManifest({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    systemLookup: lookupFor({ name: 'tacticalAI' }, { name: 'flight', _stepCraft() {} }),
+  });
+  const legacy = resolveRuntimeManifest({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    systemLookup: lookupFor({ name: 'ai' }, { name: 'flight', applyPlayerIntent() {} }),
+  });
+
+  assert.deepEqual(tacticalV3.selectedSlots, {
+    aiSlot: 'tacticalAI', flightSlot: 'flight', aiBackend: 'sg06-tactical', flightBackend: 'v3',
+  });
+  assert.deepEqual(legacy.selectedSlots, {
+    aiSlot: 'ai', flightSlot: 'flight', aiBackend: 'legacy', flightBackend: 'legacy',
+  });
+  assert.notEqual(tacticalV3.manifestHash, legacy.manifestHash,
+    'materialized backends must not share a hash when the caller supplies no separate slot metadata');
+});
+
 test('authoritative runtime does not expose raw sim.step (isolation cannot be bypassed)', () => {
   const snap = snapshotFeatureMaps();
   try {

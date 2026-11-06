@@ -26,6 +26,8 @@ export function hashOwnerKey(ownerKey) {
 // walk over the owner key was re-done on each call. The phase is a pure function of
 // (ownerKey, period), so the cache cannot drift from a fresh hash.
 const PHASE_CACHE = new Map();
+const PHASE_CACHE_MAX_ENTRIES = 4096;
+let phaseCacheEntries = 0;
 
 export function ownerPhase(ownerKey, periodTicks) {
   const period = Math.max(1, Math.floor(Number(periodTicks) || 1));
@@ -36,8 +38,17 @@ export function ownerPhase(ownerKey, periodTicks) {
   }
   let phase = perPeriod.get(period);
   if (phase === undefined) {
+    // Entity ids keep advancing in a long session. Memoization must not retain
+    // every retired owner; eviction only recomputes this same pure hash.
+    if (phaseCacheEntries >= PHASE_CACHE_MAX_ENTRIES) {
+      PHASE_CACHE.clear();
+      phaseCacheEntries = 0;
+      perPeriod = new Map();
+      PHASE_CACHE.set(ownerKey, perPeriod);
+    }
     phase = hashOwnerKey(ownerKey) % period;
     perPeriod.set(period, phase);
+    phaseCacheEntries++;
   }
   return phase;
 }
@@ -294,6 +305,8 @@ export function takeNearWorkSlice(
   const cursor = cursors[key] | 0;
   const out = [];
   for (let i = 0; i < limit; i++) out.push(order[(cursor + i) % n].item);
+  // Scratch retains capacity, not retired actors (and their component graphs).
+  for (let i = 0; i < n; i++) order[i].item = null;
   cursors[key] = (cursor + limit) % n;
   return out;
 }

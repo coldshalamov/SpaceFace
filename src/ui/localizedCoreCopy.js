@@ -1,4 +1,4 @@
-import { localizeText } from '../localization/gameLocalization.js';
+import { localizeText } from '../localization/sourceText.js';
 
 // Kept on a scanned UI surface so the existing extractor owns these public-route strings.
 export const LOCALIZED_CORE_COPY = Object.freeze({

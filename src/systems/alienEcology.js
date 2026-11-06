@@ -58,7 +58,7 @@ import { WRECK_SITE_ID, stepWreckSuccession } from '../data/wreckSuccession.js';
 import {
   COLLAR_SITE_ID, collarCause, stepCollarService, useCollarService,
 } from '../data/collarService.js';
-import { HEAT_SITE_ID, stepWasteHeat, wasteHeatMotionMult } from '../data/wasteHeat.js';
+import { HEAT_SITE_ID, stepWasteHeat, setWasteHeat, wasteHeatMotionMult } from '../data/wasteHeat.js';
 import {
   LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
 } from '../data/heatLure.js';
@@ -67,15 +67,16 @@ import {
 } from '../data/surveyCopy.js';
 import { suppressionFieldAt, MACHINE_SITES, advanceMachineProtocol } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
-import { insertDressingRow } from '../world/dressingTable.js';
+import { insertDressingRow, dropDressingRow, markDressingRowPoseDirty } from '../world/dressingTable.js';
+import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { captureClosedRefineryProps, reconcileClosedRefineryProps, registerClosedRefineryProp } from './closedRefineryProps.js';
 import { materializePlayerHullEcho, handlePlayerHullEchoEvent, tickPlayerHullEcho,
   playerHullEchoReadout } from '../world/playerHullEcho.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
 import { dockIntentStatus } from '../core/dockIntent.js';
-import { commodityIsBiohazard } from '../data/commodities.js';
+import { commodityIsBiohazard, COMMODITIES } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
@@ -84,8 +85,18 @@ import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
   nurseryDisturbance } from '../world/veilRayNursery.js';
 
 import { nurseryInitialHabitatOffset, nurseryHabitatGoal } from '../world/veilRayHabitat.js';
+import { WARM_FREIGHTER_HOST } from '../data/warmFreighter.js';
+import { mapWarmFreighterGrowth } from '../data/warmFreighterLayout.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 
 const TWO_PI = Math.PI * 2;
+/** Sim seconds a scripted lure point (claim torches, bait-trap beacon) keeps steering fauna. */
+const SCRIPTED_LURE_S = 20;
+
+/** F5 — the tether's drumbeat: the wake floor for a 'massline_slam' vibration impulse, in the
+ *  emitter's own severity units (relSpeed / crushing). Below a solid hit, a tether touch is
+ *  quiet work; at solid-and-worse the seam hears the slam. */
+export const MASSLINE_SLAM_WAKE_SEVERITY = 0.55;
 
 /** Membership lanes for the sector fauna cast — members are type 'fauna' only. */
 // 'sectorMemberships' joins the latch: a post-append re-home used to leave the
@@ -120,6 +131,10 @@ function siteRecord(state, siteId) {
       siteC: 0,
       // AE-056 interaction buffer: recent ecological signals fauna react to.
       signals: [],
+      // Persisted edge/readout flags use explicit booleans so a fresh save and a Continue
+      // produce the same site shape.
+      scanRevealed: false,
+      offerArmed: false,
       offerEmitted: false,
       // AE-130..137: each authored ecology mission emits once — a per-mission ledger.
       offersEmitted: {},
@@ -143,6 +158,14 @@ export function effectiveRevelation(state) {
     (m, d) => Math.max(m, Number(d && d.mods && d.mods.bioScanTier) || 0), 0,
   );
   return Math.min(ae.revelation + bonus, 3);
+}
+
+/** A species as the player may name it right now: the taxonomy name only from tier 2 up
+ *  (the same ladder the spawn label obeys), otherwise the scanner's generic term. */
+function revealedSpeciesName(state, species) {
+  if (!species) return 'Unknown organism';
+  const tier = effectiveRevelation(state);
+  return tier >= 2 && species.name ? species.name : scannerBiologyLabel(tier, species.signature || 'fauna');
 }
 
 function fittedFlag(state, key) {
@@ -312,7 +335,113 @@ function tickNurseryRelocation(world, site, rec, fauna, dt) {
 }
 
 // ── Materialization (called from world._spawnDressing tail) ─────────────────────────────────
-export function materializeAlienEcology(world, sector, active, onlySites = null) {
+const warmFreighterLifecycleStates = new WeakSet();
+const warmFreighterPendingDressing = new WeakMap();
+const warmFreighterGrowthBindings = new WeakMap();
+const warmFreighterFitDatum = Object.freeze({
+  center: Object.freeze([WARM_FREIGHTER_HOST.assetCenter.x, WARM_FREIGHTER_HOST.assetCenter.y, WARM_FREIGHTER_HOST.assetCenter.z]),
+  envelope: WARM_FREIGHTER_HOST.assetSize.x,
+});
+
+function cacheWarmFreighterRow(layout, row, activeRow, neutral, localYaw, fit) {
+  const c = WARM_FREIGHTER_HOST.assetCenter;
+  layout.cache.items.push({ row, activeRow, localYaw,
+    x: neutral.pos.x / fit + c.x, y: neutral.height / fit + c.y, z: neutral.pos.z / fit + c.z });
+}
+
+function clearWarmFreighterGrowth(world) {
+  const state = world.state;
+  const cache = warmFreighterGrowthBindings.get(state);
+  if (!cache) return;
+  if (state.world?.dressing === cache.table) {
+    for (const item of cache.items) {
+      if (cache.table.byId.get(item.row.id) === item.row) dropDressingRow(state, item.row.id);
+    }
+  }
+  if (cache.active?.dressing) {
+    for (const item of cache.items) {
+      const index = cache.active.dressing.indexOf(item.activeRow);
+      if (index >= 0) cache.active.dressing.splice(index, 1);
+    }
+  }
+  warmFreighterGrowthBindings.delete(state);
+  world.helpers?.requestPresentationRebuild?.('warm-freighter-growth-removed');
+}
+
+// Re-read the owner's same-life binding; the cached rows are bounded presentation,
+// never an independent host or a reason to admit one.
+function followWarmFreighterGrowth(world) {
+  const state = world.state, cache = warmFreighterGrowthBindings.get(state);
+  if (!cache) return;
+  const owner = (world.registry || world._registry)?.get?.('aftermathWrecks');
+  const binding = owner?.siteWreckBinding?.(WARM_FREIGHTER_HOST.siteId);
+  if (!binding || binding.markerId !== cache.markerId || binding.entityId !== cache.entityId
+      || binding.occupantGeneration !== cache.generation || state.world.dressing !== cache.table) {
+    clearWarmFreighterGrowth(world);
+    return;
+  }
+  const h = binding.host, x = binding.pose.x, z = binding.pose.z, rot = binding.pose.rot;
+  const levelHulk = isPhysicsBoundWholeHulk(h);
+  const bank = levelHulk ? 0 : h.bank || 0, pitch = levelHulk ? 0 : h.pitch || 0;
+  if (x === cache.x && z === cache.z && rot === cache.rot && bank === cache.bank && pitch === cache.pitch) return;
+  cache.x = x; cache.z = z; cache.rot = rot; cache.bank = bank; cache.pitch = pitch;
+  const cy = Math.cos(rot), sy = Math.sin(rot), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const cb = Math.cos(bank), sb = Math.sin(bank), fit = binding.worldScale;
+  const center = WARM_FREIGHTER_HOST.assetCenter;
+  for (const item of cache.items) {
+    const row = item.row;
+    if (!row.alive || cache.table.byId.get(row.id) !== row) continue;
+    const px = cp * item.x - sp * item.y, py = sp * item.x + cp * item.y;
+    const bx = fit * (px - center.x), by = fit * (cb * py - sb * item.z - center.y);
+    const bz = fit * (sb * py + cb * item.z - center.z);
+    row.pos.x = x + cy * bx - sy * bz;
+    row.pos.z = z + sy * bx + cy * bz;
+    row.rot = rot + item.localYaw;
+    row.data.warmFreighterVisualPose.height = by;
+    row.data.warmFreighterVisualPose.bank = bank;
+    row.data.warmFreighterVisualPose.pitch = pitch;
+    markDressingRowPoseDirty(state, row.id);
+    markAuxRowDirty(cache.table, row.id);
+  }
+}
+function retireUnavailableWarmFreighterGrowth(world, owner) {
+  if (owner?.siteWreckBinding?.(WARM_FREIGHTER_HOST.siteId)) return;
+  for (const row of (world.state?.world?.dressing?.rows || []).slice()) {
+    if (row.data?.warmFreighterHostMarkerId === WARM_FREIGHTER_HOST.markerId) dropDressingRow(world.state, row.id);
+  }
+}
+
+/** Current same-life physical host, never the old markerless map projection. */
+export function resolveWarmFreighterHost(world, { admit = false } = {}) {
+  const owner = (world?.registry || world?._registry)?.get?.('aftermathWrecks');
+  if (world?.state && world.bus?.on && !warmFreighterLifecycleStates.has(world.state)) {
+    warmFreighterLifecycleStates.add(world.state);
+    for (const event of ['aftermathWreck:retired', 'aftermathWreck:completed', 'aftermathWreck:siteUnavailable']) {
+      world.bus.on(event, payload => {
+        if (payload?.markerId === WARM_FREIGHTER_HOST.markerId) retireUnavailableWarmFreighterGrowth(world, owner);
+      });
+    }
+    world.bus.on('aftermathWreck:spawned', payload => {
+      if (payload?.markerId !== WARM_FREIGHTER_HOST.markerId || !owner?.siteWreckBinding?.(WARM_FREIGHTER_HOST.siteId)) return;
+      const pending = warmFreighterPendingDressing.get(world.state);
+      warmFreighterPendingDressing.delete(world.state);
+      if (pending && world.state.world.currentSectorId === WARM_FREIGHTER_HOST.sectorId) {
+        materializeAlienEcology(world, pending.sector, pending.active, [pending.site], { dressingOnly: true });
+      }
+    });
+  }
+  const binding = admit ? owner?.admitSiteWreck?.(WARM_FREIGHTER_HOST.siteId) : owner?.siteWreckBinding?.(WARM_FREIGHTER_HOST.siteId);
+  if (!binding && world?.state) retireUnavailableWarmFreighterGrowth(world, owner);
+  return binding || null;
+}
+
+/** Shared heat/readout range center: unavailable hosts grant no distant control. */
+export function warmFreighterSiteCenter(world) {
+  const binding = resolveWarmFreighterHost(world);
+  return binding ? { x: binding.pose.x, z: binding.pose.z } : null;
+}
+
+export function materializeAlienEcology(world, sector, active, onlySites = null, { dressingOnly = false } = {}) {
   const state = world && world.state;
   const sites = onlySites || alienSitesForSector(sector && sector.id);
   if (!sites.length || !world.helpers) return;
@@ -321,6 +450,9 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
     const site = definition.nursery ? { ...definition, center: nurserySiteCenter(state, definition) } : definition;
     if (effectiveRevelation(state) < (site.requiresRevelation || 0)) continue;
     const rec = siteRecord(state, site.siteId);
+    const host = site.siteId === WARM_FREIGHTER_HOST.siteId ? resolveWarmFreighterHost(world, { admit: true }) : null;
+    const hostAvailable = site.siteId !== WARM_FREIGHTER_HOST.siteId || !!host;
+    if (!hostAvailable) warmFreighterPendingDressing.set(state, { sector, active, site });
     if (site.playerHullEcho) materializePlayerHullEcho(world, site, active);
     if (site.nursery) materializeNurseryDressing(world, site, active);
     const rng = world.helpers.mulberry32(
@@ -329,59 +461,107 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
     // Infestation ring — deterministic growth dressing around the world-site anchor.
     const strain = alienStrainById(site.strainId);
     // AE-175/176: morphology fingerprint per site; severed sites draw the dead palette.
-    const growth = site.sterile ? [] : planInfestationModules(site, rng, rec.state);
+    // Consume the original plans even when the finite host is unavailable: fauna
+    // shares this seeded stream and must not reshuffle after host retirement.
+    const plannedGrowth = site.sterile ? [] : planInfestationModules(site, rng, rec.state);
+    const growth = hostAvailable ? plannedGrowth : [];
     const bloom = rec.state === 'bloom';
-    const growthCount = bloom ? growth.length + 8 : growth.length;
+    let layout = null;
+    if (host) {
+      clearWarmFreighterGrowth(world);
+      const levelHulk = isPhysicsBoundWholeHulk(host.host);
+      const actual = { pos: host.pose, rot: host.pose.rot, radius: host.radius,
+        bank: levelHulk ? 0 : host.host.bank || 0, pitch: levelHulk ? 0 : host.host.pitch || 0 };
+      const neutral = { pos: { x: 0, z: 0 }, rot: 0, radius: host.radius };
+      const extras = bloom ? growth.slice(0, 8) : [];
+      layout = {
+        base: mapWarmFreighterGrowth(growth, actual, warmFreighterFitDatum, 'base'),
+        bloom: mapWarmFreighterGrowth(extras, actual, warmFreighterFitDatum, 'bloom'),
+        neutralBase: mapWarmFreighterGrowth(growth, neutral, warmFreighterFitDatum, 'base'),
+        neutralBloom: mapWarmFreighterGrowth(extras, neutral, warmFreighterFitDatum, 'bloom'),
+        actual, neutral,
+        cache: { markerId: host.markerId, entityId: host.entityId, generation: host.occupantGeneration,
+          table: null, active, items: [], x: host.pose.x, z: host.pose.z, rot: host.pose.rot,
+          bank: actual.bank, pitch: actual.pitch },
+      };
+    }
+    // A sterile site plans no growth: there is nothing to spill (and `i % 0` would throw).
+    const growthCount = bloom && growth.length > 0 ? growth.length + 8 : growth.length;
     for (let i = 0; i < growthCount; i += 1) {
       const g = growth[i % growth.length];
       const extra = i >= growth.length; // bloom ring spills wider
+      const mapped = layout && (extra ? layout.bloom[i - growth.length] : layout.base[i]);
+      const neutralPoint = layout && (extra ? layout.neutralBloom[i - growth.length] : layout.neutralBase[i]);
       const refineryCalcite = site.siteId === 'closed_refinery'
         && (g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root');
       if (refineryCalcite && rec.brokenCalcite?.[i]) continue;
       const row = insertDressingRow(state, {
         type: 'fx',
-        pos: world._toGlobal({
+        pos: mapped ? mapped.pos : world._toGlobal({
           x: site.center.x + g.dx * (extra ? 1.6 : 1),
           z: site.center.z + g.dz * (extra ? 1.6 : 1),
         }, sector.id),
-        rot: g.rot,
-        radius: 10 * g.scale,
+        rot: mapped ? mapped.rot : g.rot,
+        radius: 10 * (mapped ? mapped.scale : g.scale),
         homeSectorId: sector.id,
         data: {
           placeId: `alien_growth_${g.moduleId}`,
           moduleId: g.moduleId,
-          scale: g.scale,
+          scale: mapped ? mapped.scale : g.scale,
           strainId: strain ? strain.id : null,
           siteId: site.siteId,
           alienEcology: true,
+          ...(host ? { warmFreighterHostMarkerId: host.markerId, warmFreighterHostGeneration: host.occupantGeneration,
+            warmFreighterVisualPose: { height: mapped.height, bank: layout.actual.bank,
+              pitch: layout.actual.pitch, localYaw: g.rot } } : {}),
           scannerSignalKind: 'anomaly',
           ...(g.moduleId === 'calcified_collar' || g.moduleId === 'mineral_root' ? { material: 'calcite' } : {}),
         },
       });
       if (refineryCalcite) registerClosedRefineryProp(state, row, rec, i);
-      active.dressing.push({ id: row.id, placeId: `alien_growth_${g.moduleId}`, pos: row.pos, paletteClass: 'alien' });
+      const activeRow = { id: row.id, placeId: `alien_growth_${g.moduleId}`, pos: row.pos, paletteClass: 'alien' };
+      active.dressing.push(activeRow);
+      if (layout) cacheWarmFreighterRow(layout, row, activeRow, neutralPoint, g.rot, host.worldScale);
     }
 
     // AE-071 ambient dressing: contamination state spills loose growth beyond the ring.
-    for (const a of (site.sterile ? [] : planAmbientGrowth(state, site, rng))) {
+    const ambient = site.sterile ? [] : planAmbientGrowth(state, site, rng);
+    const mappedAmbient = layout && mapWarmFreighterGrowth(ambient, layout.actual, warmFreighterFitDatum, 'ambient');
+    const neutralAmbient = layout && mapWarmFreighterGrowth(ambient, layout.neutral, warmFreighterFitDatum, 'ambient');
+    for (let ai = 0; ai < ambient.length; ai++) {
+      const a = ambient[ai], mapped = mappedAmbient && mappedAmbient[ai];
+      if (!hostAvailable) continue;
       const row = insertDressingRow(state, {
         type: 'fx',
-        pos: world._toGlobal({ x: site.center.x + a.dx, z: site.center.z + a.dz }, sector.id),
-        rot: a.rot,
-        radius: 8 * a.scale,
+        pos: mapped ? mapped.pos : world._toGlobal({ x: site.center.x + a.dx, z: site.center.z + a.dz }, sector.id),
+        rot: mapped ? mapped.rot : a.rot,
+        radius: 8 * (mapped ? mapped.scale : a.scale),
         homeSectorId: sector.id,
         data: {
           placeId: 'alien_growth_filament_sheet',
           moduleId: 'filament_sheet',
-          scale: a.scale,
+          scale: mapped ? mapped.scale : a.scale,
           strainId: strain ? strain.id : null,
           siteId: site.siteId,
           alienEcology: true,
           ambient: true,
+          ...(host ? { warmFreighterHostMarkerId: host.markerId, warmFreighterHostGeneration: host.occupantGeneration,
+            warmFreighterVisualPose: { height: mapped.height, bank: layout.actual.bank,
+              pitch: layout.actual.pitch, localYaw: a.rot } } : {}),
         },
       });
-      active.dressing.push({ id: row.id, placeId: 'alien_growth_filament_sheet', pos: row.pos, paletteClass: 'alien' });
+      const activeRow = { id: row.id, placeId: 'alien_growth_filament_sheet', pos: row.pos, paletteClass: 'alien' };
+      active.dressing.push(activeRow);
+      if (layout) cacheWarmFreighterRow(layout, row, activeRow, neutralAmbient[ai], a.rot, host.worldScale);
     }
+
+    if (layout) {
+      layout.cache.table = state.world.dressing;
+      warmFreighterGrowthBindings.set(state, layout.cache);
+      if (dressingOnly) world.helpers?.requestPresentationRebuild?.('warm-freighter-growth-restored');
+    }
+
+    if (dressingOnly) continue;
 
     // Fauna cast — kinematic entities; persistent dead set means kills never respawn.
     const ae0 = ensureAlienEcologyState(state);
@@ -499,7 +679,13 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
         });
       }
     }
+    // The plan is per sector and this loop runs per site (and again on the nursery's
+    // once-a-second retry): a phantom already on the board is not pushed twice.
+    const onBoard = new Set();
+    for (const p of active.pois) if (p && p.phantom === true && p.poiId) onBoard.add(p.poiId);
     for (const ph of phantomPlan) {
+      if (onBoard.has(ph.id)) continue;
+      onBoard.add(ph.id);
       active.pois.push({
         id: null,                 // markerless — no entity, projection only
         poiId: ph.id,
@@ -652,18 +838,84 @@ function applyWasteHeat(world, site, rec, event) {
   world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
 }
 
-function noteWasteHeatCut(world, sectorId) {
-  const site = ALIEN_SITES[HEAT_SITE_ID];
-  if (!site || site.sectorId !== sectorId || !world || !world.state) return;
-  const player = world.state.entities && world.state.entities.get(world.state.playerId);
-  if (!player || !player.pos) return;
-  const siteGlobal = world._toGlobal
-    ? world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId)
-    : site.center;
-  const dSite = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
-  if (!(dSite < site.arrivalBands.close)) return;
-  const rec = siteRecord(world.state, site.siteId);
-  applyWasteHeat(world, site, rec, 'cut');
+// Offers are transient capabilities, not another copy of the persisted heat state.
+export const WARM_HEAT_INTERACTION = 'warm-freighter-standby';
+const warmHeatOffers = new WeakMap();
+
+export function invalidateWarmHeatOffer(state) {
+  const runtime = state && warmHeatOffers.get(state);
+  if (runtime) runtime.offer = null;
+}
+
+// Only an owner-confirmed terminal outcome removes the physical heat source.
+export function reconcileWarmHeatTerminalSource(state) {
+  const rows = state?.aftermathWrecks?.bySector?.[WARM_FREIGHTER_HOST.sectorId];
+  const marker = Array.isArray(rows) && rows.find(row => row?.markerId === WARM_FREIGHTER_HOST.markerId
+    && row.siteId === HEAT_SITE_ID && ['destroyed', 'exhausted'].includes(row.siteOutcome));
+  if (!marker) return false;
+  invalidateWarmHeatOffer(state);
+  siteRecord(state, HEAT_SITE_ID).heatOnline = false;
+  return true;
+}
+
+function warmHeatBindingInRange(world) {
+  const state = world?.state, site = ALIEN_SITES[HEAT_SITE_ID];
+  if (!state || state.mode !== 'flight' || state.world?.currentSectorId !== site.sectorId) return null;
+  const player = state.entities?.get(state.playerId);
+  if (!player || player.alive === false || !Number.isFinite(player.pos?.x) || !Number.isFinite(player.pos?.z)) return null;
+  const binding = resolveWarmFreighterHost(world);
+  const center = binding && warmFreighterSiteCenter(world);
+  if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) return null;
+  return Math.hypot(player.pos.x - center.x, player.pos.z - center.z) < site.arrivalBands.close ? binding : null;
+}
+
+function offerWarmHeat(world, sectorId) {
+  if (sectorId !== ALIEN_SITES[HEAT_SITE_ID].sectorId) return;
+  const binding = warmHeatBindingInRange(world);
+  if (!binding) return;
+  const rec = siteRecord(world.state, HEAT_SITE_ID), online = rec.heatOnline !== false;
+  let runtime = warmHeatOffers.get(world.state);
+  if (!runtime) {
+    runtime = { sequence: 0, offer: null };
+    warmHeatOffers.set(world.state, runtime);
+  }
+  const token = ++runtime.sequence;
+  runtime.offer = { rec, token, online, host: binding.host, generation: binding.occupantGeneration };
+  world.bus.emit('siteEvidence:offer', {
+    siteId: HEAT_SITE_ID, interactionId: WARM_HEAT_INTERACTION, requestId: token, expectedOnline: online,
+    headline: 'Warm Freighter — standby',
+    detail: online
+      ? 'Standby on: cysts have heat and eels are held. Cutting standby slows cysts and releases eels; leeches are unchanged.'
+      : 'Standby cut: cysts move slowly and eels are released. Restoring standby supports cysts and holds eels; leeches are unchanged.',
+    choices: [{ id: online ? 'heat-off' : 'heat-on', label: online ? 'Cut standby' : 'Restore standby' },
+      { id: 'leave', label: 'Leave as is' }],
+  });
+}
+
+export function handleWarmHeatAction(world, request = {}) {
+  if (request.interactionId !== WARM_HEAT_INTERACTION) return null;
+  const refuse = reason => ({ ok: false, reason });
+  if (request.siteId !== HEAT_SITE_ID || !['heat-off', 'heat-on'].includes(request.verb)
+      || typeof request.expectedOnline !== 'boolean' || !Number.isSafeInteger(request.requestId)) {
+    return refuse('Standby request is invalid. Scan again.');
+  }
+  const binding = warmHeatBindingInRange(world);
+  if (!binding) return refuse('Warm Freighter standby is unavailable or out of range. Scan again.');
+  const runtime = warmHeatOffers.get(world.state);
+  const offer = runtime?.offer;
+  const rec = siteRecord(world.state, HEAT_SITE_ID);
+  if (!offer || offer.rec !== rec || offer.token !== request.requestId
+      || offer.host !== binding.host || offer.generation !== binding.occupantGeneration
+      || offer.online !== request.expectedOnline || (rec.heatOnline !== false) !== request.expectedOnline) {
+    return refuse('Standby reading is out of date. Scan again.');
+  }
+  const desired = request.verb === 'heat-on';
+  if (desired === request.expectedOnline) return refuse('Standby is already in that state. Scan again.');
+  runtime.offer = null;
+  const next = setWasteHeat(desired);
+  rec.heatOnline = next.online;
+  world.bus.emit('comms:log', { from: ALIEN_SITES[HEAT_SITE_ID].name, kind: 'ecology', text: next.text });
+  return { ok: true, online: next.online };
 }
 
 function lureRecord(ae) {
@@ -817,7 +1069,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       ae.heatTrial = noteHeatTrial(ae.heatTrial, { kind: 'scan' });
       noteWreckCut(world, sectorId);
       noteCollarDivert(world, sectorId);
-      noteWasteHeatCut(world, sectorId);
+      offerWarmHeat(world, sectorId);
       noteHeatDerivative(world, sectorId);
       noteSurveyCopy(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
@@ -864,9 +1116,14 @@ export function handleAlienEcologyEvent(world, type, payload) {
     }
     case 'sectorsim:impulse': {
       // AE-051 vibration stimulus: mining noise wakes dormant fauna (casket worms).
-      if (!payload || payload.kind !== 'mining_noise') break;
+      // F5 — the tether's drumbeat: a solid-or-worse Massline whip impact is the same physical
+      // stimulus class at a higher floor (masslineImpacts emits 'massline_slam' with severity).
+      const slam = payload && payload.kind === 'massline_slam'
+        && Number(payload.severity) >= MASSLINE_SLAM_WAKE_SEVERITY;
+      if (!payload || (payload.kind !== 'mining_noise' && !slam)) break;
       // AE-168 (G14): a Resonant Massline's strike carries a dead-matter signature —
-      // dormant fauna do not read the beam as a threat.
+      // dormant fauna do not read the beam as a threat. The fitted gate keeps the quiet-work
+      // contract for both kinds.
       if (fittedFlag(state, 'resonantMassline')) break;
       const sectorId = payload.sectorId;
       if (!sectorId) break;
@@ -1171,8 +1428,9 @@ function ruptureCarrier(world, e, rec, species, pos) {
         homeSectorId: e.homeSectorId,
         hull: 30,
         data: {
-          name: `${scannerBiologyLabel(ensureAlienEcologyState(state).revelation, 'fauna')} (juvenile)`,
-          scanLabel: scannerBiologyLabel(ensureAlienEcologyState(state).revelation, 'fauna'),
+          // Effective tier, like every other label: a fitted Bio-Spectral Pass counts.
+          name: `${scannerBiologyLabel(effectiveRevelation(state), 'fauna')} (juvenile)`,
+          scanLabel: scannerBiologyLabel(effectiveRevelation(state), 'fauna'),
           scannerSignalKind: 'anomaly',
           strainId: e.data.strainId,
           siteId: e.data.ecology.siteId,
@@ -1286,10 +1544,24 @@ export function tickAlienEcology(world, dt) {
   if (!state || !state.entityList || dt <= 0) return;
   const sectorId = state.world && state.world.currentSectorId;
   if (!sectorId) return;
+  if (sectorId === WARM_FREIGHTER_HOST.sectorId) {
+    // Sector dressing may precede the current-sector swap. Attempt admission
+    // once after the swap; the existing spawn edge retries dressing only.
+    const pending = warmFreighterPendingDressing.get(state);
+    if (pending && !pending.enterAttempted) {
+      pending.enterAttempted = true;
+      resolveWarmFreighterHost(world, { admit: true });
+    }
+    followWarmFreighterGrowth(world);
+  }
+  const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+  // Hull exposure runs on EVERY sector, site or not: clean space is where biofilm decays,
+  // so gating it behind site presence left a fouled hull fouled until a purge dock.
+  const ae = ensureAlienEcologyState(state);
+  tickHullExposure(world, state, ae, sectorId, player, dt);
   const sites = alienSitesForSector(sectorId);
   if (!sites.length) return;
   reconcileClosedRefineryProps(world);
-  const player = state.playerId != null ? state.entities.get(state.playerId) : null;
   const nursery = ALIEN_SITES[VEIL_NURSERY_ID];
   const active = state.world.activeSector;
   if (sectorId === nursery.sectorId && effectiveRevelation(state) >= nursery.requiresRevelation
@@ -1298,10 +1570,12 @@ export function tickAlienEcology(world, dt) {
     // satellite; stable dressing keys and deadFauna preserve identity on re-entry.
     materializeAlienEcology(world, { id: sectorId }, active, [nursery]);
   }
+  tickAlienEcologySites(world, state, ae, sectorId, sites, player, nursery, active, dt);
+}
 
-  // ── AE-076 ship exposure: hull biofilm accrues with point contamination, throttled by
-  // fitted filters (mods.bioFilterMult), decaying in clean space. Logistics pressure.
-  const ae = ensureAlienEcologyState(state);
+// ── AE-076 ship exposure: hull biofilm accrues with point contamination, throttled by
+// fitted filters (mods.bioFilterMult), decaying in clean space. Logistics pressure.
+function tickHullExposure(world, state, ae, sectorId, player, dt) {
   if (player && player.pos) {
     const local = world._toLocal ? world._toLocal(player.pos, sectorId) : player.pos;
     const c = pointContaminationAt(state, sectorId, local.x, local.z);
@@ -1321,7 +1595,10 @@ export function tickAlienEcology(world, dt) {
       ae._exposureWarned = false; ae._exposureSevere = false;
     }
   }
+}
 
+// The site-bearing half of the tick: fauna drives, relays, setpieces.
+function tickAlienEcologySites(world, state, ae, sectorId, sites, player, nursery, active, dt) {
   // First collect fauna + relay coherence — relay severed = site record says severed.
   // The walk's gate is site presence, not membership — site-bearing sectors paid an
   // O(entities) walk per tick forever. The entity index bumps on every indexed
@@ -1502,9 +1779,11 @@ export function tickAlienEcology(world, dt) {
         if (nearest) {
           const sp = faunaSpeciesById(nearest.data.ecology.speciesId);
           nearest.data.ecology.tolling = true;
+          // Named only once the reveal ladder allows it; before that the band hears a contact.
+          const bellName = revealedSpeciesName(state, sp);
           world.bus.emit('comms:log', {
-            from: sp.name, kind: 'ecology',
-            text: `${sp.name} tolls on the band — it rings before the radiation front arrives.`,
+            from: effectiveRevelation(state) >= 2 ? bellName : 'Band intercept', kind: 'ecology',
+            text: `${bellName} tolls on the band — it rings before the radiation front arrives.`,
           });
         } else {
           world.bus.emit('comms:log', {
@@ -1606,19 +1885,23 @@ export function tickAlienEcology(world, dt) {
     // Staged arrival beats (doc 09): bands around the site trigger the reveal choreography.
     if (player && player.pos) {
       const dSite = Math.sqrt(dist2(player.pos.x, player.pos.z, siteGlobal.x, siteGlobal.z));
+      const arrivalCenter = site.siteId === HEAT_SITE_ID ? warmFreighterSiteCenter(world) : null;
+      const arrivalDistance = site.siteId !== HEAT_SITE_ID ? dSite : arrivalCenter
+        ? Math.sqrt(dist2(player.pos.x, player.pos.z, arrivalCenter.x, arrivalCenter.z)) : Infinity;
       const lines = hullLoss ? {
         long: `An old flight signature repeats ahead — ${hullLoss.name}. Scan to compare it with your loss record.`,
         mid: playerHullEchoReadout(hullLoss),
         close: playerHullEchoReadout(hullLoss),
-      } : site.arrivalLines || null;
-      if (!rec.beats.long && dSite < site.arrivalBands.long) {
+      } : (site.siteId === HEAT_SITE_ID && rec.heatOnline === false
+        ? site.arrivalLinesOffline : site.arrivalLines) || null;
+      if (!rec.beats.long && arrivalDistance < site.arrivalBands.long) {
         rec.beats.long = true;
         world.bus.emit('toast', {
           text: (lines && lines.long) || 'Long-range return: wrecked DMC service barge — this hull is not in any registry.',
           kind: 'info', ttl: 5,
         });
       }
-      if (!rec.beats.mid && dSite < site.arrivalBands.mid) {
+      if (!rec.beats.mid && arrivalDistance < site.arrivalBands.mid) {
         rec.beats.mid = true;
         world.bus.emit('toast', {
           text: (lines && lines.mid) || 'Multiple small contacts — unclassifiable. They turn together.',
@@ -1638,7 +1921,7 @@ export function tickAlienEcology(world, dt) {
           }
         }
       }
-      if (!rec.beats.close && dSite < site.arrivalBands.close) {
+      if (!rec.beats.close && arrivalDistance < site.arrivalBands.close) {
         rec.beats.close = true;
         setRevelation(state, 1);
         world.bus.emit('toast', {
@@ -1739,7 +2022,7 @@ export function tickAlienEcology(world, dt) {
         }
       }
       if (site.siteId === HEAT_SITE_ID) {
-        const heatClose = dSite < site.arrivalBands.close;
+        const heatClose = !!warmHeatBindingInRange(world);
         if (heatClose && rec.heatEdge !== true) {
           rec.heatEdge = true;
           applyWasteHeat(world, site, rec, 'arrive');
@@ -1977,7 +2260,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     const gx = site ? world._toGlobal({ x: supCx, z: supCz }, sectorId) : null;
     if (gx) {
       const ang = Math.atan2(e.pos.z - gx.z, e.pos.x - gx.x);
-      const push = species.fleeSpeed || species.speed || 20;
+      // An authored 0 is a real 0: sessile anchors stay pinned in the pocket.
+      const push = Number.isFinite(species.fleeSpeed) ? species.fleeSpeed
+        : Number.isFinite(species.speed) ? species.speed : 20;
       e.rot = angleLerp(e.rot, ang, Math.min(1, species.turnRate * dt * 2));
       e.pos.x += Math.cos(e.rot) * push * dt;
       e.pos.z += Math.sin(e.rot) * push * dt;
@@ -2023,10 +2308,23 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // ── AE-124 (G10) lure override: a burning lure outranks the player plume for
   // heat-sensitive drives until it burns out. ──
   const aeL = ensureAlienEcologyState(state);
-  const lure = (aeL.lures || []).find((l) => l.sectorId === sectorId && l.until > now
-    && dist2(e.pos.x, e.pos.z, l.x, l.z) < Math.pow(alertR * 4, 2));
+  // Newest burning lure first: an older thrown beacon must not mask the one just lit
+  // (the heat-trial lure included). Lures are pushed in time order.
+  let lure = null;
+  const lureList = aeL.lures || [];
+  const lureR2 = Math.pow(alertR * 4, 2);
+  for (let li = lureList.length - 1; li >= 0; li--) {
+    const l = lureList[li];
+    if (l && l.sectorId === sectorId && l.until > now && dist2(e.pos.x, e.pos.z, l.x, l.z) < lureR2) {
+      lure = l;
+      break;
+    }
+  }
   if (lure && ((sens.heat || 0) >= 0.6 || species.heatHunter)) {
     eco.lureTarget = { x: lure.x, z: lure.z };
+  } else if (eco.lureTarget && Number(eco.lureTarget.until) > now) {
+    // A scripted lure point (claim torches, bait-trap beacon) carries its own expiry and
+    // holds until it burns out — clearing it here every tick meant nothing ever steered.
   } else {
     eco.lureTarget = null;
     // A cold maw follows a wake eel that is already trailing. Heat still outranks the trail.
@@ -2126,7 +2424,8 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
       aeTrial.heatTrial.spoken = true;
       world.bus.emit('comms:log', {
-        from: species.name || 'Field notebook',
+        // The maw is not named before the reveal ladder allows it.
+        from: effectiveRevelation(state) >= 2 && species.name ? species.name : 'Field notebook',
         kind: 'ecology',
         text: aeTrial.heatTrial.note,
       });
@@ -2553,6 +2852,14 @@ export function recordEvidence(state, id, sectorId = null) {
 export function serializeAlienEcologyState(state) {
   captureClosedRefineryProps(state);
   const ae = ensureAlienEcologyState(state);
+  const sites = JSON.parse(JSON.stringify(ae.sites));
+  for (const rec of Object.values(sites)) {
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue;
+    // Absence and false already mean the same thing to the runtime readers. Write the
+    // canonical booleans into the saved copy so a legacy site does not change shape on Continue.
+    rec.scanRevealed = !!rec.scanRevealed;
+    rec.offerArmed = rec.offerArmed === true;
+  }
   const heatDerivative = copyHeatDerivative(ae.heatDerivative);
   const surveyCopy = copySurveySale(ae.surveyCopy);
   return {
@@ -2560,7 +2867,7 @@ export function serializeAlienEcologyState(state) {
     revelation: ae.revelation,
     machineProtocol: ae.machineProtocol,
     taxonomy: { ...ae.taxonomy },
-    sites: JSON.parse(JSON.stringify(ae.sites)),
+    sites,
     exposure: ae.exposure || 0,
     machineAccess: ae.machineAccess ? { ...ae.machineAccess } : {},
     mapKnowledge: ae.mapKnowledge ? JSON.parse(JSON.stringify(ae.mapKnowledge)) : {},
@@ -2673,6 +2980,7 @@ export function deserializeAlienEcologyState(state, data) {
         siteC: Number.isFinite(rec.siteC) ? rec.siteC : 0,
         signals: [], // transient buffer — never persisted
         scanRevealed: !!rec.scanRevealed,
+        offerArmed: rec.offerArmed === true,
         offerEmitted: !!rec.offerEmitted,
         offersEmitted: rec.offersEmitted && typeof rec.offersEmitted === 'object'
           ? { ...rec.offersEmitted } : {},
@@ -3013,7 +3321,8 @@ function fireClaimTorches(world, sectorId, now, target) {
     if (e.data.ecology.siteId !== NURSERY_CLAIM_CREW.siteId) continue;
     const eco = e.data.ecology;
     if (eco.driveState === 'flee' || eco.driveState === 'captured') continue;
-    eco.lureTarget = { x: target.x, z: target.z };
+    // The torch point holds past this tick (tickFauna keeps a lure until its `until`).
+    eco.lureTarget = { x: target.x, z: target.z, until: now + SCRIPTED_LURE_S };
     setDrive(eco, 'investigate');
   }
 }
@@ -3196,7 +3505,7 @@ function applyEncounterEdge(world, row, sectorId, fauna) {
       }
       const eco = best && best.data && best.data.ecology;
       if (eco && eco.driveState !== 'flee' && eco.driveState !== 'captured') {
-        eco.lureTarget = { x: player.pos.x + 300, z: player.pos.z + 120 };
+        eco.lureTarget = { x: player.pos.x + 300, z: player.pos.z + 120, until: now + SCRIPTED_LURE_S };
         setDrive(eco, 'investigate');
       }
       break;
@@ -3210,6 +3519,11 @@ function applyEncounterEdge(world, row, sectorId, fauna) {
   }
 }
 
+function ripeningBasePrice(commodityId) {
+  const def = COMMODITIES.find((c) => c && c.id === commodityId);
+  return def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+}
+
 // AE-230 — field ripening: one unsealed biohazard unit matures per period while the hull
 // sits in high-C space. Remove-then-add through the cargo API so hold math stays correct.
 function ripenCargo(world, sectorId) {
@@ -3218,8 +3532,16 @@ function ripenCargo(world, sectorId) {
   if (!cargo || !cargo.items) return;
   for (const [from, to] of Object.entries(RIPENING.chain)) {
     if ((cargo.items[from] || 0) <= 0) continue;
+    // "Rarer on the manifest" must be true: a step to a cheaper good is not ripening.
+    if (!(ripeningBasePrice(to) > ripeningBasePrice(from))) continue;
+    // Sealed contract freight is not the hold's to mature — a delivery must not come up short.
+    if (!(sellableCargoQuantity(state, from) > 0)) continue;
     if (removeCargo(state, from, 1) > 0) {
-      addCargo(state, to, 1, 'field_ripening');
+      if (!(addCargo(state, to, 1, 'field_ripening') > 0)) {
+        // The riper form would not fit: the unit stays what it was, never vanishes.
+        addCargo(state, from, 1, 'field_ripening');
+        continue;
+      }
       world.bus.emit('toast', {
         text: 'The lot in the hold matured — the tissue reads rarer on the manifest now.',
         kind: 'info', ttl: 5,

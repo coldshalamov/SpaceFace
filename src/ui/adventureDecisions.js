@@ -293,6 +293,11 @@ function bookedRepairAt(state, stationId) {
   if (!ui || ui.docked !== true || ui.dockedStationId !== stationId) return booked;
   const player = state.stationServices && state.stationServices.player;
   if (!player || player.stationId !== stationId) return booked;
+  if (player.summary && typeof player.summary === 'object') {
+    booked.hull = Number(player.summary.repairHull) || 0;
+    booked.armor = Number(player.summary.repairArmor) || 0;
+    return booked;
+  }
   for (const job of player.jobs || []) {
     if (!job || job.type !== 'repair') continue;
     const remaining = Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));

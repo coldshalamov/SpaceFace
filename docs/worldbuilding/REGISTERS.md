@@ -3,9 +3,9 @@
 A writer opens one house sheet, or this index, and writes one bark. A reader
 assigns that bark to its house without guessing.
 
-These are writing rules. They are not lore. Lore stays on the sheets. Cited
-example bytes stay in `src/data/barks.js` or `src/data/narrative.js`. Do not
-rewrite those files.
+These are voice references, not repository policy. Lore stays on the sheets.
+Examples cite `src/data/barks.js` or `src/data/narrative.js`; update those citations
+when editing a cited line. Preserve each faction's character while improving dialogue.
 
 ## The eight
 
@@ -30,12 +30,18 @@ Required keys the validator can read: `register_rule`, `register_tell`,
   case-insensitive. A new bark should carry at least one tell from its own
   sheet; a bark that carries none is unassignable and the reader says so
   instead of guessing.
-- `register_forbidden` is one forbidden term per line. A bark that uses its
-  own house's forbidden terms is disqualified from that house.
+- `register_forbidden` is one contrast term per line for the diagnostic classifier.
+  A match makes that classifier abstain; it is an editorial hint, not a ban on live
+  dialogue. Read the sentence in context: Concord can name a containment pattern,
+  and Helix can price salvage, without adopting another faction's voice.
 - `register_example` must match the cited source bytes. Invented example
   text fails. An example that carries none of its own tells fails. An
   example that uses a forbidden term fails. A cite that names another
   house's bytes fails. An empty rule fails. A lore-only sheet fails.
+
+Lexical assignment totals are diagnostic. A substring classifier cannot establish
+voice quality or require rewriting a valid bark to improve its score. The check
+keeps broken sheet schemas and source citations blocking; corpus overlaps are notes.
 
 ## Free Frontier cite — not a ninth house
 
@@ -53,8 +59,8 @@ The freight says whatever the Quiet vetted it to say.
 ## Voice
 
 Directed synthetic voice. No recorded actor. PQ-158.04 is the pipeline; each
-sheet's `voice_direction` names its register. Helix has no bark table and no
-voice register, so Helix filings render as text only.
+sheet's `voice_direction` names its register. Helix now has a live bark table;
+its cited filing remains a text reference. Runtime audio mappings own voiced delivery.
 
 | House | Sample | Fundamental | Rate | Bandpass |
 |---|---|---|---|---|
@@ -67,17 +73,15 @@ voice register, so Helix filings render as text only.
 | Vael | `bark_vael` | 80 Hz | 0.86x | 220–1600 Hz |
 | Helix | unvoiced filing | — | — | — |
 
-## 7-of-8
+## Voice review
 
-The done-when is a blind reader assigning a bark to its faction 7 of 8 times.
-The headless proof is fixed seed 17802 in `test/pq-178-02-registers.test.mjs`:
-eight fresh barks written from the rules, each carrying its own tell and none
-of its own forbidden terms, all assigned to the right house with none
-assigned wrong. The live corpus sweep (266 lines, 7 bark tables) assigns 243
-with zero misassigned; the 23 it returns are bare fragments and legacy lines
-that predate their rules, and the reader abstains rather than guess.
+Use the sheets to preserve recognizable faction characters in context. The fixed-seed
+examples in `test/pq-178-02-registers.test.mjs` exercise the diagnostic scorer and
+source citations; they do not establish a player-recognition percentage. The live
+corpus report includes abstentions and false positives. Review their sentences,
+not a target classifier score.
 
-A human playtest percentage is uninvented. Headless only:
+Player recognition remains unmeasured. Run the source checks with:
 
 ```text
 node scripts/check-faction-registers.mjs

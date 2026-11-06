@@ -5,8 +5,11 @@ import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
+import { installSimCommandSink } from '../src/core/simLaneCommands.js';
 import { applyDomainPathUpdate, createDomainDiffer, DOMAIN_MIRROR_KEYS } from '../scripts/lib/simReadModel.mjs';
 import { CRUCIBLE_ARENA_ID } from '../src/ui/crucibleLaunch.js';
+import { save } from '../src/save/saveSystem.js';
+import { resetSharedPlayerStoreMemoForTests } from '../src/save/sharedPlayerStore.js';
 
 function memoryStorage() {
   const values = new Map();
@@ -144,6 +147,89 @@ test('worker ready and tick storage relays precede synchronous save listeners', 
   assert.equal(storage.getItem('outside.key'), 'keep', 'scoped clear preserves unrelated localStorage');
 });
 
+test('worker load keeps only validated supplied fallback keys beside the local snapshot', async (t) => {
+  const storage = memoryStorage();
+  storage.setItem('sf.save.index', 'local-index');
+  const restoreStorage = installStorage(storage);
+  t.after(restoreStorage);
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 2 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] } };
+  const bus = createBus();
+  const posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus,
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: message => posts.push(message),
+      onMessage: handler => { receive = handler; }, terminate() {} }),
+  });
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, domainUpdates: [] });
+  await lane.readyPromise;
+
+  bus.emit('game:load', { slot: 'quick', __laneStorageFallback: {
+    'sf.save.quick': 'validated-remote-primary',
+    'sf.recovery.quick': 'validated-remote-recovery',
+    'sf.settings.profile.v1': 'validated-profile',
+    'sf.not-allowed': 'must-not-forward',
+    unrelated: 'must-not-forward',
+  } });
+  const wire = JSON.stringify(posts);
+  assert.match(wire, /validated-remote-primary/);
+  assert.match(wire, /validated-remote-recovery/);
+  assert.match(wire, /validated-profile/);
+  assert.match(wire, /local-index/, 'the local snapshot remains present beside fallback bytes');
+  assert.doesNotMatch(wire, /must-not-forward/);
+});
+
+test('newer local or authoritative shared bytes retire a stale failed worker relay', async () => {
+  const captureLoad = async ({ localValue = null, authoritativeValue = null }) => {
+    const storage = memoryStorage();
+    storage.setItem('sf.save.quick', 'baseline-primary');
+    const setItem = storage.setItem.bind(storage);
+    storage.setItem = (key, value) => {
+      if (String(key) === 'sf.save.quick' && String(value) === 'worker-primary-that-failed') {
+        throw Object.assign(new Error('fixture quota exceeded'), { name: 'QuotaExceededError' });
+      }
+      setItem(key, value);
+    };
+    const restoreStorage = installStorage(storage);
+    const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 3 },
+      tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] } };
+    const bus = createBus();
+    const posts = [];
+    let receive;
+    const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus,
+      flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+      channelFactory: () => ({ post: message => posts.push(message),
+        onMessage: handler => { receive = handler; }, terminate() {} }),
+    });
+    try {
+      receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, domainUpdates: [] });
+      await lane.readyPromise;
+      receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, domainUpdates: [],
+        storageOps: [{ op: 'set', key: 'sf.save.quick', value: 'worker-primary-that-failed' }] });
+      if (localValue != null) storage.setItem('sf.save.quick', localValue);
+      const __laneStorageFallback = authoritativeValue == null ? undefined
+        : { 'sf.save.quick': authoritativeValue };
+      bus.emit('game:load', { slot: 'quick', __laneStorageFallback });
+      return JSON.stringify(posts);
+    } finally {
+      lane.close();
+      restoreStorage();
+    }
+  };
+
+  const newerLocalWire = await captureLoad({ localValue: 'main-newer-primary' });
+  assert.match(newerLocalWire, /main-newer-primary/);
+  assert.doesNotMatch(newerLocalWire, /worker-primary-that-failed/,
+    'a changed local key retires the failed worker value');
+
+  const newerSharedWire = await captureLoad({ authoritativeValue: 'shared-newer-primary' });
+  assert.match(newerSharedWire, /shared-newer-primary/);
+  assert.doesNotMatch(newerSharedWire, /worker-primary-that-failed/,
+    'the freshly reconciled shared-store value retires the failed worker value');
+});
+
 test('blocked storage access cannot quarantine otherwise healthy worker replies', async (t) => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', {
@@ -168,6 +254,84 @@ test('blocked storage access cannot quarantine otherwise healthy worker replies'
   receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60,
     storageOps: [{ op: 'set', key: 'sf.save.index', value: 'new-index' }], domainUpdates: [] });
   assert.equal(state.tick, 1, 'the reply still publishes when persistence access is blocked');
+});
+
+test('shared-store bytes rejected by local quota are staged for the worker load owner', async (t) => {
+  const localStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const locationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+  const saveKeys = ['state', 'bus', '_restoreFrameYield', '_sharedStoreReady',
+    '_sharedStoreMirrorHealthy', '_sharedStoreUnavailableKeys', '_sharedStoreCollectCache'];
+  const saveDescriptors = new Map(saveKeys.map(key => [key, Object.getOwnPropertyDescriptor(save, key)]));
+  const rows = new Map();
+  const storage = {
+    get length() { return rows.size; },
+    key(index) { return [...rows.keys()][index] ?? null; },
+    getItem(key) { return rows.get(String(key)) ?? null; },
+    setItem(key, value) {
+      const stringKey = String(key), stringValue = String(value);
+      if (stringKey === 'sf.save.quick' && stringValue.length > 20_000) {
+        throw Object.assign(new Error('fixture origin quota exceeded'), { name: 'QuotaExceededError' });
+      }
+      rows.set(stringKey, stringValue);
+    },
+    removeItem(key) { rows.delete(String(key)); },
+  };
+  const remoteQuick = JSON.stringify({ slot: 'quick', payload: 'Q'.repeat(30_000) });
+  const remoteKeys = {
+    'sf.save.quick': remoteQuick,
+    'sf.save.index': JSON.stringify({ quick: { slot: 'quick', savedAt: '2026-10-31T00:00:00.000Z' } }),
+    'sf.not-a-shared-key': 'must not be forwarded',
+    unrelated: 'must not be forwarded',
+  };
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  Object.defineProperty(globalThis, 'location', {
+    configurable: true, value: { protocol: 'http:', origin: 'http://save-fallback.test' },
+  });
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true, value: async () => ({
+      ok: true, status: 200, json: async () => ({ keys: remoteKeys }),
+    }),
+  });
+  resetSharedPlayerStoreMemoForTests();
+  save.state = { save: {} };
+  save.bus = createBus();
+  save._restoreFrameYield = async () => {};
+  save._sharedStoreReady = false;
+  save._sharedStoreMirrorHealthy = false;
+  save._sharedStoreUnavailableKeys = new Map();
+  save._sharedStoreCollectCache = null;
+  const restoreGlobals = () => {
+    for (const [key, descriptor] of saveDescriptors) {
+      if (descriptor) Object.defineProperty(save, key, descriptor);
+      else delete save[key];
+    }
+    for (const [key, descriptor] of [['localStorage', localStorageDescriptor],
+      ['location', locationDescriptor], ['fetch', fetchDescriptor]]) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+    resetSharedPlayerStoreMemoForTests();
+  };
+  t.after(restoreGlobals);
+
+  await save._syncSharedPlayerStore();
+  assert.equal(rows.has('sf.save.quick'), false, 'local quota rejects the large remote primary');
+  assert.ok(rows.has('sf.save.index'), 'the small Continue index is present locally');
+  assert.equal(save._sharedStoreUnavailableKeys.get('sf.save.quick'), remoteQuick,
+    'the save owner retains the exact merged primary that did not fit locally');
+
+  const descriptors = [];
+  const uninstall = installSimCommandSink(descriptor => { descriptors.push(descriptor); return true; });
+  try {
+    assert.equal(save.load('quick'), true);
+  } finally { uninstall(); }
+  const load = descriptors.find(descriptor => descriptor.kind === 'busEmit' && descriptor.emit === 'game:load');
+  assert.ok(load, 'the public load owner forwards to the sim lane');
+  assert.equal(load.payload.__laneStorageFallback['sf.save.quick'], remoteQuick,
+    'worker load receives the exact slot bytes from the validated durable-store merge');
+  assert.equal(load.payload.__laneStorageFallback['sf.not-a-shared-key'], undefined);
+  assert.equal(load.payload.__laneStorageFallback.unrelated, undefined);
 });
 
 test('large replacement result receipts bypass cold signing on their own reply', () => {

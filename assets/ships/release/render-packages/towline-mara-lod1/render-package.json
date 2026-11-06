@@ -207,7 +207,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a64225e63dc942b403020f4d5cfa3cc10185c06216a7a6526b12e3d8e60c5db0",
+  "contentHash": "ef24221168bdfb206967a1d4f3390e3232028a6717647ca12b1c8e6d7035406e",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery.dynamic",
@@ -1549,14 +1549,14 @@
       "uri": "towline_mara_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 370732,
-    "sha256": "a16c338ec2fcc773560799eca9ef1ed9614e58d2cf341ab3bbe3c3da729b104d",
+    "bytes": 370768,
+    "sha256": "7464ea5a84ec0c2c9278ada36ba8774ad83435835f8df989746fbf86f75a4892",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1660,6 +1660,43 @@
       },
       {
         "matrix": [
+          1.0470457077026367,
+          0,
+          0,
+          0,
+          0,
+          1.0470457077026367,
+          0,
+          0,
+          0,
+          0,
+          1.0470457077026367,
+          0,
+          10.099859237670898,
+          1.4298858046531677,
+          -5.349857330322266,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+        "planIndex": 12,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-port-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1678,7 +1715,7 @@
           1
         ],
         "name": "MOTION_TOWLINE_JAW_STARBOARD",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -1729,6 +1766,43 @@
       },
       {
         "matrix": [
+          1.0471596717834473,
+          0,
+          0,
+          0,
+          0,
+          1.0471596717834473,
+          0,
+          0,
+          0,
+          0,
+          1.0471596717834473,
+          0,
+          10.099973201751709,
+          1.4299999475479126,
+          5.349979877471924,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+        "planIndex": 15,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
+            "recordIds": [
+              "sf.render.towline-mara-lod1.node.lod1-motion-towline-jaw-starboard-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1747,7 +1821,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 15,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1799,7 +1873,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 16,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1851,7 +1925,7 @@
           1
         ],
         "name": "SOCKET_Massline",
-        "planIndex": 17,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1903,7 +1977,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 18,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1991,12 +2065,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 13,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
+        "planIndex": 16,
         "role": "accent"
       }
     ],
@@ -2006,7 +2080,7 @@
       "sha256": "1783c109bcb8ebc85c2543e7234a6ba01e61b3c9dcf4fb2e3f374c583ada0aee",
       "uri": "assets/ships/motions/towline-mara.motion.json"
     },
-    "nodeCount": 19,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -2209,8 +2283,8 @@
           -5.349857330322266,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery",
-        "planIndex": 12,
+        "name": "LOD1_MOTION_TOWLINE_JAW_PORT_Livery_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2238,8 +2312,8 @@
           5.349979877471924,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery",
-        "planIndex": 14,
+        "name": "LOD1_MOTION_TOWLINE_JAW_STARBOARD_Livery_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2252,7 +2326,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_mara_lod1.glb"
   },
-  "runtimeHash": "e4b6fb496fbb3bb91da93d1bf80925ca473db72c44e3e742428fde3035c19031",
+  "runtimeHash": "0a3d3912e1978e3246bd3bbca15d11de1b768156bb225988d53716bf74c155c1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -12,6 +12,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import {
   economy,
   ECONOMY_PRICE_TUNING,
+  compareDockedFreight,
   economySpotPriceForRole,
 } from '../src/systems/economy.js';
 
@@ -118,6 +119,42 @@ test('repeated same-route freestyle lots self-decay unit profit through live sto
     Math.random = r;
     Date.now = n;
   }
+});
+
+test('a freight forecast cannot select a commodity removed from the catalog', () => {
+  const legacy = 'cmdty_removed_from_catalog';
+  const state = {
+    simTime: 500,
+    player: {
+      credits: 10_000,
+      cargo: { items: {}, capVolume: 100, usedVolume: 0 },
+      marketMemory: {
+        station_ceres: {
+          cmdty_food: { buy: 30, sell: 50, stock: 100, seenAt: 500 },
+          [legacy]: { buy: 1, sell: 2, stock: 100, seenAt: 500 },
+        },
+        station_forge: {
+          cmdty_food: { buy: 20, sell: 60, stock: 100, seenAt: 500 },
+          [legacy]: { buy: 1, sell: 1000, stock: 100, seenAt: 500 },
+        },
+      },
+    },
+    economy: {
+      markets: { station_helios: { [CMDTY]: { stock: 100, lastBuy: 10, lastSell: 9 } } },
+    },
+  };
+  const result = compareDockedFreight(state, 'station_helios', {
+    cmdtyId: CMDTY,
+    destStation: 'station_ceres',
+    buyHere: 10,
+    sellThere: 30,
+    seenAtT: 500,
+  });
+
+  assert.ok(result, 'the remembered legal commodity still provides a usable comparison');
+  assert.equal(result.basis.leg2Buy, 30);
+  assert.equal(result.basis.leg2Sell, 60,
+    'stale memory for an unknown id cannot beat a real catalog commodity');
 });
 
 // Silence unused-import lint-style keep for station id constants used as documentation anchors.

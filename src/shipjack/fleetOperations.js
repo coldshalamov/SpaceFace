@@ -20,6 +20,9 @@ function sourceFacts(state, payload) {
   const sj = peekShipjack(state), vessel = sj?.vesselsById?.[payload.vesselId];
   const owned = state.player?.ownedShips?.find(s => s.vesselId === payload.vesselId);
   if (!vessel || !owned || vessel.custodian !== 'player') return fail('A physically acquired vessel in your custody is required');
+  if (owned.fleetAssignmentId != null && (state.automation?.fleet || []).some(row => row?.id === owned.fleetAssignmentId)) {
+    return fail('Return this wingman to the hangar before assigning a recovery crew');
+  }
   if (state.player.ownedShips[state.player.activeShipIndex] === owned || vessel.location?.entityId === state.playerId || vessel.location?.kind === 'active') return fail('The piloted ship cannot be placed on a recovery transport');
   if (vessel.location?.kind === 'missing') return fail('The physical signal is lost. Plot its last trajectory; a tender cannot collect an unconfirmed hull.');
   if (FINAL.has(vessel.location?.kind) || vessel.title === 'sold' || vessel.title === 'returned'

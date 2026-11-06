@@ -48,10 +48,13 @@ import { BORROWED_SUN as C, BORROWED_SUN_BERTHS as BERTHS,
   freshBorrowedSun, normalizeBorrowedSun } from '../data/borrowedSun.js';
 import { SECTORS } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
-import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { sectorGlobalOrigin, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { physicsBodyNativeReady, queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { hash32 } from '../core/rng.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
+const CARRIER_ARCHETYPE = 'place_station_trade_hub';
 const owners = new WeakMap();
 const labels = new Map(COMMODITIES.map(c => [c.id, c.name]));
 const clone = v => structuredClone(v);
@@ -347,12 +350,14 @@ export function borrowedSunBoard(state) {
 // Shared read seam. Queries cannot create a visit, spend stock, move a body or advance a clock.
 export function borrowedSunServiceStatus(state, stationId, { docking = false } = {}) {
   if (stationId !== C.stationId) return { ok: true };
+  if (!owners.get(state)?._adventureContextAllowed()) return { ok: false, reason: 'wrong_context',
+    text: 'BORROWED SUN — this carrier serves ordinary Adventure flights.' };
   return owners.get(state)?.serviceStatus({ docking }) || { ok: false, reason: 'carrier_unavailable',
     text: 'BORROWED SUN — the carrier has no current service authority.' };
 }
 export function borrowedSunPresentation(state, entity) {
   const o = owners.get(state), r = o?._row;
-  if (!r || o._find() !== entity || o._restoring || r.phaseStartTick > state.tick) return null;
+  if (!r || !o._adventureContextAllowed() || o._find() !== entity || o._restoring || r.phaseStartTick > state.tick) return null;
   const age = Math.max(0, state.tick - r.phaseStartTick);
   const opening = r.phase === 'deploy' ? Math.min(1, age / C.deployTicks)
     : ['open', 'close_pending'].includes(r.phase) ? 1 : r.phase === 'fold' ? 1 - Math.min(1, age / C.foldTicks) : 0;
@@ -382,9 +387,9 @@ export const borrowedSun = {
     on('borrowedSun:inspect', () => this.offer());
     on('borrowedSun:route', p => { if (p?.visitId === this._row.visitId) this.plotBerth(); });
     // Light-economy intents — additive; the deck/station UI emits these on the player's say-so.
-    on('borrowedSun:leaseBuy', () => this.buyLease());
-    on('borrowedSun:charter', () => this.acceptCharter());
-    on('borrowedSun:debtSettle', () => this.settleSunDebt());
+    on('borrowedSun:leaseBuy', p => { if (p?.visitId === this._row.visitId) { this.buyLease(); this.offer(); } });
+    on('borrowedSun:charter', p => { if (p?.visitId === this._row.visitId) { this.acceptCharter(); this.offer(); } });
+    on('borrowedSun:debtSettle', p => { if (p?.visitId === this._row.visitId) { this.settleSunDebt(); this.offer(); } });
     on('scan:pulse', p => {
       if (p?.source === 'player-scanner' && p.scannerId === this.state.playerId) this.offer();
     });
@@ -398,6 +403,14 @@ export const borrowedSun = {
     on('save:loaded', () => this.afterContinue());
   },
   _berth() { return BERTHS[this._row.itineraryLeg]; },
+  _adventureContextAllowed() {
+    const state = this.state;
+    return !!state
+      && !(state.run?.kind === 'survival' && state.run.phase !== 'inactive')
+      && !state.physicsVenueSession
+      && state.physicsVenue?.active !== true
+      && !isRacingCorridorSession(state);
+  },
   _pos() { return sectorLocalToGlobalForSector(this._berth().local, this._berth().sectorId); },
   _registerProfile() {
     const content = this.state.content || (this.state.content = {});
@@ -428,10 +441,11 @@ export const borrowedSun = {
     const p = this.ctx.registry?.get('physics'), n = p?._sg02, rec = n?.records.get(entity?.id);
     const age = this.state.tick - n?._simTick;
     const body = entity?.physicsBody;
+    const collisionProxy = entity && resolveCollisionProxyManifest(entity);
     if (!entity || p?._nativeRestorePending || p?._nativeRestoreDeferred || !physicsBodyNativeReady(entity)
       || rec?.entity !== entity || !rec.body || rec.spec.dynamic !== false || !rec.colliders?.length
       || !Number.isInteger(n._simTick) || age < 0 || age > 2
-      || rec.proxyId !== body?.collisionProxyManifest?.id || rec.revision !== (body.revision || 0)) return null;
+      || rec.proxyId !== collisionProxy?.id || rec.revision !== (body.revision || 0)) return null;
     // Static records intentionally have no dynamic post-solve telemetry. Their actual fixed
     // native pose, current solved owner tick and source revision are the authority.
     const anchor = this._pos(), k = rec.kinematics, frame = n._frameOrigin || { x: 0, z: 0 };
@@ -467,17 +481,23 @@ export const borrowedSun = {
       || this.state.world?.currentSectorId !== this._berth().sectorId || this._find()) return;
     if (this._binding || !this._clearBerth()) return;
     const budget = this.helpers.spawnBudget; if (!budget || budget.request(1, C.carrierId) !== 1) return;
-    // Unwired checkpoint: the activation owner supplies this factory only after the
-    // measured Forge body exists. Missing geometry admits no body or service.
-    const body = this.helpers.borrowedSunPhysicalBody?.();
-    if (body?.dynamic !== false || !body.collisionProxyManifest?.docking) { budget.release(C.carrierId); return; }
+    // Reuse the shipped trade-hub visual and declared ring-hub proxy used by ordinary ports.
+    // Core resolves that declaration to the measured skin used for this silhouette. The visual
+    // radius is the authored outer ring; the fallback fixed body radius matches the proxy core.
+    const pos = this._pos(), origin = sectorGlobalOrigin(this._berth().sectorId);
+    const corridorBearingDeg = origin
+      ? Math.atan2(origin.z - pos.z, origin.x - pos.x) * (180 / Math.PI) : 135;
+    const dockRadius = C.radius;
+    const collisionRadius = dockRadius * 0.46;
     const e = this.helpers.spawnEntity({ type: 'station', team: 0, factionId: 'faction_mts', pos: this._pos(),
-      radius: body.radius, visualRadius: body.radius, mass: body.mass, physicsBody: body,
+      radius: collisionRadius, visualRadius: dockRadius, mass: 1e6,
       hull: 1000000, hullMax: 1000000, collides: true, flags: { persistent: true },
       data: { stationId: C.stationId, stationTypeId: 'trade_hub', borrowedSunCarrierId: C.carrierId,
         persistenceOwner: C.owner, homeSectorId: this._berth().sectorId, sectorId: this._berth().sectorId,
-        name: 'The Borrowed Sun', authoredAssetId: C.assetId, services: [...C.services], size: 'M',
-        factionId: 'faction_mts', placeScale: 1, renderScale: 1, dockRadius: body.radius,
+        name: 'The Borrowed Sun', services: [...C.services], size: 'L',
+        archetypeGlb: CARRIER_ARCHETYPE, placeTargetRadius: dockRadius,
+        factionId: 'faction_mts', placeScale: dockRadius / 14, renderScale: 1,
+        dockRadius, collisionRadius, collisionProxy: 'station_ring_hub', corridorBearingDeg,
         landmark: true, scannable: true, chartNote: 'Nemi’s visiting market. Reflectors are outside its service approach.' } });
     if (!e) { budget.release(C.carrierId); return; }
     budget.bindEntity(e.id, C.carrierId); this._binding = { entity: e, life: e.occupantGeneration };
@@ -512,6 +532,8 @@ export const borrowedSun = {
   },
   serviceStatus({ docking = false } = {}) {
     const r = this._row, entity = this._find();
+    if (!this._adventureContextAllowed()) return { ok: false, reason: 'wrong_context',
+      text: 'BORROWED SUN — this carrier serves ordinary Adventure flights.' };
     if (this._restoring || !entity || !this._native(entity) || r.lost)
       return { ok: false, reason: 'carrier_unavailable', text: 'BORROWED SUN — service awaits its current physical berth.' };
     // The ledger holds before the door opens: an open note suspends service,
@@ -525,7 +547,7 @@ export const borrowedSun = {
       : 'NEMI — The service approach is closed while we deploy or fold. Ordinary ports still trade.' };
   },
   _trade(p) {
-    if (this._restoring || p?.stationId !== C.stationId || !this._docked() || !p.receiptId
+    if (!this._adventureContextAllowed() || this._restoring || p?.stationId !== C.stationId || !this._docked() || !p.receiptId
       || !(p.qty > 0) || !['buy', 'sell'].includes(p.side)) return;
     // The receipt is the economy's own proof of a finished trade — the book fills
     // on it under the docked gate; the strict native-berth gate stays for lastTrade.
@@ -545,10 +567,20 @@ export const borrowedSun = {
       hold, debt: book.debt ? { ...book.debt } : null,
       standing: sunStanding(this.state),
       openLeases: book.leases.filter(l => l.state === 'open').length,
+      maxOpenLeases: SUN_LEASES.maxOpen,
+      leaseCostCr: SUN_LEASES.costCr,
       charter: book.charter && book.charter.visitId === r.visitId
-        ? { kind: book.charter.kind, state: book.charter.state } : null,
+        ? { kind: book.charter.kind, state: book.charter.state,
+          commodityId: book.charter.commodityId, wantQty: book.charter.wantQty,
+          gotQty: book.charter.gotQty, payCr: book.charter.payCr } : null,
       shadowLot: book.shadowLots.find(l => l.state === 'open')
         ? { commodityId: book.shadowLots.find(l => l.state === 'open').commodityId } : null,
+      canBuyLease: this._bookOpen() && this._hailing() && !hold
+        && book.leases.filter(l => l.state === 'open').length < SUN_LEASES.maxOpen,
+      canAcceptCharter: this._bookOpen() && this._hailing() && !hold
+        && book.charter?.visitId === r.visitId && book.charter.state === 'posted',
+      canSettleDebt: this._hailing() && book.debt?.state === 'open'
+        && num(this.state.player?.credits) >= num(book.debt.balance),
     };
     const status = hold ? 'LEDGER HOLD'
       : r.phase === 'close_pending' ? 'FINISHING CURRENT VISITS'
@@ -564,7 +596,7 @@ export const borrowedSun = {
   },
   offer() {
     const e = this._find(), p = this._player();
-    if (this._restoring || this.state.mode !== 'flight' || !p || !e
+    if (!this._adventureContextAllowed() || this._restoring || this.state.mode !== 'flight' || !p || !e
       || this.state.player.targetId !== e.id || distance(p.pos, e.pos) > C.hailRange) return false;
     this.bus.emit('borrowedSun:offer', this.readout()); return true;
   },
@@ -588,10 +620,12 @@ export const borrowedSun = {
   _bookHold() { return ensureSunBook(this.state).debt?.state === 'open'; },
   /** The counter is staffed: carrier bound, phase open, visit live, not mid-restore. */
   _bookOpen() {
-    return !this._restoring && !this._row.lost && this._row.phase === 'open' && !!this._find();
+    return this._adventureContextAllowed() && !this._restoring && !this._row.lost
+      && this._row.phase === 'open' && !!this._find();
   },
   /** The player can do business over the hail channel: docked, or inside hail range. */
   _hailing() {
+    if (!this._adventureContextAllowed()) return false;
     const p = this._player(), e = this._find();
     if (!p || !e) return false;
     return this._docked() || distance(p.pos, e.pos) <= C.hailRange;
@@ -1460,7 +1494,7 @@ export const borrowedSun = {
 
   update(dt, state) {
     if (this._lastTick === state.tick) return; this._lastTick = state.tick;
-    if (this._restoring || state.mode !== 'flight' || this._row.lost || state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (this._restoring || state.mode !== 'flight' || !this._adventureContextAllowed() || this._row.lost) return;
     const bound = this._binding;
     if (bound && (!bound.entity.alive || bound.entity.hull <= 0)) this._lost(bound.entity.id, bound.entity);
     const r = this._row; if (r.lost) return;
@@ -1475,8 +1509,12 @@ export const borrowedSun = {
     if (e) e.data.borrowedSunVisit = { visitId: r.visitId, phase: r.phase, phaseStartTick: r.phaseStartTick };
     if (this._docked()) r.firstServiceVisit = true;
     this._tickBook(state, dt, e);
-    if (r.phase === 'arrive' && this._native(e)) { r.introduced = true; this._phase('deploy', C.deployTicks); this._notice(); }
-    else if (r.phase === 'deploy' && state.tick >= r.deadlineTick && this._native(e)) this._phase('open', C.openTicks);
+    // The visit calendar is sector-owned, not a side effect of local physics residency. A fixed
+    // station may be correctly shelved outside the current activity reach; waiting for its native
+    // Rapier record here deadlocks `arrive` until the player happens to fly near it. Service and
+    // docking still require `_native` through serviceStatus — only the remote phase clock advances.
+    if (r.phase === 'arrive' && e) { r.introduced = true; this._phase('deploy', C.deployTicks); this._notice(); }
+    else if (r.phase === 'deploy' && state.tick >= r.deadlineTick && e) this._phase('open', C.openTicks);
     else if (r.phase === 'open' && r.firstServiceVisit && state.tick >= r.deadlineTick) { this._phase('close_pending'); this._notice(true); }
     else if (r.phase === 'close_pending' && !this._busy()) this._phase('fold', C.foldTicks);
     else if (r.phase === 'fold' && state.tick >= r.deadlineTick && !this._busy()) { this._retire(); this._phase('transit', C.transitTicks); }
@@ -1498,8 +1536,14 @@ export const borrowedSun = {
     if (this._continuedSerial === this._restoreSerial) { this._restoring = false; return; }
     this._continuedSerial = this._restoreSerial; this._restoring = false; this._binding = null;
     this._lastTick = -1; this._registerProfile();
-    const e = this._find(); if (e && this.helpers.spawnBudget?.request(1, C.carrierId) === 1)
-      this.helpers.spawnBudget.bindEntity(e.id, C.carrierId);
+    const e = this._find();
+    if (e) {
+      // Older carrier envelopes did not select the authored station builder.
+      e.data.archetypeGlb = CARRIER_ARCHETYPE;
+      e.data.placeTargetRadius = C.radius;
+      if (this.helpers.spawnBudget?.request(1, C.carrierId) === 1)
+        this.helpers.spawnBudget.bindEntity(e.id, C.carrierId);
+    }
   },
   newGame() { this._retire(); this._row = freshBorrowedSun(); this._binding = null;
     this.state[SUN_BOOK_KEY] = freshSunBook();

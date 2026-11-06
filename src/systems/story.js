@@ -123,6 +123,10 @@ const STORY_CALM_GAP_S = 8;
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
 const AMBIENT_MAX_S = 90;
+// SP2-188 — the channel respects the reader: a session that ended with every popup read
+// (flag `read_everything`, written by special500ReadEverything) widens the ambient cadence
+// by a quarter — 20% fewer lines an hour. Same table, same shuffle, quieter delivery.
+const AMBIENT_RESPECT_MULT = 1.25;
 // Phase 3 ambient cools to one every 2–4 min (the channel has gone quiet; the system stopped needing to talk).
 const AMBIENT_MIN_S_P3 = 120;
 const AMBIENT_MAX_S_P3 = 240;
@@ -614,7 +618,8 @@ export const story = {
     const p3 = (s.phase || 1) >= 3;
     const lo = p3 ? AMBIENT_MIN_S_P3 : AMBIENT_MIN_S;
     const hi = p3 ? AMBIENT_MAX_S_P3 : AMBIENT_MAX_S;
-    const delay = lo + this._rng() * (hi - lo);
+    let delay = lo + this._rng() * (hi - lo);
+    if (s.flags && s.flags.read_everything != null) delay *= AMBIENT_RESPECT_MULT;
     s.ambientTimerS = delay;
     s.ambientNextAtS = (this.state.simTime || 0) + delay;
   },
@@ -1596,7 +1601,7 @@ export const story = {
 
   _onPostEndingSignal(signal, payload) {
     const s = this.state && this.state.story;
-    if (!s || !s.postEnding || !s.endgameResolved) return false;
+    if (!s || !s.postEnding || !(s.endgameResolved || this._leftoverContinuityLive())) return false;
     // Native target scans may omit sectorId. Qualify them at the live boundary with the actual
     // region, never the ambiguous string "current" (entity ids may repeat in another region).
     const observed = signal === 'scan:completed' && !payload.sectorId
@@ -2480,12 +2485,26 @@ export const story = {
     this._noteStoryRoute('combat');
   },
 
+  /**
+   * A New Game Plus run carries a FRESH continuity directive of the previous ending
+   * (_applyLeftoverWorldFacts) while its own campaign is still unresolved. The directive
+   * must progress, but the run is NOT an ended run: endgameResolved/endgameChoice stay
+   * false/null so the new campaign still reaches its own endgame and story entry.
+   */
+  _leftoverContinuityLive() {
+    const s = this.state && this.state.story;
+    return !!(s && s.newGamePlus && s.postEnding && !s.endgameResolved);
+  },
+
   _onContinuationMission(payload) {
     const s = this.state && this.state.story;
-    if (!s || !s.endgameResolved || !s.endgameChoice) return false;
-    const permitted = continuationJobPermitted(s.endgameChoice, payload);
+    if (!s) return false;
+    const leftover = !s.endgameResolved && this._leftoverContinuityLive();
+    const choice = leftover ? s.postEnding.choiceId : (s.endgameResolved ? s.endgameChoice : null);
+    if (!choice) return false;
+    const permitted = continuationJobPermitted(choice, payload);
     this.bus.emit('story:continuationAccess', {
-      choice: s.endgameChoice,
+      choice,
       type: payload && payload.type || null,
       missionId: payload && payload.missionId || null,
       permitted,

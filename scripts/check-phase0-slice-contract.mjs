@@ -14,6 +14,7 @@ import {
 } from '../src/contracts/evidenceSchemas.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { resolveSpeedZoomFactor } from '../src/render/tabletopPolicy.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
@@ -148,12 +149,13 @@ assert.equal(spec.data.weapons[0].defId, 'wpn_pulse_laser_s', 'fresh Kestrel sho
 assert.equal(spec.data.weapons[0].name, 'Pulse Laser S', 'starter weapon must be surfaced by name');
 
 const camera = read('src/render/camera.js');
-assert(camera.includes('SPEED_ZOOM_MIN = 0.88') || camera.includes('0.88'), 'combat camera should push in, not zoom out');
-assert(camera.includes('SPEED_ZOOM_MAX = 1.18') || camera.includes('1.18'), 'camera should widen at cruise speed');
-assert(!camera.includes('zoomFactor = Math.max(zoomFactor, 1.15)'), 'old combat zoom-out must not return');
-assert(camera.includes('nearest threat') || camera.includes('nearestThreat'), 'camera should compose player plus threat');
-assert(camera.includes('resolveTetherCompositionAnchor'), 'camera should compose active player tethers/payloads');
-assert(camera.includes('hasTetherFocus'), 'camera zoom should treat active tether composition as a first-class state');
+const framing = read('src/render/tabletopPolicy.js');
+assert(camera.includes('resolveChaseComposition('), 'live camera must consume the shared composition owner');
+assert(framing.includes('resolveTetherCompositionAnchor'), 'shared framing must include active player tethers/payloads');
+const idleZoom = resolveSpeedZoomFactor(0, 120);
+const cruiseZoom = resolveSpeedZoomFactor(120, 120);
+assert(Number.isFinite(idleZoom) && idleZoom > 0 && Number.isFinite(cruiseZoom)
+  && cruiseZoom >= idleZoom, 'cruise framing must stay finite and preserve the wider travel view');
 
 const onboarding = read('src/systems/onboarding.js');
 for (const forbidden of ['turn rocks into credits', 'Reach the starter claim', 'Mine and collect 3 units of ore', 'ORE:', 'mineable rocks', 'RMB samples ore']) {
@@ -197,12 +199,12 @@ for (const marker of ['assertNoScenarioBranch', 'live-state', 'official_recovery
 }
 
 const tape = json('test/47a.inputs.json');
-const envelope = json('test/47a.telemetry.expected.json');
+const envelope = json('test/47a.telemetry.save-v23.expected.json');
 const scenarioContract = json('src/data/scenarios/47a.scenario.json');
 const expectedScenarioActorCount = scenarioContract.actors.length;
 const evidenceReport = validateEvidenceCorpus([
   { path: 'test/47a.inputs.json', data: tape },
-  { path: 'test/47a.telemetry.expected.json', data: envelope },
+  { path: 'test/47a.telemetry.save-v23.expected.json', data: envelope },
   { path: 'src/data/scenarios/47a.scenario.json', data: scenarioContract },
 ]);
 assert(evidenceReport.ok, evidenceReport.issues.map(formatEvidenceIssue).join('\n'));
@@ -502,7 +504,7 @@ const profile = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.expected.json',
+  'test/47a.telemetry.save-v23.expected.json',
   '--physics-backend',
   'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -532,7 +534,7 @@ const sfProfile = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.expected.json',
+  'test/47a.telemetry.save-v23.expected.json',
   '--physics-backend',
   'rapier-dynamic',
 ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }));
@@ -553,7 +555,7 @@ const sfReplayVerify = JSON.parse(execFileSync(process.execPath, [
   '--ticks',
   '720',
   '--expect',
-  'test/47a.telemetry.expected.json',
+  'test/47a.telemetry.save-v23.expected.json',
   '--hash',
   '--repeat',
   '20',
@@ -585,7 +587,7 @@ const sfDiffReplay = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.expected.json',
+  'test/47a.telemetry.save-v23.expected.json',
   '--reload-at',
   '600',
   '--physics-backend',
@@ -631,7 +633,7 @@ const compare = JSON.parse(execFileSync(process.execPath, [
   '--inputs',
   'test/47a.inputs.json',
   '--expect',
-  'test/47a.telemetry.expected.json',
+  'test/47a.telemetry.save-v23.expected.json',
   '--reload-at',
   '600',
   '--physics-backend',

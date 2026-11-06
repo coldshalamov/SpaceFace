@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGlbPrepasser } from '../src/render/glbPrepass.js';
 import { createDecodeTaskBudget } from '../src/render/decodeTaskBudget.js';
-import { runtimeWorkerUrl, RUNTIME_WORKERS } from '../src/render/runtimeWorkers.js';
+import { runtimeAssetUrl, runtimeWorkerUrl, RUNTIME_WORKERS } from '../src/render/runtimeWorkers.js';
 import { createRenderPackageDigester } from '../src/render/renderPackageDigest.js';
 import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
 
@@ -49,6 +49,21 @@ test('workers resolve correctly in raw, split retail, path-prefix and Electron r
     }), `file:///app/${spec.output}`);
   }
   assert.throws(() => runtimeWorkerUrl('unknown', 'https://game.test/'), RangeError);
+});
+
+test('fetched runtime data uses the document or worker release root rather than shared chunks', () => {
+  const path = 'src/data/modelTruthCensus.json';
+  assert.equal(runtimeAssetUrl(path, 'http://localhost:4173/src/main.js', { production: false }),
+    `http://localhost:4173/${path}`);
+  assert.equal(runtimeAssetUrl(path, 'https://game.test/demo/chunks/shared.js', {
+    production: true, documentBase: 'https://game.test/demo/index.html',
+  }), `https://game.test/demo/${path}`);
+  assert.equal(runtimeAssetUrl(path, 'https://game.test/demo/chunks/shared.js', {
+    production: true, documentBase: null, workerEntry: 'https://game.test/demo/workers/sim.js',
+  }), `https://game.test/demo/${path}`);
+  assert.equal(runtimeAssetUrl(path, 'https://game.test/chunks/shared.js', {
+    production: true, documentBase: 'https://game.test/', releaseBase: 'https://release.test/v42/',
+  }), `https://release.test/v42/${path}`);
 });
 
 test('one requested GLB creates one worker, even on a high-core host', async () => {

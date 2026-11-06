@@ -28,7 +28,9 @@ test('soft-GPU partial residency continues past skipped=false', () => {
 test('soft-GPU opening cook passes deadlineMs into residency', () => {
   const start = rendererSrc.indexOf('state.render.prepareOpeningGpuResources');
   assert.ok(start > 0);
-  const section = rendererSrc.slice(start, start + 9000);
+  const residencyCall = rendererSrc.indexOf('prepareStartupGpuResidency(', start);
+  assert.ok(residencyCall > start, 'opening cook calls prepareStartupGpuResidency');
+  const section = rendererSrc.slice(start, residencyCall + 4000);
   assert.match(section, /deadlineMs:\s*options.required !== true && softGpuOpening\s*\?\s*residencyBudgetMs/);
   assert.match(section, /const residencyBudgetMs = resourcePolicy\.residencyBudgetMs/,
     'residency budget is read from the opening-load policy');

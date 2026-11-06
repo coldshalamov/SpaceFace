@@ -43,6 +43,7 @@ jobs:
             assets/ships/release
             assets/ships/motions
             assets/portraits
+            assets/characters/ruckus
             assets/audio
             assets/fx/thruster
             assets/wreck-court

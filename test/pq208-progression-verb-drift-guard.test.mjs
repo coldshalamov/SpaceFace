@@ -131,3 +131,15 @@ test('PQ-208.00 vocabulary drift: a module declaring an unregistered verb-shaped
   assert.deepEqual(good.unknownKeys, []);
   assert.equal(good.primary, 'verb');
 });
+
+test('current custody tools and deployed systems classify by their real consumers', () => {
+  for (const id of ['mod_claw_anchor_s', 'mod_quiet_intrusion_s', 'mod_proof_recorder_s']) {
+    assert.equal(classifyModule({ id, mods: {} }).primary, 'verb', id);
+  }
+  for (const key of ['lineHeadId', 'pylonPairs', 'heroManeuver']) {
+    const classified = classifyModule({ id: 'test_fit', mods: { [key]: 'fixture' } });
+    assert.equal(classified.primary, 'verb', key);
+    assert.deepEqual(classified.unknownKeys, []);
+  }
+  assert.equal(classifyModule({ id: 'actually_unwired', mods: {} }).primary, null);
+});

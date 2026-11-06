@@ -7,6 +7,7 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, BUILDABLE_OUTPOSTS as OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { MODULES } from '../../data/modules.js';
 import { CLAIM_REFINERY_RECIPES } from '../../data/sites.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
@@ -28,6 +29,19 @@ const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const STATION_NAMES = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
+
+function fleetAssignmentForShip(ship, fleet) {
+  return ship?.fleetAssignmentId == null ? null
+    : (fleet || []).find((row) => row && row.id === ship.fleetAssignmentId) || null;
+}
+
+function trackedVesselAtBerth(state, ship) {
+  const sj = state?.player?.shipjack || state?.shipjack;
+  const v = ship?.vesselId && sj?.vesselsById?.[ship.vesselId];
+  return !!(v && v.custodian === 'player' && v.defId === ship.defId && v.condition?.hull > 0
+    && state.ui?.docked && v.location?.kind === 'berth' && v.location.stationId === state.ui.dockedStationId
+    && !sj.yards?.[ship.vesselId] && !sj.fleetOperations?.[ship.vesselId]);
+}
 
 /** Earnings are ceilings on one shared bucket; depot receipts settle physical throughput. */
 export function describeDroneEarnings(state, assetOrDef = {}) {
@@ -392,6 +406,7 @@ const CSS = `
   color: var(--ink-dim); }
 #sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
 #sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
+#sf-automation .au-metric__part { white-space: nowrap; }
 #sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
 #sf-automation .au-industry { margin: 0; }
 #sf-automation .au-industry .au-note { margin-top: 0; }
@@ -738,6 +753,10 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
 @media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
   html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
 }
+/* Match the other desktop plates' readable scale at 1080p. Touch keeps its own sizing. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  ${AU_NARROW} { zoom: 1.14; }
+}
 /* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
    the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
    ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip
@@ -775,6 +794,11 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
   ${AU_NARROW} .au-title { font-size: 17px; }
   ${AU_NARROW} .au-top-right { flex: 1 0 100%; justify-content: space-between; }
   ${AU_NARROW} .au-flow { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px 12px; }
+  /* polish178: at 375 the four rail stations wrapped, so FLEET dropped onto the arc under DRONES
+     and its tick hit the Hand. On phones the stations spread across the full rail on one row. */
+  ${AU_NARROW} .au-tabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
+    width: auto; gap: 0 8px; }
+  ${AU_NARROW} .au-tab { letter-spacing: .08em; }
   ${AU_NARROW} .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   ${AU_NARROW} .au-shop .grow { grid-template-columns: minmax(0, 1fr); }
   ${AU_NARROW} .au-shop .meta { grid-column: 1; }
@@ -783,6 +807,17 @@ html body #screens #sf-automation.au-orrery .au-metric {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
 html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }
 html body #screens #sf-automation.au-orrery .au-metric .v { font-size: 17px; }
+/* polish179: on phones the five conduct nodes wrapped three-and-two, leaving FLEET and CR/MIN
+   stranded under the first row. The cr/min total rides the caption row and the four classes share
+   one row, so the strip reads as a single line of throttles. The summary sub-lines balance so
+   ASSETS no longer leaves "outposts" alone on a third line. */
+@media (max-width: 520px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-node__t i { letter-spacing: .02em; }
+  ${AU_NARROW} .au-metric .s { text-wrap: balance; }
+}
 /* O6 (A6): the route Beam — bone band with bloom geometry, ice pulse travelling to the berth. */
 html body #screens #sf-automation.au-orrery .au-route { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 html body #screens #sf-automation.au-orrery .au-route__from,
@@ -911,6 +946,63 @@ html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
   background: none; border: 0; border-radius: 0; padding: 6px 0; }
 html body #screens #sf-automation.au-orrery .au-program {
   border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
+/* polish273: purchase rungs and the empty notice were loose rows hung on a 2px tick, so the
+   Drone Bay read as unframed text. Each rung is now its own hairline card (faint fill, radius 8)
+   with the tick dropped, and the empty notice is a dashed well — the same card language as the
+   Records Wall and Help keycaps. Spacing and the one-line rung layout are unchanged. */
+html body #screens #sf-automation.au-orrery .au-shop {
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px;
+  background: rgb(var(--au-bone) / .025); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within {
+  border: 1px solid rgb(var(--au-bone) / .34); background: rgb(var(--au-bone) / .05); }
+html body #screens #sf-automation.au-orrery .au-shop::before { display: none; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 1px dashed rgb(var(--au-bone) / .22); border-radius: 8px;
+  background: rgb(var(--au-bone) / .02); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-empty::before { display: none; }
+/* polish289: the four summary readings (ASSETS / NET FLOW / CAP LOAD / LIFETIME) floated as loose
+   text beside the board while every rung under them sat in a hairline card, so the board's numbers
+   read as unframed. They now share one hairline strip in the rungs' card language (radius 8, bone
+   .16 edge, faint fill), each reading in its own cell split by 1px rules. The rules are inset
+   shadows clipped by the strip, so 4-across and 2×2 both draw clean edges. Desktop and narrow
+   windows only; the touch sheet (data-sf-mobile) keeps its own stack. */
+${AU_NARROW} .au-summary {
+  align-self: start; gap: 0; column-gap: 0; padding: 0; overflow: hidden;
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px; background: rgb(var(--au-bone) / .025); }
+${AU_NARROW} .au-summary > .au-metric,
+${AU_NARROW} .au-summary > .au-metric:hover {
+  padding: 9px 14px 10px; background: none;
+  box-shadow: -1px 0 0 rgb(var(--au-bone) / .14), 0 -1px 0 rgb(var(--au-bone) / .14); }
+${AU_NARROW} .au-summary > .au-metric .v { margin-top: 3px; }
+/* 761–1100 wide (960×540) the cells are ~120px: a 10px inset keeps "gross 0 - upkeep 0" on one line */
+@media (min-width: 761px) and (max-width: 1100px) {
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 8px 10px 9px; }
+}
+/* polish289b: ≤760 wide (390×844, 560×800) the 2×2 strip stood ~30px taller than the loose
+   readings, so DEPLOYED DRONES was cut at the panel's bottom fold and the strip's corners ran into
+   the corner brackets. Cells tighten (padding, value gap, sub-line leading) and the strip insets
+   8px from the body edge, so it sits clear of the brackets and the heading stays whole. */
+@media (max-width: 760px) {
+  ${AU_NARROW} .au-summary { margin: 0 8px; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 10px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 1px; line-height: 1.15; }
+  ${AU_NARROW} .au-summary > .au-metric .s { line-height: 1.25; }
+}
+/* polish297: 521–760 wide (560×800) the five conduct nodes wrapped four-and-one, leaving CR/MIN
+   alone on a second row, and the ~120px summary cells broke "gross 0 - upkeep 0" and stacked
+   ASSETS three lines deep. As on phones, the cr/min total rides the caption row and the four
+   classes share one row; the cells inset 8px and their sub-lines balance. */
+@media (min-width: 521px) and (max-width: 760px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 8px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .s { text-wrap: balance; }
+}
 `;
 
 function injectStyle() {
@@ -1019,6 +1111,30 @@ export const automationScreen = {
     body.addEventListener('input', (e) => this._onLoopInput(e.target, false));
     this._listenProgramRejections();
 
+    // Worker replies apply the fleet mirror before replaying this owner event.
+    // Refresh the open panel from that mirror, not from the click's optimistic state.
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = ctx?.bus?.on?.('automation:fleetChanged', (event) => {
+      if (this._root && this._tab === 'fleet') this.refresh(this._ctx);
+      const messages = {
+        assigned: 'Wingman assigned. The hull remains yours and will deploy on sector entry.',
+        released: 'Wingman returned to the hangar.',
+        releaseRejected: 'Cannot return this wingman: its owned hull link is missing or ambiguous.',
+        hullSaleRejected: 'Return the wingman to the hangar before selling its hull.',
+        hullSwitchRejected: 'Return the wingman to the hangar before flying its hull.',
+      };
+      const refusal = { active: 'Your active hull cannot be assigned.', assigned: 'That hull is already assigned to the wing.',
+        capacity: 'Fleet is at capacity.', missing: 'That owned hull is no longer available.', unavailable: 'Fleet assignment is unavailable.',
+        tracked_vessel: 'Bring this tracked hull to this berth and finish any yard or recovery work before assigning it.',
+        destroyed: 'This hull has no integrity. Switch to it at a berth and repair it before deploying.' };
+      const text = event?.reason === 'destroyed' && event.action === 'released'
+        ? 'Wingman lost; its owned hull remains with zero integrity.'
+        : event?.reason === 'tracked_not_berthed' && event.action === 'releaseRejected'
+          ? 'Bring this wingman to the receiving berth and stop before returning it.'
+        : event?.action === 'assignmentRejected' ? (refusal[event.reason] || 'Fleet assignment was not accepted.') : messages[event?.action];
+      if (text) ctx.bus.emit('toast', { text, kind: /Rejected$/.test(event.action) || event.reason === 'destroyed' ? 'warn' : 'good', ttl: 4000 });
+    });
+
     // A finished trader cycle had no reader. The strip says what the receipt paid.
     if (this._offCycle) this._offCycle();
     this._cycleNote = '';
@@ -1037,6 +1153,8 @@ export const automationScreen = {
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
   dispose() {
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = null;
     if (this._offProgramRejected) this._offProgramRejected();
     if (this._offProgramAssigned) this._offProgramAssigned();
     this._offProgramRejected = this._offProgramAssigned = null;
@@ -1306,7 +1424,8 @@ export const automationScreen = {
       for (const fs of a.fleet || []) {
         parts.push(fs.id, fs.defId, fs.name || '', fs.status, fs.order || '', fs._liveId || '', fs.hullPct != null ? Math.round(fs.hullPct * 100) : '');
       }
-      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i] && owned[i].defId, owned[i] && owned[i].customName);
+      parts.push(player.activeShipIndex);
+      for (let i = 0; i < owned.length; i++) parts.push(i, owned[i]?.defId, owned[i]?.name, owned[i]?.customName, owned[i]?.vesselId, owned[i]?.fleetAssignmentId);
     }
     return parts.join('|');
   },
@@ -1378,8 +1497,8 @@ export const automationScreen = {
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
-        ${metricHtml('Assets', String(summary.activeAssets), `${summary.drones} drones / ${summary.traders} traders / ${summary.outposts} outposts`)}
-        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, `gross ${fmtCr(summary.grossRatePerMin)} - upkeep ${fmtCr(summary.upkeepPerMin)}`)}
+        ${metricHtml('Assets', String(summary.activeAssets), [`${summary.drones} drones /`, `${summary.traders} traders /`, `${summary.outposts} outposts`])}
+        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, [`gross ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`])}
         ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
         ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
       </div>`;
@@ -1647,6 +1766,8 @@ export const automationScreen = {
   _renderFleet(frag) {
     const a = this._auto();
     const fleet = a.fleet || [];
+    const st = this._ctx.state;
+    const owned = (st.player && st.player.ownedShips) || [];
     const cap = a.fleetCap || (this._balance().fleetCapByTier || AUTO_BALANCE.fleetCapByTier || [2])[this._playerTier() - 1] || 0;
 
     const h = this._section(`Escort / Wingmen Fleet (${fleet.length}/${cap})`);
@@ -1658,8 +1779,10 @@ export const automationScreen = {
       for (const fs of fleet) {
         const card = document.createElement('div');
         card.className = 'au-card';
-        const order = fs.order || 'escort';
+        const order = fs.order === 'idle' ? 'regroup' : (fs.order || 'escort');
         const deployment = describeWingmanDeployment(fs);
+        const links = owned.filter((ship) => ship?.fleetAssignmentId === fs.id);
+        const hasMiningBeam = links.length === 1 && (links[0].fittings || []).some((id) => MODULES.some((mod) => mod.id === id && mod.slotType === 'mining'));
         card.innerHTML = `
           <div class="grow">
             <div class="nm">${fs.defId ? entitySpanHtml('hull:' + fs.defId, escapeHtml(fs.name) || prettyId(fs.defId)) : (escapeHtml(fs.name) || prettyId('wingman'))} ${statusPill(fs.status)}</div>
@@ -1668,23 +1791,24 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} An escort guards you now and can guard your automation assets later.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? (links.length === 1 && !hasMiningBeam ? 'No mining beam fitted; return to hangar to refit.' : 'Mines nearby rock; scoop the ore it drops.') : 'Escort guards you; Regroup returns to formation.'} ${links.length === 1 ? (links[0].vesselId ? 'Registry vessel on fleet duty. Bring it to a receiving berth and stop before returning it to the hangar.' : 'Owned hull assigned to wing with its fitted equipment. Return it before flying, selling or refitting it; its stored cargo remains aboard.') : 'Legacy wingman: owned hull link unavailable; retained in fleet.'}</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
-          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Recall</button>`;
+          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Regroup</button>
+          ${links.length === 1 ? `<button class="au-order" data-act="releaseFleet" data-ref="${automationRecordRefAttr(fs.id)}" data-kind="fleet">Return to hangar</button>` : ''}`;
         frag.appendChild(card);
       }
     }
 
     // assignable owned ships (anything beyond the active hull can be tasked)
-    const st = this._ctx.state;
-    const owned = (st.player && st.player.ownedShips) || [];
     const activeIdx = (st.player && st.player.activeShipIndex) || 0;
     frag.appendChild(this._section('Assign Owned Ship'));
-    const assignable = owned.map((s, i) => ({ s, i })).filter(({ i }) => i !== activeIdx);
+    const spare = owned.map((s, i) => ({ s, i })).filter(({ s, i }) => s && i !== activeIdx);
+    const assignable = spare.filter(({ s }) => (!s.vesselId || trackedVesselAtBerth(st, s)) && !fleetAssignmentForShip(s, fleet));
+    const tracked = spare.some(({ s }) => s.vesselId && !fleetAssignmentForShip(s, fleet));
     if (!assignable.length) {
-      frag.appendChild(emptyEl('No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
+      frag.appendChild(emptyEl(tracked ? 'Bring a tracked vessel to this berth and finish its yard or recovery work before assigning it.' : spare.length ? 'Your spare ships are already assigned to the wing.' : 'No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
     } else if (fleet.length >= cap) {
       frag.appendChild(lockedEl(`Fleet at capacity (${cap}). Research higher Drone/Fleet tiers to expand.`));
     } else {
@@ -1908,10 +2032,9 @@ export const automationScreen = {
       resumeTrader: 'Resuming trader…',
       buildOutpost: 'Constructing outpost…',
       decommission: 'Decommissioning outpost…',
-      orderEscort: 'Order: escort.',
-      orderMine: 'Order: mine.',
-      orderRecall: 'Order: recall.',
-      assignFleet: 'Assigning wingman…',
+      orderEscort: 'Sending escort order…',
+      orderMine: 'Sending mining order…',
+      orderRecall: 'Sending regroup order…',
       assignProgram: 'Assigning drone program…',
     };
 
@@ -2096,7 +2219,7 @@ export function automationNextAction(state) {
   const droneMk1 = DRONES[0] || {};
   const ownedShips = player.ownedShips || [];
   const activeShipIndex = player.activeShipIndex || 0;
-  const spareShipIndex = ownedShips.findIndex((_ship, index) => index !== activeShipIndex);
+  const spareShipIndex = ownedShips.findIndex((ship, index) => ship && (!ship.vesselId || trackedVesselAtBerth(state, ship)) && index !== activeShipIndex && !fleetAssignmentForShip(ship, a.fleet));
   const spareShips = spareShipIndex >= 0;
   if (summary.distressedAssets > 0) {
     return nextAction('drones', 'Stabilize distressed assets',
@@ -2322,8 +2445,10 @@ function programMetaText(id) {
   return opt ? opt.meta : 'Custom program assigned.';
 }
 
+// A sub-line given as an array wraps only between its parts, so a count never strands its noun.
 function metricHtml(k, v, s) {
-  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${escapeHtml(s)}</div></div>`;
+  const sub = Array.isArray(s) ? s.map(part => `<span class="au-metric__part">${escapeHtml(part)}</span>`).join(' ') : escapeHtml(s);
+  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${sub}</div></div>`;
 }
 
 function recipeText(r) {

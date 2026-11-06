@@ -10,9 +10,9 @@
 //   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 5-tap 2D downsample
 //   pass 2  downsample  down[0]   -> down[1] (¼)   5-tap 2D downsample  [if levels>=2]
 //   pass 3  composite   rtScene + multi-scale bloom (down[0]+w*down[1]) -> default framebuffer
-//   pass 4  [below-res only] composite -> rtPost, then FidelityFX CAS sharpen -> default
-//           framebuffer. The canvas backing store is the low-res frame; the browser does the
-//           display upscale, so CasFilter runs sharpen-only on the presented bytes.
+//   pass 4  [below-res only] composite -> active rtPost viewport, then FidelityFX CAS -> default
+//           framebuffer. CAS reconstructs active content into the drawing buffer; equal sizes
+//           use sharpen-only. The browser owns any remaining buffer-to-display upscale.
 //
 // Structural note: the old additive upsample chain allocated a separate half-res RT and an extra
 // fullscreen pass per frame. Multi-scale composite sampling (same idea as SpaceRenderGraph) keeps
@@ -36,9 +36,10 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
-import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, casSupportsScaling, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
   createAtmosphereCompositeUniforms,
@@ -47,6 +48,7 @@ import {
 import {
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
+  detachedGeometryUploadPending,
   packageDetachSerialNow,
   preparePresentedDraw,
   presentedDetachDrawsArmed,
@@ -285,14 +287,17 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float contrast = lumaMax - lumaMin;
     vec3 resolved = c;
     // Only a real local contrast earns the extra taps; the scale-relative gate keeps dim hull
-    // edges eligible while HDR brights skip (bloom already softens them).
-    if (contrast > max(0.012, lumaMax * 0.10)) {
+    // edges eligible while HDR brights skip (bloom already softens them). Owner complaint —
+    // edges read smeared, not drawn: the gate firmed up so faint gradients keep their authored
+    // pixel, and the resolve span tightened from ±8 to ±6 texels so a real edge still resolves
+    // but no longer reaches as far along itself.
+    if (contrast > max(0.016, lumaMax * 0.12)) {
       vec2 dir = vec2(
         -((lumaNW + lumaNE) - (lumaSW + lumaSE)),
         ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
       float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
       float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
-      dir = clamp(dir * rcpDirMin, -8.0, 8.0) * texel;
+      dir = clamp(dir * rcpDirMin, -6.0, 6.0) * texel;
       vec3 rgbA = 0.5 * (
         texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
         texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
@@ -309,7 +314,9 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
     vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
     float pool = dot(shadows, vec4(0.25));
-    float deposit = uLookInk * solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
+    // Deposit eased back with the resolve trim: the ink still pools on the painted side of a
+    // hard edge, just no longer as deep a seam over already-soft bloom spill.
+    float deposit = uLookInk * solid * clamp(ink * 0.15 + pool * 0.40, 0.0, 0.46);
     return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
   }
 
@@ -586,17 +593,32 @@ export async function compileScenePipelinesForRenderTarget(
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;
+  let targetRestored = false;
   try {
     renderer.setRenderTarget(renderTarget || null);
-    const admission = await compilePipelinesContextSafe(
+    const pending = compilePipelinesContextSafe(
       renderer, subject, camera, lightingScene || subject, options,
     );
+    // Owned compile() performs its complete GL issue synchronously; keep unsupported
+    // compileAsync implementations on the original serialized lifetime.
+    if ((options?.restoreTargetAfterIssue === true || typeof options?.onIssueComplete === 'function') && typeof renderer.compile === 'function'
+        && renderer.properties?.get && renderer.extensions?.get
+        && renderer.domElement?.addEventListener && renderer.domElement?.removeEventListener
+        && renderer.getContext && renderer.extensions.get('KHR_parallel_shader_compile')) {
+      renderer.setRenderTarget(previousTarget || null);
+      targetRestored = true;
+      options.onIssueComplete?.();
+    }
+    const admission = await pending;
     if (admission && admission.contextLost) {
       return {
         skipped: true,
         reason: admission.reason,
         contextLost: true,
       };
+    }
+    if (admission?.readinessTimedOut === true || admission?.incomplete === true) {
+      return { skipped: false, incomplete: true, readinessTimedOut: admission.readinessTimedOut === true };
     }
     return {
       skipped: false,
@@ -605,7 +627,7 @@ export async function compileScenePipelinesForRenderTarget(
         : null,
     };
   } finally {
-    renderer.setRenderTarget(previousTarget || null);
+    if (!targetRestored) renderer.setRenderTarget(previousTarget || null);
   }
 }
 
@@ -744,8 +766,9 @@ function programReadiness(program) {
   return ready ? 'ready' : 'pending';
 }
 
-export function beginScenePipelineReadinessBatch(renderer = null) {
-  if (pipelineReadinessBatch) {
+export function beginScenePipelineReadinessBatch(renderer = null, options = {}) {
+  const independent = options.independent === true;
+  if (!independent && pipelineReadinessBatch) {
     pipelineReadinessBatch.depth += 1;
     return pipelineReadinessBatch.handle;
   }
@@ -826,7 +849,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       }
       const remaining = batch.programs.size;
       batch.programs.clear();
-      settleAll({ contextLost: false });
+      settleAll({ contextLost: false, ...(remaining > 0 ? { readinessTimedOut: true } : {}) });
       return { contextLost: false, programs: remaining };
     },
     /**
@@ -852,13 +875,61 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       if (pipelineReadinessBatch === batch) pipelineReadinessBatch = null;
     },
   };
-  pipelineReadinessBatch = batch;
+  if (!independent) pipelineReadinessBatch = batch;
   return batch.handle;
 }
 
 /** Diagnostics: whether a pooled readiness batch is currently open to joiners. */
 export function scenePipelineReadinessBatchOpen() {
   return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
+}
+
+// Three returns materials, not the individual program variants it compiled. Capture
+// assignments and cache hits during the synchronous compile, including the early-out
+// cache hit which does not assign currentProgram. Never retain or poll other cache entries.
+function compileWithProgramCapture(renderer, subject, camera, lightingScene, programs) {
+  const store = renderer.properties;
+  const original = store.get;
+  const descriptor = Object.getOwnPropertyDescriptor(store, 'get');
+  const propertiesProxies = new WeakMap();
+  const mapProxies = new WeakMap();
+  const record = (program) => {
+    if (store.get === captureGet && program && typeof program.isReady === 'function') programs.add(program);
+    return program;
+  };
+  const captureMap = (map) => {
+    if (!(map instanceof Map)) return map;
+    if (!mapProxies.has(map)) mapProxies.set(map, new Proxy(map, {
+      get(target, key) {
+        if (key === 'get') return (cacheKey) => record(target.get(cacheKey));
+        const value = Reflect.get(target, key, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }));
+    return mapProxies.get(map);
+  };
+  function captureGet(object) {
+    const properties = original.call(this, object);
+    if (!object?.isMaterial || !properties || typeof properties !== 'object') return properties;
+    if (!propertiesProxies.has(properties)) propertiesProxies.set(properties, new Proxy(properties, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        return key === 'programs' ? captureMap(value) : value;
+      },
+      set(target, key, value, receiver) {
+        if (key === 'currentProgram') record(value);
+        return Reflect.set(target, key, value, receiver);
+      },
+    }));
+    return propertiesProxies.get(properties);
+  }
+  try {
+    store.get = captureGet;
+    return renderer.compile(subject, camera, lightingScene);
+  } finally {
+    if (descriptor) Object.defineProperty(store, 'get', descriptor);
+    else delete store.get;
+  }
 }
 
 export function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
@@ -904,12 +975,14 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     canvas.addEventListener('webglcontextlost', onContextLost, false);
 
     let materials;
+    const programs = new Set();
     try {
-      materials = renderer.compile(subject, camera, lightingScene);
+      materials = compileWithProgramCapture(renderer, subject, camera, lightingScene, programs);
     } catch (error) {
       fail(error);
       return;
     }
+    if (settled) return;
 
     // Measured on this project's Intel/ANGLE D3D11 baseline: the extension IS present here, and
     // renderer.compile() above returns in ~0.4 ms because it only STARTS the driver link. The
@@ -921,7 +994,6 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
       return;
     }
 
-    const programs = new Set();
     for (const material of materials) {
       const properties = renderer.properties.get(material);
       const program = properties && properties.currentProgram;
@@ -935,9 +1007,10 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     // Deadline compiles (e.g. a mesh already on the live glass) cannot pool their wait into
     // whoever's batch happens to be open — that owner's drain schedule is not this caller's.
     // skipSharedBatch keeps this wait on its own poll so it settles on link completion alone.
-    if (options.skipSharedBatch !== true
-      && pipelineReadinessBatch && pipelineReadinessBatch.accepting
-      && pipelineReadinessBatch.handle.join(gl, programs, finish)) {
+    const readinessBatch = options.readinessBatch
+      || (pipelineReadinessBatch && pipelineReadinessBatch.accepting ? pipelineReadinessBatch.handle : null);
+    if (options.skipSharedBatch !== true && readinessBatch
+      && readinessBatch.join(gl, programs, finish)) {
       return;
     }
 
@@ -1058,7 +1131,7 @@ export async function warmScenePipelinesForRenderTarget(
     };
   } finally {
     if (subject.parent && subject.parent !== previousParent) subject.parent.remove(subject);
-    if (previousParent && subject.parent !== previousParent) {
+    if (previousParent && subject.parent !== previousParent && !isRetiredRigidOpaqueBatch(subject)) {
       previousParent.add(subject);
       if (previousIndex >= 0 && previousIndex < previousParent.children.length - 1) {
         const currentIndex = previousParent.children.indexOf(subject);
@@ -1067,6 +1140,7 @@ export async function warmScenePipelinesForRenderTarget(
       }
     }
     for (const entry of objectState) {
+      if (isRetiredRigidOpaqueBatch(entry.object)) continue;
       entry.object.visible = entry.visible;
       entry.object.frustumCulled = entry.frustumCulled;
     }
@@ -1171,8 +1245,10 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 // Owner 2026-10-27: the wide halo is what turned a lit strip into neon and blurred silhouettes;
 // the mid/wide weights now sit well under the tight core so emissive sources keep an honest local
 // glow while the tens-of-pixels spill recedes. Weights are composite uniforms — zero pass cost.
+// Owner: glow stays, smearing goes — the 1/16 level receded again (0.20 → 0.14) so the
+// halo tightens around the emitter instead of laying a low fog over neighbouring edges.
 const BLOOM_MID_WEIGHT = 0.40;
-const BLOOM_WIDE_WEIGHT = 0.20;
+const BLOOM_WIDE_WEIGHT = 0.14;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
@@ -1210,6 +1286,7 @@ const COMPOSITE_FRAG = /* glsl */`
 
   uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
   uniform vec2 uUvOffset;
+  uniform vec2 uPresentationScale; // presentation pixels per composite pixel (CAS input can be smaller)
 
   void main() {
     // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
@@ -1238,7 +1315,7 @@ const COMPOSITE_FRAG = /* glsl */`
     if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
-      scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+      scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
       uGrade, uToe, uVignette, uGrain, uGrainFrame
     );
     // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
@@ -1275,26 +1352,44 @@ const COMPOSITE_FRAG = /* glsl */`
 const UNREADY_SCENE_CAP = 512;
 
 // Three's material properties describe the last-bound program, not every linked variant.
-// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. Memoize
-// alternate keys per live program so alternating shared Mesh/InstancedMesh draws allocate
-// no strings or arrays once warm. All other cache-key fields remain byte-for-byte unchanged.
-const instancingVariantKeys = new WeakMap();
+// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. A render
+// target can also select a different output color space and tone-mapping variant (notably the
+// no-tone-mapping transmission pass). Memoize exact alternate keys per live program so a ready
+// last-bound sibling cannot make a pending pass variant look safe.
+const drawPassVariantKeys = new WeakMap();
 
 function instancingFlags(object) {
   if (!object || object.isInstancedMesh !== true) return 0;
   return 1 | (object.instanceColor !== null ? 2 : 0) | (object.morphTexture !== null ? 4 : 0);
 }
 
-function linkedInstancingVariant(rec, material, object) {
+function linkedDrawProgramVariant(renderer, rec, material, object) {
   const current = rec && rec.currentProgram;
   if (!current || typeof rec.instancing !== 'boolean' || material.isRawShaderMaterial === true) return current;
   const wanted = instancingFlags(object);
   const bound = (rec.instancing ? 1 : 0) | (rec.instancingColor ? 2 : 0) | (rec.instancingMorph ? 4 : 0);
-  if (wanted === bound) return current;
+  const target = renderer && typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const toneMapping = Number(material.toneMapped === true
+    && (!target || target.isXRRenderTarget === true)
+    ? renderer.toneMapping
+    : THREE.NoToneMapping);
+  const outputColorSpace = !target
+    ? renderer.outputColorSpace
+    : target.isXRRenderTarget === true
+      ? target.texture && target.texture.colorSpace
+      : THREE.ColorManagement.workingColorSpace;
+  const boundToneMapping = Number(rec.toneMapping);
+  const hasPassMetadata = Number.isFinite(boundToneMapping)
+    && typeof rec.outputColorSpace === 'string';
+  if (wanted === bound && hasPassMetadata
+      && toneMapping === boundToneMapping
+      && outputColorSpace === rec.outputColorSpace) return current;
   const variants = rec.programs;
   if (!variants || typeof variants.get !== 'function') return null;
   if (rec.__version !== undefined && rec.__version !== material.version) return null;
-  let keys = instancingVariantKeys.get(current);
+  let keys = drawPassVariantKeys.get(current);
   if (!keys) {
     const key = current.cacheKey;
     if (typeof key !== 'string' || typeof material.customProgramCacheKey !== 'function') return null;
@@ -1313,18 +1408,60 @@ function linkedInstancingVariant(rec, material, object) {
     if (!/^\d+$/.test(maskText)) return null;
     const mask = Number(maskText);
     if (!Number.isSafeInteger(mask) || (mask & 7) !== bound) return null;
+
+    const keyParts = key.slice(0, customDelimiter).split(',');
+    const maskIndex = keyParts.length - 3;
+    const toneMappingIndex = maskIndex - 4;
+    if (maskIndex < 0 || Number(keyParts[maskIndex]) !== mask) return null;
+    const precisionValues = new Set(['highp', 'mediump', 'lowp']);
+    let outputColorSpaceIndex = -1;
+    for (let i = 1; i < keyParts.length - 1; i++) {
+      if (precisionValues.has(keyParts[i - 1])
+          && (rec.outputColorSpace == null || keyParts[i] === rec.outputColorSpace)) {
+        outputColorSpaceIndex = i;
+        break;
+      }
+    }
+    const keyToneMapping = Number(keyParts[toneMappingIndex]);
+    if (toneMappingIndex < 0 || !Number.isFinite(keyToneMapping)
+        || (Number.isFinite(boundToneMapping) && keyToneMapping !== boundToneMapping)
+        || outputColorSpaceIndex < 0) return null;
     keys = {
       mask,
-      prefix: key.slice(0, firstMaskDelimiter + 1),
-      suffix: key.slice(secondMaskDelimiter),
-      variants: new Array(8),
+      keyParts,
+      customSuffix: key.slice(customDelimiter),
+      maskIndex,
+      toneMappingIndex,
+      outputColorSpaceIndex,
+      boundToneMapping: keyToneMapping,
+      boundOutputColorSpace: keyParts[outputColorSpaceIndex],
+      variantsByColorSpace: new Map(),
     };
-    instancingVariantKeys.set(current, keys);
+    drawPassVariantKeys.set(current, keys);
   }
-  let alternateKey = keys.variants[wanted];
+  // Some Three compile adapters expose the current wrapper before mirroring its common
+  // metadata. The pinned vendor key is authoritative in that case, so a ready matching
+  // wrapper remains drawable instead of being re-queued forever.
+  if (wanted === bound && toneMapping === keys.boundToneMapping
+      && outputColorSpace === keys.boundOutputColorSpace) return current;
+  let toneVariants = keys.variantsByColorSpace.get(outputColorSpace);
+  if (!toneVariants) {
+    toneVariants = new Map();
+    keys.variantsByColorSpace.set(outputColorSpace, toneVariants);
+  }
+  let variantsByMask = toneVariants.get(toneMapping);
+  if (!variantsByMask) {
+    variantsByMask = new Array(8);
+    toneVariants.set(toneMapping, variantsByMask);
+  }
+  let alternateKey = variantsByMask[wanted];
   if (alternateKey === undefined) {
-    alternateKey = keys.prefix + ((keys.mask & ~7) | wanted) + keys.suffix;
-    keys.variants[wanted] = alternateKey;
+    const parts = keys.keyParts.slice();
+    parts[keys.maskIndex] = String((keys.mask & ~7) | wanted);
+    parts[keys.toneMappingIndex] = String(toneMapping);
+    parts[keys.outputColorSpaceIndex] = outputColorSpace;
+    alternateKey = parts.join(',') + keys.customSuffix;
+    variantsByMask[wanted] = alternateKey;
   }
   return variants.get(alternateKey) || null;
 }
@@ -1344,6 +1481,23 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  // Exact-target admission uses the same context-generation ownership as presented draws.
+  renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
+  renderer.__sfDeferSelectedProgram = (program, object, material) => {
+    let ready = !!program && !programWrapperDead(drawGuardGl, program);
+    if (ready && typeof program.isReady === 'function') {
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    }
+    if (ready) return false;
+    const data = material.userData || (material.userData = {});
+    const queue = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+    if (data.__sfPipelineAdmission !== true && typeof queue === 'function') {
+      data.__sfPipelineAdmission = true;
+      Promise.resolve(queue(object)).catch(() => null)
+        .finally(() => { data.__sfPipelineAdmission = false; });
+    }
+    return true;
+  };
   function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.
@@ -1363,10 +1517,10 @@ function installUnreadyDrawGuard(renderer) {
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
     if (preparePresentedDraw(renderer, geometry, material)) {
-      queuePresentedDetachRehydrate(renderer);
+      queuePresentedDetachRehydrate(renderer, { geometry, material });
       return undefined;
     }
-    if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
+    if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
       const data = material.userData;
       const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
       const props = renderer.properties;
@@ -1377,7 +1531,7 @@ function installUnreadyDrawGuard(renderer) {
           const rec = props.get(material);
           const current = rec && rec.currentProgram;
           if (current) {
-            const variant = linkedInstancingVariant(rec, material, object);
+            const variant = linkedDrawProgramVariant(renderer, rec, material, object);
             // The current wrapper can still be linking when the scoped scene scan
             // misses a live bind, just as a cached sibling can. Validate either
             // selected wrapper before first-use discovery can block this draw.
@@ -1449,7 +1603,26 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
   // for call sites that never asked for the swap.
   const disarmOnSettle = options.disarmOnSettle === true;
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  const unreadySceneLayerMasks = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
+  function hideDrawableForPass(object) {
+    if (!object || object.visible !== true) return;
+    const layers = object.layers;
+    if (layers && typeof layers.mask === 'number') {
+      if (layers.mask === 0) return;
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = layers.mask;
+      layers.mask = 0;
+    } else {
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = null;
+      object.visible = false;
+    }
+  }
+  function hidePendingDrawable(object) {
+    if (object && (object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) hideDrawableForPass(object);
+  }
   // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
   // Poll the program set instead of the scene: while a link is pending the traverse runs (and
   // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
@@ -1551,9 +1724,8 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
         && renderer.__sfDrawGuardDetachPending !== true;
     }
     // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
-    // drivers, so the program-readiness scan below can never see them — drawing one would link
-    // its variants synchronously inside this presented frame. Hide the root (subtree included)
-    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // drivers. Gate their drawables until admission resolves, but leave their descendant lights
+    // visible: hiding a root changes the scene light census and links different program keys.
     // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
     // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
     // the whole ship for the admission window: the per-material scan below and the
@@ -1563,12 +1735,10 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
-        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
         if (subject && subject.visible === true
             && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
-          unreadySceneScratch[unreadySceneCount] = subject;
-          unreadySceneCount += 1;
-          subject.visible = false;
+          if (typeof subject.traverseVisible === 'function') subject.traverseVisible(hidePendingDrawable);
+          else hidePendingDrawable(subject);
         }
       }
     }
@@ -1608,7 +1778,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
-    if (!orientationHold && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+    if (!orientationHold && detachGuardSettled && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
@@ -1627,7 +1797,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!orientationHold && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+    if (!orientationHold && detachGuardSettled && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
       return;
@@ -1652,7 +1822,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // sweep window — the draw-time renderBufferDirect guard already refuses
     // on-glass links for stamped materials in the meantime).
     const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
-    if (orientationHold
+    if (orientationHold || !detachGuardSettled
         || (sceneSetChanged && drainRoots === null)
         || (!scopedPendingWindow && !drainRoots)) {
       // Uninstrumented growth with nothing queued, or no pending latch at all:
@@ -1660,7 +1830,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       unreadyPendingSweep = 0;
       scanPresentedDrawables(scene);
     } else if (scopedPendingWindow) {
-      // The pending latch already hides those roots; the scoped scan still catches
+      // The pending latch already gates those roots' drawables; the scoped scan still catches
       // interior mounts inside them and inside the instrumented drain, and the
       // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
       unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
@@ -1694,15 +1864,16 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
 
   function hideOneUnreadySceneDrawable(object) {
     if (!object || object.visible !== true) return;
+    if (object.layers && object.layers.mask === 0) return;
     if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
         || object.isLine || object.isSprite || object.isInstancedMesh)) {
       return;
     }
     if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
-    if (orientationHoldHidesDrawable(renderer, object)) {
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+    const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
+    if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
+      if (pendingGeometry) queuePresentedDetachRehydrate(renderer, { geometry: object.geometry, material: object.material });
+      hideDrawableForPass(object);
       return;
     }
     // Keep the ordinary readiness walk bounded. Orientation holds must journal every released
@@ -1725,9 +1896,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     const wanted = instancingFlags(object);
     if (unreadyCheckedMaterials.get(material) === wanted) return false;
     if (unreadyHiddenMaterials.get(material) === wanted) {
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+      hideDrawableForPass(object);
       return true;
     }
     let rec = null;
@@ -1742,7 +1911,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // guard then refuses the instanced draw (the family flaps hidden-ready
     // while its missing variant links, 2026-10-18 asteroid-appear probe).
     const variant = (rec && rec.currentProgram)
-      ? linkedInstancingVariant(rec, material, object)
+      ? linkedDrawProgramVariant(renderer, rec, material, object)
       : null;
     // Never compiled, or the variant this draw needs is not linked yet: drawing
     // would link the driver program inside this presented pass. Hide the
@@ -1769,9 +1938,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
         }
       }
       unreadyHiddenMaterials.set(material, wanted);
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+      hideDrawableForPass(object);
       return true;
     }
     if (typeof variant.isReady !== 'function' || programWrapperDead(admissionGl, variant)) {
@@ -1785,9 +1952,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       return false;
     }
     unreadyHiddenMaterials.set(material, wanted);
-    unreadySceneScratch[unreadySceneCount] = object;
-    unreadySceneCount += 1;
-    object.visible = false;
+    hideDrawableForPass(object);
     return true;
   }
 
@@ -1799,12 +1964,15 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     let hiddenLog = recordHiddenDrawables ? renderer.__sfLastHiddenDrawables : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
-      if (object) object.visible = true;
+      if (object && unreadySceneLayerMasks[i] !== null && object.layers) {
+        object.layers.mask = unreadySceneLayerMasks[i];
+      } else if (object) object.visible = true;
       if (object && recordHiddenDrawables) {
         hiddenLog ||= (renderer.__sfLastHiddenDrawables = new Set());
         if (hiddenLog.size < 4096) hiddenLog.add(object);
       }
       unreadySceneScratch[i] = null;
+      unreadySceneLayerMasks[i] = null;
     }
     if (!recordHiddenDrawables && renderer) {
       renderer.__sfLastHiddenDrawables?.clear?.();
@@ -1881,7 +2049,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
   // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
-  // Dyn-res scale changes use setContentScale (viewport sub-rects) and must not call setSize.
+  // Dyn-res scale changes use setContentScale (viewport sub-rects); setSize retains the max pool.
   // Default is HalfFloat + linear colorSpace so brights exceed 1.0; the opt-in packed experiment
   // swaps only the HDR color attachment format after a capability probe.
   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
@@ -1899,6 +2067,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
   let casActive = false;
+  let casScaling = false;
   // The display footprint the CAS gate compares against is owned by the caller (renderer
   // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
   // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
@@ -2205,6 +2374,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvScale: { value: new THREE.Vector2(1, 1) },
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uPresentationScale: { value: new THREE.Vector2(1, 1) },
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
     tLookContrastLut: { value: null },
     ...createAtmosphereCompositeUniforms(),
@@ -2636,7 +2806,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       // color attachment as a framebuffer feedback loop — the bind is on
       // compositeMat, not a game-scene mesh, so a scene walk cannot see it.
       releaseBloomSceneSamplers();
-      hideUnreadySceneDrawables(scene);
       // Content sub-rect lives on the render target itself (device px, copied into GL state by
       // setRenderTarget). renderer.setViewport would write the canvas's persistent logical-pixel
       // viewport: it double-scaled this device-pixel rect under dpr>1 and leaked into the final
@@ -2645,6 +2814,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       rtScene.scissor.set(0, 0, contentW, contentH);
       rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
+      // Readiness selects tone mapping and output encoding from the bound target.
+      // Check the scene's HDR variants, not the previous screen/composite pass.
+      hideUnreadySceneDrawables(scene);
       // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
       // bit is a spec no-op that still pays a stencil.setMask GL state write.
       renderer.clear(true, true, false);
@@ -2718,11 +2890,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     renderer.autoClear = false;
     try {
       releaseBloomSceneSamplers();
-      hideUnreadySceneDrawables(scene);
       rtScene.viewport.set(0, 0, contentW, contentH);
       rtScene.scissor.set(0, 0, contentW, contentH);
       rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
+      hideUnreadySceneDrawables(scene);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
       drainBloomGeometryWalk(scene);
@@ -2798,13 +2970,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     compositeMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
     compositeMat.uniforms.uUvOffset.value.set(0, 0);
-    // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
-    // Full-res: composite writes the canvas directly — no extra target, no extra pass.
-    // Either way it is a full presentation-buffer blit — the content sub-rect is stretched
-    // via uUvScale inside the shader.
+    // Compose at the active resolution, preserving sRGB/tone-map ownership, then let CAS
+    // reconstruct those bytes instead of sharpening an already bilinearly enlarged image.
+    // Ratios beyond the vendor's 4x-area limit keep the legacy linear + sharpen handoff.
+    // Native/supersampled content presents directly, with no CAS draw.
     const sharpen = casActive && rtPost;
-    blit(compositeMat, sharpen ? rtPost : null);
-    if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
+    const compositeW = sharpen && casScaling ? contentW : W;
+    const compositeH = sharpen && casScaling ? contentH : H;
+    compositeMat.uniforms.uPresentationScale.value.set(W / compositeW, H / compositeH);
+    blit(compositeMat, sharpen ? rtPost : null, compositeW, compositeH);
+    if (tier1) tier1.countRenderPassPixels(compositeW * compositeH, 'bloom-composite');
     if (sharpen) {
       casMat.uniforms.tSrc.value = rtPost.texture;
       blit(casMat, null);
@@ -2845,7 +3020,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
 
-    if (atmosphere) timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
+    if (atmosphere) {
+      // The current-frame preflight avoids timing a disabled, unsupported, or empty-media no-op.
+      // Still call the owner when it will not draw so vacuum/history state advances.
+      if (atmosphere.hasRenderWork(rtScene.depthTexture, camera)) {
+        timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
+      } else {
+        renderAtmospherePass(camera, tier1);
+      }
+    }
 
     // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
@@ -2973,7 +3156,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     down = next.down;
     contentW = Math.max(1, Math.round(W * contentScale));
     contentH = Math.max(1, Math.round(H * contentScale));
-    if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
+    // Preserve the reserved pool even when context loss lands during native-resolution bypass.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
     if (rtDistortion) {
       rtDistortion.dispose();
       rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'contextRestore');
@@ -3035,9 +3220,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const nextH = Math.max(1, h | 0);
     if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
     if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
-    // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
-    // res without the buffer size changing class, and a stale flag is a silent miss.
-    casActive = resolveCasSharpenActive(nextW, nextH, casDisplayW, casDisplayH);
     // A settings/profile change can alter pyramid depth without changing the buffer size.
     const newLevels = enabled === false ? 0 : levelCountForSize(nextW, nextH);
     if (nextW !== W || nextH !== H || down.length !== newLevels) {
@@ -3066,13 +3248,21 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       contentW = Math.max(1, Math.round(W * contentScale));
       contentH = Math.max(1, Math.round(H * contentScale));
     }
-    // Dyn-res scale changes must NOT call this with a smaller size; they use setContentScale.
-    // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
-    // lazily on the first below-res sizing, never inside render().
-    if (casActive) {
+    // Reserve at the first known display size, including native-resolution opening frames.
+    // Auto's first reduction then changes only uniforms/viewports; prepareResources also admits
+    // the exact offscreen composite variant before flight. Keep this pool through recovery.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) {
       if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
-      applyCasSetup(casMat.uniforms, CAS_SHARPNESS, W, H, W, H);
     }
+  }
+
+  function syncCasSetup() {
+    casActive = resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
+    casScaling = casActive && (contentW !== W || contentH !== H)
+      && casSupportsScaling(contentW, contentH, W, H);
+    applyCasSetup(casMat.uniforms, CAS_SHARPNESS,
+      casScaling ? contentW : W, casScaling ? contentH : H, W, H);
   }
 
   // Dyn-res only: change the active content sub-rect without reallocating any render target.
@@ -3086,6 +3276,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     contentScale = nextScale;
     contentW = nextW;
     contentH = nextH;
+    syncCasSetup();
     if (atmosphere) atmosphere.invalidateHistory('content-scale');
   }
 
@@ -3216,6 +3407,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       targetPoolMaxWidth: W,
       targetPoolMaxHeight: H,
       casSharpenActive: casActive,
+      casReconstruction: !casActive ? 'bypass' : casScaling ? 'active-cas-upscale'
+        : (contentW !== W || contentH !== H) ? 'bilinear-sharpen-area-limit' : 'sharpen-only',
       casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
       packedHdrRequested: packedHdrRequestedMode,
       packedHdrMode,

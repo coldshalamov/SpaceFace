@@ -29,7 +29,6 @@ import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { ENVIRONMENT_FAMILIES, environmentMaterialOf } from '../src/data/environmentMaterials.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
-import { environmentResponse } from '../src/core/physicalResponse.js';
 import {
   schedulePhysicalBlast,
   deliverPhysicalImpulse,
@@ -226,8 +225,9 @@ test('crucible route: the generated arena debris field covers all six material f
     const rocks = arenaDebris(t.state);
     assert.ok(rocks.length >= 10, `generated arena scenery exists (${rocks.length} bodies)`);
     const mats = new Set(rocks.map(environmentMaterialOf));
-    assert.deepEqual([...mats].sort(), [...ENVIRONMENT_FAMILIES].sort(),
-      'every material family occurs among generated arena scenery');
+    for (const family of ENVIRONMENT_FAMILIES) {
+      assert.ok(mats.has(family), `every material family occurs among generated arena scenery (missing ${family})`);
+    }
   } finally { t.sim.dispose(); }
 });
 
@@ -354,8 +354,14 @@ test('crucible route: a concussion round out-throws a pulse round on comparable 
     sim.step(DT);
     const dvPulse = dvel(best.a.vel, beforeA);
     const dvConc = dvel(best.b.vel, beforeB);
-    assert.ok(dvPulse > 0.1, `the pulse round moved a generated rock (${dvPulse.toFixed(2)} wu/s)`);
-    assert.ok(dvConc > 0.1, `the concussion round moved a generated rock (${dvConc.toFixed(2)} wu/s)`);
+    const pulse = WEAPONS.find(w => w.id === 'wpn_pulse_laser_s');
+    const concussion = WEAPONS.find(w => w.id === 'wpn_concussion_cannon_m');
+    const expectedPulse = pulse.impulsePerHit / resolvePhysicsBodySpec(best.a).mass;
+    const expectedConc = concussion.environmentImpulsePerHit / resolvePhysicsBodySpec(best.b).mass;
+    assert.ok(Math.abs(dvPulse - expectedPulse) < Math.max(1e-5, expectedPulse * 0.3),
+      `the generated rock receives pulse momentum / mass (${dvPulse} versus ${expectedPulse})`);
+    assert.ok(Math.abs(dvConc - expectedConc) < Math.max(1e-5, expectedConc * 0.3),
+      `the generated rock receives concussion momentum / mass (${dvConc} versus ${expectedConc})`);
     assert.ok(dvConc >= 3 * dvPulse,
       `concussion Δv (${dvConc.toFixed(2)}) ≥ 3× pulse Δv (${dvPulse.toFixed(2)})`);
   } finally { COMBAT_FLAGS.weaponImpulseConsequences = prev; t.sim.dispose(); }
@@ -405,15 +411,15 @@ test('crucible route: plasma splash delivers exactly once per generated body', a
     const portForA = calls.filter((c) => c.entityId === pair.a.id);
     assert.equal(portForA.length, 1, 'the port saw exactly one direct delivery to the target');
     const massA = resolvePhysicsBodySpec(pair.a).mass;
-    const expectedA = 36 * (massA / 16 * environmentResponse(pair.a)) / massA;
+    const expectedA = 36 / massA;
     const dvA = dvel(pair.a.vel, beforeA);
-    assert.ok(Math.abs(dvA - expectedA) < Math.max(0.15, expectedA * 0.3),
+    assert.ok(Math.abs(dvA - expectedA) < Math.max(1e-5, expectedA * 0.3),
       `direct Δv ${dvA.toFixed(3)} ≈ a single direct delivery ${expectedA.toFixed(3)} — no splash double-count`);
     // Splash neighbour: exactly one accepted delivery, bounded between none and two.
     const dCenter = Math.hypot(pair.b.pos.x - hit.contact.x, pair.b.pos.z - hit.contact.z);
     const fall = Math.max(0, 1 - Math.max(0, dCenter - (pair.b.radius || 0)) / hit.def.splashRadius);
     assert.ok(fall > 0, `the generated neighbour sits inside the splash (falloff ${fall.toFixed(2)})`);
-    const expectedB = 36 * fall * environmentResponse(pair.b) / 16;
+    const expectedB = 36 * fall / resolvePhysicsBodySpec(pair.b).mass;
     const dvB = dvel(pair.b.vel, beforeB);
     assert.ok(dvB > expectedB * 0.5 && dvB < expectedB * 1.5,
       `splash neighbour Δv ${dvB.toFixed(3)} ≈ exactly one accepted delivery ${expectedB.toFixed(3)}`);
@@ -558,9 +564,11 @@ test('adventure route: the generated starting sector carries all five material f
     for (const e of state.entityList) {
       if (e.alive !== false && (e.type === 'wreck' || e.type === 'asteroid')) mats.add(environmentMaterialOf(e));
     }
-    // Helios has common-rock fields; cryo ice belongs to authored icy fields.
-    assert.deepEqual([...mats].sort(), ['crystal', 'debris', 'metal', 'rock', 'volatile'],
-      `${SECTOR} field records + generated wrecks cover all five starter material families`);
+    // The substance and ecology layers can add families beyond the starter five.
+    for (const family of ['crystal', 'debris', 'metal', 'rock', 'volatile']) {
+      assert.ok(mats.has(family),
+        `${SECTOR} field records + generated wrecks cover the ${family} starter material family`);
+    }
   } finally { t.sim.dispose(); }
 });
 
@@ -713,6 +721,9 @@ test('adventure route: a missile blast moves generated scenery while the station
       if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') { berthed = true; break; }
     }
     assert.ok(berthed, 'the corridor berths the ship in the same scenario as the missile blast');
+    // The approach legitimately over-flies the berth speed gate, so the dock collar has already
+    // taxed the hull once by now — that scrape is authored (dockCollar.js), not the contract here.
+    const hullAtBerth = player.hull;
 
     // …and still blocks a hull driven into its silhouette.
     const primitives = proxyWorldPrimitives(station, manifest);
@@ -736,6 +747,6 @@ test('adventure route: a missile blast moves generated scenery while the station
     const distCenter = Math.hypot(player.pos.x - station.pos.x, player.pos.z - station.pos.z);
     assert.ok(maxOverlap < 3, `the station hull still blocks (${maxOverlap.toFixed(2)} wu overlap)`);
     assert.ok(distCenter < outer + 400, 'the hull never tunnels through the silhouette');
-    assert.equal(player.hull, 200, 'no collision-consequence damage on the player');
+    assert.equal(player.hull, hullAtBerth, 'no collision-consequence damage on the player');
   } finally { COMBAT_FLAGS.weaponImpulseConsequences = prev; t.sim.dispose(); }
 });

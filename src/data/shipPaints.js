@@ -26,6 +26,8 @@ export const SHIP_HULL_PAINTS = Object.freeze([
   { id: 'toll_grey', name: 'Toll grey', hex: '#5c6066', sentence: 'The color of every booth on the lane. Blends into the queue it refuses to join.' },
   { id: 'ore_ochre', name: 'Ore ochre', hex: '#8a5f2a', sentence: 'Drift-claim ochre. The dust never fully washes out of this one.' },
   { id: 'impound_red', name: 'Impound red', hex: '#7e3226', sentence: 'Seizure-yard red. The last owner\'s livery, kept as a warning or a boast.' },
+  { id: 'patna_buff', name: 'Patna buff', hex: '#b5a284', sentence: 'The pale coat of a liner her crew filed as lost. Somewhere she is still floating.' },
+  { id: 'lock_stock', name: 'Lock stock', hex: '#43484e', sentence: 'Two barrels of smoked primer. The yard sells them as a pair or not at all.' },
 ]);
 
 export const SHIP_ACCENT_PAINTS = Object.freeze([
@@ -64,6 +66,11 @@ export const SHIP_DECAL_STOCK = Object.freeze([
   { id: 'concord', decalId: 'concord', name: 'Patrol registry', sentence: 'Crisp serials and the inspection roundel. Reads official at any dock.' },
   { id: 'industrial', decalId: 'industrial', name: 'Yard hazard', sentence: 'Lift points, hazard glyphs, the yard serial in safety yellow.' },
   { id: 'frontier', decalId: 'frontier', name: 'Frontier brand', sentence: 'A hand-painted star and route tallies, faded honest by the sun.' },
+  { id: 'probate', decalId: 'probate', name: 'Toll ledger', sentence: 'EVERY MAN PAYS TWICE, stamped and dated. First in flesh. Then in coin.' },
+  { id: 'addendum', decalId: 'addendum', name: 'Vael terms', sentence: 'Voluntary — standard terms. The addendum is now painted full scale. Read page 9.' },
+  { id: 'heavy_is_honest', decalId: 'heavy_is_honest', name: 'Yard chant', sentence: 'The Pitborn chant over a scale and a tally block. Nobody paints over the tally.' },
+  { id: 'dead_schedule', decalId: 'dead_schedule', name: 'Dead schedule', sentence: 'ON SCHEDULE, says the decal. The company that set these routes is a filing.' },
+  { id: 'gate_law', decalId: 'gate_law', name: 'Gate law', sentence: 'Three directives and a measure band, drawn to tolerance. Verge tags never lie.' },
 ]);
 
 /** The next appearance object the rack emits for one swatch selection: patch exactly one field of
@@ -77,6 +84,9 @@ export function buildPaintAppearance(current, patch) {
     finish: base.finish != null ? base.finish : 'satin',
     wear: Number.isFinite(Number(base.wear)) ? Number(base.wear) : 0.25,
     decalId: base.decalId != null ? base.decalId : null,
+    // Paint changes the coat, not the captured hull's authored identity. The ship owner
+    // still normalizes this optional variant against the actual hull definition.
+    ...(base.variantId ? { variantId: base.variantId } : {}),
   };
   if (!patch || typeof patch !== 'object') return next;
   if (patch.hullColor !== undefined) next.hullColor = patch.hullColor;

@@ -153,7 +153,7 @@ function resolveContainedFile(root, decodedPath) {
 // then the served root's git HEAD — so the version fine print resolves the same identity a
 // packaged app would. No git or no hash → an empty `output`, exactly what a packaged build
 // without a digest serves, and the menu falls back to the compiled version.
-const devReleaseReceiptCache = new Map(); // root -> receipt object
+const devReleaseReceiptCache = new Map(); // ordinary root or strict root + served overlay identity -> receipt object
 
 // Packaged app-source pinning (F9): a packaged build's asar payload bytes are fixed for the
 // life of that build, so app-source files can serve immutable cache headers — a warm launch
@@ -165,6 +165,7 @@ const devReleaseReceiptCache = new Map(); // root -> receipt object
 const APP_SOURCE_BUILD_RECEIPT = 'build/web/spaceface-release-build.json';
 const APP_SOURCE_BUILD_COOKIE = 'sf-build';
 const SOURCE_OVERLAY_SCHEMA = 'spaceface.sourceBaseline.v1';
+const SOURCE_OVERLAY_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
 // Probe-only source overlays may pin the complete runtime map (index + src/**/*.js and JSON,
 // plus worker mirror modules and explicit asset snapshots). Keep the validator bounded while leaving room for the current
 // checkout's measured ~68 MiB map; ordinary launches never use this path.
@@ -207,6 +208,14 @@ function normalizeSourceOverlayPath(value) {
     return normalized;
   }
   return null;
+}
+
+function isSourceOverlayRuntimePath(relativePath) {
+  const filePath = String(relativePath || '').replace(/\\/g, '/');
+  if (filePath === 'index.html' || filePath === 'vendor/three.module.js') return true;
+  if (filePath.startsWith('src/')) return /\.(?:js|json)$/i.test(filePath);
+  if (filePath.startsWith('scripts/lib/')) return /\.(?:js|mjs|cjs)$/i.test(filePath);
+  return filePath.startsWith('styles/');
 }
 
 function sourceOverlayDigest(entries) {
@@ -271,6 +280,8 @@ function loadSourceOverlayManifest(sourceOverlay) {
   if (String(manifest.sourceOverlayDigest || '').toLowerCase() !== digest) {
     throw new Error('source overlay aggregate digest mismatch');
   }
+  const strictRuntimeIsolation = manifest.captureScope === 'all-runtime'
+    && manifest.runtimePathPolicy === SOURCE_OVERLAY_RUNTIME_PATH_POLICY;
   const identity = Object.freeze({
     schema: SOURCE_OVERLAY_SCHEMA,
     sourceCommit: String(manifest.sourceCommit).toLowerCase(),
@@ -278,26 +289,45 @@ function loadSourceOverlayManifest(sourceOverlay) {
     fileCount: entries.length,
     totalBytes,
     files: Object.freeze(entries.map(({ path: relativePath, bytes, sha256 }) => ({ path: relativePath, bytes, sha256 }))),
+    ...(strictRuntimeIsolation ? { strictRuntimeIsolation: true } : {}),
   });
-  return Object.freeze({ entries: byPath, identity });
+  return Object.freeze({
+    entries: byPath,
+    identity,
+    // An all-runtime manifest is a complete source snapshot. Missing runtime files must not
+    // silently fall through to the live checkout, while partial diagnostic overlays keep their
+    // existing mixed-source behavior.
+    strictRuntime: strictRuntimeIsolation,
+  });
 }
 
-function devReleaseReceipt(root) {
-  let receipt = devReleaseReceiptCache.get(root);
+function devReleaseReceipt(root, sourceOverlayIdentity = null) {
+  const strictOverlay = sourceOverlayIdentity?.strictRuntimeIsolation === true;
+  const cacheKey = strictOverlay
+    ? `${root}\0${sourceOverlayIdentity.sourceCommit}\0${sourceOverlayIdentity.sourceOverlayDigest}`
+    : root;
+  let receipt = devReleaseReceiptCache.get(cacheKey);
   if (receipt) return receipt;
   receipt = { schema: 'spaceface.releaseBuild.dev.v1', dev: true, output: {} };
-  const envHash = String(process.env.SPACEFACE_BUILD_HASH || '').trim().toLowerCase();
-  if (/^[0-9a-f]{16,64}$/.test(envHash)) {
-    receipt.output.digest = envHash;
+  if (strictOverlay) {
+    // The source overlay is the code being served. A worktree HEAD or build hash can describe
+    // unrelated checkout bytes, so make the existing receipt identify this exact served map.
+    receipt.output.digest = sourceOverlayIdentity.sourceOverlayDigest;
+    receipt.output.sourceCommit = sourceOverlayIdentity.sourceCommit;
   } else {
-    try {
-      const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
-        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000,
-      }).trim().toLowerCase();
-      if (/^[0-9a-f]{40}$/.test(sha)) receipt.output.digest = sha;
-    } catch { /* not a checkout — serve the empty dev receipt */ }
+    const envHash = String(process.env.SPACEFACE_BUILD_HASH || '').trim().toLowerCase();
+    if (/^[0-9a-f]{16,64}$/.test(envHash)) {
+      receipt.output.digest = envHash;
+    } else {
+      try {
+        const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000,
+        }).trim().toLowerCase();
+        if (/^[0-9a-f]{40}$/.test(sha)) receipt.output.digest = sha;
+      } catch { /* not a checkout — serve the empty dev receipt */ }
+    }
   }
-  devReleaseReceiptCache.set(root, receipt);
+  devReleaseReceiptCache.set(cacheKey, receipt);
   return receipt;
 }
 
@@ -346,6 +376,9 @@ function isAllowedStateChangingRequest(req) {
  * @param {string|object} [opts.sourceOverlay] Optional probe-only immutable source manifest. Only
  *                                      index.html, vendor/three.module.js, src/**, scripts/lib/**
  *                                      styles/** and assets/** entries are eligible.
+ * @param {object} [opts.devSimWorkerBundleProvider] Explicit source-dev-only provider for the
+ *                                      canonical whole-sim worker URL; ignored for overlays or
+ *                                      immutable app-source routes.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
@@ -369,6 +402,9 @@ function createGameServer(opts) {
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
   const appSourceBuildDigest = opts.appSourceImmutable === true
     ? readAppSourceBuildDigest(root)
+    : null;
+  const devSimWorkerBundleProvider = !sourceOverlay && opts.appSourceImmutable !== true
+    ? opts.devSimWorkerBundleProvider || null
     : null;
   const appSourceIndexHeaders = (requestHeaders) => {
     if (!appSourceBuildDigest) return {};
@@ -472,10 +508,65 @@ function createGameServer(opts) {
         return;
       }
 
+      if (sourceOverlay?.strictRuntime && overlayPath && isSourceOverlayRuntimePath(overlayPath)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end('Not Found');
+        return;
+      }
+
+      // The opt-in development bundle occupies only the canonical sim-worker URL. It is
+      // generated from current source in memory; overlays and immutable/pinned routes above
+      // retain their exact bytes. A failed current build is an explicit error, never a stale or
+      // retail fallback.
+      if (devSimWorkerBundleProvider
+          && decodedPath === '/src/core/wholeSimBrowserWorker.js'
+          && (method === 'GET' || method === 'HEAD')) {
+        let bundle;
+        try {
+          bundle = await devSimWorkerBundleProvider.getBundle();
+          if (!bundle || !Buffer.isBuffer(bundle.bytes)
+              || !/^[a-f0-9]{64}$/i.test(String(bundle.digest || ''))) {
+            throw new Error('dev worker bundle provider returned an invalid current artifact');
+          }
+        } catch (error) {
+          console.error('[dev-sim-worker] current bundle unavailable:', error && (error.stack || error.message) || String(error));
+          const body = Buffer.from('503 Dev sim worker bundle unavailable', 'utf8');
+          res.writeHead(503, {
+            ...staticHeaders,
+            ...(staticHeadersByPath['src/core/wholeSimBrowserWorker.js'] || {}),
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'Content-Length': body.length,
+          });
+          res.end(body);
+          return;
+        }
+        const digest = String(bundle.digest).toLowerCase();
+        const headers = {
+          ...staticHeaders,
+          ...(staticHeadersByPath['src/core/wholeSimBrowserWorker.js'] || {}),
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Length': bundle.bytes.length,
+          'ETag': `"sf-dev-sim-${digest}"`,
+          'X-SpaceFace-Dev-Sim-Worker-Digest': digest,
+        };
+        res.writeHead(200, headers);
+        if (method === 'HEAD') res.end();
+        else res.end(bundle.bytes);
+        return;
+      }
+
       // Packaged builds place the release receipt at the app root; a dev tree keeps it under
       // build/web/. Serve the generated bytes at the packaged URL so the version label and any
       // receipt consumers resolve one path on both hosts.
       if (decodedPath === '/spaceface-release-build.json') {
+        if (sourceOverlay?.strictRuntime) {
+          const body = JSON.stringify(devReleaseReceipt(root, sourceOverlay.identity));
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Length': Buffer.byteLength(body) });
+          res.end(body);
+          return;
+        }
         let resolvedReceipt = false;
         const packaged = resolveContainedFile(root, '/build/web/spaceface-release-build.json');
         if (packaged) {
@@ -489,10 +580,10 @@ function createGameServer(opts) {
         }
         // The menu asks for this receipt on every boot. A dev/worktree serve has no packaged
         // file, and a bare 404 is a console error on a first-class URL — answer with the dev
-        // identity instead. Order matches electron/releaseIdentity.cjs: SPACEFACE_BUILD_HASH,
-        // then git HEAD for the served root, then no build claim.
+        // identity instead. Ordinary development uses SPACEFACE_BUILD_HASH, then git HEAD for
+        // the served root; a strict overlay uses its frozen source identity instead.
         if (!resolvedReceipt) {
-          const body = JSON.stringify(devReleaseReceipt(root));
+          const body = JSON.stringify(devReleaseReceipt(root, sourceOverlay?.identity));
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Length': Buffer.byteLength(body) });
           res.end(body);
           return;

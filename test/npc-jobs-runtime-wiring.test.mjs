@@ -418,7 +418,11 @@ test('flee: a nearby hostile interrupts the job into flee; removing it resumes t
   const threat = sim.spawn({ type: 'ship', team: 1, pos: { x: e.pos.x + 60, z: e.pos.z }, vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 6 });
   sim.step(DT);
   assert.equal(job.phase, NPC_JOB_PHASE.FLEE, 'a nearby hostile interrupts the job into flee');
-  assert.equal(e.data.intent.boost, true, 'the civilian bolts (boost) away from the threat');
+  assert.equal(e.data.intent.moveZ, 0, 'the civilian first turns away from the threat');
+  assert.equal(e.data.intent.boost, false, 'a nose-in civilian must not boost toward the threat');
+  e.rot = e.data.intent.aimAngle;
+  sim.step(DT);
+  assert.equal(e.data.intent.boost, true, 'the aligned civilian boosts away from the threat');
   // Remove the threat; the job resumes its prior legal phase (never a reset).
   despawn(sim.state, threat.id);
   sim.step(DT);

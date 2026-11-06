@@ -80,6 +80,19 @@ import {
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S, CHARGE_FUSE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
 
+// A worker's begin intent precedes its authoritative presentation. Never latch an
+// absent/partial field as a permanent empty board. Legacy hand-built sessions may
+// lack identity generations; the screen checks that explicit legacy case separately.
+export function readWorksDrillSession(drill) {
+  if (!drill || drill.active !== true || !Array.isArray(drill.field)
+    || drill.field.length !== DRILL_CONST.COLS
+    || !drill.field.every(column => Array.isArray(column) && column.length === DRILL_CONST.ROWS)
+    || !Number.isInteger(drill.avatar?.col) || !Number.isInteger(drill.avatar?.row)
+    || drill.avatar.col < 0 || drill.avatar.col >= DRILL_CONST.COLS
+    || drill.avatar.row < 0 || drill.avatar.row >= DRILL_CONST.ROWS) return null;
+  return drill;
+}
+
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
 const S = 2.2;                // world units per cell — the astlab-proven scale for these builders
 // Same 8-cell contact ring as siteProduction.contactProfile (RING_OFFSETS is not exported).
@@ -1362,9 +1375,107 @@ function makeCrackDecalTexture(stage) {
     const r = 8 + rr() * (30 + stage * 22);
     g.fillRect(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, 2.5, 2.5);
   }
+  // Short parallel tool scuffs sit inside the fracture, never on undamaged rock.
+  g.strokeStyle = 'rgba(214,197,163,0.42)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 2 + stage; i++) {
+    const x = 100 + i * 13;
+    g.beginPath();
+    g.moveTo(x, 139 + (i % 2) * 4);
+    g.lineTo(x + 11, 126 + (i % 2) * 4);
+    g.stroke();
+  }
   const tex = new THREE.CanvasTexture(cv);
   return tex;
 }
+
+// The pooled break pulse is a small contact acknowledgment; other events retain their envelope.
+// These mutate an existing pool record so advancing effects allocates nothing per frame.
+export function armWorksPulse(p, duration, contact = false) {
+  p.t = duration;
+  p.dur = duration;
+  p.contact = contact;
+}
+
+export function advanceWorksPulse(p, dt, cellSize) {
+  if (p.t <= 0) return;
+  p.t = Math.max(0, p.t - dt);
+  const a = p.t / p.dur;
+  p.mat.opacity = (p.contact ? 0.25 : 0.5) * a;
+  p.mesh.scale.setScalar(cellSize * (p.contact ? 0.45 : 1) * (1.4 - a * 0.7));
+  if (p.t <= 0) p.mesh.visible = false;
+}
+
+export function worksBoreStage(tile) {
+  if (!tile || tile.type === 'empty' || !tile.maxHp) return -1;
+  const prog = 1 - Math.max(0, tile.hp) / tile.maxHp;
+  if (prog <= 0.04) return -1;
+  return { prog, stage: Math.min(2, Math.floor(prog * 3)) };
+}
+
+const ROCK_UV_CELLS = 6.8;
+const ROCK_UV_ANGLE = 0.54;    // ~31 degrees
+const ROCK_WALL_WINDOW = 0.34; // fraction of the map one cavity wall shows
+export function patchRockUvWindow(mat) {
+  const k = 1 / (ROCK_UV_CELLS * S);
+  const rc = (Math.cos(ROCK_UV_ANGLE) * k).toFixed(6);
+  const rs = (Math.sin(ROCK_UV_ANGLE) * k).toFixed(6);
+  const wallWin = (ROCK_WALL_WINDOW / ROCK_SURFACE_TEXTURE_REPEAT).toFixed(6);
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float sfFacet;\nvarying float vSfNmScale;')
+      .replace('#include <uv_vertex>', [
+        '#include <uv_vertex>',
+        '#ifdef USE_MAP',
+        '  vec4 sfWorld = modelMatrix *',
+        '  #ifdef USE_INSTANCING',
+        '    instanceMatrix *',
+        '  #endif',
+        '    vec4( position, 1.0 );',
+        '  vec2 sfPlanar = vec2( sfWorld.x * ' + rc + ' - sfWorld.y * ' + rs + ',',
+        '                       sfWorld.x * ' + rs + ' + sfWorld.y * ' + rc + ' );',
+        '  vec2 sfCellKey = vec2(0.0);',
+        '  #ifdef USE_INSTANCING',
+        '    sfCellKey = instanceMatrix[3].xy;',
+        '  #endif',
+        '  vec2 sfLocal = vMapUv * ' + wallWin + ' + vec2(',
+        '    fract(sin(dot(sfCellKey, vec2(12.9898, 78.233))) * 43758.5453),',
+        '    fract(sin(dot(sfCellKey, vec2(63.7264, 21.5391))) * 24634.6345));',
+        '  float sfPlanarMix = step( 0.25, sfFacet );',
+        '  vSfNmScale = 1.0 - 0.68 * ( sfPlanarMix * ( 1.0 - step( 0.75, sfFacet ) ) );',
+        '  vec2 sfWin = mix( sfLocal, sfPlanar, sfPlanarMix );',
+        '  vMapUv = sfWin;',
+        '  #ifdef USE_NORMALMAP',
+        '    vNormalMapUv = sfWin;',
+        '  #endif',
+        '  #ifdef USE_AOMAP',
+        '    vAoMapUv = sfWin;',
+        '  #endif',
+        '  #ifdef USE_ROUGHNESSMAP',
+        '    vRoughnessMapUv = sfWin;',
+        '  #endif',
+        '  #ifdef USE_METALNESSMAP',
+        '    vMetalnessMapUv = sfWin;',
+        '  #endif',
+        '#endif',
+      ].join('\n'));
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vSfNmScale;')
+      .replace('#include <normal_fragment_maps>', [
+        'vec3 sfGeoNormal = normal;',
+        '#include <normal_fragment_maps>',
+        'normal = normalize( mix( sfGeoNormal, normal, vSfNmScale ) );',
+      ].join('\n'));
+  };
+  // Distinct cache key: the patched program must not be shared with an unpatched standard
+  // material that happens to carry the same defines.
+  mat.customProgramCacheKey = () => `sf-ast-rock-uv:${ROCK_UV_CELLS}:${ROCK_UV_ANGLE}:${ROCK_WALL_WINDOW}`;
+  return mat;
+}
+
+export const WORKS_CELL_GEOMETRY_OPTIONS = Object.freeze({
+  jointOcclusion: 0.38, wallTopOcclusion: 0.30, grooveDepthScale: 0.75,
+});
 
 export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection,
   canInstall = (request) => asteroidSites.canInstall(request) }) {
@@ -1517,9 +1628,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     terrainReady = false;
     terrainFailed = false;
     queueWorksPipelines(rockGroup).then((ready) => {
-      if (generation === terrainGeneration) terrainReady = ready;
+      if (generation === terrainGeneration && !worksTearingDown && !disposed && !glTeardownDone) {
+        terrainReady = ready;
+      }
     }).catch((error) => {
-      if (generation === terrainGeneration) terrainFailed = true;
+      if (generation !== terrainGeneration || worksTearingDown || disposed || glTeardownDone) return;
+      terrainFailed = true;
       console.error('[asteroidRenderer3d] terrain pipeline admission failed', error);
     });
   }
@@ -2741,66 +2855,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // rotated by. THE ROTATION IS THE POINT: an axis-aligned repeat lands the same authored crack in
   // the same corner of every Nth cell, and the eye locks onto that instantly. Off-axis, the repeat
   // never lines up with a joint and the wall reads as one irregular body of rock.
-  const ROCK_UV_CELLS = 4.3;
-  const ROCK_UV_ANGLE = 0.54;    // ~31 degrees
-  const ROCK_WALL_WINDOW = 0.34; // fraction of the map one cavity wall shows
-  function patchRockUvWindow(mat) {
-    const k = 1 / (ROCK_UV_CELLS * S);
-    const rc = (Math.cos(ROCK_UV_ANGLE) * k).toFixed(6);
-    const rs = (Math.sin(ROCK_UV_ANGLE) * k).toFixed(6);
-    const wallWin = (ROCK_WALL_WINDOW / ROCK_SURFACE_TEXTURE_REPEAT).toFixed(6);
-    mat.onBeforeCompile = (shader) => {
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float sfFacet;\nvarying float vSfNmScale;')
-        .replace('#include <uv_vertex>', [
-          '#include <uv_vertex>',
-          '#ifdef USE_MAP',
-          '  vec4 sfWorld = modelMatrix *',
-          '  #ifdef USE_INSTANCING',
-          '    instanceMatrix *',
-          '  #endif',
-          '    vec4( position, 1.0 );',
-          '  vec2 sfPlanar = vec2( sfWorld.x * ' + rc + ' - sfWorld.y * ' + rs + ',',
-          '                       sfWorld.x * ' + rs + ' + sfWorld.y * ' + rc + ' );',
-          '  vec2 sfCellKey = vec2(0.0);',
-          '  #ifdef USE_INSTANCING',
-          '    sfCellKey = instanceMatrix[3].xy;',
-          '  #endif',
-          '  vec2 sfLocal = vMapUv * ' + wallWin + ' + vec2(',
-          '    fract(sin(dot(sfCellKey, vec2(12.9898, 78.233))) * 43758.5453),',
-          '    fract(sin(dot(sfCellKey, vec2(63.7264, 21.5391))) * 24634.6345));',
-          '  float sfPlanarMix = step( 0.25, sfFacet );',
-          '  vSfNmScale = 1.0 - 0.68 * ( sfPlanarMix * ( 1.0 - step( 0.75, sfFacet ) ) );',
-          '  vec2 sfWin = mix( sfLocal, sfPlanar, sfPlanarMix );',
-          '  vMapUv = sfWin;',
-          '  #ifdef USE_NORMALMAP',
-          '    vNormalMapUv = sfWin;',
-          '  #endif',
-          '  #ifdef USE_AOMAP',
-          '    vAoMapUv = sfWin;',
-          '  #endif',
-          '  #ifdef USE_ROUGHNESSMAP',
-          '    vRoughnessMapUv = sfWin;',
-          '  #endif',
-          '  #ifdef USE_METALNESSMAP',
-          '    vMetalnessMapUv = sfWin;',
-          '  #endif',
-          '#endif',
-        ].join('\n'));
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vSfNmScale;')
-        .replace('#include <normal_fragment_maps>', [
-          'vec3 sfGeoNormal = normal;',
-          '#include <normal_fragment_maps>',
-          'normal = normalize( mix( sfGeoNormal, normal, vSfNmScale ) );',
-        ].join('\n'));
-    };
-    // Distinct cache key: the patched program must not be shared with an unpatched standard
-    // material that happens to carry the same defines.
-    mat.customProgramCacheKey = () => `sf-ast-rock-uv:${ROCK_UV_CELLS}:${ROCK_WALL_WINDOW}`;
-    return mat;
-  }
-
   let rockMats = makeRockMaterials(envMap, getReadyRockSurfaceTextures());
   let rockSurfaceReady = !!getReadyRockSurfaceTextures();
   if (rockSurfaceReady) { for (const b of ROCK_BUCKETS) patchRockUvWindow(rockMats[b]); }
@@ -2838,7 +2892,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // Shared cell-kit geometry (never disposed per cell — see sharedGeos)
-  const blockGeos = makeCellBlockGeos();
+  // Works keeps the same square footprint and cavity walls, with less coal-black joint AO.
+  const blockGeos = makeCellBlockGeos(WORKS_CELL_GEOMETRY_OPTIONS);
   const clusterGeos = [makeOreClusterGeo(0), makeOreClusterGeo(1)];
   const gasVaporGeo = makeGasVaporGeo();
   const cellQuad = new THREE.PlaneGeometry(S, S);
@@ -3342,11 +3397,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     fxRoot.add(mesh);
     pulseRings.push({ mesh, mat, t: 0, dur: 0.6 });
   }
-  function firePulseRing(col, row, colorHex, dur = 0.6) {
+  function firePulseRing(col, row, colorHex, dur = 0.6, contact = false) {
     const p = pulseRings.find((x) => x.t <= 0) || pulseRings[0];
     p.mesh.position.set(worldX(col), worldY(row), Z.face + 0.03);
     p.mat.color.setHex(colorHex);
-    p.t = dur; p.dur = dur;
+    armWorksPulse(p, dur, contact);
     p.mesh.visible = true;
   }
 
@@ -3376,19 +3431,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     fxRoot.add(mesh);
     return mesh;
   });
-  function boreStageFor(tile) {
-    if (!tile || tile.type === 'empty' || !tile.maxHp) return -1;
-    const prog = 1 - Math.max(0, tile.hp) / tile.maxHp;
-    if (prog <= 0.04) return -1;
-    return { prog, stage: Math.min(2, Math.floor(prog * 3)) };
-  }
   // Re-read a cell's hp and park its block + crack stage where the sim says they belong.
   function syncCellDamage(c, r) {
     if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
     const idx = tileIndex(c, r);
     const tile = field && field[c] && field[c][r];
     const rec = cellRock.get(idx);
-    const info = boreStageFor(tile);
+    const info = worksBoreStage(tile);
     if (info === -1 || !rec || rec.carved) {
       if (damagedCells.delete(idx)) crackDirty = true;
       if (rec && !rec.carved) {
@@ -3780,13 +3829,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const gen = ++authoredRoverGen;
     authoredRoverState.failed = false;
     authoredRoverState.loadPromise = loader.loadWorksPart('place_works_rover').then(async (group) => {
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) {
+        if (group) loader.releaseWorksPart(group);
+        return null;
+      }
       if (!group) {
         authoredRoverState.failed = true;
         console.error('[asteroidRenderer3d] authored Rover load returned null; keeping Rover hidden');
-        return null;
-      }
-      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) {
-        loader.releaseWorksPart(group);
         return null;
       }
       if (!installAuthoredRover(group)) {
@@ -3795,9 +3844,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         loader.releaseWorksPart(group);
         return null;
       }
-      authoredRoverState.ready = await queueWorksPipelines(rover);
+      const ready = await queueWorksPipelines(rover);
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) return null;
+      authoredRoverState.ready = ready;
       return group;
     }).catch((error) => {
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) return null;
       authoredRoverState.failed = true;
       console.error('[asteroidRenderer3d] authored Rover load failed; keeping Rover hidden', error);
       return null;
@@ -4254,10 +4306,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const depthT = r / ROWS;
     const bed = r + c * 0.22;                                          // beds dip slightly
     const strata = Math.sin(bed * 0.42) * 0.055 + Math.sin(bed * 1.17 + 1.9) * 0.028;
-    const patch = (rnd01(Math.floor(c / 5), Math.floor(r / 4), 'pt') - 0.5) * 0.06;
-    const grain = (rnd01(c + 13, r + 5, 'rt') - 0.5) * 0.07;
+    const patch = Math.sin(c * 0.19 + r * 0.13) * 0.025;
+    const grain = (rnd01(c + 13, r + 5, 'rt') - 0.5) * 0.025;
     const tint = Math.max(0.05, 1 + strata + patch + grain - depthT * 0.10);
-    const warm = (rnd01(c + 6, r + 8, 'rw') - 0.5) * 0.04 + depthT * 0.08 - 0.03 + strata * 0.5;
+    const warm = Math.sin(c * 0.16 - r * 0.12) * 0.012 + depthT * 0.08 - 0.03 + strata * 0.5;
     out.setRGB(Math.max(0, tint + warm), tint, Math.max(0, tint - warm * 1.2));
     return out;
   }
@@ -8049,8 +8101,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       rec.mesh.setMatrixAt(rec.i, dummy.matrix);
       rec.mesh.instanceMatrix.needsUpdate = true;
     }
-    crackDecal.visible = true;
+    crackDecal.visible = prog > 0.04;
     crackDecal.position.set(worldX(tgt.col), worldY(tgt.row), Z.stain + 0.015);
+    crackDecal.rotation.z = (hash32(tgt.col, tgt.row, 'ckr') % 4) * (Math.PI / 2);
     const stage = Math.min(2, Math.floor(prog * 3));
     if (crackDecalMat.map !== crackTexs[stage]) {
       crackDecalMat.map = crackTexs[stage];
@@ -8216,11 +8269,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     for (const p of pulseRings) {
       if (p.t <= 0) continue;
-      p.t -= dt;
-      const a = Math.max(0, p.t / p.dur);
-      p.mat.opacity = 0.5 * a;
-      p.mesh.scale.setScalar(S * (1.4 - a * 0.7));
-      if (p.t <= 0) p.mesh.visible = false;
+      advanceWorksPulse(p, dt, S);
     }
   }
 
@@ -8406,7 +8455,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       burst({ x, y, count: motionReduce ? 5 : 10, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'dust', gravity: 55, cone: Math.PI * 2 });
       if (wasVented) { /* the vent's mint ring and sigh are its whole expression — no fire */ }
       else if (wasGas) gasBreach(p.col, p.row);
-      else firePulseRing(p.col, p.row, 0xffb648, 0.3);
+      else firePulseRing(p.col, p.row, 0xffb648, 0.22, true);
       return;
     }
     if (evt === 'yield') {
@@ -8649,7 +8698,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function begin(opts = {}) {
     motionReduce = !!opts.motionReduce;
     flashPresentation = worksFlashPresentation(opts);
-    const d = getDrill();
+    const d = readWorksDrillSession(getDrill());
     field = d ? d.field : null;
     buildDomOverlay();
     resize();
@@ -8810,8 +8859,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- frame
   function render(dt, timeS, ui) {
-    const d = getDrill();
+    const d = readWorksDrillSession(getDrill());
     if (!d || !field) return;
+    if (d.field !== field) {
+      field = d.field;
+      // Domain application normally preserves array identity. A presentation rebind
+      // can replace it; refresh the same live board rather than drawing its old cells.
+      refreshCells(Array.from({ length: COLS * ROWS }, (_, index) => ({ col: index % COLS, row: Math.floor(index / COLS) })));
+    }
     timeSNow = timeS;
     const site = getSite ? getSite() : null;
     const projection = getProjection ? getProjection() : null;

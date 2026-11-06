@@ -6,17 +6,35 @@
 an agent gets its job** until every lane board below reads finished. Those files stay as detail
 references (a lane board names a build-map row; the row's prose in `build_map.md` is the spec).
 
+**Current execution.** The controller owns integration of the working tree, plans and open PRs. The latest owner direction calls for 5–10 useful GPT-6.1 Terra/Sol departments, using terminal workers alongside the three available native worker slots. Assign substantial, disjoint work and preserve concurrent edits under §5. Keep the owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work or another model.
+
+**Final release review, owner direction November4.** After finishing the product outcomes and
+incorporating the three additional commissions, obtain three successive independent subagent
+release-readiness approvals of the coherent candidate. Each reviewer must assess the actual
+player experience against this program, report concrete shortcomings, and withhold approval for
+material unfinished work. Fix those findings before restarting the approval sequence; material
+candidate changes invalidate prior approvals. Keep the reviews blind to earlier verdicts where
+practical. This is the owner's final review requirement, not a recurring gate for every patch;
+reviewer agreement does not itself prove correctness, literal perfection or market competitiveness.
+
 | File | What it is |
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |
-| [`TOOLS.md`](./TOOLS.md) | verified terminal commands for Codex, Grok, Gemini, OpenCode and Claude (smoke-tested 2026-10-28) |
+| [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md) | 2026-10-29 whole-game integration coverage, repairs, current verification limits and final review scope |
+| [`STUDIO.md`](./STUDIO.md) | Controller, departments, asset processing, worker handoffs and current execution capacity |
+| [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
+| [`SMOOTH_PROGRAM_2026-11-05.md`](./SMOOTH_PROGRAM_2026-11-05.md) | **owner priority 2026-11-05: PLAYABLE FIRST** — why the 3D world froze while the HUD kept moving, the measurement kit, landed rounds, the ranked performance backlog, owner decisions and the smoothness finish line |
+| [`MASTER_PLAN.md`](./MASTER_PLAN.md) | **owner direction 2026-11-06: the master plan** — 29 campaigns (engine, ship, world, look, process) + how agents must work (diagnose first, no tunnel vision, 90%-wonky is a defect) + the launch prompt |
+| [`DIRECTION.md`](./DIRECTION.md) | **creative direction (Claude, 2026-11-06, at the owner's request)** — the game I see, three ways to fly, the 30 moments that define "done", Swarm and Adventure decisions, 16 Hotspots, asset plan, Hotspots lane prompt |
+| [`KIT.md`](./KIT.md) | **the KIT** — Hull + Kit + Fit + Livery + Wear: visible Freelancer-style loadouts, variant factory, places from parts, parallel vision QA; lead + vision-batch prompts (takes over master-plan P4) |
+| [`chaos/`](./chaos/README.md) | **owner direction 2026-11-06: CHAOS** — GTA-style physics-chaos open world: reaction matrix (the "feels alive" stopping condition), ~45 front-loaded gameplay/UX units, three lanes with prompts |
+| [`swarm/`](./swarm/README.md) | **owner priority 2026-11-05: SWARM** — the vision, configuration audit and plans S1–S16 for Crucible Swarm (look and feel; recommends holding queued Lane 2 Swarm breadth until these land) |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
 | [`LANE_3_WORLD_GLASS_HOUSE.md`](./LANE_3_WORLD_GLASS_HOUSE.md) | medium lane: Adventure world, economy, story, every 2D screen and the HUD, audio, and the document razor |
 | [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md), [`PROMPT_LANE_2.md`](./PROMPT_LANE_2.md), [`PROMPT_LANE_3.md`](./PROMPT_LANE_3.md) | the copy-paste prompt that starts each lane's agent |
 
-Each lane board is written by **its own lane only**. That is what lets three agents share one
-checkout: no two lanes write the same file.
+Lane boards organize outcomes. Current assignments and exact path ownership are coordinated by the controller; preserve concurrent work in the shared checkout.
 
 ---
 
@@ -70,15 +88,12 @@ first in `AGENTS.md` §4). `AGENTS.md` and `CLAUDE.md` carry pointers to this se
    session (alternate modes in rotating blocks inside one flight; print host busy). This replaces
    "never produce captures on this box" for the program. Contention is reported, never a reason to
    skip a measurement.
-3. **Codex is the reviewer of record.** The Codex batch review (every ~5 packets, §5.4) replaces
-   `LANDED_REVIEW.md` rows: lanes add no new review rows. The 8 open reviews are assigned in the lane
-   boards as day-one work and the file retires when they are gone.
-4. **The lane board is the job.** Lanes do not run `program-dispatch --next`; it would hand all three
-   lanes the same review. The board's ordered list is the job, then the lane's own audit findings,
-   then its INFERENCE lines.
-5. **Frontend ownership.** The ORRERY lane's 2026-09-26 claim has lapsed (its handoff is dated
-   2026-09-28). `src/ui/**` and `styles/**` belong to Lane 3, except the loading/boot files Lane 1
-   owns (§3). `design/frontend/ORRERY.md` remains the design direction.
+3. **Review the claim, not a quota.** For this campaign, use §5.3: one independent review when it
+   can change a fix, acceptance or significant risk. Do not schedule reviews by packet count or
+   duplicate an active/completed review. Preserve any open `LANDED_REVIEW.md` item that still has a
+   distinct current claim; the controller owns deciding whether its evidence remains material.
+4. **The boards record the work.** The controller selects the next material outcome using the lane boards and current integration records.
+5. **Frontend direction.** `design/frontend/ORRERY.md` remains the design direction. Current UI write sets are assigned by the controller (§3).
 6. **Rewrites are allowed.** Porting, refactoring or rewriting a subsystem is allowed when it is
    measured better and the default route stays playable. Compatibility paths (`flight.js`, `ai.js`,
    the legacy physics backend) may be deleted once nothing on the default route imports them and their
@@ -92,36 +107,16 @@ first in `AGENTS.md` §4). `AGENTS.md` and `CLAUDE.md` carry pointers to this se
 9. **INFERENCE is authorized in every lane** — about 100 new lines across the three boards (§6).
 10. **The razor is authorized.** Lane 3 archives superseded documents, folders and scripts and shrinks
     the policy surface (§7). `design/program/vm-drop/` is remote-authoritative and off limits.
-11. **No playtest gates** (standing ruling 2026-10-04). Nothing waits for the owner to play. The
-    player-truth gate runs once per batch of ~5 packets on the modes the batch touched, not per commit.
+11. **No playtest gates** (standing ruling 2026-10-04). Nothing waits for the owner to play. Verify
+    each player-facing claim at the smallest relevant route and layer; there is no fixed batch or
+    per-commit player-truth cadence.
 
-## 3. Path ownership — who may write what
+## 3. Path ownership
 
-Three agents share one checkout and never use worktrees (`AGENTS.md` §3). Ownership is by path:
-
-| Lane | Owns (writes freely) |
-|---|---|
-| **1 MACHINE & PICTURE** | `src/render/**` (incl. `vfx*.js`, `render/vfx/**`, `adaptiveQuality.js`, `bloom.js`, `partsLibrary.js`, `packageCpuDetach.js`), `src/core/` frame and boot pipeline (`presentationRunner.js`, `simulationRunner.js`, `simLane*.js`, `wholeSimBrowserWorker.js`, `renderUpdatePhase.js`, the loop), `src/main.js`, the loading/boot UI (`src/ui/boot*.js`, `src/ui/loading*.js`, `src/ui/introSignalRemixBoot.js`, the loading CSS they own), `src/testing/**` (removal from the retail graph), `src/data/lookMoods.js`, `src/data/modelTruth*.js`, `assets/**`, `tools/blender/**`, `electron/**`, `index.html`, `scripts/build-bundle.mjs`, `scripts/probe-*.mjs` perf probes, `vendor/**` |
-| **2 FIGHT & SIM** | `src/systems/**` combat, flight, swarm, crucible, physics, tether/Massline, weapons, enemies, spawn and AI files (everything in `src/systems/` not listed for Lane 3), `src/ai/**`, `src/combat/**`, `src/core/physics*.js`, `src/core/flight/**`, `src/core/registry.js` and `src/runtime/authoritativeSystemManifest.js`, `src/sim/**`, `src/balance/**`, `src/matter/**`, `src/sports/**`, combat/enemy/weapon data in `src/data/`, `test/` infrastructure and `package.json` **scripts block**, CI workflows |
-| **3 WORLD, GLASS & HOUSE** | `src/ui/**` and `styles/**` (except Lane 1's boot/loading files), `src/systems/` world/economy/story files (`world.js`, `economy.js`, `missions.js`, `npcJobsRuntime.js`, `lawSecurity.js`, `encounterDirector.js`, `traffic.js`, `onboarding.js`, `automation.js`, story/faction/career/market/trade/station systems), `src/world/**`, `src/story/**`, `src/careers/**`, `src/economy/**`, `src/missions/**`, `src/contracts/**`, `src/characters/**`, `src/localization/**`, `src/audio/**`, `src/save/**`, `src/presentation/**`, `src/response/**`, world/story/economy data in `src/data/`, all of `design/`, `docs/`, `build_map.md`, `AGENTS.md`, `CLAUDE.md`, nested `AGENTS.md` files |
-
-Rules:
-
-- **A file you do not own:** if your packet needs a small edit there (an import, a hook, one call
-  site), make it minimal, commit it alone by pathspec, and append one line to the owning lane's board
-  **Inbox** saying what you changed and why. A larger change goes to the owner's Inbox as a request.
-- **A file on the border** (a `src/systems/` file nobody named, a data file used by two lanes):
-  the first lane that needs it takes it and writes the path into its board's *Claimed paths* list.
-- **Tests follow the code.** Each lane edits the tests of the code it owns. Lane 2 owns the runner,
-  `package.json` scripts and CI.
-- **Shared ledgers.** `INFERENCE_IDEAS.md` is frozen as history (802 SHIPPED). New INFERENCE lines
-  live in each lane board. The demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) is split into
-  the three boards' **Defects** sections for the duration of the program; a defect you see in another
-  lane's paths is one line in that lane's Inbox. A defect neither fixed nor logged is still the one
-  unacceptable outcome (`AGENTS.md` §7).
-- **External CLIs edit inside your owned paths only.** Every packet you hand Codex, Grok, Gemini or
-  OpenCode lists the paths it may touch and forbids everything else, forbids commits, and forbids
-  `git add -A`, stash, reset, checkout and clean.
+The controller assigns exact, non-overlapping write sets for current work; lane names organize the
+backlog, not permanent subsystem locks. Inspect status and the relevant diff before editing, preserve
+concurrent changes, and coordinate any actual overlap. Tests follow the affected owner. The controller
+integrates and publishes exact paths under the shared-checkout rules in `AGENTS.md`.
 
 ## 4. The finish line (measured on this laptop, seed 4242, within-session A/B, host busy printed)
 
@@ -141,132 +136,69 @@ Lane 1's first packet re-records the baseline with today's build and writes it i
 | Deployed first-load bytes before first flight / eager JS | 146 MB / 28 MB | ≤ 60 MB / ≤ 12 MB | ≤ 35 MB / ≤ 6 MB |
 | 30-minute Adventure soak + one forced context loss | "Graphics interrupted" at ~172 s | zero terminal panes | zero terminal panes, zero frames > 250 ms after load |
 
-**The game is finished when** all three boards read finished: every listed row closed in code on
-the default route, every owned system reviewed and brought to the professional bar (§5.7), every
-Defects section empty, every INFERENCE line shipped, the bars above at or
-past their target, the Codex batch review of the final batch green, and the document surface cut to
-what an agent can read in one sitting (§7).
+**The game is finished when** all three boards read finished: every listed player-facing outcome is
+implemented and directly checked on the default route; material defects and findings are fixed;
+the completed source coverage is recorded in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md); each Defects section is empty;
+the authorized INFERENCE outcomes are shipped; the product bars above meet their targets; and the
+final build-map, requested last-300-commit review and documentation work are closed.
+Source coverage documents what was read; it does not by itself mean every system is at bar or that
+the game is accepted. There is no fixed batch-review gate.
 
 ## 5. The shared working protocol (every lane, every packet)
 
-### 5.1 You are the manager
-The lane agent plans, assigns, reviews and commits. It does as little hands-on token-heavy work as
-possible. Implementation goes to subagents and terminal agents; the lane agent keeps its context for
-judgment.
+### 5.1 Controller and coverage
+The current controller owns scope, integration, conflict handling, exact-path publication, and the final claim. Use the current model and staffing direction above. Assign concrete player-visible outcomes, exact owned paths, existing interfaces to preserve, and a done condition; use direct work for integration or narrow edits where that is faster. Do not create parallel implementations of an active or completed task.
 
-### 5.2 One packet, start to finish
-1. **Brief.** Write `.devshots/finish/<lane>/<packet-id>/PACKET.md` (git-ignored): the player problem
-   in player words, the owned paths, the done-when as a number or a test, what not to do (the traps).
-2. **Build.** One implementer subagent (Claude), or a terminal agent for grunt work (§5.5). At most
-   **two implementer subagents** run at once per lane — concurrent Claude implementers die on the
-   session usage limit. Terminal agents run in the background and do not count.
-3. **Review ×3, in sequence.** Three reviewer subagents, one after another, each reading the diff and
-   the live owner fresh:
-   - **R1 correctness** — bugs, regressions, determinism, single-writer law, save compatibility, perf
-     cost per frame.
-   - **R2 experience** — every way it could be better for the player: more readable, more alive, more
-     on-brand (`design/VISION.md`: *"Holy shit, I did that"*), more connected to systems that already
-     exist. It lists *every* suggestion, including the expansive ones.
-   - **R3 ambition and finish** — what a studio would ship instead; what is still stand-in, silent,
-     unwired or cheap; whether the frame budget holds.
-   After each review the implementer applies everything worth applying before the next review starts.
-4. **Prove.** The done-when number or focused test, plus `npm run check:baseline` when the change
-   could plausibly break something. Gameplay batches run player-truth per §2.11.
-5. **Land.** Commit your exact paths (`git add -- <paths>` then `git commit -m "..." -- <paths>`), read
-   `git show --stat HEAD`, fetch, merge if the remote moved (never rebase, never reset, never force),
-   push `origin master`. Update your board in the same push.
+### 5.2 One outcome, start to finish
+1. **Select.** Take the next ordered item on the owning lane board. Use the smallest scope that can close a player-visible outcome; a separate packet brief is optional when the board already makes scope and acceptance clear.
+2. **Build and integrate.** Use the current staffing direction above. The controller owns integration into the shared checkout, preserves concurrent work, and reconciles the result with the live source owner and active contracts.
+3. **Verify directly.** Run the smallest check that establishes the claimed result at its relevant layer: a focused behavior check for an invariant, the normal player route for player-facing behavior, and a matched measurement for a performance claim. Run `npm run check:baseline` when the change could plausibly break what it touches. Gameplay batches still follow §2.11. After a failure, change the relevant cause before repeating the same check.
+4. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
 
-### 5.3 Every ~5 packets: Codex is the final authority
-Hand the batch's commit range to Codex (GPT 6.1 Sol, extra-high reasoning; `TOOLS.md`). Its job is
-not "is this technically correct" — it is: **find what is wrong, fix it, and make the work maximally
-ambitious.** Where an implementer took the lazy or less impressive version, Codex builds the impressive
-one. Codex edits inside the batch's owned paths only and does not commit; the lane agent reads the
-Codex diff, runs the proofs, and lands it. Codex's verdict on a disagreement wins unless it breaks a
-contract in `ARCHITECTURE.md` or a measured bar.
+### 5.3 Review when it adds value
+Use one independent, claim-relevant review when an unresolved question could materially change the fix, acceptance, or significant risk, or when a governing requirement calls for it. The controller checks the integrated result and its direct evidence. Do not run review sequences, repeat completed reviews, duplicate active investigations, add reviewer quotas, or require agreement across models. Incorporate material findings before landing; record unrelated defects in the owning lane Inbox.
 
-### 5.4 Every ~5 frontend packets: Claude Sonnet reviews the screens
-For batches that changed 2D screens, HUD or menus, run Claude Sonnet 5.5 at extra-high effort in the
-terminal (`TOOLS.md`) over the batch: it shoots each changed screen with
-`node scripts/ui-bench.mjs --shot=<id>`, opens the PNGs, judges them against
-`design/frontend/ORRERY.md` and `ORRERY_RUBRIC.md`, `--walk`s the controls, and fixes what it sees.
+### 5.4 Screen and visual claims
+For a changed screen, directly exercise the changed controls on the real route; use `node scripts/ui-bench.mjs --walk` when available and relevant. For a visual claim, inspect the actual screen at the gameplay camera and fix visible defects. Use screenshots or specialist tools when the claim requires them; there is no fixed third-party reviewer or capture quota.
 
-### 5.5 Who does what
-| Work | Who |
-|---|---|
-| Planning, judgment, briefs, merging reviews, landing | the lane agent |
-| Implementation needing care | Claude subagents (≤ 2 at a time) |
-| The three reviews per packet | Claude subagents, sequential |
-| Token-heavy grunt work — reading every line of a module, census, mechanical edits, test conversion, doc moves, data authoring | **split evenly** between Grok 4.7 extra-high (`cursor-agent`) and Gemini 3.8 Flash High (`agy`) |
-| Frontend and 3D implementation (screens, CSS, layout, Blender/Forge scripts, shader code) | DeepSeek V4.1 Flash Max through OpenCode (Go provider) |
-| Final review + ambition pass every ~5 packets | Codex GPT 6.1 Sol extra-high |
-| Frontend batch review every ~5 frontend packets | Claude Sonnet 5.5 extra-high in the terminal |
+### 5.5 Tools and delegation
+Use available tools and agents by fit to the concrete task. GPT-6 Luna is the default for most coverage and implementation in this campaign. Additional agents or terminal tools are optional, scoped to disjoint owned paths, and do not replace controller integration. There are no required provider ratios, third-party model quotas, or parallel-start rituals. A tool result is a draft until integrated and checked against the stated outcome.
 
-Run terminal agents in the background with a timeout, several in parallel on disjoint paths. Start
-`cursor-agent` runs a few seconds apart (two starting together hit EPERM on its config file). A
-terminal agent's output is a draft: the lane agent reviews it like any other diff.
+### 5.6 Finish the assigned outcomes
+The owner does not finish leftover agent work. A packet that cannot move is recorded with its next
+concrete step, and independent work continues. When an assigned outcome closes, use the source
+coverage and integration records to pick up material remaining findings and route gaps. Do not
+repeat a completed source read, audit or review unless a new material delta could change the fix,
+acceptance, authority or significant risk. A lane is finished only when §4's product outcomes and
+remaining risks are honestly closed.
 
-### 5.6 Never stop
-The owner does not read code and cannot finish leftover work. A packet that is blocked is skipped,
-logged in one line on the board, and the next packet starts. "Blocked" means a missing file, system
-or asset — and building the missing thing is the work. When the board's list drains, the lane runs
-its audit findings, then its INFERENCE lines, then re-measures the bars, then audits again. A lane
-is finished only when §4's line is met for its rows.
+### 5.6a Discovered defects
+A concrete material defect encountered in the assigned work is fixed or recorded with its owner and
+next step. Do not dismiss a failure as pre-existing, or expand an assignment into an unrelated audit.
 
-### 5.6a There is no such thing as "pre-existing"
-"Pre-existing", "unrelated", "out of scope", "not my change", "flaky" and "known issue" are not reasons
-to leave anything broken; they describe work nobody has done yet. Every broken thing an agent sees — red
-test, console error, clipped screen, wrong number, dead control, silent sound, stand-in model, hitch, bad
-player text — is fixed in that sitting when it is in the agent's paths (bugs before features), or becomes
-one line in the owning lane's Inbox, which that lane clears before new rows. Every sitting also *hunts*:
-play the area's default route with the console open, run the owned suites, read nearby code with a
-reviewer's eye. Reviewers and Codex report broken things near the diff, not only ones the diff caused.
-No status report lists a broken thing that was noticed and left.
-
-### 5.7 Beyond the plan: the professional review of every system
-**The plans do not contain the whole finish.** Agents built this game one packet at a time; few
-systems got the most professional implementation on the first pass, and the repo has changed under
-all of them since. So every lane also reviews and improves **every system it owns** to a studio bar,
-whether or not a row names it. Agents are expected to use their own intelligence, taste and creativity
-here — inspect, judge, rewrite where it is worth it. This is not optional cleanup; it is half the job.
-
-- **The bar (judge each system against all of it):** it does what a player expects, every time
-  (no edge-case breakage, no stand-ins, no silent paths); one clear owner and one way to do each thing
-  (no duplicated or competing implementations); cheap per frame/tick at a 150-body crowd; deterministic
-  where it must be; readable to the player (they can see what it did and why); connected (its facts
-  have readers, its events have consequences); data-driven where content varies; tested by behaviour,
-  not by source text; small enough that an agent can hold it in mind (split what is not).
-- **How:** each lane lists its systems on its board (*Systems review* section), ranked by how much a
-  player touches them. For each: (1) a Grok or Gemini read of every line produces the inventory and
-  findings; (2) for the lane's **critical systems** (named on each board) Codex GPT 6.1 Sol extra-high
-  does a **deep review** — reads the whole system and its callers, scores it against the bar, fixes the
-  defects it is sure of, and writes a ranked list of the improvements that would make it professional;
-  (3) the lane turns that list into packets and runs them through the normal loop. Run two or three
-  Codex deep reviews at once on disjoint systems — Codex draws on a separate limit — while the lane's
-  own subagents implement the previous system's packets.
-- **Freedom:** a system that fails the bar badly may be rewritten (ruling 6). Before rewriting, write
-  one paragraph on the board: what is wrong, what the replacement is, how the default route stays
-  playable during the change, how it will be proven better.
-- **Order:** each lane interleaves this with its planned waves from the start — at least one system
-  under review at all times — and finishes it before the lane can be called finished.
+### 5.7 Source coverage and system quality
+The 2026-10-29 source coverage index records full reads, explicit reuse and known coverage gaps in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md). The current player-facing results,
+open defects and accepted limits are in [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md).
+Use those records to avoid duplicating completed work and to find the live owner for a concrete
+issue. Full source coverage is not a blanket review verdict: keep the real technical and player
+quality bars in this README and the critical-owner maps on the lane boards, then check a material
+claim against its live owner and direct evidence. Quality expectations remain: player-expected
+outcomes, one authoritative owner, measured per-frame/tick cost, determinism where required, readable
+cause and effect, connected readers, data-driven variation, behavior checks, and manageable code.
+Do not create a per-system `UNREVIEWED → AT BAR` queue or require provider/model agreement.
 
 ## 6. INFERENCE in this program
 
-INFERENCE is how agents apply their own taste to make the game feel real, full, fun and mature —
-small on-brand changes everywhere a player looks. It is **depth, not bolt-ons** (owner ruling
-2026-10-21): diagnose what is thin, missing detail, or broken in an existing owner and deepen it;
-never invent a clip-saver feature with no reader.
-
-- **Seeding.** Each lane's first INFERENCE packet is a brainstorm: two subagents and one Grok and one
-  Gemini run each walk the lane's owned code and the ordinary route, and each proposes candidate
-  lines in player words, grounded in a named live owner. Three sequential reviewer subagents cut the
-  generic ones and sharpen the rest against `design/VISION.md`, `design/CONTENT_BIBLE.md` and the
-  fiction; Codex then makes the survivors more ambitious. The result is admitted to the board:
-  Lane 1 ≈ 20 lines, Lane 2 ≈ 35, Lane 3 ≈ 45.
-- **A line** = `| ID | the problem in player words | owner paths | done check (fixed-seed number, focused test, or a look at the real screen) | don't-do | status |`.
-- **Doing lines.** Group 3–5 lines that share a cause or owner into one packet; run the normal
-  packet loop (§5.2) and the Codex batch review.
-- **Rotation.** When the lane's lines are all shipped, brainstorm the next 15–20 the same way, from
-  what the lane now sees on the route. The catalog is never "empty"; the game is the catalog.
+INFERENCE applies the team's taste to make the game feel real, full, fun and mature. It is **depth,
+not bolt-ons** (owner ruling 2026-10-21): diagnose what is thin, missing detail or broken in an
+existing owner and deepen it; do not invent a feature without a player-facing reader. Use the live
+route and the lane's existing material to identify a concrete opportunity when assigned or when an
+open board outcome needs it. A line records the player problem, owner paths, direct done check,
+constraint and status. Group related work by shared cause, verify the resulting player outcome, and
+update the owning board. There is no required brainstorm provider, number of lines, review sequence
+or rotation quota.
 
 ## 7. The razor (Lane 3, with every lane's consent by construction)
 
@@ -279,6 +211,7 @@ never invent a clip-saver feature with no reader.
   into one ≤ 150-line law).
 - **Never** touch `design/program/vm-drop/`. Never move a file a lane prompt or board in this folder
   still cites until that lane's board stops citing it.
-- **End state:** `AGENTS.md` ≤ 150 lines, `build_map.md` ≤ 600 lines (history in the archive), one
-  perf document, one INFERENCE law, `npm` scripts ≤ 150 behind a manifest runner (Lane 2), and every
-  link checker green.
+- **End state:** one current front door makes the game's state and next work easy to find; active
+  documents point to the right owners and outcomes; the performance and INFERENCE guidance has one
+  clear home each; and the relevant compatibility checks for changed documentation pass. Line,
+  file, and script counts are maintenance signals, not game-completion outcomes.

@@ -71,7 +71,7 @@ export const LEFTOVER_SPINE_CHAPTERS = Object.freeze({
 
 export const LEFTOVER_SPINE_SIDECAR_REL = 'src/story/campaign47a/embodiedMissions.js';
 export const LEFTOVER_SPINE_COMMS_REL = 'src/story/campaign47a/embodiedDialogue.js';
-export const LEFTOVER_SPINE_LIVE_SETTLE_REL = 'design/program/roadmap/receipts/PQ-032.00-REPORT.md';
+export const LEFTOVER_SPINE_LIVE_SETTLE_REL = 'design/archive/program/roadmap/receipts/PQ-032.00-REPORT.md';
 // Leftover PQ-032.00 headless proof. No leftover input tape for beats 1–3.
 export const LEFTOVER_SPINE_SEED = 3200;
 
@@ -83,7 +83,19 @@ export function leftoverSpineMethods(beatId) {
   const def = leftoverSpineDef(beatId);
   const methods = def && def.missionBoardContract && def.missionBoardContract.params
     && def.missionBoardContract.params.completionMethods;
-  return Array.isArray(methods) ? methods.slice() : [];
+  if (Array.isArray(methods)) return methods.slice();
+  // Book-route beats carry no single board contract; their live vocabulary is the
+  // union of each posted book contract's two physical solutions.
+  const book = def && Array.isArray(def.bookContracts) ? def.bookContracts : [];
+  const live = [];
+  for (const row of book) {
+    const pair = row && row.params && row.params.completionMethods;
+    if (!Array.isArray(pair)) continue;
+    for (const mech of pair) {
+      if (typeof mech === 'string' && mech && !live.includes(mech)) live.push(mech);
+    }
+  }
+  return live;
 }
 
 export function leftoverSpinePlaces(beatId) {
@@ -174,7 +186,8 @@ const STICK_LOCK_KEYS = Object.freeze([
 
 function choiceListShaped(list) {
   return Array.isArray(list) && list.some((row) => (
-    row && typeof row === 'object' && (row.label || row.next || row.reply || row.choice)
+    (typeof row === 'string' && row.trim().length > 0)
+    || (row && typeof row === 'object' && (row.label || row.next || row.reply || row.choice))
   ));
 }
 

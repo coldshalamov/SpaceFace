@@ -397,8 +397,8 @@ test('the context and its actions are deeply frozen and never mutate their input
 test('formatDistanceWU stays readable across the whole lattice', () => {
   assert.equal(formatDistanceWU(0), '0 u');
   assert.equal(formatDistanceWU(499.6), '500 u');
-  assert.equal(formatDistanceWU(9999), '9999 u');
-  assert.equal(formatDistanceWU(12288), '12.3k u');
+  assert.equal(formatDistanceWU(9999), '10.0k u');
+  assert.equal(formatDistanceWU(12288), '12k u');
   assert.equal(formatDistanceWU(NaN), '—');
   assert.equal(formatDistanceWU(null), '—');
 });

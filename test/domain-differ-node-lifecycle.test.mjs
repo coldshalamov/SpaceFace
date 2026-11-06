@@ -222,3 +222,39 @@ test('expanded profiles keep bounded Orchard projections atomic across source re
     assert.equal(mirror.get('planet.orchardForecast'), null, 'raw forecast cannot replace derived facts');
   }
 });
+
+test('expanded profiles preserve atomic boss presentation and probe parity through absent, live and retired fights', (t) => {
+  configureDomainMirroring({ expandPaths: [{ segs: [], depth: 8 }] });
+  t.after(() => configureDomainMirroring({}));
+  const state = {}, differ = createDomainDiffer({ probe: true });
+  const mirror = new Map(), checker = createDomainProbeChecker(mirror);
+  const publish = tick => {
+    const result = differ.diff(state, tick);
+    for (const update of result.updates) applyDomainPathUpdate(mirror, update, new WeakSet());
+    assert.deepEqual(checker.consume(result.probe).events, [], `probe parity at tick ${tick}`);
+    return result.updates.filter(update => update.segs[0] === 'capitalBossEncounters');
+  };
+  publish(0);
+  assert.deepEqual(mirror.get('capitalBossEncounters'), { fights: {} });
+  const fight = { fightId: 'live', encounterId: 'fixture', bossId: 7, targetId: 1, started: true,
+    terminal: null, phase: 'windup', clock: 2, plates: [{ id: 9, attached: true, strainTicks: 4, nativeHandle: 123 }],
+    cast: { id: 'cast', beatId: 'beat', startedAt: 1, locked: false, shapes: [{ kind: 'circle', radius: 10 }], privateOwner: {} },
+    privateNative: { handle: 999 } };
+  state.capitalBossEncounters = { fights: { live: fight, inactive: { started: false } }, privateOwner: state };
+  const updates = publish(1);
+  assert.ok(updates.some(update => update.segs.length === 1), 'the projected root stays on one atomic path');
+  const shown = mirror.get('capitalBossEncounters');
+  assert.equal(shown.fights.live.phase, 'windup');
+  assert.equal(shown.fights.live.plates[0].attached, true);
+  assert.equal(shown.fights.live.plates[0].nativeHandle, undefined);
+  assert.equal(shown.fights.live.cast.privateOwner, undefined);
+  assert.equal(shown.fights.live.privateNative, undefined);
+  assert.equal(shown.fights.inactive, undefined);assert.equal(shown.privateOwner, undefined);
+  fight.phase = 'active';fight.clock = 3;publish(2);
+  assert.equal(shown.fights.live.phase, 'active', 'the next reply carries the current tell');
+  assert.equal(shown.fights.live.clock, 3);
+  fight.terminal = 'defeated';publish(3);
+  assert.deepEqual(shown.fights, {});
+  state.capitalBossEncounters = null;publish(4);
+  assert.deepEqual(mirror.get('capitalBossEncounters'), { fights: {} });
+});

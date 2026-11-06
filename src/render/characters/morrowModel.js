@@ -66,7 +66,7 @@ function bakeRigid(group) {
     g.applyMatrix4(child.matrix); g.clearGroups();
     if (!g.getAttribute('uv')) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count * 2), 2));
     const list = buckets.get(child.material) || []; list.push(g); buckets.set(child.material, list);
-    oldGeometries.add(child.geometry); group.remove(child);
+    oldGeometries.add(child.geometry); child.castShadow = false; group.remove(child);
   }
   for (const [material, geometries] of buckets) {
     const merged = mergeGeometries(geometries, false);

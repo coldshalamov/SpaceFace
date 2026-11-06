@@ -3,7 +3,7 @@
 // package bounds (all LODs), never a separate refit of the deck or its hardware.
 export const LAST_SHIFT_FAIRLEAD_GEOMETRY = Object.freeze({
   url: 'assets/ships/release/render-packages/last-shift-fairlead/render.glb',
-  sha256: 'a0218fcba0b6bf6bf26be9d6a550b2c7b2b6dacb321488a4377898b047f3ad7a',
+  sha256: '1cb9529a616b6fb0f8fbe8aa75e7ea653c297b03b9ed75c0fa6251e1ebb7e9d0',
   center: Object.freeze({ x: -0.05224645137786865, z: 0.04999995231628418 }),
   fitScale: 6.763143859977272,
 });

@@ -297,8 +297,7 @@ function sourceFilesForRuntimeReferences() {
   for (const directory of ['src', 'styles']) {
     for (const entry of walkFiles(resolve(ROOT, directory))) {
       if (!/\.(?:m?js|css)$/i.test(entry.path)) continue;
-      if (entry.path === 'src/contracts/assetValidation.js'
-          || entry.path === 'src/data/modelTruthCensus.generated.js') continue;
+      if (entry.path === 'src/contracts/assetValidation.js') continue;
       found.push(entry);
     }
   }
@@ -675,8 +674,7 @@ function main() {
   for (const directory of ['src', 'styles']) {
     for (const entry of walkFiles(resolve(ROOT, directory))) {
       if (!/\.(?:m?js|css)$/i.test(entry.path)) continue;
-      if (entry.path === 'src/contracts/assetValidation.js'
-          || entry.path === 'src/data/modelTruthCensus.generated.js') continue;
+      if (entry.path === 'src/contracts/assetValidation.js') continue;
       runtimeSourceFiles.push(entry);
     }
   }

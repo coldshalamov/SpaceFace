@@ -157,7 +157,7 @@ export function evaluateReflexes(seed, ctx) {
       // Slow drift cycle: ~2.2 s at 60 Hz, phase offset per pilot so wingmates don't
       // weave in lockstep (they'd read as one mirrored ghost).
       phase: hashUnit(seed, entityId, 'marked_weave_phase') * TAU,
-      amp: (18 + 42 * temperament.weave) * (temperament.aim > 0.65 ? 0.55 : 1),
+      amp: (14 + 32 * temperament.weave) * (temperament.aim > 0.65 ? 0.55 : 1),
       rate: 0.023,
     };
   }

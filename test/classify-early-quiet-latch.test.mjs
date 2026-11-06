@@ -171,13 +171,25 @@ test('dock pin names the resolved station entity through entityIndex.byStationId
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });
 
-test('customs hail pin wakes on state.ui.customsPrompt.patrolId', () => {
+test('a late customs scan fact does not pin an already-resolved hail', () => {
   const state = makeWorld();
   warmQuiet(state);
   assert.equal(step(state).classifyMode, 'early-quiet-latch');
-  // D174: state.comms.hailTargetId / state.ui.hailTargetId have no writers — the live hail
-  // record is the customs scan prompt's patrol entity (lawSecurity emits patrol.id).
+  // Scan facts arrive after resolution; they must not keep a stale patrol in the live set.
   state.ui = { customsPrompt: { factionId: 'ceres_authority', patrolId: 42, t: 1, signalTick: 1 } };
+  const woke = step(state);
+  assert.equal(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('an active lawful inspection pins its live patrol entity', () => {
+  const state = makeWorld();
+  const patrol = { id: 42, type: 'ship', alive: true, pos: { x: 200, z: 0 }, data: {}, flags: {} };
+  state.entities.set(patrol.id, patrol);
+  state.entityList.push(patrol);
+  state.entityIndex.byWorldRecordId = new Map([['record:42', patrol]]);
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  state.player.lawfulInspection = { active: { patrolWorldRecordId: 'record:42' } };
   const woke = step(state);
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });
@@ -193,12 +205,16 @@ test('missile-lock pin wakes on combat.lockTarget', () => {
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });
 
-test('pin clear wakes too — a customs hail ending while latched', () => {
+test('clearing an active lawful inspection wakes the quiet latch', () => {
   const state = makeWorld();
-  state.ui = { customsPrompt: { factionId: 'ceres_authority', patrolId: 42, t: 1, signalTick: 1 } };
+  const patrol = { id: 42, type: 'ship', alive: true, pos: { x: 200, z: 0 }, data: {}, flags: {} };
+  state.entities.set(patrol.id, patrol);
+  state.entityList.push(patrol);
+  state.entityIndex.byWorldRecordId = new Map([['record:42', patrol]]);
+  state.player.lawfulInspection = { active: { patrolWorldRecordId: 'record:42' } };
   warmQuiet(state);
   assert.equal(step(state).classifyMode, 'early-quiet-latch');
-  delete state.ui.customsPrompt;
+  state.player.lawfulInspection.active = null;
   const woke = step(state);
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });

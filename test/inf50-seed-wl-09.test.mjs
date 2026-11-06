@@ -25,9 +25,9 @@ function alliedRow(rep) {
   return factionContractLadderRows(rep).find((row) => row.name === 'Allied Retainers');
 }
 
-test('seed 4242: allied standing posts one Drift haul a trusted pilot cannot see, and the rung can read reached', () => {
+test('seed 4242: allied standing posts one Drift mining quota a trusted pilot cannot see, and the rung can read reached', () => {
   assert.equal(DRIFT.minRep, 400);
-  assert.equal(DRIFT.title, 'Drift allied retainer haul');
+  assert.equal(DRIFT.title, 'Drift allied retainer quota');
   assert.equal(MISSION_STANDING_LADDER.find((row) => row.name === 'Allied Retainers').minRep, 400);
 
   const trusted = boot(150);
@@ -42,7 +42,7 @@ test('seed 4242: allied standing posts one Drift haul a trusted pilot cannot see
   const posted = (allied.system.ensureBoard('station_ceres').slots || [])
     .filter((offer) => offer && offer.source === RANK_CONTRACT_SOURCE);
   assert.equal(posted.length, 1);
-  assert.equal(posted[0].title, 'Drift allied retainer haul');
+  assert.equal(posted[0].title, 'Drift allied retainer quota');
   assert.equal(posted[0].minRep, 400);
   assert.equal(contractRungWord(alliedRow(400), 400), 'reached');
   assert.equal(contractRungScaleState(alliedRow(400), 400), 'reached');

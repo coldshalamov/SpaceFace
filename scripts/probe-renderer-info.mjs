@@ -115,7 +115,9 @@ async function main() {
       if (window.SF.perf && window.SF.perf.renderInfo) {
         window.SF.perf.renderInfo.enable();
         window.SF.perf.renderInfo.reset();
-        window.SF.perf.renderInfo.markWarmupComplete();
+        const renderer = window.SF.state?.render?.renderer;
+        const currentPrograms = renderer?.info?.programs?.length || 0;
+        window.SF.perf.renderInfo.markWarmupComplete(currentPrograms);
       }
     });
 

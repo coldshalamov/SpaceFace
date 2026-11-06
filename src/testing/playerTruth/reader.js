@@ -23,6 +23,11 @@ export const PLAYER_TRUTH_CLASSES = Object.freeze([
 const CLS = Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i]));
 const SHIPLIKE = new Set(['ship', 'drone', 'reaver', 'fauna', 'freighter']);
 const PROJECTILE_LIKE = new Set(['projectile', 'charge', 'vectormine', 'missile', 'mine']);
+// Focused source-lifecycle follow-up for the four first-wave Foundry asteroid lives.
+const VISIBILITY_DIAGNOSTIC_ASTEROID_IDS = new Set([584, 587, 588, 605]);
+const VISIBILITY_DIAGNOSTIC_MAX_TRANSITIONS_PER_ID = 12;
+const VISIBILITY_DIAGNOSTIC_MAX_ANCESTORS = 12;
+const VISIBILITY_DIAGNOSTIC_MAX_RENDERABLES = 8;
 // The player-truth checks only grade world rows during flight. Keep this list explicit so a
 // future non-flight mode does not silently lose diagnostic rows until its reader contract is known.
 const PREPARATION_MODES = new Set(['loading', 'menu', 'paused']);
@@ -398,6 +403,8 @@ export function installPlayerTruthReader(win, opts = {}) {
   // recycled slot never reads as one body swapping model or popping.
   const lifeTracker = createPlayerTruthLifeTracker();
   const lifeId = lifeTracker.observe;
+  const priorDiagnosticVisibility = new Map();
+  const diagnosticTransitionsById = new Map();
   const unsubs = [];
   if (SF.bus && typeof SF.bus.on === 'function') {
     const milestoneUnsub = SF.bus.on('firsthour:milestone', (p) => events.push({
@@ -457,6 +464,110 @@ export function installPlayerTruthReader(win, opts = {}) {
     let o = m;
     for (; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; }
     return false;
+  }
+
+  function captureVisibilityTransition(entity, mesh, life, from, to) {
+    const ownerChain = [];
+    let visibilityOwner = null;
+    let ownerChainReachesScene = false;
+    let node = mesh;
+    for (let depth = 0; node && depth < VISIBILITY_DIAGNOSTIC_MAX_ANCESTORS; depth++, node = node.parent) {
+      const userData = node.userData || {};
+      const entry = {
+        name: String(node.name || '').slice(0, 72) || null,
+        uuid: typeof node.uuid === 'string' ? node.uuid.slice(0, 8) : null,
+        visible: node.visible !== false,
+        flags: {},
+      };
+      for (const key of [
+        'authoredAssetState', 'authoredGeologySkin', 'authoredFallbackActive',
+        'authoredFallbackAdmittedOnce', 'authoredPendingFallbackDrawn', 'authoredVisualRoot',
+        'sfAdmittedOnce', 'geometryPending', 'pipelinesPending',
+        'asteroidInstanceAdopted', 'poolLeafVisible', 'asteroidInstanceViewCulled',
+      ]) {
+        const value = userData[key];
+        if (typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value)) {
+          entry.flags[key] = typeof value === 'string' ? value.slice(0, 72) : value;
+        }
+      }
+      if (entry.visible === false && visibilityOwner == null) visibilityOwner = entry.name || entry.uuid;
+      ownerChain.push(entry);
+      if (node.isScene) { ownerChainReachesScene = true; node = null; break; }
+    }
+
+    const renderables = [];
+    let renderableCount = 0;
+    if (mesh && typeof mesh.traverse === 'function') {
+      mesh.traverse((object) => {
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
+        renderableCount++;
+        if (renderables.length >= VISIBILITY_DIAGNOSTIC_MAX_RENDERABLES) return;
+        const userData = object.userData || {};
+        renderables.push({
+          type: object.type || null,
+          name: String(object.name || '').slice(0, 72) || null,
+          uuid: typeof object.uuid === 'string' ? object.uuid.slice(0, 8) : null,
+          visible: meshChainVisible(object),
+          adopted: userData.asteroidInstanceAdopted === true,
+          poolLeafVisible: typeof userData.poolLeafVisible === 'boolean' ? userData.poolLeafVisible : null,
+          geometry: object.geometry ? object.geometry.type || 'Geometry' : null,
+          geometryPending: userData.geometryPending === true,
+          pipelinesPending: userData.pipelinesPending === true,
+        });
+      });
+    }
+
+    let poolMembership = null;
+    const readMembership = SF.state.render?.asteroidInstanceMembershipForEntity;
+    if (typeof readMembership === 'function') {
+      try {
+        const membership = readMembership(entity.id);
+        if (membership) {
+          poolMembership = {
+            registered: membership.registered === true,
+            variant: Number.isInteger(membership.variant) ? membership.variant : null,
+            adopted: membership.adopted === true,
+            submitted: membership.submitted === true,
+            submittedIndex: Number.isInteger(membership.submittedIndex) ? membership.submittedIndex : -1,
+            sourceRootUuid: typeof membership.sourceRootUuid === 'string' ? membership.sourceRootUuid.slice(0, 8) : null,
+            sourceLeafUuid: typeof membership.sourceLeafUuid === 'string' ? membership.sourceLeafUuid.slice(0, 8) : null,
+            poolMeshUuid: typeof membership.poolMeshUuid === 'string' ? membership.poolMeshUuid.slice(0, 8) : null,
+          };
+          const poolMesh = (SF.state.render.scene?.children || []).find((candidate) => (
+            candidate && candidate.uuid === membership.poolMeshUuid
+          ));
+          if (poolMesh) {
+            poolMembership.draw = {
+              visible: poolMesh.visible !== false,
+              count: Number.isFinite(poolMesh.count) ? poolMesh.count : null,
+              pipelinesPending: poolMesh.userData?.pipelinesPending === true,
+            };
+          }
+        }
+      } catch (error) {
+        poolMembership = { readError: String(error && error.message || error).slice(0, 120) };
+      }
+    }
+    return {
+      id: entity.id,
+      rawId: entity.id,
+      generation: Number.isSafeInteger(entity.occupantGeneration) ? entity.occupantGeneration : null,
+      type: typeof entity.type === 'string' ? entity.type.slice(0, 40) : null,
+      descriptor: String(entity.typeId || entity.data?.asteroidKind || entity.data?.kind
+        || entity.data?.archetype || entity.data?.propRole || '').slice(0, 72) || null,
+      life,
+      from,
+      to,
+      tick: SF.state.tick,
+      sim: simNow(),
+      visibilityOwner,
+      ownerChain,
+      ownerChainReachesScene,
+      ownerChainTruncated: !!node,
+      renderableCount,
+      renderables,
+      poolMembership,
+    };
   }
 
   // Sky/backdrop layers (deep-field stars, nebula ribbons, planets painted behind the plane)
@@ -619,8 +730,11 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   // One bounded diagnosis per reader lifetime, only after the ordinary split finds positive
   // threat pixels. This never replaces the grading mask or labels a whole threat box as hull.
-  function attributeCombatSplit({ renderer, draw, combat, baseline, mask, boxes, vw, vh, lum, boxFrac }) {
-    const maxExtraDraws = 8; const catalogCap = 64; const LUM = 10;
+  function attributeCombatSplit({ renderer, draw, combat, baseline, mask, boxes, threatSubjects, vw, vh, lum, boxFrac, expanded = false }) {
+    const catalogCap = 64;
+    const enumerateCandidates = expanded && combat.length > 8 && combat.length <= catalogCap;
+    const maxExtraDraws = enumerateCandidates ? combat.length + 1 : 8;
+    const LUM = 10;
     const objectPath = (object) => {
       const names = [];
       for (let node = object; node && !node.isScene && names.length < 6; node = node.parent) {
@@ -654,6 +768,18 @@ export function installPlayerTruthReader(win, opts = {}) {
     let originalPixels = 0;
     for (let k = 0; k < region.length; k++) if (region[k] && mask[k]) originalPixels++;
     receipt.originalPositiveThreatPixels = originalPixels;
+    const threatRegions = expanded ? boxes.map((box, index) => {
+      if (!(boxFrac(mask, box) >= 0.5)) return null;
+      const x0 = Math.max(0, Math.floor(box[0] / vw * PW)); const x1 = Math.min(PW - 1, Math.floor(box[2] / vw * PW));
+      const y0 = Math.max(0, Math.floor(box[1] / vh * PH)); const y1 = Math.min(PH - 1, Math.floor(box[3] / vh * PH));
+      let original = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (mask[(PH - 1 - y) * PW + x]) original++;
+      }
+      const subject = threatSubjects?.[index];
+      return { id: subject?.id ?? null, occupantGeneration: subject?.occupantGeneration ?? null,
+        x0, x1, y0, y1, original };
+    }) : [];
     const pixels = new Uint8Array(PW * PH * 4);
     const measure = (omitted, stability = false) => {
       if (receipt.extraDraws >= maxExtraDraws) return null;
@@ -669,9 +795,24 @@ export function installPlayerTruthReader(win, opts = {}) {
         if (strength >= LUM) changed++;
         peak = Math.max(peak, strength);
       }
+      const perThreat = stability ? [] : threatRegions.flatMap((threat) => {
+        if (!threat) return [];
+        let threatChanged = 0; let threatPeak = 0;
+        for (let y = threat.y0; y <= threat.y1; y++) for (let x = threat.x0; x <= threat.x1; x++) {
+          const k = (PH - 1 - y) * PW + x;
+          if (!mask[k]) continue;
+          const delta = lum(baseline, k * 4) - lum(pixels, k * 4);
+          if (delta >= LUM) threatChanged++;
+          threatPeak = Math.max(threatPeak, delta);
+        }
+        return [{ id: threat.id, occupantGeneration: threat.occupantGeneration,
+          positiveThreatPixels: threatChanged,
+          originalMaskFrac: threat.original ? +(threatChanged / threat.original).toFixed(3) : null,
+          peakLuminanceDelta: +threatPeak.toFixed(1) }];
+      });
       return { positiveThreatPixels: changed,
         originalMaskFrac: originalPixels ? +(changed / originalPixels).toFixed(3) : null,
-        peakLuminanceDelta: +peak.toFixed(1) };
+        peakLuminanceDelta: +peak.toFixed(1), ...(perThreat.length ? { perThreat } : {}) };
     };
     const prevTarget = renderer.getRenderTarget(); const prevAuto = renderer.info.autoReset;
     const prevShadow = renderer.shadowMap ? renderer.shadowMap.autoUpdate : null;
@@ -686,25 +827,44 @@ export function installPlayerTruthReader(win, opts = {}) {
         receipt.status = 'unstable-baseline';
         return receipt;
       }
-      let group = combat.slice(); let measuredGroup = null; let measured = null;
-      while (group.length > 1 && receipt.extraDraws < maxExtraDraws) {
-        const left = group.slice(0, Math.ceil(group.length / 2));
-        measured = measure(left); measuredGroup = left;
-        group = measured.positiveThreatPixels ? left : group.slice(left.length);
-      }
-      if (group.length === 1 && measuredGroup?.[0] === group[0] && measuredGroup.length === 1) {
-        // The last subset measurement already tested this exact individual.
-      } else if (group.length === 1) {
-        measured = measure(group); measuredGroup = group;
-      }
-      if (group.length === 1 && measured?.positiveThreatPixels) {
-        receipt.status = 'contributor-found';
-        receipt.contributor = { ...describe(group[0], combat.indexOf(group[0])), ...measured };
-        receipt.unexaminedCandidateCount = combat.length - 1;
+      if (enumerateCandidates) {
+        // Opt-in diagnostic only: measure every listed draw independently at this same failing
+        // sample so a weak first answer cannot leave the rest of an overlapping-effects case
+        // unexplored. The ordinary player-truth route retains its original eight-draw cap.
+        receipt.individualDeltas = [];
+        for (let index = 0; index < combat.length; index++) {
+          const measured = measure([combat[index]]);
+          if (!measured) break;
+          receipt.individualDeltas.push({ ...describe(combat[index], index), ...measured });
+        }
+        receipt.unexaminedCandidateCount = combat.length - receipt.individualDeltas.length;
+        receipt.contributors = receipt.individualDeltas.filter(row => row.positiveThreatPixels > 0)
+          .sort((a, b) => b.positiveThreatPixels - a.positiveThreatPixels)
+          .map(({ index, id, name, path, owner, renderOrder, positiveThreatPixels, originalMaskFrac,
+            peakLuminanceDelta, perThreat }) => ({ index, id, name, path, owner, renderOrder,
+            positiveThreatPixels, originalMaskFrac, peakLuminanceDelta, perThreat }));
+        receipt.status = receipt.unexaminedCandidateCount === 0 ? 'individual-scan-complete' : 'budget-exhausted';
       } else {
-        receipt.status = group.length > 1 || !measured ? 'budget-exhausted' : 'no-individual-delta';
-        receipt.remainingCandidateCount = group.length;
-        receipt.remainingCandidateIndices = group.slice(0, catalogCap).map((o) => combat.indexOf(o));
+        let group = combat.slice(); let measuredGroup = null; let measured = null;
+        while (group.length > 1 && receipt.extraDraws < maxExtraDraws) {
+          const left = group.slice(0, Math.ceil(group.length / 2));
+          measured = measure(left); measuredGroup = left;
+          group = measured.positiveThreatPixels ? left : group.slice(left.length);
+        }
+        if (group.length === 1 && measuredGroup?.[0] === group[0] && measuredGroup.length === 1) {
+          // The last subset measurement already tested this exact individual.
+        } else if (group.length === 1) {
+          measured = measure(group); measuredGroup = group;
+        }
+        if (group.length === 1 && measured?.positiveThreatPixels) {
+          receipt.status = 'contributor-found';
+          receipt.contributor = { ...describe(group[0], combat.indexOf(group[0])), ...measured };
+          receipt.unexaminedCandidateCount = combat.length - 1;
+        } else {
+          receipt.status = group.length > 1 || !measured ? 'budget-exhausted' : 'no-individual-delta';
+          receipt.remainingCandidateCount = group.length;
+          receipt.remainingCandidateIndices = group.slice(0, catalogCap).map((o) => combat.indexOf(o));
+        }
       }
     } catch (error) {
       receipt.status = 'diagnostic-error'; receipt.error = String(error?.message || error).slice(0, 200);
@@ -815,10 +975,11 @@ export function installPlayerTruthReader(win, opts = {}) {
     let attribution = null;
     const activePlay = SF.state.mode === 'flight'
       && (!(opts.rounds ?? (SF.state.run?.kind === 'survival')) || SF.state.run?.phase === 'active');
-    if (activePlay && ct > 0 && !pxAttributionAttempted) {
+    const attributionThreshold = opts.vfxAttribution === true ? 0.30 : 0;
+    if (activePlay && ct >= attributionThreshold && ct > 0 && !pxAttributionAttempted) {
       pxAttributionAttempted = true;
       attribution = attributeCombatSplit({ renderer, draw, combat, baseline: bufA, mask: cMask,
-        boxes: threatBoxes, vw, vh, lum, boxFrac });
+        boxes: threatBoxes, threatSubjects, vw, vh, lum, boxFrac, expanded: opts.vfxAttribution === true });
     }
     const bodyOcclusion = bodies.length ? measurePlayerTruthBodyOcclusion({
       THREE, renderer, scene, camera: cam, playerMesh, bodies, playerBox, vw, vh,
@@ -850,13 +1011,17 @@ export function installPlayerTruthReader(win, opts = {}) {
     // frame, so its pixels and VFX census measure nothing. The first pixelSplit also renders the
     // scene three times into its own target and reads it back (3-5 s on SwiftShader); landing
     // behind the veil it used to delay the game's own first draw by that much.
-    const flightSample = st.mode === 'flight' && r.flightVeilHoldsSim !== true;
-    const skipWorldCensus = PREPARATION_MODES.has(st.mode);
+    const flightSample = st.mode === 'flight' && !screens && r.flightVeilHoldsSim !== true;
+    // A paused construction/refit surface can cover a flight-mode facade. Do not retain
+    // thousands of duplicate world rows behind its UI while the public controls are walked.
+    const skipWorldCensus = PREPARATION_MODES.has(st.mode) || screens;
     let threatBoxes = null; let threatSubjects = null; let bodies = null;
     if (!skipWorldCensus) {
       const list = st.entityList || [];
       let player = null;
       for (const e of list) if (e.id === st.playerId) { player = e; break; }
+      // Player pose has its own record below, but native field receipts also need its exact life.
+      if (player) lifeId(player);
       const playerTeam = player ? player.team : 1;
       if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
       threatBoxes = []; threatSubjects = []; bodies = [];
@@ -890,8 +1055,21 @@ export function installPlayerTruthReader(win, opts = {}) {
                 projectile: cls === 'projectile' });
             }
           }
+          const entityLife = lifeId(e);
+          if (e.type === 'asteroid' && VISIBILITY_DIAGNOSTIC_ASTEROID_IDS.has(e.id)) {
+            const prior = priorDiagnosticVisibility.get(e.id);
+            const sameLife = prior && prior.life === entityLife;
+            const from = sameLife ? prior.visCode : null;
+            const count = diagnosticTransitionsById.get(e.id) || 0;
+            if ((!sameLife || from !== visCode) && count < VISIBILITY_DIAGNOSTIC_MAX_TRANSITIONS_PER_ID) {
+              (s.visibilityTransitions || (s.visibilityTransitions = [])).push(
+                captureVisibilityTransition(e, m, entityLife, from, visCode));
+              diagnosticTransitionsById.set(e.id, count + 1);
+            }
+            priorDiagnosticVisibility.set(e.id, { life: entityLife, visCode });
+          }
           const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
-          s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
+          s.e.push([entityLife, CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
           if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
             bodies.push({ id: lifeId(e), cls, ty, mesh: m });
           }

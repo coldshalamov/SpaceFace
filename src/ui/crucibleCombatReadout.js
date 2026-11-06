@@ -7,6 +7,8 @@ import { ATTACK_TRAIT_BY_ID } from '../data/attackTraits.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { el } from './kit/index.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { PHASE_BLINK, phaseBlinkCommitCost } from '../data/phaseBlink.js';
+import { heroManeuverReadiness } from '../systems/heroManeuvers.js';
 
 const weapons = new Map(WEAPONS.map(def => [def.id, def]));
 const modules = new Map(MODULES.map(def => [def.id, def]));
@@ -39,6 +41,7 @@ export function crucibleFittingDescription(defId, state) {
   }
   if (mods.boostTopSpeedPct) return `Boost — ${binding(state, 'boost')}`;
   if (mods.phaseBlink) return `Blink — hold ${binding(state, 'boost')} to aim, release to jump`;
+  if (mods.heroManeuver === 'pinball_rush') return `Pinball Rush — hold ${binding(state, 'boost')} to charge and aim · release to dash`;
   if (mods.swingDrive) return `Swing — ${binding(state, 'boost')} while a Massline is taut`;
   if (mods.cloakBaseRadius) return `Cloak — ${binding(state, 'cloak')} toggle`;
   if (mods.droneBay) return 'Drone bay — deploy and manage drones in Automation';
@@ -126,6 +129,52 @@ export function crucibleCombatLines(state) {
     const readiness = trapReadiness(state, ship);
     rows.push({ id: 'trap', status: readiness.status,
       text: `Plate — ${binding(state, 'chargeThrow')} · Trap — ${binding(state, 'brake')}+${binding(state, 'chargeThrow')} · ${readiness.text}` });
+  }
+  if (fittings.includes('mod_veil_step')) {
+    const runtime = ship._phaseBlink;
+    const energy = Number.isFinite(ship.boost?.energy) ? Math.max(0, ship.boost.energy) : 0;
+    const cooling = Number(state.simTime || 0) < Number(runtime?.readyAt || 0);
+    if (runtime?.aiming) {
+      const commitCost = phaseBlinkCommitCost(runtime.dist);
+      const canRelease = runtime.active && runtime.dist >= PHASE_BLINK.minCommit && energy >= commitCost;
+      const releaseStatus = !runtime.active || runtime.dist < PHASE_BLINK.minCommit
+        ? 'no clear landing'
+        : energy < commitCost ? `needs ${Math.ceil(commitCost)} energy to release` : 'release to jump';
+      rows.push({ id: 'veil-step', status: canRelease ? 'armed' : 'cooldown',
+        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} WU` : 'no clear landing'} · ${releaseStatus}` });
+    } else {
+      const ready = !cooling && energy >= PHASE_BLINK.minEnergy;
+      const reason = cooling ? 'cooling' : energy < PHASE_BLINK.minEnergy
+        ? `needs ${PHASE_BLINK.minEnergy} energy` : 'ready';
+      rows.push({ id: 'veil-step', status: ready ? 'armed' : 'cooldown',
+        text: `Veil Step — hold ${binding(state, 'boost')} to aim · release to jump · ${reason}` });
+    }
+  }
+  if (fittings.includes('mod_boomerang_run')) {
+    const run = state.heroManeuverReadModel || state.flightRuntime?.heroManeuverStatus;
+    const readiness = state.heroManeuverReadModel || heroManeuverReadiness(state);
+    const active = run && (run.phase === 'bank' || run.phase === 'return');
+    rows.push({
+      id: 'boomerang-bomb-run',
+      status: active || readiness.status === 'armed' ? 'armed' : 'cooldown',
+      text: active
+        ? `Boomerang Run · ${run.targetName || 'locked hostile'} · ${run.phase === 'return' ? 'phase return' : 'physical bank'} · ${run.attackCommitted ? 'bomb away' : 'bomb reserved'}`
+        : `Boomerang Run — lock a hostile · ${binding(state, 'bomb')} · ${readiness.text}`,
+    });
+  }
+  if (fittings.includes('mod_pinball_rush')) {
+    const run = state.heroManeuverReadModel?.mode === 'pinball' ? state.heroManeuverReadModel : null;
+    const active = run && ['pinball_charge', 'pinball_pending', 'pinball_dash'].includes(run.phase);
+    const readiness = run;
+    const reason = readiness?.status === 'armed' ? `ready · ${readiness.targetName || 'hostile lock'}`
+      : (readiness?.text || readiness?.reason || 'status unavailable').replaceAll('_', ' ');
+    rows.push({
+      id: 'pinball-rush',
+      status: active || readiness?.status === 'armed' ? 'armed' : 'cooldown',
+      text: active
+        ? `Pinball Rush · ${run.targetName || 'locked hostile'} · ${run.phase === 'pinball_charge' ? `charging ${Math.round((run.charge || 0) * 1000)} ms` : run.phase === 'pinball_pending' ? 'dash committing' : `${run.contactCount || 0}/5 physical contacts`}`
+        : `Pinball Rush — ${binding(state, 'boost')} hold / release · ${reason}`,
+    });
   }
   return rows;
 }

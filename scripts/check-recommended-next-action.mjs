@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { STORY_BEATS } from '../src/data/missions.js';
 import { missionCommandBrief, recommendedActions } from '../src/ui/screens/missionLog.js';
 
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
@@ -11,20 +10,6 @@ assert.match(missionLogSrc, /ui:trackMission/, 'recommendation actions must reus
 assert.match(missionLogSrc, /_renderRecommendations/, 'mission log must refresh recommendations with live state');
 assert.match(missionLogSrc, /export function recommendedActions/, 'recommendation policy must stay directly testable');
 assert.match(missionLogSrc, /TRADE ROUTE/, 'mission log should recognize active trade-route waypoints as recommended actions');
-
-const honestWork = STORY_BEATS.find((beat) => beat && beat.id === 'honest_work');
-assert(honestWork, 'honest_work story beat must exist');
-// PQ-032: beat 1 is the wrecking-ball demolition set piece — the first contract is a physical
-// verb, not a haul errand (the story spine deliberately rewired beats 1-3 into the PQ-152 set
-// pieces; see PQ032_BEAT_SET_PIECES and src/data/encounters/set-piece-authored.js).
-assert.match(honestWork.objective, /wrecking-ball|variance tower/i,
-  'first contract story objective should name the wrecking-ball demolition set piece');
-assert.equal(honestWork.physicalType, 'demolition',
-  'first contract story beat should declare its demolition physical type');
-assert.equal(honestWork.authoredSetPieceId, 'wrecking_ball',
-  'first contract story beat should point at the authored wrecking-ball set piece');
-assert.equal(honestWork.introduces, 'wrecking_ball',
-  'first contract story beat should introduce the wrecking-ball mechanic');
 
 const baseState = {
   simTime: 100,

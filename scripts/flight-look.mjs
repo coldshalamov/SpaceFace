@@ -6,6 +6,7 @@ import { mkdirSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installPlayerDrawObserver } from './lib/worldMotionObserver.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -16,9 +17,14 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const OUT = ROOT + (args.out || '.devshots/flight-look') + '/';
 const zooms = String(args.zooms || '144,58').split(',').map(Number);
+if (args['hero-composed'] && (existsSync(OUT + 'hero-composed.png') || existsSync(OUT + 'hero-composed-observation.json'))) {
+  throw new Error('hero-composed output already exists; choose a new --out directory');
+}
 mkdirSync(OUT, { recursive: true });
 
-const server = createGameServer({ root: ROOT });
+const sourceOverlay = args['baseline-source'] ? ROOT + String(args['baseline-source']) : null;
+const requestedOverlay = sourceOverlay ? require('./lib/gameServer.cjs').loadSourceOverlayManifest(sourceOverlay).identity : null;
+const server = createGameServer({ root: ROOT, ...(sourceOverlay ? { sourceOverlay } : {}) });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({
@@ -49,6 +55,14 @@ async function clickButton(page, label, timeoutMs = 30000) {
 }
 
 try {
+  let overlayIdentity = null;
+  if (requestedOverlay) {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/__source_overlay_identity`);
+    if (!response.ok) throw new Error(`source overlay identity HTTP ${response.status}`);
+    overlayIdentity = await response.json();
+    if (overlayIdentity.sourceCommit !== requestedOverlay.sourceCommit
+      || overlayIdentity.sourceOverlayDigest !== requestedOverlay.sourceOverlayDigest) throw new Error('source overlay identity mismatch');
+  }
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -63,6 +77,51 @@ try {
     const s = window.SF?.state;
     return s?.mode === 'flight' && !!s.entities?.get(s.playerId) && !document.body.classList.contains('ui-modal-open');
   }, null, { timeout: 300000 });
+  if (args['hero-composed']) {
+    // The ordinary player, camera and appearance remain under gameplay ownership. A published
+    // authored status is not a draw: observe the player's actual GL calls and completed world
+    // frames while the public thrust key drives the existing plume.
+    await installPlayerDrawObserver(page);
+    let observation = null;
+    try {
+      await page.keyboard.down('KeyW');
+      await page.waitForFunction(() => {
+        const sf = window.SF, s = sf?.state, p = s?.entities?.get(s.playerId);
+        const draw = window.__SF_PLAYER_DRAW_OBSERVER__?.snapshot();
+        const plume = sf?.registry?.get?.('vfx')?._energy?.plumeSystem;
+        return s?.mode === 'flight' && p?.data?.defId === 'ship_kestrel'
+          && Math.hypot(p.vel?.x || 0, p.vel?.z || 0) > 0
+          && draw?.draws > 0 && draw?.markedDraws > 0
+          && draw.lastFrameBeforeMarkedDraw === draw.lastFrameBeforeDraw
+          && Number(s.render?.worldSubmittedFrames) > draw.lastFrameBeforeDraw
+          && plume?.group?.visible && plume.layerBatches?.some(batch => batch.role !== 'distortion' && batch.mesh?.count > 0);
+      }, null, { timeout: 90000, polling: 100 });
+      observation = await page.evaluate(() => {
+        const sf = window.SF, s = sf.state, p = s.entities.get(s.playerId);
+        const plume = sf.registry.get('vfx')?._energy?.plumeSystem;
+        return { mode: s.mode, defId: p.data?.defId, appearance: p.data?.appearance ?? null,
+          speed: Math.hypot(p.vel?.x || 0, p.vel?.z || 0), worldSubmittedFrames: s.render.worldSubmittedFrames,
+          target: window.__SF_PLAYER_DRAW_OBSERVER__.snapshot(),
+          plume: { visible: plume?.group?.visible, recipeId: plume?.recipe?.id,
+            layers: plume?.layerBatches?.map(b => ({ role: b.role, count: b.mesh?.count || 0 })) } };
+      });
+      await page.screenshot({ path: `${OUT}hero-composed.png`, timeout: 180000 });
+    } finally {
+      await page.keyboard.up('KeyW').catch(() => {});
+      const last = await page.evaluate(() => {
+        const o = window.__SF_PLAYER_DRAW_OBSERVER__;
+        const sf = window.SF, s = sf?.state, p = s?.entities?.get(s.playerId);
+        const plume = sf?.registry?.get?.('vfx')?._energy?.plumeSystem;
+        const result = { target: o?.snapshot() ?? null, worldSubmittedFrames: s?.render?.worldSubmittedFrames ?? null,
+          mode: s?.mode ?? null, defId: p?.data?.defId ?? null, appearance: p?.data?.appearance ?? null,
+          speed: Math.hypot(p?.vel?.x || 0, p?.vel?.z || 0), plumeVisible: plume?.group?.visible ?? null,
+          plumeLayers: plume?.layerBatches?.map(b => ({ role: b.role, count: b.mesh?.count || 0 })) ?? [] };
+        o?.dispose();
+        return result;
+      }).catch(() => null);
+      (await import('node:fs')).writeFileSync(OUT + 'hero-composed-observation.json', JSON.stringify({ overlayIdentity, observation, last, errors, consoleLines }, null, 2));
+    }
+  } else {
   // SwiftShader never completes the post-opening GPU admission that releases the authored upgrade
   // queue, so every non-opening body would stay a resolving marker. Release it for the capture.
   await page.evaluate(async () => {
@@ -798,6 +857,7 @@ try {
   console.log(JSON.stringify(info).slice(0, 4000));
   if (errors.length) console.log('pageErrors', errors.slice(0, 5));
   (await import('node:fs')).writeFileSync(OUT + 'console.txt', consoleLines.join('\n'));
+  }
 } finally {
   await browser.close();
   await new Promise((r) => server.close(r));

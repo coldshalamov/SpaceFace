@@ -172,6 +172,23 @@ test('live perception snapshots advance their revision for every accepted sensor
     'same-tick batches still invalidate indexes through the producer-owned revision');
 });
 
+test('live perception still expires unseen contacts when the current key set shrinks', () => {
+  const memory = new PerceptionMemory({ freezeResults: false, memoryTicks: 1 });
+  const frame = (contacts) => ({
+    self: { id: 'expiry-pilot', team: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0 },
+    contacts,
+    events: [],
+  });
+  const contact = (id) => ({ id, kind: 'ship', pos: { x: 50, z: 0 }, vel: { x: 0, z: 0 }, confidence: 1 });
+
+  memory.observe('expiry-pilot', frame([contact('stale')]), 0);
+  const current = memory.observe('expiry-pilot', frame([contact('current')]), 2);
+
+  assert.deepEqual(current.contacts.map((row) => row.id), ['current'],
+    'the skipped cleanup scan must still prune stale rows after a new key replaces an old one');
+  assert.deepEqual([...memory.byEntity.get('expiry-pilot').contacts.keys()], ['ship|s:current']);
+});
+
 function makeDirective() {
   return {
     squadId: 'fixture',

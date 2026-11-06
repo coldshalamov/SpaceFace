@@ -167,6 +167,10 @@ export const swarmJuice = {
     this._unsubs.push(this.bus.on('capitalBoss:start', (p) => this._onCapitalBoss(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
+    // inf-storm-discharge — the lattice firing is a room moment, so it speaks through the
+    // one-voice announcer like every other named beat (the arena emits the receipt; the
+    // juice layer decides whether it is worth a word).
+    this._unsubs.push(this.bus.on('swarm:stormDischarge', (p) => this._onStormDischarge(p)));
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
   },
@@ -245,7 +249,10 @@ export const swarmJuice = {
     if (this._deathLedger && !this._deathLedger.claim(victim)) return;
 
     const now = simTimeOf(st);
-    const killerId = payload.killerId ?? payload.provenance?.actorId;
+    // The kill credit reads the canonical field only: every `entity:killed` emitter carries
+    // `killerId` (combat/damage/kernel/careerCohorts/tallyho), and none ever set a
+    // `provenance` bag — the old `?? payload.provenance?.actorId` fallback was a dead read.
+    const killerId = payload.killerId;
     const playerKill = st.playerId != null && killerId === st.playerId;
     const killer = killerId != null && st.entities && typeof st.entities.get === 'function'
       ? st.entities.get(killerId)
@@ -253,9 +260,12 @@ export const swarmJuice = {
     const friendlyFire = !playerKill && runOwnsReward(killer);
     const cause = styleCauseFromKill(payload);
     const surface = payload.presentation && payload.presentation.surface || null;
+    // The emitter's own end label (combat.killEndLabelFor — 'wasted' for a DoT end) speaks the
+    // WORD; the style family stays on the canonical cause, so attrition never pays physics rate.
+    const killLabel = payload.cause === 'wasted' ? 'wasted' : null;
     // Row 481 — the live room's own vocabulary; the Circuit can switch arenas mid-run, so the
     // arena is read at kill time, never captured at run start.
-    const word = swarmKillCauseWord({ cause, surface, friendlyFire, arenaId: run.arenaId });
+    const word = swarmKillCauseWord({ cause, surface, friendlyFire, arenaId: run.arenaId, killLabel });
     const threat = victim.data && victim.data.stuntThreat;
 
     if (playerKill) {
@@ -474,6 +484,19 @@ export const swarmJuice = {
       // A capital that arrives without a planned boss card is still a boss arriving.
       this._slamCues(true);
     }
+  },
+
+  /** inf-storm-discharge — the room's own arc walk bit someone; the moment gets its word. */
+  _onStormDischarge(payload) {
+    if (!payload) return;
+    if (!liveSwarmRun(this.state)) return;
+    const bites = Number.isFinite(payload.bites) ? payload.bites : 0;
+    if (bites <= 0) return;
+    this._emit('swarm:announce', {
+      kind: 'discharge',
+      text: 'GRID LIVE',
+      count: bites,
+    });
   },
 
   _onChain(payload) {

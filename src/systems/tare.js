@@ -205,14 +205,16 @@ export function createTare() {
         // A match answers the open request: pay one weighed fragment, step the
         // ladder, and keep processing — two true bodies can climb two steps.
         if (flags) {
+          // The physical fragment is the payment. Do not consume the request or
+          // increment its durable receipt count until the spawn owner accepts it;
+          // a missing or temporarily refusing mint seam leaves the same request open.
+          if (typeof this.helpers.spawnEntity !== 'function') return;
+          const paid = (Number(flags[TARE.paidFlag]) || 0) + 1;
+          const fragment = this.helpers.spawnEntity(
+            tareFragmentSpec(TARE.fragmentMass, tareFragmentSpot(paid), robot.id, s.simTime));
+          if (!fragment) return;
           flags[TARE.stepFlag] = step + 1;
-          // The fragment is the payment — the paid count only moves when the
-          // mint seam actually exists, so a missing helper can't log phantom pay.
-          if (this.helpers.spawnEntity) {
-            flags[TARE.paidFlag] = (Number(flags[TARE.paidFlag]) || 0) + 1;
-            this.helpers.spawnEntity(
-              tareFragmentSpec(TARE.fragmentMass, tareFragmentSpot(flags[TARE.paidFlag]), robot.id, s.simTime));
-          }
+          flags[TARE.paidFlag] = paid;
           const next = tareTargetAt(step + 1);
           if (next != null) {
             this._say(`tare_next_${step}`, tareTargetLine(next), 7);

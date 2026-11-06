@@ -1,0 +1,608 @@
+{
+  "source": "Ordinary earned a289 Forge approach, paused tick197399. Native original static dressing retained; prior stall position is recorded in first-shift-status.jsonl. Offline exact native checkpoint query confirms course intersection with Ore Hopper2309.",
+  "stall": {
+    "x": -389.414,
+    "z": 16424.438
+  },
+  "player": {
+    "id": 1,
+    "type": "ship",
+    "alive": true,
+    "pos": {
+      "x": -349.3056640625,
+      "y": 0,
+      "z": 16403.686498641968
+    },
+    "vel": {
+      "x": 0.25964486598968506,
+      "y": 0,
+      "z": 0.037763793021440506
+    },
+    "rot": -2.160605254324443,
+    "angVel": 0,
+    "radius": 14,
+    "mass": 39.7031,
+    "hull": 140,
+    "hullMax": 140,
+    "shield": 245.28000000007546,
+    "shieldMax": 345,
+    "cap": 80,
+    "capMax": 80,
+    "capRegen": 12,
+    "thrust": 292.59719510774465,
+    "turnRate": 2.7310090138944134,
+    "maxSpeed": 125.72315841993326,
+    "drag": 2.996967933333333,
+    "collides": true,
+    "collisionMask": 31,
+    "physicsBody": {
+      "schemaVersion": 1,
+      "mass": 39.7031,
+      "inertiaY": 1603.616845190808,
+      "centerOfMass": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "radius": 14,
+      "shape": "capsule",
+      "dynamic": true,
+      "ccd": true,
+      "material": "ship",
+      "attachmentPoints": {
+        "massline": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "thrusters": [
+        {
+          "id": "drive-port",
+          "health": 1,
+          "forward": 1,
+          "reverse": 0.8,
+          "strafe": 0.45,
+          "yaw": 0.8
+        },
+        {
+          "id": "drive-starboard",
+          "health": 1,
+          "forward": 1,
+          "reverse": 0.8,
+          "strafe": 0.45,
+          "yaw": 0.8
+        },
+        {
+          "id": "rcs-port",
+          "health": 1,
+          "forward": 0.35,
+          "reverse": 0.55,
+          "strafe": 1,
+          "yaw": 1
+        },
+        {
+          "id": "rcs-starboard",
+          "health": 1,
+          "forward": 0.35,
+          "reverse": 0.55,
+          "strafe": 1,
+          "yaw": 1
+        }
+      ],
+      "revision": 16
+    },
+    "flags": {
+      "boosting": false,
+      "docked": false,
+      "invuln": false,
+      "noInterp": false
+    },
+    "isPlayer": true,
+    "data": {
+      "defId": "ship_kestrel",
+      "collisionProxy": "skin:ship_kestrel",
+      "derived": {
+        "hull": 140,
+        "hullMax": 140,
+        "armorHp": 0,
+        "armorMax": 0,
+        "armorFlat": 0,
+        "shield": 345,
+        "shieldMax": 345,
+        "shieldRegenRate": 26.5,
+        "shieldRegenDelay": 3,
+        "cap": 80,
+        "capMax": 80,
+        "capRegen": 12,
+        "thrust": 292.59719510774465,
+        "turnRate": 2.7310090138944134,
+        "maxSpeed": 125.72315841993326,
+        "drag": 2.996967933333333,
+        "bankFactor": 0.3740879296097496,
+        "flightClass": "scout",
+        "flightModel": {
+          "flightClass": "scout",
+          "mass": 39.7031,
+          "inertia": 1603.616845190808,
+          "mainAccel": 307.2270548631319,
+          "reverseAccel": 153.61352743156596,
+          "strafeAccel": 169.7063731624919,
+          "angularAccel": 17.05205876577368,
+          "angularBrake": 37.16315534357171,
+          "maxYawRate": 2.300601993304654,
+          "linearDrag": 2.996967933333333,
+          "lateralDrag": 1.2587265319999998,
+          "assistStrength": 1.15,
+          "reverseBrake": 2.7822,
+          "maxSpeed": 125.72315841993326,
+          "boostMult": 2.2,
+          "normalMaxSpeedMult": 1.15,
+          "boostMaxSpeedMult": 2,
+          "bankMax": 0.68,
+          "bankFactor": 0.3740879296097496,
+          "role": "starter"
+        },
+        "propulsion": {
+          "schemaVersion": 1,
+          "id": "drive_reaction_m",
+          "label": "Vector Reaction Drive M",
+          "family": "reaction",
+          "mainAccel": 92.13154569169063,
+          "reverseAccel": 71.86260563951869,
+          "strafeAccel": 62.64945107034963,
+          "yawAccel": 8.107576020868777,
+          "yawBrake": 12.898416396836689,
+          "maxYawRate": 2.45,
+          "boostAccelMult": 2.05,
+          "boostSpeedMult": 1.55,
+          "precisionSpeed": 115,
+          "combatSpeed": 195,
+          "travelCeiling": 438.75,
+          "assist": {
+            "settleTimeConstantS": 12,
+            "settleFloorAccel": 1.5,
+            "lateralKillFraction": 0.32,
+            "commandedAxisDamping": 0.07,
+            "stopHorizonS": 4,
+            "driftStopHorizonS": 8.5,
+            "deadSpeed": 0.2,
+            "deadInput": 0.025,
+            "governorResponseS": 0.3,
+            "overspeedBrakeFraction": 0.24
+          },
+          "resources": {
+            "energyPerAccel": 0.009,
+            "heatPerAccel": 0.012,
+            "boostHeatMult": 1.8,
+            "coolingPerS": 3
+          },
+          "designMass": 35,
+          "massLoadFactor": 0.9213154569169063,
+          "driveAccelMult": 1,
+          "driveSpeedMult": 1,
+          "driveTravelMult": 1,
+          "thrusterTurnMult": 1,
+          "thrusterStrafeMult": 1,
+          "thrusterBrakeMult": 1,
+          "thrusterId": "mod_thruster_stock_s"
+        },
+        "dryMass": 35,
+        "cargoMass": 4.703100000000001,
+        "operationalMass": 39.7031,
+        "operationalFeelMass": 38.909037999999995,
+        "designMass": 35,
+        "massLoadFactor": 0.9213154569169063,
+        "mass": 39.7031,
+        "radius": 14,
+        "tetherSpoolMult": 1,
+        "tetherReelRateMult": 1,
+        "masslineHeadId": null,
+        "masslineLoadCapacityMult": 1,
+        "magnetRange": 0,
+        "lineHeadId": null,
+        "lootMagnetRange": 0,
+        "swingDrive": false,
+        "towFlail": false,
+        "phaseBlink": false,
+        "hullBurstKind": null,
+        "hullBurstRank": 0,
+        "weaponRangePct": 0,
+        "weaponDmgPct": 0,
+        "weaponHeatDissipPct": 0,
+        "radarRangePct": 0,
+        "weaponRangeMult": 1,
+        "weaponDmgMult": 1,
+        "weaponHeatDissipMult": 1,
+        "radarRangeMult": 1,
+        "radarRange": 4000,
+        "jumpDriveTier": "jump_t1",
+        "hullRepairOOC": 0,
+        "droneBayCount": 0,
+        "cargoCap": 250,
+        "maxWeaponRange": 240,
+        "controlWeaponCount": 0,
+        "chaffCount": 0,
+        "ecmCount": 0,
+        "miningSlotsFilled": 1,
+        "miningSlotsTotal": 1,
+        "boost": {
+          "max": 200,
+          "drainRate": 38,
+          "regenRate": 44,
+          "dashImpulse": 150,
+          "dashCooldown": 2,
+          "topSpeedPct": 0,
+          "burnDurS": 0,
+          "burnCdS": 0
+        },
+        "continuousDrain": 12,
+        "damageReductionMult": 1,
+        "hiddenCargoPct": 0,
+        "scannerCloak": 0,
+        "ramDamageDealtMult": 0,
+        "roleIdentity": {
+          "shipId": "ship_kestrel",
+          "role": "starter",
+          "roleLabel": "Starter Scout",
+          "flightClass": "scout",
+          "shortWhy": "Forgiving first hull — enough hold, drill, and a gun to try every loop.",
+          "primaryCareers": [
+            "prospector",
+            "hauler",
+            "hunter"
+          ],
+          "upgradeAdjacency": [
+            "ship_pelican",
+            "ship_wasp",
+            "ship_mule"
+          ],
+          "counterRoles": [
+            "interceptor",
+            "gunship"
+          ]
+        },
+        "roleBiases": {
+          "opMassBias": 0.98,
+          "handlingBias": 1.04,
+          "thrustBias": 1.06,
+          "turnBias": 1.04
+        }
+      },
+      "fittings": [
+        "wpn_pulse_laser_s",
+        "mod_shield_booster_s",
+        "mod_engine_ion_m",
+        null,
+        "mod_mining_laser_s",
+        "mod_drill_amp",
+        null
+      ]
+    }
+  },
+  "station": {
+    "id": 131,
+    "type": "station",
+    "alive": true,
+    "pos": {
+      "x": -480,
+      "y": 0,
+      "z": 17104
+    },
+    "vel": {
+      "x": 0,
+      "z": 0
+    },
+    "rot": 0,
+    "radius": 34,
+    "mass": 1000000,
+    "collides": true,
+    "data": {
+      "stationId": "station_forge",
+      "stationTypeId": "fab",
+      "dockRadius": 72,
+      "placeScale": 5.142857142857143,
+      "collisionRadius": 34,
+      "collisionProxy": "skin:place_station_fab",
+      "corridorBearingDeg": -56.309932474020215,
+      "services": [
+        "trade",
+        "shipyard",
+        "repair",
+        "refine",
+        "module_craft"
+      ],
+      "factionId": "faction_dmc",
+      "name": "Forge Foundry",
+      "size": "M",
+      "chartNote": "Plate and fittings out the door. Bring alloy, leave with modules.",
+      "contested": false,
+      "repGated": false,
+      "sectorId": "sector_vesta_forge",
+      "homeSectorId": "sector_vesta_forge",
+      "archetypeGlb": "place_station_fab",
+      "landmark": true,
+      "landmarkGlb": null,
+      "poiBehavior": {
+        "behaviorId": "poib:sector_vesta_forge:convoy_industrial_route:zone_vesta_forge",
+        "familyId": "convoy_industrial_route",
+        "sectorId": "sector_vesta_forge",
+        "zoneId": "zone_vesta_forge",
+        "zoneName": "The Forge",
+        "anchorEntityId": null,
+        "pos": {
+          "x": -480,
+          "z": 17104
+        },
+        "mapLabel": "FREIGHT ROUTE",
+        "radarKind": "industrial-route",
+        "affordance": "escort",
+        "objective": "See one convoy through the lane.",
+        "progress": 0,
+        "required": 1,
+        "status": "available",
+        "dangerMode": "traffic",
+        "riskLabel": "CONVOY EXPOSURE",
+        "rewardLabel": "ROUTE LIQUIDITY",
+        "rewardChannels": [
+          "economy:applyTradePressure"
+        ],
+        "aftermathKind": "freight_wake",
+        "persistsDays": 1,
+        "canAutoAggro": false,
+        "fingerprint": "pb_c61cr"
+      }
+    }
+  },
+  "dressing": [
+    {
+      "id": 2302,
+      "type": "fx",
+      "alive": true,
+      "pos": {
+        "x": -514.8,
+        "z": 16408
+      },
+      "rot": 1.5208379310729538,
+      "radius": 48,
+      "collides": true,
+      "collisionMask": 4,
+      "physicsBody": {
+        "dynamic": false,
+        "material": "prop",
+        "schemaVersion": 1,
+        "mass": 1000000,
+        "inertiaY": 1152000000,
+        "centerOfMass": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius": 48,
+        "shape": "ball",
+        "ccd": false,
+        "attachmentPoints": {
+          "massline": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "thrusters": [],
+        "revision": 0
+      },
+      "data": {
+        "placeId": "place_conveyor_barge",
+        "placeScale": 1,
+        "worldDressing": true,
+        "paletteClass": "belt",
+        "sectorId": "sector_vesta_forge",
+        "homeSectorId": "sector_vesta_forge",
+        "name": "Ore Conveyor",
+        "visualRadius": 48,
+        "placeRadius": 48,
+        "collisionProxy": "skin:place_conveyor_barge"
+      }
+    },
+    {
+      "id": 2309,
+      "type": "fx",
+      "alive": true,
+      "pos": {
+        "x": -390.67494832004036,
+        "z": 16449.33747416002
+      },
+      "rot": 1.7698631472755764,
+      "radius": 25,
+      "collides": true,
+      "collisionMask": 4,
+      "physicsBody": {
+        "dynamic": false,
+        "material": "prop",
+        "schemaVersion": 1,
+        "mass": 1000000,
+        "inertiaY": 312500000,
+        "centerOfMass": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius": 25,
+        "shape": "ball",
+        "ccd": false,
+        "attachmentPoints": {
+          "massline": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "thrusters": [],
+        "revision": 0
+      },
+      "data": {
+        "placeId": "place_aftermath_wreck_ore_freighter_hopper_authored_down",
+        "placeScale": 1,
+        "worldDressing": true,
+        "paletteClass": "belt",
+        "sectorId": "sector_vesta_forge",
+        "homeSectorId": "sector_vesta_forge",
+        "name": "Ore Hopper",
+        "visualRadius": 25,
+        "placeRadius": 25,
+        "wreckAftermath": true,
+        "collisionProxy": "skin:place_aftermath_wreck_ore_freighter_hopper_authored_down"
+      }
+    },
+    {
+      "id": 2310,
+      "type": "fx",
+      "alive": true,
+      "pos": {
+        "x": -419.81814881230457,
+        "z": 16330.657219514875
+      },
+      "rot": 3.851062444300035,
+      "radius": 16,
+      "collides": true,
+      "collisionMask": 4,
+      "physicsBody": {
+        "dynamic": false,
+        "material": "prop",
+        "schemaVersion": 1,
+        "mass": 1000000,
+        "inertiaY": 128000000,
+        "centerOfMass": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius": 16,
+        "shape": "ball",
+        "ccd": false,
+        "attachmentPoints": {
+          "massline": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "thrusters": [],
+        "revision": 0
+      },
+      "data": {
+        "placeId": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down",
+        "placeScale": 1,
+        "worldDressing": true,
+        "paletteClass": "belt",
+        "sectorId": "sector_vesta_forge",
+        "homeSectorId": "sector_vesta_forge",
+        "name": "Hopper Lid",
+        "visualRadius": 16,
+        "placeRadius": 16,
+        "wreckAftermath": true,
+        "collisionProxy": "skin:place_aftermath_deb_ore_freighter_hopper_lid_authored_down"
+      }
+    },
+    {
+      "id": 2311,
+      "type": "fx",
+      "alive": true,
+      "pos": {
+        "x": -318.76556168642674,
+        "z": 16393.45786250425
+      },
+      "rot": 6.216333497070501,
+      "radius": 8,
+      "collides": true,
+      "collisionMask": 4,
+      "physicsBody": {
+        "dynamic": false,
+        "material": "prop",
+        "schemaVersion": 1,
+        "mass": 1000000,
+        "inertiaY": 32000000,
+        "centerOfMass": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius": 8,
+        "shape": "ball",
+        "ccd": false,
+        "attachmentPoints": {
+          "massline": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "thrusters": [],
+        "revision": 0
+      },
+      "data": {
+        "placeId": "place_aftermath_frag_cable_bundle",
+        "placeScale": 1,
+        "worldDressing": true,
+        "paletteClass": "belt",
+        "sectorId": "sector_vesta_forge",
+        "homeSectorId": "sector_vesta_forge",
+        "name": "Cable Bundle",
+        "visualRadius": 8,
+        "placeRadius": 8,
+        "wreckAftermath": true,
+        "collisionProxy": "skin:place_aftermath_frag_cable_bundle"
+      }
+    },
+    {
+      "id": 2312,
+      "type": "fx",
+      "alive": true,
+      "pos": {
+        "x": -318.75680517550154,
+        "z": 16458.5259233665
+      },
+      "rot": 1.7845153865830135,
+      "radius": 8,
+      "collides": true,
+      "collisionMask": 4,
+      "physicsBody": {
+        "dynamic": false,
+        "material": "prop",
+        "schemaVersion": 1,
+        "mass": 1000000,
+        "inertiaY": 32000000,
+        "centerOfMass": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius": 8,
+        "shape": "ball",
+        "ccd": false,
+        "attachmentPoints": {
+          "massline": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "thrusters": [],
+        "revision": 0
+      },
+      "data": {
+        "placeId": "place_aftermath_frag_strut_shard",
+        "placeScale": 1,
+        "worldDressing": true,
+        "paletteClass": "belt",
+        "sectorId": "sector_vesta_forge",
+        "homeSectorId": "sector_vesta_forge",
+        "name": "Strut Shard",
+        "visualRadius": 8,
+        "placeRadius": 8,
+        "wreckAftermath": true,
+        "collisionProxy": "skin:place_aftermath_frag_strut_shard"
+      }
+    }
+  ]
+}

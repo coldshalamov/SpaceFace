@@ -1,9 +1,42 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 import { buildMorrowVisual } from '../src/render/characters/morrowModel.js';
+import { buildRuudVisual, disposeRuudVisual } from '../src/render/characters/ruudModel.js';
+import { buildBracketVisual, disposeBracketVisual } from '../src/render/characters/bracketModel.js';
+import { buildRavelVisual, disposeRavelVisual } from '../src/render/characters/ravelModel.js';
+import { buildRubricVisual, disposeRubricVisual } from '../src/render/characters/rubricModel.js';
+import { ruudEntitySpec } from '../src/systems/ruud.js';
+import { freshRuudMemory } from '../src/data/ruud.js';
+import { bracketEntitySpec } from '../src/systems/bracket.js';
+import { ravelEntitySpec } from '../src/systems/ravel.js';
+import { rubricEntitySpec } from '../src/systems/rubric.js';
+import { makeEntity } from '../src/core/entity.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { authoredCriticalVisualReadiness, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import { morrowEntitySpec } from '../src/systems/morrow.js';
+
+for (const [name, build, dispose] of [
+  ['Morrow', () => buildMorrowVisual(morrowEntitySpec()), root => root.userData.disposeMorrow()],
+  ['Ruud', () => buildRuudVisual(ruudEntitySpec(freshRuudMemory(), 'suit')), disposeRuudVisual],
+  ['Bracket', () => buildBracketVisual(bracketEntitySpec('keeper')), disposeBracketVisual],
+  ['Ravel', () => buildRavelVisual(makeEntity({ ...ravelEntitySpec('core', 0), id: 10 })), disposeRavelVisual],
+  ['Rubric', () => buildRubricVisual(makeEntity({ ...rubricEntitySpec('body'), id: 20 })), disposeRubricVisual],
+]) test(`${name} retires baked source casters while keeping live casters`, () => {
+  const retired = [], original = THREE.Group.prototype.remove;
+  let root;
+  THREE.Group.prototype.remove = function (...objects) {
+    for (const object of objects) if (object.isMesh) retired.push(object);
+    return original.apply(this, objects);
+  };
+  try { root = build(); } finally { THREE.Group.prototype.remove = original; }
+  try {
+    assert.ok(retired.length > 0);
+    for (const mesh of retired) { assert.equal(mesh.parent, null); assert.equal(mesh.castShadow, false); }
+    let live = 0; root.traverse(object => { if (object.isMesh && object.castShadow) live++; });
+    assert.ok(live > 0);
+  } finally { dispose(root); }
+});
 
 function openingState(contacts) {
   const player = {

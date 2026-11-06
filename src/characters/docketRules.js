@@ -1,5 +1,6 @@
 /** DOCKET pure rules: the delivery latch, the approach trim, the register lint. No state, no
  * events, no randomness. Shared by the live system and its tests. */
+import { occupantGenerationOf } from '../core/entity.js';
 import { DOCKET as C } from '../data/docket.js';
 
 export const finiteXZ = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -21,7 +22,9 @@ export function violatesRegister(text) {
   if (typeof text !== 'string' || !text.trim()) return ['empty'];
   if (/[!?]/.test(text)) out.push('exclamation-or-question');
   if (/\.{3}|…/.test(text)) out.push('ellipsis');
-  if (/[-🿿☀-➿]/u.test(text)) out.push('emoji');
+  // Emoji planes only (U+1F000+) plus the BMP symbol/dingbat block — the old range opened at
+  // U+E000 and rejected every private-use, CJK-compatibility and full-width character.
+  if (/[\u{1F000}-\u{1FFFF}\u2600-\u27BF]/u.test(text)) out.push('emoji');
   const bad = text.match(FORBIDDEN_RE);
   if (bad) out.push(`forbidden-word:${bad[0].toLowerCase()}`);
   if (text.length > 260) out.push('too-long');
@@ -66,7 +69,10 @@ export function playerHoldsLine(state, body) {
   if (!rows || !body?.alive || !player?.alive || state.entities.get(body.id) !== body) return false;
   for (const key of Object.keys(rows)) {
     const a = rows[key];
-    if (a?.state === 'active' && a.ownerId === state.playerId && a.targetId === body.id) return true;
+    // Ids recycle: the row must name THIS occupant of each id, same test Rubric applies.
+    if (a?.state === 'active' && a.ownerId === state.playerId && a.targetId === body.id
+      && (a.ownerGeneration == null || a.ownerGeneration === occupantGenerationOf(player))
+      && (a.targetGeneration == null || a.targetGeneration === occupantGenerationOf(body))) return true;
   }
   return false;
 }

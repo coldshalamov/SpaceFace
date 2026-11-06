@@ -1,6 +1,13 @@
+import { wholeHulkVisualForEntity } from '../data/wholeShipVisualIdentity.js';
+import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
+import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
+import { ironKrakenProfileFor } from '../data/ironKraken.js';
+import { createIronKrakenVisual } from './ironKrakenVisuals.js';
+import { createIronKrakenWreckVisual, ironKrakenWreckProfileFor } from './ironKrakenWreckVisuals.js';
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
+import { buildLanternWardVisual, isLanternWardBody } from './lanternWardVisuals.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -71,6 +78,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { isSurvivorPodEntity, MAYDAY_LAMP_COLOR, MAYDAY_LAMP_CORE_COLOR } from './survivorPodVisual.js';
+import { worthTierFor, worthReadFor } from './pickupWorthRead.js';
 import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
@@ -105,8 +114,11 @@ import {
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
 import { foundryPlateShape } from '../data/foundryPlate.js';
+import { foundryFurnitureShape } from '../data/foundryFurniture.js';
+import { createFoundryBankSurface } from './foundryBankSurface.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
+import { ENEMY_ROLE_VARIANT_BUILDERS } from './enemyRoleVariants.js';
 import { SWARM_BROOD_FAMILIES, swarmBroodFamily } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, swarmBroodLateFamily } from '../data/swarmBroodLate.js';
 
@@ -1833,6 +1845,8 @@ const ENEMY_FAMILY_BUILDERS = {
   kilnback: buildBruiserArmor,
   mothlight: buildSniperLance,
   pallet_jack: buildTraderHaul,
+  // Specialist recovery art only: production admits the selected authored whole ship.
+  ...ENEMY_ROLE_VARIANT_BUILDERS,
 };
 
 const FAMILY_BUILDERS = {
@@ -2396,7 +2410,7 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     if (def.variant === 'ice') {
-      return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+      const material = new THREE.MeshPhysicalMaterial({
         color,
         roughness: 0.06,
         metalness: 0.0,
@@ -2411,7 +2425,20 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         clearcoatRoughness: 0.08,
         envMapIntensity: 1.15,
         fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK);
+      });
+      // Ordinary world ice keeps its colour/specular skin without re-rendering the whole
+      // opaque scene for screen-space refraction. Retain the exact source params for the
+      // bounded pilot comparison; authored hero/ship/station materials use other owners.
+      material.userData.spacefaceTransmissionBudget = {
+        family: 'ordinary-ice', strategy: 'environment-alpha',
+        original: { transmission: material.transmission, opacity: material.opacity,
+          transparent: material.transparent, depthWrite: material.depthWrite },
+      };
+      material.transmission = 0;
+      material.opacity = Math.min(material.opacity, 0.72);
+      material.transparent = true;
+      material.depthWrite = false;
+      return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -2522,22 +2549,32 @@ function buildAsteroid(e) {
   } else if (!opticKind && def.variant === 'gas') {
     const hull = new THREE.Mesh(
       geo,
-      getMaterial('ast:gashull', () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#2d6a52'),
-        roughness: 0.42,
-        metalness: 0,
-        transmission: 0.88,
-        ior: 1.04,
-        thickness: 3.6,
-        attenuationColor: new THREE.Color('#3dff9a'),
-        attenuationDistance: 2.1,
-        emissive: new THREE.Color('#10a060'),
-        emissiveIntensity: 0.28,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK)),
+      getMaterial('ast:gashull', () => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('#2d6a52'),
+          roughness: 0.42,
+          metalness: 0,
+          transmission: 0.88,
+          ior: 1.04,
+          thickness: 3.6,
+          attenuationColor: new THREE.Color('#3dff9a'),
+          attenuationDistance: 2.1,
+          emissive: new THREE.Color('#10a060'),
+          emissiveIntensity: 0.28,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          fog: true,
+        });
+        material.userData.spacefaceTransmissionBudget = {
+          family: 'ordinary-gas', strategy: 'environment-alpha',
+          original: { transmission: material.transmission, opacity: material.opacity,
+            transparent: material.transparent, depthWrite: material.depthWrite },
+        };
+        material.transmission = 0;
+        material.opacity = Math.min(material.opacity, 0.70);
+        return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
+      }),
     );
     hull.scale.setScalar(R * 1.22);
     hull.userData.spacefaceTags = { greeble: true };
@@ -2630,10 +2667,13 @@ function aimSwarmThreatGlyph(glyph, plate) {
 const _hostileTint = new THREE.Color(0xff2438);
 const _hostileTintOf = new WeakMap();
 // A light crimson cast. 0.9 emissive plus a filled disc painted every wasp into
-// a red coin. 0.5 keeps the hull a ship. MeshBasic hulls (no emissive) take a
-// small lerp so they do not become a flat crimson circle either.
-const SWARM_HOSTILE_EMISSIVE = 0.5;
-const SWARM_HOSTILE_COLOR_MIX = 0.22;
+// a red coin. 0.5 kept the hull a ship; once the threat mark grew a shaded
+// under-plate the paint could back off so authored hull shading reads through
+// (owner 2026-10: "can't tell what's an enemy or an object" — the mark now
+// carries more of that job). MeshBasic hulls (no emissive) take a small lerp
+// so they do not become a flat crimson circle either.
+const SWARM_HOSTILE_EMISSIVE = 0.35;
+const SWARM_HOSTILE_COLOR_MIX = 0.15;
 
 /**
  * One tinted clone per source material, shared by every hostile that uses it.
@@ -2693,8 +2733,11 @@ function tintSwarmHostileHull(mesh) {
  * filled disc the size of the hull, painted the ship out: enemies read as red
  * coins. Marks are MeshBasic, normal blending, tone-mapped so they do not
  * bloom into a white ring:
- *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off.
- *     An identity stroke in the 0.7–1.2 sample gap, not a disc.
+ *   - a camera-facing emblem in the 0.7–1.2 sample gap, depthTest off, built as
+ *     layered rings so it reads bordered and shaded instead of one flat stroke:
+ *     a dark under-plate ring (0.86–1.05) carries the lit crimson rim
+ *     (0.92–1.0) and a pale hairline (0.875–0.90). Still a ring family, never
+ *     a disc: the hull shows through d < 0.86.
  *   - a heading wedge on the nose, inside the hull sample, along +X
  *     (the renderer yaws with mesh.rotation.y = -entity.rot)
  *   - a camera-facing fighter glyph at SWARM_GLYPH_OF_BODY × body, sharing
@@ -2731,7 +2774,13 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (staleCard) mesh.remove(staleCard);
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
-    // Thin stroke. 0.92–1.0 sits outside the hull sample and short of the sky.
+    // Thin lit stroke over a shaded plate. The bright rim keeps 0.92–1.0, sitting
+    // outside the hull sample and short of the sky; the two children below make it
+    // a bordered emblem instead of a flat stroke. All three share the rim's
+    // contract — MeshBasic, DoubleSide, normal blending, toneMapped, depthTest
+    // off, renderOrder 12 — so no layer feeds the bloom pyramid and the mark
+    // stays readable over the hull. Children ride the plate's camera-facing
+    // quaternion and scale, so the emblem costs nothing per frame.
     plate = new THREE.Mesh(
       getGeometry('swarm:threat-rim', () => new THREE.RingGeometry(0.92, 1, 48)),
       getMaterial('swarm:threat-rim', () => new THREE.MeshBasicMaterial({
@@ -2747,6 +2796,45 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.renderOrder = 12;
     plate.frustumCulled = true;
     mesh.add(plate);
+    // Dark desaturated crimson under-plate, wider than the rim on both sides
+    // (0.86–1.05 vs 0.92–1.0), so the rim reads as a lit border over a shaded
+    // body. Its farthest reach is 1.05× the mark cap — 1.176r at the 1.12
+    // bracket, still inside the 1.2r readability background ring. Paint order is
+    // explicit renderOrder, not z position: depth is off, so a backing that
+    // painted after the rim would cover it whole. 11.98 < rim's 12 — the
+    // under-plate always paints first.
+    const under = new THREE.Mesh(
+      getGeometry('swarm:threat-under', () => new THREE.RingGeometry(0.86, 1.05, 48)),
+      getMaterial('swarm:threat-under', () => new THREE.MeshBasicMaterial({
+        color: 0x5a0f18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    under.name = 'sf-swarm-threat-under';
+    under.renderOrder = 11.98;
+    under.frustumCulled = true;
+    plate.add(under);
+    // Pale hairline on the dark plate, inside the rim: the bordered accent.
+    // 12.02 paints it last of the three ring layers — after rim and backing.
+    const line = new THREE.Mesh(
+      getGeometry('swarm:threat-line', () => new THREE.RingGeometry(0.875, 0.9, 48)),
+      getMaterial('swarm:threat-line', () => new THREE.MeshBasicMaterial({
+        color: 0xff6a70,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    line.name = 'sf-swarm-threat-line';
+    line.renderOrder = 12.02;
+    line.frustumCulled = true;
+    plate.add(line);
   }
   // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
   // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
@@ -2844,37 +2932,47 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
 function buildFoundryToy(e) {
   const R = Math.max(6, Number(e.radius) || 16);
   const kind = (e.data && e.data.roomKind) || 'plate';
+  const furniture = foundryFurnitureShape(e);
   const g = new THREE.Group();
-  const mat = getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
-    roughness: 0.94,
-    metalness: 0.06,
-    emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
-    emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
-  }), SHARED_MATERIAL_ROLE.STATION));
+  const mat = kind === 'plate'
+    ? getMaterial('foundrytoy:bank-steel', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0xffffff, vertexColors: true, roughness: 0.72, metalness: 0.38,
+    }), SHARED_MATERIAL_ROLE.STATION))
+    : getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
+      roughness: 0.94,
+      metalness: 0.06,
+      emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
+      emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
+    }), SHARED_MATERIAL_ROLE.STATION));
   let body;
   if (kind === 'plate') {
     const shape = foundryPlateShape(e);
-    body = new THREE.Mesh(getGeometry('foundry:bank-slab', () => new THREE.BoxGeometry(2, 2, 2)), mat);
+    body = new THREE.Mesh(getGeometry('foundry:bank-steel-slab', createFoundryBankSurface), mat);
     body.scale.set(shape.halfWidth, shape.halfHeight, shape.halfDepth);
   } else if (kind === 'gate') {
-    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(0.16, 0.2, 1.5, 6)), mat);
+    const shape = furniture.body;
+    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(
+      shape.radiusTop, shape.radiusBottom, shape.height, shape.radialSegments)), mat);
   } else if (kind === 'furnace') {
-    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(1.15, 0.72, 0.95)), mat);
+    const shape = furniture.body;
+    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
   } else {
-    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(1.5, 0.32, 0.42)), mat);
+    const shape = furniture?.body || { width: 1.5, height: 0.32, depth: 0.42 };
+    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
   }
-  if (kind !== 'plate') body.scale.setScalar(R);
+  if (kind !== 'plate') body.scale.setScalar(furniture?.scale || R);
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);
   if (kind === 'furnace') {
+    const shape = furniture.mouth;
     const mouth = new THREE.Mesh(
-      getGeometry('foundry:mouth', () => new THREE.BoxGeometry(0.22, 0.14, 0.05)),
+      getGeometry('foundry:mouth', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)),
       getMaterial('foundry:ember', () => new THREE.MeshBasicMaterial({ color: 0x6a3014 })),
     );
-    mouth.position.set(0, R * 0.04, R * 0.5);
-    mouth.scale.setScalar(R);
+    mouth.position.set(0, furniture.scale * shape.offsetY, furniture.scale * shape.offsetZ);
+    mouth.scale.setScalar(furniture.scale);
     g.add(mouth);
   }
   g.userData.kind = 'station';
@@ -3745,6 +3843,11 @@ function buildPickup(e) {
   // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
   // that is not a known commodity keep the original octahedron.
   const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
+  // inf-pod-worth: the drop's light answers what the lot is worth (pickupWorthRead.js reads
+  // commodityId + amount off the sim's own data). Junk rests dimmer, plain keeps today's read,
+  // rich burns hotter and builds the double band below.
+  const worthTier = worthTierFor(e && e.data);
+  const worth = worthReadFor(worthTier);
   const gem = new THREE.Mesh(
     shapeName
       ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
@@ -3774,6 +3877,26 @@ function buildPickup(e) {
   g.userData.pickupHalo = halo;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // The worth tier rides userData so the pose pass (pickupMotionPresentation) can grade the
+  // ring's floor/kick without re-reading the price table every frame.
+  g.userData.worthTier = worthTier;
+  // Rich lots build the double band: a second, tighter ring the eye reads as "that one"
+  // across the field. Posed by pickupMotionPresentation against the outer ring's clock.
+  if (worth.doubleBand) {
+    const band = new THREE.Mesh(
+      getGeometry('pickup:worthband', () => new THREE.TorusGeometry(0.95, 0.03, 6, 24)),
+      getMaterial(`pickupworthband:${color}`, () => new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color), transparent: true, opacity: 0.4,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })),
+    );
+    band.material = band.material.clone();
+    band.scale.setScalar(R);
+    band.userData.baseScale = R;
+    band.frustumCulled = false;
+    g.add(band);
+    g.userData.worthBand = band;
+  }
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
   // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
@@ -3783,10 +3906,11 @@ function buildPickup(e) {
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
   // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
   // The breathe carries farther than it used to: at flight-camera range the old ±28% never
-  // separated a live drop from dark scenery.
+  // separated a live drop from dark scenery. The worth read scales the heat: junk rests dim,
+  // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.material.emissiveIntensity = 1.6 * (1 + 0.45 * Math.sin(t * 3 + ph));
+    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * (1 + 0.45 * Math.sin(t * 3 + ph));
   };
   return g;
 }
@@ -3980,22 +4104,15 @@ function fractureFragmentFitRadius(entity) {
 // Files without a packaged-live pilot resolve null inside the selector and fall back to the
 // aftermath piece below.
 function hulkPackagedFileForEntity(e) {
-  const data = e && e.data || {};
-  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
-    ? data.hulkVisual
-    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
-  if (!visual) return null;
-  const selection = wholeShipVisualForEntity(
-    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
-    { requiredWholeShip: true },
-  );
-  return selection && selection.file || null;
+  if (ironKrakenWreckProfileFor(e)) return null;
+  return wholeHulkVisualForEntity(e, wholeShipVisualForEntity)?.file || null;
 }
 
 // Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated
 // on Continue and must never choose which physical source the player is investigating.
 
 export function wreckPackagedFile(e) {
+  if (ironKrakenWreckProfileFor(e)) return null;
   const evidence = lastShiftPackagedFile(e);
   if (evidence) return evidence;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
@@ -4100,8 +4217,9 @@ export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:h
     };
     // Several roster ships resolve the same hulk file (wasp_swarmer/choir_zealot both draw
     // ashline_dart) — one exemplar per resolved file, not per ship, or the warm decodes and
-    // instantiates the same blueprint half a dozen times.
-    const file = hulkPackagedFileForEntity(spec);
+    // instantiates the same blueprint half a dozen times. The static character has its own
+    // shared geometry/palette key and must not alias its stat-only Bastion backing file.
+    const file = ironKrakenWreckProfileFor(spec) ? 'character:iron-kraken-static-wreck' : hulkPackagedFileForEntity(spec);
     if (!file || coveredFiles.has(file)) continue;
     coveredFiles.add(file);
     specs.push(spec);
@@ -4313,6 +4431,10 @@ export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm
     // program family is novel the first time a beacon mounts inside a live round.
     { ...base(), id: `${prefix}beacon`, type: 'beacon', radius: 10, data: {} },
     { ...base(), id: `${prefix}beacon:dead`, type: 'beacon', radius: 10, data: { laneBeaconDead: true } },
+    ...['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret'].map(deviceId => ({
+      ...base(), id: `${prefix}fortify:${deviceId}`, type: 'beacon', radius: 12,
+      hull: 140, hullMax: 140, data: { swarmFortify: { deviceId } },
+    })),
     // Scripted-intro species the entity-driven cook never sees: the rescue cast's scout is a
     // drone, the grab pod a payload, the run beacon a rescueExit beacon — each mounts the same
     // procedural + packaged-body families a live spawn draws. The data flags are exactly the
@@ -4373,21 +4495,156 @@ export function* instantiatePackagedPrimitivesSteps(record, parent, options = {}
     }
   }
   const primitives = (record && record.primitives) || [];
+  // Same-material opaque leaves collapse into one mesh (shared cached geometry per record):
+  // a hulk fragment is ~50 leaves over ~12 materials. The flat route bakes every transform
+  // and binds no pivots, so nothing addresses a leaf by name.
+  const mergeable = includeAllLods ? null : new Map();
   for (let i = 0; i < primitives.length; i++) {
     if (i > 0 && (i % 128) === 0) yield;
     const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!includeAllLods && !isLod0Primitive(primitive)) continue;
-    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
-    mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
     else if (Array.isArray(primitive.matrix) && primitive.matrix.length === 16) tmp.fromArray(primitive.matrix);
     else tmp.identity();
+    // A mirrored leaf relies on three flipping the front face from the mesh matrix; baked vertices would not.
+    if (mergeable && tmp.determinant() > 0 && isMergeablePackagedPrimitive(primitive)) {
+      let list = mergeable.get(primitive.material);
+      if (!list) { list = []; mergeable.set(primitive.material, list); }
+      list.push({ primitive, matrix: tmp.clone() });
+      continue;
+    }
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name || 'PackagedPrimitive';
     mesh.applyMatrix4(tmp);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
   }
+  if (!mergeable) return;
+  for (const [material, list] of mergeable) {
+    yield;
+    const merged = list.length > 1 ? mergedPackagedGeometry(record, material, list) : null;
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.name = `${list[0].primitive.name || 'PackagedPrimitive'}+${list.length}`;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      continue;
+    }
+    for (const { primitive, matrix } of list) {
+      const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+      mesh.name = primitive.name || 'PackagedPrimitive';
+      mesh.applyMatrix4(matrix);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+    }
+  }
+}
+
+function isMergeablePackagedPrimitive(primitive) {
+  const material = primitive.material, geometry = primitive.geometry;
+  if (Array.isArray(material) || !geometry.isBufferGeometry || !geometry.getAttribute('position')) return false;
+  if (material.transparent === true || material.depthWrite === false || material.blending !== THREE.NormalBlending
+      || (material.transmission || 0) > 0) return false;
+  if (geometry.groups.length > 0 || geometry.drawRange.start !== 0 || geometry.drawRange.count !== Infinity) return false;
+  if (geometry.getAttribute('skinIndex') || (geometry.morphAttributes && geometry.morphAttributes.position)) return false;
+  if (/collision/i.test(String(primitive.name || ''))) return false;
+  return true;
+}
+
+// Cached per decoded record + material so every wreck of one file shares a single GPU upload.
+// A bounded LRU really disposes the oldest; a disposed entry still drawn just re-uploads.
+const _packagedMergeCache = new WeakMap();
+const _packagedMergeLru = [];
+const PACKAGED_MERGE_LRU_MAX = 96;
+
+function mergedPackagedGeometry(record, material, list) {
+  if (!record || typeof record !== 'object') return null;
+  let byMaterial = _packagedMergeCache.get(record);
+  if (!byMaterial) { byMaterial = new Map(); _packagedMergeCache.set(record, byMaterial); }
+  const sig = `${list.length}:${list.map((item) => item.primitive.name).join('|')}`;
+  let entry = byMaterial.get(material);
+  if (entry && entry.sig === sig) return entry.geometry;
+  const geometry = mergePackagedLeafGeometries(list);
+  if (!geometry) return null;
+  geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true };
+  const realDispose = geometry.dispose.bind(geometry);
+  geometry.dispose = () => {};
+  entry = { sig, geometry, realDispose };
+  byMaterial.set(material, entry);
+  _packagedMergeLru.push(entry);
+  if (_packagedMergeLru.length > PACKAGED_MERGE_LRU_MAX) {
+    const old = _packagedMergeLru.shift();
+    try { old.realDispose(); } catch (_) { /* best effort */ }
+  }
+  return geometry;
+}
+
+const _mergeV = new THREE.Vector3();
+const _mergeN = new THREE.Vector3();
+const _mergeNormalMatrix = new THREE.Matrix3();
+
+// Bakes each leaf's matrix into float vertex data. Reads through getX() so quantized
+// (normalized Int16/Int8) glTF attributes decode instead of clamping.
+function mergePackagedLeafGeometries(list) {
+  const first = list[0].primitive.geometry;
+  const names = Object.keys(first.attributes).sort();
+  const indexed = !!first.index;
+  let vertexTotal = 0, indexTotal = 0;
+  for (const { primitive } of list) {
+    const g = primitive.geometry;
+    const other = Object.keys(g.attributes).sort();
+    if (other.length !== names.length || other.some((n, i) => n !== names[i]) || !!g.index !== indexed) return null;
+    for (const n of names) {
+      const a = g.attributes[n];
+      if (a.isInterleavedBufferAttribute === true || a.itemSize !== first.attributes[n].itemSize) return null;
+    }
+    vertexTotal += g.attributes.position.count;
+    if (indexed) indexTotal += g.index.count;
+  }
+  if (vertexTotal > 4000000) return null;
+  const out = {};
+  for (const n of names) out[n] = new Float32Array(vertexTotal * first.attributes[n].itemSize);
+  const index = indexed ? new Uint32Array(indexTotal) : null;
+  let vOffset = 0, iOffset = 0;
+  for (const { primitive, matrix } of list) {
+    const g = primitive.geometry;
+    const count = g.attributes.position.count;
+    _mergeNormalMatrix.getNormalMatrix(matrix);
+    for (const n of names) {
+      const a = g.attributes[n], size = a.itemSize, dst = out[n];
+      for (let v = 0; v < count; v++) {
+        const o = (vOffset + v) * size;
+        if (n === 'position') {
+          _mergeV.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix4(matrix);
+          dst[o] = _mergeV.x; dst[o + 1] = _mergeV.y; dst[o + 2] = _mergeV.z;
+        } else if (n === 'normal') {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix3(_mergeNormalMatrix).normalize();
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z;
+        } else if (n === 'tangent' && size === 4) {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).transformDirection(matrix);
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z; dst[o + 3] = a.getW(v);
+        } else {
+          for (let c = 0; c < size; c++) dst[o + c] = c === 0 ? a.getX(v) : c === 1 ? a.getY(v) : c === 2 ? a.getZ(v) : a.getW(v);
+        }
+      }
+    }
+    if (indexed) {
+      const src = g.index;
+      for (let k = 0; k < src.count; k++) index[iOffset + k] = src.getX(k) + vOffset;
+      iOffset += src.count;
+    }
+    vOffset += count;
+  }
+  const merged = new THREE.BufferGeometry();
+  for (const n of names) merged.setAttribute(n, new THREE.BufferAttribute(out[n], first.attributes[n].itemSize));
+  if (index) merged.setIndex(new THREE.BufferAttribute(index, 1));
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+  return merged;
 }
 
 export function fitPackagedGroup(group, targetRadius) {
@@ -4904,7 +5161,10 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
           && typeof record.renderPackage.createInstanceSteps === 'function') {
         const instance = await driveLeg(record.renderPackage.createInstanceSteps({
           name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
-          residencyOwner: liveEntity,
+          // The package claim follows this render boundary's lifetime. `liveEntity` is a
+          // plain simulation record, so the renderer's detached-boundary sweep cannot release
+          // it when a drone/wreck is replaced during save restore or entity teardown.
+          residencyOwner: root,
           residencyRole: 'live-boundary',
         }));
         if (instance === COMMIT_ORPHANED) {
@@ -5010,8 +5270,9 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
         return { status: 'orphaned-before-swap' };
       }
       root.userData.authoredAssetState = 'compiling-pipelines';
+      let prepared;
       try {
-        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
+        prepared = await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
         // The freeze/canonicalize/pipeline-prepared subtree is still detached here —
@@ -5070,9 +5331,11 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
-      hideProceduralChildren(root);
+      // Keep the old picture visible while the mounted body is touched against the
+      // final owner and shadow state. The exact-target owner temporarily reveals
+      // its subject for the touch; ordinary presentation must not see it yet.
+      packaged.visible = false;
       root.add(packaged);
-      carryAdmittedOnceStamp(packaged, root);
       // The committed subtree's meshes carry three.js castShadow=false until a policy
       // traverse covers them; re-syncing here applies the live caster policy in this
       // continuation instead of at the next unrelated band flip.
@@ -5080,6 +5343,35 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
+      const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
+      if (prepared?.pipelines?.exactTargetDeferred === true) {
+        try {
+          if (typeof touch !== 'function') throw new Error('Packaged body exact-target touch unavailable');
+          const receipt = await touch(packaged);
+          if (!receipt || receipt.skipped || receipt.incomplete || receipt.contextLost || receipt.readinessTimedOut || receipt.ok === false) {
+            throw new Error('Packaged body exact-target touch did not complete');
+          }
+        } catch (error) {
+          root.remove(packaged);
+          releaseBoundaryResidency(renderer, root, 'packaged-body-touch-failed', mintedAdmissionOptions.admissionEpoch);
+          disposeDetachedPackagedGroup(packaged);
+          detachedCommitGroup = null;
+          throw error;
+        }
+      }
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || !root.parent || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        root.remove(packaged);
+        releaseBoundaryResidency(renderer, root, 'packaged-body-touch-stale', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
+        detachedCommitGroup = null;
+        return { status: 'stale-verdict-superseded' };
+      }
+      hideProceduralChildren(root);
+      packaged.visible = true;
+      carryAdmittedOnceStamp(packaged, root);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
@@ -5119,14 +5411,19 @@ function buildDrone(e) {
   const R = e.radius || 4;
   const pal = resolvePalette(e);
   const g = new THREE.Group();
-  const core = new THREE.Mesh(getGeometry('drone:core', () => new THREE.OctahedronGeometry(0.6, 0)), hullMaterial(pal));
+  // Core + both arms share one hull material: one cached unit-space merged body is a single
+  // draw instead of three. Only the emissive glow stays separate (different material).
+  const core = new THREE.Mesh(getGeometry('drone:body', () => {
+    const parts = [new THREE.OctahedronGeometry(0.6, 0)];
+    for (const sgn of [1, -1]) {
+      parts.push(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2).translate(0, 0, sgn * 0.5));
+    }
+    const flat = parts.map((part) => (part.index ? part.toNonIndexed() : part));
+    return mergeGeometries(flat, false) || flat[0];
+  }), hullMaterial(pal));
   core.scale.setScalar(R); g.add(core);
   const glow = new THREE.Mesh(getGeometry('drone:glow', () => new THREE.SphereGeometry(0.22, 8, 6)), emissiveMaterial(pal.accent, 2.2));
   glow.scale.setScalar(R); g.add(glow);
-  for (const sgn of [1, -1]) {
-    const arm = new THREE.Mesh(getGeometry('drone:arm', () => new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2)), hullMaterial(pal));
-    arm.position.set(0, 0, sgn * R * 0.5); arm.scale.setScalar(R); g.add(arm);
-  }
   g.userData.kind = 'drone';
   return attachPackagedBody(g, DRONE_PACKAGED_FILE, e);
 }
@@ -6831,7 +7128,92 @@ function buildBroodRemainVisual(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// SURVIVOR EJECTION POD — a mayday is a person, not cargo (inf-mayday-pod).
+// The causal eject loop (src/systems/survivorPod.js) used to render through the generic
+// sealed-cargo canister, so a 180-second oxygen mayday was visually just another freight
+// drop in the field. The lifeboat composes from survivorPodVisual.js decisions: a blunt
+// capsule with a viewport on the nose, a retro block on the tail, a foam crash collar, and
+// a distress lamp mast running the two-short-one-long group. The lamp's strobe is painted
+// per-frame by ordnanceMotionPresentation on the CLONED lamp material this factory hands
+// over via userData.survivorMaydayLamp (per-pod material, so pods never share a strobe —
+// the shared-material pose contract stays intact). userData carries the payload contract
+// intact so tether, scan and loot owners keep working unchanged.
+// ---------------------------------------------------------------------------------------------
+function buildSurvivorPod(e) {
+  const R = Math.max(1, (e && e.radius) || 5);
+  const g = new THREE.Group();
+  const shell = getMaterial('survivorpod:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x9aa4ac, roughness: 0.52, metalness: 0.38, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const collar = getMaterial('survivorpod:collar', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2e3438, roughness: 0.85, metalness: 0.2,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const retro = getMaterial('survivorpod:retro', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x46515a, roughness: 0.6, metalness: 0.55,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const viewport = getMaterial('survivorpod:viewport', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x1d2b30, emissive: new THREE.Color(MAYDAY_LAMP_CORE_COLOR), emissiveIntensity: 0.9,
+    roughness: 0.25, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const body = new THREE.Group();
+  body.name = 'SurvivorPodBody';
+  const add = (geoKey, geoBuild, material, name, pos) => {
+    const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+    m.name = name;
+    if (pos) m.position.set(pos[0], pos[1], pos[2]);
+    m.frustumCulled = false;
+    body.add(m);
+    return m;
+  };
+  // Blunt capsule along X — barrel, rounded nose, and the tail the retro block bolts to.
+  add('survivorpod:barrel', () => new THREE.CylinderGeometry(0.34, 0.36, 0.92, 10).rotateZ(Math.PI / 2),
+    shell, 'SurvivorPodBarrel', [0, 0, 0]);
+  add('survivorpod:nose', () => new THREE.SphereGeometry(0.34, 10, 8),
+    shell, 'SurvivorPodNose', [0.46, 0, 0]);
+  // The viewport: a ringed eye on the nose with a warm burn behind it — the lamp's steady
+    // read between strobe groups (maydayViewportBurn paints the cloned lamp, this glass is the
+    // always-lit promise that someone is alive in here).
+  add('survivorpod:viewportring', () => new THREE.TorusGeometry(0.16, 0.035, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodViewportRing', [0.62, 0, 0]);
+  add('survivorpod:viewportglass', () => new THREE.SphereGeometry(0.13, 8, 6),
+    viewport, 'SurvivorPodViewportGlass', [0.6, 0, 0]);
+  // Foam crash collar around the mid — a thrown lifeboat, not a machined cargo drum.
+  add('survivorpod:crashcollar', () => new THREE.TorusGeometry(0.4, 0.075, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodCrashCollar', [0, 0, 0]);
+  // Retro block on the tail: the burn that flung it clear, dead since.
+  add('survivorpod:retroblock', () => new THREE.BoxGeometry(0.22, 0.42, 0.42),
+    retro, 'SurvivorPodRetroBlock', [-0.52, 0, 0]);
+  // Distress lamp mast on top: warning red (the luminaire family's warning color), per-pod
+  // cloned so the two-short-one-long group phases per pod.
+  add('survivorpod:mast', () => new THREE.CylinderGeometry(0.025, 0.035, 0.3, 6),
+    retro, 'SurvivorPodLampMast', [-0.1, 0.49, 0]);
+  const lampMat = getMaterial('survivorpod:lamp', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2a0f0c, emissive: new THREE.Color(MAYDAY_LAMP_COLOR), emissiveIntensity: 1.2,
+    roughness: 0.4, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
+  add('survivorpod:lamp', () => new THREE.SphereGeometry(0.09, 8, 6),
+    lampMat, 'SurvivorPodDistressLamp', [-0.1, 0.66, 0]);
+  body.scale.setScalar(R);
+  g.add(body);
+  const causal = (e && e.data && e.data.survivorPodCausal) || null;
+  g.userData.survivorMaydayLamp = {
+    material: lampMat,
+    ejectedAt: causal ? causal.ejectedAt : (e && e.data && e.data.ejectedAt),
+    expireAt: causal ? causal.expireAt : (e && e.data && e.data.expireAt),
+    phase: (hashId(e && e.id) % 256) / 256,
+  };
+  g.userData.kind = 'payload';
+  g.userData.interactionKind = 'payload';
+  g.userData.visualLanguage = 'ejection-lifeboat';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // A pod from a killed crew is a lifeboat with a mayday to shout, never a canister.
+  if (isSurvivorPodEntity(e)) return buildSurvivorPod(e);
   // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
   // the silhouette is the hazard warning at chase distance.
   if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
@@ -6876,6 +7258,21 @@ function buildPayload(e) {
   );
   transponder.position.y = 0.47;
   g.add(transponder);
+  // inf-jettison-claim: a pod YOU jettisoned holds a brief claim window on its transponder —
+  // the sim stamps playerJettisonOrigin (only when the owner is this player) and embargoes
+  // the re-pickup. The lamp is a per-pod CLONE handed to the pose pass via userData (the
+  // mayday-lamp grammar) — the shared transponder material is never touched, so ordinary
+  // payloads keep one static light and pay nothing.
+  if (e && e.data && e.data.playerJettisonOrigin
+      && Number.isFinite(Number(e.data.pickupEmbargoUntil))) {
+    const claimMat = transponder.material.clone();
+    transponder.material = claimMat;
+    g.userData.jettisonClaimLamp = {
+      material: claimMat,
+      until: Number(e.data.pickupEmbargoUntil),
+      base: claimMat.emissiveIntensity,
+    };
+  }
   g.scale.setScalar(R);
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
@@ -6932,6 +7329,30 @@ function stampBuiltVisual(root) {
   return root;
 }
 
+// Reuse the existing nine-part Maw at its collision footprint. Keep scale on a parent:
+// installFaunaMotion owns/resets the child root scale on every breath.
+export function buildMawWorksiteVisual(entity) {
+  if (!isIntactMawWorksiteBody(entity)) return null;
+  const body = buildFaunaMesh(entity);
+  if (!body) return null;
+  const root = new THREE.Group();
+  root.name = 'SF_MawWorksite';
+  const collisionRadius = (live) => {
+    const radius = Number(live?.mawPresentationRadius ?? live?.physicsBody?.radius);
+    return Number.isFinite(radius) && radius > 0 ? radius : live.radius;
+  };
+  root.scale.setScalar(collisionRadius(entity) / 18);
+  root.add(body);
+  root.userData = { ...body.userData, mawWorksite: true };
+  root.userData.updateAuthoredMotion = (live, now, a11y, state) => {
+    root.scale.setScalar(collisionRadius(live) / 18);
+    body.userData.updateAuthoredMotion(live, now, a11y, state);
+    root.userData.faunaMotionRead = body.userData.faunaMotionRead;
+    root.userData.faunaDriveState = body.userData.faunaDriveState;
+  };
+  return root;
+}
+
 export function createVisualFactory({ renderer = null, readyPackagedBodies = null, planetDetailAdmission = null } = {}) {
   const readyBodies = readyPackagedBodies || (renderer
     ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
@@ -6940,8 +7361,15 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
     readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
+      if (isLanternWardBody(e)) return stampBuiltVisual(buildLanternWardVisual(e));
       try {
         if (!e) return null;
+        // This mission keeps asteroid physics for the existing massline impact contract.
+        // Reuse the authored vent-bowl; ordinary rock and ambient fauna keep their owners.
+        if (isIntactMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
+        if (ironKrakenWreckProfileFor(e)) return stampBuiltVisual(createIronKrakenWreckVisual(e));
+        // An articulated character owns its graph; static ship batching would freeze its arms.
+        if (ironKrakenProfileFor(e)) return stampBuiltVisual(createIronKrakenVisual(e));
         if (isBorrowedVoiceRing(e)) {
           const root = new THREE.Group(); root.name = 'BorrowedVoiceRingAuthoredPending'; return root;
         }
@@ -6998,7 +7426,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
           // traffic haulers are closed-form route visuals that must render as haulers, not as
           // player-cyan default kestrels — hence the neutral-team mule wrap.
-          case 'beacon': return stampBuiltVisual(buildBeacon(e));
+          case 'beacon': return stampBuiltVisual(buildSwarmFortifyVisual(e) || buildBeacon(e));
           case 'freighter': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(laneTrafficVisualEntity(e), resolvePalette(laneTrafficVisualEntity(e)))));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return stampBuiltVisual(buildFallback(e));

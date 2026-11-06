@@ -14,6 +14,7 @@ import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/confli
 import { SECTORS, stationGrowthLadderFor } from '../data/sectors.js';
 import { KillCause, compactKillCausality } from '../combat/killCausality.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { activeTreatyBetween, treatyForFlag } from '../data/factionTreaties.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
 const TIERS = [
@@ -119,6 +120,16 @@ function spilloverWeight(a, b) {
   const mb = META_BY_ID[b];
   if (mb && mb.relations && typeof mb.relations[a] === 'number') return mb.relations[a];
   return 0;
+}
+
+/**
+ * The live relation weight: an unlocked treaty (data/factionTreaties.js, flag written by the
+ * story reward that carries it) replaces the pair's authored rivalry with its own share.
+ */
+export function relationWeightFor(state, a, b) {
+  if (a === b) return 0;
+  const treaty = activeTreatyBetween(state, a, b);
+  return treaty ? treaty.weight : spilloverWeight(a, b);
 }
 
 /** First tier (high→low) whose `min` threshold is satisfied by `rep`. */
@@ -335,6 +346,21 @@ export const factions = {
     bus.on('faction:repDelta', ({ factionId, delta, reason }) => {
       this.applyRep(factionId, delta, reason || 'event');
     });
+    // A recovered treaty's unlock flag changes the pair's spillover (relationWeightFor). Say so
+    // once, at the moment it starts counting, so the player knows why the rivalry stopped biting.
+    bus.on('uniqueWreck:storyRewardGranted', (p) => {
+      const treaty = p && typeof p.unlockFlag === 'string' ? treatyForFlag(p.unlockFlag) : null;
+      if (!treaty) return;
+      this.bus.emit('news:publish', {
+        text: treaty.news,
+        kind: 'faction_treaty',
+        sourceRef: `faction:treaty:${treaty.id}`,
+        factionId: treaty.factions[0],
+        factionIds: [...treaty.factions],
+        treatyId: treaty.id,
+        channelId: 'news',
+      });
+    });
     // Narrative trade posture (E1 first-contact consequences: open_early / cautious / grudge).
     // The record is the durable faction-owned truth; story flags mirror it for narrative reads.
     bus.on('faction:tradePosture', (p) => {
@@ -409,7 +435,7 @@ export const factions = {
         // Rivals of the victim approve once, witness or not. A later clear does not pay it again.
         for (const other of FACTION_IDS) {
           if (other === victim) continue;
-          if (spilloverWeight(victim, other) < 0) {
+          if (relationWeightFor(state, victim, other) < 0) {
             this.applyRep(other, ENEMY_KILL_BONUS, 'kill_faction_enemy_ship');
           }
         }
@@ -633,7 +659,7 @@ export const factions = {
     const state = this.state || _state;
     for (const other of FACTION_IDS) {
       if (other === srcId) continue;
-      const w = spilloverWeight(srcId, other);
+      const w = relationWeightFor(state, srcId, other);
       if (!w) continue;
       let sd = Math.round(delta * w);
       if (sd === 0) continue;
@@ -865,8 +891,12 @@ export const factions = {
     if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
       const previousOwner = state.world.sectors[sectorId].owner;
       c.flipSequence = Math.max(0, Math.floor(Number(c.flipSequence) || 0)) + 1;
+      // playerLeanMag rides the flip receipt: the lean magnitude at the moment the front turned,
+      // the same fact the rep swing below credits. Readers (the ship's ledger war page) use it to
+      // witness a front the PLAYER pressed; a pure NPC-power flip files under nobody.
       c.lastFlip = { pairKey: key, sectorId, previousOwner, newOwner: winner,
-        t: Number(state.simTime) || 0, flipId: `front:${key}:${c.flipSequence}` };
+        t: Number(state.simTime) || 0, flipId: `front:${key}:${c.flipSequence}`,
+        playerLeanMag: Math.abs(Number(c.playerLean) || 0) };
       state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
       if (this.bus) {
         this.bus.emit('conflict:flip', { ...c.lastFlip });
@@ -1066,6 +1096,15 @@ export const factions = {
     if (!data) return;
     state.factions = data.factions || {};
     state.conflicts = data.conflicts || {};
+    // Migration (inf-war-ledger-page): lastFlip.playerLeanMag is a flip-time stamp a save written
+    // before it simply lacks — that stays absent, and a corrupted value heals to absent, so a
+    // war page is never filed from a lean nobody witnessed.
+    for (const record of Object.values(state.conflicts)) {
+      if (record && record.lastFlip
+        && !Number.isFinite(Number(record.lastFlip.playerLeanMag))) {
+        delete record.lastFlip.playerLeanMag;
+      }
+    }
     // Heal any missing fields / new factions added since the save was written.
     for (const id of FACTION_IDS) ensureFaction(state, id);
   },

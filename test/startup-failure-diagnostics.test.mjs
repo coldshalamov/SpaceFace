@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { startupParseOnlySource } from '../src/ui/bootStartupFailure.js';
 import { captureStartupFailureDiagnostics as capture, observeStartupFailureEvents as observe } from '../scripts/lib/startup-failure-diagnostics.mjs';
 
 function busFixture() {
@@ -20,6 +21,17 @@ test('missing state yields bounded JSON with explicit unavailable fields', () =>
     assert.deepEqual(snapshot.cookLedger, []);
     assert.doesNotThrow(() => JSON.stringify(snapshot));
   }
+});
+
+test('startup parse probe resolves a guaranteed missing dependency before candidate evaluation', async () => {
+  delete globalThis.__startupProbeSideEffect;
+  const source = startupParseOnlySource('globalThis.__startupProbeSideEffect = true;');
+  const url = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+  await assert.rejects(import(url), (error) => !(error instanceof SyntaxError));
+  assert.equal(globalThis.__startupProbeSideEffect, undefined);
+
+  const malformed = `data:text/javascript;base64,${Buffer.from(startupParseOnlySource('const =')).toString('base64')}`;
+  await assert.rejects(import(malformed), SyntaxError);
 });
 
 test('capture retains actual gate ownership, phase and ledger scalar timing', () => {

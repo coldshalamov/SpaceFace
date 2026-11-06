@@ -40,6 +40,7 @@
 import { settle, reducedMotion } from './kit/motion.js';
 import { arcGauge } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
+import { setLocalizedTextTemplate } from '../localization/domBridge.js';
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
 const EXPIRY_GRACE_S = 2.5;    // display-expire grace after a passed deadline (producer may still resolve)
@@ -57,9 +58,19 @@ export function planLadder(entries) {
       const da = finiteOr(a.deadlineAt, finiteOr(a.ttlAt, Infinity));
       const db = finiteOr(b.deadlineAt, finiteOr(b.ttlAt, Infinity));
       if (da !== db) return da - db;
+      // When equally urgent, put a live player choice ahead of passive information. The latter
+      // remains reachable as a chip when responsive layouts reserve one full card for the action.
+      const aActionable = (a.choices || []).some((choice) => !choice.disabled);
+      const bActionable = (b.choices || []).some((choice) => !choice.disabled);
+      if (aActionable !== bActionable) return aActionable ? -1 : 1;
       return a.seq - b.seq;
     })
     .map((e) => e.id);
+}
+
+/** Keep one full decision in flight; other offers remain keyboard- and pointer-reachable chips. */
+export function fullSlotsForViewport(_width = Infinity, _height = Infinity) {
+  return 1;
 }
 
 /** Digit routing for the whole deck. Returns { type:'choose', id, choiceId } when the key maps to
@@ -68,10 +79,10 @@ export function planLadder(entries) {
  *  keystroke never means two things at once. */
 /** Digit routing for the whole deck. Digits are GLOBAL display-line slots: every non-disabled
  *  choice button on the ladder claims its printed keycap in display order (raised card first,
- *  then the second full frame), and collapsed chips claim the digits after all visible choices —
+ *  then other visible full frames), and collapsed chips claim the digits after all visible choices —
  *  so a printed key never means two things and never means nothing. Returns
  *  { type:'choose', id, choiceId } | { type:'raise', id } | null. */
-export function routeDigit(entries, raisedId, key) {
+export function routeDigit(entries, raisedId, key, fullSlots = FULL_SLOTS) {
   const index = digitIndex(key);
   if (index < 0) return null;
   const order = planLadder(entries);
@@ -81,7 +92,8 @@ export function routeDigit(entries, raisedId, key) {
   const line = [raised, ...order.filter((id) => id !== raised)];
 
   let slot = 0;
-  for (const id of line.slice(0, FULL_SLOTS)) {
+  const visibleSlots = Math.max(1, Math.min(FULL_SLOTS, Math.floor(Number(fullSlots) || FULL_SLOTS)));
+  for (const id of line.slice(0, visibleSlots)) {
     const e = entries.find((x) => x.id === id);
     for (const c of (e && e.choices || [])) {
       if (c.disabled) continue;
@@ -89,7 +101,7 @@ export function routeDigit(entries, raisedId, key) {
       slot += 1;
     }
   }
-  const chips = line.slice(FULL_SLOTS);
+  const chips = line.slice(visibleSlots);
   const chipIndex = index - slot;
   if (chipIndex >= 0 && chipIndex < chips.length) return { type: 'raise', id: chips[chipIndex] };
   return null;
@@ -116,19 +128,20 @@ export function digitIndex(key) {
  *  what answer each borrowed socket should show, in the same order routeDigit() walks them —
  *  visible choices of the full frames first, then collapsed chips as raises. Returns null when no
  *  digit routes anywhere, so the caller releases rather than claims nothing. */
-export function planSlotClaim(entries, raisedId) {
+export function planSlotClaim(entries, raisedId, fullSlots = FULL_SLOTS) {
   const order = planLadder(entries);
   if (!order.length) return null;
   const raised = order.includes(raisedId) ? raisedId : order[0];
   const line = [raised, ...order.filter((id) => id !== raised)];
   const answers = [];
-  for (const id of line.slice(0, FULL_SLOTS)) {
+  const visibleSlots = Math.max(1, Math.min(FULL_SLOTS, Math.floor(Number(fullSlots) || FULL_SLOTS)));
+  for (const id of line.slice(0, visibleSlots)) {
     const e = entries.find((x) => x.id === id);
     for (const c of (e && e.choices || [])) {
       if (!c.disabled) answers.push(c.label || c.id);
     }
   }
-  for (const id of line.slice(FULL_SLOTS)) {
+  for (const id of line.slice(visibleSlots)) {
     const e = entries.find((x) => x.id === id);
     answers.push('RAISE ' + ((e && e.headline) || id));
   }
@@ -182,6 +195,7 @@ export function createPromptDeck(ctx = {}) {
   let destroyed = false;
   let raisedId = null;
   let raisedExplicit = false;
+  let currentFullSlots = FULL_SLOTS;
   let lastLiveText = '';
   // Power-rail claim signature ('' = released). While the deck owns Digit1-N for answers/raises,
   // the rail is told so its sockets show the answers instead of powers that will not fire.
@@ -201,6 +215,7 @@ export function createPromptDeck(ctx = {}) {
   }
   function simNow() { return Number(state && state.simTime) || 0; }
   function inFlight() { return state && state.mode === 'flight' && !(state.ui && state.ui.docked); }
+  function visibleEntries() { return [...entries.values()].filter((entry) => entry.visible !== false); }
 
   // Tell the power rail which digit sockets the deck is borrowing, in the same order routeDigit()
   // walks them: visible choices of the full frames first, then collapsed chips as raises. The
@@ -213,11 +228,12 @@ export function createPromptDeck(ctx = {}) {
     let sig = '';
     if (active) {
       const plan = planSlotClaim(
-        [...entries.values()].map((e) => ({
+        visibleEntries().map((e) => ({
           id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq,
           choices: e.spec.choices, headline: e.spec.headline,
         })),
         raisedId,
+        currentFullSlots,
       );
       if (plan) {
         // Wall-clock expiry for the rail's stale-claim drop: the soonest producer deadline plus
@@ -397,6 +413,7 @@ export function createPromptDeck(ctx = {}) {
     if (nextText !== entry.lastCountdown) {
       entry.lastCountdown = nextText;
       setText(entry.detailEl, nextText);
+      setLocalizedTextTemplate(entry.detailEl, spec.detailCopy, next ? (spec.detail ? ' ' : '') + next : '');
       entry.detailEl.classList.toggle('sf-prompt__detail--urgent',
         hasLiveChoices && Number.isFinite(spec.deadlineAt) && spec.deadlineAt - simNow() <= COUNTDOWN_URGENT_S);
     }
@@ -448,8 +465,11 @@ export function createPromptDeck(ctx = {}) {
   // ── layout ─────────────────────────────────────────────────────────────────────────────────
   function layout() {
     if (destroyed) return;
-    const order = planLadder([...entries.values()].map((e) => ({
+    const view = doc.defaultView;
+    currentFullSlots = fullSlotsForViewport(view?.innerWidth ?? Infinity, view?.innerHeight ?? Infinity);
+    const order = planLadder(visibleEntries().map((e) => ({
       id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq,
+      choices: e.spec.choices,
     })));
     if (!order.length) {
       raisedId = null;
@@ -464,18 +484,18 @@ export function createPromptDeck(ctx = {}) {
     // Deadline urgency owns the order unless the PLAYER explicitly raised an entry (chip click or
     // its digit); a stale explicit raise falls back to ladder order. The deck never lets the mere
     // fact of being first-offered keep a card above a more urgent one.
-    const raised = raisedExplicit && raisedId && order.includes(raisedId) ? raisedId : order[0];
+    const explicit = raisedExplicit && raisedId && order.includes(raisedId);
+    if (!explicit) raisedExplicit = false;
+    const raised = explicit ? raisedId : order[0];
     const line = [raised, ...order.filter((id) => id !== raised)];
     raisedId = raised;
-    raisedExplicit = false;
 
-    const full = line.slice(0, FULL_SLOTS);
-    const chips = line.slice(FULL_SLOTS);
+    const full = line.slice(0, currentFullSlots);
+    const chips = line.slice(currentFullSlots);
 
     // Measurement is reads-only and must run BEFORE the mount writes below; the signature skips it
     // entirely when line, deck visibility, law-panel presence/hiddenness and viewport are unchanged.
     const lawPanel = doc.getElementById('sf-sector-law');
-    const view = doc.defaultView;
     const sig = line.join('|') + '#' + (root.hidden ? 'h' : 'v')
       + '#' + (lawPanel ? (lawPanel.hidden ? 'x' : 'l') : '-')
       + '#' + (view ? view.innerWidth + 'x' + view.innerHeight : '');
@@ -596,6 +616,7 @@ export function createPromptDeck(ctx = {}) {
       syncClaim();
       return;
     }
+    if (!visibleEntries().length) { root.hidden = true; syncClaim(); return; }
     if (entries.size && root.hidden) {
       if (modalOpen()) { syncClaim(); return; }
       layout();
@@ -620,8 +641,8 @@ export function createPromptDeck(ctx = {}) {
       return;
     }
     const route = routeDigit(
-      [...entries.values()].map((e) => ({ id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: 0, choices: e.spec.choices })),
-      raisedId, ev.key != null ? ev.key : ev.code,
+      visibleEntries().map((e) => ({ id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq, choices: e.spec.choices })),
+      raisedId, ev.key != null ? ev.key : ev.code, currentFullSlots,
     );
     if (!route) return;
     if (typeof ev.preventDefault === 'function') ev.preventDefault();
@@ -629,6 +650,10 @@ export function createPromptDeck(ctx = {}) {
     else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
     if (route.type === 'choose') choose(route.id, route.choiceId, 'keyboard');
     else raise(route.id);
+  }
+
+  function onViewportResize() {
+    layout();
   }
 
   /** Gamepad, polled once from ui/input.js beside the confirm handling. Returns true when the
@@ -680,7 +705,7 @@ export function createPromptDeck(ctx = {}) {
   function choose(id, choiceId, source) {
     if (destroyed || fenced()) return false;
     const entry = entries.get(id);
-    if (!entry) return false;
+    if (!entry || entry.visible === false) return false;
     const choice = (entry.spec.choices || []).find((c) => c.id === choiceId);
     if (!choice || choice.disabled) return false;
     if (typeof entry.spec.onChoose === 'function') entry.spec.onChoose(choiceId, source || 'deck');
@@ -688,7 +713,7 @@ export function createPromptDeck(ctx = {}) {
   }
 
   function raise(id) {
-    if (!entries.has(id)) return false;
+    if (!entries.has(id) || entries.get(id).visible === false) return false;
     raisedId = id;
     raisedExplicit = true;
     layout();
@@ -701,13 +726,20 @@ export function createPromptDeck(ctx = {}) {
     const normalized = normalizeSpec(spec);
     let entry = entries.get(normalized.id);
     const isNew = !entry;
+    // A deliberate raise survives ordinary refreshes. A newly arriving, earlier real deadline
+    // may still interrupt it so the player has a chance to react to the new opportunity.
+    if (isNew && raisedExplicit) {
+      const currentDeadline = finiteOr(entries.get(raisedId)?.spec.deadlineAt, Infinity);
+      const incomingDeadline = finiteOr(normalized.deadlineAt, Infinity);
+      if (incomingDeadline < currentDeadline) raisedExplicit = false;
+    }
     if (entry) {
       entry.spec = { ...entry.spec, ...normalized };
       renderFrame(entry);
     } else {
       killLeaving(normalized.id); // a still-mounted exit frame for this id makes way synchronously
       entry = {
-        spec: normalized,
+        spec: normalized, visible: true,
         seq: ++seqCounter,
         frameEl: null, chipEl: null, highlightIndex: null, lastCountdown: null,
         arcDeadlineAt: null, arcSpan: 0, clockShown: null, choiceSig: null,
@@ -746,6 +778,7 @@ export function createPromptDeck(ctx = {}) {
       sender: spec.sender != null ? String(spec.sender) : '',
       headline: spec.headline != null ? String(spec.headline) : '',
       detail: spec.detail != null ? String(spec.detail) : '',
+      detailCopy: spec.detailCopy || null,
       statusFlag: spec.statusFlag != null ? String(spec.statusFlag) : null,
       choices,
       deadlineAt: finiteOr(spec.deadlineAt, null),
@@ -763,6 +796,14 @@ export function createPromptDeck(ctx = {}) {
     if (!entry) return false;
     entry.spec = { ...entry.spec, ...normalizeSpec({ ...entry.spec, ...patch, id: entry.spec.id }) };
     renderFrame(entry);
+    layout();
+    return true;
+  }
+
+  function setDecisionVisible(id, visible) {
+    const entry = entries.get(String(id));
+    if (!entry || entry.visible === !!visible) return false;
+    entry.visible = !!visible;
     layout();
     return true;
   }
@@ -844,6 +885,7 @@ export function createPromptDeck(ctx = {}) {
     destroyed = true;
     syncClaim(); // release the rail claim — layout() no-ops once destroyed, so it cannot reach it
     doc.removeEventListener('keydown', onKeyDown, true);
+    doc.defaultView?.removeEventListener?.('resize', onViewportResize);
     clearAll();
     root.remove();
     live.remove();
@@ -851,6 +893,7 @@ export function createPromptDeck(ctx = {}) {
   }
 
   doc.addEventListener('keydown', onKeyDown, true);
+  doc.defaultView?.addEventListener?.('resize', onViewportResize, { passive: true });
 
   // ONE lifecycle owner for the whole family. The old cards each subscribed to their own subset
   // of these and drifted; on any of these transitions every flight decision is void — producers
@@ -865,7 +908,7 @@ export function createPromptDeck(ctx = {}) {
 
   const api = {
     el: root,
-    offerDecision, updateDecision, resolveDecision, hasDecision, clearAll,
+    offerDecision, updateDecision, setDecisionVisible, resolveDecision, hasDecision, clearAll,
     choose, raise, tick, gamepadCapture, gamepadNav,
     get size() { return entries.size; },
     get raisedId() { return raisedId; },

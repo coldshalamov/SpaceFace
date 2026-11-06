@@ -144,7 +144,7 @@ function makeBus() {
   const events = [];
   return {
     events,
-    on() {},
+    on() { return () => {}; },
     emit(type, payload) { events.push({ type, payload }); },
   };
 }

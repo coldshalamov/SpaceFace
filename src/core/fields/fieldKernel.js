@@ -92,7 +92,12 @@ export function normalizeField(spec = {}) {
     sourceId: spec.sourceId != null ? spec.sourceId : null,
     ownerId: spec.ownerId != null ? spec.ownerId : null,
     team: spec.team != null ? spec.team : null,
-    filters: spec.filters && typeof spec.filters === 'object' ? { ...spec.filters } : null,
+    filters: spec.filters && typeof spec.filters === 'object' ? {
+      ...spec.filters,
+      ...(Array.isArray(spec.filters.excludeIds) ? { excludeIds: [...spec.filters.excludeIds] } : {}),
+      ...(Array.isArray(spec.filters.excludeTeams) ? { excludeTeams: [...spec.filters.excludeTeams] } : {}),
+      ...(Array.isArray(spec.filters.excludeOwnerIds) ? { excludeOwnerIds: [...spec.filters.excludeOwnerIds] } : {}),
+    } : null,
     createdAt: finite(spec.createdAt, 0),
     expireAt: spec.durationS === Infinity ? Infinity : finite(spec.createdAt, 0) + Math.max(0, finite(spec.durationS, 0)),
     // PQ-147.02 — hitch lock (Mass Seed). Zero unless a body is latched to sourceId.
@@ -180,7 +185,15 @@ export function fieldAffectsBody(field, bodyProfile) {
   const filters = field.filters;
   if (filters) {
     if (Array.isArray(filters.types) && !filters.types.includes(bodyProfile.type)) return false;
+    if (filters.includeId != null && bodyProfile.id !== filters.includeId) return false;
+    if (Number.isSafeInteger(filters.includeGeneration)
+      && bodyProfile.occupantGeneration !== filters.includeGeneration) return false;
     if (filters.excludeId != null && bodyProfile.id === filters.excludeId) return false;
+    if (Array.isArray(filters.excludeIds) && filters.excludeIds.includes(bodyProfile.id)) return false;
+    if (Array.isArray(filters.excludeTeams) && bodyProfile.team != null
+      && filters.excludeTeams.some((team) => String(team) === String(bodyProfile.team))) return false;
+    if (Array.isArray(filters.excludeOwnerIds) && bodyProfile.ownerId != null
+      && filters.excludeOwnerIds.some((ownerId) => String(ownerId) === String(bodyProfile.ownerId))) return false;
   }
   return true;
 }

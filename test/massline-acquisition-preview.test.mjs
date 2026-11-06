@@ -6,6 +6,7 @@ import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { createBus } from '../src/core/eventBus.js';
 import { masslineHud } from '../src/ui/masslineHud.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
 
 const player = () => ({
   id: 1,
@@ -310,6 +311,73 @@ test('no Massline acquisition receipt survives a save-load or new-game boundary'
 // therefore (grammar rule 2) a state that does not exist. Showing a world-anchored MARK on the
 // candidate plus a caption beside it is the intended change; it needs no connector precisely
 // because the mark sits on the target.
+test('worker acquisition reaches the main HUD and clears when its owner resets', () => {
+  const h = createRuntimeHarness();
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.state.masslineAcquisition.selected.targetId, h.anchor.id);
+  h.state.masslineAcquisition.privateScratch = { huge: 'unused'.repeat(5000) };
+  const differ = createDomainDiffer(), domains = new Map();
+  const sync = (tick) => {
+    const updates = differ.diff(h.state, tick).updates;
+    for (const update of updates) applyDomainPathUpdate(domains, structuredClone(update), new Set());
+    return updates.find(update => update.segs.join('.') === 'masslineAcquisition');
+  };
+  const initial = sync(1);
+  assert.ok(initial && initial.bytes < 2048, 'the wire contains a bounded preview, not acquisition scratch');
+  const mirrored = domains.get('masslineAcquisition');
+  assert.notEqual(mirrored, h.state.masslineAcquisition);
+  assert.equal(mirrored.selected.targetId, h.anchor.id);
+  assert.equal(mirrored.selected.status, h.state.masslineAcquisition.selected.status);
+  assert.equal(mirrored.alternatives, undefined);
+  assert.equal(mirrored.privateScratch, undefined);
+
+  const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document, previousWindow = globalThis.window;
+  const document = fakeDocument();
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 1440, innerHeight: 900 };
+  MASSLINE2_FLAGS.enabled = true;
+  let hud;
+  try {
+    const main = { ...h.state, massline2: {}, masslineAcquisition: mirrored,
+      settings: { video: { motionReduce: true }, accessibility: { motionPreference: 'reduce' } } };
+    hud = Object.assign({}, masslineHud);
+    hud.init({ state: main, helpers: { worldToScreen: ({ x, z }) => ({ x: x + 300, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, main);
+    const mark = findByClass(document.getElementById('sf-ml2'), 'ml2-preview-mark');
+    assert.equal(mark.style.display, 'block', 'the projected owner receipt drives the actual HUD mark');
+    h.anchor.alive = false;
+    h.state.tick += 8;
+    h.state.simTime += 0.2;
+    h.system.update(1 / 60, h.state);
+    sync(2);
+    assert.notEqual(domains.get('masslineAcquisition')?.selected?.targetId, h.anchor.id,
+      'target loss replaces the old candidate');
+    h.bus.emit('save:loaded', {});
+    sync(3);
+    main.masslineAcquisition = domains.get('masslineAcquisition');
+    assert.equal(main.masslineAcquisition, null, 'owner reset clears the mirrored receipt');
+    hud.update(1 / 60, main);
+    assert.equal(mark.style.display, 'none', 'reset removes the stale mark');
+    h.anchor.alive = true;
+    h.system.update(1 / 60, h.state);
+    sync(4);
+    assert.equal(domains.get('masslineAcquisition').selected.targetId, h.anchor.id);
+    h.bus.emit('game:new', {});
+    sync(5);
+    assert.equal(domains.get('masslineAcquisition'), null, 'new game clears the prior owner preview');
+    h.system.update(1 / 60, h.state);
+    sync(6);
+    delete h.state.masslineAcquisition;
+    sync(7);
+    assert.equal(domains.get('masslineAcquisition'), null, 'a replaced owner without the root clears the old mirror');
+  } finally {
+    hud?.destroy();
+    MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});
+
 test('the acquisition preview marks the candidate itself and never draws a cable-like line', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled;
   const previousDocument = globalThis.document;
@@ -362,16 +430,19 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     assert.equal(mark.style.display, 'block',
       'the mark must be drawn ON the candidate the Massline will grab');
     // PQ: the latch state moved ONTO the mark (3a97031a8 "Show the Massline latch as a shape on
-    // the target"): a valid target says CAN as the open-diamond shape plus the mark's accessible
-    // label, and the caption stays quiet — a sentence on the bracket is reserved for denied reads.
+    // the target"): a valid target says CAN as the open-diamond shape, and F4 gave the mark's
+    // accessible label the mass verdict — assistive tech hears what the swing will feel like,
+    // not a bare CAN. The caption stays quiet; a sentence on the bracket is for denied reads.
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'a valid target shows the open-diamond CAN shape on the mark');
-    assert.equal(mark.attributes['aria-label'], 'CAN',
-      'the mark must still say CAN to assistive tech');
+    assert.equal(mark.attributes['aria-label'], "MASS 5200 · WON'T BUDGE",
+      'the mark must still speak an honest label to assistive tech');
     assert.equal(preview.attributes['data-bracket-state'], 'CAN',
       'the bracket state must be machine-readable before the press');
-    assert.equal(preview.style.display, 'none',
-      'a valid target carries no caption sentence — the word would repeat the shape');
+    assert.equal(preview.style.display, 'block',
+      'a latchable body with mass prints the swing verdict on the caption line');
+    assert.equal(preview.textContent, "MASS 5200 · WON'T BUDGE",
+      'the caption is the same mass verdict the mark speaks');
 
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');
@@ -829,3 +900,49 @@ function findByClass(root, className) {
   }
   return null;
 }
+
+test('cached HUD geometry moves the mass words without moving the world mark or sampling DOM each frame', () => {
+  const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document,
+    previousWindow = globalThis.window;
+  const document = fakeDocument();
+  document.documentElement = { dataset: { sfMobileFlight: '1' } };
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 390, innerHeight: 664 };
+  MASSLINE2_FLAGS.enabled = true;
+  const p = player(), body = target(20, 'asteroid', 150, 90, { mass: 12 });
+  const state = { mode: 'flight', playerId: p.id, player: { tether: { active: false } },
+    entities: new Map([[p.id, p], [body.id, body]]), massline2: {},
+    settings: { video: { motionReduce: true } },
+    masslineAcquisition: { id: 'layout', selected: { targetId: body.id, status: 'ready' } } };
+  let obstacles = Object.freeze([]), measurements = 0;
+  const hud = Object.assign({}, masslineHud);
+  try {
+    hud.init({ state, registry: { get: () => ({ hud: { getFlightTextObstacles: () => obstacles } }) },
+      helpers: { worldToScreen: ({ x, z }) => ({ x: x + 150, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, state);
+    const root = document.getElementById('sf-ml2'), mark = findByClass(root, 'ml2-preview-mark'),
+      words = findByClass(root, 'ml2-preview');
+    const anchored = mark.style.transform, oldPosition = words.style.transform;
+    words.getBoundingClientRect = () => { measurements++; return { width: 140, height: 30 }; };
+    const [x, y] = [...oldPosition.matchAll(/(-?\d+)px/g)].map(match => Number(match[1]));
+    obstacles = Object.freeze([{ owner: 'radar', left: x - 4, top: y - 4, width: 168, height: 46 }]);
+    hud.update(1 / 60, state);
+    assert.notEqual(words.style.transform, oldPosition, 'a changed HUD snapshot repaints even in a stationary world');
+    assert.equal(mark.style.transform, anchored);
+    assert.equal(words.style.display, 'block');
+    assert.match(words.textContent, /MASS 12/);
+    const measured = measurements;
+    hud.update(1 / 60, state);
+    assert.equal(measurements, measured, 'an unchanged frame does not measure the label again');
+    obstacles = Object.freeze([{ owner: 'panel', left: 0, top: 0, width: 390, height: 664 }]);
+    hud.update(1 / 60, state);
+    assert.equal(words.style.display, 'none');
+    assert.equal(mark.style.display, 'block');
+    assert.match(mark.attributes['aria-label'], /MASS 12/, 'the anchored mark retains its accessible mass read');
+    assert.equal(mark.style.transform, anchored);
+  } finally {
+    hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});

@@ -33,6 +33,26 @@ let defaultDecoderModules = null;
 const VERIFIED_METADATA_CACHE_MAX = 512;
 const VERIFIED_METADATA_CACHE_MAX_BYTES = 16 * 1024 * 1024;
 
+function createPackageEvictionHandler(entry, loaded, cache, contentHash, assetId) {
+  return function onEvict() {
+    entry.evicted = true;
+    loaded.markEvicted();
+    if (cache.get(contentHash) === entry) cache.delete(contentHash);
+    // A content hash can have multiple decoded generations in separate loaders. Retire
+    // only the manifest registered by this residency generation; a hash-only drop could
+    // erase a still-mounted sibling package during preview/runtime teardown.
+    if (entry.detachManifest) {
+      dropPackageDetachManifest(contentHash, entry.detachManifest);
+    }
+    // Once decode settles, the LoadedRenderPackage may keep its lifecycle entry alive for the
+    // whole resident generation. The decode-only admission must not keep an abort reason and its
+    // ErrorStackData scope on that long-lived entry. Pending decodes still abort on eviction.
+    if (entry.admission) {
+      entry.admission.abort(new Error(`Render package ${assetId} was evicted mid-decode.`));
+    }
+  };
+}
+
 export function createRenderPackageLoader(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const decodeGlb = typeof options.loadGlb === 'function'
@@ -294,6 +314,16 @@ export function createRenderPackageLoader(options = {}) {
         ? [decodeConsumerActive]
         : [],
     };
+    // The decoder may report progress after the cache-facing admission has settled on
+    // cancellation. Keep only the callback itself, and release it with the task scope below.
+    let reportDecodeProgress = typeof loadOptions.onFetchProgress === 'function'
+      ? loadOptions.onFetchProgress
+      : null;
+    // Keep decode-time callbacks on a local admission reference. The promise exposed to the
+    // package cache may settle on cancellation before an underlying GLB decode does; those late
+    // callbacks still need a valid admission to no-op/throw the original cancellation reason.
+    // `entry.admission` is detached at settlement so a completed package does not retain it.
+    let decodeAdmission = entry.admission;
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
       decodeWarm,
@@ -303,8 +333,9 @@ export function createRenderPackageLoader(options = {}) {
       .then(() => {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
         return decodeGlb(renderUrl, metadata, () => {
-          entry.admission.touch();
-          if (typeof loadOptions.onFetchProgress === 'function') loadOptions.onFetchProgress();
+          decodeAdmission?.touch();
+          const reportProgress = reportDecodeProgress;
+          if (reportProgress) reportProgress();
         });
       })
       // Package decodes resolve in clusters exactly like source-GLB parses, and this path is the
@@ -333,9 +364,17 @@ export function createRenderPackageLoader(options = {}) {
         return preparePackageTail(decoded);
       }, activeDecodeClass(), entry.promise));
 
+    // The cache-facing wait can reject on cancellation while decodeWork continues. Keep the
+    // admission only until that underlying work (including its compile tail) actually settles,
+    // then clear the shared closure binding so a retained package callback cannot pin it.
+    const decodeCompletion = decodeWork.finally(() => {
+      decodeAdmission = null;
+      reportDecodeProgress = null;
+    });
+
   function preparePackageTail(decoded) {
     return (async () => {
-        try { entry.admission.assertActive(); } catch (error) {
+        try { decodeAdmission.assertActive(); } catch (error) {
           disposeDecodedResources(decoded);
           throw error;
         }
@@ -361,7 +400,7 @@ export function createRenderPackageLoader(options = {}) {
           throw error;
         }
         try {
-          entry.admission.assertActive();
+          decodeAdmission.assertActive();
         } catch (error) {
           disposeDecodedResources(decoded, plan.resources);
           throw error;
@@ -371,7 +410,7 @@ export function createRenderPackageLoader(options = {}) {
           disposeDecodedResources(decoded, plan.resources);
           if (entry.request) entry.request.cancel('superseded-old-generation');
           entry.request = null;
-          entry.admission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
+          decodeAdmission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
           throw new Error(`Render package decode for ${metadata.assetId} was superseded.`);
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
@@ -391,18 +430,9 @@ export function createRenderPackageLoader(options = {}) {
               assetId: metadata.assetId,
               contentHash,
             },
-            onEvict() {
-              entry.evicted = true;
-              loaded.markEvicted();
-              if (cache.get(contentHash) === entry) cache.delete(contentHash);
-              // A content hash can have multiple decoded generations in separate loaders. Retire
-              // only the manifest registered by this residency generation; a hash-only drop could
-              // erase a still-mounted sibling package during preview/runtime teardown.
-              if (entry.detachManifest) {
-                dropPackageDetachManifest(contentHash, entry.detachManifest);
-              }
-              entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
-            },
+            // Keep this callback outside preparePackageTail(decoded)'s activation so its
+            // persistent residency record cannot retain the completed GLTF parser/binary.
+            onEvict: createPackageEvictionHandler(entry, loaded, cache, contentHash, metadata.assetId),
           });
         } catch (error) {
           disposeDecodedResources(decoded, loaded.resources);
@@ -416,7 +446,7 @@ export function createRenderPackageLoader(options = {}) {
         // already been evicted and its admission aborted. Do not build a detach manifest for
         // that dead generation (it would otherwise outlive the registry entry as an orphan).
         try {
-          entry.admission.assertActive();
+          decodeAdmission.assertActive();
           if (!retained || entry.evicted || cache.get(contentHash) !== entry) {
             throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
           }
@@ -430,16 +460,19 @@ export function createRenderPackageLoader(options = {}) {
         // opportunistic: a manifest failure must not fail an otherwise-good package load.
         try {
           entry.detachManifest = createPackageDetachManifest(loaded, {
-            redecode: () => decodeGlb(renderUrl, metadata),
+            redecode: (trace) => decodeGlb(renderUrl, metadata, null, trace),
             collectResources: collectImmutableResources,
           });
         } catch (error) {
           dedupWarn('renderPackageLoader:cpu-detach-manifest', '[renderPackageLoader] cpu detach manifest failed', error);
         }
+        // The source scene and flat instance plan now own everything runtime needs. Drop the
+        // decoder wrapper too: it can retain the GLTFParser and its large binary body.
+        decoded = null;
         return loaded;
       })();
   }
-    entry.promise = entry.admission.wait(decodeWork);
+    entry.promise = decodeAdmission.wait(decodeCompletion);
     cache.set(contentHash, entry);
     const admissionSettled = () => {
       // Consumer predicates keep boundary/entity request state alive. Their only job
@@ -449,8 +482,16 @@ export function createRenderPackageLoader(options = {}) {
       // Persistent package callbacks share this load's closure scope. Drop its
       // settled request bag too, so they cannot pin the creator's callbacks.
       loadOptions = null;
-      entry.admission.finish();
-      activeAdmissions.delete(entry.admission);
+      reportDecodeProgress = null;
+      // A completed package keeps `entry` reachable through LoadedRenderPackage's lifecycle.
+      // Its AbortSignal is only meaningful during decode; detach it now so later cache eviction
+      // cannot attach a cancellation Error/stack closure to an otherwise completed generation.
+      const settledAdmission = entry.admission;
+      entry.admission = null;
+      if (settledAdmission) {
+        settledAdmission.finish();
+        activeAdmissions.delete(settledAdmission);
+      }
     };
     entry.promise.then(admissionSettled, admissionSettled);
     entry.promise.catch(() => {
@@ -1345,6 +1386,57 @@ export async function fetchVerifiedRenderBytes(
   return bytes;
 }
 
+export async function fetchVerifiedRenderResources(fetchImpl, renderUrl, metadata, onProgress = null) {
+  const resources = Array.isArray(metadata?.render?.resources) ? metadata.render.resources : [];
+  const verified = new Map();
+  for (const resource of resources) {
+    const url = resolveRenderUrl(resource.uri, renderUrl);
+    let bytes = await fetchWithStallBound(fetchImpl, url, 'force-cache', onProgress);
+    let digest = bytes.byteLength === resource.bytes ? await sha256Hex(bytes) : null;
+    if (digest !== resource.sha256) {
+      bytes = await fetchWithStallBound(fetchImpl, url, 'reload', onProgress);
+      digest = bytes.byteLength === resource.bytes ? await sha256Hex(bytes) : null;
+    }
+    if (bytes.byteLength !== resource.bytes) {
+      throw new Error(`Render package resource byte length mismatch for ${metadata.assetId} ${resource.uri}: ${bytes.byteLength} != ${resource.bytes}.`);
+    }
+    if (digest !== resource.sha256) {
+      throw new Error(`Render package resource SHA-256 mismatch for ${metadata.assetId} ${resource.uri}.`);
+    }
+    verified.set(resource.uri, bytes);
+  }
+  return verified;
+}
+
+export function assertRenderResourceBindings(renderBytes, metadata) {
+  const bytes = renderBytes instanceof Uint8Array ? renderBytes : new Uint8Array(renderBytes);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.byteLength < 20 || view.getUint32(0, true) !== 0x46546c67) {
+    throw new Error(`Render package GLB is invalid for ${metadata.assetId}.`);
+  }
+  const jsonLength = view.getUint32(12, true);
+  if (view.getUint32(16, true) !== 0x4e4f534a || 20 + jsonLength > bytes.byteLength) {
+    throw new Error(`Render package GLB JSON chunk is invalid for ${metadata.assetId}.`);
+  }
+  const json = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)));
+  const imageUris = new Set();
+  for (const [index, image] of (json.images || []).entries()) {
+    if (typeof image?.uri !== 'string' || /^data:/i.test(image.uri)) continue;
+    if (image.mimeType !== 'image/ktx2') {
+      throw new Error(`Render package ${metadata.assetId} image ${index} has an unsupported external URI; only declared KTX2 resources are supported.`);
+    }
+    imageUris.add(image.uri);
+  }
+  const resourceUris = new Set((metadata.render.resources || []).map((resource) => resource.uri));
+  for (const uri of imageUris) {
+    if (!resourceUris.has(uri)) throw new Error(`Render package ${metadata.assetId} references an undeclared external KTX2 image: ${uri}`);
+  }
+  for (const uri of resourceUris) {
+    if (!imageUris.has(uri)) throw new Error(`Render package ${metadata.assetId} declares an unreferenced external KTX2 image: ${uri}`);
+  }
+  return true;
+}
+
 // Meshopt decode runs on the decoder's own blob-URL WASM worker pool rather than the present
 // thread: decode is the dominant synchronous stage inside an authored admission job, so every
 // meshopt buffer decoded on the glass thread is a frame hitch while a model arrives. The vendored
@@ -1393,9 +1485,12 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
 }
 
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
-  return async (url, metadata, onProgress = null) => {
+  return async (url, metadata, onProgress = null, trace = null) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
+    trace?.('fetch-verify-glb:start');
     let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
+    trace?.('fetch-verify-glb:complete');
+    assertRenderResourceBindings(bytes, metadata);
 
     // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
     // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
@@ -1406,7 +1501,9 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     let predecodedBufferViews = null;
     let preslicedSourceBytes = null;
     if (bytes.byteOffset === 0 && bytes.byteLength === buffer.byteLength) {
+      trace?.('prepass:start');
       const prepared = await sharedGlbPrepasser().prepass(buffer);
+      trace?.('prepass:complete');
       if (prepared === null) {
         // The worker died holding the buffer; re-read (packages are content-hash immutable).
         bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
@@ -1432,12 +1529,33 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
         return { name: 'SpaceFaceGlbPrepass' };
       });
     }
-    if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)), metadata);
+    trace?.('fetch-verify-images:start');
+    const verifiedResources = await fetchVerifiedRenderResources(fetchImpl, url, metadata, onProgress);
+    trace?.('fetch-verify-images:complete');
+    if (verifiedResources.size) {
+      loader.register((parser) => {
+        parser.verifiedExternalKtx2Resources = verifiedResources;
+        return { name: 'SpaceFaceVerifiedExternalKtx2Resources' };
+      });
+    }
+    if (typeof configureGltfLoader === 'function') {
+      await configureGltfLoader(loader, metadata, { resources: verifiedResources, baseUrl: url });
+    }
+    trace?.('parse:queued');
+    const gltf = await scheduleGltfParse(() => {
+      trace?.('parse:start');
+      return loader.parseAsync(buffer, resourceBaseUrl(url));
+    }, metadata);
+    trace?.('parse:complete');
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
     // Paced through the class lanes so clustered parse replies can't stack the sync walk.
-    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
+    trace?.('dedupe:queued');
+    await scheduleGltfCompile(() => {
+      trace?.('dedupe:start');
+      return dedupeGltfTextureSources(gltf);
+    }, activeDecodeClass());
+    trace?.('dedupe:complete');
     return gltf;
   };
 }

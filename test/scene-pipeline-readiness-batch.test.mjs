@@ -4,9 +4,97 @@ import test from 'node:test';
 import {
   beginScenePipelineReadinessBatch,
   compilePipelinesContextSafe,
+  compileScenePipelinesForRenderTarget,
   programWrapperDead,
   retireScenePipelineReadinessPrograms,
 } from '../src/render/bloom.js';
+import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
+
+test('separate admission issues restore target before overlapping their own shared-material variants', async () => {
+  const material = { isMaterial: true }, props = {}, canvas = fakeCanvas();
+  let readyA = false, readyB = false, target = 'home';
+  const a = { program: {}, isReady: () => readyA }, b = { program: {}, isReady: () => readyB };
+  const store = { get: () => props };
+  const seen = [];
+  const renderer = { domElement: canvas, properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] },
+    getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    compile(subject) { seen.push([subject, target]); store.get(material).currentProgram = subject; return new Set([material]); },
+    compileAsync() { throw new Error('unexpected fallback'); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, 'target', subjects[0], {}, {}, options), { maxSettlingLinks: 2 });
+  const first = tracker.compileExplicit(a);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(target, 'home');
+  const second = tracker.compileExplicit(b);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(seen.length, 2, 'second issue is not blocked by the first pending link');
+  assert.equal(target, 'home');
+  readyB = true;
+  await second;
+  let settledA = false; first.then(() => { settledA = true; });
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(settledA, false, 'the second material variant cannot settle the first');
+  readyA = true;
+  await first;
+  assert.equal(target, 'home');
+});
+
+test('issue split caps unsettled owners and preserves rejection after issue', async () => {
+  const gates = new Map(), issued = [];
+  const tracker = createPipelineAdmissionTracker((subjects, options) => {
+    const id = subjects[0];
+    issued.push(id);
+    options.onIssueComplete();
+    return new Promise((resolve, reject) => gates.set(id, { resolve, reject }));
+  }, { maxSettlingLinks: 2, onRejected() {} });
+  const first = tracker.compileExplicit('first');
+  const second = tracker.compileExplicit('second');
+  const third = tracker.compileExplicit('third');
+  const failure = new Error('owner retired');
+  const observedFirst = assert.rejects(first, error => error === failure);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(issued, ['first', 'second']);
+  gates.get('first').reject(failure);
+  await observedFirst;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(issued, ['first', 'second', 'third']);
+  gates.get('second').resolve({ ready: true }); gates.get('third').resolve({ ready: true });
+  await Promise.all([second, third]);
+});
+
+test('overlapping link owners observe context loss without publishing readiness', async () => {
+  const material = { isMaterial: true }, props = {}, canvas = fakeCanvas();
+  const renderer = { domElement: canvas, properties: { get: () => props }, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] }, getRenderTarget: () => null,
+    setRenderTarget() {}, compileAsync() { throw new Error('unexpected fallback'); },
+    compile(program) { props.currentProgram = program; return new Set([material]); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, null, subjects[0], {}, {}, options), { maxSettlingLinks: 2 });
+  const first = tracker.compileExplicit(fakeProgram('lost-a', 1e9));
+  const second = tracker.compileExplicit(fakeProgram('lost-b', 1e9));
+  await new Promise(resolve => setTimeout(resolve, 5));
+  canvas.fire('webglcontextlost');
+  assert.equal((await first).contextLost, true);
+  assert.equal((await second).contextLost, true);
+});
+
+test('failed issue restores the target before a successor runs', async () => {
+  const expected = new Error('issue failed'), canvas = fakeCanvas();
+  let target = 'home', nextTarget = null;
+  const renderer = { domElement: canvas, properties: { get: () => ({}) }, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] }, getRenderTarget: () => target,
+    setRenderTarget: value => { target = value; }, compileAsync() { throw new Error('unexpected fallback'); },
+    compile(subject) { if (subject === 'bad') throw expected; nextTarget = target; return new Set(); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, 'target', subjects[0], {}, {}, options),
+  { maxSettlingLinks: 2, onRejected() {} });
+  const failed = tracker.compileExplicit('bad');
+  const next = tracker.compileExplicit('good');
+  await assert.rejects(failed, error => error === expected);
+  await next;
+  assert.equal(nextTarget, 'target'); assert.equal(target, 'home');
+});
 
 // A stand-in for three's WebGLProgram readiness handle. `isReady()` reports the driver's
 // COMPLETION_STATUS_KHR; it becomes true after `ticks` polls.
@@ -21,6 +109,87 @@ function fakeProgram(name, ticks) {
 }
 
 const liveGl = { isContextLost: () => false, isProgram: () => true };
+
+test('compile waits for each used material variant without polling unrelated cached variants', async () => {
+  const material = { isMaterial: true };
+  const back = fakeProgram('back', 2);
+  const front = fakeProgram('front', 0);
+  const unrelated = fakeProgram('unrelated', 1e9);
+  const properties = { programs: new Map([['back', back], ['unrelated', unrelated]]) };
+  const store = { get: () => properties };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store,
+    getContext: () => liveGl, extensions: { get: () => ({}) },
+    compile() {
+      const props = store.get(material);
+      // Three's cached-program early out reads the cache and need not assign currentProgram.
+      assert.equal(props.programs.get('back'), back);
+      props.programs.set('front', front);
+      props.currentProgram = front;
+      return new Set([material]);
+    },
+  };
+  const result = await compilePipelinesContextSafe(renderer, {}, {}, {});
+  assert.equal(result.contextLost, false);
+  assert.ok(back.polls() > 2);
+  assert.ok(front.polls() > 0);
+  assert.equal(unrelated.polls(), 0);
+  assert.equal(store.get, originalGet);
+});
+
+test('compile capture restores the properties getter when compilation throws', async () => {
+  const expected = new Error('compile failed');
+  const store = { get: () => ({}) };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, compile() { throw expected; },
+  };
+  await assert.rejects(compilePipelinesContextSafe(renderer, {}, {}, {}), (error) => error === expected);
+  assert.equal(store.get, originalGet);
+});
+
+test('reentrant compiles collect only their own variants and restore the getter', async () => {
+  const outerMaterial = { isMaterial: true }, innerMaterial = { isMaterial: true };
+  const outerProgram = fakeProgram('outer', 0), innerProgram = fakeProgram('inner', 1);
+  const entries = new Map([[outerMaterial, {}], [innerMaterial, {}]]);
+  const store = { get: (material) => entries.get(material) };
+  const originalGet = store.get;
+  let nested;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) },
+    compile(subject) {
+      if (subject === outerMaterial) {
+        nested = compilePipelinesContextSafe(renderer, innerMaterial, {}, {});
+        store.get(outerMaterial).currentProgram = outerProgram;
+      } else store.get(innerMaterial).currentProgram = innerProgram;
+      return new Set([subject]);
+    },
+  };
+  await compilePipelinesContextSafe(renderer, outerMaterial, {}, {});
+  assert.equal(innerProgram.polls(), 1, 'outer completion did not poll the inner program');
+  await nested;
+  assert.ok(innerProgram.polls() > 1);
+  assert.equal(store.get, originalGet);
+});
+
+test('context loss during synchronous compile restores the getter without polling', async () => {
+  const canvas = fakeCanvas();
+  const material = { isMaterial: true }, program = fakeProgram('lost', 0);
+  const store = { get: () => ({ currentProgram: program }) };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: canvas, properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) },
+    compile() { canvas.fire('webglcontextlost'); return new Set([material]); },
+  };
+  const result = await compilePipelinesContextSafe(renderer, {}, {}, {});
+  assert.equal(result.contextLost, true);
+  assert.equal(program.polls(), 0);
+  assert.equal(store.get, originalGet);
+});
 
 test('a batch settles every waiter only after the whole cohort has linked', async () => {
   const slow = fakeProgram('slow', 3);

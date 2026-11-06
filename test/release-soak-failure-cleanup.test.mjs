@@ -5,8 +5,300 @@ import test from 'node:test';
 
 import {
   buildErrorEvidence,
+  compareSoakRecoveryCaptures,
+  compareSoakRecoveryTailProgress,
+  captureSoakRecoveryPixelsInPage,
+  sampleSoakRecoveryAdvancement,
+  buildSoakTerminalCleanup,
+  cleanupSoakFailureProfile,
+  installGlTrapsOnLivePage,
   buildPostTeardownGlDeleteTrapDiagnostic,
+  createSoakPresentationFailureError,
+  readFailureRuntimeSnapshot,
+  readPostRecoveryRenderDiagnostics,
+  readSceneGeometryCensus,
+  readSoakLoadLanding,
+  shouldRetrySoakCycle,
+  waitForSoakLoadLanding,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('recovery requires changing nonblank pixels in matching advancing world submissions', () => {
+  const a = { width: 2, height: 1, worldSubmittedFrames: 9, pixels: [10, 0, 0, 255, 0, 20, 0, 255] };
+  const b = { ...a, worldSubmittedFrames: 10, pixels: [11, 0, 0, 255, 0, 20, 0, 255] };
+  assert.equal(compareSoakRecoveryCaptures(a, b).pass, true);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: 9 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: a.pixels }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, width: 3 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: [0, 0, 0, 255, 0, 0, 0, 255] }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: null }).pass, false);
+});
+
+test('recovery capture copies pixels only inside an advancing world frame callback', async () => {
+  const oldWindow = globalThis.window;
+  const oldDocument = globalThis.document;
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldCancel = globalThis.cancelAnimationFrame;
+  const oldSetTimeout = globalThis.setTimeout;
+  const oldClearTimeout = globalThis.clearTimeout;
+  const source = { width: 120, height: 80 };
+  let drawn = null;
+  let insideFrame = false;
+  const frames = [];
+  const tasks = [];
+  try {
+    globalThis.window = { SF: { state: { render: { worldSubmittedFrames: 42, renderer: { domElement: source } } } } };
+    globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+    globalThis.cancelAnimationFrame = () => {};
+    globalThis.setTimeout = (callback, delay) => { if (delay === 0) tasks.push(callback); return {}; };
+    globalThis.clearTimeout = () => {};
+    globalThis.document = { createElement: () => ({ getContext: () => ({
+      drawImage: (canvas) => { assert.equal(insideFrame, true); drawn = canvas; },
+      getImageData: (_x, _y, width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+    }) }) };
+    const pending = captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 });
+    assert.equal(drawn, null);
+    assert.equal(frames.length, 0, 'observer schedules after the current rAF batch');
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'unchanged world count cannot capture');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 43;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    const sample = await pending;
+    assert.equal(drawn, source);
+    assert.equal(sample.worldSubmittedFrames, 43);
+    assert.deepEqual([sample.width, sample.height, sample.sampleWidth, sample.sampleHeight], [120, 80, 96, 54]);
+    assert.equal(sample.pixels.length, 96 * 54 * 4);
+    drawn = null;
+    const nextPending = captureSoakRecoveryPixelsInPage({ afterFrame: 43, timeoutMs: 1000 });
+    window.SF.state.render.worldSubmittedFrames = 44;
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'a frame completed before observer scheduling cannot qualify');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 45;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal((await nextPending).worldSubmittedFrames, 45);
+    window.SF.state.render.worldSubmittedFrames = null;
+    assert.equal(await captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 }), null);
+  } finally { globalThis.window = oldWindow; globalThis.document = oldDocument;
+    globalThis.requestAnimationFrame = oldRaf; globalThis.cancelAnimationFrame = oldCancel;
+    globalThis.setTimeout = oldSetTimeout; globalThis.clearTimeout = oldClearTimeout; }
+});
+
+test('recovery sampling waits for world progress before comparing the next capture', async () => {
+  const first = { width: 2, height: 1, worldSubmittedFrames: 4, pixels: [1, 0, 0, 255, 0, 2, 0, 255] };
+  const second = { ...first, worldSubmittedFrames: 7, pixels: [3, 0, 0, 255, 0, 2, 0, 255] };
+  const operations = [];
+  const page = { evaluate: async (_fn, args) => { operations.push(`capture:${args.afterFrame}`); return args.afterFrame == null ? first : second; },
+    waitForTimeout: async () => { operations.push('settle'); } };
+  const result = await sampleSoakRecoveryAdvancement(page);
+  assert.equal(result.pass, true);
+  assert.deepEqual(operations, ['capture:null', 'settle', 'capture:4']);
+  const stalled = { evaluate: async (_fn, args) => { if (args.afterFrame == null) return first; throw new Error('stalled'); }, waitForTimeout: async () => {} };
+  const failure = await sampleSoakRecoveryAdvancement(stalled);
+  assert.equal(failure.pass, false);
+  assert.match(failure.error, /stalled/);
+});
+
+test('soak GL status traps can be disabled without installing any hooks', async () => {
+  const calls = [];
+  const page = { evaluate: async (...args) => calls.push(args) };
+  await installGlTrapsOnLivePage(page, { enabled: false });
+  assert.equal(calls.length, 0);
+  await installGlTrapsOnLivePage(page, { enabled: true });
+  assert.equal(calls.length, 2);
+});
+
+test('recovery tail requires both simulation and world submissions to advance', () => {
+  const start = { tick: 100, worldSubmittedFrames: 20 };
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 21 }).pass, true);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 20 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 100, worldSubmittedFrames: 21 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: null, worldSubmittedFrames: 21 }).pass, false);
+});
+
+test('terminal cleanup keeps the original error and distinguishes unknown from failed', () => {
+  const original = new Error('route failed');
+  const unknown = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original });
+  assert.equal(unknown.error.message, 'route failed');
+  assert.equal(unknown.status, 'unknown');
+  const failed = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupError: new Error('close failed') });
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.cleanupError.message, 'close failed');
+  assert.equal(failed.error.message, 'route failed');
+  const owned = { pass: true, pageClosed: true, appCloseCompleted: true, listenerReleased: true,
+    processExited: true, processCloseConfirmed: true, gracefulProcessCloseConfirmed: true,
+    precloseUrlCheck: { pass: true }, urlTracker: { pass: true }, processHealth: { pass: true } };
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned }).status, 'pass');
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned, profileCleanup: 'retained' }).status, 'failed');
+  const profileError = new Error('profile removal failed');
+  const profile = cleanupSoakFailureProfile({ cleanup: () => { throw profileError; } }, owned);
+  assert.equal(profile.error, profileError);
+  const result = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned,
+    cleanupError: profile.error, profileCleanup: profile.profileCleanup });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.error.message, original.message);
+  assert.equal(result.cleanupError.message, profileError.message);
+});
+
+test('scene geometry census deduplicates shared geometry and attributes entity and unowned roots', () => {
+  const oldWindow = globalThis.window;
+  try {
+    const geometry = (uuid) => ({ uuid });
+    const shared = geometry('shared');
+    const first = { children: [{ geometry: shared, children: [] }, { geometry: geometry('first'), children: [] }] };
+    const second = { children: [{ geometry: shared, children: [] }] };
+    const scene = { children: [first, second, { geometry: geometry('unowned'), children: [] }] };
+    const owner = { scene, _meshes: new Map([[1, first], [2, second]]),
+      renderer: { info: { memory: { geometries: 7 } } },
+      _despawnDisposeQueue: [{}, {}], _despawnDisposeHead: 1, _despawnDisposeIter: {},
+      _warmDisposeQueue: [], _warmDisposeHead: 0 };
+    globalThis.window = { SF: { state: { entities: new Map([[1, { type: 'ship', data: { defId: 'hitch' } }],
+      [2, { type: 'station', data: { defId: 'helios' } }]]) }, registry: { get: () => owner } } };
+    const census = readSceneGeometryCensus();
+    assert.equal(census.uniqueGeometryCount, 3);
+    assert.deepEqual(census.geometryIds, ['first', 'shared', 'unowned']);
+    assert.equal(census.rendererGeometries, 7);
+    assert.deepEqual(census.groups.map((row) => [row.key, row.type, row.defId, row.uniqueGeometryCount]), [
+      ['entity:1', 'ship', 'hitch', 2], ['entity:2', 'station', 'helios', 1], ['scene-unowned', null, null, 1],
+    ]);
+    assert.deepEqual(census.disposal.despawn, { pending: 1, activeIterator: true });
+    assert.equal(census.disposal.retainedLod.available, false);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('F9 start-failed menu ends the cycle while loading keeps its grace and flight succeeds', async () => {
+  const oldWindow = globalThis.window;
+  try {
+    globalThis.window = { SF: { state: { mode: 'loading' }, timeEffects: { describeRequests: () => ({}) } } };
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.state.mode = 'menu';
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.timeEffects.describeRequests = () => ({ 'runtime:start-failed': { scale: 0 } });
+    assert.equal(readSoakLoadLanding(), 'menu');
+    let calls = 0;
+    const failedPage = { waitForFunction: async (fn) => { calls++; return { jsonValue: async () => fn() }; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }) };
+    let failure;
+    try { await waitForSoakLoadLanding(failedPage); } catch (error) { failure = error; }
+    assert.match(failure.message, /opening submission plan is incomplete/);
+    assert.equal(calls, 1);
+    assert.equal(shouldRetrySoakCycle(failure, 0), false);
+    assert.equal(shouldRetrySoakCycle(new Error('market'), 0), true);
+    window.SF.state.mode = 'flight'; window.__M6_RELEASE_SOAK_EVENTS__ = { loaded: true };
+    calls = 0;
+    const slowPage = { waitForFunction: async (fn) => { calls++; if (calls === 1) throw new Error('timeout'); return { jsonValue: async () => fn() }; } };
+    assert.deepEqual(await waitForSoakLoadLanding(slowPage), { late: true });
+    assert.equal(calls, 2);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('F9 landing accepts raw CSP-safe flight and menu results without entering grace', async () => {
+  for (const result of ['flight', 'menu']) {
+    let waits = 0;
+    const page = {
+      waitForFunction: async () => { waits += 1; return result; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }),
+    };
+    if (result === 'flight') assert.deepEqual(await waitForSoakLoadLanding(page), { late: false });
+    else await assert.rejects(waitForSoakLoadLanding(page), (error) => (
+      error.code === 'SOAK_LOAD_START_FAILED' && /opening submission plan is incomplete/.test(error.message)
+    ));
+    assert.equal(waits, 1, `${result} must not enter the grace wait`);
+  }
+});
+
+test('dock wait stops retrying for the canonical terminal presentation failure', () => {
+  const failure = createSoakPresentationFailureError({ presentationFailure: {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  } });
+  assert(failure);
+  assert.equal(failure.code, 'SOAK_PRESENTATION_FAILURE');
+  assert.match(failure.message, /GRAPHICS_RECOVERY_FAILED.*opening presentation could not recover/);
+  assert.deepEqual(failure.presentationFailure, {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  });
+  assert.equal(shouldRetrySoakCycle(failure, 0), false, 'terminal graphics failure must not spend a cycle retry');
+  assert.equal(shouldRetrySoakCycle(new Error('ordinary route failure'), 0), true,
+    'ordinary route failure retains its existing single retry');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: null }), null);
+  assert.equal(createSoakPresentationFailureError({ failurePresenterText: 'Graphics interrupted' }), null,
+    'visible-copy text alone is not treated as canonical failure state');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: {
+    code: 'OTHER', headline: 'Loading', message: 'still loading',
+  } }), null);
+});
+
+test('a restore invariant failure is preserved instead of retrying from mid-flight', () => {
+  let failure;
+  try { assert.equal(77, 2, 'load speed restore exceeded tolerance'); }
+  catch (error) { failure = error; }
+  assert.equal(failure.code, 'ERR_ASSERTION');
+  assert.equal(shouldRetrySoakCycle(failure, 0), false);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 0), true);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 1), false);
+});
+
+test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  const stateResize = { contextGeneration: 0, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
+  const rendererResize = { contextGeneration: 1, matchingSceneSlots: [{ slot: 'index' }] };
+  const batch = { object: { uuid: 'batch-id' } };
+  const texture = { texture: { uuid: 'texture-id' } };
+  try {
+    globalThis.document = { visibilityState: 'visible', getElementById: () => null };
+    globalThis.window = { SF: { state: { render: { bufferResizeDiagnostic: {
+      lastFailure: stateResize, lastBatchedFailure: batch, lastTextureUploadFailure: texture, performanceEligible: false,
+    } } } } };
+    const afterTeardown = readFailureRuntimeSnapshot().opening;
+    assert.deepEqual(afterTeardown.bufferResizeDiagnostic, stateResize);
+    assert.deepEqual(afterTeardown.lastBatchedFailure, batch);
+    assert.deepEqual(afterTeardown.lastTextureUploadFailure, texture);
+    assert.equal(afterTeardown.bufferResizeDiagnosticPerformanceEligible, false);
+    globalThis.window.SF.state.render = { renderer: {
+      __sfBufferResizeFailure: rendererResize, __sfBatchedMeshFailure: batch, __sfTextureUploadFailure: texture,
+    } };
+    const fallback = readFailureRuntimeSnapshot().opening;
+    assert.deepEqual(fallback.bufferResizeDiagnostic, rendererResize);
+    assert.deepEqual(fallback.lastBatchedFailure, batch);
+    assert.deepEqual(fallback.lastTextureUploadFailure, texture);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+  }
+});
+
+test('post-recovery diagnostic preserves late resize identity and separate batch failure', () => {
+  const previous = globalThis.window;
+  const resize = { contextGeneration: 1, expectedByteLength: 80, actualByteLength: 0,
+    error: { message: 'size mismatch', stack: 'render-stack' }, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
+  const batch = { contextGeneration: 1, object: { uuid: 'batch-id' } };
+  const texture = { contextGeneration: 1, texture: { uuid: 'texture-id' } };
+  try {
+    globalThis.window = { SF: { state: { render: { bufferResizeDiagnostic: {
+      lastFailure: resize, lastBatchedFailure: batch, lastTextureUploadFailure: texture,
+    } } } } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: batch, lastTextureUploadFailure: texture,
+    });
+    globalThis.window.SF.state.render = { renderer: { __sfBufferResizeFailure: resize } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: null, lastTextureUploadFailure: null,
+    });
+  } finally {
+    if (previous === undefined) delete globalThis.window;
+    else globalThis.window = previous;
+  }
+});
 
 test('failure-path teardown diagnostic preserves the one-shot caller snapshot', () => {
   const snapshot = {
@@ -38,7 +330,14 @@ test('error evidence retains exact store request provenance without waiving writ
   const raw = [
     { source: 'response', level: 'error', text: `HTTP 404 ${url}`, networkProvenance: provenance },
     { source: 'response', level: 'error', text: `HTTP 404 ${url}`, networkProvenance: {
-      source: 'playwright-unmatched-cdp-response', status: 404, url, method: null,
+      source: 'playwright-unmatched-cdp-response', status: 404, url,
+      method: 'GET', methodSource: 'playwright-response-request',
+      requestId: '39096.25', requestIdSource: 'unique-pending-cdp-request-url-method',
+      cdpRequestCandidateCount: 1,
+      cdpRequestCandidates: [{
+        requestId: '39096.25', method: 'GET', resourceType: 'Fetch',
+        startedAt: '2026-10-15T10:08:24.100Z', startedPhase: 'electron-bootstrap',
+      }],
     } },
     { source: 'console', level: 'error', text: 'WebGL shader compilation failed' },
   ];
@@ -55,6 +354,14 @@ test('network provenance bounds text and excludes arbitrary request payloads', (
   const evidence = buildErrorEvidence('browser', { issues: [{
     source: 'response', type: 'error', text: 'HTTP 404 optional store', networkProvenance: {
       source: 'cdp-network', requestId: 'r'.repeat(300), url: 'u'.repeat(3000), method: null,
+      cdpRequestCandidates: Array.from({ length: 10 }, (_, index) => ({
+        requestId: `request-${index}`,
+        method: 'GET',
+        resourceType: 'Fetch',
+        startedAt: '2026-10-15T10:08:24.100Z',
+        startedPhase: 'save',
+        payload: 'must not be copied',
+      })),
       status: 404, body: 'must not be copied', request: { arbitrary: true },
     },
   }] });
@@ -64,9 +371,69 @@ test('network provenance bounds text and excludes arbitrary request payloads', (
   assert.equal(copied.method, null, 'an unknown method must remain unknown');
   assert.equal(copied.status, 404);
   assert.deepEqual(copied.truncatedFields, ['requestId', 'url']);
+  assert.equal(copied.cdpRequestCandidates.length, 8);
+  assert.equal(copied.cdpRequestCandidatesTruncated, true);
+  assert.equal(copied.cdpRequestCandidateCount, undefined);
   assert.equal('body' in copied, false);
   assert.equal('request' in copied, false);
+  assert.equal('payload' in copied.cdpRequestCandidates[0], false);
   assert.deepEqual(evidence.httpErrors, ['HTTP 404 optional store']);
+});
+
+test('error evidence keeps ignored diagnostics and bounded tracker coverage without waiving unknown 404s', () => {
+  const unknownUrl = 'http://127.0.0.1:54369/assets/missing.bin?token=private';
+  const ignoredUrl = 'http://127.0.0.1:54369/__spaceface_player_store?token=private';
+  const coverage = {
+    schema: 'spaceface.electronApplicationIssueCoverage.v1',
+    contextAvailable: true,
+    applicationEvents: ['console', 'response'],
+    contextEvents: ['weberror'],
+    pageEvents: ['console', 'response', 'request'],
+    currentPhase: 'soak',
+    networkProvenance: {
+      schema: 'spaceface.electronNetworkProvenance.v1', attempted: true, supported: true,
+      attached: true, enabled: true, trackedRequests: 12, observedResponses: 10,
+      pendingStoreRequests: 2, errors: ['CDP still attached'],
+    },
+    backfill: { requests: { supported: true, attempted: true, completed: false,
+      retiredAfterPageClose: true, retirementReason: 'page-closed', pageCount: 2,
+      itemCount: 9, unsupportedPageCount: 1, errors: ['late request unavailable'] } },
+  };
+  const longErrorText = 'page error '.repeat(300);
+  const evidence = buildErrorEvidence('electron', {
+    all: () => [{
+      source: 'response', level: 'error', text: `HTTP 404 ${unknownUrl}`,
+      location: { url: 'http://127.0.0.1:54369/app.js?token=private', lineNumber: 12, columnNumber: 3 },
+      networkProvenance: { source: 'cdp-network', requestId: 'req-unknown', method: null,
+        resourceType: 'Fetch', url: unknownUrl, status: 404 },
+    }, { source: 'pageerror', level: 'error', text: longErrorText }],
+    ignored: () => [{
+      source: 'response', level: 'diagnostic', text: `HTTP 404 ${ignoredUrl}`,
+      absentPlayerStore: true,
+      networkProvenance: { source: 'cdp-network', requestId: 'req-ignored', method: 'GET',
+        resourceType: 'Fetch', url: ignoredUrl, status: 404 },
+    }, {
+      source: 'request', level: 'diagnostic', text: 'cancelled navigation',
+      requestProvenance: { method: 'REQUEST', url: 'http://127.0.0.1:54369/app.js?secret=x',
+        startedAt: '2026-10-15T10:08:24.100Z', startedPhase: 'electron-bootstrap' },
+      expectedNavigation: ['cold-reload'],
+    }],
+    coverage: () => coverage,
+  });
+
+  assert.deepEqual(evidence.httpErrors, [`HTTP 404 ${unknownUrl}`], 'unknown 404 remains fatal');
+  assert.equal(evidence.all[0].networkProvenance.method, null, 'unknown method remains unknown');
+  assert.equal(evidence.all[0].url, '/assets/missing.bin', 'diagnostic URL path excludes query data');
+  assert.equal(evidence.all[0].networkProvenance.url, unknownUrl, 'existing provenance URL semantics stay intact');
+  assert.equal(evidence.all[1].text, longErrorText, 'existing issue text is not truncated');
+  assert.deepEqual(evidence.all[0].location, { path: '/app.js', lineNumber: 12, columnNumber: 3 });
+  assert.equal(evidence.ignored[0].absentPlayerStore, true, 'ignored reason stays explicit and separate');
+  assert.equal(evidence.ignored[0].networkProvenance.method, 'GET');
+  assert.equal(evidence.ignored[0].url, '/__spaceface_player_store');
+  assert.equal(evidence.ignored[1].url, '/app.js', 'request URL is included only as a scrubbed path');
+  assert.deepEqual(evidence.ignored[1].expectedNavigation, ['cold-reload']);
+  assert.deepEqual(evidence.trackerCoverage, coverage, 'reuse the tracker controlled coverage DTO');
+  assert.equal(evidence.ignoredTruncated, false);
 });
 
 test('failure-path teardown diagnostic records unavailable capture instead of implying clean teardown', () => {

@@ -26,6 +26,7 @@
 
 import { readPhysicsTelemetry } from '../../../../src/core/physicsAuthority.js';
 import { resolveGovernedCombatSpeed } from '../../../../src/core/flight/propulsionCatalog.js';
+import { proxyWorldPrimitives, resolveCollisionProxyManifest } from '../../../../src/data/collisionProxyManifests.js';
 import { bootRealPath, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
 import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../../src/core/sg02DynamicBodyOwner.js';
 
@@ -59,7 +60,6 @@ const RECEIPT_TICK_OFFSET = 1;
 const SYSTEMS = ['actions', 'flightV3', 'collisionConsequences', 'physics'];
 
 const PLAYER_HULL = 'ship_kestrel';
-const PLAYER_RADIUS_FALLBACK = 10;
 
 // ---- THE ARENA -----------------------------------------------------------------------------
 // A ROLLING corridor: rock is seeded ahead of the hull along the direction it is actually moving,
@@ -67,16 +67,13 @@ const PLAYER_RADIUS_FALLBACK = 10;
 // empty space (both of which the first version of this instrument did, silently, and printed a
 // clean pass for it).
 //
-// Every planned contact is a GRAZE — the shoulder of the hull brushing rock — never a head-on.
-// That is deliberate and it is what B13's ordinary clause is about. Measured 2026-09-04 on this
-// same boot: a rock taken HEAD-ON at cruise removes 98.4 % of the hull's velocity in 0.2 s and
-// turns its course 63 degrees. That is a wall, and hitting a wall is allowed to hurt; it is the
-// "deliberate big event" B13 exempts, and it is reported separately as `headOnEvents`, never
-// counted against the ordinary-bump budget.
+// The ordinary graze is an actual overlap with moving traffic, whose relative speed is below the
+// full-response threshold. Static rock contacts use SG-02's fixed-wall braking path and are kept
+// clear here; they remain valid crash behavior, but they are not the ordinary-flight sample.
 //
-// Density is a SETUP number and is reported, because the knock RATE is a property of how much rock
-// a route passes and how the pilot steers — it is not a property of the game alone. One planned
-// graze every GRAZE_PERIOD_S seconds is the "ordinary flight" density this instrument declares.
+// Density is a SETUP number and is reported, because the knock RATE is a property of how much
+// traffic a route passes and how the pilot steers — it is not a property of the game alone.
+// Moving traffic supplies the ordinary graze; static rock placements stay clear of crash contacts.
 // The per-event magnitude (B13's "never more than 10 % of cruise in one event") is the
 // density-independent clause and is the real bar.
 const ROCK_SPACING_WU = 300;
@@ -86,10 +83,10 @@ const ROCK_RADIUS_SPAN = 20;
 const ROCK_MASS_MIN = 250;
 const ROCK_MASS_SPAN = 550;
 const GRAZE_PERIOD_S = 30;
-// A graze places the rock so the hull overlaps it by 10 %–45 % of the combined radius — a shoulder
-// brushing rock. Anything past HEAD_ON_OVERLAP_FRACTION would be a wall, and is never planned here.
-const GRAZE_OFFSET_MIN = 0.55;
-const GRAZE_OFFSET_SPAN = 0.35;
+// Static rocks intentionally clear the hull: SG-02 preserves full normal braking when a fixed
+// obstacle stops the player, so a rock scrape is a crash case rather than an ordinary-graze sample.
+const ROCK_CLEARANCE_MIN = 1.25;
+const ROCK_CLEARANCE_SPAN = 0.10;
 // A clean miss is still a real body the solver has to carry; it just is not on the line.
 const MISS_OFFSET_MIN = 1.40;
 const MISS_OFFSET_SPAN = 4.60;
@@ -105,10 +102,12 @@ const LEGIBLE_EVENT_DELTA_V = 18;
 // (measured 2026-09-04: 600 WU → body, 900 WU → S4_AGGREGATE, no body, dV = 0 forever), which is
 // one to three seconds of overlap at cruise.
 const TRAFFIC_HULLS = Object.freeze(['ship_hornet', 'ship_mule', 'ship_hornet']);
-const TRAFFIC_PERIOD_S = 40;
+const TRAFFIC_PERIOD_S = 20;
 const TRAFFIC_LEAD_WU = 420;
 const TRAFFIC_THROTTLE = 0.55;
-const TRAFFIC_RADIUS_FALLBACK = 12;
+// The moving ship overlaps 10% of the sum of both live proxy supports. Its relative approach is
+// under the full-response threshold, so this exercises the ordinary dynamic-contact budget.
+const TRAFFIC_OVERLAP_FRACTION = 0.10;
 
 function finite(n, fallback = 0) {
   const v = Number(n);
@@ -278,15 +277,19 @@ function travelDirection(player) {
 }
 
 /** Places one rock ahead of the hull at a planned lateral offset. Returns its plan record. */
-function seedRock(host, player, playerRadius, graze) {
+function seedRock(host, player, graze) {
   const rng = host.state.rng;
   const dir = travelDirection(player);
   const nx = -dir.z;
   const nz = dir.x;
   const radius = ROCK_RADIUS_MIN + rng() * ROCK_RADIUS_SPAN;
-  const combined = radius + playerRadius;
+  const physicalRadius = proxySupportRadius(player, { x: nx, z: nz });
+  const combined = radius + physicalRadius;
+  // Static rock contacts exercise fixed-wall braking, which intentionally preserves the
+  // solver's full normal stop. Keep the ordinary-flight sample clear of those crash contacts;
+  // the moving-traffic graze below is the representative ordinary contact.
   const factor = graze
-    ? GRAZE_OFFSET_MIN + rng() * GRAZE_OFFSET_SPAN
+    ? ROCK_CLEARANCE_MIN + rng() * ROCK_CLEARANCE_SPAN
     : MISS_OFFSET_MIN + rng() * MISS_OFFSET_SPAN;
   const side = rng() < 0.5 ? -1 : 1;
   const offset = side * factor * combined;
@@ -301,6 +304,7 @@ function seedRock(host, player, playerRadius, graze) {
     id: entity.id,
     graze,
     radius,
+    physicalRadius,
     offsetFactor: factor,
     // 0 = edges just touching, 1 = dead centre.
     overlapFraction: Math.max(0, 1 - factor),
@@ -309,27 +313,64 @@ function seedRock(host, player, playerRadius, graze) {
 }
 
 /** Places one slower ship in the lane ahead, for the player to overtake. */
-function seedTraffic(host, player, playerRadius, index) {
+function seedTraffic(host, player, index) {
   const rng = host.state.rng;
   const dir = travelDirection(player);
   const nx = -dir.z;
   const nz = dir.x;
-  const combined = TRAFFIC_RADIUS_FALLBACK + playerRadius;
-  const factor = GRAZE_OFFSET_MIN + rng() * GRAZE_OFFSET_SPAN;
+  const factor = 1 - TRAFFIC_OVERLAP_FRACTION;
   const side = rng() < 0.5 ? -1 : 1;
-  const offset = side * factor * combined;
   const px = finite(player.pos && player.pos.x);
   const pz = finite(player.pos && player.pos.z);
   const ship = host.spawnShip({
     hullId: TRAFFIC_HULLS[index % TRAFFIC_HULLS.length],
-    pos: { x: px + dir.x * TRAFFIC_LEAD_WU + nx * offset, z: pz + dir.z * TRAFFIC_LEAD_WU + nz * offset },
+    pos: { x: px + dir.x * TRAFFIC_LEAD_WU, z: pz + dir.z * TRAFFIC_LEAD_WU },
     // Facing the way the player is going, moving slower, so the player overtakes it.
     rot: Math.atan2(dir.z, dir.x),
     isPlayer: false,
     team: 1,
     factionId: 'faction_free',
   });
-  return { ship, throttle: TRAFFIC_THROTTLE, offsetFactor: factor, overlapFraction: Math.max(0, 1 - factor) };
+  const playerSupport = proxySupportRadius(player, { x: nx, z: nz });
+  const shipSupport = proxySupportRadius(ship, { x: nx, z: nz });
+  const offset = side * factor * (playerSupport + shipSupport);
+  ship.pos.x += nx * offset;
+  ship.pos.z += nz * offset;
+  return { ship, throttle: TRAFFIC_THROTTLE, offsetFactor: factor,
+    overlapFraction: Math.max(0, 1 - factor), playerSupport, shipSupport };
+}
+
+/** Maximum support of the live collision silhouette along a world-space axis. */
+function proxySupportRadius(entity, axis) {
+  const length = Math.hypot(finite(axis?.x), finite(axis?.z));
+  if (!(length > 1e-9)) return 0;
+  const nx = axis.x / length, nz = axis.z / length;
+  const manifest = resolveCollisionProxyManifest(entity);
+  if (!manifest) return Math.max(0, finite(entity?.physicsBody?.radius, finite(entity?.radius, 0)));
+  const originX = finite(entity?.pos?.x), originZ = finite(entity?.pos?.z);
+  const primitives = proxyWorldPrimitives(entity, manifest);
+  let support = 0;
+  for (const primitive of primitives) {
+    let extent = 0;
+    if (primitive.kind === 'circle') {
+      extent = Math.abs((primitive.x - originX) * nx + (primitive.z - originZ) * nz)
+        + finite(primitive.r);
+    } else if (primitive.kind === 'capsule') {
+      const a = Math.abs((primitive.ax - originX) * nx + (primitive.az - originZ) * nz);
+      const b = Math.abs((primitive.bx - originX) * nx + (primitive.bz - originZ) * nz);
+      extent = Math.max(a, b) + finite(primitive.r);
+    } else if (primitive.kind === 'obb') {
+      const angle = finite(primitive.angleDeg) * Math.PI / 180;
+      const cx = primitive.x - originX, cz = primitive.z - originZ;
+      const localX = nx * Math.cos(angle) + nz * Math.sin(angle);
+      const localZ = -nx * Math.sin(angle) + nz * Math.cos(angle);
+      extent = Math.abs(cx * nx + cz * nz)
+        + Math.abs(finite(primitive.hx) * localX)
+        + Math.abs(finite(primitive.hz) * localZ);
+    }
+    if (extent > support) support = extent;
+  }
+  return support > 0 ? support : Math.max(0, finite(entity?.physicsBody?.radius, finite(entity?.radius, 0)));
 }
 
 function writeTrafficIntent(traffic) {
@@ -404,7 +445,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     }
     const cruiseSpeed = governed;
     const knockFloor = KNOCK_FLOOR_FRACTION * cruiseSpeed;
-    const playerRadius = finite(player.radius, PLAYER_RADIUS_FALLBACK);
+    const playerProxySupportWu = proxySupportRadius(player, { x: 0, z: 1 });
 
     // The rolling corridor's book-keeping. Everything here is a plan the arena WROTE DOWN before
     // the solver ran, so the rate this instrument reports can be audited against the geometry that
@@ -434,6 +475,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           ? Math.abs(Number(payload.appliedPlayerDeltaV))
           : NaN,
         dp: finite(payload.dp),
+        preSolveClosingSpeed: finite(payload.preSolveClosingSpeed),
         otherId: payload.aId === player.id ? payload.bId : payload.aId,
         causalActorId: payload.causalActorId == null ? null : payload.causalActorId,
         // Classified AT THE TICK: the actor's liveness and team are read while the contact is
@@ -460,7 +502,6 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
       before: ({ index, state }) => {
         writeRealPathInput(state, { moveZ: 1 });
         writeTrafficIntent(traffic);
-
         // ---- roll the corridor forward ------------------------------------------------------
         // Seeded from `state.rng`, cadenced in DISTANCE TRAVELLED (not wall ticks), and laid along
         // the hull's actual direction of travel, so the arena is deterministic, cannot be out-run,
@@ -477,14 +518,14 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
             travelSinceRock = 0;
             const graze = travelSinceGraze >= cruiseSpeed * GRAZE_PERIOD_S;
             if (graze) travelSinceGraze = 0;
-            const plan = host.withFeatures(() => seedRock(host, player, playerRadius, graze));
+            const plan = host.withFeatures(() => seedRock(host, player, graze));
             rockPlans.push(plan);
             if (plan.headOn) { plannedHeadOns += 1; headOnIds.add(plan.id); }
             else if (plan.overlapFraction > 0) { plannedGrazes += 1; grazeIds.add(plan.id); }
           }
           if (travelSinceTraffic >= cruiseSpeed * TRAFFIC_PERIOD_S) {
             travelSinceTraffic = 0;
-            const entry = host.withFeatures(() => seedTraffic(host, player, playerRadius, traffic.length));
+            const entry = host.withFeatures(() => seedTraffic(host, player, traffic.length));
             traffic.push(entry);
             if (entry.overlapFraction > HEAD_ON_OVERLAP_FRACTION) { plannedHeadOns += 1; headOnIds.add(entry.ship.id); }
             else if (entry.overlapFraction > 0) { plannedGrazes += 1; grazeIds.add(entry.ship.id); }
@@ -613,6 +654,9 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         open.rawDeltaV += r.playerDeltaV;
         open.dp += r.dp;
         open.receiptCount += 1;
+        if (r.preSolveClosingSpeed > open.maxPreSolveClosingSpeed) {
+          open.maxPreSolveClosingSpeed = r.preSolveClosingSpeed;
+        }
         if (r.otherId != null) open.others.add(r.otherId);
         // One ram receipt makes the whole event a ram: a hostile that drove into the player does
         // not stop being the cause because the solver answered over several ticks.
@@ -626,6 +670,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           rawDeltaV: r.playerDeltaV,
           dp: r.dp,
           receiptCount: 1,
+          maxPreSolveClosingSpeed: r.preSolveClosingSpeed,
           kind: r.kind,
           others: new Set(r.otherId == null ? [] : [r.otherId]),
         };
@@ -816,6 +861,26 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           eventTicks: evTicks,
           receiptCount: ev.receiptCount,
           dp: ev.dp,
+          preSolveClosingSpeed: ev.maxPreSolveClosingSpeed,
+          preSolveClosingFraction: ev.maxPreSolveClosingSpeed / Math.max(1e-6, Math.hypot(pre.velX, pre.velZ)),
+          contactSources: [...ev.others].map((id) => {
+            const rock = rockPlans.find((row) => row.id === id);
+            const entry = traffic.find((row) => row.ship?.id === id);
+            const entity = host.state.entities && typeof host.state.entities.get === 'function'
+              ? host.state.entities.get(id) : null;
+            return {
+              id,
+              type: entity?.type || null,
+              radius: Number.isFinite(entity?.radius) ? entity.radius : null,
+              alive: entity?.alive !== false,
+              plan: rock ? { kind: 'rock', graze: rock.graze, offsetFactor: rock.offsetFactor,
+                overlapFraction: rock.overlapFraction, radius: rock.radius,
+                playerSupport: rock.physicalRadius }
+                : entry ? { kind: 'traffic', offsetFactor: entry.offsetFactor,
+                  overlapFraction: entry.overlapFraction, playerSupport: entry.playerSupport,
+                  otherSupport: entry.shipSupport } : null,
+            };
+          }),
         },
       });
     }
@@ -833,6 +898,8 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     const minutes = simSeconds / 60;
     const knockEventsPerMinute = minutes > 0 ? knockCount / minutes : 0;
     const maxKnockDeltaVFractionOfCruise = maxKnockDeltaV / cruiseSpeed;
+    const maxContactDeltaVFractionOfCruise = events.reduce((max, ev) =>
+      Math.max(max, ev.receiptDeltaV / cruiseSpeed), 0);
     // The ceiling is compared with the same stated float tolerance feelBars uses: the live rule
     // caps a contact event's cumulative applied delta-V at exactly 0.10 x cruise, and this bench
     // sums the per-tick values in a different order, so a run that spends the whole budget can land
@@ -877,6 +944,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         knockFloorFractionOfCruise: KNOCK_FLOOR_FRACTION,
         // --- the events ------------------------------------------------------------------------
         contactEvents: events.length,
+        maxContactDeltaVFractionOfCruise,
         // Kept under its historical name because `test/fun-bench.test.mjs` (the master's file)
         // asserts every scenario publishes it. Under the stand-in it counted invented encounters;
         // here it is the number of REAL contact events the physics authority reported on the player
@@ -917,6 +985,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         // steers, so it is reported with its arena, never on its own.
         rockCount: rockPlans.length,
         trafficCount: traffic.length,
+        playerProxySupportWu,
         rockSpacingWU: ROCK_SPACING_WU,
         grazePeriodS: GRAZE_PERIOD_S,
         trafficPeriodS: TRAFFIC_PERIOD_S,

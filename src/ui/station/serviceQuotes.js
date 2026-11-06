@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH, EMERGENCY_FUEL_U, emergencyRepairReserve } from '../../systems/economy.js';
 import { planSurveyFix, openSurveyFix, soldBearingOpen, bearingCharted, SURVEY_FIX_PRICE } from '../../systems/surveyFix.js';
 import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
@@ -187,10 +187,13 @@ function escWhyAttr(s) {
 // so keyboard/controller focus can reach it; the whyReveal layer reads data-why on hover AND
 // focus, and the click path toasts the same phrase instead of failing silently.
 export function disabledVitalActHtml(id, label, text, why) {
-  const copy = `${label} · ${text}`;
+  // the same verb / reason spans as a live verb's verb / price, so it reads and lays out like its
+  // neighbours ("REPAIR  NO YARD" beside "REFUEL  22 CR"); the " · " stays for anything reading text
+  const copy = `<span class="orr-act__verb">${escWhyAttr(label)}</span><span class="orr-act__sep"> · </span>` +
+    `<span class="orr-act__cost">${escWhyAttr(text)}</span>`;
   return `<button type="button" ${stationControlAttrs(id)} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
     ` data-vital-act="${escWhyAttr(id)}" data-why="${escWhyAttr(why)}" aria-disabled="true"` +
-    ` aria-label="${escWhyAttr(label + '. ' + why)}">${escWhyAttr(copy)}</button>`;
+    ` aria-label="${escWhyAttr(label + '. ' + why)}">${copy}</button>`;
 }
 
 function recommendationCandidate(service, quote, stationServices, opts) {
@@ -287,7 +290,8 @@ function baseServiceQuote(type, state, entity) {
   // One job per verb: the yard queues what it already holds, and a second booking of the same
   // type can never deliver (the live job already covers the deficit). The disabled path turns
   // the click into an honest line instead of a second charge.
-  if ((type === 'repair' || type === 'refuel') && playerYardJobs(state).some((j) => j.type === type)) {
+  const yardSummary = (type === 'repair' || type === 'refuel') ? playerYardSummary(state) : null;
+  if (yardSummary && (type === 'repair' ? yardSummary.hasRepair : yardSummary.hasRefuel)) {
     const verb = type === 'refuel' ? 'refuel' : 'repair';
     return {
       amount: 0,
@@ -382,20 +386,20 @@ function baseServiceQuote(type, state, entity) {
     }
     const affordableUnits = Math.max(0, Math.floor(credits / fuelUnit));
     if (credits < cost && affordableUnits <= 0) {
-      // INF-089 dead end: broke with an empty tank. The blocking condition is exact and the
-      // remedy names the nearest real credit source (cargo in the hold → Market sell).
-      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
+      // FB-101 hardship fill: a pilot who cannot pay for one unit still gets the smallest fill
+      // that can jump, filed on the note — economy's refuel handler takes this exact branch
+      // (realUnits <= 0) and owns the debit. Offer that verb instead of a disabled button
+      // that claims a dead end the engine does not have.
+      const reserve = Math.min(EMERGENCY_FUEL_U, missing);
+      const debtCr = Math.round(reserve * fuelUnit);
       return {
-        amount: 0,
-        cost,
-        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(fuelUnit) + ' cr/u',
-        buttonLabel: 'Refuel',
-        disabled: true,
-        disabledReason: 'need ' + fmtCr(fuelUnit) + ' cr/u',
-        remedy: carrying
-          ? 'Sell cargo at the Market to raise fuel money'
-          : 'Take a station contract or sell salvage, then refuel',
-        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(fuelUnit) + ' cr/u', kind: 'bad' }],
+        amount: reserve,
+        cost: 0,
+        debtCr,
+        detail: 'Fuel ' + current + '/' + max + ' · emergency ' + Math.round(reserve) + 'u on the note (' + fmtCr(debtCr) + ' cr debt)',
+        buttonLabel: 'Refuel on the Note',
+        disabled: false,
+        chips: [{ text: fmtCr(debtCr) + ' cr debt', kind: 'warn' }, { text: 'emergency fill', kind: 'warn' }],
       };
     }
     if (credits < cost) {
@@ -452,6 +456,24 @@ function baseServiceQuote(type, state, entity) {
       return { amount: 0, cost: 0, detail: hullText + ' · ' + armorText + ' · intact', buttonLabel: 'Full', disabled: true, chips: [{ text: 'intact', kind: 'ok' }] };
     }
     if (credits <= 0) {
+      // FB-101 emergency weld: up to the daily hull floor, filed on the note by economy's
+      // repair handler. Same formula as the handler, so the offer is exactly what lands.
+      const { reserve, allowance } = emergencyRepairReserve(state, entity);
+      if (reserve > 0) {
+        const debtCr = Math.round(reserve * repairUnit);
+        return {
+          amount: reserve,
+          cost: 0,
+          debtCr,
+          detail: hullText + ' · ' + armorText + ' · emergency weld +' + fmtCr(reserve) + ' hull on the note (' + fmtCr(debtCr) + ' cr debt)',
+          buttonLabel: 'Weld on the Note',
+          disabled: false,
+          chips: [{ text: fmtCr(debtCr) + ' cr debt', kind: 'warn' }, { text: 'emergency weld', kind: 'warn' }],
+        };
+      }
+      // INF-089 dead end: the note will not weld past the floor. The blocking condition is
+      // exact and the remedy names the nearest real credit source (cargo → Market sell).
+      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
       return {
         amount: missing.total,
         cost,
@@ -459,6 +481,12 @@ function baseServiceQuote(type, state, entity) {
         buttonLabel: 'Repair Hull',
         disabled: true,
         disabledReason: 'need credits',
+        remedy: (allowance <= 0
+          ? 'The emergency weld allowance is used for today. '
+          : 'The hull is above the emergency weld floor. ')
+          + (carrying
+            ? 'Sell cargo at the Market to raise repair money'
+            : 'Take a station contract or sell salvage, then repair'),
         chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need credits', kind: 'bad' }],
       };
     }
@@ -781,13 +809,28 @@ export function playerYardJobs(state) {
   return jobs.filter(Boolean);
 }
 
-export function yardJobReadout(state) {
+// Worker mode sends a bounded summary rather than pretending a truncated queue is the real queue.
+// The main-lane and bench owners continue to expose their full jobs array.
+export function playerYardSummary(state) {
+  const player = state?.stationServices?.player;
+  if (!player) return null;
+  if (player.summary && typeof player.summary === 'object') {
+    return state?.ui?.docked === true && state.ui.dockedStationId === player.stationId
+      ? player.summary : null;
+  }
   const jobs = playerYardJobs(state);
-  if (!jobs.length) return null;
+  return { count: jobs.length, head: jobs[0] || null,
+    hasRepair: jobs.some(job => job.type === 'repair'),
+    hasRefuel: jobs.some(job => job.type === 'refuel') };
+}
+
+export function yardJobReadout(state) {
+  const summary = playerYardSummary(state);
+  if (!summary?.count || !summary.head) return null;
   const s = state.stationServices;
   const player = s.player;
   const yardView = (s.stations && s.stations[player.stationId]) || null;
-  const head = jobs[0];
+  const head = summary.head;
   const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
   const frac = head.total > 0 ? Math.max(0, Math.min(1, head.applied / head.total)) : 0;
   const pct = Math.round(frac * 100) + '%';
@@ -814,7 +857,7 @@ export function yardJobReadout(state) {
     detail = 'On the pad — waiting on a free crew';
     tone = 'warn';
   }
-  const extra = jobs.length - 1;
+  const extra = summary.count - 1;
   if (extra > 0) detail += ` · +${extra} more job${extra === 1 ? '' : 's'} queued`;
   return {
     label: 'Yard',

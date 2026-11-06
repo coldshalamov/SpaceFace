@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "229226da49b9dd8abfb01c0fd933a6762d1b4ac94f75b13fbe94c586137ee28b",
+  "contentHash": "9a7a17067157f6b53a04eb43e444b5299d97388b534c493b6577185d7bd1fc68",
   "dynamicGroups": [
     {
       "id": "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-port-beacon-amber.dynamic",
@@ -2683,14 +2683,14 @@
       "uri": "scissorwake.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 542504,
-    "sha256": "f127e74bb5376b15a8a5f3b0aa9bbd91e68ddebc5daa4df85b1acdb5dcdd4287",
+    "bytes": 542700,
+    "sha256": "14bd8e92bdcd1794dad7fe900d290a2477fce2c7efdd2e6ea69e953bc2cad5f7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2792,6 +2792,154 @@
       },
       {
         "matrix": [
+          5.464408457279205,
+          0,
+          0,
+          0,
+          0,
+          5.464408457279205,
+          0,
+          0,
+          0,
+          0,
+          5.464408457279205,
+          0,
+          6.543816983699799,
+          0.8050000071525574,
+          -3.0230544805526733,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Beacon_Amber",
+        "planIndex": 12,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Beacon_Amber",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-port-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.601797208189964,
+          0,
+          0,
+          0,
+          0,
+          6.601797208189964,
+          0,
+          0,
+          0,
+          0,
+          6.601797208189964,
+          0,
+          6.265357866883278,
+          0.6528777778148651,
+          -3.2996811270713806,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_BrushedMetal",
+        "planIndex": 14,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.523830831050873,
+          0,
+          0,
+          0,
+          0,
+          6.523830831050873,
+          0,
+          0,
+          0,
+          0,
+          6.523830831050873,
+          0,
+          6.249606668949127,
+          0.625,
+          -3.302622437477112,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Ceramic",
+        "planIndex": 16,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Ceramic",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-port-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.478719741106033,
+          0,
+          0,
+          0,
+          0,
+          6.478719741106033,
+          0,
+          0,
+          0,
+          0,
+          6.478719741106033,
+          0,
+          5.938719719648361,
+          0.6450000107288361,
+          -3.0574653148651123,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_MechanicalDark",
+        "planIndex": 18,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2810,7 +2958,7 @@
           1
         ],
         "name": "MOTION_SCISSORWAKE_BLADE_STARBOARD",
-        "planIndex": 16,
+        "planIndex": 20,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2861,6 +3009,154 @@
       },
       {
         "matrix": [
+          5.464408457279205,
+          0,
+          0,
+          0,
+          0,
+          5.464408457279205,
+          0,
+          0,
+          0,
+          0,
+          5.464408457279205,
+          0,
+          6.543816983699799,
+          0.8050000071525574,
+          3.0230542421340942,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Beacon_Amber",
+        "planIndex": 21,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Beacon_Amber",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-starboard-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.601797208189964,
+          0,
+          0,
+          0,
+          0,
+          6.601797208189964,
+          0,
+          0,
+          0,
+          0,
+          6.601797208189964,
+          0,
+          6.265357866883278,
+          0.6528777778148651,
+          3.2996811270713806,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_BrushedMetal",
+        "planIndex": 23,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.51937872171402,
+          0,
+          0,
+          0,
+          0,
+          6.51937872171402,
+          0,
+          0,
+          0,
+          0,
+          6.51937872171402,
+          0,
+          6.251947343349457,
+          0.625,
+          3.30322802066803,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Ceramic",
+        "planIndex": 25,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Ceramic",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-starboard-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.478719741106033,
+          0,
+          0,
+          0,
+          0,
+          6.478719741106033,
+          0,
+          0,
+          0,
+          0,
+          6.478719741106033,
+          0,
+          5.938719719648361,
+          0.6450000107288361,
+          3.0574653148651123,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_MechanicalDark",
+        "planIndex": 27,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-blade-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2879,7 +3175,7 @@
           1
         ],
         "name": "MOTION_SCISSORWAKE_SPOOL",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2930,6 +3226,117 @@
       },
       {
         "matrix": [
+          1.0199999809265137,
+          0,
+          0,
+          0,
+          0,
+          1.0199999809265137,
+          0,
+          0,
+          0,
+          0,
+          1.0199999809265137,
+          0,
+          -3,
+          2.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_Armor",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_SPOOL_Armor",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-spool-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1300000548362732,
+          0,
+          0,
+          0,
+          0,
+          1.1300000548362732,
+          0,
+          0,
+          0,
+          0,
+          1.1300000548362732,
+          0,
+          -3,
+          2.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_BrushedMetal",
+        "planIndex": 32,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_SPOOL_BrushedMetal",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-spool-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6375000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.6375000476837158,
+          0,
+          0,
+          0,
+          0,
+          0.6375000476837158,
+          0,
+          -3,
+          3.4800000190734863,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_MechanicalDark",
+        "planIndex": 34,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SCISSORWAKE_SPOOL_MechanicalDark",
+            "recordIds": [
+              "sf.render.scissorwake.node.lod0-motion-scissorwake-spool-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2948,7 +3355,7 @@
           1
         ],
         "name": "SOCKET_Blade_Port",
-        "planIndex": 25,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3000,7 +3407,7 @@
           1
         ],
         "name": "SOCKET_Blade_Starboard",
-        "planIndex": 26,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3052,7 +3459,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 27,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3104,7 +3511,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 28,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3156,7 +3563,7 @@
           1
         ],
         "name": "SOCKET_Engine_Port",
-        "planIndex": 29,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3208,7 +3615,7 @@
           1
         ],
         "name": "SOCKET_Engine_Starboard",
-        "planIndex": 30,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3260,7 +3667,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 31,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3350,18 +3757,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 13,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "ceramic"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -3371,36 +3768,46 @@
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
         "role": "ceramic"
       },
       {
         "allowTextures": true,
-        "planIndex": 20,
+        "planIndex": 19,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
         "role": "mechanical"
       }
     ],
@@ -3410,7 +3817,7 @@
       "sha256": "2dece442f9cb2c365275d9a5743492cbd30785e3f90f05c36b2148b0c2a55177",
       "uri": "assets/ships/motions/scissorwake.motion.json"
     },
-    "nodeCount": 32,
+    "nodeCount": 43,
     "primitives": [
       {
         "canopy": false,
@@ -3669,8 +4076,8 @@
           -3.0230544805526733,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Beacon_Amber",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Beacon_Amber_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3698,8 +4105,8 @@
           -3.2996811270713806,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_BrushedMetal",
-        "planIndex": 13,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_BrushedMetal_1",
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3727,8 +4134,8 @@
           -3.302622437477112,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Ceramic",
-        "planIndex": 14,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_Ceramic_1",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3756,8 +4163,8 @@
           -3.0574653148651123,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_MechanicalDark",
-        "planIndex": 15,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_PORT_MechanicalDark_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3785,8 +4192,8 @@
           3.0230542421340942,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Beacon_Amber",
-        "planIndex": 17,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Beacon_Amber_1",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3814,8 +4221,8 @@
           3.2996811270713806,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_BrushedMetal",
-        "planIndex": 18,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_BrushedMetal_1",
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3843,8 +4250,8 @@
           3.30322802066803,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Ceramic",
-        "planIndex": 19,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_Ceramic_1",
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3872,8 +4279,8 @@
           3.0574653148651123,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_MechanicalDark",
-        "planIndex": 20,
+        "name": "LOD0_MOTION_SCISSORWAKE_BLADE_STARBOARD_MechanicalDark_1",
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3901,8 +4308,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_Armor",
-        "planIndex": 22,
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_Armor_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3930,8 +4337,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_BrushedMetal",
-        "planIndex": 23,
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_BrushedMetal_1",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3959,8 +4366,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_MechanicalDark",
-        "planIndex": 24,
+        "name": "LOD0_MOTION_SCISSORWAKE_SPOOL_MechanicalDark_1",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3973,7 +4380,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scissorwake.glb"
   },
-  "runtimeHash": "81ff60302e9665524a719577f2b585597ffcfa04bfedb14013eac812c4a7150d",
+  "runtimeHash": "f402ce322d029c96c19f1ef17b870bf279b6f413992eee3552a7b4916a9174f0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

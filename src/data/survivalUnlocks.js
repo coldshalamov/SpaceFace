@@ -55,9 +55,8 @@ function starter(id, label, defId, verb, blurb) {
 }
 
 /**
- * Starting kits the catalog can offer. Same hull (Hitch) for every row so unlocking a
- * kit cannot hand a thicker ship. The default Pulse Laser S is the highest-DPS gun in
- * this set (44); the others are different verbs at equal or lower direct damage.
+ * Starting kits from the legacy account unlock catalog. Each uses the Hitch hull;
+ * weapon performance comes from the canonical weapon definitions below the launch layer.
  */
 export const SURVIVAL_STARTERS = freezeDeep([
   starter(
@@ -109,6 +108,9 @@ export const SURVIVAL_STARTER_BY_ID = Object.freeze(Object.fromEntries(
 export const DOOR_PUBLIC_STARTERS = Object.freeze([
   'ricochet_runner',
   'energy_baseline',
+  'veil_step',
+  'boomerang_bomb_run',
+  'pinball_rush',
   'kinetic_baseline',
   'mirror_demonstrator',
 ]);
@@ -129,6 +131,30 @@ export const SURVIVAL_UNLOCK_CATALOG = freezeDeep([
     blurb: 'A plain pulse. Always available, so a first run can just shoot.',
     defaultUnlocked: true,
     grants: { starters: ['energy_baseline'] },
+  }),
+  entry({
+    id: 'unlock_kit_veil_step',
+    kind: 'starter',
+    label: 'Veil Step',
+    blurb: 'A phase jump that spends the boost capacitor. Always available, so the first run can cross a fight.',
+    defaultUnlocked: true,
+    grants: { starters: ['veil_step'] },
+  }),
+  entry({
+    id: 'unlock_kit_boomerang_bomb_run',
+    kind: 'starter',
+    label: 'Boomerang Bomb Run',
+    blurb: 'A physical banking sortie with one real bomb and a certified phase return. Always available.',
+    defaultUnlocked: true,
+    grants: { starters: ['boomerang_bomb_run'] },
+  }),
+  entry({
+    id: 'unlock_kit_pinball_rush',
+    kind: 'starter',
+    label: 'Pinball Rush',
+    blurb: 'Hold Boost at a live hostile and release a real charged dash. Contacts resolve through normal physics and combat.',
+    defaultUnlocked: true,
+    grants: { starters: ['pinball_rush'] },
   }),
   entry({
     id: 'unlock_kit_kinetic',
@@ -286,11 +312,3 @@ export const SURVIVAL_UNLOCK_BY_ID = Object.freeze(Object.fromEntries(
 ));
 
 export const SURVIVAL_AUTHORED_VICTORY_WAVES = SURVIVAL_ARC_LENGTH;
-
-export const SURVIVAL_STARTER_DPS = Object.freeze({
-  wpn_pulse_laser_s: 44,
-  wpn_autocannon_s: 31,
-  wpn_flak_turret_s: 32,
-  wpn_gravity_marker_s: 0.75,
-  wpn_momentum_sink_s: 0.6,
-});

@@ -47,6 +47,7 @@ import { hash32 } from '../core/rng.js';
 import { ilexGreenhouseBroadcast } from '../data/ilexGreenhouse.js';
 import { rheaShiftBroadcast } from '../data/rheaShiftBroadcast.js';
 import { clinicReceivingBroadcast } from '../data/clinicReceivingBroadcast.js';
+import { stationMarketBroadcast } from '../data/stationMarketBroadcast.js';
 
 /** Explicit numeric priority for ambient lines — strictly below every CHANNEL_PRIORITY default. */
 export const AMBIENT_PRIORITY = 1;
@@ -392,7 +393,11 @@ export const stationBroadcast = {
     const clinic = bucket % 4 === 2 && !this._restoring
       && !this._ctx.registry?.get?.('save')?._restoring
       ? clinicReceivingBroadcast(state, station) : null;
-    const text = shift?.text || clinic?.text || pickBroadcastLine(def.lines, roll, hull);
+    // The desk's own market beat: the shelf's loudest current fact, spoken the bucket after the
+    // clinic's. Read-only projection, so a `valid` re-check re-derives the same fact.
+    const market = bucket % 4 === 1 && !this._restoring
+      ? stationMarketBroadcast(state, station, bucket) : null;
+    const text = shift?.text || clinic?.text || market?.text || pickBroadcastLine(def.lines, roll, hull);
     if (!text) return;
 
     const helpers = (this._ctx && this._ctx.helpers) || {};
@@ -411,6 +416,11 @@ export const stationBroadcast = {
         && (state.simTime - this._lastCombatAt) >= COMBAT_SILENCE_S
         && nearestVisibleStation(state, NEAR_RANGE) === station
         && clinicReceivingBroadcast(state, station)?.id === clinic.id } : {}),
+      ...(market ? { id: market.id, valid: () => this._state === state
+        && state.mode === 'flight' && !this._restoring && !isOnboardingActive(state)
+        && (state.simTime - this._lastCombatAt) >= COMBAT_SILENCE_S
+        && nearestVisibleStation(state, NEAR_RANGE) === station
+        && stationMarketBroadcast(state, station, bucket)?.id === market.id } : {}),
       factionId: data.factionId || null, priority: AMBIENT_PRIORITY, ttl: LINE_TTL_S,
     });
     this._lastSayAt = now;

@@ -197,6 +197,26 @@ test('recursively expands composite npm scripts so nested failures do not hide s
   ]);
 });
 
+test('matrix IDs use the Node test file after runner options', () => {
+  const matrix = ciReport.buildCommandMatrix(
+    'node --test --test-concurrency=2 test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs'
+      + ' && node --test-concurrency 3 --test test/crucible-thirty-wave-arc.test.mjs',
+  );
+
+  assert.deepEqual(matrix.map(({ id, command }) => ({ id, command })), [
+    {
+      id: 'save-restore-atomicity-test',
+      command: 'node --test --test-concurrency=2 test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs',
+    },
+    {
+      id: 'crucible-thirty-wave-arc-test',
+      command: 'node --test-concurrency 3 --test test/crucible-thirty-wave-arc.test.mjs',
+    },
+  ]);
+  assert.equal(ciReport.classifyCommandGroup(matrix[0]), 'sim');
+  assert.equal(ciReport.classifyCommandGroup(matrix[1]), 'feel');
+});
+
 test('builds a stable ignored artifact path from the run time and command id', () => {
   assert.equal(typeof ciReport.buildArtifactPath, 'function');
   assert.equal(
@@ -498,9 +518,38 @@ test('nested failing TAP labels retain nonzero failure without claiming golden e
   assert.match(result.reason, /expected live body/);
 });
 
+test('mission-accept handoff leaf budgets the LONG class like station-tabs', () => {
+  // The leaf filename has no playwright/chromium/probe token, so without an override it would
+  // inherit the 180s DEFAULT and SIGKILL a healthy software-GL run after accept+track OK.
+  const matrix = ciReport.buildCommandMatrix(
+    'npm run check:mission-handoff',
+    {
+      'check:mission-handoff':
+        'node scripts/check-mission-accept-handoff-runtime.mjs && node --test test/post-ending-replay-preview-choice.test.mjs',
+    },
+  );
+  const handoff = matrix.find((entry) => entry.id === 'check-mission-accept-handoff-runtime');
+  assert.ok(handoff, 'mission-accept handoff leaf must be in the expanded matrix');
+  assert.equal(handoff.timeoutMs, 420000);
+  assert.equal(
+    handoff.command,
+    'node scripts/check-mission-accept-handoff-runtime.mjs',
+  );
+});
+
 test('optional Charon flag keeps matrix cold-open timeout at its existing180s class',()=>{
  const matrix=ciReport.buildCommandMatrix('npm run check:47a:live-cold-open',{
   'check:47a:live-cold-open':'node scripts/check-47a-live-cold-open.mjs --charon-camera-diagnostic',
  });
  assert.equal(matrix[0].id,'check-47a-live-cold-open');assert.equal(matrix[0].timeoutMs,180000);
+});
+
+for (const code of [0, 1]) test(`spec reporter case names cannot manufacture stale golden debt (exit ${code})`, () => {
+  const result = ciReport.createCommandResult({
+    def: { id: 'orchard-worker-recovery', command: 'node --test fixture.mjs' }, code,
+    stdout: '✔ reentrant canonical removal cannot act on stale snapshot after reuse-id (2ms)\n',
+    stderr: code ? 'AssertionError: unrelated owner failure' : '',
+  });
+  assert.equal(result.ok, code === 0);
+  assert.equal(result.classification.category, code ? 'assertion_failure' : 'passed');
 });

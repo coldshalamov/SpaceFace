@@ -13,8 +13,10 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
-import { makeEnemySpawnSpec } from './combat.js';
-import { swarmDoctrineStamp } from '../data/swarmMode.js';
+import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
+import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
+import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
+import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
 import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
@@ -204,6 +206,39 @@ function clearOfRocks(state, pos) {
   return pos;
 }
 
+// S1 — apply the Swarm feel profile to one spawn spec. Three jobs, all stamped only when
+// swarmFeel(ctx.state) resolved non-null, so Adventure specs are byte-identical to before:
+//   1. data[SWARM_FEEL_STAMP] — the contact owner's per-entity gate for the bowling-pin and
+//      Swarm tumble rules; the stamp crosses the worker lane with the entity.
+//   2. physicsBody.contact — the profile's bouncy enemy material, merged through the
+//      per-entity override path so shared PHYSICS_MATERIALS never move.
+//   3. fodder rewrite — hull scaled, shield and armor zeroed for the fodder band (C1/C2).
+export function applySwarmFeelSpec(spec, enemyId, feel) {
+  spec.data = spec.data || {};
+  spec.data[SWARM_FEEL_STAMP] = true;
+  spec.physicsBody = {
+    ...(spec.physicsBody || {}),
+    contact: {
+      ...((spec.physicsBody && spec.physicsBody.contact) || {}),
+      restitution: feel.contact.enemyRestitution,
+      restitutionCombine: feel.contact.enemyCombine,
+    },
+  };
+  if (feel.fodder.ids.includes(enemyId)) {
+    const baseHull = Number.isFinite(spec.hull) && spec.hull > 0 ? spec.hull : 1;
+    const hull = Math.max(1, Math.round(baseHull * feel.fodder.hullMult));
+    spec.hull = hull;
+    spec.hullMax = hull;
+    spec.shield = feel.fodder.shield;
+    spec.shieldMax = feel.fodder.shield;
+    spec.shieldRegenRate = 0;
+    spec.armorHp = feel.fodder.armor;
+    spec.armorMax = feel.fodder.armor;
+    spec.armorFlat = 0;
+  }
+  return spec;
+}
+
 export function materializeWaveBatch(ctx, request) {
   const req = request || {};
   const requested = Number.isInteger(req.count) && req.count > 0 ? req.count : 0;
@@ -219,12 +254,24 @@ export function materializeWaveBatch(ctx, request) {
   const granted = Math.max(0, budget.request(requested, ownerId) | 0);
   if (granted <= 0) return emptyReceipt(requested);
 
-  const anchor = playerAnchor(ctx);
+  const fortify = req.swarm === true && typeof ctx?.registry?.get === 'function'
+    ? ctx.registry.get('swarmFortify') : null;
+  const ingressPolicy = fortify && typeof fortify.getIngressPolicy === 'function'
+    ? fortify.getIngressPolicy() : null;
+  const fixedAnchor = ingressPolicy?.gateGroupPolicy === 'fortify-three-corridor-v1'
+    ? ingressPolicy.anchor : null;
+  const fortifiedIngress = req.swarm === true && fixedAnchor
+    && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z);
+  const anchor = fortifiedIngress ? fixedAnchor : playerAnchor(ctx);
   const distance = Number.isFinite(req.distance) && req.distance > 0
     ? req.distance
     : SURVIVAL_SPAWN_DISTANCE;
-  const bearing = gateBearing(req.gateGroup);
-  const baseAngle = Math.atan2(bearing.z, bearing.x);
+  const ingressGroup = fortifiedIngress
+    ? (swarmFortifyCorridorForGate(req.gateGroup, req.wave) || req.gateGroup)
+    : req.gateGroup;
+  const bearing = gateBearing(ingressGroup);
+  const baseAngle = Math.atan2(bearing.z, bearing.x)
+    + (fortifiedIngress && Number.isFinite(anchor.rotation) ? anchor.rotation : 0);
   const level = Number.isInteger(req.level) && req.level >= 1 ? req.level : levelForWave(req.wave);
   const rng = mulberry32(batchStreamSeed(
     Number.isInteger(req.seed) ? req.seed : 1,
@@ -233,8 +280,11 @@ export function materializeWaveBatch(ctx, request) {
     Number.isInteger(req.batchIndex) ? req.batchIndex : 0,
   ));
 
+  const feel = swarmFeel(ctx && ctx.state);
   const spawnedIds = [];
   const reserved = [];
+  let ingressPose = null;
+  let arrival = null;
   let deferred = 0;
   // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
   // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
@@ -244,7 +294,10 @@ export function materializeWaveBatch(ctx, request) {
   let clumpZ = 0;
   if (clumped) {
     const clumpAngle = baseAngle + (rng() - 0.5) * GATE_SPREAD_RAD;
-    const clumpDist = distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER);
+    // E4: the whole clump — centre plus the pack's own radius — stays outside the
+    // 1.3-screen materialisation line. Depth jitter slides along the bearing, never under it.
+    const clumpDist = Math.max(SWARM_MIN_ARRIVAL_WU + SWARM_CLUMP_RADIUS_WU,
+      distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER));
     clumpX = anchor.x + Math.cos(clumpAngle) * clumpDist;
     clumpZ = anchor.z + Math.sin(clumpAngle) * clumpDist;
   }
@@ -260,7 +313,10 @@ export function materializeWaveBatch(ctx, request) {
         // formation, not a stack of coincident hulls at one point.
         const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
         const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
-        const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
+        // E4: a lone swarm body (or a scored fan) never materialises inside the line either —
+        // the jitter swings around the ring, never under it.
+        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU : 0,
+          distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER));
         pos = {
           x: anchor.x + Math.cos(angle) * radius,
           z: anchor.z + Math.sin(angle) * radius,
@@ -269,14 +325,26 @@ export function materializeWaveBatch(ctx, request) {
       if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
       if (req.swarm === true) {
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
-          { velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
+          { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
             clusterRadius: SWARM_CLUMP_RADIUS_WU });
-        if (!open) { deferred++; continue; }
+        // E4: the blocked-arrival search may legally settle closer than the materialisation
+        // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
+        // spot outside the line defers — the batch retries next window, it does not pop in.
+        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
+        if (!open || (player && player.pos
+          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
+          deferred++;
+          continue;
+        }
         spec.pos = open;
       }
       spec.data = spec.data || {};
+      // Initial pose is spawn-owned. The eight-arm rig and the first locked tell share +X
+      // forward, without a runtime transform correction fighting the native helm.
+      if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
       // Admission owns the initial hold: the AI may run before the next wave update.
@@ -342,6 +410,17 @@ export function materializeWaveBatch(ctx, request) {
         spec.data.contractTargetId = playerId ?? null;
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
+      if (req.swarm === true && typeof req.gateGroup === 'string' && GATE_BEARINGS[req.gateGroup]) {
+        spec.data.swarmGateGroup = fortifiedIngress ? ingressGroup : req.gateGroup;
+        if (fortifiedIngress) {
+          spec.data.swarmSourceGateGroup = req.gateGroup;
+          spec.data.swarmIngressPose = {
+            x: spec.pos.x,
+            z: spec.pos.z,
+            heading: Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x),
+          };
+        }
+      }
       if (typeof req.role === 'string') spec.data.runRole = req.role;
       // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
       // later boss surface find the round's boss bodies without re-deriving the wave owner's
@@ -368,6 +447,12 @@ export function materializeWaveBatch(ctx, request) {
         }
         continue;
       }
+      if (fortifiedIngress && !ingressPose) ingressPose = { ...spec.data.swarmIngressPose };
+      // E4: the group's true entry point, for the gate flare and the arrival receipt —
+      // the clump centre when the pack is throw-shaped, else the first hull's own spot.
+      if (req.swarm === true && !arrival) {
+        arrival = clumped ? { x: clumpX, z: clumpZ } : { x: spec.pos.x, z: spec.pos.z };
+      }
       spawnedIds.push(id);
       reserved.push(spec);
     }
@@ -384,6 +469,12 @@ export function materializeWaveBatch(ctx, request) {
     admitted: spawnedIds.length,
     spawnedIds,
     rejected: requested - spawnedIds.length,
+    ...(req.swarm === true && arrival ? { arrival, gateGroup: ingressGroup } : {}),
+    ...(fortifiedIngress ? {
+      gateGroup: ingressGroup,
+      sourceGateGroup: req.gateGroup,
+      ingressPose: ingressPose ? { ...ingressPose, origin: { x: anchor.x, z: anchor.z } } : null,
+    } : {}),
     ...(deferred > 0 ? { deferred, reason: 'unsafe_arrival' } : {}),
   };
 }

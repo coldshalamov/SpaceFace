@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
 
 // Scripted-intro species prewarm (PQ-210.00 follow-up): the rescue cast and lane traffic mint
 // after the opening composition snapshot, so the entity-driven cook never sees them. The bounded
 // warm must therefore carry exemplar specs for every species the intro can spawn — through the
-// same production build + requestAuthoredUpgrade boundary a live entity uses — and the ordinary
-// (non-survival) opening cook must actually invoke it.
+// same production build + requestAuthoredUpgrade boundary a live entity uses. Ordinary Adventure
+// now uses exact first-picture admission and bounded per-object streaming instead of this catalog.
 
 // No jsdom in this repo: hull panels paint to canvas, so stub document the way
 // pq-193-05-census-a-bodies does. The stub is installed before any vf.build runs.
@@ -38,7 +39,8 @@ const {
 } = await import('../src/render/visualFactory.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');
 const { makeRescueCastSpecs } = await import('../src/onboarding/rescueOpening.js');
-const { warmHullFilesForSpecs } = await import('../src/render/renderer.js');
+const { render: renderSystem, warmHullFilesForSpecs } = await import('../src/render/renderer.js');
+const { scriptedOnboardingRosterRows } = await import('../src/render/saveEnvelopeSectorWarm.js');
 
 const RENDERER_SOURCE = readFileSync(
   new URL('../src/render/renderer.js', import.meta.url), 'utf8',
@@ -146,29 +148,39 @@ test('rescue cast members resolve onto the warmed species and packages', () => {
   }
 });
 
-test('scenePrepared begins the opening warm early, not just mid-cook', () => {
-  // The warm used to begin inside live.cook — the rescue-cast packaged-body attaches then
-  // ran inside the cook window and the roster settle still found the drone attach in flight
-  // at the shell-release boundary (the 8 s open-route timeout, left=11 pending at witness).
-  // A non-survival launch must now claim the early slot at game:scenePrepared exactly as a
-  // crucible launch does.
-  const earlyDef = RENDERER_SOURCE.indexOf('_beginEarlyCrucibleRosterWarm() {');
-  const menuDef = RENDERER_SOURCE.indexOf('_beginMenuCrucibleRosterWarm() {');
-  assert.ok(earlyDef > 0 && menuDef > earlyDef);
-  const block = RENDERER_SOURCE.slice(earlyDef, menuDef);
-  assert.match(block, /profile:\s*survivalRunHoldsArena\(state\) \? 'crucible' : 'opening'|profile:\s*openingProfile \? 'opening' : 'crucible'/,
-    'a non-survival scenePrepared arms the opening species cohort, not nothing');
-  assert.match(block, /this\._earlyCrucibleWarm = warm/,
-    'the early warm lands in the slot the cook claims');
-  // A door-staged crucible warm on a non-survival launch is still discarded first —
-  // but the discard must fall through to the opening begin, not return empty.
-  assert.match(block, /_discardEarlyCrucibleWarm\(\)/,
-    'the stale door-staged warm is still discarded');
-  assert.doesNotMatch(block, /_discardEarlyCrucibleWarm\(\);\s*return;/,
-    'discarding the stale warm must not skip the opening begin');
+test('ordinary scenePrepared leaves future roster work to streaming and discards an unrelated door warm', () => {
+  for (const staged of [false, true]) {
+    let begins = 0, discards = 0;
+    const owner = Object.create(renderSystem);
+    Object.assign(owner, {
+      state: { mode: 'loading' }, scene: {}, _earlyCrucibleWarm: staged ? {} : null,
+      _beginCrucibleBoundedRosterWarm() { begins++; throw new Error('ordinary launch started future roster'); },
+      _discardEarlyCrucibleWarm() { discards++; this._earlyCrucibleWarm = null; },
+    });
+    owner._beginEarlyCrucibleRosterWarm();
+    assert.equal(begins, 0);
+    assert.equal(discards, staged ? 1 : 0);
+    assert.equal(owner._earlyCrucibleWarm, null);
+  }
 });
 
-test('the early opening warm defers fleet decodes but starts the attach cohort', () => {
+test('survival scenePrepared retains its bounded whole-roster warm', () => {
+  const warm = { root: new THREE.Group() }, begins = [];
+  const owner = Object.create(renderSystem);
+  Object.assign(owner, {
+    state: { mode: 'loading', run: { kind: 'survival', phase: 'draft' } }, scene: new THREE.Scene(),
+    _rosterPrewarmRoots: [], _beginCrucibleBoundedRosterWarm(options) { begins.push(options); return warm; },
+    _noteShadowMeshAdded() {},
+  });
+  owner._beginEarlyCrucibleRosterWarm();
+  assert.equal(begins.length, 1);
+  assert.equal(begins[0].profile, 'crucible');
+  assert.equal(owner._earlyCrucibleWarm, warm);
+  assert.equal(warm.root.parent, owner.scene);
+  assert.deepEqual(owner._rosterPrewarmRoots, [warm.root]);
+});
+
+test('explicit optional opening warms retain their deferred fleet decode lifetime', () => {
   // Measured on the witness run: starting the whole-ship GLB decodes at scenePrepared made
   // the launch SLOWER, not faster — ~100 MB of meshopt decode shares the single main-thread
   // lane with the authored-library/visuals gates (+8 s on authored-visuals) and the bigger
@@ -176,12 +188,6 @@ test('the early opening warm defers fleet decodes but starts the attach cohort',
   // out was the small packaged-body attach cohort. So: 'hull'-slot files defer to the cook
   // claim (same runway the mid-cook begin used to give them), small place/pod bodies start
   // immediately, and finish() backstops the deferred start so no path can skip it.
-  const earlyDef = RENDERER_SOURCE.indexOf('_beginEarlyCrucibleRosterWarm() {');
-  const menuDef = RENDERER_SOURCE.indexOf('_beginMenuCrucibleRosterWarm() {');
-  const earlyBlock = RENDERER_SOURCE.slice(earlyDef, menuDef);
-  assert.match(earlyBlock, /deferFleetDecodes:\s*openingProfile/,
-    'only the early opening warm defers its fleet decodes — crucible keeps the menu dwell');
-
   const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
   const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');
   assert.ok(beginDef > 0 && finishDef > beginDef);
@@ -211,7 +217,7 @@ test('the early opening warm defers fleet decodes but starts the attach cohort',
     'finish() fires deferred decodes before the bounded decode wait');
 });
 
-test('the ordinary opening cook runs the bounded warm with the intro species profile', () => {
+test('the explicit optional opening cook retains the intro species profile', () => {
   const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
   const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
   assert.ok(cookStart > 0 && beginDef > cookStart);
@@ -227,6 +233,31 @@ test('the ordinary opening cook runs the bounded warm with the intro species pro
 });
 
 test('ordinary opening keeps its live/embark hull set and releases the warm after first paint', () => {
+  const menuWarms = [];
+  const menuOwner = Object.create(renderSystem);
+  Object.assign(menuOwner, {
+    renderer: {},
+    _warmSectorRecipeStubs(...args) { menuWarms.push(args); },
+  });
+  menuOwner._prefetchEmbarkVisuals({
+    sectorId: 'sector_helios_prime', seed: 123, shipDefId: 'ship_mule',
+  });
+  assert.equal(menuWarms.length, 1);
+  const [placeStubs, shipStubs, roster, sectorId] = menuWarms[0];
+  assert.equal(sectorId, 'sector_helios_prime');
+  assert.deepEqual(placeStubs.map(stub => stub.data.packagedPropFile), [
+    'pods/pod_47a_evidence_spindle.glb', 'places/place_dead_hulk.glb',
+  ], 'menu dwell keeps the 47-A spindle and carrier hulk');
+  assert.deepEqual(shipStubs.map(stub => stub.data.defId), [
+    'ship_wasp', 'ship_mule', 'ship_mule',
+  ], 'fixed intro hulls and the selected starter remain warm');
+  assert.deepEqual(roster, scriptedOnboardingRosterRows(),
+    'scripted onboarding hulls remain warm without enumerating sector recipes');
+  const embarkStart = RENDERER_SOURCE.indexOf('_prefetchEmbarkVisuals(payload)');
+  const embarkEnd = RENDERER_SOURCE.indexOf('_admitSurvivalRosterPrewarm(payload, options = {})', embarkStart);
+  const embark = RENDERER_SOURCE.slice(embarkStart, embarkEnd);
+  assert.doesNotMatch(embark, /saveEnvelopeSectorStubs|saveEnvelopeFullExtrasStubs/);
+
   const helperStart = RENDERER_SOURCE.indexOf('function openingWarmHullFilesForState(state)');
   const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
   const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');

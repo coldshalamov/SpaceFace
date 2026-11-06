@@ -21,6 +21,7 @@ import {
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import {
   receiptReportsContextLost,
+  queueContextRecoveryExactTargetTouch,
   runWebGlContextRestoreRebuild,
 } from '../src/render/renderer.js';
 import { vfx } from '../src/render/vfx.js';
@@ -409,6 +410,47 @@ test('a successful rebuild drains exact-target touches queued while recovery was
   assert.deepEqual(touched.map((subject) => subject.name),
     ['authored-root-a', 'authored-root-b', 'authored-root-late'],
     'every subject queued during the pending window is re-touched before the gate opens');
+});
+
+test('recovery touch coalescing keeps the latest live owner and skips a retired BatchedMesh', async () => {
+  const owner = { _contextLost: true };
+  const liveBatch = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
+  liveBatch.name = 'live-batch';
+  const retiredBatch = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
+  retiredBatch.name = 'retired-batch';
+  let liveOwnerActive = true;
+  let retiredOwnerActive = true;
+  const touched = [];
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    runQueuedExactTargetTouch(subject, options) {
+      assert.equal(options.isActive(subject), true);
+      assert.ok(subject._indirectTexture, 'only a live BatchedMesh may reach the render touch');
+      touched.push(subject.name);
+    },
+  };
+
+  // A cancelled request for this subject is superseded by its newer live admission.
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => false });
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => liveOwnerActive });
+  // Late stale or throwing requests cannot replace that live queued owner.
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => false });
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => { throw new Error('retired owner'); } });
+  queueContextRecoveryExactTargetTouch(recovery, retiredBatch, { isActive: () => retiredOwnerActive });
+  retiredOwnerActive = false;
+  retiredBatch.dispose();
+
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {});
+  assert.equal(success.ok, true);
+  assert.deepEqual(touched, ['live-batch']);
+  assert.equal(recovery.pendingExactTargetTouches, null);
+
+  liveBatch.dispose();
+  liveBatch.material.dispose();
+  retiredBatch.material.dispose();
 });
 
 test('a failed rebuild keeps queued exact-target touches for the retry', async () => {

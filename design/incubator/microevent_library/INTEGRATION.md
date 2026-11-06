@@ -4,9 +4,9 @@
 Additive design data for the low-interference world-depth brief: **58 ambient events**
 (10 s – 2 min) that make the existing role/job/world systems produce visible situations.
 
-The catalog is still data-only (no runtime module imports this tree), but **twenty-four catalog
+The catalog is still data-only (no runtime module imports this tree), but **twenty-five catalog
 ids are wired** into live causal stories, each a choreography timer bound to a cast that already
-flies. That is runtime wiring, not ordinary-route acceptance. The other 34 catalog entries remain
+flies. That is runtime wiring, not ordinary-route acceptance. The other 33 catalog entries remain
 unwired and
 need a named live owner plus route proof before they leave integration debt.
 
@@ -37,6 +37,13 @@ links. The wired list:
   stages the scatter-when-law-approaches beat that note defers). The swarm gates on both middles'
   seeds, and its interruptSeeds stay empty so a pile-on that never lands stays off the news line
   (`vesta_feedstock_day`). Proof: `test/traffic-sector-causal-chain.test.mjs`.
+- **Dione Lane, "the convoy day"** (`src/data/sectorCausalChains.js`, one catalog id across the
+  Lane's three working hulls, none shared with another sector): `ev_convoy_forms_up` (logistics).
+  The zone copy's promised convoy — "Convoy contracts leave after customs clears the lane" —
+  forms at the relay manifest pod with the toll patrol on the flank, runs the catalog's
+  one-hauler-short fallback, and the cycle closes with one `news:publish` line
+  (`dione_convoy_day`) that reads the empty-slot branch when the escort is lost. Choreography
+  only, no minted cargo. Proof: `test/inf-dione-convoy.test.mjs`.
 - **Standalone**: `ev_meteor_passage` (`traffic._stepPocketMeteorPass`).
 
 To give another sector a story, add a row to `SECTOR_CAUSAL_CHAIN_DEFS` with links whose

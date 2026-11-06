@@ -1,23 +1,30 @@
 import { readLineVisualProfile } from '../render/lineVisualProfile.js';
 
-export function lineStrainWords(state, profile, target) {
-  const mass = Number(target?.physicsBody?.mass ?? target?.mass);
-  const tonnes = Number.isFinite(mass) && mass > 0 ? `${Math.round(mass * 10) / 10} T / ${profile.ceilingT.toLocaleString('en-US')} T` : '';
+export function lineStrainWords(state, profile) {
+  // overClass is a positive signal from the progression owner, not an inverse proof that the
+  // current body has been checked. A line can hold an anchor or a tow, and a fresh/arcade
+  // mirror can legitimately have no active class verdict. Never print a fabricated one.
+  const rating = Number.isFinite(profile.ceilingT) && profile.ceilingT > 0
+    ? `RATED ${profile.ceilingT.toLocaleString('en-US')} T` : 'RATING UNKNOWN';
   return {
-    title: `LINE ${profile.label}${tonnes ? ' · ' + tonnes : ''}`,
+    title: `LINE ${profile.label} · ${rating}`,
     detail: profile.overClass ? `OVER CLASS · WINCH ${Math.round(profile.heat * 100)}%`
-      : profile.active ? `WITHIN CLASS · WINCH ${Math.round(profile.heat * 100)}%` : 'WINCH COOLING',
+      : profile.active ? `WINCH ${Math.round(profile.heat * 100)}%` : 'WINCH COOLING',
   };
 }
 
 const CSS = `
-.sf-line-strain { position:fixed; left:0; top:0; width:220px; pointer-events:none;
- color:var(--dp-ink-strong,#eee); font:600 12px/1.45 var(--dp-font-mono,monospace);
- letter-spacing:.04em; text-shadow:0 1px 3px var(--dp-bg,#080c12); }
+.sf-line-strain { position:fixed; left:0; top:0; width:max-content; min-width:148px; max-width:220px;
+ padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .13);
+ background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88));
+ box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 8px 20px -6px rgb(0 0 0 / .68);
+ pointer-events:none; color:var(--dp-ink-strong,#f4f1ea);
+ font:600 12px/1.35 var(--dp-face-read,"Instrument Sans",sans-serif);
+ font-variant-numeric:tabular-nums; letter-spacing:.03em; }
 .sf-line-strain[hidden] { display:none; }
-.sf-line-strain__detail { color:var(--dp-ink-dim,#bcc7d1); font-size:12px; }
+.sf-line-strain__detail { color:var(--dp-ink-dim,#9ba3b0); font-family:var(--dp-face-num,"Spline Sans Mono",monospace); font-weight:500; font-size:12px; }
 .sf-line-strain[data-over=true] .sf-line-strain__detail { color:var(--dp-warn,#ffc078); }
-.sf-line-strain__track { width:120px; height:2px; margin-top:4px; background:var(--dp-hairline,#48515a); }
+.sf-line-strain__track { width:100%; height:3px; border-radius:1.5px; margin-top:4px; background:rgb(236 230 216 / .18); overflow:hidden; }
 .sf-line-strain__fill { height:100%; width:100%; transform-origin:left center; background:var(--dp-warn,#ffc078); }
 `;
 
@@ -37,33 +44,57 @@ export function createLineStrainReadout(host) {
   track.className = 'sf-line-strain__track'; fill.className = 'sf-line-strain__fill'; track.appendChild(fill);
   root.appendChild(title); root.appendChild(detail); root.appendChild(track); host.appendChild(root);
   const profile = {}, query = { x: 0, y: 0, z: 0 };
+  // Re-setting [hidden] on an already hidden root still invalidates style every frame.
+  const hide = () => { if (!root.hidden) root.hidden = true; };
+  // DOM writes are dirty-gated: identical text/aria/style assignments still cost
+  // style/attribute processing every frame while a line stays hot.
+  let lastTitle = '', lastDetail = '', lastOver = '', lastNow = '', lastLabel = '';
+  let lastTx = -1, lastTy = -1, lastHeat = -1;
+  // Viewport size is a forced-layout read; cache it and refresh only when the window resizes.
+  let viewW = 0, viewH = 0;
+  const invalidateView = () => { viewW = 0; viewH = 0; };
+  const view = globalThis.window ?? globalThis;
+  view.addEventListener?.('resize', invalidateView);
   return {
     root,
     update(state, player, project) {
       readLineVisualProfile(state, profile);
       if (state.mode !== 'flight' || state.ui?.docked || !player?.alive || typeof project !== 'function'
-          || (!profile.active && profile.heat <= .02)) { root.hidden = true; return; }
+          || (!profile.active && profile.heat <= .02)) { hide(); return; }
       query.x = player.pos.x; query.z = player.pos.z;
       const center = project(query);
-      if (!center || center.onScreen === false || !Number.isFinite(center.x) || !Number.isFinite(center.y)) { root.hidden = true; return; }
+      if (!center || center.onScreen === false || !Number.isFinite(center.x) || !Number.isFinite(center.y)) { hide(); return; }
       const x = center.x, y = center.y;
       query.x += Math.max(1, Number(player.radius) || 8);
       const edge = project(query);
       const clear = edge && Number.isFinite(edge.x) ? Math.max(30, Math.abs(edge.x - x)) + 18 : 50;
-      const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 960;
-      const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 540;
-      const target = state.entities?.get?.(state.player?.tether?.targetId);
-      const words = lineStrainWords(state, profile, target);
-      title.textContent = words.title; detail.textContent = words.detail;
-      root.dataset.over = String(profile.overClass);
-      root.setAttribute('aria-label', `${words.title}. ${words.detail}`);
-      root.setAttribute('aria-valuenow', String(Math.round(profile.heat * 100)));
-      root.style.transform = `translate3d(${Math.round(Math.max(16, Math.min(w - 236, x + clear)))}px,${Math.round(Math.max(16, Math.min(h - 70, y + 20)))}px,0)`;
-      fill.style.transform = `scaleX(${profile.heat})`;
-      root.hidden = false;
+      if (!viewW || !viewH) {
+        viewW = doc.documentElement?.clientWidth || globalThis.innerWidth || 960;
+        viewH = doc.documentElement?.clientHeight || globalThis.innerHeight || 540;
+      }
+      const w = viewW, h = viewH;
+      const words = lineStrainWords(state, profile);
+      if (words.title !== lastTitle) { lastTitle = words.title; title.textContent = words.title; }
+      if (words.detail !== lastDetail) { lastDetail = words.detail; detail.textContent = words.detail; }
+      const over = String(profile.overClass);
+      if (over !== lastOver) { lastOver = over; root.dataset.over = over; }
+      const label = `${words.title}. ${words.detail}`;
+      if (label !== lastLabel) { lastLabel = label; root.setAttribute('aria-label', label); }
+      const now = String(Math.round(profile.heat * 100));
+      if (now !== lastNow) { lastNow = now; root.setAttribute('aria-valuenow', now); }
+      const tx = Math.round(Math.max(16, Math.min(w - 236, x + clear)));
+      const ty = Math.round(Math.max(16, Math.min(h - 70, y + 20)));
+      if (tx !== lastTx || ty !== lastTy) {
+        lastTx = tx; lastTy = ty;
+        root.style.transform = `translate3d(${tx}px,${ty}px,0)`;
+      }
+      const heat = profile.heat;
+      if (heat !== lastHeat) { lastHeat = heat; fill.style.transform = `scaleX(${heat})`; }
+      if (root.hidden) root.hidden = false;
     },
-    hide() { root.hidden = true; },
+    hide,
     destroy() {
+      view.removeEventListener?.('resize', invalidateView);
       if (typeof root.remove === 'function') root.remove();
       else root.parentNode?.removeChild?.(root);
     },

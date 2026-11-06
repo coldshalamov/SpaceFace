@@ -418,6 +418,7 @@ test('ship micro-motion: heat-skin recapture on authored-root repoint clones the
   const src2 = new MeshStandardMaterial({ name: 'SF_Shared_mech_b' });
   src2.onBeforeCompile = function hookB() {};
   src2.customProgramCacheKey = () => 'src2-key';
+  src2.userData = { authoredHeatSkin: 'source-b' };
   const mkBell = (material) => ({
     name: 'LOD0_engine_fan_Mechanical',
     rotation: { x: 0, y: 0, z: 0 },
@@ -449,10 +450,56 @@ test('ship micro-motion: heat-skin recapture on authored-root repoint clones the
     'src2-key',
     'the repointed clone must come from the new node material, not the stale heatSrc of the old tree',
   );
-  assert.equal(
-    bell2.material.userData && bell2.material.userData.sfHeatSkinClone,
-    String(src2.uuid).slice(0, 8),
-    'clone lineage stamp names the new source',
-  );
+  assert.deepEqual(bell2.material.userData, src2.userData,
+    'the repointed clone retains the new authored source metadata');
   assert.equal(bell2.material.onBeforeCompile, src2.onBeforeCompile, 'shader hook preserved on repoint clone');
+});
+
+test('ship micro-motion: authored-root repoint drops stale RCS nozzle references', () => {
+  const tracker = createShipMicroMotionTracker();
+  const oldNozzle = { name: 'LOD0_RCS_Nozzle_Port', scale: { x: 1, y: 1, z: 1 }, children: [] };
+  const mkHull = (children = []) => ({
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1, set(x, y, z) { this.x = x; this.y = y; this.z = z; } },
+    children,
+  });
+  const hull1 = mkHull([oldNozzle]);
+  const mesh1 = { userData: { hull: hull1, weapons: [] }, children: [hull1] };
+  const hull2 = mkHull();
+  const mesh2 = { userData: { hull: hull2, weapons: [] }, children: [hull2] };
+  const entity = { id: 81, mass: 280, pos: { x: 0, z: 0 }, rot: 0, radius: 12,
+    vel: { x: 60, z: 0 }, flags: { boosting: true } };
+
+  tracker.updateCraftMicroMotion(entity, mesh1, 1.0, 0.016);
+  const rec = tracker.peekRecord(entity.id);
+  assert.equal(rec.rcsNozzleCount, 1);
+  assert.equal(rec.rcsNozzles[0].node, oldNozzle);
+
+  tracker.updateCraftMicroMotion(entity, mesh2, 1.016, 0.016);
+  assert.equal(rec.rcsNozzleCount, 0);
+  assert.equal(rec.rcsNozzles[0].node, null, 'retired nozzle is no longer retained by the live record');
+});
+
+test('ship micro-motion: new game discards deferred player intent from the prior run', () => {
+  const tracker = createShipMicroMotionTracker();
+  const listeners = new Map();
+  const bus = {
+    on(name, handler) {
+      const rows = listeners.get(name) || new Set();
+      rows.add(handler); listeners.set(name, rows);
+      return () => rows.delete(handler);
+    },
+    emit(name, payload = {}) {
+      for (const handler of listeners.get(name) || []) handler(payload);
+    },
+  };
+  tracker.bindEvents(bus);
+  try {
+    bus.emit('dock:docked'); // event has no player id, so presentation queues the clonk
+    bus.emit('game:newGame');
+    const mesh = createMockMesh();
+    tracker.updateCraftMicroMotion({ id: 82, isPlayer: true, vel: { x: 0, z: 0 }, flags: {} }, mesh, 1, 0.016);
+    assert.equal(mesh.userData.hull.position.x, 0, 'the new hull does not inherit the old run’s clamp kick');
+  } finally { tracker.unbindEvents(); }
 });

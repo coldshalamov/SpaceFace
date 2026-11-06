@@ -15,10 +15,11 @@ test('actual native shift hold survives a naturally armed ambient errand in runt
  runtime._drive(entry,h.hauler);
  const held={...h.hauler.data.intent}; assert.equal(held.brake,true);
  assert.equal(applyLaneErrandIntent(runtime,entry,h.hauler,h.state.simTime),true);
- const overwritten={...h.hauler.data.intent}; assert.equal(overwritten.brake,false);
+ const afterErrand={...h.hauler.data.intent}; assert.deepEqual(afterErrand,held,
+  'even a direct idle-story call must preserve the physical shift hold');
  runtime.update(1/60,h.state);
  const dispatched={...h.hauler.data.intent}; assert.equal(dispatched.brake,true); assert.equal(dispatched.moveZ,0);
- console.log('PALLAS_ERRAND_CAUSAL',JSON.stringify({nativeTick:h.state.tick,job:entry.job.id,errand:entry.errand.id,held,overwritten,dispatched}));
+ console.log('PALLAS_ERRAND_CAUSAL',JSON.stringify({nativeTick:h.state.tick,job:entry.job.id,errand:entry.errand.id,held,afterErrand,dispatched}));
 });
 
 test('only the bound original shift job excludes ordinary errand movement', async t => {

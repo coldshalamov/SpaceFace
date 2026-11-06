@@ -251,8 +251,14 @@ for (const seed of SEEDS) {
     assert.ok(heir.name.endsWith('the Second'));
     assert.ok(survivor);
 
-    // The heir comes back as a hunter, and its line is about the one that was killed.
+    // The heir comes back as a hunter, and its line is about the one that was killed. A return is
+    // a later meeting: while the hull wearing the name is still on the field, aceMemory defers it
+    // (never two copies of one pilot), so the heir leaves the fight first.
+    wearer.data.despawnAt = h.state.simTime;
+    tickSeconds(h.sim, 0.2);
+    assert.ok(!(h.state.entities.get(heir.sourceEntityId)?.alive), 'the heir has left the field');
     h.state.simTime = Math.max(h.state.simTime, heir.returnAt);
+    if (Number.isFinite(heir.nextReturnAttemptAt)) h.state.simTime = Math.max(h.state.simTime, heir.nextReturnAttemptAt);
     tickSeconds(h.sim, 0.6);
     const returned = h.events.returnSpawned.find((e) => e.aceId === heir.id);
     assert.ok(returned, 'the heir return spawns through the promoted-return machinery');

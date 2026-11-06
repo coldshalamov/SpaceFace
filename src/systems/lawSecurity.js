@@ -51,6 +51,12 @@ import {
   makePlayerWarrantHunterSpec,
 } from '../data/bountyHunters.js';
 import {
+  CERES_AMBUSH_HAULER_SLOT,
+  isLawfulEntity as isLawful,
+  isLawProtectedBody,
+  isProtectedCivilian,
+} from '../law/protectedBodies.js';
+import {
   commodityLegality,
   isCivilianManifestPayload,
   isJettisonedCargoPod,
@@ -72,6 +78,9 @@ import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import { SECTORS } from '../data/sectors.js';
+import { lawHeatChallengeCopy } from '../data/lawChallengeCopy.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+export { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -84,6 +93,7 @@ import {
   entityIndexVersion,
   entityIndexLaneVersion,
 } from '../world/livingWorldViews.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 export const LAW_SECURITY_VERSION = 2;
 
@@ -169,7 +179,6 @@ const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 // while the incident is live and hands it back at stand-down, so an authored immune hull keeps it.
 const SECURITY_RESPONSE_MORALE_RESTORE = '_lawSecurityMoraleRestore';
 const AMBIENT_SCAN_INTERVAL_TICKS = 30;
-const LAW_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
 const DANGEROUS_CONTEXTS = new Set([
   'zone_hostile', 'encounter', 'interdiction', 'bounty_hunter', 'named_hunter',
   'mission_hostile', 'story_hostile', 'sg06_reinforcement',
@@ -180,7 +189,6 @@ const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_ACTOR_SLOTS
   .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
   .map((slot) => [slot.id, slot]));
 const CERES_ACTIVITY_SLOT_IDS = new Set(CERES_ACTIVITY_ACTOR_SLOTS.map((slot) => slot.id));
-const CERES_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
 const CERES_DISTRESS_STATION_ID = 'station_ceres';
 const CERES_POCKET_DISTRESS_RADIUS = 2200;
 const LAW_JOB_RESPONSE_CLAIM_CAP = CERES_LAW_JOB_SLOTS_BY_ID.size;
@@ -339,6 +347,7 @@ export const lawSecurity = {
       this._sanctuaryWakeSeq = 0;
     };
     this._onSaveLoaded = () => {
+      this._clearRestoredHeatChallenges(this.state);
       this._resetInspectionTransient();
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
@@ -566,6 +575,22 @@ export const lawSecurity = {
     // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
     delete own.playerSurrender;
     delete own.surrenderRearm;
+    // Heat-challenge stamps name live hull ids too, and entity ids re-bind on load. A stamp
+    // left across the boundary would hold a recycled hull in a ring it never chose, so the
+    // watch re-derives from durable truth (the live heat tier) the same way a cold session does.
+    this._releaseAllHeatChallenges(this.state, 'restore');
+    delete own.heatChallenges;
+    delete own.heatChallengeEpisodeTier;
+    own.nextHeatChallengeTick = 0;
+    // Session-scoped response fixtures name live entity ids — and spawned law bodies are
+    // never serialized, so every id they hold is stale after a load. Clearing them lets
+    // each sync re-derive from durable truth (the impound bill, the heat tier) the same
+    // way a cold session does; a surviving record's postedAt latch would otherwise pin
+    // dead fixtures in place for the rest of the run.
+    delete own.wantedWarrant;
+    delete own.wantedCheckpoint;
+    delete own.wantedImpound;
+    delete own.highSecWarrant;
     if (this._warrantWaves) this._warrantWaves.deserialize(src.warrantHunters);
     else delete own.warrantHunters;
     return own;
@@ -595,10 +620,13 @@ export const lawSecurity = {
     if (this._rcChaseEnabled) this._updateWitnessReports(state);
     this._updateWantedCheckpoint(_dt, state);
     this._updateWantedImpound(_dt, state);
+    this._updateHeatChallengeWatch(state);
     const own = ensureState(state);
-    this._enforceSanctuaryWithdrawals(state);
+    if (strideDt(this, 'sanctuary', _dt, 2, state) > 0) this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
-    this._updateCustomsScanCones(_dt, state);
+    // Cone dwell sums dt over seconds: 20 Hz with the accumulated step.
+    const coneDt = strideDt(this, 'cones', _dt, 3, state);
+    if (coneDt > 0) this._updateCustomsScanCones(coneDt, state);
     this._updateCustomsWeir(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
@@ -1035,6 +1063,9 @@ export const lawSecurity = {
     const attacker = entityById(state, payload.attackerId);
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
+    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
+    // carries its responsible actor's id instead; only that actor can be an aggressor.
+    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);
@@ -5299,6 +5330,147 @@ export const lawSecurity = {
       band: 'highsec',
     });
   },
+
+  // ── inf-patrol-challenge — the standing-heat challenge ───────────────────────────────────
+  // Flight-tick watch. Acquires at most ONE new ambient lawful patrol per episode (the nearest
+  // that has not been challenged in this episode), refreshes/releases existing stamps, and
+  // never challenges a hull the incident or custody flow already owns. Deterministic: no RNG
+  // on the acquire path; the copy pick is a seed+id hash (same law as every registry mint).
+  _updateHeatChallengeWatch(state) {
+    const own = ensureState(state);
+    const player = state.player;
+    const tier = wantedTierFor(player && player.heat);
+    if (tier === WANTED_TIER.NONE) {
+      this._releaseAllHeatChallenges(state, 'sheet_clear');
+      return;
+    }
+    const playerEnt = entityById(state, state.playerId);
+    if (!playerEnt || playerEnt.alive === false || !playerEnt.pos) {
+      this._releaseAllHeatChallenges(state, 'no_hull');
+      return;
+    }
+    // A tier change is a new sheet: the episode advances, so the standing stamp re-names it.
+    if (own.heatChallengeEpisodeTier !== tier) {
+      own.heatChallengeEpisodeTier = tier;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+    const episodeId = own.heatChallengeEpisode | 0;
+    const now = Number(state.simTime) || 0;
+    const release2 = LAW_HEAT_CHALLENGE_RELEASE_WU * LAW_HEAT_CHALLENGE_RELEASE_WU;
+    const map = own.heatChallenges && typeof own.heatChallenges === 'object' && !Array.isArray(own.heatChallenges)
+      ? own.heatChallenges : (own.heatChallenges = {});
+    // 1. Release dead, stale-episode, and long-out-of-range stamps.
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      let release = null;
+      if (!hull || hull.alive === false || !hull.data || hull.data.heatChallenge !== stamp) {
+        release = 'hull_gone';
+      } else if (hull.data.jobId || hull.data.claimDepotId || hull.data.itinerary?.kind === 'anvil_work'
+          || hull.data.ai?.securityTargetId != null) {
+        release = 'controller_changed';
+      } else if ((stamp.episodeId | 0) !== episodeId) {
+        release = 'episode_ended';
+      } else {
+        const dx = (hull.pos && hull.pos.x || 0) - playerEnt.pos.x;
+        const dz = (hull.pos && hull.pos.z || 0) - playerEnt.pos.z;
+        if (dx * dx + dz * dz > release2) {
+          if (!Number.isFinite(stamp.beyondSince)) stamp.beyondSince = now;
+          else if (now - stamp.beyondSince >= LAW_HEAT_CHALLENGE_RELEASE_S) release = 'out_of_range';
+        } else {
+          stamp.beyondSince = null;
+        }
+      }
+      if (release) {
+        if (hull && hull.data && hull.data.heatChallenge === stamp) delete hull.data.heatChallenge;
+        delete map[key];
+      }
+    }
+    // 2. Acquire at most one new patrol per watch tick.
+    if ((state.tick | 0) < (own.nextHeatChallengeTick | 0)) return;
+    own.nextHeatChallengeTick = (state.tick | 0) + LAW_HEAT_CHALLENGE_WATCH_TICKS;
+    // The custody cone owns the moment a surrender is open; an incident responder is the
+    // dispatch flow's hull, not the route patrol this challenge is about.
+    const surrender = own.playerSurrender;
+    if (surrender && (surrender.phase === 'holding' || surrender.phase === 'accepted')) return;
+    const acquire2 = LAW_HEAT_CHALLENGE_ACQUIRE_WU * LAW_HEAT_CHALLENGE_ACQUIRE_WU;
+    let best = null;
+    let bestD2 = acquire2;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!entity || entity.id === state.playerId || entity.type === 'station') return;
+      if (entity.alive === false || !entity.pos || !entity.data) return;
+      if (entity.data.heatChallenge) return;
+      if (map[entity.id]) return;
+      const ai = entity.data.ai;
+      if (!ai || ai.lawful !== true) return;
+      if (ai.securityTargetId != null) return;
+      if (entity.data.jobId || entity.data.claimDepotId || entity.data.itinerary?.kind === 'anvil_work') return;
+      const dx = entity.pos.x - playerEnt.pos.x;
+      const dz = entity.pos.z - playerEnt.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    });
+    if (!best) return;
+    const copy = lawHeatChallengeCopy(tier);
+    // An unnamed tier renders nothing: the hull is never stamped with words nobody wrote.
+    if (!copy || !copy.hail) return;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const stamp = {
+      patrolId: best.id,
+      patrolGeneration: occupantGenerationOf(best),
+      episodeId,
+      tier,
+      since: now,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+    };
+    best.data.heatChallenge = stamp;
+    map[best.id] = stamp;
+    this._emit('law:heatChallenge', {
+      patrolId: best.id,
+      tier,
+      line: copy.hail,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+      episodeId,
+      seedKey: hash32(seed >>> 0, 'law-heat-challenge', String(best.id)),
+    });
+    this._emit('comms:log', { from: 'PATROL', text: copy.hail, kind: 'law' });
+    this._emit('toast', { text: copy.text, kind: 'law', ttl: 4 });
+  },
+
+  _releaseAllHeatChallenges(state, reason) {
+    const own = state && state.lawSecurity;
+    const map = own && own.heatChallenges;
+    if (!map || typeof map !== 'object') return;
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      if (hull && hull.data && hull.data.heatChallenge === map[key]) delete hull.data.heatChallenge;
+    }
+    own.heatChallenges = {};
+    if (reason === 'sheet_clear') {
+      // The sheet fell: the next rise is a new episode, not a continuation.
+      own.heatChallengeEpisodeTier = null;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+  },
+
+  _clearRestoredHeatChallenges(state) {
+    // Generic persistent-entity restore clones data after the session map was discarded.
+    // IDs/generations may rebind, so only the current owner's exact tracked stamp can survive.
+    const tracked = state?.lawSecurity?.heatChallenges;
+    if (!state?.entities || typeof state.entities.values !== 'function') return;
+    for (const hull of state.entities.values()) {
+      const stamp = hull?.data?.heatChallenge;
+      if (!stamp || !lawHeatChallengeCopy(stamp.tier) || !Number.isInteger(stamp.episodeId)
+          || !Number.isFinite(stamp.since) || !Number.isFinite(stamp.standoffWu)) continue;
+      if (tracked?.[hull.id] === stamp
+          && incidentOccupant(state, stamp.patrolId, stamp.patrolGeneration) === hull) continue;
+      this.registry?.get('traffic')?._restoreHeatChallengeBrake(hull, stamp);
+      delete hull.data.heatChallenge;
+      // Only traffic can return a matched saved borrow. An unrelated/new intent is unchanged.
+    }
+  },
+
   _syncWantedCheckpoint(state) {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     const own = ensureState(state);
@@ -5577,15 +5749,37 @@ export const lawSecurity = {
     const pound = own.wantedImpound && typeof own.wantedImpound === 'object'
       ? own.wantedImpound
       : null;
+    // Entity ids recycle: verify the pound's own marker flags, not only aliveness, so a
+    // culled yard's reused id is not mistaken for the yard still standing.
     const yard = pound ? entityById(state, pound.yardId) : null;
-    const liveYard = !!(yard && yard.alive !== false);
+    const liveYard = !!(yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true);
+    const lock = pound ? entityById(state, pound.lockId) : null;
+    const liveLock = !!(lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true);
     const bill = impoundBillFor(state);
 
     if (tier !== WANTED_TIER.IMPOUND || (bill && bill.status && bill.status !== 'open')) {
       if (pound) this._releaseWantedImpound(state, pound);
       return;
     }
-    if (pound && (liveYard || pound.postedAt != null)) return;
+    if (pound && pound.open !== false && liveYard && liveLock) {
+      // The lot stands; a denied or dead desk keeps retrying on the post cadence —
+      // the pay verb must never silently vanish for the whole impound.
+      const clerk = entityById(state, pound.clerkId);
+      if (!clerk || clerk.alive === false
+        || !clerk.data || clerk.data.wantedImpoundClerk !== true) {
+        this._retryImpoundClerk(state, pound);
+      }
+      return;
+    }
+    if (pound) {
+      // The yard or lock is gone — a sector jump, a cull, or hostile fire — while the
+      // bill says the lot still stands. The IMPOUND band has no other escape, so a
+      // dead record must not sit here forever: release it and let the post below
+      // re-raise the pound from the durable bill (same path a cold load takes).
+      this._releaseWantedImpound(state, pound);
+    }
     if (Number.isInteger(own.wantedImpoundRetryTick)
       && (state.tick | 0) < own.wantedImpoundRetryTick) return;
     this._postWantedImpound(state);
@@ -5600,7 +5794,12 @@ export const lawSecurity = {
     const billId = `impound:${seed}`;
     const existing = impoundBillFor(state);
     const heading = Number.isFinite(player.rot) ? player.rot : 0;
-    const savedYard = existing && existing.status === 'open' && existing.yard;
+    // Saved lot positions only describe THIS sector — entity positions are global-frame,
+    // so after a jump the bill's stale coords would plant the yard sectors away and the
+    // honest path stays unreachable. A cross-sector repost puts the lot ahead again.
+    const sameSector = !existing || existing.sectorId == null
+      || existing.sectorId === currentSectorId(state);
+    const savedYard = sameSector && existing && existing.status === 'open' && existing.yard;
     const yardPos = savedYard && (savedYard.x || savedYard.z)
       ? { x: savedYard.x, z: savedYard.z }
       : {
@@ -5611,14 +5810,14 @@ export const lawSecurity = {
 
     const sideX = -Math.sin(heading);
     const sideZ = Math.cos(heading);
-    const savedLock = existing && existing.status === 'open' && existing.lock;
+    const savedLock = sameSector && existing && existing.status === 'open' && existing.lock;
     const lockPos = savedLock && (savedLock.x || savedLock.z)
       ? { x: savedLock.x, z: savedLock.z }
       : {
         x: yardPos.x + sideX * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
         z: yardPos.z + sideZ * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
       };
-    const workPos = existing && existing.status === 'open' && existing.work
+    const workPos = sameSector && existing && existing.status === 'open' && existing.work
       ? { x: existing.work.x, z: existing.work.z }
       : { x: yardPos.x, z: yardPos.z };
 
@@ -5705,11 +5904,12 @@ export const lawSecurity = {
     let clerk = null;
     if (grant >= 1) {
       clerk = this._spawnImpoundClerk(state, arrival, yardPos, poundId, requester, budget);
-    } else {
-      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
     }
-
-    delete own.wantedImpoundRetryTick;
+    // A denied grant or a failed spawn keeps the retry tick armed — _syncWantedImpound
+    // re-staffs the desk while the pound stands. Posting without this would leave the
+    // pay verb unreachable for the life of the impound.
+    if (clerk) delete own.wantedImpoundRetryTick;
+    else own.wantedImpoundRetryTick = (state.tick | 0) + 15;
     own.wantedImpound = {
       poundId,
       billId,
@@ -5792,6 +5992,34 @@ export const lawSecurity = {
     return spawned;
   },
 
+  // The desk is a person, not a fixture: a denied budget grant at post time or a dead
+  // clerk re-staffs on the post cadence while the lot stands. The lock and yard are
+  // the physical bill — those repost the whole pound instead (see _syncWantedImpound).
+  _retryImpoundClerk(state, pound) {
+    const own = ensureState(state);
+    if (Number.isInteger(own.wantedImpoundRetryTick)
+      && (state.tick | 0) < own.wantedImpoundRetryTick) return null;
+    own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${pound.poundId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1 || typeof this.helpers.spawnEntity !== 'function') return null;
+    const arrival = pound && pound.arrival && Number.isFinite(pound.arrival.x)
+      ? pound.arrival : null;
+    const yardPos = pound && pound.yard && Number.isFinite(pound.yard.x)
+      ? pound.yard : null;
+    if (!arrival || !yardPos) return null;
+    const clerk = this._spawnImpoundClerk(state, arrival, yardPos, pound.poundId, requester, budget);
+    if (!clerk) return null;
+    pound.clerkId = clerk.id;
+    // Keep the durable bill's desk id in step — a later repost (or the UI's pay prompt)
+    // reads the bill, not just the session record.
+    const bill = impoundBillFor(state);
+    if (bill && bill.status === 'open') bill.clerkId = clerk.id;
+    delete own.wantedImpoundRetryTick;
+    return clerk;
+  },
+
   _updateWantedImpound(dt, state) {
     const own = state && state.lawSecurity;
     const pound = own && own.wantedImpound;
@@ -5803,24 +6031,31 @@ export const lawSecurity = {
       pound.held = false;
       return;
     }
+    // Marker flags, not bare ids — a recycled id must not pass for the yard it once named.
     const yard = entityById(state, pound.yardId);
+    const liveYard = yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true ? yard : null;
     const lock = entityById(state, pound.lockId);
-    pound.held = !!(yard && yard.alive !== false && overlapsImpoundPad(player, yard));
+    const liveLock = lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true ? lock : null;
+    pound.held = !!(liveYard && overlapsImpoundPad(player, liveYard));
     // Pay is a choice, not an overlap: standing at the clerk OFFERS the bill; the deck verb emits
     // law:impoundPay and _payWantedImpound re-validates reach + credits before charging.
     const clerk = entityById(state, pound.clerkId);
-    const clerkNear = !!(clerk && clerk.alive !== false && overlapsImpoundPad(player, clerk));
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    const clerkNear = !!(liveClerk && overlapsImpoundPad(player, liveClerk));
     if (clerkNear !== !!this._impoundClerkNear) {
       this._impoundClerkNear = clerkNear;
       this._emit('law:impoundPayOffer', {
         poundId: pound.poundId,
         billId: bill.billId,
-        clerkId: clerk && clerk.id,
+        clerkId: liveClerk && liveClerk.id,
         owedCr: Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0)),
         clear: !clerkNear,
       });
     }
-    if (lock && lock.alive !== false && overlapsImpoundPad(player, lock)) {
+    if (liveLock && overlapsImpoundPad(player, liveLock)) {
       this._recoverWantedImpound(state, pound, 'steal', player);
       return;
     }
@@ -5845,7 +6080,9 @@ export const lawSecurity = {
     if (!bill || bill.status !== 'open') return;
     const player = entityById(state, state.playerId);
     const clerk = entityById(state, pound.clerkId);
-    if (!player || !clerk || clerk.alive === false || !overlapsImpoundPad(player, clerk)) {
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    if (!player || !liveClerk || !overlapsImpoundPad(player, liveClerk)) {
       this._emit('law:impoundPayRefused', {
         reason: 'not_at_clerk',
         poundId: pound.poundId,
@@ -5900,8 +6137,11 @@ export const lawSecurity = {
     const own = ensureState(state);
     const unpin = (entity, flag) => {
       if (!entity || entity.alive === false || !entity.data) return;
+      // Ids recycle: only unpin the body that still claims the pound's marker — never
+      // rewrite a stranger's data because an old id happened to resolve again.
+      if (entity.data[flag] !== true) return;
       entity.data.missionPinned = false;
-      if (flag) entity.data[flag] = false;
+      entity.data[flag] = false;
       const ai = entity.data.ai;
       if (ai) {
         ai.forcePlayerTarget = false;
@@ -7083,28 +7323,10 @@ export function composedRemainingText(composed) {
   }).join('; ');
 }
 
-function isLawful(entity) {
-  if (!entity) return false;
-  const ai = entity.data && entity.data.ai || {};
-  return ai.lawful === true || (entity.type === 'station' && LAW_FACTIONS.has(entity.factionId));
-}
-
-function isProtectedCivilian(entity) {
-  if (!entity || entity.type !== 'ship') return false;
-  const data = entity.data || {};
-  if (data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return true;
-  const ai = data.ai || {};
-  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
-  return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
-    || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
-}
-
 // The adjudication's own protected-body definition, shared read-only with advisory
 // presentation (INF-078): a lawful hull or a protected civilian. Advisory callers never
 // adjudicate — they only name what the law would recognize.
-export function isLawProtectedBody(entity) {
-  return isLawful(entity) || isProtectedCivilian(entity);
-}
+export { isLawProtectedBody };
 
 function isCivilianHauler(entity) {
   if (!entity || entity.type !== 'ship') return false;
@@ -7613,13 +7835,29 @@ const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler
 /** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
 const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
 /** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
-const LAW_DOCK_FINE_BASE_CR = 150;
-const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
 /** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
 const LAW_FINE_WORK_S = 4;
 /** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */
 const LAW_SURRENDER_HOLD_S = 4;
 const LAW_SURRENDER_MAX_SPEED = 0.75;
+
+// ── inf-patrol-challenge — the standing-heat challenge ─────────────────────────────────────
+// A wanted pilot used to be invisible to the ambient cast: the patrols on their routes kept
+// orbiting as if the sheet were not there, and the first reaction came later, from a hunter
+// wing spawned off-screen. The law now reads its own record EARLY: the ambient lawful patrol
+// that acquires a wanted hull breaks its route, holds a standoff ring off the beam, and names
+// the sheet on the band — once per patrol per heat episode, well before any scan cone or
+// seeded hunter. The challenge is pressure, not a fight: stamped hulls stay passive/HOLD_FIRE
+// (the heat owner owns violence through its own seeded waves), and the stamp is a plain fact
+// traffic's stepper flies to (traffic.js reads data.heatChallenge, never writes it).
+export const LAW_HEAT_CHALLENGE_ACQUIRE_WU = LAW_INCIDENT_WITNESS_RADIUS;
+export const LAW_HEAT_CHALLENGE_STANDOFF_WU = 220;
+export const LAW_HEAT_CHALLENGE_RELEASE_WU = LAW_INCIDENT_WITNESS_RADIUS * 2;
+/** Continuous time outside the release ring before a challenged patrol falls back to its route. */
+export const LAW_HEAT_CHALLENGE_RELEASE_S = 6;
+/** Watch cadence (ticks at 60 Hz), same order as the ambient stamp watch. */
+const LAW_HEAT_CHALLENGE_WATCH_TICKS = 30;
+
 const LAW_COMPOSED_CAP = 24;
 const MEMORIAL_SITE_CAP = 16;
 const OBLIGATION_KINDS = new Set(['toll', 'warrant', 'restitution']);

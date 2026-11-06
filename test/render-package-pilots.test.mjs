@@ -6,7 +6,11 @@ import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
 
-import { derivePilotSemanticManifest } from '../scripts/build-render-package-pilots.mjs';
+import {
+  derivePilotSemanticManifest,
+  parseRenderPackagePilotArgs,
+  validateSharedKtx2Hashes,
+} from '../scripts/build-render-package-pilots.mjs';
 import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 import {
   deriveAuthoredRuntimeTable,
@@ -16,6 +20,7 @@ import {
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
   buildAuthoredPlaceProp,
   disposePreparedAuthoredBoundary,
+  dumpAuthoredInstancePoolState,
   endAuthoredInstanceMeshDisposeRegistrationProbe,
   inspectAuthoredBoundaryRegistrations,
   invalidatePartsLibraryCaches,
@@ -34,6 +39,36 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
+
+test('render-package pilot builder keeps external KTX2 opt-in and scopes candidate outputs', () => {
+  assert.deepEqual(parseRenderPackagePilotArgs(['--externalize-ktx2', '--only=kestrel,atlas-production-v1', '--output-root=.devshots/candidate']), {
+    check: false,
+    externalizeKtx2: true,
+    outputRoot: '.devshots/candidate',
+    onlyKeys: ['kestrel', 'atlas-production-v1'],
+  });
+  assert.equal(parseRenderPackagePilotArgs([]).externalizeKtx2, false, 'normal compiler output remains embedded');
+  assert.throws(() => parseRenderPackagePilotArgs(['--externalize-ktx2=no']), /Unknown render-package pilot option/);
+  assert.deepEqual(parseRenderPackagePilotArgs([
+    '--manifest=.devshots/pilots.json', '--only=kestrel', '--output-root=.devshots/candidate', '--check',
+  ]), {
+    check: true,
+    externalizeKtx2: false,
+    outputRoot: '.devshots/candidate',
+    manifestPath: '.devshots/pilots.json',
+    onlyKeys: ['kestrel'],
+  });
+});
+
+test('manifest KTX2 policy is optional, exact, lowercase, sorted, and unique', () => {
+  const a = 'a'.repeat(64), b = 'b'.repeat(64);
+  assert.equal(validateSharedKtx2Hashes({ key: 'plain' }), null, 'old pilots retain embedded output');
+  assert.deepEqual(validateSharedKtx2Hashes({ key: 'shared', sharedKtx2Hashes: [a, b] }), [a, b]);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'empty', sharedKtx2Hashes: [] }), /non-empty sorted array/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'upper', sharedKtx2Hashes: ['A'.repeat(64)] }), /lowercase SHA-256/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'unsorted', sharedKtx2Hashes: [b, a] }), /sorted and unique/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'duplicate', sharedKtx2Hashes: [a, a] }), /sorted and unique/);
+});
 
 if (!globalThis.document) {
   globalThis.document = {
@@ -523,16 +558,28 @@ test('production manifest packages every live whole-ship family and admitted aut
   assert.equal(renderPackagePilotForAssetId('sf.render.unclaimed'), null);
 });
 
-test('production manifest enables the flight-static v3 canary only for Helios trade hub', () => {
+test('flight-static bindings follow the configured eligible packages and retain their semantic owners', async () => {
+  const config = JSON.parse(await readFile('assets/ships/render-packages/flight-static-v3.json', 'utf8'));
+  const pilots = JSON.parse(await readFile('assets/ships/render-packages/pilots.json', 'utf8'));
+  assert.equal(config.schema, 'spaceface.flightRenderPackagePilots.v1');
+  assert.equal(new Set(config.packages).size, config.packages.length, 'configured keys are unique');
   const flightStaticBindings = RENDER_PACKAGE_PILOTS.filter((binding) => binding.flightStaticV3 === true);
   assert.deepEqual(
-    flightStaticBindings.map((binding) => binding.key),
-    ['helios-trade-hub'],
+    flightStaticBindings.map((binding) => binding.key).sort(),
+    [...config.packages].sort(),
   );
-  const tradeHub = renderPackagePilotForAssetId('sf.render.helios-trade-hub');
-  assert.equal(tradeHub?.flightStaticV3, true);
-  for (const binding of RENDER_PACKAGE_PILOTS) {
-    if (binding.key !== 'helios-trade-hub') assert.notEqual(binding.flightStaticV3, true, binding.key);
+  for (const binding of flightStaticBindings) {
+    const pilot = pilots.pilots.find((row) => row.key === binding.key);
+    assert.ok(pilot && pilot.kind === 'place' && pilot.sceneRoot === true, binding.key);
+    assert.deepEqual(pilot.dynamicNameIncludes || [], [], `${binding.key}: static admission excludes dynamic-name groups`);
+    const semantic = await derivePilotSemanticManifest({ ...pilot, flightStaticV3: true }, pilot.sourceUrl);
+    const metadata = JSON.parse(await readFile(binding.metadataUrl, 'utf8'));
+    assert.deepEqual(metadata.dynamicGroups, [], `${binding.key}: static package has no dynamic owners`);
+    assert.ok(metadata.runtime && metadata.runtimeHash, `${binding.key}: sealed runtime table`);
+    assert.deepEqual(metadata.anchors.map((row) => row.id).sort(), semantic.anchors.map((row) => row.id).sort(),
+      `${binding.key}: source anchor identities survive compilation`);
+    assert.deepEqual(metadata.collisions.map((row) => row.id).sort(), semantic.collisions.map((row) => row.id).sort(),
+      `${binding.key}: source collision identities survive compilation`);
   }
 });
 
@@ -1704,6 +1751,61 @@ test('removing one owner during package pool admission restores the live direct 
   }
 });
 
+test('pool residency names explicit empty-chunk retirement while its requesting boundary stays live', async () => {
+  const renderer = {}, scene = new THREE.Scene();
+  const fixture = await packageShipFixture();
+  const gate = deferred();
+  let poolOwner, snapshot;
+  const options = {
+    releaseMode: true, libraryScope: 'package-pool-retired-owner-snapshot', bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async () => ({ skipped: false }),
+    prepareAuthoredGpuResidency: async (subject, admissionOptions) => {
+      if (subject.isInstancedMesh) {
+        poolOwner = admissionOptions.isActive;
+        await gate.promise;
+        snapshot = poolOwner.ownerSnapshot().nestedAdmissionOwner;
+        assert.equal(poolOwner(), false);
+        const error = new Error('Authored GPU residency owner became inactive before texture upload');
+        error.name = 'AbortError';
+        error.code = 'GPU_RESIDENCY_OWNER_INACTIVE';
+        throw error;
+      }
+      return { skipped: false };
+    },
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+  let pending;
+  try {
+    const first = await admitPackageShip('pool-retired-first', 0, renderer, scene, options);
+    pending = startPackageShip('pool-retired-requester', 40, renderer, scene, options);
+    for (let turn = 0; turn < 80 && !poolOwner; turn++) await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(typeof poolOwner, 'function');
+    assert.equal(poolOwner(), true);
+    assert.equal(poolOwner.ownerSnapshot().nestedAdmissionOwner.liveOwnerCount, 2);
+    scene.remove(first);
+    assert.equal(pending.parent, scene, 'the requesting boundary is still mounted');
+    gate.resolve();
+    await pending.userData.authoredUpgradePromise;
+    assert.equal(snapshot.ownerType, 'render-package-pool-admission');
+    assert.equal(snapshot.cancelled, true);
+    assert.equal(snapshot.poolRetiring, true);
+    assert.equal(snapshot.liveSlotCount, 0);
+    assert.equal(snapshot.liveOwnerCount, 0);
+    assert.equal(snapshot.requestedOwnerActive, true, 'the pool retired independently of its live caller');
+    assert.equal(pending.userData.authoredAssetState, 'authored');
+    assert.equal(authoredPackageInstance(pending).nodes.get('eligible').isMesh, true,
+      'the surviving caller publishes its ordinary direct authored surface');
+  } finally {
+    gate.resolve();
+    if (pending) await pending.userData.authoredUpgradePromise;
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
 test('deferred pool retirement drains clean after object cleanup refusal', async () => {
   const renderer = {};
   const scene = new THREE.Scene();
@@ -2116,3 +2218,98 @@ async function packageShipFixture({ includeAuthoredNavLights = true } = {}) {
     },
   };
 }
+
+// The sibling is composed through the ordinary package createNode/pool route. Its releases
+// must not drain other levels or another boundary when an async demotion is refused.
+for (const scenario of ['approach', 'protection', 'failure', 'stale', 'parked']) test(`ordinary LOD ${scenario} drains only its own package pool registrations`, async () => {
+  const renderer = {}, scene = new THREE.Scene(), fixture = await packageShipFixture(), siblingFixture = await packageShipFixture();
+  const camera = new THREE.PerspectiveCamera(60, 2, 1, 1000); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+  const viewport = { width: 1600, height: 800 }, entities = new Map();
+  let gate = null, entered = null;
+  const options = { releaseMode: true, libraryScope: 'lod-sibling-pool-lifetime', bootstrapPlan: {},
+    loadAuthoredPart: async url => ({ ...(url.includes('_lod') ? siblingFixture.record : fixture.record), url, assetId: 'SF_WASP_PRODUCTION_V1' }),
+    prepareAuthoredPipelines: async subject => {
+      if (gate && !subject?.isInstancedMesh) { const pending = gate; gate = null; entered(); await pending; }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const previousWindow = globalThis.window;
+  globalThis.window = { ...(previousWindow || {}), SF: { state: { mode: 'flight', entities, camera: { obj: camera },
+    world: { currentSectorId: 'sector_helios_prime' },
+    render: { scene, viewport, firstPlayableFrameAt: 1, compileObjectPipelines: options.prepareAuthoredPipelines,
+      prepareAuthoredGpuResidency: options.prepareAuthoredGpuResidency } } } };
+  const waitUntil = async (fn, message) => { for (let i=0; i<500 && !fn(); i++) await new Promise(resolve => setTimeout(resolve, 0)); assert.ok(fn(), message); };
+  const spawn = async id => {
+    const entity = { id, type: 'ship', alive: true, team: 1, radius: 12, pos: {x:0,z:0}, data: { defId:'ship_wasp', lootTableId:'lancer_sniper' } };
+    entities.set(id, entity);
+    const boundary = wrapShipWithAuthoredParts(entity, directAdmissionSubstrateFor(entity), options);
+    entity.mesh = boundary; scene.add(boundary);
+    await boundary.userData.requestAuthoredUpgrade(renderer, scene);
+    assert.equal(boundary.userData.authoredAssetState, 'authored');
+    return { entity, boundary };
+  };
+  const slots = () => (dumpAuthoredInstancePoolState(scene)?.pools || []).flatMap(p => p.chunks).reduce((n, c) => n + c.slots, 0);
+  const sample = ({entity, boundary}, px) => { boundary.userData.initialShipLodSample = { entity, px, at: performance.now(), protectedBody: false,
+    camera, viewport, width: viewport.width, height: viewport.height, view: camera.matrixWorldInverse.elements.slice(), projection: camera.projectionMatrix.elements.slice() }; };
+  try {
+    await preloadAuthoredPartLibrary(renderer, options);
+    const current = await spawn('lod-owner'), witness = await spawn('lod-witness'), siblingWitness = await spawn('lod-tier-witness');
+    if (scenario !== 'parked') {
+      sample(siblingWitness, 80); siblingWitness.boundary.userData.updateLod('lod1');
+      const witnessTransition = siblingWitness.boundary.userData.wholeShipLodTransitionPromise; assert.ok(witnessTransition); await witnessTransition;
+      assert.equal(siblingWitness.boundary.userData.wholeShipLodActiveLevel, 'lod1');
+    }
+    syncAuthoredInstancePools(scene);
+    const active = current.boundary.userData.wholeShipLodRoots.lod0;
+    const witnessLeaf = authoredPackageInstance(witness.boundary).nodes.get('eligible');
+    assert.equal(slots(), 3, 'base tier slots stay retained while the other tier is a parked candidate');
+    let release, reject; gate = new Promise((resolve, rejectGate) => { release = resolve; reject = rejectGate; });
+    const started = new Promise(resolve => { entered = resolve; });
+    sample(current, 80); current.boundary.userData.updateLod('lod1');
+    const pending = current.boundary.userData.wholeShipLodTransitionPromise;
+    assert.ok(pending); await started;
+    assert.equal(slots(), scenario === 'parked' ? 3 : 5, 'the pending sibling owns a parked candidate or tier-specific pool slot');
+    if (scenario === 'protection') { current.entity.data.isBoss = true; current.boundary.userData.updateLod('lod1'); }
+    else if (scenario !== 'failure') { sample(current, 160); current.boundary.userData.updateLod('lod0'); }
+    if (scenario === 'stale') {
+      sample(current, 80); current.boundary.userData.updateLod('lod1');
+      const newer = current.boundary.userData.wholeShipLodTransitionPromise; assert.notEqual(newer, pending);
+      await newer;
+      assert.equal(current.boundary.userData.wholeShipLodActiveLevel, 'lod1');
+      assert.equal(slots(), 6, 'new sibling survives while old preparation is still in flight');
+      release(); await pending;
+      await waitUntil(() => slots() === 5, 'stale completion releases its slot only');
+      assert.equal(current.boundary.userData.wholeShipLodActiveLevel, 'lod1');
+    } else {
+      if (scenario === 'failure') reject(new Error('injected sibling prepare failure')); else release();
+      await pending;
+      await waitUntil(() => slots() === 3, 'abandoned sibling pool collapses back to its surviving candidate');
+      assert.equal(active.parent, current.boundary);
+      assert.equal(current.boundary.userData.wholeShipLodActiveLevel, 'lod0');
+      assert.equal(witnessLeaf.isMesh, false, 'other live boundary keeps its pooled surface');
+      delete current.entity.data.isBoss;
+      if (scenario === 'parked') {
+        sample(siblingWitness, 80); siblingWitness.boundary.userData.updateLod('lod1');
+        const transition = siblingWitness.boundary.userData.wholeShipLodTransitionPromise; assert.ok(transition); await transition;
+        assert.equal(slots(), 3, 'abandoned parked candidate cannot promote against the next owner');
+        assert.equal(authoredPackageInstance(siblingWitness.boundary).nodes.get('eligible').isMesh, true);
+      }
+      sample(current, 80); current.boundary.userData.updateLod('lod1');
+      const retry = current.boundary.userData.wholeShipLodTransitionPromise; assert.ok(retry); await retry;
+      assert.equal(current.boundary.userData.wholeShipLodActiveLevel, 'lod1');
+      assert.equal(slots(), 5);
+    }
+    sample(current, 160); current.boundary.userData.updateLod('lod0');
+    assert.equal(current.boundary.userData.wholeShipLodActiveLevel, 'lod0');
+    assert.equal(slots(), 5, 'the intentionally retained sibling remains reusable');
+    const pools = scene.children.filter(o => o.userData?.spacefaceInstancePool);
+    assert.equal(pools.length, 2, 'different LOD geometries never alias into one pool');
+    assert.deepEqual(new Set(pools.map(p => p.geometry)), new Set([fixture.geometry, siblingFixture.geometry]));
+    assert.equal(witnessLeaf.isMesh, false);
+  } finally {
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});

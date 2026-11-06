@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b7c0751652229850ee71eb6d3c168818132cc276ae973b120081786c4a97079e",
+  "contentHash": "9aa47f9f5b9d03a19157929795876a731f88c27c8d045f6ef3cb2034d053aa60",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "475807b9ebfeff21777f7c26ac048e06b080cf8e6c4696ee12155764e0c64ee6",
+      "geometryHash": "92c51219e77b4221308521691b38aa666b140f3ed5940fd46dced9270f795c69",
       "id": "sf.render.fin-wedge.node.det-mount-bracket.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.fin-wedge.node.det-mount-bracket",
       "primitiveIndex": 0,
-      "vertexCount": 179
+      "vertexCount": 157
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "531de4e250a07908b2e71149dbd076c5642ed7555aa97e835534bf352fa13855",
+      "geometryHash": "2c0faf975766b2cfebc17dc8e15eaf1fc66dbfb8eb92516a1be8fb297192c857",
       "id": "sf.render.fin-wedge.node.det-radiator-slit.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38d38c173a3a33bb3ced4bec566d424daff38c8589c54ddc0b3b16cf3f9e0087",
+      "geometryHash": "df5e50b1d033dbb87470c34c0e479b18ca8f86686ec5dd1ece590d4916ab2d91",
       "id": "sf.render.fin-wedge.node.det-wear-patch.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ca7e91f81bfd8a6e000275aa41e2cfee4a63251c6ff1bf5138c61be8db0bd7c",
+      "geometryHash": "3bc6de5f15034d84d53962eca3426b2cbef1c077b88e6c59b07f5bca7616ce02",
       "id": "sf.render.fin-wedge.node.wedge-edge-light.primitive.0",
       "indexCount": 1440,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "Wedge_Edge_Light",
       "nodeId": "sf.render.fin-wedge.node.wedge-edge-light",
       "primitiveIndex": 0,
-      "vertexCount": 508
+      "vertexCount": 490
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4eb1a856288cd00cc718c08c32dce0232d3603b0cde14107e626de7ee64a5db7",
+      "geometryHash": "ab8600629e7d7270084054e411898dc7b9af2f54134a82a58ce08db177f64af7",
       "id": "sf.render.fin-wedge.node.wedge-main.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "Wedge_Main",
       "nodeId": "sf.render.fin-wedge.node.wedge-main",
       "primitiveIndex": 0,
-      "vertexCount": 532
+      "vertexCount": 393
     }
   ],
   "hlods": [],
@@ -1068,19 +1068,19 @@
       "sha256": "41b18e343600c2857d430be2e4ef7bbe6941202038edb69573d3a062f501df15"
     },
     "sourceGlb": {
-      "bytes": 4882636,
-      "sha256": "e5ab066bab0bfaa675ce217e62817c4110b3a47a34a966076ac9ca5a47eeef7e",
+      "bytes": 3707428,
+      "sha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
       "uri": "fin_wedge.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4880860,
-    "sha256": "0458cbb465775ed020cbd7e52de970b4ae851c1239174a48109931bb4a2860d6",
+    "bytes": 3706328,
+    "sha256": "ec398b528112a746a75c6fc9d19308bce3c81a4d9b6bd120b44eede0d3c65da9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1344,7 +1344,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
-  "runtimeHash": "0b42f83c88198e52dfaa7507ea33f3bd551aa3062a76f5f1185f203f828c1650",
+  "runtimeHash": "4081da7bda1e9804f92631e283fde4988f1b8630251bc89ddac356e83cadc168",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

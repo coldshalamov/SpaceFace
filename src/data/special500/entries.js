@@ -77,7 +77,7 @@ export const ENTRIES_SLICE = [
     kind: 'world-oneoff',
     title: 'The Favor Ledger',
     sectors: ['sector_tethys_junction'],
-    trigger: { type: 'proximity', nearStation: 'station_tethys_junction', wu: 1200 },
+    trigger: { type: 'proximity', nearStation: 'station_tethys', wu: 1200 },
     channel: 'comms',
     payload: {
       from: 'Unregistered buoy',

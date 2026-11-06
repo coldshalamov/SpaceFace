@@ -7,7 +7,7 @@ import {
   createReadModel, applySpawnInfos, applyEntityVitals, applyDomainPathUpdate,
 } from '../scripts/lib/simReadModel.mjs';
 import { ANVIL_ORCHARD, normalizeOrchardRecord } from '../src/data/anvilOrchard.js';
-import { isOrchardFrame } from '../src/data/anvilOrchardIdentity.js';
+import { isOrchardFrame, isOrchardPod } from '../src/data/anvilOrchardIdentity.js';
 import { stableEntityKey } from '../src/data/interactionDescriptorCatalog.js';
 import { listSelectableComponents } from '../src/systems/interactionDescriptors.js';
 import { objectInfoLine } from '../src/ui/targetPanel.js';
@@ -88,8 +88,16 @@ test('real Orchard production reaches the worker target card throughout release 
       commodityId: ANVIL_ORCHARD.commodityId }), 4);
     await transport();
     sentence(/44 units in reserve.*select a pod socket/i);
+    const pod = state.entityList.find(entity => entity.data?.orchardKind === 'pod');
+    const mirroredPod = main.entities.get(pod.id);
+    assert.ok(isOrchardPod(mirroredPod), 'the stowed authored pod keeps its canonical source body on main');
+    assert.equal(mirroredPod.occupantGeneration, pod.occupantGeneration);
+    assert.equal(mirroredPod.physicsBody.dynamic, false);
+    assert.equal(mirroredPod.data.masslineTetherable, false);
+    assert.equal(mirroredPod.data.amount, 4);
     const frontendFrame = main.entities.get(frame.id);
     const selection = { targetId: frame.id, stableKey: stableEntityKey(frontendFrame),
+      occupantGeneration: frontendFrame.occupantGeneration,
       componentId: `orchard_socket_${SOCKET}`, kind: 'machine', verb: 'mine' };
     main.ui.componentSelection = selection;
     assert.equal(listSelectableComponents(main, frontendFrame).length, 3);
@@ -118,8 +126,18 @@ test('real Orchard production reaches the worker target card throughout release 
     sentence(/4 units.*opening 33%.*hold H/i);
     await stepTo(start + 30);
     sentence(/4 units.*released/i);
-    const pod = state.entityList.find(entity => entity.data?.orchardKind === 'pod');
     assert.ok(physics.readOrchardPodReady(pod));
+    assert.ok(isOrchardPod(mirroredPod), 'release keeps the same canonical pod identity on main');
+    assert.equal(mirroredPod.occupantGeneration, pod.occupantGeneration);
+    assert.equal(mirroredPod.physicsBody.dynamic, true);
+    assert.equal(mirroredPod.physicsBody.revision, pod.physicsBody.revision);
+    assert.equal(mirroredPod.data.masslineTetherable, true);
+    applyEntityVitals(readModel, [[pod.id, { orchardPodPublic: JSON.stringify([
+      pod.occupantGeneration + 1, pod.data.worldRecordId, false,
+      pod.physicsBody.revision + 1, false, 1,
+    ]) }]]);
+    assert.equal(mirroredPod.physicsBody.dynamic, true, 'a different occupant life cannot rewrite this body');
+    assert.equal(mirroredPod.data.masslineTetherable, true);
     assert.equal(mining._collectPickupViaEvent(pod, player).accepted, 4);
     await transport();
     sentence(/Collected.*socket open/i);

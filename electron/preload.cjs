@@ -123,10 +123,23 @@ const SHELL_WORKSHOP_SYNC_CHANNEL = 'spaceface:workshop-sync';
 const SHELL_PERF_METRICS_CHANNEL = 'spaceface:perf-metrics';
 const SHELL_WINDOW_MODE_GET = 'spaceface:window-mode-get';
 const SHELL_WINDOW_MODE_SET = 'spaceface:window-mode-set';
+let prepareQuitHandler = null;
+ipcRenderer.on('spaceface:prepare-quit', async (_event, token) => {
+  let result;
+  // No owner has been installed during startup, so there is no runtime save to drain.
+  try { result = prepareQuitHandler ? await prepareQuitHandler() : { ok: true, reason: 'save-owner-not-installed' }; }
+  catch (error) { result = { ok: false, reason: String(error?.message || error) }; }
+  ipcRenderer.send('spaceface:quit-prepared', token, { ok: result?.ok === true, reason: result?.reason || null });
+});
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
       try { ipcRenderer.send(SHELL_QUIT_CHANNEL); } catch (e) {}
+    },
+    onPrepareQuit(handler) {
+      if (typeof handler !== 'function') return () => {};
+      prepareQuitHandler = handler;
+      return () => { if (prepareQuitHandler === handler) prepareQuitHandler = null; };
     },
     saveClip(payload) {
       return ipcRenderer.invoke(SHELL_SAVE_CLIP_CHANNEL, payload);

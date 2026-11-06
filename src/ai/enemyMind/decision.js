@@ -7,9 +7,11 @@ const retreating = (peer) => peer.verb === 'withdraw' || peer.verb === 'panic' |
 export function updateMorale(record, obs, peers, dt, tuning) {
   const support = Math.min(1, Math.max(obs.friends.length, peers.length) / 3);
   const threat = obs.targeted ? 1 : obs.target ? 0.35 : 0;
+  // A shove is felt before it is read off the hull: a live tumble feeds fear directly.
+  const shoved = obs.tumbling === true ? tuning.tumbleFear : 0;
   const targetFear = unitValue(
     (1 - obs.hull) * tuning.injuryWeight + threat * tuning.threatWeight
-    + obs.incoming * 0.28 + obs.casualties * 0.30 + record.shock
+    + obs.incoming * 0.28 + obs.casualties * 0.30 + record.shock + shoved
     + (1 - support) * tuning.isolationWeight
     - record.traits.courage * tuning.confidenceWeight - support * tuning.allyCalm,
   );

@@ -1,3 +1,5 @@
+import { consumePlayerOrchardFeedReceipt, readPlayerOrchardFeed } from './planetRuntime.js';
+import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardHistoryFitsTick, orchardPhase, orchardLotId } from '../data/anvilOrchard.js';
 import { ORCHARD_GEOMETRY as ORCHARD_G, orchardPodBodySpec } from '../data/anvilOrchardBody.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
@@ -84,6 +86,8 @@ import {
   stepPowerPriority,
 } from './worldSiteRuntime.js';
 
+const PLAYER_ORCHARD_FEED_CAPABILITY = Symbol('player-orchard-feed');
+
 const HAZARD_TYPE = 'debris_current';
 
 // The jam occupancy read only needs entities whose centers sit inside the small mouth rectangle.
@@ -95,6 +99,14 @@ const APERTURE_MOUTH_QUERY = (() => {
   const radius = Math.hypot((APERTURE_MOUTH.alongMax - APERTURE_MOUTH.alongMin) * 0.5, APERTURE_MOUTH.halfWidth) + 4;
   return Object.freeze({ x: center.x, z: center.z, radius });
 })();
+// The plug disk is round and offset from the mouth rectangle — a body can sit inside the
+// disk without reading as a mouth occupant. The door holds off driving home into it.
+const APERTURE_PLUG_QUERY = Object.freeze({
+  x: APERTURE_PLUG.pos.x,
+  z: APERTURE_PLUG.pos.z,
+  radius: APERTURE_PLUG.radius + 96,
+});
+const APERTURE_PLUG_SCRATCH = [];
 const APERTURE_OCCUPANT_SCRATCH = [];
 const KILL_COLLATERAL_SCRATCH = [];
 const EMPTY_LIST = [];
@@ -292,7 +304,17 @@ export const environmentalMachinery = {
    * together only after their migration/physical release contracts are complete. */
   acceptOrchardNewPod(worker,options={}) {return this.acceptOrchardHarvest(worker,{...options,newOnly:true});},
 
-  acceptOrchardHarvest(worker,{frame,socket,commodityId,qty,newOnly=false}={}) {
+  acceptOrchardHarvest(worker, options = {}) { return this._acceptOrchardHarvest(worker, options); },
+
+  acceptPlayerOrchardHarvest(player, options = {}) {
+    const { frame, socket, qty, receipt } = options;
+    if (!consumePlayerOrchardFeedReceipt(receipt, this.state, player, frame, socket, qty)) return 0;
+    return this._acceptOrchardHarvest(player, options, PLAYER_ORCHARD_FEED_CAPABILITY);
+  },
+
+  _acceptOrchardHarvest(worker,{frame,socket,commodityId,qty,newOnly=false}={},capability=null) {
+    if(capability!==null && capability!==PLAYER_ORCHARD_FEED_CAPABILITY)return 0;
+    const playerFeed=capability===PLAYER_ORCHARD_FEED_CAPABILITY;
     const systemCells=orchardCells(this,['state','_orchardEpoch','_orchardHelpers','registry']);if(!systemCells)return 0;
     const state=systemCells.values.state,epoch=systemCells.values._orchardEpoch,helpers=systemCells.values._orchardHelpers;
     const stateCells=orchardCells(state,['mode','tick','entities','sites','world']);
@@ -303,19 +325,28 @@ export const environmentalMachinery = {
       || commodityId!==ANVIL_ORCHARD.commodityId || !Number.isSafeInteger(qty) || qty<=0)return 0;
     const {entities,sites,world}=stateCells.values,rowCells=orchardCells(sites,['anvilOrchard']),worldCells=orchardCells(world,['currentSectorId']);
     const workerData=orchardCells(worker.data,['anvilSlingWitness','itinerary']),itinerary=workerData && orchardCells(workerData.values.itinerary,['kind','role','phase']);
-    if(!rowCells || !worldCells || world.currentSectorId!==ANVIL_ORCHARD.sectorId || !workerData || !itinerary
-      || workerData.values.anvilSlingWitness!==true || itinerary.values.kind!=='anvil_work' || itinerary.values.role!=='collector' || itinerary.values.phase!=='collect')return 0;
+    if(!rowCells || !worldCells || world.currentSectorId!==ANVIL_ORCHARD.sectorId)return 0;
+    if(playerFeed){
+      if(state.playerId!==worker.id || state.input?.actions?.siteBeam!==true || state.player?.targetId!==frame.id
+        || state.ui?.componentSelection?.targetId!==frame.id || state.ui.componentSelection.stableKey!==stableEntityKey(frame)
+        || state.ui.componentSelection.componentId!==`orchard_socket_${socket}`
+        || !readPlayerOrchardFeed(state,frame,socket).eligible)return 0;
+    }else if(!workerData || !itinerary || workerData.values.anvilSlingWitness!==true || itinerary.values.kind!=='anvil_work' || itinerary.values.role!=='collector' || itinerary.values.phase!=='collect')return 0;
     const prior=rowCells.values.anvilOrchard,tree=orchardTree(prior);if(!tree)return 0;
     const row=normalizeOrchardRecord(prior);
-    if(socket===undefined && row)socket=row.sockets.find(s=>!newOnly && s.status==='stowed' && row.lots.find(l=>l.id===s.lotId)?.units<4)?.socket
+    if(socket===undefined && row)socket=row.sockets.find(s=>!newOnly && s.status==='stowed' && row.lots.find(l=>l.id===s.lotId)?.units<4 && row.lots.find(l=>l.id===s.lotId)?.contributor!=='player')?.socket
       ?? row.sockets.find(s=>['empty','delivered','lost'].includes(s.status) && s.operation==='closed' && s.progress===0 && s.cycle<4)?.socket;
     const slot=Number.isInteger(socket) && socket>=0 && socket<3?row?.sockets[socket]:null,filling=!newOnly && slot?.status==='stowed';
     if(!row || !orchardHistoryFitsTick(row,state.tick) || row.frameStatus!=='intact' || orchardPhase(row,state.tick)?.phase!=='calm'
       || !slot || (!filling && !['empty','delivered','lost'].includes(slot.status)) || slot.operation!=='closed' || slot.progress!==0 || (!filling && slot.cycle>=4) || row.sourceRemaining<=0)return 0;
+    if(filling && (row.lots.find(l=>l.id===slot.lotId)?.contributor==='player')!==playerFeed)return 0;
     const ledgerSlot=Object.getOwnPropertyDescriptor(sites,'anvilOrchard');if(!ledgerSlot?.writable)return 0;
     let nativeCurrent=()=>true;
     const current=()=>nativeCurrent() && systemCells.current() && this.state===state && this._orchardEpoch===epoch && this._orchardHelpers===helpers && stateCells.current() && worldCells.current() && rowCells.current() && tree()
-      && workerCells.current() && workerBody() && workerData.current() && itinerary.current() && frameCells.current()
+      && workerCells.current() && workerBody() && (playerFeed ? state.playerId===worker.id && state.input?.actions?.siteBeam===true
+        && state.player?.targetId===frame.id && state.ui?.componentSelection?.targetId===frame.id
+        && state.ui.componentSelection.stableKey===stableEntityKey(frame) && state.ui.componentSelection.componentId===`orchard_socket_${socket}` && readPlayerOrchardFeed(state,frame,socket).eligible
+        : workerData.current() && itinerary.current()) && frameCells.current()
       && worker.alive===true && Number.isFinite(worker.hull) && worker.hull>0 && frame.alive===true && Number.isFinite(frame.hull) && frame.hull>0
       && Map.prototype.get.call(entities,worker.id)===worker && Map.prototype.get.call(entities,frame.id)===frame;
     if(!current())return 0;
@@ -351,7 +382,7 @@ export const environmentalMachinery = {
     }
     const accepted=Math.min(qty,ANVIL_ORCHARD.unitsPerPod,row.sourceRemaining),lotId=orchardLotId(socket,slot.cycle+1);
     const next=normalizeOrchardRecord(prior);next.sourceRemaining-=accepted;
-    next.lots.push({id:lotId,socket,cycle:slot.cycle+1,units:accepted,outcome:'retained'});
+    next.lots.push({id:lotId,socket,cycle:slot.cycle+1,units:accepted,outcome:'retained',...(playerFeed?{contributor:'player'}:{})});
     next.sockets[socket]={socket,cycle:slot.cycle+1,lotId,status:'stowed',operation:'closed',progress:0,handoff:'fixed',targetRevision:null,acceptedTick:null,completedTick:null,openedTick:null,readyTick:null,mountLostWork:0,mountLostTick:null};
     if(!normalizeOrchardRecord(next))return 0;
     const source=ORCHARD_G.pods[socket],c=Math.cos(frame.rot),s=Math.sin(frame.rot);
@@ -359,7 +390,7 @@ export const environmentalMachinery = {
     try {
       stage=helpers.stageEntitySpawn({type:'payload',pos:{x:frame.pos.x+c*source.pos.x-s*source.pos.z,z:frame.pos.z+s*source.pos.x+c*source.pos.z},rot:frame.rot+source.yaw,
         radius:ORCHARD_G.pod.radius,hull:100,hullMax:100,flags:{persistent:true},physicsBody:orchardPodBodySpec(),data:{orchardId:ANVIL_ORCHARD.id,orchardKind:'pod',masslineTetherable:false,
-        worldRecordId:lotId,identityKey:lotId,authoredAssetId:ORCHARD_G.pod.assetId,authoredPayloadAssetId:ORCHARD_G.pod.assetId,commodityId,amount:accepted}});
+        worldRecordId:lotId,identityKey:lotId,authoredAssetId:ORCHARD_G.pod.assetId,authoredPayloadAssetId:ORCHARD_G.pod.assetId,commodityId,amount:accepted,...(playerFeed?{orchardContributor:'player'}:{})}});
       if(!current() || !facadeCells.current()){stage.abort();return 0;}
       prepared=owner.prepareOrchardPodInsertion(frame,stage.entity,socket,state);
       if(!prepared || !current() || !facadeCells.current()){prepared?.abort();stage.abort();return 0;}
@@ -924,8 +955,14 @@ export const environmentalMachinery = {
     if (phase.fieldActive) this._upsertApertureFields(phase);
     else this._removeApertureFields();
     const wantPlug = phase.fieldActive && phase.fieldStrengthScale > 0 && !occupied;
-    if (wantPlug) this._ensureAperturePlug();
-    else this._releaseAperturePlug();
+    // The door drives home only into an empty throat: spawning the plug mass into a
+    // live body made the solver eject it through the exit — the bite read as the door
+    // throwing the jam, or a transiting reinforcement, out the wrong side.
+    if (wantPlug) {
+      if (this._aperturePlugThroatClear(state)) this._ensureAperturePlug();
+    } else {
+      this._releaseAperturePlug();
+    }
     this._publishAperturePhase(phase);
     this._updateAperturePlayerBoundary(state, phase);
     this._publishApertureIndustry(state, phase);
@@ -1026,6 +1063,26 @@ export const environmentalMachinery = {
       }
       this._apertureFieldStrength.delete(field.id);
     }
+  },
+
+  _aperturePlugThroatClear(state) {
+    const nearby = queryNearbyEntities(
+      state,
+      APERTURE_PLUG_QUERY,
+      APERTURE_PLUG_QUERY.radius,
+      APERTURE_PLUG_SCRATCH,
+    );
+    for (let i = 0; i < nearby.length; i++) {
+      const entity = nearby[i];
+      if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
+      if (entity.data && entity.data.aperturePlugId) continue;
+      const radius = Number.isFinite(entity.radius) ? entity.radius : 0;
+      const reach = APERTURE_PLUG.radius + radius;
+      const dx = entity.pos.x - APERTURE_PLUG.pos.x;
+      const dz = entity.pos.z - APERTURE_PLUG.pos.z;
+      if (dx * dx + dz * dz < reach * reach) return false;
+    }
+    return true;
   },
 
   _ensureAperturePlug() {

@@ -295,7 +295,7 @@ export function createShepherd12() {
           this._say(`shepherd12_shy_${flags[SHEPHERD12.flocksFlag]}`, shepherd12ShyLine(stillOut), 6);
         }
         if (cameHome.length > 0) {
-          this._say(`shepherd12_home_${s.tick}`, shepherd12HomeLine(stillOut), 5);
+          this._say(`shepherd12_home_${s.tick}`, shepherd12HomeLine(stillOut, cameHome.length), 5);
         }
         return;
       }

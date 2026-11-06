@@ -44,7 +44,19 @@ for (const name of ['src/missions/cinderRoute.js', 'src/characters/rookRules.js'
   'src/combat/rewardEligibility.js', 'src/story/campaign47a/campaignData.js', 'src/story/campaign47a/campaignTransitions.js',
   'src/story/campaign47a/campaignSchema.js', 'src/story/campaign47a/storySpine.js', 'src/story/campaign47a/campaignIntents.js',
   'src/story/campaign47a/campaignReceipts.js', 'src/story/campaign47a/embodiedMissions.js', 'src/data/enemies.js',
-  'src/data/understoryReceiver.js', 'src/data/factions/understory.js', 'src/systems/faction_understory.js']) real(name);
+  'src/data/understoryReceiver.js', 'src/data/factions/understory.js', 'src/systems/faction_understory.js',
+  'src/data/nestVisit.js', 'src/combat/impulseKernel.js']) real(name);
+// The Rook Booth market (cc96d0cdc9c) reads lawful station ownership and the WANTED flag. The
+// faction index and its kits are import-free data, so they load whole; heat.js drags the whole
+// heat system's graph, so only its real `isPlayerWanted` + threshold are projected from source.
+for (const kit of ['index', 'scn', 'mts', 'dmc', 'reach', 'quiet', 'vael', 'free', 'choir', 'helix',
+  'fulfillment', 'archive', 'pitborn', 'vergelayers']) real(`src/data/factions/${kit}.js`);
+{
+  const heatSource = read('src/systems/heat.js');
+  const threshold = heatSource.match(/^const WANTED_THRESHOLD = [^;]+;/m);
+  assert.ok(threshold, 'Current heat.js WANTED_THRESHOLD missing');
+  add('src/systems/heat.js', `${threshold[0]}\nexport ${fn(heatSource, 'isPlayerWanted')}\n`);
+}
 // Existing geometry owners are projected by the shared thin-review loader, never fake-clearance ports.
 for (const [name, exports] of Object.entries({
   'src/data/collisionProxyManifests.js': ['hullEnvelopeWu', 'proxyOuterRadiusWu', 'COLLISION_PROXY_MANIFESTS'],
@@ -58,7 +70,9 @@ add('src/data/frontierRegions/index.js', 'export const FRONTIER_ORIGINS={}, FRON
 add('src/data/theBolus.js', 'export const BOLUS_ZONES={};');
 add('src/data/authoredPlaces.js', 'export const ZONE_CERES_THROUGHLINE={center:{x:0,z:0}}; export const appendAuthoredZones=x=>x;');
 add('src/data/userContent.js', 'export const userContentCandidates=()=>[],claimUserContentId=()=>false,acceptUserContent=()=>{},rejectUserContent=()=>{};');
-add('src/core/sectorEnterDefer.js', 'export const deferSectorEnterMaterialization=()=>false;');
+// Materialization stays immediate (adapter); the Rook Booth's clock read is the real function.
+add('src/core/sectorEnterDefer.js', 'export const deferSectorEnterMaterialization=()=>false;\n'
+  + `export ${fn(read('src/core/sectorEnterDefer.js'), 'deferredEnterNow')}\n`);
 add('src/story/campaign47a/reckoningCallbacks.js', 'export function reckoningCallbacks(){throw Error("B7 outside Cinder test")}');
 add('src/data/missions.js', 'export const BRANCH_HEADLINE_VERBS={},PQ032_BEAT_SET_PIECES=[],STORY_BEATS=[];');
 add('src/story/endings/endingDefs.js', 'export const ENDING_DEFS=[];');
@@ -113,6 +127,9 @@ const mc = vm.createContext({ console, ...route, ...builder, ...trans, ...coords
   forEachJobInteractable:(s,f)=>s.entityList.filter(e=>e.alive!==false).forEach(f),
   syncEntitySectorMembership:noop, registerEntityWorldRecordId:noop, protectedStationAt:()=>null,
   campaign47aOutcomeKey:()=>null, campaign47aRouteKind:()=> 'live', kesslerScaleWaypoint:()=>null,
+  // Unrelated mission kinds' tow-lease registrars (starter buoy, mass-scale audit): each owner
+  // refuses a mission that is not its own, so the adapter is that refusal.
+  registerStarterBuoyTow:no, registerMassScaleTow:no,
 });
 const receiptStart = source.indexOf('export function normalizeMissionReceipts');
 const receiptEnd = source.indexOf('export const CLEAN_PHYSICAL_RELEASE');
@@ -123,6 +140,8 @@ vm.runInContext([
   strip(source.slice(receiptStart, receiptEnd)), strip(source.slice(hintStart, hintEnd)), fn(source,'storyBeatTitle'),
   ...['missionHostileSpawnPos','missionTargetSlotOf','completedMissionTargetSlots','lowestVacantSlot','stableEntityId','mulberryLocal'].map(n=>fn(source,n)),
   fn(worldRecords,'stableRecordId'), fn(worldRecords,'missionIdentityOf'), fn(bounty,'markArchetypePoolFor'),
+  // _acceptPreflight's remembered-captain refusal is the real reader (hash32 rides ...rng).
+  fn(read('src/systems/captainStandingOrders.js'),'captainStandingOfferPreflight'),
   strip(clauses.slice(clauseStart,clauseEnd)),
   `this.coreOps={${['abandonMission','acceptMission','_acceptPreflight','_instanceFromOffer','_objectiveTarget','_typeSpawnsTargets','trackMission',
     '_refreshTrackedMissionNav','_missionWaypoint','_reconcileCompostGrowth','_storyWaypointForBeat','_completeMission','_completeMissionBody',
@@ -177,7 +196,9 @@ function harness({beat=2,sector='sector_tethys_junction',missionFirst=false}={})
   const ac=vm.createContext({console,...rng,...coords,...route,...ns('src/data/factions/understory.js'),...ns('src/data/understoryReceiver.js'),SECTORS:[],syncEntitySectorMembership:noop,
     deferSectorEnterMaterialization:no,deferredEnterNow:s=>s.simTime,validateRunState:()=>({ok:false}),salvagePoolFromManifest:()=>({}),
     peekPendingSlam:()=>null,IMPACT_TEAROFF_LAW:{},combatFlag:no,indexedTypeScan:(s,l)=>s.entityList.filter(e=>l!=='wrecks'||e.type==='wreck'),
-    zoneAt:zones.zoneAt,zoneThreat:zones.zoneThreat,wreckClassById:id=>({id,label:id}),WRECK_COLLIDER_PROPORTIONS:{},normalizeCausalAftermath:()=>null});
+    zoneAt:zones.zoneAt,zoneThreat:zones.zoneThreat,wreckClassById:id=>({id,label:id}),WRECK_COLLIDER_PROPORTIONS:{},normalizeCausalAftermath:()=>null,
+    // Finite-manifest owners of unrelated routes (Vesta winnow, Charon supply) never own a Cinder hull.
+    ownsFiniteWinnowManifest:no,ownsFiniteCharonSupplyManifest:no});
   vm.runInContext(`${strip(aftermath)}\nthis.owner=aftermathWrecks;`,ac,{filename:'current-aftermathWrecks.js'});
   const aft=ac.owner, registry={get:name=>name==='aftermathWrecks'?aft:null};owner.registry=registry;
   const wire=()=>{
@@ -306,7 +327,12 @@ test('public story contract cannot be abandoned; hard jump preserves finite squa
   assert.match(h.events.at(-1)[1].text,/stays on your log/i);
   h.owner._onSectorExit({sectorId:m.destSectorId,reason:'jump'});h.state.world.currentSectorId='sector_tethys_junction';h.booth._sync();
   assert.equal(m.status,'active');for(const id of survivors)assert.equal(h.state.entities.get(id).alive,true);
-  const count=h.state.entityList.length;h.arrive(m);assert.deepEqual(m.targetEntityIds,survivors);assert.equal(h.state.entityList.length,count+1,'only returning booth beacon may materialize');
+  // The booth is a market now (cc96d0cdc9c): one pad per stand returns with the sector, and
+  // nothing else — no respawned Wasp, no replacement marker.
+  const before2=new Set(h.state.entityList);h.arrive(m);assert.deepEqual(m.targetEntityIds,survivors);
+  const fresh=h.state.entityList.filter(e=>!before2.has(e));
+  assert.equal(fresh.length,rook.ROOK_MARKET_STANDS.length,'only the returning booth pads may materialize');
+  for(const e of fresh)assert.notEqual(e.type,'ship','no mission hull respawns on return');
 });
 
 test('internal-failure retry preserves the living squad owner, cleared slot and existing real marker',()=>{

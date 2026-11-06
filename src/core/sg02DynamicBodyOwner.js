@@ -33,9 +33,9 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { SWARM_FEEL_PROFILE, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { isAnchoredPhysicalBody } from './physicalResponse.js';
-import { SHIPS } from '../data/ships.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
+import { resolveCraftProportions } from './craftProportions.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { occupantGenerationOf } from './entity.js';
 import { loadRapierCompatRuntime, orchardRapierBaseline } from './rapierCompatRuntime.js';
@@ -278,6 +278,22 @@ export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
 }
 
 
+// S1 Swarm feel — a body stamped at wave materialization (entity.data.swarmFeel === true)
+// resolves the profile's contact block. Unstamped bodies keep the shared constants below,
+// so every Adventure path is bit-identical to before the profile existed.
+function swarmFeelContact(entity) {
+  const data = entity && entity.data;
+  return data && data[SWARM_FEEL_STAMP] === true ? SWARM_FEEL_PROFILE.contact : null;
+}
+function tumbleRestitutionFor(rec) {
+  const contact = swarmFeelContact(rec && rec.entity);
+  return contact ? contact.tumbleRestitution : TUMBLE_RESTITUTION;
+}
+function tumbleAngularDampingFor(rec) {
+  const contact = swarmFeelContact(rec && rec.entity);
+  return contact ? contact.tumbleAngularDamping : TUMBLE_ANGULAR_DAMPING;
+}
+
 export async function createSg02DynamicBodyOwner(options = {}) {
   const RAPIER = options.RAPIER || await loadRapierCompat();
   return new Sg02DynamicBodyOwner(RAPIER, options);
@@ -308,7 +324,12 @@ export class Sg02DynamicBodyOwner {
     this.world.timestep = this.fixedDt;
     if (this.world.integrationParameters) {
       this.world.integrationParameters.maxCcdSubsteps = 4;
-      this.world.integrationParameters.numSolverIterations = 12;
+      // Smooth Program (owner direction): 12 solver iterations ≈ doubled the cost of every
+      // Rapier step while a 2.5D game never stacks deep piles. 6 keeps tethers/contacts stable
+      // and is the largest single measured saving left in the step. A save written under a
+      // different count is refused by the native runtime contract and takes the designed
+      // scalar-rebuild path — that IS the migration; no envelope/schema bump required.
+      this.world.integrationParameters.numSolverIterations = 6;
       this.world.integrationParameters.normalizedPredictionDistance = 3.5;
       this.world.integrationParameters.contact_natural_frequency = 240;
     }
@@ -540,7 +561,11 @@ export class Sg02DynamicBodyOwner {
         createdCanSleep: rec._createdCanSleep === true,
         sleepAllowed: rec._sleepAllowed ?? null,
         contactEpisode: { lastTick: rec._playerContactLastTick ?? null,
-          cumulativeDeltaV: rec._playerContactCumulativeDeltaV ?? 0 },
+          cumulativeDeltaV: rec._playerContactCumulativeDeltaV ?? 0,
+          // S1: recent-throw provenance survives save/load as an AGE, so a body thrown just
+          // before the save still reads thrown for the rest of the provenance window.
+          ...(Number.isSafeInteger(rec._impulseStampTick) && rec._impulseStampTick <= this.tick
+            ? { impulseAgeTicks: this.tick - rec._impulseStampTick } : {}) },
       };
     }
     const attachments = {};
@@ -713,6 +738,11 @@ export class Sg02DynamicBodyOwner {
           || saved.contactEpisode.cumulativeDeltaV < 0) throw new Error('invalid_contact_episode');
         rec._playerContactLastTick = saved.contactEpisode.lastTick;
         rec._playerContactCumulativeDeltaV = saved.contactEpisode.cumulativeDeltaV;
+        if (saved.contactEpisode.impulseAgeTicks != null) {
+          if (!Number.isSafeInteger(saved.contactEpisode.impulseAgeTicks)
+            || saved.contactEpisode.impulseAgeTicks < 0) throw new Error('invalid_contact_episode');
+          rec._impulseStampTick = candidate.tick - saved.contactEpisode.impulseAgeTicks;
+        }
         claimed.add(entity.id); handles.add(handle); remapped.set(savedId, entity.id);
       }
       if (claimed.size !== live.length) throw new Error('unclaimed_current_body');
@@ -796,6 +826,9 @@ export class Sg02DynamicBodyOwner {
       frameOrigin: options.frameOrigin || this._frameOrigin,
       frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
     });
+    // The rebuilt owner's step clock continues, never rewinds: throw provenance and contact
+    // episodes are stamped in tick space, so a zeroed clock would read live stamps as future.
+    candidate.tick = Math.max(this.tick, contactRestore ? contactRestore.tick : 0);
     try {
       // Construction may move coincident spawns. Stage those mirrors too so a later
       // native construction failure cannot mutate entities belonging to the old owner.
@@ -876,6 +909,8 @@ export class Sg02DynamicBodyOwner {
       frameOrigin: options.frameOrigin || this._frameOrigin,
       frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
     });
+    // The rebuilt owner's step clock continues, never rewinds (see rebuildWorldFromEntities).
+    candidate.tick = Math.max(this.tick, contactRestore ? contactRestore.tick : 0);
     let committed = false;
     try {
       // Construction may move coincident spawns. Stage those mirrors too so a later
@@ -931,13 +966,19 @@ export class Sg02DynamicBodyOwner {
       if (id == null) continue;
       const rec = byId.get(String(id));
       const entity = rec?.entity, original = originalContracts.get(entity);
-      if (!entity || entity.alive === false || entity.isPlayer !== true || !rec.spec.dynamic
+      if (!entity || entity.alive === false || !rec.spec.dynamic
         || !original || !entities.includes(entity) || original.life !== entity.occupantGeneration
         || original.spec !== entity.physicsBody || original.data !== entity.data) continue;
       if (mirrors.some(mirror => mirror.entity === entity.pos || mirror.entity === entity.prevPos)) continue;
       if (!remap && (!Number.isSafeInteger(saved?.sourceLife) || saved.sourceLife <= 0
         || occupantGenerationOf(entity) !== saved.sourceLife)) continue;
       const episode = saved?.contactEpisode;
+      // S1: recent-throw provenance survives rebuild for ANY body (thrown rocks and hulls are
+      // not players) — restored as a stamp behind the restore tick, never a refreshed window.
+      if (Number.isSafeInteger(episode?.impulseAgeTicks) && episode.impulseAgeTicks >= 0) {
+        rec._impulseStampTick = tick - episode.impulseAgeTicks;
+      }
+      if (entity.isPlayer !== true) continue;
       if (!episode || !Number.isSafeInteger(episode.lastTick) || episode.lastTick < 0
         || episode.lastTick > tick || tick - episode.lastTick > PLAYER_CONTACT_EVENT_BRIDGE_TICKS
         || !Number.isFinite(episode.cumulativeDeltaV) || episode.cumulativeDeltaV < 0) continue;
@@ -1711,9 +1752,11 @@ export class Sg02DynamicBodyOwner {
       if (continuation) this._applyProjectileContinuation(rec, continuation);
     }
 
-    if (tumbleFling) {
-      for (const rec of this.dynamicRecords) {
-        if (rec._tumbling !== rec._tumbleMaterial) this._syncTumbleMaterial(rec, rec._tumbling === true);
+    for (const rec of this.dynamicRecords) {
+      // Switching the feature off must retire an already-installed tumble profile too.
+      // Fresh legacy bodies retain their untouched base-material path.
+      if (rec._tumbling !== rec._tumbleMaterial && (tumbleFling || rec._tumbleMaterial === true)) {
+        this._syncTumbleMaterial(rec, rec._tumbling === true);
       }
     }
 
@@ -2132,6 +2175,42 @@ export class Sg02DynamicBodyOwner {
     return post;
   }
 
+  // S1/P2 — does a contact partner qualify as a projectile under the profile? Tumbling, or
+  // carrying impulse provenance inside the thrown window (a queued impulse moved it recently).
+  _swarmProjectilePartner(other, contact, tick = this.tick) {
+    if (!other || !contact) return false;
+    if (other._tumbling === true) return true;
+    const stamp = other._impulseStampTick;
+    return Number.isSafeInteger(stamp) && stamp <= tick
+      && (tick - stamp) < Math.max(1, Math.round(contact.thrownProvenanceS * 60));
+  }
+
+
+  // S1/P2 — the dv bound one body's own-contact response may carry. Adventure keeps the
+  // tumble-or-40 law exactly. A stamped Swarm body keeps the full transfer bound when it is
+  // tumbling itself, or when a contact partner this tick is a projectile AND the pair's
+  // pre-solve closing is a real impact — the bowling-pin rule. Every other stamped contact
+  // keeps the 40 cap, so deep-overlap spawn separation stays a shove, not a cannon.
+  _victimDvBound(rec) {
+    const contact = swarmFeelContact(rec && rec.entity);
+    if (!contact) return rec && rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    if (rec._tumbling === true) return contact.impactTransferDv;
+    const receipts = this._stepContactReceipts;
+    if (receipts && receipts.length) {
+      const own = rec.entity && rec.entity.id;
+      for (let i = 0; i < receipts.length; i++) {
+        const receipt = receipts[i];
+        const otherId = receipt && (receipt.aId === own ? receipt.bId : (receipt.bId === own ? receipt.aId : null));
+        if (otherId == null) continue;
+        const other = this.records.get(otherId);
+        if (!this._swarmProjectilePartner(other, contact)) continue;
+        if (!(finite(receipt.preSolveClosingSpeed, 0) >= contact.impactMinClosing)) continue;
+        return contact.impactTransferDv;
+      }
+    }
+    return MAX_CONTACT_DV;
+  }
+
   _contactResponseDvBudget(rec) {
     const receipts = this._stepContactReceipts;
     if (!receipts || receipts.length === 0) return Infinity;
@@ -2154,7 +2233,7 @@ export class Sg02DynamicBodyOwner {
       slack += 2 * Math.hypot(finite(e && e.vx) - ovx, finite(e && e.vz) - ovz);
     }
     if (!involved) return Infinity;
-    return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
+    return this._victimDvBound(rec) + slack;
   }
 
   _playerContactClosingFraction(rec) {
@@ -2314,9 +2393,19 @@ export class Sg02DynamicBodyOwner {
   // threshold; a light grind or a scrape distributed over compound colliders does contact
   // work without ever earning one. Pairs between the record's own colliders (a compound
   // hull's primitives pack tightly enough to neighbour each other) are self-contact, not
-  // contact work. Only consulted on unexplained, receiptless delta-V, so the ordinary
-  // no-contact tick costs nothing.
-  _playerInLiveContact(rec) {
+  // contact work. Consulted on unexplained delta-V, either to admit a dynamic
+  // partner's solver response or classify receiptless contact work.
+  _playerInLiveContact(rec, dynamicOnly = false) {
+    // Force receipts retain contacts that separated during the solve; the live
+    // narrow phase below also covers light dynamic contact with no force receipt.
+    if (dynamicOnly) {
+      const own = rec.entity && rec.entity.id;
+      for (const receipt of this._stepContactReceipts || []) {
+        const otherId = receipt.aId === own ? receipt.bId : receipt.bId === own ? receipt.aId : null;
+        const other = otherId == null ? null : this.records.get(otherId);
+        if (other && other !== rec && other.spec.dynamic === true && other.body.isDynamic()) return true;
+      }
+    }
     const colliders = rec && rec.colliders;
     const world = this.world;
     if (!Array.isArray(colliders) || colliders.length === 0
@@ -2327,6 +2416,8 @@ export class Sg02DynamicBodyOwner {
         world.contactPairsWith(colliders[i], (other) => {
           if (touching) return;
           const owned = this._colliderOwners.get(other.handle);
+          if (dynamicOnly && (!owned || owned.rec.spec.dynamic !== true
+            || !owned.rec.body.isDynamic() || other.isSensor())) return;
           if (!owned || owned.rec !== rec) touching = true;
         });
       } catch (_) {
@@ -2379,6 +2470,7 @@ export class Sg02DynamicBodyOwner {
 
     const closingFraction = this._playerContactClosingFraction(rec);
     const unexplained = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const hasDynamicContact = unexplained && this._playerInLiveContact(rec, true);
     // A contact-force receipt only exists for collider pairs that crossed the gameplay
     // threshold (SG02_CONTACT_FORCE_EVENT_THRESHOLD_N): a sustained light grind, or a
     // scrape spread across the primitives of compound colliders, stays receiptless while
@@ -2386,7 +2478,7 @@ export class Sg02DynamicBodyOwner {
     // work, island noise — leaves no receipt AND no live contact pair; only that carries
     // solver momentum the give pass must not rewrite.
     const receiptlessContact = closingFraction == null && unexplained
-      && this._playerInLiveContact(rec);
+      && (hasDynamicContact || this._playerInLiveContact(rec));
     const isActive = unexplained && (closingFraction != null || receiptlessContact);
     const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     if (isActive) {
@@ -2401,6 +2493,9 @@ export class Sg02DynamicBodyOwner {
     const cumulative = rec._playerContactCumulativeDeltaV || 0;
     const preservesSolverResponse = rec._tumbling === true
       || this._sleepHeld.has(rec)
+      // A dynamic partner keeps the opposite solver impulse. Restoring just the
+      // player's graze velocity would create momentum/energy on every contact.
+      || hasDynamicContact
       || closingFraction > 0.55
       || (closingFraction == null && !receiptlessContact);
     let eventBudget = 5;
@@ -2424,7 +2519,7 @@ export class Sg02DynamicBodyOwner {
     let contactDvBudget;
     if (preservesSolverResponse) {
       contactDvBudget = (!Number.isFinite(rawDv)
-          || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+          || rawDv > this._victimDvBound(rec))
         ? this._contactResponseDvBudget(rec)
         : Infinity;
     } else {
@@ -2437,7 +2532,7 @@ export class Sg02DynamicBodyOwner {
     // mixed contacts keep the budgeted post-solve pose path.
     const fixedWallPoseRewrite = usesNativeFixedAllowance
       && Number.isFinite(rawDv)
-      && rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV)
+      && rawDv > this._victimDvBound(rec)
       && Number.isFinite(residualDv)
       && residualDv <= eventBudget;
     const preservesSolverPose = preservesSolverResponse || fixedWallPoseRewrite;
@@ -2661,7 +2756,7 @@ export class Sg02DynamicBodyOwner {
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
     const contactDvBudget = (!Number.isFinite(rawDv)
-        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+        || rawDv > this._victimDvBound(rec))
       ? this._contactResponseDvBudget(rec)
       : Infinity;
     if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
@@ -2693,8 +2788,10 @@ export class Sg02DynamicBodyOwner {
     const dvz = vz - e.vz;
     const dv = Math.hypot(dvx, dvz);
     const closingDv = Math.hypot(e.vx, e.vz);
-    const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
-      ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    const baseLimit = swarmFeelContact(rec && rec.entity)
+      ? this._victimDvBound(rec)
+      : (rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
+        ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
     const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
@@ -2737,10 +2834,10 @@ export class Sg02DynamicBodyOwner {
         if (nx * (finite(at.x) - finite(from.x)) + nz * (finite(at.z) - finite(from.z)) < 0) { nx = -nx; nz = -nz; }
         const closing = -(finite(e.vx) * nx + finite(e.vz) * nz);
         if (!(closing > TUMBLE_RICOCHET_MIN_CLOSING)) continue;
-        const wanted = TUMBLE_RESTITUTION * closing;
+        const wanted = tumbleRestitutionFor(rec) * closing;
         const leaving = vx * nx + vz * nz;
         if (leaving < wanted) {
-          const add = Math.min(wanted - leaving, TUMBLE_MAX_CONTACT_DV);
+          const add = Math.min(wanted - leaving, this._victimDvBound(rec));
           vx += add * nx;
           vz += add * nz;
           touched = true;
@@ -2770,12 +2867,12 @@ export class Sg02DynamicBodyOwner {
     rec._tumbleMaterial = tumbling;
     if (!rules || !Array.isArray(rec.colliders)) return;
     const base = contactMaterialFor(rec.entity, rec.spec);
-    const restitution = tumbling ? TUMBLE_RESTITUTION : base.restitution;
+    const restitution = tumbling ? tumbleRestitutionFor(rec) : base.restitution;
     const rule = tumbling ? rules.Max : (base.restitutionCombine === 'min' ? rules.Min
       : base.restitutionCombine === 'max' ? rules.Max
       : rules.Average);
     if (rec.body && typeof rec.body.setAngularDamping === 'function') {
-      rec.body.setAngularDamping(tumbling ? TUMBLE_ANGULAR_DAMPING : base.angularDamping);
+      rec.body.setAngularDamping(tumbling ? tumbleAngularDampingFor(rec) : base.angularDamping);
     }
     for (const collider of rec.colliders) {
       if (typeof collider.setRestitution === 'function') collider.setRestitution(restitution);
@@ -3347,34 +3444,7 @@ export class Sg02DynamicBodyOwner {
       if (!(rawImpulse > 0)) return;
       // Scalar running min; identical to Math.min(...dynamicCaps) including NaN propagation.
       let cap = Infinity;
-      // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
-      // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
-      // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
-      // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
-      const tumbleContact = recA._tumbling === true || recB._tumbling === true;
-      if (recA.spec.dynamic) {
-        cap = Math.min(cap, effectiveMass(recA)
-          * (tumbleContact && !(recA.entity && recA.entity.isPlayer === true)
-            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
-      }
-      if (recB.spec.dynamic) {
-        cap = Math.min(cap, effectiveMass(recB)
-          * (tumbleContact && !(recB.entity && recB.entity.isPlayer === true)
-            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
-      }
-      if (cap === Infinity) return;
-      const boundedImpulse = Math.min(rawImpulse, cap);
-      if (!(boundedImpulse > 0)) return;
-
       const direction = event.maxForceDirection();
-      const translationA = recA.body.translation();
-      const translationB = recB.body.translation();
-      pointScratch.x = (finite(translationA.x) + finite(translationB.x)) * 0.5;
-      pointScratch.z = (finite(translationA.z) + finite(translationB.z)) * 0.5;
-      if (typeof this.world.contactPair === 'function') {
-        this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
-      }
-      const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
       const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
       const a = aFirst ? recA : recB;
       const b = aFirst ? recB : recA;
@@ -3388,6 +3458,53 @@ export class Sg02DynamicBodyOwner {
       const bVz = b.spec.dynamic ? finite(bExpected && bExpected.vz) : 0;
       const nABx = finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x);
       const nABz = finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z);
+      const rawNormal = normalizePlanarDirection(direction);
+      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
+        ? { x: -rawNormal.x, z: -rawNormal.z }
+        : rawNormal;
+      // S1/P2: the pair's real impact speed — the same inputs the receipt reports below.
+      const pairClosing = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
+      // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
+      // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
+      // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
+      // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
+      const tumbleContact = recA._tumbling === true || recB._tumbling === true;
+      // S1/P2: unstamped bodies keep the legacy rule — any tumbling partner is a projectile
+      // hit. A stamped Swarm victim needs MORE: a projectile partner (tumbling or
+      // impulse-thrown) AND a real pre-solve impact, so a resting thrown body or a
+      // slow-drifting tumble cannot inflate the receipt. Same bar as _victimDvBound.
+      const contactA = swarmFeelContact(recA.entity);
+      const contactB = swarmFeelContact(recB.entity);
+      const raisedA = contactA
+        ? (recA._tumbling === true
+          || (this._swarmProjectilePartner(recB, contactA) && pairClosing >= contactA.impactMinClosing))
+        : tumbleContact;
+      const raisedB = contactB
+        ? (recB._tumbling === true
+          || (this._swarmProjectilePartner(recA, contactB) && pairClosing >= contactB.impactMinClosing))
+        : tumbleContact;
+      if (recA.spec.dynamic) {
+        cap = Math.min(cap, effectiveMass(recA)
+          * (raisedA && !(recA.entity && recA.entity.isPlayer === true)
+            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
+      }
+      if (recB.spec.dynamic) {
+        cap = Math.min(cap, effectiveMass(recB)
+          * (raisedB && !(recB.entity && recB.entity.isPlayer === true)
+            ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
+      }
+      if (cap === Infinity) return;
+      const boundedImpulse = Math.min(rawImpulse, cap);
+      if (!(boundedImpulse > 0)) return;
+
+      const translationA = recA.body.translation();
+      const translationB = recB.body.translation();
+      pointScratch.x = (finite(translationA.x) + finite(translationB.x)) * 0.5;
+      pointScratch.z = (finite(translationA.z) + finite(translationB.z)) * 0.5;
+      if (typeof this.world.contactPair === 'function') {
+        this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
+      }
+      const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
       const causalActorId = directContactCausalActorId(
         a.entity.id,
         b.entity.id,
@@ -3413,15 +3530,11 @@ export class Sg02DynamicBodyOwner {
       // against it. nAB (computed above from the pair kinematics) is the positional a→b axis;
       // the flip keeps the solver's true normal direction and fixes only which half it names.
       // A degenerate axis (co-located kinematics) stays unflipped — nothing honest to sign.
-      const rawNormal = normalizePlanarDirection(direction);
-      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
-        ? { x: -rawNormal.x, z: -rawNormal.z }
-        : rawNormal;
       // A compound hull's center can lie far along the wall from the actual surface the
       // player is driving into. Classify its stopping response by that surface normal;
       // the centroid axis otherwise mistakes native wall braking for an external shove
       // and restores thrust velocity while the solver correctly keeps the hull outside.
-      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
+      const closingSpeed = pairClosing;
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const preSolveClosingNormal = existing && closingSpeed <= finite(existing.preSolveClosingSpeed, -Infinity)
         ? (existing.preSolveClosingNormal || existing.normal)
@@ -3651,9 +3764,17 @@ export class Sg02DynamicBodyOwner {
     for (const impulse of command.impulses || []) {
       const before = journalFor() ? rec.body.linvel() : null;
       rec.body.applyImpulse(planeForceInto(impulse, _planeForceScratch), true);
+      // S1: impulse provenance — a queued impulse moved this body, so it reads as "thrown"
+      // for the bowling-pin rule inside the provenance window. Cost is one int per impulse.
+      if (Math.hypot(finite(impulse.x), finite(impulse.z)) > 0) rec._impulseStampTick = this.tick;
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
+      // A hull already loose in the previous native solve received the contact's angular
+      // impulse there, through its actual shape and inertia. The legacy hitstun entry
+      // spin is a control consequence, not a second physical hit. Keep it for a newly
+      // disabled helm; deliberate weapon/throw torque remains unmarked and passes through.
+      if (impulse.kind === 'contact_tumble_entry' && rec._tumbleMaterial === true) continue;
       applyYawTorqueImpulse(rec, impulse, impulse);
     }
   }
@@ -4770,7 +4891,7 @@ function craftKeepsHelmThroughContact(rec) {
 
 function contactAngularDamping(rec) {
   // The owner's own prediction of the spin the solver will damp; it must match the body's damping.
-  if (rec && rec._tumbling === true) return TUMBLE_ANGULAR_DAMPING;
+  if (rec && rec._tumbling === true) return tumbleAngularDampingFor(rec);
   const material = contactMaterialFor(rec && rec.entity, rec && rec.spec);
   return Math.max(0, finite(material.angularDamping));
 }
@@ -5010,138 +5131,10 @@ function ghostProjectilePoolKey(spec) {
   return [spec.shape || 'ball', spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
 }
 
-export const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
-  drone_swarm: Object.freeze({ length: 1.72, halfWidth: 0.36, height: 0.26 }),
-  sniper_lance: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  detonator_dart: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  bruiser_armor: Object.freeze({ length: 1.72, halfWidth: 0.43, height: 0.31 }),
-  trader_haul: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  pirate_swoop: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.27 }),
-  corsair_blade: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.24 }),
-  patrol_interdict: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  dreadnought_enemy: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-});
-
-export const TRAFFIC_ROLE_PROPORTIONS = Object.freeze({
-  arclight: Object.freeze({ length: 1.72, halfWidth: 0.32, height: 0.48 }),
-  courier: Object.freeze({ length: 1.72, halfWidth: 0.39, height: 0.28 }),
-  customs: Object.freeze({ length: 1.72, halfWidth: 0.21, height: 0.49 }),
-  express: Object.freeze({ length: 1.72, halfWidth: 0.40, height: 0.56 }),
-  hauler: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  miner: Object.freeze({ length: 1.72, halfWidth: 0.34, height: 0.51 }),
-  ore_carrier: Object.freeze({ length: 1.72, halfWidth: 0.19, height: 0.35 }),
-  pirate: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  prospector: Object.freeze({ length: 1.72, halfWidth: 0.24, height: 0.30 }),
-  rescue: Object.freeze({ length: 1.72, halfWidth: 0.23, height: 0.31 }),
-  salvor: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.39 }),
-  shuttle: Object.freeze({ length: 1.72, halfWidth: 0.25, height: 0.33 }),
-  smuggler: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  surveyor: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.42 }),
-  sweeper: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.38 }),
-  tanker: Object.freeze({ length: 1.72, halfWidth: 0.16, height: 0.33 }),
-  tender: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.33 }),
-  tug: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-});
-
-export const FACTION_HULL_PROPORTIONS = Object.freeze({
-  'span:faction_dmc': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'span:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'span:faction_reach': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-});
-
-export const CRAFT_COLLISION_PROPORTIONS = Object.freeze({
-  dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  ship_dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  ship_hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  ship_wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  ship_drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  ship_kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  ship_pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  ship_mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  ship_hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  ship_bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ship_ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ship_ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  ship_warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  ship_colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  ship_leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-});
-
-const CRAFT_PROPORTIONS_CACHE = new Map();
-for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(sil, prop);
-}
-for (const [role, prop] of Object.entries(TRAFFIC_ROLE_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(role, prop);
-  CRAFT_PROPORTIONS_CACHE.set(`traffic:${role}`, prop);
-}
-for (const [key, prop] of Object.entries(FACTION_HULL_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(key, prop);
-}
-for (const [key, prop] of Object.entries(CRAFT_COLLISION_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(key, prop);
-}
-for (const ship of SHIPS || []) {
-  if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
-    if (!CRAFT_PROPORTIONS_CACHE.has(ship.id)) {
-      CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
-    }
-  }
-}
-for (const enemy of ENEMY_TYPES || []) {
-  if (enemy && enemy.id) {
-    const silProp = enemy.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[enemy.silhouette];
-    const shipProp = enemy.shipId && CRAFT_PROPORTIONS_CACHE.get(enemy.shipId);
-    const prop = silProp || shipProp;
-    if (prop) CRAFT_PROPORTIONS_CACHE.set(enemy.id, prop);
-  }
-}
-
-export function resolveCraftProportions(entity, spec = null) {
-  const data = (entity && entity.data) || {};
-  if (data.proportions && Number.isFinite(data.proportions.length) && Number.isFinite(data.proportions.halfWidth)) {
-    return data.proportions;
-  }
-  if (data.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette]) {
-    return ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette];
-  }
-  for (const key of [
-    data.defId,
-    data.shipId,
-    data.typeId,
-    data.chassisId,
-    data.trafficRole,
-    data.trafficRole ? `traffic:${data.trafficRole}` : null,
-    entity && entity.id,
-  ]) {
-    if (typeof key === 'string' && CRAFT_PROPORTIONS_CACHE.has(key)) {
-      return CRAFT_PROPORTIONS_CACHE.get(key);
-    }
-  }
-  if (entity && entity.type === 'drone') {
-    return { length: 1.0, halfWidth: 0.45, height: 0.30 };
-  }
-  return { length: 1.35, halfWidth: 0.42, height: 0.30 };
-}
+export {
+  ENEMY_SILHOUETTE_PROPORTIONS, TRAFFIC_ROLE_PROPORTIONS, FACTION_HULL_PROPORTIONS,
+  CRAFT_COLLISION_PROPORTIONS, resolveCraftProportions,
+} from './craftProportions.js';
 
 const COLLISION_GROUP_SOLID   = 0x0001; // stations, rocks
 const COLLISION_GROUP_CRAFT   = 0x0002; // ships, drones, pods
@@ -5670,9 +5663,13 @@ function retainPlayerContactRestore(options) {
     if (targets.has(String(target))) return null;
     targets.add(String(target));
   }
-  // Retain only player gameplay-budget claims, never opaque solver bytes or unrelated bodies.
+  // Retain only gameplay-budget claims, never opaque solver bytes or unrelated bodies:
+  // player contact episodes, and any body carrying live S1 throw provenance (a stamped
+  // impulse age is itself the claim's reason to exist).
   // The table validator bounds traversal and excludes accessors/nonfinite values before cloning.
-  const claims = payload.bodyOrder.filter(id => payload.bodies[id]?.identity?.isPlayer === true)
+  const claims = payload.bodyOrder.filter(id => payload.bodies[id]?.identity?.isPlayer === true
+    || (Number.isSafeInteger(payload.bodies[id]?.contactEpisode?.impulseAgeTicks)
+      && payload.bodies[id].contactEpisode.impulseAgeTicks >= 0))
     .map(id => { const saved = payload.bodies[id]; return [id, nativePlain({
       identity: saved.identity, sourceLife: saved.sourceLife, state: saved.state,
       contract: saved.contract, contactEpisode: saved.contactEpisode,

@@ -150,7 +150,7 @@ test('a resident whole-ship lod swap keeps the resolver level inside the hystere
   const setActive = (next) => {
     boundary.userData.lod = (next.userData && next.userData.lod) || null;
   };
-  const npc = { type: 'ship', isPlayer: false, data: { defId: 'ship_atlas' } };
+  const npc = { type: 'ship', team: 1, isPlayer: false, data: { defId: 'ship_atlas' } };
   assert.equal(installWholeShipLodFamilyController(boundary, npc, setActive, {}), true);
   boundary.userData.lod = lod0Root.userData.lod;
   boundary.userData.wholeShipLodRoots.lod1 = lod1Root;
@@ -161,6 +161,7 @@ test('a resident whole-ship lod swap keeps the resolver level inside the hystere
   boundary.userData.updateLod('lod1');
   assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod1');
   assert.equal(lod1Root.parent, boundary);
+  assert.ok(boundary.userData.__socketCache instanceof Map, 'swapping invalidates the old socket targets');
 
   // The swapped-in resolver must answer as the level now presented: inside the dead band it
   // stays lod1 instead of waking at lod0 and demanding a swap back.
@@ -170,22 +171,21 @@ test('a resident whole-ship lod swap keeps the resolver level inside the hystere
   assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod1');
 
   // The return trip carries the same continuity — lod0 keeps answering lod0 at 110 px.
-  boundary.userData.updateLod('lod0');
+  npc.data.isBoss = true;
+  boundary.userData.updateLod('lod1');
   assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod0');
   assert.equal(boundary.userData.lod, lod0Root.userData.lod);
   assert.equal(boundary.userData.lod.resolve(110), 'lod0');
 });
 
-test('OWNER 2026-09-29: the live controller never admits a second LOD file on the glass', () => {
-  // The frame is sacred: a top-down game has nothing far enough to justify loading a separate
-  // model for a ship the player is already looking at. The pure resolver still says 'load' (the
-  // catalog and tools keep it); the live wrapper turns that into 'keep' so the ship stays on the
-  // body its admission built. Resident-level swaps stay instant and allowed.
+test('only the owning controller can request a sibling and existing roots remain swappable', () => {
   assert.equal(WHOLE_SHIP_LOD_RUNTIME_DEMOTION, false);
   const far = resolveLiveWholeShipLodTransition('lod0', 'lod2', { pendingLevel: null, residentReady: false });
   assert.equal(far.action, 'keep');
   assert.equal(far.level, 'lod0');
   assert.equal(far.pendingLevel, null, 'nothing may be left pending — no load was scheduled');
+  const owned = resolveLiveWholeShipLodTransition('lod0', 'lod2', { allowLoad: true, residentReady: false });
+  assert.equal(owned.action, 'load');
   const resident = resolveLiveWholeShipLodTransition('lod2', 'lod0', { residentReady: true });
   assert.equal(resident.action, 'swap', 'an already-resident level still swaps in (instant, loads nothing)');
   const detached = resolveLiveWholeShipLodTransition('lod0', 'lod2', { attached: false });

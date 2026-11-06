@@ -35,7 +35,7 @@ export const OCCUPATIONAL_TRAFFIC_CRAFT = Object.freeze([
     role: 'prospector',
     file: 'wholeships/prospector_skiff.glb',
     assetId: 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
-    jobKind: 'miner',
+    jobKind: 'surveyor',
     releaseUrl: 'assets/ships/release/parts/wholeships/prospector_skiff.glb',
   }),
   Object.freeze({
@@ -43,7 +43,7 @@ export const OCCUPATIONAL_TRAFFIC_CRAFT = Object.freeze([
     role: 'sweeper',
     file: 'wholeships/scrap_sweeper.glb',
     assetId: 'SF_WHOLESHIP_SCRAP_SWEEPER',
-    jobKind: 'miner',
+    jobKind: 'salvor',
     releaseUrl: 'assets/ships/release/parts/wholeships/scrap_sweeper.glb',
   }),
   Object.freeze({

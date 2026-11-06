@@ -15,6 +15,7 @@ import { npcJobsRuntime as npcJobsProto } from '../src/systems/npcJobsRuntime.js
 import { hash32 } from '../src/core/rng.js';
 import { pirateDisengage as parleyProto } from '../src/systems/pirateDisengage.js';
 import { surrenderRecovery as recoveryProto } from '../src/systems/surrenderRecovery.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 
 async function runtime() {
   const state = createGameState(4242), bus = createBus(), slots = new Map();
@@ -234,6 +235,29 @@ test('authored evacuated recovery has no pilot to accelerate or be deputized and
     assert.equal(rt.state.combat.entities[emptySeat.id].subsystems.subsystem_drive.destroyed, true);
     assert.deepEqual({ ...emptySeat.vel }, velocity, 'canonical disable never rewrites momentum');
     assert.equal(emptySeat.shield, 0);
+  } finally { rt.dispose(); }
+});
+
+test('failed authored encounter spawn releases its reservation and leaves the encounter retryable', async () => {
+  const rt = await runtime();
+  try {
+    rt.state.world.currentSectorId = 'sector_helios_prime';
+    rt.helpers.spawnBudget = makeBudgetApi(rt.state);
+    rt.helpers.spawnEntity({ type: 'station', pos: { x: 600, z: 300 }, radius: 80,
+      data: { stationId: 'station_helios' }, flags: { persistent: true } });
+    const originalSpawn = rt.helpers.spawnEntity;
+    rt.helpers.spawnEntity = () => null;
+
+    assert.doesNotThrow(() => rt.system.enterSector());
+    assert.equal(rt.helpers.spawnBudget.current(), 0, 'a failed spawn cannot retain the encounter slot');
+    assert.equal(rt.system._pendingEntry, true, 'the authored row remains eligible for a later entry retry');
+    assert.equal(rt.state.player.shipjack?.encounters?.black_flag_empty_seat, undefined);
+    assert.equal(rt.state.entityList.some(entity => entity.data?.shipjackEncounterId === 'black_flag_empty_seat'), false);
+
+    rt.helpers.spawnEntity = originalSpawn;
+    rt.system.enterSector();
+    assert.equal(rt.helpers.spawnBudget.current(), 1);
+    assert.equal(rt.state.player.shipjack.encounters.black_flag_empty_seat.admitted, true);
   } finally { rt.dispose(); }
 });
 

@@ -200,6 +200,9 @@ test('TEACH-13 seed 4242: a catalog buoy, chaff, a clear, hints off, the rail, a
     quiet.lock({ targetId: quiet.player.id + 40 });
     assert.equal(quiet.decoyHints().length, 0, 'someone else being locked does not teach');
     quiet.lock();
+    // The rail muted the mid-rail lock into the deferred queue; once the rail
+    // released the voice it drains on the update cadence and still teaches.
+    quiet.sim.registry.get('onboarding')._drainHintQueue();
     assert.equal(quiet.decoyHints().length, 1, 'the first lock the player can hear still teaches');
   } finally { quiet.restore(); }
 });

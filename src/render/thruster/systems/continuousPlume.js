@@ -11,7 +11,16 @@ import {
   compileDriveRates,
   integrateModeWeights,
   resolveDriveMode,
+  blendDriveModeHeat,
+  DRIVE_HEAT_ROLE_WHITE,
+  DRIVE_HEAT_ROLE_COOL,
+  DRIVE_HEAT_DEFAULT_ROLE_WHITE,
+  DRIVE_HEAT_DEFAULT_ROLE_COOL,
 } from './throttleResponse.js';
+import {
+  resolveDyingDrive,
+  applyDyingDriveToSlot,
+} from './dyingDrive.js';
 import {
   compileAccessibilityTables,
   createPresentationScratch,
@@ -44,6 +53,8 @@ import {
 } from '../../dynamicBufferRanges.js';
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
+// Module-owned drive-mode-heat scratch: written once per writeEntity, read per slot. No allocation.
+const DRIVE_HEAT_SCRATCH = { whitePush: 0, cool: 0 };
 const QUALITY_TIERS = ['high', 'medium', 'low'];
 const PLUME_INSTANCE_STRIDE = 20;
 const PLUME_OFFSET_OFFSET = 0;
@@ -372,6 +383,11 @@ export class PlumeSlotPool {
     tf.drive = state.plumeDrive; // residual / smoothed energy
     tf.throttle = commandThrottle; // commanded — brake mode key
     tf.mode = signals && signals.mode ? signals.mode : null;
+    // The dying tell (inf-dying-drive): hull truth and its own sputter clock ride the
+    // signals the fleet already forwards (the ship record). Unknown fields read intact.
+    tf.hullFrac = signals && Number.isFinite(signals.hullFrac) ? signals.hullFrac : 1;
+    tf.sputterPhase = signals && Number.isFinite(signals.sputterPhase) ? signals.sputterPhase : 0;
+    tf.entityPhase = signals && signals.entityId != null ? entityPhaseOffset(signals.entityId) : 0;
     // No object literal: mode resolver reads the same scratch.
     if (!tf.mode) tf.mode = resolveDriveMode(tf, this.recipe);
     // Crossfade the structural mode (brake x0.42, reverse x0.08, ...) instead of stepping it.
@@ -398,6 +414,13 @@ export class PlumeSlotPool {
     const dynDiss = sample.dissipation;
     const dynBoost = boostBlend;
     const dynMode = sample.mode || tf.mode || 'accel';
+    // Steady-state heat of the drive mode, blended with the same mode weights that crossfade the
+    // structure. Applied per slot below: boost burns white-hot, idle/brake/reverse cool.
+    const heat = blendDriveModeHeat(tf.modeWeights, dynMode, DRIVE_HEAT_SCRATCH);
+    // The dying tell resolves once per entity, like the heat pass — the hull is one truth.
+    const dying = tf.hullFrac < 1
+      ? resolveDyingDrive(tf.hullFrac, tf.sputterPhase, tf.entityPhase, flags)
+      : null;
     // One-shot overpressure from integrateDriveState. Bounded here as well as there, because a
     // caller supplying its own driveState object is not obliged to have run through that path.
     const ignition = Math.max(0, Math.min(1, state.ignition || 0));
@@ -469,9 +492,29 @@ export class PlumeSlotPool {
         slot.color[0] = br * ib + fr * factionBlend;
         slot.color[1] = bg * ib + fg * factionBlend;
         slot.color[2] = bb * ib + fb * factionBlend;
+        // Drive-mode heat, per role: the core carries the maneuver's state (white-hot on boost,
+        // cooled on idle/brake/reverse) while sheath/vapor keep faction identity readable.
+        const roleWhite = heat.whitePush
+          * (DRIVE_HEAT_ROLE_WHITE[role] ?? DRIVE_HEAT_DEFAULT_ROLE_WHITE);
+        const roleCool = heat.cool * (DRIVE_HEAT_ROLE_COOL[role] ?? DRIVE_HEAT_DEFAULT_ROLE_COOL);
+        if (roleWhite > 0) {
+          slot.color[0] += (1 - slot.color[0]) * roleWhite;
+          slot.color[1] += (1 - slot.color[1]) * roleWhite;
+          slot.color[2] += (1 - slot.color[2]) * roleWhite;
+        }
+        if (roleCool > 0) {
+          const keep = 1 - roleCool;
+          slot.color[0] *= keep;
+          slot.color[1] *= keep;
+          slot.color[2] *= keep;
+        }
+        // The dying tell (inf-dying-drive): a failing hull's bell cools toward ember and
+        // sputters on its own phase — applied after the maneuver heat, which still owns
+        // the boost-white and idle-cool answers for a healthy hull.
         // Per-instance continuum dynamics (not shared material uniforms).
         slot.flowSpeed = dynFlow * (this._layerScroll[li] / 2.4);
         slot.turbulence = dynTurb;
+        if (dying) applyDyingDriveToSlot(slot, dying);
         slot.coreSheath = dynCoreSheath;
         slot.dissipation = dynDiss;
         slot.boostBlend = dynBoost;
@@ -1014,6 +1057,13 @@ export class ContinuousPlumeSystem {
       const idn = this.recipe.identity.flowCharacter;
       const intensityScale = result.presentation.intensityScale;
       const softBoost = result.presentation.softEdgeBoost;
+      // DUST P3b — idle life. At rest the plume held a static floor and the hull read dead
+      // between burns. A slow presentation-only breathe (time-driven, never state.rng; held
+      // steady under reduced motion) gives the idle core a pulse the camera can see at chase
+      // zoom without touching the continuum's authored accel/cruise/boost response.
+      const idleBreathe = result.mode === 'idle' && !a11y.reducedMotion
+        ? 0.84 + 0.16 * Math.sin(this._time * 2.1)
+        : 1;
       for (let b = 0; b < this.layerBatches.length; b++) {
         const batch = this.layerBatches[b];
         if (batch.dynamicBufferOwner) {
@@ -1048,7 +1098,7 @@ export class ContinuousPlumeSystem {
         const reducedMotionGain = a11y.reducedMotion
           ? (this.recipe.accessibility?.reducedMotion?.roleIntensityGain?.[batch.role] ?? 1)
           : 1;
-        u.intensity = batch.baseIntensity * intensityScale * reducedFlashGain * reducedMotionGain;
+          u.intensity = batch.baseIntensity * intensityScale * reducedFlashGain * reducedMotionGain * idleBreathe;
         const opacityGain = a11y.reducedMotion
           ? (this.recipe.accessibility?.reducedMotion?.roleOpacityGain?.[batch.role] ?? 1)
           : 1;

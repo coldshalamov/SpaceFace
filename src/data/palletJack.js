@@ -35,6 +35,7 @@ export function palletJackCargoEligible(e, now = 0, adopted = false) {
     || !(e.radius > 0) || e.radius > PALLET_JACK.cargoRadiusMax || e.collides === false
     || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)) return false;
   if (f.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.contractId || d.questItem
+    || d.playerCollectOnly === true
     || d.missionTargetSlot != null || d.wreckMissionId || d.worldRecordSlotId || d.worldRecordId
     || d.worldSiteId || d.worldSitePayloadId || d.heistFacilityRole || d.freightCustodyPod
     || d.freightCustody || d.cargoManifest?.protected || d.cargoManifest?.reservedBy

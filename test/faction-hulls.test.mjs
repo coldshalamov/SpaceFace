@@ -64,6 +64,11 @@ const BASELINE_ENEMY_BODY = Object.freeze({
   brood_queen: 'wholeships/ashline_dart.glb',
   brood_tendril: 'wholeships/ashline_dart.glb',
 });
+// Scissorwake was added after the pre-S6 snapshot. Keep its current authored hull contract
+// explicit here instead of inventing a historical baseline row for that newer enemy.
+const POST_BASELINE_ENEMY_BODY = Object.freeze({
+  scissorwake: { file: 'wholeships/scissorwake.glb', assetId: 'SF_SHIP_SCISSORWAKE' },
+});
 const BASELINE_TRAFFIC_BODY = Object.freeze({
   courier: 'wholeships/helios_lark.glb',
   miner: 'wholeships/helios_cradle.glb',
@@ -84,6 +89,12 @@ const BASELINE_TRAFFIC_BODY = Object.freeze({
   smuggler: 'wholeships/drifter_production_v1.glb',
   pirate: 'wholeships/wasp_production_v1.glb',
 });
+// Later row-514 faction kits deliberately replace these base bodies for their named operators.
+// Keep those current routes separate from the pre-S6 traffic cohort comparison.
+const POST_BASELINE_TRAFFIC_BODY = Object.freeze({
+  'smuggler:faction_helix': { file: 'wholeships/drifter_helix_courier.glb', assetId: 'SF_DRIFTER_HELIX_COURIER' },
+  'smuggler:faction_archive': { file: 'wholeships/drifter_archive_censor.glb', assetId: 'SF_DRIFTER_ARCHIVE_CENSOR' },
+});
 
 const FACTIONS = Object.freeze([
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach', 'faction_quiet', 'faction_vael', 'faction_free',
@@ -96,7 +107,8 @@ function enemyVisual(id, factionId) {
   assert.ok(enemy, `${id} is a real enemy type`);
   return wholeShipVisualForEntity({
     type: 'ship', alive: true, id, radius: enemy.collisionRadius, ...(factionId ? { factionId } : {}),
-    data: { defId: enemy.shipId, silhouette: enemy.silhouette, lootTableId: enemy.id },
+    data: { defId: enemy.shipId, silhouette: enemy.silhouette, lootTableId: enemy.id,
+      ...(id === 'scissorwake' ? { authoredAssetId: POST_BASELINE_ENEMY_BODY.scissorwake.assetId } : {}) },
   }, { requiredWholeShip: true });
 }
 
@@ -210,19 +222,21 @@ test('rig hostiles wear the Quiet paint only under faction_quiet; miner barges w
   }
 });
 
-test('no enemy type or traffic role outside the covered set changed its body', () => {
+test('pre-S6 enemy and traffic cohorts outside the covered set keep their bodies', () => {
   const allowedEnemyChanges = new Set(Object.keys(ENEMY_ROUTES));
-  for (const enemy of ENEMY_TYPES) {
-    assert.ok(enemy.id in BASELINE_ENEMY_BODY, `${enemy.id} has a recorded pre-S6 body (add it to BASELINE_ENEMY_BODY)`);
-    if (allowedEnemyChanges.has(enemy.id)) continue;
+  for (const [id, file] of Object.entries(BASELINE_ENEMY_BODY)) {
+    const enemy = ENEMY_TYPES.find((row) => row.id === id);
+    assert.ok(enemy, `${id} from the pre-S6 cohort remains in the enemy table`);
+    if (allowedEnemyChanges.has(id)) continue;
     for (const faction of [undefined, enemy.factionId]) {
-      const visual = enemyVisual(enemy.id, faction);
-      assert.equal(visual && visual.file, BASELINE_ENEMY_BODY[enemy.id], `${enemy.id} (${faction || 'unflagged'}) keeps its body`);
+      const visual = enemyVisual(id, faction);
+      assert.equal(visual && visual.file, file, `${id} (${faction || 'unflagged'}) keeps its body`);
     }
   }
   for (const [role, file] of Object.entries(BASELINE_TRAFFIC_BODY)) {
     for (const faction of [undefined, ...FACTIONS]) {
       const visual = trafficVisual(role, faction);
+      if (`${role}:${faction}` in POST_BASELINE_TRAFFIC_BODY) continue;
       const expected = role === 'miner' && faction === 'faction_dmc' ? BODIES.helios_cradle_dmc.file : null;
       if (expected) continue;
       // The Span hauler kits are the pre-existing faction logic and stay as they were.
@@ -232,4 +246,28 @@ test('no enemy type or traffic role outside the covered set changed its body', (
   }
   // The pre-existing lancer / pirate-Wasp contract (pq-193-09) still holds.
   assert.equal(enemyVisual('lancer_sniper', 'faction_scn').file, 'wholeships/wasp_production_v1.glb');
+});
+
+test('post-baseline faction smugglers use their authored Drifter bodies', () => {
+  for (const [route, expected] of Object.entries(POST_BASELINE_TRAFFIC_BODY)) {
+    const [role, faction] = route.split(':');
+    requirePublished(expected.file);
+    const visual = trafficVisual(role, faction);
+    assert.equal(visual?.file, expected.file, `${route} keeps its authored traffic hull`);
+    assert.equal(visual?.assetId, expected.assetId, `${route} keeps its authored asset identity`);
+  }
+});
+
+test('post-baseline Scissorwake keeps its authored cutter hull across faction identity', () => {
+  const id = 'scissorwake';
+  const enemy = ENEMY_TYPES.find((row) => row.id === id);
+  const expected = POST_BASELINE_ENEMY_BODY[id];
+  assert.ok(enemy, `${id} is a current authored enemy`);
+  assert.equal(enemy.factionId, 'faction_reach', 'the roaming cutter is authored for Reach');
+  requirePublished(expected.file);
+  for (const faction of [undefined, enemy.factionId, 'faction_free']) {
+    const visual = enemyVisual(id, faction);
+    assert.equal(visual?.file, expected.file, `${id} keeps its authored cutter hull when fielded as ${faction || 'unflagged'}`);
+    assert.equal(visual?.assetId, expected.assetId, `${id} keeps its authored asset identity`);
+  }
 });

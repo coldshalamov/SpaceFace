@@ -74,15 +74,22 @@ export const MOBILE_SCREEN_CSS = `
   ${N} .sf-ng-route .sf-ng-route__step .k-row__sub { opacity:1 !important; }
   ${N} > .sf-ng-footer { order:4; position:relative !important; bottom:auto !important; z-index:8;
     margin-top:4px !important; padding:10px 0 !important; }
+  /* ≤380px: BACK ESC and LAUNCH are 331px side by side in a 288–324px foot, so LAUNCH ran past the right edge
+     (cut off at 320). Tighter gap, ESC margin and key padding/tracking bring them to ~280px. */
+  @media (max-width:380px) {
+    ${N} > .sf-ng-footer { gap:12px !important; }
+    ${N} > .sf-ng-footer .k-word.sf-back::after { margin-left:12px !important; }
+    ${N} > .sf-ng-footer .sf-ng-launch:has(> .orr-lampkey__word) { padding:0 22px 0 16px !important; letter-spacing:.1em !important; margin-left:auto !important; }
+  }
   ${N} .sf-ng-scroll > .k-fine { order:5; }
   ${N} > .sf-ng-launch-error { order:4; margin:0 !important; width:100%; }
   ${N} .orr-stopscale .k-word { min-height:44px !important; }
 
-  /* Settings: scroll the category rail sideways; give explanatory labels their whole line. */
+  /* Settings: the five categories wrap onto a second row so CONTROLS is never scrolled out of sight; give explanatory labels their whole line. */
   ${S} { display:flex !important; flex-direction:column; gap:14px !important; overflow-y:auto !important; }
   ${S} > :is(.k-title, .k-hang, #sf-settings-pane, .orr-set-preview, .k-foot) { flex:none; width:100% !important; min-width:0 !important; }
-  ${S} .sf-tabbar { flex-direction:row !important; width:100% !important; gap:8px !important;
-    overflow-x:auto !important; overflow-y:hidden !important; background:none !important; padding:0 0 6px !important; }
+  ${S} .sf-tabbar { flex-direction:row !important; flex-wrap:wrap !important; width:100% !important; gap:0 8px !important;
+    overflow:visible !important; background:none !important; padding:0 0 6px !important; }
   ${S} .sf-tabbar > li { width:auto !important; flex:0 0 auto; }
   ${S} .sf-tabbar > li::before { display:none !important; }
   ${S} .sf-tabbar .sf-tab { width:auto !important; min-height:44px !important; padding:8px 12px !important;
@@ -180,6 +187,20 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; color:rgb(236 230 216 / .96) !important; }
   ${B} .sxb-signs .sx-adboard__sponsor { opacity:.74; }
   ${B} .sxb-signs .sx-adboard__text::before { content:" "; }
+  /* The peeking sign was a hard cut ("STA / inspe" at 390-473 wide, "bell." once swiped) that read as clipped
+     text. The cut edge fades over 40px instead, so the peek reads as more to swipe: the right edge at rest,
+     the left edge once swiped to the end, each lifting as the strip scrolls so the sign in view reads whole. */
+  ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) {
+    -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent 100%);
+    mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent 100%); }
+  @supports (animation-timeline:scroll(self inline)) {
+  ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) {
+    -webkit-mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
+    mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
+    animation:sxb-signs-fade linear both; animation-timeline:scroll(self inline); }
+  }
+  @keyframes sxb-signs-fade { 0% { --sxb-signs-fade-l:0px; --sxb-signs-fade:40px; } 20%, 80% { --sxb-signs-fade-l:40px; --sxb-signs-fade:40px; }
+    100% { --sxb-signs-fade-l:40px; --sxb-signs-fade:0px; } }
   /* Next step: one line, after the vitals. */
   ${B} .sxb-handoff { grid-area:hand; max-width:100% !important; min-width:0 !important; margin:0 !important;
     padding:0 !important; gap:4px 12px !important; flex-wrap:nowrap !important; align-items:center !important; overflow:hidden !important; }
@@ -290,7 +311,11 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-ops .sx-dock__group > li { margin:0 !important; min-width:0 !important; }
   ${B} .sxb-ops .sx-tile { display:inline-flex !important; align-items:center !important; justify-content:flex-start !important;
     min-height:34px !important; padding:0 !important; gap:0 !important; }
-  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:.1em !important; font-size:12px !important; }
+  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:0 !important; font-size:12px !important; }
+  /* At phone portrait widths the word owns the narrow column; the glyph is decorative. */
+  @media (min-height:561px) and (max-width:430px) {
+    ${B} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  }
   /* A count is a badge on its own tab: a small pill after the word, never a loose numeral before it. */
   ${B} .sxb-ops .sx-tile__badge:not([hidden]) { order:2; display:inline-flex !important; align-items:center !important; justify-content:center !important;
     min-width:15px !important; height:15px !important; margin:0 0 0 4px !important; padding:0 4px !important; border-radius:8px !important;
@@ -317,7 +342,7 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-next__w { flex:1 1 100% !important; padding-left:14px !important; white-space:normal !important;
       display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; text-overflow:clip !important; }
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 12px !important; }
-    ${B} .sxb-ops .sx-tile__label { letter-spacing:.05em !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
     /* Each dial column is ~66px wide here, so the dial grows to fill it and its reading drops a line: at 60x40
        the "/ 100" and "/ 40 u" lines ran into the ends of the arc. The crown gives back its bottom margin so the
        Market trade keeps its keys above the foot at 360x780. */
@@ -332,7 +357,7 @@ export const MOBILE_SCREEN_CSS = `
      MISSIONS badge cut by the foot's edge. */
   @media (min-height:561px) and (max-width:389px) {
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
-    ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
     ${B} .sxb-vital__label { letter-spacing:.02em !important; }
     /* The tape's title tracks tighter so the hull reading ends on its second line instead of "close…". */
     ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { letter-spacing:.06em !important; }
@@ -688,6 +713,9 @@ export const MOBILE_SCREEN_CSS = `
   ${C}[data-layout="compact"] .gm-navfoot { grid-template-columns:repeat(4, minmax(0,1fr)) !important; column-gap:var(--k-gap, 18px) !important; }
   ${C}[data-layout="compact"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 320px) - 60px); }
 }
+/* Animatable edge-fade widths for the phone station signs strip (registered so the scroll timeline can tween them). */
+@property --sxb-signs-fade { syntax:"<length>"; inherits:false; initial-value:40px; }
+@property --sxb-signs-fade-l { syntax:"<length>"; inherits:false; initial-value:0px; }
 `;
 
 export function injectOrreryMobileScreens(doc = globalThis.document) {

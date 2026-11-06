@@ -345,8 +345,8 @@ test('static: settings:changed re-applies size for renderScale / pixelRatioCap /
   assert.match(handler, /section\s*!==\s*['"]video['"]/, 'handler scopes to video section');
   assert.match(
     handler,
-    /p\.key\s*===\s*['"]renderScale['"][\s\S]*?p\.key\s*===\s*['"]pixelRatioCap['"][\s\S]*?p\.key\s*===\s*['"]renderGraph['"][\s\S]*?p\.key\s*==\s*null/,
-    'renderScale, pixelRatioCap, renderGraph (and key=null) must trigger resize',
+    /p\.key\s*===\s*['"]renderScale['"][\s\S]*?p\.key\s*===\s*['"]pixelRatioCap['"][\s\S]*?p\.key\s*===\s*['"]qualityMode['"][\s\S]*?p\.key\s*===\s*['"]renderGraph['"][\s\S]*?p\.key\s*==\s*null/,
+    'renderScale, pixelRatioCap, qualityMode, renderGraph (and key=null) must trigger resize',
   );
   assert.match(handler, /this\.onResize\s*\(\s*\)/, 'size path must call onResize');
 });
@@ -356,11 +356,10 @@ test('static: settings:changed re-applies size for renderScale / pixelRatioCap /
 test('static: settings:changed shadows path must rebind key light + ensure shadow config', () => {
   const handler = extractSettingsChangedHandler(rendererSource);
 
-  assert.match(
-    handler,
-    /_shadowSettingOn\s*=\s*vd\.shadows\s*!==\s*false/,
-    'shadows setting must update _shadowSettingOn',
-  );
+  assert.match(handler, /const nextShadowSetting = vd\.shadows !== false/,
+    'shadow setting must derive the next live value from settings.video');
+  assert.match(handler, /this\._shadowSettingOn = nextShadowSetting/,
+    'shadow setting must publish the derived value to _shadowSettingOn');
   const directDirtyWrite = /_shadowReceiversDirty\s*=\s*true/.test(handler);
   const dirtyHelperCall = /this\._markShadowReceiversDirty\s*\(\s*\)/.test(handler);
   const dirtyHelper = dirtyHelperCall

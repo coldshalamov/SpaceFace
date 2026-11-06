@@ -8,7 +8,12 @@ import { claims } from '../src/systems/claims.js';
 import { traffic } from '../src/systems/traffic.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { economy } from '../src/systems/economy.js';
+import {
+  economy, compareTwoStopFreight, formatFreightComparison, compareDockedFreight,
+  loanLimitFor, stationOffersService,
+} from '../src/systems/economy.js';
+import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
+import { LONG_BERTH_STATION_ID } from '../src/data/longBerth.js';
 import { missions } from '../src/systems/missions.js';
 import { economyContracts } from '../src/systems/economyContracts.js';
 import { updateAmbientPredation, ambientObjective } from '../src/ai/ambientPredation.js';
@@ -151,8 +156,14 @@ test('a refused epoch offer leaves the station-epoch unevaluated and retries det
     econ.planOffer = () => epochOffer;
     econ.planMaintenanceOffer = () => null;
 
+    // Only the field-evaluation row is under test. Ceres also hosts the AL-STORY-1 manifest
+    // case (_offerMassScale), which deliberately re-emits on EVERY dock outside the epoch
+    // latch while the board refuses it — its retries are a separate contract, not this latch.
     const offered = [];
-    bus.on('mission:offered', (p) => offered.push(p && p.id));
+    bus.on('mission:offered', (p) => {
+      if (p && typeof p.id === 'string' && p.id.startsWith('eco_mass_scale_')) return;
+      offered.push(p && p.id);
+    });
     const board = missionsSys.ensureBoard(stationId);
     board.slots.unshift({
       id: 'fixture_blocker', source: 'economyContract', type: 'cargo_delivery',
@@ -489,5 +500,234 @@ test('an unwitnessed leg still completes abstractly when no hull ever manifested
       'an unwitnessed convoy cannot be killed — the ledger never fabricates a loss');
     assert.ok(body.spec.receipts.some((r) => r && (r.kind === 'convoy_sold' || r.kind === 'convoy_returned')),
       'the abstract leg settled as a sale or a return');
+  } finally { sim.dispose(); }
+});
+
+// ── 4. Honesty packet (fix-economy-honesty): refused-sale restock, toll truth, route
+//       estimate honesty, unknown-berth services, hardship note, bribe + debt rescue ──────
+
+function bootBerth(seed = 9021) {
+  const sim = createSimulation({ seed, systems: [economy] });
+  const { state } = sim;
+  state.mode = 'flight';
+  state.onboarding = { active: false, finished: true };
+  return sim;
+}
+
+test('a refused biohazard sale mints no restocking book — the listing stays empty', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    const econ = sim.registry.get('economy');
+    econ.populateSector({ sectorId: 'sector_tethys_junction' });
+    addCargo(state, 'cmdty_live_specimen', 3);
+    // Customs Gate is faction_scn in a clean sector: the quarantine policy refuses the lot.
+    const res = econ.execute('station_customs', 'cmdty_live_specimen', 'sell', 3);
+    assert.equal(res.ok, false, 'the berth refuses the biohazard lot');
+    assert.equal(res.reason, 'contamination_refusal');
+    assert.ok(res.policyNote, 'the quarantine note reaches the caller');
+    const listing = state.economy.markets['station_customs']['cmdty_live_specimen'];
+    assert.ok(listing, 'the refusal still mints the liquidation row');
+    assert.equal(listing.stock, 0, 'nothing was delivered');
+    // Forty recovery ticks: the drift target must be the stock actually delivered (zero),
+    // never the old full neutral book that refilled itself within seconds.
+    for (let i = 0; i < 40; i += 1) { state.simTime += 5; econ.econTick(5, state); }
+    assert.equal(state.economy.markets['station_customs']['cmdty_live_specimen'].stock, 0,
+      'the refused listing never restocked itself into sellable stock');
+  } finally { sim.dispose(); }
+});
+
+test('the berth toll collects and names what the wallet actually paid', () => {
+  const sim = bootBerth();
+  try {
+    const { state, bus } = sim;
+    const econ = sim.registry.get('economy');
+    const toasts = [];
+    bus.on('toast', (p) => toasts.push(p && p.text));
+    const tollLine = () => toasts.filter((t) => /BERTH TOLL/.test(t || '')).pop() || '';
+
+    // Full wallet: the posted price and the charge agree, nothing goes on the note.
+    state.player.credits = 5000;
+    state.player.debt = 0;
+    econ._runDockedCustomsPost('station_customs');
+    const posted = Number((tollLine().match(/(\d+) cr posted/) || [])[1]);
+    assert.ok(posted > 0, 'the toll posts a visible price');
+    assert.equal(state.player.credits, 5000 - posted, 'charged exactly the posted toll');
+    assert.equal(state.player.debt | 0, 0, 'no shortfall is filed');
+
+    // Shallow wallet: collect what exists, file the shortfall, say both numbers.
+    state.player.credits = 100;
+    state.player.debt = 0;
+    econ._runDockedCustomsPost('station_customs');
+    assert.equal(state.player.credits, 0, 'the wallet pays what it holds');
+    assert.equal(state.player.debt, posted - 100, 'the unpaid remainder lands on the note');
+    assert.match(tollLine(), /100 cr posted/, 'the line names the collected share');
+    assert.match(tollLine(), new RegExp(`${posted - 100} cr filed`), 'the line names the filed share');
+    assert.doesNotMatch(tollLine(), new RegExp(`${posted} cr posted`), 'the full toll is never claimed');
+
+    // Dry wallet: nothing moves, but the note and the line still tell the truth.
+    state.player.credits = 0;
+    state.player.debt = 0;
+    econ._runDockedCustomsPost('station_customs');
+    assert.equal(state.player.debt, posted, 'the whole toll is filed, not waived silently');
+    assert.match(tollLine(), new RegExp(`${posted} cr filed on the note`), 'the dry wallet hears it');
+    assert.doesNotMatch(tollLine(), /cr posted/, 'a free pass is never implied');
+  } finally { sim.dispose(); }
+});
+
+test('the two-stop card prices every remembered leg and keeps the best margin', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    state.player.credits = 100000;
+    state.player.cargo = { items: {}, usedVolume: 0, capVolume: 200 };
+    state.economy.markets.station_ceres = {
+      cmdty_ore_iron: { stock: 50, lastBuy: 100, lastSell: 110 },
+    };
+    state.economy.marketIntel.station_b = { snapshot: {
+      cmdty_ore_titanium: { buy: 20, stock: 60 },
+      cmdty_refined_metals: { buy: 200, stock: 30 },
+    }, seenAtT: state.simTime };
+    state.economy.marketIntel.station_c = { snapshot: {
+      cmdty_ore_titanium: { sell: 25 },   // alphabetically first, +5/u
+      cmdty_refined_metals: { sell: 400 }, // the leg that actually earns, +200/u
+    }, seenAtT: state.simTime };
+    const trade = {
+      cmdtyId: 'cmdty_ore_iron', destStation: 'station_b',
+      buyHere: 100, sellThere: 120, seenAtT: state.simTime,
+    };
+    const result = compareDockedFreight(state, 'station_ceres', trade);
+    assert.ok(result, 'a positive second leg exists');
+    assert.equal(result.basis.leg2Buy, 200,
+      'the best-margin leg wins — not the alphabetically first commodity');
+    assert.equal(result.basis.leg2Sell, 400);
+    assert.ok(result.net > 0, 'the printed estimate is a real credit figure');
+    const line = formatFreightComparison(result);
+    assert.match(line, /two-stop estimate/, 'the card still labels itself an estimate');
+
+    // Every remembered leg loses money → no estimate at all, never an invented one.
+    state.economy.marketIntel.station_c.snapshot.cmdty_ore_titanium.sell = 10;
+    state.economy.marketIntel.station_c.snapshot.cmdty_refined_metals.sell = 150;
+    assert.equal(compareDockedFreight(state, 'station_ceres', trade), null,
+      'no positive leg prints no route');
+  } finally { sim.dispose(); }
+});
+
+test('a missing future price is named, never spliced in as "limited by unknown"', () => {
+  const res = compareTwoStopFreight({
+    credits: 1000, capVolume: 10, usedVolume: 0, operatingCost: 0,
+    midStationId: 'a', destStationId: 'b',
+    leg1: { buy: 10, sell: 15, stock: 5, volume: 1 },
+    leg2: { buy: null, sell: 50, stock: 5, volume: 1 },
+  });
+  const line = formatFreightComparison(res);
+  assert.match(line, /leg 2 limited by route price unavailable/,
+    'the unpriced leg admits what it does not know');
+  assert.doesNotMatch(line, /limited by unknown/, 'the raw limit token never reaches the player');
+});
+
+test('a berth the catalog cannot resolve offers nothing; the Long Berth offers its stage grants', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    state.ui = state.ui || {};
+    state.ui.docked = true;
+    state.ui.dockedStationId = 'station_does_not_exist';
+    assert.equal(stationOffersService(state, 'refuel'), false,
+      'a missing station row is not the whole yard');
+    state.ui.dockedStationId = LONG_BERTH_STATION_ID;
+    state.longBerth = { stage: 1 };
+    assert.equal(stationOffersService(state, 'refuel'), false,
+      'the un-restored tug sells no services');
+    state.longBerth.stage = 3;
+    assert.equal(stationOffersService(state, 'refuel'), true,
+      'stage 3 hangs the pump');
+    assert.equal(stationOffersService(state, 'repair'), true,
+      'stage 3 hangs the patch rail');
+  } finally { sim.dispose(); }
+});
+
+test('a rep-shaken starter on a zero-list hull still sees a note limit', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    state.player.credits = 0;
+    state.player.activeShipIndex = 0;
+    state.player.ownedShips = [{ defId: 'ship_kestrel' }]; // the Hitch lists at 0 cr
+    state.factions = state.factions || {};
+    state.factions.faction_mts = { rep: -2 }; // one dock slam — still 'Known' at the berth
+    const limit = loanLimitFor(state, 'station_tethys');
+    assert.ok(limit > 0,
+      `a -2 rep on the zero-list starter hull keeps a hardship note limit (got ${limit})`);
+  } finally { sim.dispose(); }
+});
+
+test('a bribe with no live offer is declined by name instead of charged anyway', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    const econ = sim.registry.get('economy');
+    state.player.credits = 500;
+    const refused = econ.payBribe({ fine: 0 });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.reason, 'no_fine', 'no fine on the table buys nothing');
+    assert.equal(state.player.credits, 500, 'the refusal never touches the wallet');
+    const paid = econ.payBribe({ fine: 1000 });
+    assert.equal(paid.ok, true);
+    assert.equal(paid.charged, 300, 'a live offer charges its stated 30%');
+    assert.equal(state.player.credits, 200);
+    const short = econ.payBribe({ fine: 4000 });
+    assert.equal(short.ok, false, 'short money cannot pay the quoted bribe');
+    assert.equal(state.player.credits, 200, 'the failed bribe never half-charges');
+  } finally { sim.dispose(); }
+});
+
+test('a zero-credit pilot reaches the debt refuel and weld when the verb arrives', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    const econ = sim.registry.get('economy');
+    const player = sim.spawn(makeShipEntitySpec('ship_kestrel', { team: 0, pos: { x: 0, z: 0 } }));
+    player.isPlayer = true;
+    state.playerId = player.id;
+    player.hull = 10; player.hullMax = 100; player.armorHp = 0; player.armorMax = 0;
+    state.ui = state.ui || {};
+    state.ui.docked = true;
+    state.ui.dockedStationId = 'station_tethys'; // pump + repair yard
+    state.player.credits = 0;
+    state.fuel = { current: 0, max: 40 };
+
+    econ.handleService({ type: 'refuel' });
+    assert.ok(state.fuel.current > 0, 'the hardship fill lands in the tank');
+    assert.ok(state.player.debt > 0, 'the unpaid fill is filed on the note');
+    const debtAfterFuel = state.player.debt;
+
+    econ.handleService({ type: 'repair' });
+    assert.ok(player.hull > 10, 'the emergency weld restores hull');
+    assert.ok(state.player.debt > debtAfterFuel, 'the weld files its own note line');
+  } finally { sim.dispose(); }
+});
+
+test('the service quote offers the debt refuel and weld at zero credits', () => {
+  const sim = bootBerth();
+  try {
+    const { state } = sim;
+    const player = sim.spawn(makeShipEntitySpec('ship_kestrel', { team: 0, pos: { x: 0, z: 0 } }));
+    player.isPlayer = true;
+    state.playerId = player.id;
+    player.hull = 10; player.hullMax = 100; player.armorHp = 0; player.armorMax = 0;
+    state.ui = state.ui || {};
+    state.ui.docked = true;
+    state.ui.dockedStationId = 'station_tethys';
+    state.player.credits = 0;
+    state.fuel = { current: 0, max: 40 };
+    // Packet: serviceQuotes.js must offer the hardship paths the engine already owns — a
+    // disabled verb at zero credits strands a pilot the note would otherwise carry.
+    const offers = {
+      refuel: serviceQuote('refuel', state, player).disabled,
+      repair: serviceQuote('repair', state, player).disabled,
+    };
+    assert.deepEqual(offers, { refuel: false, repair: false },
+      'broke at the pump: both verbs must stay offered as on-the-note services');
   } finally { sim.dispose(); }
 });

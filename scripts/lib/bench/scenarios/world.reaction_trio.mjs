@@ -48,6 +48,9 @@ import {
   snapshotFeatureMaps,
 } from '../../../../src/data/featureFlags.js';
 import { realPathProof } from '../realPath.mjs';
+import { SECTOR_ANCHORS } from '../../../../src/data/sectorAnchors.js';
+import { sectorLocalToGlobalForSector } from '../../../../src/data/sectorCoordinates.js';
+import { frameToGlobal } from '../../../../src/core/coordinates.js';
 
 const DT = 1 / 60;
 const SECTOR_ID = 'sector_helios_prime';
@@ -119,7 +122,7 @@ export function bodilessActors(runtime, actors) {
 }
 
 /** Boot the full production world in a real sector. Not a fixture: this is the shipping manifest. */
-export async function bootWorld(seed) {
+export async function bootWorld(seed, { arriveAtStationId = null } = {}) {
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed });
   const state = runtime.state;
   if (!state) throw new Error('world.reaction_trio: runtime has no simulation state');
@@ -129,8 +132,10 @@ export async function bootWorld(seed) {
   state.settings.gameplay.aiBackend = 'sg06-tactical';
   if (!state.input.actions) state.input.actions = { brake: false, autopursuit: false };
 
+  // Arrival greeters anchor where the player enters, before any later witness staging.
+  const arrival = arrivalPos(arriveAtStationId);
   const player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
-    isPlayer: true, player: state.player, pos: { x: 0, z: 0 }, fittings: [],
+    isPlayer: true, player: state.player, pos: arrival, fittings: [],
   }));
   state.playerId = player.id;
 
@@ -138,7 +143,7 @@ export async function bootWorld(seed) {
   if (!world || typeof world.enterSector !== 'function') {
     throw new Error('world.reaction_trio: the `world` system is not registered — this is not the real path');
   }
-  world.enterSector(SECTOR_ID);
+  world.enterSector(SECTOR_ID, arriveAtStationId ? { placePlayer: false } : {});
 
   const physics = runtime.getSystem('physics');
   if (!physics || typeof physics.prepareBackend !== 'function') {
@@ -157,6 +162,14 @@ export async function bootWorld(seed) {
     }
   }
   return { runtime, state, bus: runtime.bus, player };
+}
+
+function arrivalPos(stationId) {
+  if (!stationId) return { x: 0, z: 0 };
+  const anchor = (SECTOR_ANCHORS[SECTOR_ID]?.stations || []).find((st) => st.id === stationId);
+  if (!anchor) throw new Error(`world.reaction_trio: no anchor for ${stationId} in ${SECTOR_ID}`);
+  const g = sectorLocalToGlobalForSector(anchor.pos, SECTOR_ID);
+  return { x: g.x + 120, z: g.z + 40 };
 }
 
 /** Move the player to witness an event. Trap 1: an unwitnessed event is an unsimulated event. */
@@ -215,7 +228,7 @@ function anchorStation(state) {
 // `stimulus: false` runs the identical staging with NO kill: the control that proves a "met" reading
 // came from the world reacting and not from the instrument's own staging.
 export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
-  const h = await bootWorld(seed);
+  const h = await bootWorld(seed, { arriveAtStationId: JURISDICTION_STATION_ID });
   const { runtime, state, bus } = h;
   const station = anchorStation(state);
   if (!station) throw new Error('world.reaction_trio: the real sector produced no station to hold jurisdiction');
@@ -519,86 +532,155 @@ export async function clauseSpilledCargo(seed, { stimulus = true } = {}) {
 }
 
 // ── B10d (PQ-138.03) ─────────────────────────────────────────────────────────────────────────────
-// "Wrecks keep the momentum of the ship that died." Kill a ship that is ACTUALLY at cruise at the
-// instant it dies — the mule is AI-driven and brakes within half a second of spawning, so the cruise
-// velocity is written on the tick of the kill, not thirty ticks earlier; a stale denominator would
-// score a working wreck as broken. Then read the wreck's own speed 2.0 s later, on the real physics.
-export async function clauseWreckDrift(seed, { stimulus = true } = {}) {
+// Read native kinematics, including mass, at the conversion boundary. Entity scalars alone can
+// disagree with the solver if a fixture wrote velocity between ticks.
+function nativeMotion(owner, entity, record = owner.records.get(entity?.id)) {
+  if (!record || record.entity !== entity) return null;
+  const body = record.body;
+  const v = body.linvel(), w = body.angvel(), q = body.rotation();
+  const mass = body.mass();
+  return {
+    id: entity.id, generation: entity.occupantGeneration,
+    pos: frameToGlobal(body.translation(), owner._frameOrigin),
+    rot: Math.atan2(-2 * q.y * q.w, 1 - 2 * q.y * q.y),
+    vel: { x: v.x, z: v.z }, spin: -w.y, mass,
+    inertiaY: body.principalInertia().y,
+    momentum: { x: mass * v.x, z: mass * v.z },
+  };
+}
+
+// Minimum swept-circle separation over the coast window, against the LIVE world's current poses
+// and velocities. This only selects where to spawn the victim; it removes/moves no obstacles.
+function coastClearance(state, pos, vel, radius, excludedId = null) {
+  let clearance = Infinity;
+  for (const e of live(state)) {
+    if (e.id === excludedId || e.type === 'projectile' || !(e.radius > 0)) continue;
+    const dx = pos.x - e.pos.x, dz = pos.z - e.pos.z;
+    const vx = vel.x - finite(e.vel?.x), vz = vel.z - finite(e.vel?.z);
+    const vv = vx * vx + vz * vz;
+    const t = vv > 0 ? Math.max(0, Math.min(2, -(dx * vx + dz * vz) / vv)) : 0;
+    clearance = Math.min(clearance, Math.hypot(dx + vx * t, dz + vz * t) - radius - e.radius);
+  }
+  return clearance;
+}
+
+// "Wrecks keep the momentum of the ship that died." Spawn moving, admit and step the LIVE ship,
+// then let combat kill it. Observe its exact bound whole hulk at native admission (before the first
+// solve) and 2 s after death. A separate populated-bay arm keeps real collision aftermath observable.
+export async function clauseWreckDrift(seed, { stimulus = true, collisionClear = true } = {}) {
   const h = await bootWorld(seed);
   const { runtime, state, bus } = h;
   const station = anchorStation(state);
   if (!station) throw new Error('world.reaction_trio: the real sector produced no station');
-  standPlayerOff(state, h.player, station.pos, 120, 40);
-  runtime.runTicks(120, DT);
-
-  const killPos = { x: station.pos.x + 200, z: station.pos.z + 90 };
-  const victim = runtime.spawn(makeShipEntitySpec('ship_mule', {
-    pos: { x: killPos.x, z: killPos.z }, team: 2, factionId: 'faction_scn', fittings: [],
-  }));
-  victim.data.trafficRole = 'hauler';
-  runtime.runTicks(30, DT); // let SG-02 give it a body before it matters
-
-  const missingBodies = bodilessActors(runtime, { victim });
-  // Cruise, written on the tick of death.
-  victim.vel.x = 0;
-  victim.vel.z = 120;
-  victim.angVel = 1.2;
-  const victimSpeed = speedOf(victim);
-  const victimSpin = finite(victim.angVel);
-  const victimMass = finite(victim.mass);
-
-  if (stimulus) {
-    withFeatures(runtime, () => {
-      bus.emit('combat:damage', {
-        id: victim.id, targetId: victim.id, attackerId: h.player.id, sourceId: h.player.id,
-        applied: 400, amount: 400, pos: { x: victim.pos.x, z: victim.pos.z },
-      });
-    });
-    victim.hull = 0;
-    victim.alive = false;
-    withFeatures(runtime, () => {
-      bus.emit('entity:killed', {
-        id: victim.id, killerId: h.player.id, type: victim.type,
-        pos: { x: victim.pos.x, z: victim.pos.z }, factionId: victim.factionId,
-        victimClass: 'civilian',
-      });
-    });
-  }
-
-  const nearestWreck = () => live(state)
-    .filter((e) => e.type === 'wreck')
-    .sort((a, b) => dist(a.pos, killPos) - dist(b.pos, killPos))[0] || null;
-  const wreck0 = nearestWreck();
-  const rot0 = wreck0 ? finite(wreck0.rot) : null;
-  const pos0 = wreck0 ? { x: wreck0.pos.x, z: wreck0.pos.z } : null;
-
-  runtime.runTicks(120, DT); // exactly 2.0 s, the done-when window
-
-  const wreck = wreck0 && wreck0.alive !== false ? wreck0 : nearestWreck();
-  const unmeasured = missingBodies.length > 0 || !wreck;
-  const result = {
-    clause: 'B10d',
-    label: 'a wreck keeps the momentum and spin of the ship that died',
-    stimulus,
-    unmeasured,
-    bodilessActors: missingBodies.concat(wreck ? [] : ['wreck:absent']),
-    victimSpeed: Number(victimSpeed.toFixed(2)),
-    victimSpin: Number(victimSpin.toFixed(3)),
-    victimMass,
-    wreckSpeedAt2s: wreck ? Number(speedOf(wreck).toFixed(2)) : null,
-    speedRetainedPct: wreck && victimSpeed > 0
-      ? Number(((speedOf(wreck) / victimSpeed) * 100).toFixed(1)) : null,
-    driftWU: wreck && pos0 ? Number(dist(wreck.pos, pos0).toFixed(1)) : null,
-    rotAdvancedRad: wreck && rot0 != null ? Number(Math.abs(finite(wreck.rot) - rot0).toFixed(3)) : null,
-    wreckMass: wreck ? wreck.mass : null,
-    // "It can be shoved" in one number: a 1e6 wreck is a wall, the victim's own mass is a body.
-    shoveable: wreck ? Number(wreck.mass) < 1e6 : null,
-    wreckHasBody: wreck ? !!(bodyIds(runtime) && bodyIds(runtime).has(wreck.id)) : null,
-    met: !unmeasured && !!wreck && victimSpeed > 0
-      && (speedOf(wreck) / victimSpeed) >= 0.8 && Number(wreck.mass) < 1e6,
+  const owner = runtime.getSystem('physics')._sg02;
+  const createRecord = owner._createRecord;
+  let wreck = null, admission = null, admittedRecord = null;
+  // Observer only: call the actual admission unchanged, then read before world.step can collide.
+  owner._createRecord = function (...args) {
+    const record = createRecord.apply(this, args);
+    if (args[0] === wreck && !admission) {
+      admission = nativeMotion(this, wreck, record);
+      admittedRecord = record;
+    }
+    return record;
   };
-  runtime.dispose();
-  return result;
+  try {
+    const spec = makeShipEntitySpec('ship_mule', { team: 2, factionId: 'faction_scn', fittings: [] });
+    const initialVel = { x: 0, z: 120 };
+    const candidates = collisionClear
+      ? [[700, -700], [-700, -700], [700, 700], [-700, 700]]
+      : [[200, 90]];
+    const killPos = candidates.map(([x, z]) => ({ x: station.pos.x + x, z: station.pos.z + z }))
+      .find(pos => !collisionClear || coastClearance(state, pos, initialVel, spec.radius) > 80);
+    if (!killPos) throw new Error('world.reaction_trio: no collision-clear wreck coast lane');
+    standPlayerOff(state, h.player, collisionClear ? killPos : station.pos, collisionClear ? 200 : 120, collisionClear ? 0 : 40);
+    runtime.runTicks(120, DT);
+    const stagedClearanceWU = coastClearance(state, killPos, initialVel, spec.radius);
+    if (collisionClear && stagedClearanceWU <= 80) throw new Error('world.reaction_trio: traffic entered the staged coast lane');
+    const victim = runtime.spawn({ ...spec, pos: killPos, vel: initialVel, rot: Math.PI / 2, angVel: 1.2 });
+    victim.data.trafficRole = 'hauler';
+    runtime.runTicks(1, DT); // actual native admission AND solve of the live ship, no scalar repair
+    const missingBodies = bodilessActors(runtime, { victim });
+    const death = nativeMotion(owner, victim);
+    const victimSpeed = death ? Math.hypot(death.vel.x, death.vel.z) : 0;
+    const clearanceAtDeathWU = coastClearance(state, victim.pos, victim.vel, victim.radius, victim.id);
+    if (collisionClear && clearanceAtDeathWU <= 80) throw new Error('world.reaction_trio: coast lane obstructed before kill');
+    let marker = null;
+    bus.on('aftermathWreck:recorded', p => { if (p.victimId === victim.id) marker = p; });
+    const impacts = [];
+    bus.on('physics:impact', p => {
+      if (wreck && (p.aId === wreck.id || p.bId === wreck.id)) {
+        const other = state.entities.get(p.aId === wreck.id ? p.bId : p.aId);
+        impacts.push({ tick: state.tick, aId: p.aId, bId: p.bId, impulse: p.impulse,
+          otherType: other?.type || null, otherRole: other?.data?.trafficRole || null });
+      }
+    });
+    let killHits = 0;
+    if (stimulus) {
+      // The canonical damage router owns HP/death and emits the kill consumed by aftermath/mining.
+      // Ordinary small hits avoid testing overkill fracture instead of whole-hulk inheritance.
+      const combat = runtime.getSystem('combat');
+      while (victim.alive !== false && killHits < 100) {
+        const hit = withFeatures(runtime, () => combat.onHit({ targetId: victim.id, ownerId: h.player.id,
+          damage: 40, damageType: 'kinetic', pos: { x: victim.pos.x, z: victim.pos.z } }));
+        if (!hit.ok) throw new Error(`world.reaction_trio: wreck kill rejected: ${hit.reason}`);
+        killHits++;
+      }
+      if (victim.alive !== false) throw new Error('world.reaction_trio: combat did not kill wreck victim');
+    }
+    const aftermath = runtime.getSystem('aftermathWrecks');
+    wreck = marker ? aftermath._resolveBoundWreck(marker.markerId) : null;
+    const wreckId = wreck?.id, wreckGeneration = wreck?.occupantGeneration;
+    const killT = state.simTime;
+    let contactSamples = 0;
+    for (let i = 0; i < 120; i++) {
+      runtime.runTicks(1, DT);
+      if (wreck) contactSamples += owner.sampleSolidContacts(wreck.id).length;
+    }
+    const final = wreck ? nativeMotion(owner, wreck) : null;
+    const sameNativeBody = !!admittedRecord && owner.records.get(wreckId) === admittedRecord;
+    const sameBody = !!wreck && sameNativeBody && wreck.alive !== false && wreck.id === wreckId
+      && wreck.occupantGeneration === wreckGeneration && state.entities.get(wreckId) === wreck
+      && aftermath._resolveBoundWreck(marker.markerId) === wreck && !!final;
+    const inherited = !!death && !!admission
+      && dist(death.pos, admission.pos) < 0.001
+      && Math.abs(Math.atan2(Math.sin(admission.rot - death.rot), Math.cos(admission.rot - death.rot))) < 0.001
+      && dist(death.vel, admission.vel) < 0.001
+      && Math.abs(death.spin - admission.spin) < 0.001
+      && Math.abs(death.mass - admission.mass) < 0.001
+      && dist(death.momentum, admission.momentum) < 0.01;
+    const wreckSpeed = final ? Math.hypot(final.vel.x, final.vel.z) : null;
+    const unmeasured = missingBodies.length > 0 || !death || !admission;
+    return {
+      clause: 'B10d',
+      label: 'a wreck keeps the momentum and spin of the ship that died',
+      stimulus,
+      unmeasured,
+      bodilessActors: missingBodies.concat(admission ? [] : ['victim-bound wreck: no native admission']),
+      collisionClear, stagedClearanceWU, clearanceAtDeathWU, killHits,
+      victimId: victim.id, markerId: marker?.markerId || null, wreckId: wreckId ?? null,
+      wreckGeneration: wreckGeneration ?? null, death, admission, final, inherited, sameBody, sameNativeBody,
+      impacts, contactSamples, coastSeconds: state.simTime - killT,
+      victimSpeed: Number(victimSpeed.toFixed(2)),
+      victimSpin: death ? Number(death.spin.toFixed(3)) : null,
+      victimMass: death?.mass ?? null,
+      wreckSpeedAt2s: wreckSpeed == null ? null : Number(wreckSpeed.toFixed(2)),
+      speedRetainedPct: wreckSpeed != null && victimSpeed > 0
+        ? Number(((wreckSpeed / victimSpeed) * 100).toFixed(1)) : null,
+      driftWU: final && admission ? Number(dist(final.pos, admission.pos).toFixed(1)) : null,
+      rotAdvancedRad: final && admission ? Number(Math.abs(final.rot - admission.rot).toFixed(3)) : null,
+      wreckMass: final?.mass ?? null,
+      // "It can be shoved" in one number: a 1e6 wreck is a wall, the victim's own mass is a body.
+      shoveable: final ? final.mass < 1e6 : null,
+      wreckHasBody: !!final,
+      met: !unmeasured && inherited && sameBody && victimSpeed > 0
+        && (wreckSpeed / victimSpeed) >= 0.8 && final.mass === death.mass && final.mass < 1e6
+        && (!collisionClear || (contactSamples === 0 && impacts.length === 0)),
+    };
+  } finally {
+    owner._createRecord = createRecord;
+    runtime.dispose();
+  }
 }
 
 // ── B10c ─────────────────────────────────────────────────────────────────────────────────────────

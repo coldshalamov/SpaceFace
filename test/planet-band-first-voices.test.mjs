@@ -131,14 +131,20 @@ test('band first: onboarding answers the player receipts once per save, never fo
   assert.equal(onboarding._speakBandFirst({ band: 'sling', siteId: 'site_anvil', isPlayer: true }), false);
   assert.equal(emitted.filter((e) => e.name === 'hud:firstUse').length, 1);
 
-  // A different body speaks its own receipt.
+  // A different body speaks its own receipt — after the 7s first-use window, as a real
+  // crossing would arrive; inside the window the hint defers through the voice queue.
+  state.simTime = 18;
   assert.equal(onboarding._speakBandFirst({ band: 'sling', siteId: 'site_other', isPlayer: true }), true);
   assert.equal(emitted.filter((e) => e.name === 'hud:firstUse').length, 2);
 
-  // Every authored band has a line.
+  // Every authored band has a line. Each fixture stands alone; the voice window clears
+  // between them the way separate crossings on a real clock would.
+  let t = 18;
   for (const band of ['sling', 'skim', 'danger', 'reentry']) {
-    const st2 = { simTime: 0, tick: 0, playerId: 'p1', mode: 'flight', player: { hints: {} }, entities: new Map(), input: { actions: {} } };
+    const st2 = { simTime: t, tick: 0, playerId: 'p1', mode: 'flight', player: { hints: {} }, entities: new Map(), input: { actions: {} } };
     onboarding.state = st2;
+    onboarding._firstUseHintUntilS = 0;
     assert.equal(onboarding._speakBandFirst({ band, siteId: 's2', isPlayer: true }), true, `${band} has a line`);
+    t += 8;
   }
 });

@@ -59,6 +59,23 @@ export function observeEdgeMarkers({ drain = false } = {}) {
     const sf = window.SF;
     const state = sf && sf.state;
     const observedAt = performance.now();
+    const markerCanThreatenPlayer = (shooter, telegraphKind) => {
+      if (!shooter || shooter.alive === false || shooter.type !== 'ship') return false;
+      const data = shooter.data || {};
+      const weapons = data.weapons || shooter.weapons;
+      const armed = data.unarmed !== true && data.canShoot !== false
+        && (!Array.isArray(weapons) || weapons.length > 0);
+      if (armed || telegraphKind === 'detonator_fuse') return true;
+      const spec = data.detonator;
+      if (!spec || typeof spec !== 'object') return false;
+      const trigger = Number.isFinite(spec.triggerRange) ? spec.triggerRange : 56;
+      const blast = Number.isFinite(spec.blastRadius) ? spec.blastRadius : 96;
+      const band = Math.max(0, trigger + blast);
+      const player = state?.entities?.get?.(state.playerId);
+      const dx = Number(shooter.pos?.x) - Number(player?.pos?.x);
+      const dz = Number(shooter.pos?.z) - Number(player?.pos?.z);
+      return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= band * band;
+    };
     const out = [];
     const markersBySample = new Map();
     const recordMarker = (sample, marker) => {
@@ -73,6 +90,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       const marker = { edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), shooter: null };
+      const telegraphKind = el.getAttribute('data-telegraph-kind');
       const rawId = el.getAttribute('data-entity-id');
       if (rawId != null && rawId !== '') {
         const id = Number.isFinite(Number(rawId)) ? Number(rawId) : rawId;
@@ -109,10 +127,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
           if (!sourceHasShooter) reason = 'no living shooter in publication sample';
           else if (state?.tick === placed.tick) {
             const shooter = state.entities?.get?.(id);
-            const data = shooter?.data || {};
-            const weapons = data.weapons || shooter?.weapons;
-            const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
-              && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+            const eligible = markerCanThreatenPlayer(shooter, telegraphKind);
             if (!shooter) reason = 'no living shooter in publication state';
             else if (placed.generation !== (shooter.occupantGeneration ?? null)) reason = 'different shooter life';
             else if (!eligible) reason = 'ineligible shooter';
@@ -120,10 +135,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
         } else if (!reason) {
           // Direct reads have no retained source frame, so validate against the current actor.
           const shooter = state?.entities?.get?.(id);
-          const data = shooter?.data || {};
-          const weapons = data.weapons || shooter?.weapons;
-          const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
-            && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+          const eligible = markerCanThreatenPlayer(shooter, telegraphKind);
           if (placed.generation !== (shooter?.occupantGeneration ?? null)) reason = 'different shooter life';
           else if (!eligible) reason = 'ineligible shooter';
         }
@@ -246,7 +258,7 @@ export function readVisibleRaceCue() {
   const direction = bearingDeg !== null
     ? (bearingDeg > 12 ? 'right' : bearingDeg < -12 ? 'left' : 'ahead')
     : directionMatch ? directionMatch[1].toLowerCase() : null;
-  const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*wu\b/i.exec(hintText);
+  const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*(?:wu|u)\b/i.exec(hintText);
   if (distanceMatch) distanceWU = Number(distanceMatch[1].replace(/,/g, ''));
   if (!direction) return null;
   if (bearingDeg === null) bearingDeg = direction === 'right' ? 30 : direction === 'left' ? -30 : 0;
@@ -283,11 +295,58 @@ async function resolveBoostCode(page) {
   }
 }
 
-/** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start. */
-export async function controlProbes(page, tag, probes) {
-  const thrust = await holdKey(page, 'KeyW', 1.2, `${tag} thrust`, probes);
+async function readPlayerMotion(page) {
+  try {
+    return await page.evaluate(() => {
+      const st = window.SF && window.SF.state; const me = st && st.entityList && st.entityList.find((e) => e.id === st.playerId);
+      return me ? { x: me.pos?.x, z: me.pos?.z, vx: me.vel?.x, vz: me.vel?.z, rot: me.rot } : null;
+    });
+  } catch { return null; }
+}
+
+/** Live, endpoint-only read of whether a probe looked dead. The authoritative judgement stays in
+ * checks.mjs probeDead (same thresholds); this only decides whether a software-GL retry is worth running. */
+export function liveProbeLooksDead(kind, a, b) {
+  if (!a || !b) return true;
+  if (kind === 'thrust') {
+    const dv = Math.hypot(b.vx, b.vz) - Math.hypot(a.vx, a.vz);
+    const moved = Math.hypot(b.x - a.x, b.z - a.z);
+    return !(dv >= 3) && !(moved >= 3);
+  }
+  const d = Math.atan2(Math.sin(b.rot - a.rot), Math.cos(b.rot - a.rot));
+  return !(Math.abs(d) >= 0.2);
+}
+
+import { probeNeedsRetry } from './checks.mjs';
+
+async function probeOnce(page, code, seconds, label, probes, softwareGl, trace, drain) {
+  const a = softwareGl ? await readPlayerMotion(page) : null;
+  const rec = await holdKey(page, code, seconds, label, probes);
+  if (!softwareGl || !rec || rec.watch) return rec;
+  const b = await readPlayerMotion(page);
+  if (trace) {
+    // Judge with the checker's evidence (trace samples), not a live endpoint read: a stalled
+    // sampler can leave the window too sparse for probeDead even when the ship visibly moved.
+    if (drain) await drain().catch(() => {});
+    const need = probeNeedsRetry(trace, rec);
+    rec.retryCheck = need.why;
+    if (!need.retry) return rec;
+  } else if (!liveProbeLooksDead(rec.kind, a, b)) return rec;
+  // Software GL (SwiftShader) stalls can swallow a whole ~1 s probe window. Retry once after a
+  // short settle with a doubled window; checks.mjs judges both attempts with unchanged thresholds.
+  rec.retried = true;
+  await waitSim(page, 0.5, { maxWallMs: 30000 });
+  const retry = await holdKey(page, code, seconds * 2, `${label} retry`, probes);
+  if (retry) { retry.retryOf = label; retry.attempt = 2; }
+  return retry;
+}
+
+/** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start.
+ * With { softwareGl: true }, a probe that looks dead live is retried once (see probeOnce). */
+export async function controlProbes(page, tag, probes, { softwareGl = false, trace = null, drain = null } = {}) {
+  const thrust = await probeOnce(page, 'KeyW', 1.2, `${tag} thrust`, probes, softwareGl, trace, drain);
   if (thrust && thrust.watch) return thrust.watch;
-  const yaw = await holdKey(page, 'KeyD', 0.8, `${tag} yaw`, probes);
+  const yaw = await probeOnce(page, 'KeyD', 0.8, `${tag} yaw`, probes, softwareGl, trace, drain);
   return yaw && yaw.watch ? yaw.watch : null;
 }
 
@@ -468,7 +527,35 @@ async function observeTarget(page, options) {
   return read;
 }
 
-const fighterMemory = { hull: null, breakBeats: 0 };
+const fighterMemory = new WeakMap();
+
+function memoryForFighterPage(page) {
+  let memory = fighterMemory.get(page);
+  if (!memory) {
+    memory = { hull: null, breakBeats: 0 };
+    fighterMemory.set(page, memory);
+  }
+  return memory;
+}
+
+/** Keep the public-input fighter moving when observed nearby pressure makes a stationary line
+ * unsafe. The optional Massline probe remains available on its normal cadence in a clear,
+ * healthy scene; it is not a required part of ordinary weapon pursuit. */
+export function fighterCombatChoice({ hull, near, packDist, targetDist, hullLost, beat, breakBeats }) {
+  const closePack = near >= 2 && packDist < 600;
+  const closeVisibleThreat = near >= 1 && Number.isFinite(targetDist) && targetDist < 230;
+  const lowHullUnderThreat = hull < 0.6 && near >= 1 && packDist < 700;
+  const pressured = closePack || lowHullUnderThreat || hullLost > 0.04;
+  const nextBreakBeats = pressured ? Math.max(breakBeats, 4) : breakBeats;
+  const retreat = nextBreakBeats > 0;
+  const hasThreatRead = Number.isFinite(near) && (Number.isFinite(packDist) || packDist === Infinity);
+  const safeMasslineWindow = hasThreatRead && hull >= 0.65 && !retreat && !closePack && !closeVisibleThreat;
+  return {
+    breakBeats: nextBreakBeats,
+    retreat,
+    massline: beat % 7 === 3 && safeMasslineWindow,
+  };
+}
 
 // A pausing arena surface legitimately stops the simulation clock. Finish the
 // current public-input beat and let run.mjs use its real between-round controls.
@@ -599,8 +686,9 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
 /**
  * One beat of a kiting fighter (public input only): select the nearest reachable hostile with RMB,
  * aim at its visible lead pip (or the hull when no pip is painted), and fire,
- * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
- * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
+ * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when nearby
+ * pressure or low hull makes the position unsafe. Latch (Space) only on its cadence in a clear,
+ * healthy window.
  *
  * Both the hull pick and aim point must reach the gameplay canvas. The click is recorded with
  * elementFromPoint before mouseup, and the play watcher reports any later DOM interruption.
@@ -609,12 +697,11 @@ export async function fightBeat(page, beat) {
   // A reachable target is not evidence that the previous line has released.
   // Cut the painted payload before either visible-target steering or radar pursuit.
   if (!await releaseFightMassline(page)) return null;
+  const memory = memoryForFighterPage(page);
   let tg = await observeTarget(page).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return null; }
-  const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
-  fighterMemory.hull = tg.hull;
-  // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
-  if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
+  const lost = memory.hull != null ? memory.hull - tg.hull : 0;
+  memory.hull = tg.hull;
   if (tg.none) {
     tg = await searchFightBeat(page, tg, beat);
     // A fresh target found during radar pursuit is still a public observation. Continue through
@@ -622,6 +709,9 @@ export async function fightBeat(page, beat) {
     // spend another beat re-reading a contact that may already have crossed the canvas edge.
     if (!tg || tg.none) return tg;
   }
+  const choice = fighterCombatChoice({ hull: tg.hull, near: tg.near, packDist: tg.packDist,
+    targetDist: tg.dist, hullLost: lost, beat, breakBeats: memory.breakBeats });
+  memory.breakBeats = choice.breakBeats;
   if (!tg.selected) {
     // Default gun assist retains a valid old lock. A cursor over a different hull does not
     // release it: use the same quick RMB selection a person would before this shot.
@@ -652,9 +742,9 @@ export async function fightBeat(page, beat) {
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
   const keys = []; let err = 0;
-  const retreat = fighterMemory.breakBeats > 0 && tg.away != null;
+  const retreat = choice.retreat && tg.away != null;
   if (retreat) {
-    fighterMemory.breakBeats--;
+    memory.breakBeats--;
     err = tg.away; keys.push('KeyW');
   } else {
     err = tg.rel;
@@ -686,7 +776,19 @@ export async function fightBeat(page, beat) {
     const after = await page.__ptObserve();
     if (after) return after;
   }
-  if (beat % 7 === 3 && !await page.evaluate(readCombatPhaseEnded)) { noteKey(page, 'Space'); await page.keyboard.press('Space'); }
+  if (choice.massline && !await page.evaluate(readCombatPhaseEnded)) {
+    const latest = await observeTarget(page).catch(() => null);
+    if (latest && !latest.none) {
+      const latestLost = memory.hull - latest.hull;
+      const latestChoice = fighterCombatChoice({ hull: latest.hull, near: latest.near,
+        packDist: latest.packDist, targetDist: latest.dist, hullLost: latestLost,
+        beat, breakBeats: memory.breakBeats });
+      memory.breakBeats = latestChoice.breakBeats;
+      if (latestChoice.massline && !await page.evaluate(readCombatPhaseEnded)) {
+        noteKey(page, 'Space'); await page.keyboard.press('Space');
+      }
+    }
+  }
 }
 
 /** A bounded public pilot for the temporary circuit. Turn first on the painted next-gate cue;

@@ -90,13 +90,16 @@ export async function inspectTallyHailAdvice() {
 }
 
 export function makeHailTestDocument(){
+ const nodes=new Map();
  class Element{
-  constructor(){this.children=[];this.nodes=new Map();this.dataset={};this.attributes={};this.style={};this.classList={add(){},remove(){},toggle(){},contains(){return false}};this.hidden=false;}
+  constructor(){this.children=[];this.dataset={};this.attributes={};this.style={};this.classList={add(){},remove(){},toggle(){},contains(){return false}};this.hidden=false;}
   appendChild(e){this.children.push(e);e.parentNode=this;return e}
   removeChild(e){this.children=this.children.filter(x=>x!==e);e.parentNode=null}
   replaceChildren(...es){this.children=[];for(const e of es)this.appendChild(e)}
-  querySelector(q){if(!this.nodes.has(q))this.nodes.set(q,new Element());return this.nodes.get(q)}
-  setAttribute(k,v){this.attributes[k]=String(v)} addEventListener(){} removeEventListener(){} remove(){this.parentNode?.removeChild(this)}
+  querySelector(q){if(!nodes.has(q))nodes.set(q,new Element());return nodes.get(q)}
+  setAttribute(k,v){this.attributes[k]=String(v)} removeAttribute(k){delete this.attributes[k]}
+  getBoundingClientRect(){return {left:0,top:0,width:0,height:0}}
+  addEventListener(){} removeEventListener(){} remove(){this.parentNode?.removeChild(this)}
   contains(e){return this.children.includes(e)}
  }
  const root=new Element(),head=new Element();

@@ -9,7 +9,7 @@ import {
   CAMERA_CLEARANCE_MARGIN_WU,
   cameraClearanceFloorAt,
   cameraRoofAt,
-} from '../src/render/renderer.js';
+} from '../src/render/cameraClearanceGuard.js';
 
 function stubOwner(scene, roots) {
   const meshes = new Map();

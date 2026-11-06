@@ -208,10 +208,18 @@ export function buildConductivityGraph(nodes, options = {}) {
         if (!(d2 > 0) || d2 > rangeSq) continue;
         if (stormSegmentBlocked(a.pos, b.pos, at, islandRadius)) continue;
       }
-      candidates.push({ a: a.id, b: b.id, key: edgeKey(a.id, b.id), massline });
+      // The discharge admits a nearby hull onto the existing room wiring before
+      // filling remaining degree slots. All other graph callers keep their old order.
+      const relay = a.kind === 'relay' || b.kind === 'relay';
+      const hull = a.kind === 'hull' || b.kind === 'hull';
+      const priority = options.discharge === true ? (relay && hull ? 0 : relay ? 1 : hull ? 2 : 3) : 0;
+      candidates.push({ a: a.id, b: b.id, key: edgeKey(a.id, b.id), massline, ...(priority ? { priority } : {}) });
     }
   }
   candidates.sort((left, right) => {
+    if (options.discharge === true && (left.priority || 0) !== (right.priority || 0)) {
+      return (left.priority || 0) - (right.priority || 0);
+    }
     if (left.key < right.key) return -1;
     if (left.key > right.key) return 1;
     return 0;
@@ -328,6 +336,98 @@ export function conductAlongGraph(graph, originId, lineage, options = {}) {
     if (!current) break;
   }
   return { hops, suppressed };
+}
+
+// --- the discharge (inf-storm-discharge) --------------------------------------------
+//
+// The wave plan promises this beat in furnace_active: "the lattice is live; a discharge
+// will walk the current graph". The pure walker and the lineage budget already existed
+// (conductAlongGraph, createStormLineage) with a data-level proof of the intended shape
+// (arenaModuleLibrary.proveRelay: a hostile bridged into the graph is reached and bitten).
+// These are the live-shape pieces the room's tick needs: the authored numbers, the origin
+// law, and the bite collector. Still pure — survivalArena owns the clock, the body scan
+// and the kernel damage port, exactly like the crusher jaws' bite does in the Mill.
+
+/** Seconds between live discharges. The room's own clock: a cadence, never a roll. */
+export const STORM_DISCHARGE_PERIOD_S = 7;
+/** First discharge after the lattice goes live — the walk is promised, then paid. */
+export const STORM_DISCHARGE_FIRST_S = 4;
+/** A committed path remains visible before it can bite. */
+export const STORM_DISCHARGE_WARNING_S = 1.25;
+/** One arc hop bites this hard: a bite that teaches, not a death ray. */
+export const STORM_DISCHARGE_DAMAGE = 22;
+/** A body this close to a hop destination is standing on the node. */
+export const STORM_DISCHARGE_RADIUS = 30;
+/** Bounded conductive hulls the live walk may bridge through. */
+export const STORM_DISCHARGE_MAX_EXTRAS = 8;
+/** One node's bite takes at most this many bodies. */
+export const STORM_DISCHARGE_MAX_TARGETS = 4;
+/** Seconds a pilot-released relay still carries the pilot's cause on its bite. */
+export const STORM_DISCHARGE_PLAYER_WIRE_S = 8;
+
+/**
+ * The origin law the room already states for traversal — score first, then distance to
+ * the room's centre, then id. The walk starts on the room's OWN wiring (pylons, relays);
+ * hulls are conductors the current may bridge through, never the origin, so a hull can
+ * not pull the discharge onto itself by existing. Ties never read iteration order.
+ */
+export function selectDischargeOrigin(graph) {
+  if (!graph || !(graph.nodesById instanceof Map)) return null;
+  const at = graph.at || { x: 0, z: 0 };
+  let best = null;
+  let bestScore = -Infinity;
+  let bestDist = Infinity;
+  for (const node of graph.nodesById.values()) {
+    if (!node || node.conductive === false || node.id == null) continue;
+    if (node.kind !== 'relay' && node.kind !== 'pylon') continue;
+    // A degree-limited graph can leave the highest-scored relay isolated. It cannot
+    // start a walk, so choose the best connected room node instead of a silent beat.
+    if (graph.neighbors instanceof Map && !(graph.neighbors.get(node.id)?.length > 0)) continue;
+    const score = Number.isFinite(node.score) ? node.score : 0;
+    const dx = finite(node.pos && node.pos.x) - finite(at.x);
+    const dz = finite(node.pos && node.pos.z) - finite(at.z);
+    const d2 = dx * dx + dz * dz;
+    const id = String(node.id);
+    const better = score > bestScore
+      || (score === bestScore
+        && (d2 < bestDist || (d2 === bestDist && (best == null || id < String(best.id)))));
+    if (better) {
+      best = node;
+      bestScore = score;
+      bestDist = d2;
+    }
+  }
+  return best;
+}
+
+/**
+ * The bodies standing on one node when the arc arrives: nearest first, id breaks ties,
+ * hard cap, and a body already bitten this walk never takes a second bite. Pure — the
+ * caller supplies live bodies with pos.
+ */
+export function dischargeBiteTargets(nodePos, bodies, options = {}) {
+  const out = [];
+  if (!nodePos || !Array.isArray(bodies)) return out;
+  const radius = finite(options.radius, STORM_DISCHARGE_RADIUS);
+  const max = Number.isInteger(options.max) && options.max > 0
+    ? options.max : STORM_DISCHARGE_MAX_TARGETS;
+  const exclude = options.excludeIds;
+  const r2 = radius * radius;
+  for (let i = 0; i < bodies.length; i++) {
+    const body = bodies[i];
+    if (!body || body.alive === false || !body.pos
+      || !Number.isFinite(body.pos.x) || !Number.isFinite(body.pos.z)) continue;
+    if (exclude && exclude.has(body.id)) continue;
+    const dx = finite(body.pos.x) - finite(nodePos.x);
+    const dz = finite(body.pos.z) - finite(nodePos.z);
+    const d2 = dx * dx + dz * dz;
+    if (d2 > r2) continue;
+    out.push({ body, d2, id: String(body.id) });
+  }
+  out.sort((a, b) => a.d2 - b.d2 || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const capped = out.slice(0, max);
+  for (let i = 0; i < capped.length; i++) capped[i] = capped[i].body;
+  return capped;
 }
 
 /**

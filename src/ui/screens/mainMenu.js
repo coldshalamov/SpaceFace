@@ -7,12 +7,12 @@ import { createTitleFrame } from '../views/menuFrames.js';
 import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
-import { requestCodexTab } from './codex.js';
+import { requestCodexTab } from '../codexRequests.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
-import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSlotIdentity.js';
 import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -21,6 +21,27 @@ import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
+import {
+  applyLeftoverVersionText,
+  leftoverBuildToken,
+  leftoverVersionDisplay,
+  leftoverVersionLabel,
+  leftoverVersionToken,
+  loadLeftoverVersionPayload,
+  paintLeftoverVersion,
+  resetLeftoverVersionCache,
+} from '../releaseIdentity.js';
+
+export {
+  applyLeftoverVersionText,
+  leftoverBuildToken,
+  leftoverVersionDisplay,
+  leftoverVersionLabel,
+  leftoverVersionToken,
+  loadLeftoverVersionPayload,
+  paintLeftoverVersion,
+  resetLeftoverVersionCache,
+} from '../releaseIdentity.js';
 
 const LS_PREFIX = 'sf.save.';
 
@@ -306,110 +327,6 @@ function saveSummaryText(slot, meta) {
 function objectiveSummaryText(meta) {
   if (!meta) return '';
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
-}
-
-/** Version payload is bundled credits `{ version }` plus a build hash when the host can name one:
- * Electron's preload bridge answers from the shell's resolved release identity; a statically
- * served packaged bundle carries its receipt at the web root. Title and pause share this string. */
-export function leftoverVersionToken(payload) {
-  if (!payload || typeof payload.version !== 'string') return '';
-  return payload.version.trim();
-}
-
-export function leftoverBuildToken(payload) {
-  if (!payload || typeof payload.build !== 'string') return '';
-  return payload.build.trim();
-}
-
-/**
- * The DIAGNOSTIC identity: version plus build hash. This is what a crash receipt and the shell
- * bridge want, and pq-033-01 guards its composition.
- */
-export function leftoverVersionLabel(payload) {
-  const version = leftoverVersionToken(payload);
-  if (!version) return 'SpaceFace';
-  const build = leftoverBuildToken(payload);
-  return 'SpaceFace v' + version + (build ? ' · ' + build : '');
-}
-
-/**
- * The PLAYER-FACING line: version only.
- *
- * ONE_PHOTOGRAPH.md section 4.15 kills developer strings on player screens, and named this one:
- * the commit hash in the title foot and the pause foot. A version number is legitimate -- a player
- * quoting "v0.1.0" in a bug report helps them and us. A twelve-character git SHA does not: it
- * means nothing to the reader and it read as debris on the two calmest screens in the game.
- *
- * The hash is not lost, only moved off the wall: leftoverVersionLabel still composes it for
- * diagnostics, and the title foot carries it as a title attribute so it is one hover away for
- * anyone filing a report.
- */
-export function leftoverVersionDisplay(payload) {
-  const version = leftoverVersionToken(payload);
-  if (!version) return 'SpaceFace';
-  // O23/BETA identity: a prerelease version wears its tag on the player-facing line so a
-  // beta screenshot or clip can never pass for a retail build in a bug report. The tag rides
-  // the version string itself ("0.2.0-beta.1"), which this line prints verbatim, so the word
-  // is already on the wall; this used to append a second "· BETA" after it and the title foot
-  // stuttered ("SPACEFACE V0.2.0-BETA.1 · BETA"). Every -beta/-alpha/-rc version says so here;
-  // a release version says nothing — both already correct without a suffix.
-  return 'SpaceFace v' + version;
-}
-
-export function applyLeftoverVersionText(target, payload) {
-  if (!target) return '';
-  const version = leftoverVersionToken(payload);
-  if (!version) return target.textContent || '';
-  const label = leftoverVersionDisplay(payload);
-  target.textContent = label;
-  target.title = leftoverVersionLabel(payload);
-  return label;
-}
-
-const RELEASE_RECEIPT_URL = 'spaceface-release-build.json';
-let versionPayloadPromise = null;
-
-/** Test seam: the resolved payload is session-cached so screens never refetch per mount. */
-export function resetLeftoverVersionCache() {
-  versionPayloadPromise = null;
-}
-
-export function loadLeftoverVersionPayload() {
-  if (!versionPayloadPromise) versionPayloadPromise = resolveLeftoverVersionPayload();
-  return versionPayloadPromise;
-}
-
-async function resolveLeftoverVersionPayload() {
-  const base = { version: leftoverVersionToken(CREDITS), build: '' };
-  try {
-    const shell = globalThis.window && globalThis.window.spacefaceShell;
-    if (shell && typeof shell.buildInfo === 'function') {
-      const info = await shell.buildInfo();
-      const build = leftoverBuildToken(info);
-      if (build) return { version: leftoverVersionToken(info) || base.version, build: build.slice(0, 32) };
-    }
-  } catch (e) {}
-  try {
-    if (typeof fetch === 'function') {
-      const res = await fetch(RELEASE_RECEIPT_URL, { cache: 'no-store' });
-      if (res && res.ok) {
-        const receiptData = await res.json();
-        const digest = receiptData && receiptData.output && receiptData.output.digest;
-        if (typeof digest === 'string' && /^[0-9a-f]{16,64}$/i.test(digest)) {
-          return { ...base, build: digest.slice(0, 12) };
-        }
-      }
-    }
-  } catch (e) {}
-  return base;
-}
-
-export function paintLeftoverVersion(target, stillCurrent) {
-  if (!target) return Promise.resolve('');
-  return loadLeftoverVersionPayload().then((payload) => {
-    if (typeof stillCurrent === 'function' && !stillCurrent(target)) return '';
-    return applyLeftoverVersionText(target, payload);
-  });
 }
 
 let refs = null;

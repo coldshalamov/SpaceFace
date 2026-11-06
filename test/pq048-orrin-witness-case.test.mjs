@@ -211,8 +211,20 @@ test('dedicated Orrin Bar intent submits once without station-contact memory wri
   });
   emitBarContactChoice(h.bus, submission);
   assert.equal(h.events.filter((event) => event.name === 'orrinWitness:submitted').length, 1);
-  assert.deepEqual(h.state.player.stationContacts, stationMemoryBefore,
+  // The case is cast memory (stationContacts' `orrin.case` counter, 2026-10-22): the one submit
+  // moves Orrin's evidence counter once and leaves only its replay-guard receipt flag on his record.
+  // Everything a generic bar talk would write stays exactly as it was.
+  const afterContacts = clone(h.state.player.stationContacts);
+  const castFlags = (record) => Object.keys((record && record.flags) || {}).filter((key) => key.startsWith('cast_'));
+  const withoutCastFlags = (bag) => Object.fromEntries(Object.entries(bag || {}).map(([id, record]) => {
+    const flags = Object.fromEntries(Object.entries(record.flags || {}).filter(([key]) => !key.startsWith('cast_')));
+    return [id, { ...record, flags }];
+  }).filter(([id, record]) => id in (stationMemoryBefore || {}) || record.met || record.talkCount
+    || record.lastChoice != null || record.lastTalkSimTime || record.standing || Object.keys(record.flags).length));
+  assert.deepEqual(withoutCastFlags(afterContacts), withoutCastFlags(stationMemoryBefore),
     'full stationContacts registration observes no generic talk event or contact memory write');
+  assert.equal(castFlags(afterContacts.contact_orrin).length, 1, 'one evidence receipt on Orrin, not one per emit');
+  assert.equal(h.state.player.stationContactCounters['orrin.case'], 1, 'the case counter moves exactly once');
 
   const model = buildSystemModel(h.state, 'sector_tethys_junction');
   const customs = model.points.find((point) => point.stationId === 'station_customs');

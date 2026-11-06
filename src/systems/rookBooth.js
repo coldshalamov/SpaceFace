@@ -554,22 +554,27 @@ export function createRookBooth() {
       this.bus?.emit('economy:grantCredits', { amount: payoutCr, reason: 'rook:booth' });
       const flags = this._flags(s);
       let count = book.deals;
+      const deliveredMarkerId = d.markerId || (d.provenance && d.provenance.markerId) || null;
+      // The receipt names the hull the book took (a marked Cinder Wasp reads "Kite · marked
+      // Wasp: …"), so the pilot sees WHICH body was weighed, not just a number.
+      const hullName = deliveredMarkerId
+        ? this.registry?.get?.('aftermathWrecks')?._markerById?.(deliveredMarkerId)?.victimLabel : null;
+      const named = hullName ? `${String(hullName).slice(0, 80)}: ` : '';
       if (stand.id === ROOK_STAND.id && flags) {
         // The serialized book-count flag stays Rook's own — the receipt text and the
         // first-hull line key off it exactly as they always did.
         count = (Number(flags[ROOK_BOOTH.countFlag]) || 0) + 1;
         flags[ROOK_BOOTH.countFlag] = count;
         this._popup(`rook_receipt_${e.id}`, ROOK_BOOTH.sender,
-          (count === 1 ? ROOK_BOOTH.firstReceipt : ROOK_BOOTH.receipt)
+          named + (count === 1 ? ROOK_BOOTH.firstReceipt : ROOK_BOOTH.receipt)
             .replace('{cr}', String(payoutCr)));
       } else {
         this._popup(`rook_receipt_${e.id}`, stand.sender,
-          `Weighed ${appraisal.gradeId}. ${payoutCr} cr — and no slip exists to argue with.`, 8);
+          `${named}Weighed ${appraisal.gradeId}. ${payoutCr} cr — and no slip exists to argue with.`, 8);
       }
       if (appraisal.disputed && stand.id === ROOK_STAND.id) {
         this._fileDisputedHull(s, e, appraisal, book);
       }
-      const deliveredMarkerId = d.markerId || (d.provenance && d.provenance.markerId) || null;
       this.bus?.emit('rookWreck:delivered', {
         entityId: e.id, mass, payoutCr, count, markerId: deliveredMarkerId,
         source: stand.id === ROOK_STAND.id ? 'rook:booth' : `rook:booth:${stand.id}`,

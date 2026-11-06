@@ -500,6 +500,20 @@ test('4. player attack inside station protection forces protected withdrawal ins
 
 // ── 5. Hostile fire on player in protection → one incident; patrol assigned ─────
 
+test('an uncredited asteroid collision does not become an armed aggressor', () => {
+  const t = boot({ playerPos: { x: 120, z: 0 }, station: { stationId: 'station_helios', factionId: 'faction_scn' } });
+  const rock = t.sim.spawn({ type: 'asteroid', pos: { x: 125, z: 0 }, alive: true });
+  const pirate = spawnPirate(t.sim, { pos: { x: 260, z: 30 }, team: 1, spawnContext: 'ambient', archetype: 'pirate_raider' });
+  t.bus.emit('combat:damage', { attackerId: rock.id, targetId: t.player.id, applied: 12,
+    origin: { kind: 'collision', id: 'terrain' } });
+  assert.equal(t.log.incidentsOpened.length, 0, 'a rock cannot be prosecuted for contact');
+  t.bus.emit('combat:damage', { attackerId: pirate.id, targetId: t.player.id, applied: 12,
+    origin: { kind: 'collision', id: 'terrain' } });
+  assert.equal(t.log.incidentsOpened.length, 1, 'a collision credited to a ship remains attributable');
+  assert.equal(t.log.incidentsOpened[0].attackerId, pirate.id);
+  t.sim.dispose();
+});
+
 test('5. protected hostile fire raises distress, then assigns the nearest patrol after a readable dispatch delay', () => {
   withForbiddenNondeterminism(() => {
     const t = boot({

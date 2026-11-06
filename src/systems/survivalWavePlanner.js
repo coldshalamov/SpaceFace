@@ -3,6 +3,7 @@
 // Same input → same output. Never mutates the input.
 
 import { mulberry32 } from '../core/rng.js';
+import { ironKrakenForSwarmWave } from '../data/ironKraken.js';
 import {
   SPAWN_BUDGET_DEFAULT_MAX,
   SPAWN_BUDGET_HARD_MAX,
@@ -206,6 +207,7 @@ function expandSchedule(packages) {
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
       if (pkg.staged === true) entry.staged = true;
+      if (typeof pkg.characterScoreId === 'string') entry.characterScoreId = pkg.characterScoreId;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -549,9 +551,31 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       if (trim > 0) { pkg.count -= trim; pkg.batchSize = pkg.count; burst -= trim; }
     }
   }
+  // Character heavies have their own finite seat. Weighted roster picks would turn a
+  // readable eight-arm arrival into a random three-Kraken reinforcement pack.
+  const character = !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
+    ? ironKrakenForSwarmWave(w) : null;
+  let characterLanded = false;
+  if (character) {
+    let donor = null;
+    for (const pkg of packages) {
+      if (pkg.champion || pkg.debut || pkg.wall || pkg.staged || !(pkg.count > 1)) continue;
+      if (!donor || pkg.count > donor.count) donor = pkg;
+    }
+    if (donor) {
+      donor.count -= 1;
+      donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+      packages.push({ atTick: SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
+        role: 'elite', enemyId: character.enemyId, count: 1, batchSize: 1, batchGapTicks: 0,
+        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId });
+      characterLanded = true;
+    }
+  }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride);
+  if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
+    name: character.name, variant: character.variant };
   if (biasedRoster) {
     swarm.roster = biasedRoster.map((entry) => ({
       enemyId: entry.enemyId,
@@ -576,6 +600,12 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       rounds: SWARM_ACT_ROUNDS,
       question: act.question,
     };
+    // LW-04 — an act may author a finite simultaneous-fire budget: the wave owner clears
+    // at most this many cohort hulls to fire at once (see _shapeSwarmFire), instead of the
+    // wave table's number. Absent or non-positive is the legacy cap, byte-identical.
+    if (Number.isInteger(act.shooterCap) && act.shooterCap > 0) {
+      swarm.shooterCap = act.shooterCap;
+    }
   }
   // The ammunition bend is not only the wall's: a boss round's stream keeps feeding light
   // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist —
@@ -681,7 +711,13 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
     mode: SWARM_RULESET,
-    objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')) },
+    objective: {
+      kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')),
+      // The ordinary Swarm finish quota is the admitted ship cohort. The typed-array Brood
+      // remains supplemental room pressure; its separate deaths and rewards never become hidden
+      // cleanup debt at the wave boundary.
+      ...(swarm.killTarget > 0 ? { population: 'ships', supplementalPopulation: 'brood' } : {}),
+    },
     packages,
     schedule,
     // An authored act round owns its room: the act table's phase wins over the cycle. A pact

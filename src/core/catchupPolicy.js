@@ -205,3 +205,36 @@ export function isLegacyCatchupPresentationCapability(systemName) {
   const kind = cap && cap.capability;
   return kind === 'hud' || kind === 'voice';
 }
+
+/**
+ * Per-function stride gate for systems that stay on the 60 Hz table clock but whose scans
+ * (entity-list censuses, ring tests, observers) do not need every step. `holder` is the
+ * system object; the accumulator lives on it (transient, never saved). Returns the
+ * accumulated dt when the gate fires, else 0. The first call for a key always fires, so a
+ * single direct update() call (tests, boot) still does its work; later firings are
+ * staggered by a stable per-key phase so owners do not land on the same step.
+ * `n` is the stride in 60 Hz steps; accumulating dt means integrators that take the
+ * returned dt see the same total time.
+ */
+export function strideDt(holder, key, dt, n = 4, state = null) {
+  // Stride only inside the production host (same gate the calendar clock uses). Direct
+  // update() drivers — tests, labs, legacy profiles — keep per-call behavior.
+  if (!isProductionClockState(state)) return dt > 0 ? dt : 1 / 60;
+  let acc = holder.__strideAcc;
+  if (!acc) acc = holder.__strideAcc = Object.create(null);
+  const period = n / 60 - 1e-6;
+  const d = dt > 0 ? dt : 0;
+  let r = acc[key];
+  if (r === undefined) {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    // First call fires; the first interval is shortened by the key's phase to stagger owners.
+    acc[key] = { t: 0, need: period - (((h >>> 0) % n) / 60) };
+    return d > 0 ? d : 1 / 60;
+  }
+  r.t += d;
+  if (r.t + 1e-9 < r.need) return 0;
+  const out = r.t;
+  r.t = 0; r.need = period;
+  return out;
+}

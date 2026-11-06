@@ -246,7 +246,7 @@ test('failed deferred autosave reports once and remains immediately retryable', 
   } finally { h.restore(); }
 });
 
-test('successful overwrite rotates the valid previous generation and emits a backup receipt', () => {
+test('successful overwrite rotates the valid previous generation and emits a backup receipt', async () => {
   const storage = makeStorage();
   const h = installHarness(storage);
   try {
@@ -258,6 +258,7 @@ test('successful overwrite rotates the valid previous generation and emits a bac
     save._hasPlayerEntity = () => true;
 
     assert.equal(save.save('quick', { reason: 'manual' }), true);
+    await save._lastSaveDurability;
     assert.equal(storage.getItem('sf.recovery.quick'), oldRaw);
     assert.deepEqual(JSON.parse(storage.getItem('sf.save.quick')), newEnvelope);
     const receipt = h.events.find((event) => event.name === 'save:backup');

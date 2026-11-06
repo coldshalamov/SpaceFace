@@ -62,7 +62,8 @@ function makeWorld(seed) {
       trafficRole: 'salvor',
       role: 'salvor',
       worldRecordId: 'rec-busy-salvor',
-      jobId: BUSY_JOB_ID,
+      // The job itself is assigned through npcJobs in boot(): a bare `jobId` stamp with no
+      // job entry behind it is a dead claim that traffic's salvor upkeep rightly strips.
       intent: {
         moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0,
       },
@@ -138,6 +139,13 @@ function boot(world) {
   const jobs = Object.assign({}, npcJobsRuntime);
   const sys = Object.assign({}, traffic);
   jobs.init({ state: world.state, bus, helpers, registry: null });
+  // The busy salvor is genuinely busy: a live job entry owns it before the spill lands.
+  const busyJobId = helpers.npcJobs.assign(world.busy, {
+    kind: 'hauler', sectorId: SECTOR_ID, speed: 30,
+    route: [{ id: 'busy-leg-a', pos: { x: 40, z: 0 } }, { id: 'busy-leg-b', pos: { x: 600, z: 0 } }],
+    payload: {},
+  });
+  assert.equal(busyJobId, BUSY_JOB_ID, 'the busy salvor holds a real job before the spill');
   const realAssign = helpers.npcJobs.assign;
   const assigns = [];
   helpers.npcJobs.assign = (entity, spec) => {

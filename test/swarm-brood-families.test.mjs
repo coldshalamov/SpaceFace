@@ -137,7 +137,9 @@ test('the ship wave is untouched: quota, concurrency and roster pins hold', () =
   assert.equal(SWARM_BOSS_EVERY, 10);
   assert.equal(swarmConcurrent(1), 10);
   assert.equal(swarmQuota(1), 15);
-  assert.equal(swarmQuota(2), 24);
+  // Wave-2+ quota re-tuned by S10 round length (60–90 s rounds); the ship wave's own
+  // shape — opening quota, concurrency, boss cadence — is still the pins above/below.
+  assert.equal(swarmQuota(2), 34);
   assert.equal(swarmConcurrent(30), 18); // a boss round holds fewer bodies
   assert.equal(swarmConcurrent(31), 30);
   assert.equal(swarmQuota(10), 26);
@@ -413,7 +415,7 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   const scene = { objects: [], add(o) { this.objects.push(o); }, remove(o) { const i = this.objects.indexOf(o); if (i >= 0) this.objects.splice(i, 1); } };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: 0 });
-  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
+  assert.equal(scene.objects.length, 10, 'bodies + marks + pools + lines + lanes + lobs + tendril segs + machine links/beams/auras');
   const [mesh, rings, pools, lines, lanes, lobs, segs] = scene.objects;
   assert.equal(segs.count, 0, 'no champion wave, no worm — the chain mesh stays empty');
   assert.equal(mesh.count, engine.census().alive);

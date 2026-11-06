@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
+import { qualityModeForVideo } from '../src/render/adaptiveQuality.js';
 import {
   AUDIO_DEFAULT_MUTE_VERSION,
   PROFILE_SETTINGS_KEY,
@@ -33,8 +34,27 @@ test('pre-registry bootstrap applies current graphics profile without rewriting 
   assert.equal(state.settings.video.renderScale, 0.85);
   assert.equal(state.settings.video.shadows, false);
   assert.equal(state.settings.video.particleQuality, 'medium');
+  assert.equal(qualityModeForVideo(state.settings.video), 'manual',
+    'an older custom render scale remains a manual choice after merging current defaults');
   assert.equal(storage.getItem(PROFILE_SETTINGS_KEY), raw);
   assert.equal(storage.writes(), 0);
+});
+
+test('legacy Balanced settings adopt Auto while explicit quality modes retain authority', () => {
+  const balanced = createGameState(22);
+  assert.equal(bootstrapProfileSettingsBeforeRegistry(balanced, storageWith(JSON.stringify({
+    settings: { video: { renderScale: 1, pixelRatioCap: 2, qualityPreset: 'medium' } },
+  }))), true);
+  assert.equal(qualityModeForVideo(balanced.settings.video), 'auto');
+
+  for (const qualityMode of ['auto', 'manual']) {
+    const state = createGameState(23);
+    bootstrapProfileSettingsBeforeRegistry(state, storageWith(JSON.stringify({
+      settings: { video: { renderScale: 0.75, qualityPreset: 'low', qualityMode } },
+    })));
+    assert.equal(qualityModeForVideo(state.settings.video), qualityMode,
+      `explicit ${qualityMode} survives the profile merge`);
+  }
 });
 
 test('max profile reaches full runtime values with no quality cap, then current restores', () => {
@@ -196,6 +216,16 @@ test('a profile that never chose its motion setting boots with full combat effec
   });
   assert.equal(chosenSystem.accessibility.motionPreference, 'system',
     'a player who picks System after the migration keeps it');
+
+  const future = migrateGameMotionDefault({
+    accessibility: { motionPreference: 'system', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION + 1 },
+    video: { motionReduce: true },
+  });
+  assert.equal(future.accessibility.motionPreference, 'system',
+    'a future policy owns the meaning of its motion preference');
+  assert.equal(future.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION + 1,
+    'an older build must not downgrade a newer migration stamp');
+  assert.equal(future.video.motionReduce, true);
 
   assert.equal(createGameState(12).settings.accessibility.motionPreference, 'full',
     'a fresh profile starts with full effects and carries the version');

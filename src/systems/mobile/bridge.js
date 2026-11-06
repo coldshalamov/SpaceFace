@@ -90,6 +90,12 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       if (doc.documentElement?.dataset) doc.documentElement.dataset.sfMobile = '1';
       view = mountView({ state, model, activate, reset:neutralize, config:cfg,
         saveConfig:setConfig, win, doc });
+      const mountedView = view;
+      mountedView.cssReady?.catch((error) => {
+        if (view !== mountedView || !touch.active) return;
+        console.error('[mobile] touch stylesheet failed; disabling touch controls:', error);
+        touch.setEnabled(false);
+      });
       this._overlay = view.root;
       // The station prompt is a real key on the phone, lit only while a berth is in range.
       const dock = ctx.bus?.on?.('dock:range', (payload) => view?.setDockReady?.(!!payload?.inRange));

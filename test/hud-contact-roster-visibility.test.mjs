@@ -171,15 +171,23 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
       }
 
       // Other HUD consumers share worldToScreen on their own cadences (the threat halo scans
-      // hostiles at 30 Hz). The prograde contract is its own pair of records hit once per frame —
-      // identify them by the A/B endpoints they publish on the final frame.
+      // hostiles at 30 Hz, and the crescent's ship-under probe in orrery/hudAdapter.js projects
+      // the hull position every frame — its endpoint collides with prograde A's by design, since
+      // A is anchored at the ship). Identify the prograde pair by their call contract: the B
+      // record is the only one publishing the ship + velocity*36 endpoint, and A is the record
+      // always called immediately before B (hud.js issues them back to back).
       const lastCallByRecord = new Map();
       for (const c of calls) lastCallByRecord.set(c.src, c);
-      const progradeRecords = [...lastCallByRecord.keys()].filter((record) => {
+      const bRecord = [...lastCallByRecord.keys()].find((record) => {
         const last = lastCallByRecord.get(record).input;
-        return last.x === 100 && (last.z === 220 || last.z === 256);
+        return last.x === 100 && last.z === 256;
       });
-      assert.equal(progradeRecords.length, 2, `${fps} FPS projects exactly A and B once per frame`);
+      assert.ok(bRecord, `${fps} FPS prograde B projects the ship's forward point each frame`);
+      const bCallIdx = calls.map((c, i) => (c.src === bRecord ? i : -1)).filter((i) => i >= 0);
+      const aRecord = bCallIdx.length ? calls[bCallIdx[0] - 1].src : null;
+      assert.ok(aRecord && bCallIdx.every((i) => calls[i - 1] && calls[i - 1].src === aRecord),
+        `${fps} FPS prograde A is projected immediately before B on every frame`);
+      const progradeRecords = [aRecord, bRecord];
       const progradeCalls = calls.filter((c) => progradeRecords.includes(c.src));
       assert.equal(progradeCalls.length, frames * 2, `${fps} FPS prograde calls land once per frame`);
       const inputIdentities = new Set(progradeCalls.map((c) => c.src));
@@ -313,10 +321,11 @@ test('selected-target projections retain exact per-HUD center and radius records
   let calls = 0;
   const fixture = mountHudFixture({
     worldToScreen(point) {
-      // The threat halo scans hostiles on the overlay cadence through the same helper;
-      // count only the selected-target projections (selected wreck at x=3000 + radius ring;
-      // hostile contacts sit at x>=3100).
-      if (point.x < 3050) calls += 1;
+      // The threat halo scans hostiles on the overlay cadence through the same helper, and the
+      // crescent's ship-under probe (orrery/hudAdapter.js) projects the hull (x=0 in this
+      // fixture) every frame — count only the selected-target projections (selected wreck at
+      // x=3000 + radius ring; hostile contacts sit at x>=3100).
+      if (point.x >= 2900 && point.x < 3050) calls += 1;
       return { x: 100 + point.x, y: 200 + point.z, onScreen: true };
     },
   });
@@ -406,6 +415,67 @@ test('moving waypoint marker retains its projection record and exact edge presen
       fixture.restore();
     }
   }
+});
+
+test('selected offscreen cue survives mesh culling without borrowing an unseen hull or recycled identity', () => {
+  let onscreen = false, behind = false;
+  const worldToScreen = (_point, out = {}) => Object.assign(out, onscreen
+    ? { x: 800, y: 450, onScreen: true, behind: false }
+    : { x: 2600, y: 300, onScreen: false, behind });
+  const fixture = mountHudFixture({ worldToScreen, targetId: 'threat-1' });
+  try {
+    const target = fixture.contacts.find((e) => e.id === 'threat-1');
+    target.occupantGeneration = 101;
+    fixture.state.render = { meshes: new Map() };
+    const dock = fixture.document.querySelector('.sf-rightdock');
+    dock.getBoundingClientRect = () => ({ left: 1700, right: 1920, top: 200, bottom: 900, width: 220, height: 700 });
+    fixture.hud.frame(0.2);
+    const edge = fixture.document.querySelector('.sf-target-edge');
+    const bracket = fixture.document.querySelector('.sf-lockdiamond');
+    assert.equal(edge.style.display, 'block', 'culled selected target keeps its offscreen cue');
+    assert.match(edge.getAttribute('aria-label'), /TARGET.*Threat One/);
+    assert.match(edge.style.transform, /^translate3d\(1682px,/, 'right HUD dock does not cover the cue');
+    assert.equal(bracket.classList.contains('visible'), false, 'no hull bracket without a presented mesh');
+    behind = true;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.dataset.edge, 'left', 'behind-camera projection is corrected before choosing an edge');
+    behind = false;
+    fixture.state.runtime = { features: { massline2: { enabled: true, cloak: true } } };
+    target.data.cloak = { active: true, radius: 100 };
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'concealed selection cannot reveal a live bearing');
+    target.data.cloak.active = false;
+
+    onscreen = true;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'onscreen missing hull does not become an edge cue');
+    assert.equal(bracket.classList.contains('visible'), false, 'onscreen missing hull is not invented');
+
+    fixture.state.render.meshes.set(target.id, { visible: true, position: { x: 3100, y: 0, z: 0 } });
+    fixture.hud.frame(0.2);
+    assert.equal(bracket.classList.contains('visible'), true, 'a presented hull retains its normal bracket');
+    onscreen = false;
+    target.occupantGeneration = 102;
+    fixture.hud.frame(0.2);
+    assert.equal(edge.style.display, 'none', 'recycled selection cannot inherit the old cue');
+    assert.equal(bracket.classList.contains('visible'), false);
+  } finally { fixture.restore(); }
+});
+
+test('selected bearing clears cached portrait touch controls without changing its direction', () => {
+  const marker = { x: 248, y: 778, edge: 'bottom', angleRad: 1.42 };
+  const touch = [
+    { owner: 'touch-control', left: 182, right: 378, top: 670, bottom: 826 },
+    { owner: 'touch-control', left: 5, right: 175, top: 635, bottom: 805 },
+  ];
+  assert.equal(hud.avoidSelectedTargetTouchControls(marker, 'TARGET · Wasp · 707 u', touch, 844), marker);
+  assert.equal(marker.x, 248);
+  assert.ok(marker.y + 26 <= 635, 'glyph clears both overlapping touch regions');
+  assert.equal(marker.edge, 'bottom');
+  assert.equal(marker.angleRad, 1.42);
+  const unblocked = { x: 600, y: 250, edge: 'right', angleRad: .1 };
+  hud.avoidSelectedTargetTouchControls(unblocked, 'TARGET · Wasp · 707 u', touch, 390);
+  assert.equal(unblocked.y, 250, 'a clear cue is not needlessly moved');
 });
 
 function mountHudFixture({
@@ -580,6 +650,13 @@ class HudElement {
     if (child && child.isFragment) { for (const kid of [...child.children]) this.appendChild(kid); return child; }
     if (child.parentNode) child.parentNode.removeChild(child);
     child.parentNode = this; this.children.push(child); return child;
+  }
+  insertBefore(child, before) {
+    if (child.parentNode) child.parentNode.removeChild(child);
+    const index = this.children.indexOf(before);
+    child.parentNode = this;
+    if (index < 0) this.children.push(child); else this.children.splice(index, 0, child);
+    return child;
   }
   replaceChildren(...nodes) {
     for (const kid of [...this.children]) this.removeChild(kid);

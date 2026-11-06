@@ -76,15 +76,17 @@ function stampLiner(h) {
   return h.express.data.itinerary;
 }
 
-function rematerialize(savedEntity, trafficEnvelope) {
+function rematerialize(savedEntity, trafficEnvelope, extraEntities = []) {
   const h = boot();
   const rehydrated = structuredClone(savedEntity);
   rehydrated.id = 'rehydrated-liner';
+  const restoredExtras = extraEntities.map((entity) => structuredClone(entity));
   h.state.entities = new Map([
     [h.state.playerId, h.state.entities.get(h.state.playerId)],
     [h.helios.id, h.helios],
     [h.coalition.id, h.coalition],
     [rehydrated.id, rehydrated],
+    ...restoredExtras.map((entity) => [entity.id, entity]),
   ]);
   h.state.entityList = [...h.state.entities.values()];
   h.state.traffic.freighters = [];
@@ -92,6 +94,74 @@ function rematerialize(savedEntity, trafficEnvelope) {
   h.system.deserialize(trafficEnvelope);
   h.system._adoptRematerializedTraffic(PASSENGER_LINER_SERVICE.sectorId, [h.helios, h.coalition]);
   return { ...h, rehydrated, rec: h.state.traffic.freighters[0] };
+}
+
+function installTowAuthority(h, { tug, target, entry, telemetry = true }) {
+  const attachment = {
+    id: entry.towAttachmentId,
+    defId: 'tether_standard',
+    controlMode: 'npc_tow',
+    ownerId: tug.id,
+    targetId: target.id,
+    ownerGeneration: tug.occupantGeneration,
+    targetGeneration: target.occupantGeneration,
+    physicsHandle: { id: entry.towAttachmentId },
+    state: 'active',
+  };
+  const kernel = {
+    attachments: { get: (id) => id === attachment.id ? attachment : null },
+    describeCombatPhysicsAttachment: (id) => id === attachment.id ? { id } : null,
+  };
+  h.system._registry = { get: (name) => name === 'combat' ? { kernel } : null };
+  h.system.helpers = {
+    npcJobs: { get: (jobId) => jobId === entry.job.id ? entry : null },
+    combatPhysics: {
+      getAttachmentTelemetry: ({ attachmentId }) => telemetry && attachmentId === attachment.id
+        ? { attachmentId }
+        : null,
+    },
+  };
+  return attachment;
+}
+
+function attachActiveTugTow(h, { tugPos = { x: -120, z: 0 }, targetPos = { x: 120, z: 0 } } = {}) {
+  const tug = {
+    id: 'yard-tug', type: 'ship', alive: true, radius: 20,
+    occupantGeneration: 'tug-life-1',
+    pos: { ...tugPos },
+    data: {
+      worldRecordId: 'traffic:helios:yard-tug:1',
+      trafficRole: 'tug', role: 'tug', jobId: 'job:traffic:helios:yard-tug:1',
+      npcTowAttachmentId: 'attachment:yard-tug:1',
+      npcTowJobId: 'job:traffic:helios:yard-tug:1',
+    },
+  };
+  const target = {
+    id: 'yard-tug-load', type: 'payload', alive: true, radius: 9,
+    occupantGeneration: 'target-life-1',
+    pos: { ...targetPos },
+    data: {
+      npcTowAttachmentId: 'attachment:yard-tug:1',
+      npcTowedByJobId: 'job:traffic:helios:yard-tug:1',
+    },
+  };
+  const entry = {
+    entityId: tug.id,
+    worldRecordId: tug.data.worldRecordId,
+    job: {
+      id: tug.data.jobId,
+      kind: 'hauler',
+      payload: { role: 'tug', towTargetId: target.id },
+    },
+    towAttachmentId: 'attachment:yard-tug:1',
+    towTargetId: target.id,
+  };
+  h.state.entities.set(tug.id, tug);
+  h.state.entities.set(target.id, target);
+  h.state.entityList.push(tug, target);
+  h.state.traffic.freighters.push({ id: tug.id, role: 'tug', targetId: h.helios.id, waitT: 0 });
+  installTowAuthority(h, { tug, target, entry });
+  return { tug, target, entry };
 }
 
 test('PQ-048.10 repurposes one Helios express through a passenger leg, durable receipt, and loss suspension', () => {
@@ -247,6 +317,87 @@ test('PQ-048.10 rematerializes a saved diversion and clears only a stale saved d
   assert.equal(resumed.rehydrated.data.itinerary.state, 'BOARDING');
   assert.equal(resumed.rehydrated.data.itinerary.delayedBy, null);
   assert.equal(resumed.rehydrated.data.itinerary.custody.ticketId, delayedTicketId);
+});
+
+test('Helios liner yields at its berth to an attached yard tow, resumes, and recomputes after Continue', () => {
+  const h = boot();
+  const itinerary = stampLiner(h);
+  const tow = attachActiveTugTow(h);
+  const originalId = h.express.data.worldRecordId;
+
+  h.state.simTime = itinerary.departureAt;
+  h.system.update(0.1, h.state);
+  assert.equal(itinerary.state, 'BOARDING', 'a real tow keeps passenger custody at the origin');
+  assert.equal(itinerary.custody.state, 'AT_ORIGIN');
+  assert.equal(h.express.data.intent.moveZ, 0, 'the existing liner brakes while the attached tow crosses its berth');
+  assert.equal(h.express.data.intent.brake, true);
+  assert.match(h.express.data.trafficLabel, /YIELDING FOR TOW/);
+  assert.ok(itinerary.departureAt > h.state.simTime, 'the saved departure window advances with the live obstruction');
+  assert.equal(h.bus.events.filter((event) => event.name === 'traffic:passengerLinerReceipt').length, 0);
+
+  const savedLiner = structuredClone(h.express);
+  const savedTow = [structuredClone(tow.tug), structuredClone(tow.target)];
+  const envelope = h.system.serialize();
+  const continued = rematerialize(savedLiner, envelope, savedTow);
+  const restoredTug = continued.state.entities.get(tow.tug.id);
+  const restoredTarget = continued.state.entities.get(tow.target.id);
+  const restoredEntry = {
+    ...tow.entry,
+    entityId: restoredTug.id,
+    towTargetId: restoredTarget.id,
+    job: { ...tow.entry.job, payload: { ...tow.entry.job.payload, towTargetId: restoredTarget.id } },
+  };
+  installTowAuthority(continued, { tug: restoredTug, target: restoredTarget, entry: restoredEntry });
+  continued.bus.emit('save:loaded');
+  const continuedItinerary = continued.rehydrated.data.itinerary;
+  continued.state.simTime = continuedItinerary.departureAt + 0.1;
+  continued.system.update(0.1, continued.state);
+  assert.equal(continuedItinerary.state, 'BOARDING', 'Continue recomputes the still-live physical obstruction');
+  assert.equal(continuedItinerary.custody.state, 'AT_ORIGIN');
+  assert.equal(continued.rehydrated.data.trafficLabel.includes('YIELDING FOR TOW'), true);
+
+  restoredTug.pos = { x: -900, z: 0 };
+  restoredTarget.pos = { x: -700, z: 0 };
+  continued.state.simTime = continuedItinerary.departureAt + 0.1;
+  continued.system.update(0.1, continued.state);
+  assert.equal(continuedItinerary.state, 'EN_ROUTE', 'the same service departs on its next tick after the tow clears');
+  assert.equal(continuedItinerary.custody.state, 'ONBOARD');
+  assert.equal(continued.rehydrated.data.worldRecordId, originalId);
+  assert.equal(continued.rec.id, continued.rehydrated.id);
+  assert.doesNotMatch(continued.rehydrated.data.trafficLabel, /YIELDING FOR TOW/);
+  assert.equal(continued.bus.events.filter((event) => event.name === 'traffic:passengerLinerReceipt').length, 0);
+});
+
+test('Helios liner does not yield to a tug job before its physical attachment exists', () => {
+  const h = boot();
+  const itinerary = stampLiner(h);
+  const tow = attachActiveTugTow(h);
+  tow.entry.towAttachmentId = null;
+  delete tow.tug.data.npcTowAttachmentId;
+  delete tow.target.data.npcTowAttachmentId;
+  h.state.simTime = itinerary.departureAt;
+
+  h.system.update(0.1, h.state);
+
+  assert.equal(itinerary.state, 'EN_ROUTE', 'an intended tow target has no right of way until the line is attached');
+  assert.equal(itinerary.custody.state, 'ONBOARD');
+  assert.doesNotMatch(h.express.data.trafficLabel, /YIELDING FOR TOW/);
+});
+
+test('Helios liner does not yield to stale tow markers when the physics attachment is absent', () => {
+  const h = boot();
+  const itinerary = stampLiner(h);
+  const tow = attachActiveTugTow(h);
+  // The durable job row, active semantic attachment and both entity markers still agree. The
+  // physics owner has no corresponding live constraint, so this cannot block the liner.
+  installTowAuthority(h, { ...tow, telemetry: false });
+  h.state.simTime = itinerary.departureAt;
+
+  h.system.update(0.1, h.state);
+
+  assert.equal(itinerary.state, 'EN_ROUTE');
+  assert.equal(itinerary.custody.state, 'ONBOARD');
+  assert.doesNotMatch(h.express.data.trafficLabel, /YIELDING FOR TOW/);
 });
 
 test('PQ-048.10 Hail exposes one boarding assist and completes it only in the physical formation band', () => {

@@ -110,9 +110,11 @@ test('a bought lance paints, then the column lands after the telegraph, not befo
 
   h.state.run.phase = 'active';
   h.state.mode = 'flight';
-  // A hostile hull sitting on the aim point (rot 0 aims +z: x = sin, z = cos).
+  // A hostile hull sitting on the aim point. aimAngle is the input owner's atan2(dz, dx)
+  // (rot 0 aims +x, the same cos→x/sin→z pairing every gun consumer reads), so the un-latched
+  // paint for this rig lands at player + 320·(cos 0, sin 0) = (720, 0).
   const raider = h.helpers.spawnEntity({
-    type: 'ship', pos: { x: 400, z: 320 }, vel: { x: 0, z: 0 },
+    type: 'ship', pos: { x: 720, z: 0 }, vel: { x: 0, z: 0 },
     radius: 9, mass: 24, hull: 60, hullMax: 60, rot: 0, team: 1,
     physicsBody: BODY({ mass: 24 }), data: { runCohort: 'survival' },
   });

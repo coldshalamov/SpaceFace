@@ -136,6 +136,13 @@ const CSS = `
 /* the key reads as a key, set off from the words: "SHOVE · REPULSE + 2 DETONATE | 2" must not read as a count */
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:8px; padding-left:7px; letter-spacing:.08em; border-left:1px solid rgb(232 226 212 / .38); }
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
+/* Inactive sockets keep their authored mark and live binding; the shared tip still carries the
+   effective verb and its state. The unfolded choice and armed sockets keep their full words. */
+.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keyword { display:none; }
+.orr-cluster__keyshort { display:none; }
+.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag b:not(.is-glyph) {
+  margin-left:0; padding-left:0; border-left:0; }
+
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
@@ -148,9 +155,28 @@ const CSS = `
    suffix. The full sentence remains on the socket's accessible name and focus/hover tip. */
 @media (max-width:640px) {
   .orr-cluster__keytag { display:flex; align-items:center;
-    max-width:calc((100vw - 32px) / var(--orr-cluster-scale, 1) - var(--orr-key-x, 0px) - 26px); }
+    max-width:calc((100vw - 8px) / var(--orr-cluster-scale, 1) - var(--orr-key-x, 0px) - 26px); }
   .orr-cluster__keyword { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .orr-cluster__keytag b { flex:0 0 auto; margin-left:5px; padding-left:5px; }
+  /* The lane between the sockets and the screen edge is too short for verb + cap on a
+     phone — the keyword and its neighbour's cap print on each other. Keep the key-cap
+     frame; the full sentence stays on the socket's accessible name and tip. */
+  .orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag .orr-cluster__keyword { display:none; }
+  .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyword { display:none; }
+  .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyshort {
+    display:inline; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  /* The next-decision line sits left of the key column on a phone — 250px of
+     artboard width would run its tail under the keytags. Wrap it in the lane. */
+  .orr-cluster__next { width:calc(172px / var(--orr-cluster-scale, 1));
+    font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
+  /* D261: the ring legend's swatch tick prints across the hull/shield/armor values at
+     phone scale. Reserve a fixed value column so the tick and the word never share it.
+     The phone label font is pinned at 20px artboard (the 9px rendered floor), so a plain
+     1fr of the 124px box ellipsizes every word — widen the plate until Hull/Shield/Armor
+     read whole; the ellipsis stays only as a last-resort guard. */
+  .orr-cluster__legend { grid-template-columns:14px 4.2ch minmax(0, 1fr); column-gap:6px; width:170px; }
+  .orr-cluster__legend svg { width:14px; }
+  .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 /* D240: the floating text reads over open field, so a hull parked under the instrument used to take
@@ -426,6 +452,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     // rewrites only them, never the key beside them.
     const labelNode = el('span', 'orr-cluster__keyword', label);
     tag.appendChild(labelNode);
+    const shortLabelNode = el('span', 'orr-cluster__keyshort', label);
+    tag.appendChild(shortLabelNode);
     // A bare punctuation binding reads as a stray mark, not a key: it takes the key-cap frame
     // (the em dash is the UNBOUND placeholder, never a key — it stays bare).
     const keyNode = sub && sub !== '—' && GLYPH_KEY.test(sub) ? el('b', 'is-glyph', sub) : el('b', null, sub);
@@ -435,7 +463,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, keyNode };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, shortLabelNode, keyNode };
   };
 
   let openGroup = -1;
@@ -483,7 +511,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const payload = el('div', 'orr-cluster__payload orr-cluster__fade orr-soft');
   const massEl = el('span');
   const strainEl = el('small');
-  payload.append(el('span', 'orr-label', 'Payload · on the line'), massEl, strainEl);
+  payload.append(el('span', 'orr-label', 'Body · on the line'), massEl, strainEl);
   place(payload, px + 36, py - 26);
   // hidden by visibility, not opacity: the arrival animation drives opacity and would flash it
   payload.style.visibility = 'hidden';
@@ -591,7 +619,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
       // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
       const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
-      if (sk.labelText !== label && sk.labelNode) { sk.labelText = label; sk.labelNode.textContent = label; }
+      if (sk.labelText !== label && sk.labelNode) {
+        sk.labelText = label; sk.labelNode.textContent = label;
+        // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
+        sk.shortLabelNode.textContent = label.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
+          .replace(/^Shove · Pushes away\b/i, 'Shove · Push away');
+      }
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
       // rewritten only when the words change: a settled frame still writes nothing.
       const tip = st.tip || (node ? sk.group.tip || '' : '');

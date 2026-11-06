@@ -184,7 +184,7 @@ function deltaMetric(metric, beforeStats, afterStats) {
 function formatDelta(metric) {
   if (metric.before == null || metric.after == null || metric.delta == null) return '—';
   if (metric.unit === 'pct') return `${signed(round1(metric.pct))}%`;
-  if (metric.unit === 'wu') return `${signed(Math.round(metric.delta))}m`;
+  if (metric.unit === 'wu') return `${signed(Math.round(metric.delta))} u`;
   return signed(metric.delta);
 }
 

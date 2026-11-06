@@ -142,7 +142,9 @@ test('the decode disc is what promotes the 42 — the burst the probe measured',
   player.pos.x = g.x + 32;
   player.pos.z = g.z + 32;
   // Drive the exact per-tick call world.update makes (world.js tickOpticFieldRocks).
-  for (let i = 0; i < 3; i++) {
+  // OPTIC_PROMOTE_PER_TICK paces the burst at 4/tick — the whole lattice lands
+  // inside a dozen ticks rather than one spawn fan.
+  for (let i = 0; i < 14; i++) {
     state.tick = (state.tick | 0) + 1;
     state.simTime = (state.simTime || 0) + DT;
     tickOpticFieldRocks(state, helpers);
@@ -170,7 +172,7 @@ test('a ship parked dead-centre on a cell refuses that cell\'s admit — the D50
   const g = sectorLocalToGlobalForSector(CERES_PRISM_GALLERY_ORIGIN, CERES);
   player.pos.x = g.x; // the (0,0) diamond sits exactly here
   player.pos.z = g.z;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 14; i++) {
     state.tick = (state.tick | 0) + 1;
     state.simTime = (state.simTime || 0) + DT;
     tickOpticFieldRocks(state, helpers);

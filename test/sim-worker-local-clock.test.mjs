@@ -18,6 +18,7 @@ import {
 } from '../src/core/simLaneCommands.js';
 import { crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
 import { SAB_JOURNAL_MAGIC } from '../scripts/lib/simWorkerHost.mjs';
+import { getPromptDevice, setPromptDevice, getGamepadCaptureHandler, setGamepadCaptureHandler } from '../src/ui/bindings.js';
 
 function waitFor(predicate, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
@@ -346,6 +347,56 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
       Array.from(pack.typeIndex).map((index) => pack.typeTable[index]),
       ['ship', 'ship', 'ship', 'asteroid', 'asteroid'],
     );
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
+test('retained replies shed stale presentation events instead of marching to the durable limit', async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  try {
+    const worker = await import(`../src/core/wholeSimBrowserWorker.js?event-shed-${Date.now()}`);
+    const events = (from, to) => Array.from(
+      { length: to - from }, (_, i) => ({ t: 'physics:impact', p: { seq: from + i } }),
+    );
+    const reply = (clockSequence, from, to) => ({
+      kind: 'clockTick',
+      clockSequence,
+      journalStart: clockSequence * 10,
+      journalEnd: clockSequence * 10 + 2,
+      completedTick: {
+        sequence: clockSequence, tick: clockSequence,
+        journalStart: clockSequence * 10, journalEnd: clockSequence * 10 + 2,
+      },
+      events: events(from, to),
+    });
+    const first = reply(1, 0, 400);
+    first.commandAcks = [{ seq: 'a' }];
+    first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
+    const second = reply(2, 400, 700);
+    second.commandAcks = [{ seq: 'b' }];
+
+    const merged = worker.localMergeReply(first, second);
+    assert.equal(merged.events.length, 512, 'the retained event tail is capped at the shed limit');
+    assert.equal(merged.events[0].p.seq, 188, 'the oldest stale triggers are shed first');
+    assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
+    assert.equal(merged.commandAcks.length, 2, 'command receipts are correctness data and never shed');
+    assert.equal(merged.storageOps.length, 1, 'storage receipts are correctness data and never shed');
+
+    // Sustained retention under a stalled consumer stays bounded instead of
+    // accumulating event volume until the durable tripwire stops the clock.
+    const mergedAgain = worker.localMergeReply(merged, reply(3, 700, 1200));
+    assert.equal(mergedAgain.events.length, 512);
+    assert.equal(mergedAgain.events[0].p.seq, 688);
+    assert.equal(mergedAgain.events.at(-1).p.seq, 1199);
+
+    // Merges below the cap lose nothing — ordinary congestion keeps every trigger.
+    const small = worker.localMergeReply(reply(4, 0, 10), reply(5, 10, 25));
+    assert.equal(small.events.length, 25);
+    assert.equal(small.events[0].p.seq, 0);
   } finally {
     if (hadSelf) globalThis.self = previousSelf;
     else delete globalThis.self;
@@ -691,6 +742,78 @@ test('worker-local clock is unsolicited and command FIFO remains serialized', as
   assert.equal(f.posts.at(-1).active, false);
 });
 
+test('unchanged paused presentation samples settle while real physical/camera/lifecycle changes still wake', async (t) => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const prompt = getPromptDevice(), capture = getGamepadCaptureHandler();
+  let pads = [], x = 42, z = -7;
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { getGamepads: () => pads } });
+  t.after(() => {
+    if (previousNavigator) Object.defineProperty(globalThis, 'navigator', previousNavigator);
+    else delete globalThis.navigator;
+    setPromptDevice(prompt); setGamepadCaptureHandler(capture);
+  });
+  const f = makeFixture(t, { helpers: { raycastToPlane(_ndc, hit) { hit.x = x; hit.z = z; return hit; } } });
+  f.state.timeScale = 0; f.state.ui.screenStack = ['station']; f.state.ui.docked = true;
+  f.state.camera = { zoom: 1, displayedZoom: 1, focus: { x: 0, z: 0 } };
+  let sequence = 0;
+  const commands = () => f.posts.filter(message => message.kind === 'clockCommand');
+  const settle = () => {
+    for (let n = 0; f.lane.getDiagnostics().workerClockCommandInFlight && n < 4; n++) {
+      const command = commands().at(-1);
+      f.receive({ kind: 'clockTick', seq: `idle-${++sequence}`, clockSequence: sequence,
+        commandSequence: command.commandSequence, stateTick: 0, simTime: 0,
+        journalStart: 0, journalEnd: 0, pack: emptyPack() });
+    }
+    assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
+  };
+  const frame = () => { f.lane.runner.prepareWithoutAdvance(); settle(); };
+  frame();
+  const firstSamples = commands().flatMap(message => message.commands);
+  assert.ok(firstSamples.some(command => command.p?.d?.type === 'gamepadFrame'));
+  assert.ok(firstSamples.some(command => command.p?.d?.type === 'cursorProjection'));
+  assert.ok(firstSamples.some(command => command.t === 'camera'));
+  let count = commands().length;
+  for (let n = 0; n < 8; n++) frame();
+  assert.equal(commands().length, count, 'unchanged rAF cannot force another zero-step pack');
+  const changedFrame = () => { frame(); assert.equal(commands().length, ++count); };
+  x++; changedFrame();
+  f.state.camera.displayFov = 55; changedFrame();
+  f.state.camera.frameOriginX = 1000; changedFrame();
+  pads = [{ id: 'physical-pad', connected: true, index: 0, mapping: 'standard', axes: [0, 0, 0, 0],
+    buttons: [{ pressed: false, value: 0 }] }]; changedFrame();
+  pads[0].axes[0] = 0.5; pads[0].buttons[0] = { pressed: true, value: 1 }; changedFrame();
+  for (let n = 0; n < 4; n++) frame();
+  assert.equal(commands().length, count, 'held physical values persist without a transport heartbeat');
+  pads[0].buttons[0] = { pressed: false, value: 0 }; changedFrame();
+  pads = []; changedFrame();
+  setPromptDevice('touch'); changedFrame();
+  setGamepadCaptureHandler(() => {}); changedFrame();
+  f.lane.runner.setLifecycleGeneration(1); changedFrame();
+  assert.ok(commands().at(-1).commands.some(command => command.p?.d?.type === 'gamepadFrame'));
+  assert.ok(commands().at(-1).commands.some(command => command.p?.d?.type === 'cursorProjection'));
+  const effects = createTimeEffects(f.state);
+  effects.set('ui:pausing-screen', { scale: 0 }); settle();
+  const beforeEffect = commands().length;
+  effects.set('feel:hit-stop', { scale: 0.12 }); settle();
+  assert.equal(commands().length, beforeEffect + 1, 'a hidden time-effect revision remains immediate at scale zero');
+  assert.equal(commands().at(-1).timeEffectsSnapshot.revision, readLocalTimeEffectsSnapshot(f.state).revision);
+  const beforeIdle = commands().length;
+  frame(); frame();
+  assert.equal(commands().length, beforeIdle);
+  const last = commands().length;
+  laneDomEvent({ type: 'keyup', code: 'KeyW' }); settle();
+  assert.ok(commands().length > last, 'explicit release stays immediate even if sampled payloads match');
+  const beforeRpc = commands().length;
+  const rpc = laneRpc('probeState');
+  assert.equal(commands().length, beforeRpc + 1, 'paused RPC wakes independently of sample changes');
+  const command = commands().at(-1), request = command.commands.find(row => row.t === 'rpc');
+  f.receive({ kind: 'clockTick', seq: `rpc-${++sequence}`, clockSequence: sequence,
+    commandSequence: command.commandSequence, stateTick: 0, simTime: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(), rpcAcks: [{ id: request.p.id, ok: true, result: {} }] });
+  await rpc;
+  assert.equal(f.lane.getDiagnostics().error, null);
+});
+
 test('a silent worker-local command closes after five seconds of responsive dispatch', async (t) => {
   const f = makeWatchdogFixture(t);
   f.lane.runner.setClockActive(true);
@@ -1028,7 +1151,7 @@ test('paused Crucible launch drains setting, mode, and boot RPC after the first 
   assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
 });
 
-test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { timeout: 60000 }, async () => {
+test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { timeout: 60000 }, async (t) => {
   // Exercise the actual browser-worker module through a real Node worker-thread
   // postMessage boundary. The main lane must consume the worker's
   // `clockSequence` field; fabricating a reply would let the old clockSeq typo
@@ -1039,6 +1162,34 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
   let receive = null;
   let holdReplies = false;
   const heldReplies = [];
+  let lane = null;
+  t.after(() => {
+    const error = lane?.getDiagnostics().error;
+    if (!error?.includes('clock command stalled')) return;
+    console.error('[local-clock-wire watchdog]', JSON.stringify({
+      error,
+      diagnostics: lane.getDiagnostics(),
+      recentCommands: mainPosts.filter((entry) => entry?.kind === 'clockCommand').slice(-8).map((entry) => ({
+        commandSequence: entry.commandSequence,
+        seq: entry.seq,
+        steps: entry.steps,
+        timeScale: entry.timeScale,
+        commands: entry.commands?.map((command) => ({
+          type: command?.t,
+          path: command?.p?.path,
+          operation: command?.p?.op,
+          dataType: command?.p?.d?.type,
+        })),
+      })),
+      recentReplies: workerReplies.filter((reply) => reply?.kind === 'clockTick').slice(-8).map((reply) => ({
+        seq: reply.seq,
+        clockSequence: reply.clockSequence,
+        commandSequence: reply.commandSequence,
+        stateTick: reply.stateTick,
+        diagnostics: reply.clockDiagnostics,
+      })),
+    }));
+  });
   const worker = new Worker(
     new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url),
     { type: 'module' },
@@ -1086,7 +1237,6 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
       queueMicrotask(() => { if (receive) receive(message); });
     },
   };
-  let lane = null;
   try {
     worker.on('message', workerSelf.postMessage);
     worker.on('error', (error) => {
@@ -1403,6 +1553,91 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
   }
 });
 
+test('a lost presentation ACK self-heals through a full rebuild instead of freezing the lane', { timeout: 30000 }, async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  const workerReplies = [];
+  const workerSelf = {
+    postMessage(message) { workerReplies.push(message); },
+  };
+  globalThis.self = workerSelf;
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?stale-ack-${Date.now()}`);
+    const workerOnMessage = workerSelf.onmessage;
+    assert.equal(typeof workerOnMessage, 'function');
+    const scenarioContract = JSON.parse(readFileSync(
+      new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8',
+    ));
+    workerOnMessage({ data: {
+      kind: 'init',
+      seq: 'stale-ack-init',
+      profile: 'production',
+      clockMode: 'worker-local',
+      timeScale: 0,
+      seed: 4242,
+      settings: {},
+      domainMirroring: {},
+      bridgeAll: false,
+      tacticalAI: false,
+      viewport: { w: 800, h: 600 },
+      scenarioContract,
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
+      scenarioContractHash: 'stale-ack-fixture',
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'ready'), 30000);
+    workerOnMessage({ data: {
+      kind: 'clockControl',
+      seq: 'stale-ack-control',
+      active: true,
+      generation: 1,
+      lifecycleGeneration: 0,
+      timeScale: 1,
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.clockDiagnostics?.scale === 1), 10000);
+
+    // The first live publish now awaits an ACK that never comes — the wedged
+    // sentAwaitingAck state that previously froze presentation forever while
+    // the sim ran blind (or hard-stopped once the durable limit tripped).
+    const wedgedPublish = workerReplies.filter((reply) => reply.kind === 'clockTick').at(-1);
+    const wedgedSteps = wedgedPublish.clockDiagnostics?.steps || 0;
+    const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
+
+    // No ACK is ever sent. Within the stale-ack budget the worker must declare
+    // it lost, arm a journal rebuild, and publish again — self-healing instead
+    // of retaining indefinitely.
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 8000);
+
+    const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
+    assert.ok(
+      recovered.clockDiagnostics.steps > wedgedSteps,
+      'the authoritative clock kept stepping through the wedged publish instead of stopping',
+    );
+    assert.ok(
+      recovered.clockSequence > wedgedPublish.clockSequence,
+      'the recovery publishes on a fresh sequence so the late duplicate ACK is rejected',
+    );
+    // While the publish was wedged, ordinary ticks coalesced into the retained
+    // reply rather than posting — the single rebuild replaces that whole window.
+    assert.ok(
+      workerReplies.filter((reply) => reply.kind === 'clockTick').length
+        >= repliesBeforeWedge,
+      'recovery adds publishes on top of the wedged window rather than replaying it',
+    );
+  } finally {
+    try {
+      workerSelf.onmessage?.({ data: { kind: 'shutdown', seq: 'stale-ack-shutdown' } });
+    } catch (_) {}
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('active worker-local commands wait for the next timer tick', { timeout: 60000 }, async () => {
   // This is the bounded queue contract for the next worker-clock repair. An
   // active presentation command must join the next real fixed-step tick; it
@@ -1505,4 +1740,81 @@ test('active worker-local commands wait for the next timer tick', { timeout: 600
     if (hadSelf) globalThis.self = previousSelf;
     else delete globalThis.self;
   }
+});
+
+test('freeze recorder opens an episode when applied replies starve during advancing flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 1;
+  f.lane.runner.setClockActive(true);
+
+  f.receive({
+    kind: 'clockTick',
+    seq: 'freeze-baseline',
+    clockSequence: 1,
+    commandSequence: 0,
+    stateTick: 1,
+    simTime: 1 / 60,
+    clockAccumulator: 0,
+    journalStart: 0,
+    journalEnd: 0,
+    pack: emptyPack(),
+    clockDiagnostics: {
+      active: true,
+      awaitingAck: true,
+      steps: 9,
+      retainedRows: 3,
+      shedEvents: 2,
+      timerPending: true,
+    },
+  });
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0);
+
+  // Replies stop arriving while the clock should advance. The sampler crosses
+  // the 350 ms gap on its second tick and must name the last-seen worker state.
+  f.dispatch(700);
+  const diag = f.lane.getDiagnostics();
+  assert.equal(diag.freezeActive, true, 'starved applied watermark reads as an open freeze');
+  assert.equal(diag.freezeEpisodes.length, 1);
+  const episode = diag.freezeEpisodes[0];
+  assert.ok(episode.gapAtOpenMs >= 350);
+  assert.equal(episode.snapshot.awaitingAck, true, 'snapshot preserves the last-seen ack state');
+  assert.equal(episode.snapshot.workerSteps, 9);
+  assert.equal(episode.snapshot.shedEvents, 2);
+  assert.equal(episode.snapshot.retainedRows, 3);
+  assert.ok(diag.msSinceLastAppliedReply >= 350);
+
+  // A fresh applied reply closes the episode with a duration and the state at
+  // the moment it recovered.
+  sendClockTick(f, 2);
+  f.dispatch(300);
+  const after = f.lane.getDiagnostics();
+  assert.equal(after.freezeActive, false);
+  assert.equal(after.freezeEpisodes.length, 1, 'a closed freeze stays recorded once');
+  assert.ok(after.freezeEpisodes[0].durationMs > 0);
+  assert.ok(after.freezeEpisodes[0].closingSnapshot);
+});
+
+test('freeze recorder stays quiet while paused or outside flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 0;
+  f.lane.runner.setClockActive(true);
+  sendClockTick(f, 1);
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'a paused timescale never counts as a freeze');
+
+  f.state.timeScale = 1;
+  f.state.mode = 'dock';
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'outside flight mode the recorder stays disarmed');
+
+  f.state.mode = 'flight';
+  sendClockTick(f, 2);
+  f.dispatch(700);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 1,
+    're-entering advancing flight re-arms the recorder');
+  assert.equal(f.lane.getDiagnostics().freezeActive, true);
 });

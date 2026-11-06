@@ -36,6 +36,9 @@ function skim(t, speed = 70) {
   t.collector.pos.x = t.state.planet.center.x + 980; t.collector.pos.z = t.state.planet.center.z;
   t.collector.vel.x = 0; t.collector.vel.z = speed;
   t.collector.data.itinerary.phase = 'collect';
+  // This fixture moves the body directly; refresh the real spatial owner so
+  // the band query sees that same pose instead of the old berth bucket.
+  t.state.spatialHash.rebuild(t.state.entityList);
   t.planet._tickShips(SIM_DT, t.state, t.state.planet, PLANET_SITE);
 }
 function harvest(t, dt = 1) { t.planet._tickWorkerHarvest(dt, t.state, t.state.planet, PLANET_SITE); }
@@ -44,7 +47,7 @@ test('Anvil normal work: real flight/field/physics fly one finite load into a re
   const t = boot();
   assert.ok(t.collector && t.receiver);
   assert.equal(t.collector.physicsBody.collisionProxyManifest.id, 'stormshift-collector:fixed-cheeks:v1');
-  assert.equal(t.receiver.physicsBody?.collisionProxyManifest, undefined);
+  assert.equal(t.receiver.physicsBody?.collisionProxyManifest?.id, 'stormshift-receiver:fixed-service:v1');
   assert.equal(t.collector.data.defId, 'ship_mule', 'authored collector retains the canonical Mule gameplay def');
   assert.equal(await t.sim.registry.get('physics').prepareBackend(t.state), true);
   // Non-physical observation point keeps local activity awake without injecting participant

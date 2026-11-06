@@ -18,6 +18,7 @@ import { createBus } from '../src/core/eventBus.js';
 import {
   fulfillmentRoutes,
   spawnHauler,
+  routeWaypoint,
   ensureFulfillmentState,
   oldestOpenOrderSeq,
   oldestOpenOrderLabel,
@@ -67,7 +68,8 @@ test('re-router haulers ride the fixed line at constant speed and never deviate'
   const { sim, state } = boot();
   try {
     const hauler = spawnHauler(state, sim.helpers, { routeId: 'route_charon_spine', legIndex: 1 });
-    const target = ROUTE.waypoints[1];
+    // Route waypoints are sector-local; the train flies them in Charon's global frame.
+    const target = routeWaypoint(ROUTE, 1);
     sim.step();
     const speed = Math.hypot(hauler.vel.x, hauler.vel.z);
     assert.ok(Math.abs(speed - ROUTE.speed) < 1e-9, `constant route speed ${speed}`);
@@ -79,7 +81,7 @@ test('re-router haulers ride the fixed line at constant speed and never deviate'
     // Knock it sideways: the line lock pulls the hull back onto the leg.
     hauler.pos.x += 300;
     sim.step();
-    const prev = ROUTE.waypoints[0];
+    const prev = routeWaypoint(ROUTE, 0);
     const lx = target.x - prev.x, lz = target.z - prev.z;
     const t = ((hauler.pos.x - prev.x) * lx + (hauler.pos.z - prev.z) * lz) / (lx * lx + lz * lz);
     const off = Math.hypot(hauler.pos.x - (prev.x + lx * t), hauler.pos.z - (prev.z + lz * t));

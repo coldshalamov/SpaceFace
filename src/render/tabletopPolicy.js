@@ -12,7 +12,7 @@ import { viewHalfExtents } from './entityViewSyncBand.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { damp } from '../core/math.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import {
   readOwnedExceptionalSpeed,
@@ -631,7 +631,7 @@ export const SPEED_ZOOM_SPEED_SMOOTHING_S = 0.1;
 export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // legacy: sampling is now per-frame on the smoothed speed.
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
 export const SPEED_ZOOM_MAX = 1.35;               // was 1.18 — the at-cruise frame widens ~14 %
-export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 3.5; // was 1.55 — "max ~3x at ~550" (FEEL_CONTRACT §C)
+export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 2.5; // was 3.5 — owner-approved Smooth Program tradeoff (2026-11-05): halving the max-boost frame area cuts peak drawable count ~2x at exceptional speed
 export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
 // Boost framing is asymmetric (F5): the world opens fast on keydown so the press reads as "the
 // world opened", then relaxes back slowly enough that release never snaps.

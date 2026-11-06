@@ -50,11 +50,20 @@ export class PerceptionMemory {
       record.observedConfidence = contact.confidence;
     }
 
-    for (const [key, contact] of memory.contacts) {
-      if (seen.has(key)) continue;
-      const age = normalized.tick - contact.lastSeenTick;
-      const confidence = contact.observedConfidence * Math.max(0, 1 - age / this.memoryTicks);
-      if (age > this.memoryTicks || confidence < this.confidenceFloor) memory.contacts.delete(key);
+    // The current rows have all been inserted/updated above. If the map has no additional keys
+    // beyond this frame's unique keys, every remembered contact was seen and there is nothing to
+    // age out; avoid a second full contact walk on the common stable-frame path.
+    if (memory.contacts.size > seen.size) {
+      for (const [key, contact] of memory.contacts) {
+        if (seen.has(key)) continue;
+        // Cold dressing is a current physical obstacle, not a last-known target.
+        // Absence also includes leaving the current query; the next live frame
+        // will add it again if it returns within range.
+        if (contact.tags?.includes('cold_dressing')) { memory.contacts.delete(key); continue; }
+        const age = normalized.tick - contact.lastSeenTick;
+        const confidence = contact.observedConfidence * Math.max(0, 1 - age / this.memoryTicks);
+        if (age > this.memoryTicks || confidence < this.confidenceFloor) memory.contacts.delete(key);
+      }
     }
 
     memory.revision++;

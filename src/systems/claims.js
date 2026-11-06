@@ -50,7 +50,20 @@ import {
   BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST,
   BODY_SPECIALIZATIONS, BODY_SPECIALIZATION_BY_ID,
 } from '../data/claimableBodies.js';
-import { CLAIM_REFINERY_RECIPES, CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
+import { CLAIM_REFINERY_INPUT_IDS } from '../data/sites.js';
+import {
+  OUTPUT_STORE_FULL_LINE, CLAIM_INPUT_SET, SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR,
+  DEPOT_SUPPORT_GRACE_S, DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID,
+  DEPOT_PATROL_ANCHOR_FRAC, DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX,
+  SECTOR_BY_ID, readyClaimRecipe, sumStore, raidTripChance, repelChance,
+  claimDefenseRating, claimsReadMethods, cachedRelayDestination,
+} from './claimsReadModel.js';
+export {
+  SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR, SPEC_RAID_LOSS_FRAC, DEPOT_SUPPORT_GRACE_S,
+  DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID, DEPOT_PATROL_ANCHOR_FRAC,
+  DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX, raidTripChance, repelChance,
+  claimDefenseRating, claimsReadView,
+} from './claimsReadModel.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { ensureShipment, shipmentQty, shipmentUsed, addToShipment, takeFromShipment } from './cargoCustody.js';
@@ -71,43 +84,14 @@ import { collidesFlipEpoch } from '../world/livingWorldViews.js';
 import { physicsPartitionEpoch } from '../world/activityRuntime.js';
 import { NEREID_ANNEX, reconcileNereidFreightAnnex } from '../world/nereidFreightAnnex.js';
 
-// Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
-const REFINE_RATIO = 2;
-// Player-facing reason the refinery stopped adding goods. The operating word stays
-// 'active' so upkeep, raids, and the refine tick keep running; the readout uses this.
-const OUTPUT_STORE_FULL_LINE = 'Output store full — collect refined goods';
-// Same readout treatment for the input side: parked material or in-flight work that
-// cannot form a whole batch is a recoverable stall — say exactly what it takes.
-const INPUT_STARVED_LINE = 'Awaiting ore — next batch consumes ' + REFINE_RATIO + 'u of one refinable ore';
-// Row 402 — ONE recipe book for claim refineries (AL-LG-13 claim half, AL-LG-14). The table
-// comes straight from data/sites.js: the four live site sm_refinery modes plus copper smelting.
-// Copper never becomes circuitry here; circuitry needs a fabricator. No private REFINE_MAP.
-const CLAIM_RECIPES = CLAIM_REFINERY_RECIPES.map((r) => {
-  const [outputId, outputU] = Object.entries(r.output)[0];
-  return { id: r.id, inputs: r.inputs, outputId, outputU,
-    batchU: Object.values(r.inputs).reduce((s, q) => s + q, 0),
-    primaryInputId: Object.keys(r.inputs)[0] };
-});
-const CLAIM_INPUT_SET = new Set(CLAIM_REFINERY_INPUT_IDS);
 export const REFINABLE_ORE_IDS = CLAIM_REFINERY_INPUT_IDS.slice(); // still includes cmdty_ore_iron
 export const RELAY_FEED_EVERY_S = 30;   // refinery → same-sector relay forward cadence (s of simTime)
 export const CLAIM_RECIPE_BOOK = 1;     // spec.recipeBook stamp; absent = pre-row-402 save
-function readyClaimRecipe(stock) {
-  const have = stock || {};
-  for (const r of CLAIM_RECIPES) {
-    let ok = true;
-    for (const id in r.inputs) { if (!((Number(have[id]) || 0) >= r.inputs[id])) { ok = false; break; } }
-    if (ok) return r;
-  }
-  return null;
-}
+
 function claimBodyOrdinal(id) { const m = /^claim_(\d+)$/.exec(id || ''); return m ? parseInt(m[1], 10) : Infinity; }
 
 // Specialization cadences and raid contract (legacy outpost truth, claim-scoped).
 export const SPEC_UPKEEP_EVERY_S = 60;     // upkeep settles once a minute (outpost autosell cadence)
-export const SPEC_RAID_EVERY_S = 600;      // raid roll window (automation OUTPOST_RAID_INTERVAL_S)
-export const RAID_SECURITY_FLOOR = 0.5;    // sectors at/above this security never raid player bases
-export const SPEC_RAID_LOSS_FRAC = 0.7;    // uncovered raid takes 70% of stored goods (legacy)
 export const SPEC_RAID_COOLDOWN_S = 300;   // raided site freeze (legacy raidCooldown)
 export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of halved pressure
 export const CLAIM_RAID_ATTACKER_RANGE = Object.freeze([4, 6]);
@@ -163,22 +147,19 @@ const GROWTH_ROUTE_RAMP_MULT = 1.6;
 // stores run dry, go cold, or get raided and the rotation is withdrawn — the presence degrades
 // because the support did.
 export const STATION_GROWTH_SCHEMA = 'station_growth_v1';
-export const DEPOT_SUPPORT_GRACE_S = 90;         // dry stores tolerated before support lapses
-export const DEPOT_PATROL_SHAPE_ID = 'patrol_beat';
-export const DEPOT_PATROL_FACTION_ID = 'faction_scn'; // the shape flies the Concord flag everywhere
+
 export const DEPOT_PATROL_ROTATION_GAP_S = 30;   // relief gap after a beat resolves (≈80% duty cycle)
 export const DEPOT_PATROL_RETRY_S = 10;          // director denied / off-sector poll cadence
 // A rotation only counts (and only earns Concord standing) after it actually held the lane for
 // half a beat. The beat also resolves 'completed' when the far-actor table virtualizes the hulls
 // seconds after the player flies off, so without a floor a post/leave/return loop would farm rep.
 export const DEPOT_PATROL_CREDIT_FLOOR_S = 60;
-export const DEPOT_PATROL_ANCHOR_FRAC = 0.35;    // rotation holds the lane a third of the way out
-export const DEPOT_PATROL_ZONE_RADIUS_WU = 280;
+
 // A rotation is a physical presence: it only posts while the player is inside the world's
 // near-residency radius of the lane anchor (capped here), otherwise the far-actor table would
 // virtualize the hulls two ticks after they spawned and the beat would churn spawns unseen.
 export const DEPOT_PATROL_PRESENCE_RANGE_WU = 1400;
-export const DEPOT_PATROL_ID_PREFIX = 'depot-patrol:';
+
 
 /**
  * WORLD-37: pure projector for the chart's moving law presence. A supported depot whose
@@ -282,7 +263,7 @@ function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
   return ox * ox + oz * oz;
 }
 
-const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 // Authored station records by id (PQ-170.01 growth resolves type/faction/name through these).
 const STATION_DEF_BY_ID = (() => {
@@ -305,23 +286,6 @@ let _nextClaimId = 1;
 
 function fmtCr(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
-}
-
-function sumStore(bucket) {
-  let total = 0;
-  for (const id in bucket) total += bucket[id] || 0;
-  return total;
-}
-
-// Input the unified recipe book cannot refine (a pre-row-402 save's platinoid, say). It is not
-// output, but it is still the player's: the ledger exposes it so the Base screen offers Collect
-// even when the output store is empty.
-function strandedInputUnits(bucket) {
-  let total = 0;
-  for (const id in bucket) {
-    if (!CLAIM_INPUT_SET.has(id)) total += bucket[id] || 0;
-  }
-  return total;
 }
 
 function materialName(id) {
@@ -350,36 +314,6 @@ function firstMissingModuleMaterial(mod, player) {
   return null;
 }
 
-// The raid dice, decomposed so bastions produce honest receipts instead of silently editing a
-// probability. pTrip×(1−pRepel) equals the legacy automation pRaid for every reachable input.
-export function raidTripChance(danger, opts = {}) {
-  const base = Math.min(Math.max((danger || 0) * 0.4, 0), 0.5);
-  return opts.deterred ? base * 0.5 : base;
-}
-
-export function repelChance(defenseRating) {
-  return 1 - 1 / Math.max(1, (defenseRating || 0) / 20);
-}
-
-// A claim's effective defense rating: its own battery module, its own active garrison, and the
-// stationed protection lent by an active Defense Bastion elsewhere in the same sector.
-export function claimDefenseRating(body, bodies = []) {
-  if (!body) return 0;
-  let rating = 0;
-  const battery = BODY_MODULE_BY_ID.get('mod_defense');
-  if (body.modules && body.modules.includes('mod_defense')) rating += (battery && battery.defenseRating) || 0;
-  const bastionDef = BODY_SPECIALIZATION_BY_ID.get('spec_bastion');
-  if (body.spec && body.spec.id === 'spec_bastion' && body.spec.status === 'active' && bastionDef) {
-    rating += bastionDef.defenseBonus || 0;
-  }
-  if (bastionDef) {
-    const covered = bodies.some((b) => b && b !== body && b.sectorId === body.sectorId
-      && b.spec && b.spec.id === 'spec_bastion' && b.spec.status === 'active');
-    if (covered) rating += bastionDef.coverageBonus || 0;
-  }
-  return rating;
-}
-
 /** Departed freight is sold, returned, recovered, or explicitly lost. Nothing is invented. */
 export function listedMarketSell(entry) {
   const listed = Number(entry && entry.lastSell);
@@ -394,6 +328,7 @@ export function relayFreightLedger(departed, aboard, recoverable = 0) {
 }
 
 export const claims = {
+  ...claimsReadMethods,
   name: 'claims',
   // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
   // re-cloning the bodies payload a second time inside the single-task autosave capture.
@@ -437,11 +372,6 @@ export const claims = {
       this.bus.on('freight:loss', (payload) => this._onConvoyFreightLoss(payload || {}));
     }
     this._resumeDefenseIds = new Set();
-  },
-
-  // Is the POI at the given id already claimed by the player?
-  isClaimed(poiId) {
-    return (this.state.claims.bodies || []).some((b) => b.poiId === poiId);
   },
 
   // Claim the body at a POI. Validates credits + that it's unclaimed. POI def carries size/name/pos.
@@ -771,125 +701,6 @@ export const claims = {
         stranded ? { qty: total, strandedU: stranded } : { qty: total });
     }
     return total;
-  },
-
-  // Honest operations readout for the Base screen and tests. Every number is computed from live
-  // state with the SAME functions the tick uses — the UI never re-derives production/raid math.
-  ledger(bodyId) {
-    const bodies = (this.state.claims && this.state.claims.bodies) || [];
-    const body = bodies.find((b) => b.id === bodyId);
-    if (!body) return null;
-    const spec = body.spec;
-    const def = spec && BODY_SPECIALIZATION_BY_ID.get(spec.id);
-    if (!spec || !def) {
-      return { bodyId: body.id, name: body.name, specId: null, specName: null, status: null };
-    }
-    const t = this.state.simTime || 0;
-    const sector = SECTOR_BY_ID.get(body.sectorId);
-    const security = sector ? sector.security : 1;
-    const danger = sector ? dangerIndex(sector) : 0;
-    const rating = claimDefenseRating(body, bodies);
-    const covered = bodies.some((b) => b !== body && b.sectorId === body.sectorId
-      && b.spec && b.spec.id === 'spec_bastion' && b.spec.status === 'active');
-    const deterred = (spec.deterrenceUntil || 0) > t;
-    const meta = this.state.claims.meta;
-    const strandedInputU = def.id === 'spec_refinery'
-      ? strandedInputUnits(spec.store && spec.store.input)
-      : 0;
-    const out = {
-      bodyId: body.id,
-      name: body.name,
-      specId: def.id,
-      specName: def.name,
-      status: spec.status,
-      since: spec.since,
-      upkeepPerMin: def.upkeepPerMin,
-      upkeepDebt: Math.round(spec.upkeepDebt || 0),
-      stores: {
-        inputU: sumStore(spec.store.input),
-        inputCapU: def.id === 'spec_refinery' ? def.inputCapU : (def.id === 'spec_relay' ? def.storeCapU : 0),
-        outputU: sumStore(spec.store.output),
-        outputCapU: def.id === 'spec_refinery' ? def.outputCapU : 0,
-        strandedInputU,
-      },
-      flows: {
-        refinedTotalU: spec.totals.refinedTotalU,
-        soldTotalCr: spec.totals.soldTotalCr,
-        lostTotalU: spec.totals.lostU,
-        upkeepPaidCr: spec.totals.upkeepPaidCr,
-        forwardedU: spec.totals.forwardedU || 0,
-        receivedU: spec.totals.receivedU || 0,
-      },
-      defense: { rating, coveredByBastion: covered },
-      risk: {
-        security,
-        raidEligible: !!sector && security < RAID_SECURITY_FLOOR,
-        tripChance: raidTripChance(danger, { deterred }),
-        repelChance: repelChance(rating),
-        lossFrac: covered ? BODY_SPECIALIZATION_BY_ID.get('spec_bastion').coveredLossFrac : SPEC_RAID_LOSS_FRAC,
-        deterredUntil: spec.deterrenceUntil || 0,
-        nextRollInS: meta ? Math.max(0, SPEC_RAID_EVERY_S - (meta.raidAccum || 0)) : SPEC_RAID_EVERY_S,
-      },
-      convoy: spec.convoy
-        ? { ...spec.convoy, etaS: Math.max(0, spec.convoy.arriveAt - t) }
-        : null,
-      throughput: null,
-      readiness: null,
-      infrastructure: body.infrastructure ? {
-        id: body.infrastructure.id,
-        name: body.infrastructure.name,
-        stage: body.infrastructure.stage,
-        operational: body.infrastructure.operational === true,
-        stationId: body.infrastructure.stationId,
-        stationName: this._stationName(body.infrastructure.stationId) || body.infrastructure.stationId,
-        distanceWU: body.infrastructure.distanceWU,
-        ceilingMult: body.infrastructure.ceilingMult,
-        rampMult: body.infrastructure.rampMult,
-        alignRemainingS: body.infrastructure.stage === 'aligning'
-          ? Math.max(0, (body.infrastructure.alignUntil || 0) - t)
-          : 0,
-        damagePolicy: body.infrastructure.damagePolicy,
-      } : null,
-      depot: this._depotSupportReadout(body),
-      lastEvent: spec.receipts.length ? spec.receipts[spec.receipts.length - 1] : null,
-      receipts: spec.receipts.slice(),
-    };
-    // A full store is a readout, not a mode change; input that cannot cover the next
-    // real conversion reads out the same way. Cold and raided sites keep their word.
-    if (def.id === 'spec_refinery') {
-      const ready = this._refineryReadiness(spec, def);
-      out.throughput = {
-        refineRatePerS: def.refineRatePerS,
-        refineRatio: REFINE_RATIO,
-        nextBatch: {
-          goodId: ready.nextOre,
-          inputU: ready.recipe ? ready.recipe.batchU : REFINE_RATIO,
-          outputU: ready.recipe ? ready.recipe.outputU : 1,
-          recipeId: ready.recipe ? ready.recipe.id : null,
-        },
-      };
-      if (spec.status === 'active') {
-        if (ready.outputRoomU <= 0) out.status = OUTPUT_STORE_FULL_LINE;
-        else if (ready.starved) out.status = INPUT_STARVED_LINE;
-      }
-    } else if (def.id === 'spec_relay') {
-      out.throughput = {
-        convoyLoadU: def.convoyLoadU,
-        minLoadU: def.minLoadU,
-        dispatchEveryS: def.dispatchEveryS,
-        transitS: def.transitS,
-        saleFee: def.saleFee,
-        destStationId: this._relayDestination(body, { resolve: false }),
-      };
-    } else if (def.id === 'spec_bastion') {
-      out.readiness = {
-        coveredBodies: bodies.filter((b) => b.sectorId === body.sectorId && b.spec).length,
-        defenseBonus: def.defenseBonus,
-        coverageBonus: def.coverageBonus,
-        active: spec.status === 'active',
-      };
-    }
-    return out;
   },
 
   // Teleport the player from a claimed body (with a teleporter) to its linked station. The V2 §8
@@ -1348,27 +1159,6 @@ export const claims = {
       this._tickRefineryFeed(body, state);
     } else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
     // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
-  },
-
-  // The one readiness read shared by the tick and the ledger: which recipe the next whole
-  // batch would draw (first ready row in the fixed table order), how much output room is
-  // left, and whether the site is stalled on material or work it already holds.
-  _refineryReadiness(spec, def) {
-    // Pure readout — tolerate a spec whose store has not been materialized yet and report
-    // "nothing held" instead of crashing the tick.
-    const input = (spec.store && spec.store.input) || {};
-    const output = (spec.store && spec.store.output) || {};
-    const recipe = readyClaimRecipe(input);
-    const outputRoomU = Math.max(0, def.outputCapU - sumStore(output));
-    return {
-      recipe,
-      nextOre: recipe ? recipe.primaryInputId : null,
-      outputRoomU,
-      working: !!recipe && outputRoomU > 0,
-      // Parked freight or an in-flight partial batch with no whole conversion
-      // available is a stall; a never-stocked site simply idles.
-      starved: !recipe && (sumStore(input) > 0 || (spec.acc || 0) > 0),
-    };
   },
 
   _tickSpecRefinery(body, def, dt) {
@@ -2129,18 +1919,6 @@ export const claims = {
     return best && best.data && best.data.stationId;
   },
 
-  _stationName(stationId) {
-    if (!stationId) return null;
-    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
-    const indexed = byStationId && byStationId.get(stationId);
-    if (indexed && indexed.alive && indexed.type === 'station' && indexed.data) return indexed.data.name || stationId;
-    const stations = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList;
-    for (const e of stations) {
-      if (e.alive && e.type === 'station' && e.data && e.data.stationId === stationId) return e.data.name || stationId;
-    }
-    return stationId;
-  },
-
   _stationEntity(stationId) {
     if (!stationId) return null;
     const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
@@ -2158,8 +1936,8 @@ export const claims = {
   // resolved once — nearest station entity in-sector, falling back to the sector's authored
   // station data (so relays in other sectors still ship somewhere real).
   _relayDestination(body, opts = {}) {
-    if (body.linkedStationId) return body.linkedStationId;
-    if (body.spec && body.spec.destStationId) return body.spec.destStationId;
+    const existing = cachedRelayDestination(body);
+    if (existing) return existing;
     if (opts.resolve === false) return null;
     let dest = this._nearestStationId(body) || null;
     if (!dest) {
@@ -3077,13 +2855,6 @@ export const claims = {
     };
   },
 
-  _depotStocked(body) {
-    const spec = body && body.spec;
-    if (!spec || spec.id !== 'spec_relay' || spec.status !== 'active') return false;
-    if (sumStore(spec.store.input) > 0) return true;
-    return !!(spec.convoy && spec.convoy.qty > 0);
-  },
-
   _tickDepotSupport(body, state) {
     const spec = body && body.spec;
     const isRelay = !!spec && spec.id === 'spec_relay';
@@ -3261,27 +3032,6 @@ export const claims = {
     return true;
   },
 
-  _depotSupportReadout(body) {
-    const ds = body && body.depotSupport;
-    if (!ds) return null;
-    const t = this.state.simTime || 0;
-    return {
-      supported: ds.supported === true,
-      since: ds.since,
-      stocked: this._depotStocked(body),
-      dryForS: ds.dryAt ? Math.max(0, t - ds.dryAt) : 0,
-      graceS: DEPOT_SUPPORT_GRACE_S,
-      lapsedAt: ds.lapsedAt,
-      lapseReason: ds.lapseReason,
-      patrolFactionId: DEPOT_PATROL_FACTION_ID,
-      patrolLive: !!ds.patrol.encounterId,
-      patrolEncounterId: ds.patrol.encounterId,
-      rotations: ds.rotations,
-      completedRotations: ds.completedRotations,
-      lastDenied: ds.patrol.lastDenied,
-    };
-  },
-
   _normalizeDepotSupport(raw, body) {
     if (!raw || typeof raw !== 'object' || !body || !body.spec || body.spec.id !== 'spec_relay') return null;
     const fresh = this._freshDepotSupport();
@@ -3321,8 +3071,6 @@ export const claims = {
   },
 
   // Public read API for the Base screen.
-  list() { return (this.state.claims && this.state.claims.bodies) || []; },
-
   endgamePulls() {
     return this.state.claims && this.state.claims.endgamePulls || null;
   },
@@ -3556,18 +3304,3 @@ export const claims = {
     _nextClaimId = 1;
   },
 };
-
-// Lane-facade read view: binds the system's read methods to a foreign `state`
-// (the worker lane's domain mirror). The prototype IS the system object, so
-// every `this.` read helper (ledger, _stationName, _depotSupportReadout,
-// _refineryReadiness, _relayDestination, ...) resolves against the real
-// implementation while `this.state` reads the mirror. READ-ONLY surface —
-// mutating methods (claim, buildModule, tick, init, ...) belong to lane rpcs;
-// callers must pick read names off the view, never expose it whole.
-export function claimsReadView(state) {
-  const view = Object.create(claims);
-  view.state = state;
-  view.bus = null;
-  view.ctx = { state, bus: null };
-  return view;
-}

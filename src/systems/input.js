@@ -56,12 +56,12 @@ import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
-import { isHostileToPlayer } from './scanner.js';
-import { isBeamTargetEligible } from './mining.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
+import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
-import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
+import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
@@ -337,7 +337,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                 // LMB fires; Space is the new-profile Massline action
-  brake:    ['Digit0'],         // dedicated zero-thrust brake; S/Down remains reverse + brake
+  brake:    ['Digit0'],         // full stop; S/Down commands governed reverse thrust
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],    // deploy chaff/ECM (P1-7) — X by default, remappable
   bomb: ['Digit4', 'KeyY'],    // the BOMB power: Digit4 is its hotbar seat; Y is the old charge-throw letter (Q/E strafe, T is the tech tree)
@@ -360,7 +360,7 @@ const HELM_BINDINGS = {      // HELM ASSIST (default): mouse owns the nose
   strafeRight: ['KeyD', 'ArrowRight'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                // LMB only
-  brake:    ['Digit0'],        // dedicated zero-thrust brake; S/Down remains reverse + brake
+  brake:    ['Digit0'],        // full stop; S/Down commands governed reverse thrust
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   bomb: ['Digit4', 'KeyQ'],    // helm: Q is free (A/D strafe), the old charge-throw letter here
@@ -378,7 +378,7 @@ export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fi
   strafeRight: ['KeyE'],
   boost:    ['ShiftLeft', 'ShiftRight'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
-  brake:    ['Digit0'],              // dedicated zero-thrust brake; S/Down remains reverse + brake
+  brake:    ['Digit0'],              // full stop; S/Down commands governed reverse thrust
   autoFire: ['KeyG'],
   countermeasure: ['KeyX'],
   bomb: ['Digit4', 'KeyY'],                    // Q/E are strafe here, so the bomb's letter is Y (classic parity); Digit4 is the hotbar seat
@@ -401,7 +401,7 @@ function activeScheme(state) {
  * Pure Pilot keyboard projection after rebind resolution.
  *
  * The live input tick and deterministic public-control harness share this one semantic owner:
- * A/D always yaws, Q/E always strafes, and S is reverse/brake. A/D must not strafe under
+ * A/D always yaws, Q/E always strafes, S reverses, and the dedicated brake stops. A/D must not strafe under
  * thrust. Vectoring would then aim the path at nose + atan2(strafe, throttle), the hull would
  * sit out of its trail while the key was held, and the lead bound would not see it.
  */
@@ -423,7 +423,7 @@ export function projectPilotFlightControls({
   projected.turnIntent = side;
   projected.lineOrbit = side;
   projected.boost = boost === true;
-  projected.brake = reverse === true || brakeHeld === true;
+  projected.brake = brakeHeld === true;
   return projected;
 }
 
@@ -938,6 +938,7 @@ function resetAutoTargetPath(host, state = host && host.state) {
 // The next flight tick then republished that shove as thrust. Discard the knob and the
 // vector it already published. The mode itself stays; only a fresh packet steers again.
 function discardCombatStick(host) {
+  host._combatStickPilotRun = null;
   const { width, height } = centeredPointer();
   resetDynamicFlightStick(host, width, height);
   const inp = host && host.state && host.state.input;
@@ -1019,7 +1020,14 @@ export function domPointerMoveEvent(host, d = {}) {
     const movementX = Number.isFinite(d.movementX) ? d.movementX : 0;
     const movementY = Number.isFinite(d.movementY) ? d.movementY : 0;
     if (movementX === 0 && movementY === 0) return;
-    recordAutoTargetStick(host, movementX, movementY);
+    const accepted = recordAutoTargetStick(host, movementX, movementY);
+    if (accepted && !swarmPilotHasActed(host.state)
+      && !shouldNeutralizeFlightInput(host.state, modalInputActive())) {
+      // Remember the device edge, not the persistent knob or the assist's later axes.
+      // Admission waits for input sampling and must still belong to this run/wave.
+      host._combatStickPilotRun = host.state.run;
+      host._combatStickPilotWave = host.state.run.wave;
+    }
     host._screen.x = geometry.cx;
     host._screen.y = geometry.cy;
     host._screen.active = true;
@@ -1100,6 +1108,7 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
+    this._combatStickPilotRun = null;
     this._m0 = false; this._m1 = false; this._m2 = false;
     this._m2HeldS = 0;
     this._m2ToolLane = null;
@@ -1202,7 +1211,12 @@ export const input = {
         const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
           ? laneCtx.registry.get('drill') : null;
         if (!drill) break;
-        if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
+        if (d.op === 'begin' && typeof drill.begin === 'function') {
+          const result = drill.begin(d.asteroidId, d.options);
+          if (result === false && d.options?.requestId != null) {
+            laneCtx.bus?.emit('drill:beginRejected', { requestId: d.options.requestId, asteroidId: d.asteroidId });
+          }
+        }
         else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
         else if (d.op === 'armCharge' && typeof drill.armCharge === 'function') drill.armCharge();
@@ -1413,8 +1427,10 @@ export const input = {
     };
     const offDeath = bus.on('player:death', onDeath);
     const offRespawn = bus.on('player:respawn', onRespawn);
+    const offMode = bus.on('mode:changed', () => { this._combatStickPilotRun = null; });
     if (typeof offDeath === 'function') offs.push(offDeath);
     if (typeof offRespawn === 'function') offs.push(offRespawn);
+    if (typeof offMode === 'function') offs.push(offMode);
     this._interruptControlOffs = offs;
   },
 
@@ -1677,6 +1693,9 @@ export const input = {
   },
 
   update(dt, state) {
+    const combatStickPilotRun = this._combatStickPilotRun;
+    const combatStickPilotWave = this._combatStickPilotWave;
+    this._combatStickPilotRun = null;
     // F4/G9: stamp kbm activity with (tick, sequence) when DOM events fired this interval.
     if (this._kbmActivityPending) {
       const stamp = this._bumpActivityStamp(state);
@@ -1962,9 +1981,7 @@ export const input = {
     const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
     this._pointerHelmEdge = false;
     resolveMovementOwner(this, { kbdDrive, gp, tp, pointerHelmEdge, pointerOwnsHelm });
-    let keyboardBrake = isPlayerSaucer(p) ? !!kbdBrakeHeld : (helm || pilot)
-      ? !!(pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld))
-      : !!(down || kbdBrakeHeld);
+    let keyboardBrake = !!kbdBrakeHeld;
     // Ownership gates the drive vector only (turn/move axes). Boost and brake are modifiers,
     // not drive authority — like fire and mine they merge from whichever device holds them,
     // owner or not. Gating them by owner made a boot-claimed pad's boost unreachable whenever
@@ -2008,9 +2025,7 @@ export const input = {
     const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
       keyboardBrake || gpBrake, toggleLive('brake'));
     inp.boost = boostHeld;
-    inp.brake = brakeHeld
-      || (this._movementSource === 'gamepad' && padScheme !== 'twinstick' && gpMoveZ < -0.55)
-      || (this._movementSource === 'touch' && tpMoveZ < -0.55);
+    inp.brake = brakeHeld;
     inp.fire = kbdFire || gpFire || tpFire;
     // Explicit device input interrupts the drawn route without switching off gun targeting.
     // Do not infer this from the auto pilot's axes one system later: those include reverse
@@ -2350,7 +2365,14 @@ export const input = {
     }
     // Capture deliberate verbs before their later consumers clear the one-shot edges.
     // This observes the finalized input contract without changing axes or actions.
-    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
+    const run = state.run;
+    // drawFlightManual interrupts G steering, so a sampled pointer act has its own admission.
+    // Wallet commits replace run objects; the issued retire token preserves run identity.
+    const combatStickPilotAct = !!(combatStickPilotRun && inp.autoFire && kbmRecent
+      && inp.autoTargetVector?.active && run?.phase === 'active' && run.wave === combatStickPilotWave
+      && (run === combatStickPilotRun || (Number.isSafeInteger(combatStickPilotRun.retireToken)
+        && run.retireToken === combatStickPilotRun.retireToken)));
+    if (swarmPilotIsActing(state) || combatStickPilotAct) noteSwarmPilotAction(state);
   },
 };
 

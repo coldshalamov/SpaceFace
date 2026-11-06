@@ -238,16 +238,10 @@ export const ONE_OFF_CAST = Object.freeze([
     chart: { kind: 'site', ref: 'planet_tethys_anvil', presentVia: 'traffic' },
   }),
   entry({
-    // The sun's module and berths are shipped (src/systems/borrowedSun.js,
-    // BORROWED_SUN_BERTHS), but nothing registers the system yet — the mapping is authored
-    // ahead of the wiring, which is exactly what the census is for. `chart.ref` already
-    // names the surface it intends to ride when a lane registers it: the borrowedSun
-    // contact itself.
     id: 'borrowed_sun', name: 'The Borrowed Sun — the station that is only visiting',
     sectorIds: ['sector_tethys_junction', 'sector_ceres_belt'],
     books: { from: 1, to: 7 },
-    chart: { kind: 'planned', ref: 'borrowedSun' },
-    implemented: false,
+    chart: { kind: 'contact', ref: 'borrowedSun', presentVia: 'borrowedSun' },
   }),
   entry({
     // "A courier far too fast" — worldOneOffs.js names her a one-off; she is a named lane

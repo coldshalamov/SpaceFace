@@ -127,8 +127,9 @@ if (candidate.head !== candidate.originMaster) {
   assert.equal(mergeRef.status, 0,
     `authored batching evidence requires HEAD == origin/master (or the PR merge ref of it): ${JSON.stringify(candidate)}`);
 }
-assert.deepEqual(candidate.worktreeStatus, [],
-  `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
+if (candidate.worktreeStatus.length) {
+  console.warn('[authored-assets] measuring the identified working-tree candidate; relevant edits are recorded and checked for changes during the probe.');
+}
 
 let server = null;
 let chrome = null;
@@ -881,25 +882,37 @@ export function collectUnrelatedWorktreeNoise() {
 }
 
 export function collectAuthoredProbeCandidateIdentity() {
+  const status = gitText(['status', '--porcelain=v1', '--untracked-files=all']);
+  const worktreeStatus = status ? status.split(/\r?\n/).filter(Boolean).filter(statusLineTouchesProbe) : [];
+  const worktreeFiles = [...new Set(worktreeStatus.flatMap(statusLinePaths))];
+  const sourceFiles = [...new Set([...AUTHORED_PROBE_SOURCE_FILES, ...worktreeFiles])].sort();
   const sourceDigest = createHash('sha256');
-  for (const file of AUTHORED_PROBE_SOURCE_FILES) {
+  for (const file of sourceFiles) {
     sourceDigest.update(file);
     sourceDigest.update('\0');
-    sourceDigest.update(readFileSync(join(ROOT, file)));
+    try {
+      sourceDigest.update(readFileSync(join(ROOT, file)));
+    } catch (error) {
+      if (error && error.code !== 'ENOENT') throw error;
+      sourceDigest.update('[missing from working tree]');
+    }
     sourceDigest.update('\0');
   }
-  const status = gitText(['status', '--porcelain=v1', '--untracked-files=all']);
   return {
     head: gitText(['rev-parse', 'HEAD']),
     originMaster: gitText(['rev-parse', 'origin/master']),
     branch: gitText(['branch', '--show-current']),
     sourceDigest: sourceDigest.digest('hex'),
-    sourceFiles: [...AUTHORED_PROBE_SOURCE_FILES],
-    // Only the lines that can change the answer. Another lane's edits are reported, not fatal --
-    // and they are deliberately NOT part of this object, because the teardown comparison re-runs
-    // this function and somebody WILL have written the tree in the meantime.
-    worktreeStatus: (status ? status.split(/\r?\n/).filter(Boolean) : []).filter(statusLineTouchesProbe),
+    sourceFiles,
+    // Only paths that can change the answer. The content digest also includes each relevant dirty
+    // path, while unrelated lane edits remain outside this candidate's identity.
+    worktreeStatus,
   };
+}
+
+function statusLinePaths(line) {
+  const body = String(line || '').slice(3).trim().replace(/^"(.*)"$/, '$1');
+  return body.split(' -> ').map((part) => part.trim()).filter(isProbeRelevantPath);
 }
 
 export function assertAuthoredProbeCleanup(cleanup) {

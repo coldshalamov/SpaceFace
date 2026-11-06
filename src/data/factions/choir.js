@@ -90,6 +90,45 @@ export const CHOIR_SHRINE = Object.freeze({
   sacrilegeRepLoss: -25,
 });
 
+// The Choir's holy furniture, per sector. The runtime owner (faction_choir.js) raises
+// these bodies when the player flies the sector: shrines (sanctuary, tithe, pilgrim
+// legs, heresy), bells (E-23 resonance) and one sealed relic (E-22) to recover. `pos`
+// is sector-local; each run jitters it by up to `jitterR` from a hash of the run seed
+// and site id, so a sector reads the same on every visit of one run. Bells sit
+// well clear of the crystal field (pulseRadius + field radius) so they do not eat
+// the field — crystal is brought to a bell. The relic sits beyond pingRadius of
+// every shrine so it only reports home once someone carries it in.
+export const CHOIR_SITES = Object.freeze({
+  jitterR: 120,
+  reraiseS: 900,           // a slain shrine or bell is re-raised this long after it fell
+  scanGapS: 1,             // presence scan cadence (simTime)
+  sectors: Object.freeze({
+    sector_vesta_forge: Object.freeze({
+      shrines: Object.freeze([
+        Object.freeze({ id: 'shrine_vesta_first_chord', name: 'SHRINE OF THE FIRST CHORD',
+          pos: Object.freeze({ x: -1900, z: 1500 }), radius: 46, hull: 1600,
+          scanLabel: 'SHRINE OF THE FIRST CHORD · holy ground — the laden owe a tithe' }),
+        Object.freeze({ id: 'shrine_vesta_slag_psalm', name: 'SHRINE OF THE SLAG PSALM',
+          pos: Object.freeze({ x: 2200, z: -300 }), radius: 46, hull: 1600,
+          scanLabel: 'SHRINE OF THE SLAG PSALM · holy ground — the laden owe a tithe' }),
+      ]),
+      bells: Object.freeze([
+        Object.freeze({ id: 'bell_vesta_first_chord', name: 'THE FIRST CHORD BELL',
+          pos: Object.freeze({ x: -1500, z: 2100 }), radius: 22, hull: 900,
+          scanLabel: 'CHOIR BELL · its pulse shatters crystal — throw crystal in its field' }),
+        Object.freeze({ id: 'bell_vesta_slag_psalm', name: 'THE SLAG PSALM BELL',
+          pos: Object.freeze({ x: 2500, z: 300 }), radius: 22, hull: 900,
+          scanLabel: 'CHOIR BELL · its pulse shatters crystal — throw crystal in its field' }),
+      ]),
+      relics: Object.freeze([
+        Object.freeze({ id: 'relic_vesta_helios_approach', name: 'SEALED CHOIR RELIC',
+          pos: Object.freeze({ x: 300, z: -2600 }), radius: 6, mass: 10, hull: 40,
+          scanLabel: 'SEALED CHOIR RELIC · it reports home near a shrine — crack the casing on a rock' }),
+      ]),
+    }),
+  }),
+});
+
 export const CHOIR_BARKS = Object.freeze({
   dormant: 'Dormant. No signal.',
   home: 'The shrine is home.',

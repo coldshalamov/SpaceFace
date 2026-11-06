@@ -93,6 +93,38 @@ test('a mechanical loss in safe space leaves a full mixed hold and no guard', ()
   }
 });
 
+test('a refused local wreck remains logged until its salvage body can materialize', () => {
+  const { state, bus, system, helpers } = boot();
+  try {
+    const available = [];
+    bus.on('intervention:available', (p) => available.push(p));
+    const spawnEntity = helpers.spawnEntity;
+    let refuseWreck = true;
+    helpers.spawnEntity = (spec) => {
+      if (refuseWreck && spec.type === 'wreck') {
+        refuseWreck = false;
+        return null;
+      }
+      return spawnEntity(spec);
+    };
+
+    bus.emit('automation:assetLost', {
+      kind: 'trader', id: 't-refused', value: 560, sectorId: 'sector_a',
+    });
+    assert.equal(system.active().length, 0, 'no active intervention is advertised without a wreck');
+    assert.equal(system.pending().length, 1, 'the failed same-sector site remains recoverable');
+    assert.equal(available.length, 0, 'the player is not told a nonexistent wreck is available');
+
+    system.update(1 / 60, state);
+    assert.equal(system.pending().length, 0, 'the bounded update retries and consumes the pending record');
+    assert.equal(system.active().length, 1);
+    assert.ok(wreckOf(state, system.active()[0]), 'retry materializes the salvage body');
+    assert.equal(available.length, 1, 'availability is announced after the real wreck exists');
+  } finally {
+    teardown(system, bus);
+  }
+});
+
 test('an explicitly raided loss leaves a picked wreck with a raider circling it', () => {
   const { state, bus, system } = boot();
   try {

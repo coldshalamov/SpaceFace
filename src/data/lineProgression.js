@@ -65,6 +65,26 @@ const HEAD_PRICES = Object.freeze({
 
 const HEAD_TIERS = Object.freeze({ stock: 1, worked: 2, named: 3, storied: 4, relic: 5 });
 
+// §33 row 489 meta progression between runs. These are unlock records, not stat boosts.
+// Declared before LINE_HEAD_MODULES so the module builder can stamp each gated head's
+// lineGate — module-level consts evaluate in order.
+export const LINE_META_UNLOCKS = Object.freeze([
+  Object.freeze({ id: 'line_head_coupler', headId: 'head_coupler', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 5 }), grants: Object.freeze({ heads: ['head_coupler'], startingRating: 150 }) }),
+  Object.freeze({ id: 'line_head_barb', headId: 'head_barb', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 8 }), grants: Object.freeze({ heads: ['head_barb'], arenas: ['reach_hook_pit'] }) }),
+  Object.freeze({ id: 'line_head_breaker', headId: 'head_breaker', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 10 }), grants: Object.freeze({ heads: ['head_breaker'], startingRating: 250 }) }),
+  Object.freeze({ id: 'line_head_magnet', headId: 'head_magnet', kind: 'head', earn: Object.freeze({ kind: 'cull_purse', min: 4000 }), grants: Object.freeze({ heads: ['head_magnet'], arenas: ['pitborn_scrapyard'] }) }),
+  Object.freeze({ id: 'line_head_multi_latch', headId: 'head_multi_latch', kind: 'head', earn: Object.freeze({ kind: 'authored_victory' }), grants: Object.freeze({ heads: ['head_multi_latch'], startingRating: 400 }) }),
+]);
+
+export const LINE_META_UNLOCK_BY_ID = Object.freeze(Object.fromEntries(
+  LINE_META_UNLOCKS.map((row) => [row.id, row]),
+));
+
+// head id -> the meta-unlock row that earns it (ungated heads have no row).
+export const LINE_META_UNLOCK_FOR_HEAD = Object.freeze(Object.fromEntries(
+  LINE_META_UNLOCKS.filter((row) => row.headId).map((row) => [row.headId, row.id]),
+));
+
 export const LINE_HEAD_MODULES = Object.freeze(LINE_HEADS.map((head) => Object.freeze({
   id: `mod_line_${head.id}`,
   name: head.name,
@@ -76,6 +96,9 @@ export const LINE_HEAD_MODULES = Object.freeze(LINE_HEADS.map((head) => Object.f
   energyDraw: head.rarityFloor === 'relic' ? 8 : 4,
   purchasable: head.id !== 'head_sympathy' && (HEAD_PRICES[head.id] || 0) > 0,
   rarityFloor: head.rarityFloor,
+  // Row 489: heads earned between runs are gated at the counter until the meta
+  // ledger holds their unlock row — the same posture swarmEarned gives a hull.
+  ...(LINE_META_UNLOCK_FOR_HEAD[head.id] ? { lineGate: LINE_META_UNLOCK_FOR_HEAD[head.id] } : {}),
   mods: {
     lineHeadId: head.id,
     ...(head.masslineHeadId ? { masslineHeadId: head.masslineHeadId } : {}),
@@ -208,19 +231,6 @@ export function stampLineRecord(progress, kind, text, atS, detail = null) {
   return stamp;
 }
 
-// §33 row 489 meta progression between runs. These are unlock records, not stat boosts.
-export const LINE_META_UNLOCKS = Object.freeze([
-  Object.freeze({ id: 'line_head_coupler', headId: 'head_coupler', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 5 }), grants: Object.freeze({ heads: ['head_coupler'], startingRating: 150 }) }),
-  Object.freeze({ id: 'line_head_barb', headId: 'head_barb', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 8 }), grants: Object.freeze({ heads: ['head_barb'], arenas: ['reach_hook_pit'] }) }),
-  Object.freeze({ id: 'line_head_breaker', headId: 'head_breaker', kind: 'head', earn: Object.freeze({ kind: 'waves_cleared', min: 10 }), grants: Object.freeze({ heads: ['head_breaker'], startingRating: 250 }) }),
-  Object.freeze({ id: 'line_head_magnet', headId: 'head_magnet', kind: 'head', earn: Object.freeze({ kind: 'cull_purse', min: 4000 }), grants: Object.freeze({ heads: ['head_magnet'], arenas: ['pitborn_scrapyard'] }) }),
-  Object.freeze({ id: 'line_head_multi_latch', headId: 'head_multi_latch', kind: 'head', earn: Object.freeze({ kind: 'authored_victory' }), grants: Object.freeze({ heads: ['head_multi_latch'], startingRating: 400 }) }),
-]);
-
-export const LINE_META_UNLOCK_BY_ID = Object.freeze(Object.fromEntries(
-  LINE_META_UNLOCKS.map((row) => [row.id, row]),
-));
-
 export function lineMetaUnlocksForRun(run = {}) {
   const waves = Math.max(0, Math.trunc(Number(run.wavesCleared ?? run.deepestWave) || 0));
   const purse = Math.max(0, Number(run.cullPurse ?? run.purse) || 0);
@@ -232,4 +242,96 @@ export function lineMetaUnlocksForRun(run = {}) {
     if (earn.kind === 'authored_victory') return victory;
     return false;
   });
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Row 489 read port. survivalRecords — the meta bag's owner — registers the live profile read    */
+/* at module load; the shipyard's buy gate answers off the same ledger without an import cycle.   */
+/* A missing reader is the empty ledger, never a guessed earn.                                    */
+/* ---------------------------------------------------------------------------------------------- */
+
+let _lineMetaReader = null;
+
+export function registerLineMetaReader(fn) {
+  _lineMetaReader = typeof fn === 'function' ? fn : null;
+}
+
+function _lineMetaEarnedIds() {
+  let profile = null;
+  try { profile = _lineMetaReader ? _lineMetaReader() : null; } catch { profile = null; }
+  const earned = profile && profile.lineMeta && profile.lineMeta.earned;
+  return earned && typeof earned === 'object' ? Object.keys(earned) : [];
+}
+
+/** Is this meta-unlock row earned right now? The buy gate's whole question. */
+export function lineMetaEarned(unlockId) {
+  return _lineMetaEarnedIds().includes(unlockId);
+}
+
+/** Every earned head id across the ledger — what the roster may offer. */
+export function lineMetaEarnedHeadIds() {
+  const out = [];
+  for (const id of _lineMetaEarnedIds()) {
+    const row = LINE_META_UNLOCK_BY_ID[id];
+    const heads = row && row.grants && row.grants.heads;
+    if (Array.isArray(heads)) for (const h of heads) if (!out.includes(h)) out.push(h);
+  }
+  return out;
+}
+
+/** The largest starting-rating floor any earned row grants — 0 when none. */
+export function lineMetaRatingFloor() {
+  let best = 0;
+  for (const id of _lineMetaEarnedIds()) {
+    const row = LINE_META_UNLOCK_BY_ID[id];
+    const rating = row && row.grants && Number(row.grants.startingRating);
+    if (Number.isFinite(rating) && rating > best) best = rating;
+  }
+  return best;
+}
+
+/** Every arena id an earned row opens. */
+export function lineMetaArenaIds() {
+  const out = [];
+  for (const id of _lineMetaEarnedIds()) {
+    const row = LINE_META_UNLOCK_BY_ID[id];
+    const arenas = row && row.grants && row.grants.arenas;
+    if (Array.isArray(arenas)) for (const a of arenas) if (!out.includes(a)) out.push(a);
+  }
+  return out;
+}
+
+/** Row 500: build one stamped history for a module instance at its source. Sources are
+ *  authored facts (salvage, derails, Cull purses, ace drops, faction arcs) — this helper
+ *  only bounds the shape so a stamp always normalizes: tier, label, source, optional
+ *  maker/deed, and the Backordered flavour's order text. Stock mints nothing. */
+export function provenanceStamp(spec = {}) {
+  const tier = provenanceTier(spec.tier || spec.rarity);
+  const backordered = spec.backordered === true
+    || (typeof spec.orderText === 'string' && !!spec.orderText.trim());
+  // provenanceTier() maps unknown keys to the stock object — never null — so a
+  // behind-tier must be named explicitly; a bare Backordered stamp defaults to Worked.
+  const behind = backordered && (!tier || tier.index === 0)
+    ? (spec.behindTier ? provenanceTier(spec.behindTier) : provenanceTier('worked'))
+    : tier;
+  if ((!behind || behind.index === 0) && !backordered) return null;
+  const out = {};
+  // Backordered always writes the real tier behind the paper flavour — a
+  // stock-floor module still carries the joke.
+  if (backordered) {
+    out.tier = 'backordered';
+    out.behindTier = provenanceTierKey(behind);
+  } else if (behind && behind.index > 0) {
+    out.tier = provenanceTierKey(behind);
+  }
+  if (typeof spec.label === 'string' && spec.label.trim()) out.label = spec.label.trim();
+  out.source = typeof spec.source === 'string' && spec.source.trim() ? spec.source.trim() : 'recorded';
+  if (typeof spec.maker === 'string' && spec.maker.trim()) out.maker = spec.maker.trim();
+  if (typeof spec.deed === 'string' && spec.deed.trim()) out.deed = spec.deed.trim();
+  if (backordered) {
+    out.backordered = true;
+    out.orderText = typeof spec.orderText === 'string' && spec.orderText.trim()
+      ? spec.orderText.trim() : 'BACKORDERED';
+  }
+  return out;
 }

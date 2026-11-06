@@ -36,6 +36,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'codex-record', screen: 'codex', backdrop: 'title', record: true },
   { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
   { id: 'missionLog', screen: 'missionLog', backdrop: 'title' },
+  // Settled receipts open: a voided failure's refund, a race DNF, a forfeit, an expiry (tools/ui-bench-receipts.js).
+  { id: 'mission-log-receipts', screen: 'missionLog', backdrop: 'title', receipts: true },
   { id: 'credits', screen: 'credits', backdrop: 'title' },
   { id: 'achievements', screen: 'achievements', backdrop: 'title' },
   { id: 'statistics', screen: 'statistics', backdrop: 'title' },
@@ -99,10 +101,16 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'station-dock', screen: 'station', backdrop: 'shell' },
   { id: 'station-market', screen: 'station', tab: 'market', backdrop: 'shell' },
   { id: 'station-shipworks', screen: 'station', tab: 'shipworks', backdrop: 'shell' },
+  { id: 'station-shipworks-impound', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'lot' },
+  { id: 'station-shipworks-ransom', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'ransom' },
   { id: 'station-industry', screen: 'station', tab: 'industry', backdrop: 'shell' },
   { id: 'station-contracts', screen: 'station', tab: 'contracts', backdrop: 'shell' },
   { id: 'station-factions', screen: 'station', tab: 'factions', backdrop: 'shell' },
   { id: 'station-bar', screen: 'station', tab: 'bar', backdrop: 'shell' },
+  // Story-reward readers (tools/ui-bench.js seedStoryRewardShot): the Concord docket officer for a
+  // held Lost Ledger at Helios; the Cassandra Treaty line on the Choir's own berth.
+  { id: 'station-bar-story-buyer', screen: 'station', tab: 'bar', backdrop: 'shell', story: 'ledger' },
+  { id: 'station-factions-treaty', screen: 'station', tab: 'factions', backdrop: 'shell', story: 'treaty', dock: 'station_depot3' },
   { id: 'station-ledger', screen: 'station', tab: 'ledger', backdrop: 'shell' },
 
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },
@@ -110,6 +118,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
+  { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
   { id: 'crucible-refit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucibleRefit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },
@@ -135,10 +144,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'replay', screen: 'replay', backdrop: 'title' },
   { id: 'clips', screen: 'clips', backdrop: 'title' },
   { id: 'sandbox', screen: 'sandbox', backdrop: 'title' },
-  { id: 'localmap', screen: 'localmap', backdrop: 'world' },
-  { id: 'localmap-legacy', screen: 'localmap', backdrop: 'world' },
-  { id: 'starmap', screen: 'starmap', backdrop: 'world' },
-  { id: 'starmap-legacy', screen: 'starmap', backdrop: 'world' },
+  { id: 'localmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'localmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'starmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
+  { id: 'starmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
 ]);
 
 const BY_ID = new Map(UI_BENCH_SHOTS.map((shot) => [shot.id, shot]));

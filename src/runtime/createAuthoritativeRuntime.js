@@ -13,6 +13,7 @@
 // runtimes stepping concurrently (overlapping awaits / worker-shared maps); serialize steps.
 // Long-term, call sites should take an explicit features/runtime argument (directive preferred).
 
+import { bindRuntimeToState } from './bindRuntimeToState.js';
 import { createSimulation } from '../core/sim.js';
 import {
   applyFeatureConfigToMaps,
@@ -243,20 +244,4 @@ export function createAuthoritativeRuntime(options = {}) {
 }
 
 /** Attach read-only runtime binding onto game state for instance-local feature reads. */
-export function bindRuntimeToState(state, config, resolved) {
-  if (!state || typeof state !== 'object') return state;
-  const binding = Object.freeze({
-    profileId: config.profileId,
-    features: config.features,
-    evidenceClass: config.evidenceClass,
-    exclusions: config.exclusions,
-    profileHash: resolved && resolved.profileHash,
-    manifestHash: resolved && resolved.manifestHash,
-  });
-  // Non-enumerable-ish plain field; systems may read state.runtime.features.
-  state.runtime = binding;
-  if (state.settings && state.settings.gameplay) {
-    state.settings.gameplay.runtimeProfile = config.profileId;
-  }
-  return state;
-}
+export { bindRuntimeToState } from './bindRuntimeToState.js';

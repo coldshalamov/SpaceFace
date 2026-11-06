@@ -31,7 +31,7 @@ test('outside the plain case it declines so the caller uses three', () => {
   const inter = new THREE.InterleavedBuffer(rand(10), 3);
   const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.InterleavedBufferAttribute(inter, 3, 0));
   assert.equal(computePlainFloat32Bounds(g1), false);
-  const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.BufferAttribute(new Int16Array(9), 3, true));
+  const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.BufferAttribute(new Int16Array(9), 3, false));
   assert.equal(computePlainFloat32Bounds(g2), false);
   const g3 = new THREE.BoxGeometry(); g3.morphAttributes.position = [g3.attributes.position.clone()];
   assert.equal(computePlainFloat32Bounds(g3), false);
@@ -44,4 +44,18 @@ test('empty positions yield an empty box and a finite zero sphere, not three NaN
   assert.equal(g.boundingBox.isEmpty(), true);
   assert.deepEqual(g.boundingSphere.center.toArray(), [0, 0, 0]);
   assert.equal(g.boundingSphere.radius, 0);
+});
+
+test('normalized quantized positions match three exactly', () => {
+  for (const [Ctor, max] of [[Int16Array, 32767], [Uint16Array, 65535], [Int8Array, 127], [Uint8Array, 255]]) {
+    const arr = new Ctor(30);
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.round((Math.sin(i * 1.7) * 0.5 + (Ctor === Uint16Array || Ctor === Uint8Array ? 0.5 : 0)) * max);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr, 3, true));
+    const r = g.clone();
+    assert.equal(computePlainFloat32Bounds(g), true);
+    r.computeBoundingBox(); r.computeBoundingSphere();
+    assert.deepEqual(g.boundingBox.min.toArray(), r.boundingBox.min.toArray());
+    assert.deepEqual(g.boundingBox.max.toArray(), r.boundingBox.max.toArray());
+    assert.ok(Math.abs(g.boundingSphere.radius - r.boundingSphere.radius) < 1e-6);
+  }
 });

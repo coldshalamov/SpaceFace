@@ -1,3 +1,4 @@
+import { seedFortifyBench } from './ui-bench-fortify.js';
 // ui-bench.js — the 2D UI workbench: mount a real screen over a frozen still, click everything,
 // read what each control asked for. No boot, no simulation, no renderer startup.
 //
@@ -7,7 +8,10 @@
 // cannot mount stays with `ui-look`.
 
 import { createGameState } from '../src/core/gameState.js';
+import { loadModelTruthCensus } from '../src/data/modelTruth.js';
+import { ensureLocalizationReady } from '../src/localization/gameLocalization.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
+import { isMapScreenId, openGalaxyMap, focusFromLegacyScreenId } from '../src/ui/mapAuthority.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { missions } from '../src/systems/missions.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
@@ -28,13 +32,20 @@ import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
-import { measureControlReachability } from './ui-bench-controls.js';
+import {
+  measureControlReachability, resolveBenchControl, snapshotBenchControls,
+} from './ui-bench-controls.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
 import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
-import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
+import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
+import { seedImpoundShot } from './ui-bench-impound.js';
+import { MOBILE_CSS_PATH } from '../src/systems/mobile/styles.js';
+import { loadCssSidecar } from '../src/ui/orrery/cssSidecar.js';
 
 window.__BENCH_READY = false;
+// This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
+await Promise.all([loadModelTruthCensus(), ensureLocalizationReady()]);
 window.__BENCH_OVERLAY = '';
 // The element the bench deliberately opened over the screen, if any. Type it covers is covered on
 // purpose -- a radial menu is supposed to sit on the deck while it is open.
@@ -65,6 +76,7 @@ const SCREENS = Object.freeze({
   crucible: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleScreen),
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
+  crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),
   crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
   demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
@@ -102,10 +114,8 @@ const params = new URLSearchParams(location.search);
 const PHONE = params.get('phone') === '1';
 if (PHONE) {
   document.documentElement.dataset.sfMobile = '1';
-  const phoneStyle = document.createElement('style');
-  phoneStyle.id = 'sf-mobile-style';
-  phoneStyle.textContent = MOBILE_CSS;
-  document.head.append(phoneStyle);
+  await loadCssSidecar(document, { id: 'sf-mobile-style', path: MOBILE_CSS_PATH,
+    fallback: async () => (await import('../src/systems/mobile/mobileCssSource.js')).MOBILE_CSS });
 }
 const log = [];
 const stack = [];
@@ -118,6 +128,34 @@ function note(line) {
 
 /** The state the screens read. A real GameState from the game's own factory, then seeded with the
  *  situation the screens have to draw (a tracked contract, a waypoint, a save, some cargo). */
+/** `story: 'ledger'` holds an unsold Lost Ledger; `story: 'treaty'` sets the Cassandra Treaty flag.
+ *  Any other shot clears both, so a story fixture never leaks into the next still. */
+function seedStoryRewardShot(state, kind) {
+  const player = state.player || (state.player = {});
+  const flags = player.flags || (player.flags = {});
+  let own = player.uniqueWrecks;
+  if (own && own.storyRewards) {
+    delete own.storyRewards.unique_lost_ledger;
+    delete own.storyRewards.unique_cassandra_treaty;
+  }
+  delete flags['crossRep.choirVaelTreaty'];
+  if (!kind) return;
+  if (!own || typeof own !== 'object') own = player.uniqueWrecks = {};
+  if (!own.storyRewards || typeof own.storyRewards !== 'object') own.storyRewards = {};
+  if (kind === 'ledger') {
+    own.storyRewards.unique_lost_ledger = {
+      wreckId: 'wreck_mts_silver_draft', kind: 'story_commodity', flagKey: 'uniqueWreck.lostLedger',
+      grantedAtS: 0, choices: ['sell_meridian', 'file_concord', 'publish_independent'],
+    };
+  } else if (kind === 'treaty') {
+    own.storyRewards.unique_cassandra_treaty = {
+      wreckId: 'wreck_choir_cassandra', kind: 'story_data', flagKey: 'uniqueWreck.cassandraTreaty',
+      grantedAtS: 0, unlockFlag: 'crossRep.choirVaelTreaty',
+    };
+    flags['crossRep.choirVaelTreaty'] = true;
+  }
+}
+
 function seededState() {
   const state = createGameState(4242);
   state.mode = 'flight';
@@ -288,6 +326,10 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
 }
 
 function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'crucibleFortify') {
+    benchOwnerUnsubs.push(seedFortifyBench(state, bus));
+    return;
+  }
   // The demo end card reads the same transient the undock trigger writes (state.ui.demoEnd) and
   // the per-save earnings counter; seed both so the shot is the card a player sees, not a stub.
   if (screenId === 'demoEnd') {
@@ -805,7 +847,14 @@ const bus = {
     return () => listeners.get(key)?.delete(fn);
   },
   emit(key, payload = {}) {
-    if (key === 'ui:pushScreen' && payload && payload.id) { void goto(payload.id); return; }
+    if (key === 'ui:pushScreen' && payload && payload.id) {
+      if (isMapScreenId(payload.id)) {
+        openGalaxyMap({ state, bus, screenManager: manager }, {
+          ...payload, screenId: payload.id, source: payload.source || 'ui:pushScreen',
+        });
+      } else void goto(payload.id);
+      return;
+    }
     if (key === 'ui:popScreen') { void back(); return; }
     if (key === 'ui:replaceScreen' && payload && payload.id) { stack.length = 0; void goto(payload.id); return; }
     if (key === 'ui:closeScreen' && payload && payload.id && manager.top() === payload.id) {
@@ -847,6 +896,7 @@ const manager = {
   hasScreen() { return stack.length > 0; },
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
+  getActiveScreenDef() { return currentScreen; },
 };
 /** The defeat receipt the fixture's death is told from. The sentences below come from the same
  *  survivalResults builders a live run uses, so the plate cannot drift from what a player reads. */
@@ -912,7 +962,7 @@ function benchEconomyOwner() {
 const registry = {
   get(name) {
     if (name === 'economy') return benchEconomyOwner();
-    if (name === 'ui') return { screenManager: manager, manager };
+    if (name === 'ui') return { screenManager: manager, manager, hud: window.__benchHud || null };
     if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
     if (name === 'survivalDraft') return benchDraftOwner;
     // Populated drill/base shots mount over real owners (seedDrillShot / seedBaseShot below).
@@ -931,6 +981,7 @@ let current = null;
 /** The shot being mounted (the chart reads its planner through the registry). */
 let currentShot = null;
 let currentScreen = null;
+let currentAlias = null;
 /** The save system the load screen reads: null (no saves) unless the shot files some. */
 let benchSaves = null;
 
@@ -960,7 +1011,15 @@ async function finishShot(shot) {
         // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
         // shot kept the focus bracket on the Market tile while another tab was current.
         const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
+        // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
+        // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
         tabEl?.click();
+        if (tabEl) {
+          tabEl.setAttribute('data-sx-quiet-focus', '');
+          const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
+          tabEl.addEventListener('keydown', clear);
+          tabEl.addEventListener('blur', clear);
+        }
         tabEl?.focus({ preventScroll: true });
       }
       if (shot.focus) {
@@ -983,6 +1042,20 @@ async function finishShot(shot) {
 }
 
 async function goto(rawId) {
+  const requestedShot = resolveShot(rawId);
+  if (requestedShot?.mapAlias) {
+    // Mount the real chart fixture, then send the same legacy event uiRoot handles.
+    // The canonical owner supplies the focus intent; never mount the obsolete panel.
+    await goto('galaxyMap');
+    window.__BENCH_READY = false;
+    bus.emit('ui:pushScreen', { id: requestedShot.mapAlias });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    currentAlias = { legacyId: requestedShot.mapAlias, destination: current,
+      focus: focusFromLegacyScreenId(requestedShot.mapAlias) };
+    window.__BENCH_READY = true;
+    return;
+  }
+  currentAlias = null;
   window.__BENCH_READY = false;
   // The drill module owns a live session and its own frame loop. Retire that instance before
   // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
@@ -1020,7 +1093,7 @@ async function goto(rawId) {
       unseedFootprintShot(state);
       unseedDrillShot(state);
       unseedBaseShot(state);
-      hudEl.innerHTML = '';
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
@@ -1032,6 +1105,8 @@ async function goto(rawId) {
       unseedDrillShot(state);
       unseedBaseShot(state);
       screensEl.innerHTML = '';
+      // #alerts lives beside #hud (as in index.html), so a HUD wipe no longer takes it along.
+      document.getElementById('alerts')?.remove();
       state.ui.docked = false;
       state.ui.dockedStationId = null;
       document.body.classList.add('k-screen-top');
@@ -1048,7 +1123,7 @@ async function goto(rawId) {
         await finishShot(shot);
         return;
       }
-      hudEl.innerHTML = '';
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
@@ -1062,10 +1137,20 @@ async function goto(rawId) {
       root.setAttribute('aria-modal', 'true');
       if (shot.screen === 'station') {
         state.ui.docked = true;
-        state.ui.dockedStationId = 'station_helios';
+        state.ui.dockedStationId = shot.dock || 'station_helios';
       } else {
         state.ui.docked = false;
         state.ui.dockedStationId = null;
+      }
+      // Fixture: ?soldout=<cmdtyId> leaves the docked exchange with zero stock so the market
+      // row and hero print the authored SOLD OUT state (economy.marketStockStatus sells out
+      // under 2 units). Must run after the dock id is set: the table materializes on
+      // benchEconomyOwner()'s ensureMarket, and the screen later reuses the same owner.
+      if (params.get('soldout') && state.ui.dockedStationId) {
+        benchEconomyOwner();
+        const mkt = state.economy && state.economy.markets && state.economy.markets[state.ui.dockedStationId];
+        const entry = mkt && mkt[params.get('soldout')];
+        if (entry) entry.stock = 0;
       }
       screensEl.appendChild(root);
       // The armory's "Rearrange loadout" opens the refit over the SAME open draft; keep that run.
@@ -1080,6 +1165,10 @@ async function goto(rawId) {
       unseedGameOverShot(state);
       // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
+      // Story-reward readers: a claimed Lost Ledger (bar buyer) or the Cassandra Treaty (faction link).
+      seedStoryRewardShot(state, shot.story || null);
+      // `impound: 'lot' | 'ransom'` opens Shipworks over the impound lot's attendant desk (tools/ui-bench-impound.js).
+      seedImpoundShot(state, bus, screenMemory, shot.impound || null);
       // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
       // wears its chip in the shot. Plain shots leave player.hints untouched.
       if (params.get('fitOfferDefId')) {
@@ -1097,6 +1186,8 @@ async function goto(rawId) {
         seedRecordShot(state);
         (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
       } else unseedRecordShot(state);
+      // A mission log shot with `receipts` mounts over settled contracts (tools/ui-bench-receipts.js).
+      if (shot.receipts) seedReceiptsShot(state); else unseedReceiptsShot(state);
       // A gameOver shot mounts over a real buildDefeatReceipt fixture (populated, the default)
       // or a clean slate (`defeat: 'empty'`); every other screen mounted over the baseline above.
       if (id === 'gameOver') seedGameOverShot(state, shot);
@@ -1105,8 +1196,15 @@ async function goto(rawId) {
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
       if (shot.record) screen._focus?.('record:deeds');
+      // ...and opens the receipt list the way a player does, through its own Show toggle.
+      if (shot.receipts) root.querySelector('[aria-controls="sf-mlog-completed-list"]')?.click();
       // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
       if (typeof screen.settled === 'function') await screen.settled();
+      // Fixture: ?cmdk=1 opens the station command palette the way a player does — the real
+      // Ctrl+K keystroke through stationCommands' window listener.
+      if (params.get('cmdk') === '1') {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
+      }
       // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
       // for -build, opens the palette the way a player does.
       if (id === 'drill' && shot.drill) settleDrillShot(state, shot, screen, ctx);
@@ -1364,14 +1462,15 @@ async function mountFlightHud(opts = {}) {
     const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
     if (mount && mount.projSpeed === 320) delete mount.projSpeed;
   }
-  // createHud wipes #hud. Alerts have to mount after that wipe or the warn floor has no host.
   const hud = createHud(ctx, null);
-  let alertsRoot = document.getElementById('alerts');
-  if (!alertsRoot) {
-    alertsRoot = document.createElement('div');
-    alertsRoot.id = 'alerts';
-    hudRoot.appendChild(alertsRoot);
-  }
+  // index.html mounts #alerts as a #ui-root child beside #hud, where `#ui-root > div` makes it
+  // absolute and the HUD sheet's `top` places the lane. Nested inside #hud it stayed static, every
+  // `top` was inert, and the lane printed over the top-left waypoint card (D261). A fresh host per
+  // mount keeps earlier createAlerts instances writing to their detached node, as the old wipe did.
+  document.getElementById('alerts')?.remove();
+  const alertsRoot = document.createElement('div');
+  alertsRoot.id = 'alerts';
+  (hudRoot.parentElement || hudRoot).appendChild(alertsRoot);
   const alerts = createAlerts(ctx);
   hudRoot.dataset.threat = hudRoot.dataset.threat || 'contact';
   document.body.classList.remove('sf-swarm-flight');
@@ -1461,7 +1560,7 @@ async function back() {
 
 function showBroken(id, why) {
   screensEl.innerHTML = '';
-  hudEl.innerHTML = '';
+  hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
   const panel = document.createElement('div');
   panel.id = 'bench-broken';
   panel.innerHTML = `<strong>${id} is not mountable in the bench</strong>${why}. `
@@ -2010,11 +2109,12 @@ function layoutAudit() {
   return { overlaps, clipped, offscreen, controlReachability: measureControlReachability(document, current), ...pictureAudit() };
 }
 
-function controlAction(index, kind) {
-  const el = visibleControls()[index];
-  if (!el) return '';
+function controlAction(reference, kind) {
+  const row = resolveBenchControl(visibleControls(), reference);
+  if (!row) return { found: false, identity: reference, label: '' };
+  const el = row.element;
   window.__BENCH_LAST_DISABLED = !!(el.disabled || el.getAttribute('aria-disabled') === 'true');
-  if (window.__BENCH_LAST_DISABLED) return labelOf(el);
+  if (window.__BENCH_LAST_DISABLED) return { found: true, identity: row.identity, label: labelOf(el) };
   if (kind === 'hover') {
     // Seat the synthetic pointer at the control's centre: hover reveals position themselves at the
     // pointer (whyReveal.js), and a bare 0,0 event made every tip screenshot land in the corner.
@@ -2027,21 +2127,23 @@ function controlAction(index, kind) {
     el.focus();
     el.click();
   }
-  return labelOf(el);
+  return { found: true, identity: row.identity, label: labelOf(el) };
 }
 
 // Probes and `scripts/ui-bench.mjs` read this. `report` is the layout pass; `controls` is the walk.
 window.BENCH = {
   goto,
   state,
+  get bus() { return bus; },
+  get registry() { return registry; },
   get log() { return log.slice(); },
   get screen() { return current; },
   screens: Object.keys(SCREENS),
   controls() {
-    return visibleControls().map((el, index) => ({ index, label: labelOf(el) }));
+    return snapshotBenchControls(visibleControls()).map(({ index, label, identity }) => ({ index, label, identity }));
   },
-  hover(index) { return controlAction(index, 'hover'); },
-  click(index) { return controlAction(index, 'click'); },
+  hover(reference) { return controlAction(reference, 'hover'); },
+  click(reference) { return controlAction(reference, 'click'); },
   signature() {
     // The shared tier-2 tip (#sf-why-tip) is mounted on document.body, outside both roots — fold
     // its visible words into the signature or a hover reveal reads as "no visible change" and the
@@ -2063,6 +2165,8 @@ window.BENCH = {
     return {
       broken: broken ? broken.innerText.replace(/\s+/g, ' ').trim().slice(0, 240) : '',
       overlay: window.__BENCH_OVERLAY || '',
+      alias: currentAlias && { ...currentAlias,
+        selectedFocus: screensEl.querySelector('.gm-scale-btn[aria-pressed="true"]')?.dataset.focus || null },
       ...layoutAudit(),
     };
   },

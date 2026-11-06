@@ -30,9 +30,11 @@ export const ENTRIES_EGG_B = [
     payload: {
       from: 'The Doss Archive',
       ttl: 8,
-      text: 'A laminated card, hand-delivered by a courier who declined the tip: BORROWER: [CALLSIGN]. ITEMS: ALL OF IT. DUE: WHEN YOU ARE. THE ARCHIVE DOES NOT RECALL ITS LOANS. IT REMEMBERS THEM. Stamped with Prof. Halev Doss\'s own seal, in duplicate — the second copy is already filed in the archive, under your name.',
+      text: 'A laminated card, hand-delivered by a courier who declined the tip: BORROWER: YOU. ITEMS: ALL OF IT. DUE: WHEN YOU ARE. THE ARCHIVE DOES NOT RECALL ITS LOANS. IT REMEMBERS THEM. Stamped with Prof. Halev Doss\'s own seal, in duplicate — the second copy is already filed in the archive, under your name.',
     },
     followup: 'real gate: doss_vesta_shift_end_cache + doss_veil_resonance_obelisk + doss_lung_of_charon_case (dossArchiveComplete, src/data/dossArchive.js); mail.js row keyed to the flags + real inventory card item + shipScreen dressing; codex Figures line for Doss',
+    dormant: true,
+    dormantReason: "Fires on the first stationContact counter tick anywhere; the three Doss archive flags it should gate on are never consulted.",
   },
 
   // SP1-014 — The Wrecking Permit: one cheap forgery flips scavenger first contact.
@@ -305,10 +307,10 @@ export const ENTRIES_EGG_B = [
     kind: 'easter-egg',
     title: 'The Haumea Tool Ledger',
     sectors: ['sector_haumea_rift'],
-    trigger: { type: 'proximity', nearStation: 'world_site_haumea_glass_harp', wu: 220 },
+    trigger: { type: 'proximity', nearStation: 'poi_haumea_fissure', wu: 220 },
     channel: 'memory',
     payload: {
-      text: 'The extraction mast sits on the seam with its lanyard snapped, the loose wrench still ropeable from a careful hull. Any mining-station claim office will file its return in the physical ledger: 1 TOOL RETURNED BY [CALLSIGN]. 1 TOOL STILL OUT. THE RIFT KEEPS SCORE. Eleven entries in that ledger. You would be the first return.',
+      text: 'The extraction mast sits on the seam with its lanyard snapped, the loose wrench still ropeable from a careful hull. Any mining-station claim office will file its return in the physical ledger: 0 TOOLS RETURNED. 1 TOOL STILL OUT. THE RIFT KEEPS SCORE. Eleven entries in that ledger. You would be the first return.',
     },
     followup: 'ropeable tool item + claim-office return interaction at station_haumea_rift; flag tool_returned; future claim approvals skip one procedural step ("they return tools"); Haumea standing +3',
   },
@@ -439,6 +441,8 @@ export const ENTRIES_EGG_B = [
       text: 'A professional rememberer — that is the job title — is performing your legend to the bar: "Fifty-one rescues! Give or take; who counts?" The numbers are your actual statistics, slightly wrong in the direction of a better story, and corrected live by hecklers who were THERE for three of them. The corrections win. The legend is better for it.',
     },
     followup: 'deedRecord stats (50+ deeds gate) rendered as folk numbers; heckler correction rows persist and improve the pool for every player; after the show the rememberer buys you a drink and asks for yours',
+    dormant: true,
+    dormantReason: "Prints a hardcoded Fifty-one rescues on the first dock; the 50-deed gate has no reader.",
   },
 
   // SP1-083 — The Reef Light: there is no reef. There is something.
@@ -574,7 +578,7 @@ export const ENTRIES_EGG_B = [
     trigger: { type: 'proximity', nearStation: 'poi_helios_pilgrim_moor', wu: 180 },
     channel: 'memory',
     payload: {
-      text: 'The mooring\'s guest book updates in handwriting, and the most recent entry is always half-finished, because every pilgrim moors mid-thought. Yours appears as you settle: [CALLSIGN], ARRIVED — and waits, cursor blinking, until you actually leave. Then it finishes itself: ARRIVED. DEPARTED. BETWEEN: EVERYTHING.',
+      text: 'The mooring\'s guest book updates in handwriting, and the most recent entry is always half-finished, because every pilgrim moors mid-thought. Yours appears as you settle: your callsign, ARRIVED — and waits, cursor blinking, until you actually leave. Then it finishes itself: ARRIVED. DEPARTED. BETWEEN: EVERYTHING.',
     },
     followup: '60 s hold at low speed opens the book; text state machine flips the entry on departure; flag mooring_between; codex page "Between"; Helios standing +2',
   },
@@ -603,7 +607,7 @@ export const ENTRIES_EGG_B = [
     kind: 'easter-egg',
     title: 'The Reader\'s Stake Bookmark',
     sectors: ['sector_charon_expanse'],
-    trigger: { type: 'flag', requires: 'quill_copied' },
+    trigger: { type: 'flag', requires: 'quill_copied', min: 2 },
     channel: 'memory',
     payload: {
       text: 'The Reader\'s Stake has gained a bookmark: a physical ribbon tied by AR-3\'s grip, marking the one page of its open log that names every sealed thing you have ever unsealed, with dates. The knot is the Archive\'s index knot. AR-3 has been filing your work as its own recommendations, and the recommendations are good.',
@@ -656,7 +660,7 @@ export const ENTRIES_EGG_B = [
     channel: 'commsLog',
     payload: {
       from: 'Lost-property board',
-      text: 'The freight on the lost apron carries a label that matches a tag on the board: CONTENTS: ONE (1) ENGINE, WAITING SINCE [DATE]. OWNER NOTIFIED 41 TIMES. OWNER IS THE WAITING PROBLEM. The freight is waiting for itself. The board is waiting for the freight. The loop is administrative and eternal, and today it has your name in it, as courier.',
+      text: 'The freight on the lost apron carries a label that matches a tag on the board: CONTENTS: ONE (1) ENGINE, WAITING SINCE BEFORE YOU ARRIVED. OWNER NOTIFIED 41 TIMES. OWNER IS THE WAITING PROBLEM. The freight is waiting for itself. The board is waiting for the freight. The loop is administrative and eternal, and today it has your name in it, as courier.',
     },
     followup: 'cross-reference gate: poi_helios_lost_freight scanned, then any Helios dock\'s lost-property board shows the tag; carrying the tag (a mail attachment) to the freight ships both halves — flag + codex page "The Waiting Problem."',
   },
@@ -683,7 +687,7 @@ export const ENTRIES_EGG_B = [
     kind: 'easter-egg',
     title: 'The Third Stool\'s Letter',
     sectors: [],
-    trigger: { type: 'receipt', event: 'dock:docked' },
+    trigger: { type: 'receipt', event: 'dock:docked', nth: 10 },
     channel: 'comms',
     payload: {
       from: 'Quinn',

@@ -14,6 +14,7 @@
 
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { answerFirstRunPrompt, installFirstLightPromptHandler } from '../player-truth/routes.mjs';
 
 export const TRAVEL_ROUTE_SCHEMA = 'spaceface.professionalTravelPublicRoute.v1';
 export const TASK_ID_BROWSER = 'professional-travel-public-route-browser';
@@ -421,8 +422,12 @@ export async function runProfessionalTravelPublicRoute({
         screenshots.push(await shot(page, outputDir, TRAVEL_SCREENSHOTS.commitWindow));
         mark('jump-commit-window', { progress: jumpSnap.jumpProgress, state: jumpSnap.jumpState });
       }
-      if (jumpSnap.jumpState === 'JUMPING' && !steps.some((s) => s.name === 'jump-committed')) {
-        mark('jump-committed', { to: jumpSnap.jumpTarget || destination.sectorId });
+      if ((jumpSnap.jumpState === 'JUMPING' || receipts.summary.jumpStart)
+        && !steps.some((s) => s.name === 'jump-committed')) {
+        mark('jump-committed', {
+          to: receipts.summary.jumpStart ? destination.sectorId : (jumpSnap.jumpTarget || destination.sectorId),
+          observed: receipts.summary.jumpStart ? 'jump:start' : 'jump-state',
+        });
       }
       if (jumpSnap.sectorId === destination.sectorId
         && (jumpSnap.jumpState === 'IDLE' || jumpSnap.jumpState === 'COOLDOWN' || jumpSnap.jumpState == null
@@ -893,9 +898,18 @@ export async function bootToAuthoredFlight({
   const milestone = async (name, detail = {}) => {
     if (typeof onMilestone === 'function') await onMilestone(name, detail);
   };
+  const firstRunStep = (name, ok, detail) => {
+    if (!ok || name !== 'first-run prompt') return;
+    log(`[travel-route] ${name} — ${detail}`);
+    return milestone('first-run-prompt', { detail });
+  };
+  // A fresh browser profile can show First light over the main menu. Install the existing
+  // public locator handler before any menu click, and answer an already-visible prompt now.
+  await installFirstLightPromptHandler(page, firstRunStep);
   await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus), null, { timeout: 60_000 });
   await installTravelObservers(page);
   await milestone('observers-armed');
+  await answerFirstRunPrompt(page, firstRunStep);
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     // The cinematic input fence deliberately ignores gestures delivered while the page is

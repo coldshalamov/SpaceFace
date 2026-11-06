@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "21ccf9b55dd218235f32902afb57f0c14b4a834521a831804feec6cd41091c56",
+  "contentHash": "bd16d317c775cd583e28b10fdb0552ed56701b9c42a08ffa18ce91aad38b6358",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.dynamic",
@@ -1182,14 +1182,14 @@
       "uri": "place_rock_cooked_rock_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 126832,
-    "sha256": "5bffb8782c34476adfe217a8e4151e728b0429013a06c6d2d01b5b171beeec02",
+    "bytes": 126888,
+    "sha256": "270efe1dc298b4085c3368742407dfbad48662a70b45d82c01df2d0619316eac",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1222,6 +1222,114 @@
     "markers": [
       {
         "matrix": [
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          -0.18698883056640625,
+          0.45218080282211304,
+          0.05017054080963135,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 3,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          -0.18728208541870117,
+          0.45365631580352783,
+          0.0502629280090332,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 6,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          -0.1610000729560852,
+          0.4501308798789978,
+          0.050689697265625,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1240,7 +1348,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 9,
+        "planIndex": 12,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1291,7 +1399,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 10,
+        "planIndex": 13,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1342,7 +1450,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 11,
+        "planIndex": 14,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1393,7 +1501,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 12,
+        "planIndex": 15,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1444,7 +1552,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 13,
+        "planIndex": 16,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1495,7 +1603,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1546,7 +1654,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 15,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1597,7 +1705,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1648,7 +1756,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1699,7 +1807,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 18,
+        "planIndex": 21,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1750,7 +1858,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1801,7 +1909,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1845,22 +1953,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 3,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 4,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 5,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
         "role": "geology"
       },
       {
@@ -1872,9 +1970,19 @@
         "allowTextures": true,
         "planIndex": 8,
         "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
       }
     ],
-    "nodeCount": 21,
+    "nodeCount": 24,
     "primitives": [
       {
         "canopy": false,
@@ -1896,8 +2004,8 @@
           0.05017054080963135,
           1
         ],
-        "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 3,
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 4,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -1925,7 +2033,7 @@
           1
         ],
         "name": "LOD0_Stone",
-        "planIndex": 4,
+        "planIndex": 5,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -1951,8 +2059,8 @@
           0.0502629280090332,
           1
         ],
-        "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 5,
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -1980,7 +2088,7 @@
           1
         ],
         "name": "LOD1_Stone",
-        "planIndex": 6,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -2006,8 +2114,8 @@
           0.050689697265625,
           1
         ],
-        "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 7,
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -2035,7 +2143,7 @@
           1
         ],
         "name": "LOD2_Stone",
-        "planIndex": 8,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -2046,7 +2154,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_cooked_rock_pebble.glb"
   },
-  "runtimeHash": "ca38d540ec6e999877a02f6ff8da857bf8d555b43071e9a2c64688c9f6fb9d8d",
+  "runtimeHash": "a83ca85ab72234bb4608dcb15191a4a4abaeb17a720183d5a33a2ec2cc56fa79",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

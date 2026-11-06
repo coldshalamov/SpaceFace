@@ -36,11 +36,19 @@ function liveProteusStation() {
   const sector = SECTORS.find((candidate) => candidate.id === SECTOR_ID);
   assert.ok(sector);
   const spawned = [];
+  const state = {
+    entities: new Map(),
+    entityList: spawned,
+    world: {},
+    restoreEnvelopeStations: new Map(),
+  };
   const system = Object.assign({}, worldProto, {
+    state,
     helpers: {
       spawnEntity(spec) {
         const entity = { id: spawned.length + 1, alive: true, ...spec };
         spawned.push(entity);
+        state.entities.set(entity.id, entity);
         return entity;
       },
     },

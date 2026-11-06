@@ -15,8 +15,9 @@ import {
   weld,
 } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
-import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
+import { encodeRenderPackageGlb, externalizeRenderPackageKtx2 } from './renderPackageStorage.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
+import { releasePlaceGeometryCompression } from './releaseStrictClearancePrecision.mjs';
 import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
 
 import {
@@ -73,6 +74,16 @@ export async function compileRenderPackage(options = {}) {
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
+  // Quantization otherwise folds its position decode transform into a leaf mesh node.
+  // Runtime-controlled semantic groups need their authored transform as their pivot.
+  const dynamicMeshCarriers = new Map();
+  for (const group of semanticManifest.dynamicGroups) {
+    const node = resolvedNodes.semanticNodes.get(group.nodeId).node;
+    if (!node.getMesh() || node.listChildren().length || dynamicMeshCarriers.has(node)) continue;
+    const marker = document.createNode();
+    dynamicMeshCarriers.set(node, { marker, mesh: node.getMesh() });
+    node.addChild(marker);
+  }
   // A render package is a *render* artifact: it may narrow a material to what the geometry can
   // actually show. Double-sided opaque materials over watertight shells rasterise every triangle's
   // back face for a face the camera can never reach, and compile their own DOUBLESIDED program.
@@ -96,27 +107,54 @@ export async function compileRenderPackage(options = {}) {
   // source used, in glTF-Transform's documented optimize order (quantize -> reorder -> meshopt):
   // identical triangles, identical materials, identical pixels, roughly half the bytes to fetch,
   // parse and keep resident.
-  await document.transform(
-    weld({ overwrite: true }),
-    quantize({
-      quantizePosition: RELEASE_MESHOPT_OPTIONS.quantizePosition,
-      quantizeNormal: RELEASE_MESHOPT_OPTIONS.quantizeNormal,
-      quantizeTexcoord: RELEASE_MESHOPT_OPTIONS.quantizeTexcoord,
-      quantizeColor: RELEASE_MESHOPT_OPTIONS.quantizeColor,
-      quantizeWeight: RELEASE_MESHOPT_OPTIONS.quantizeWeight,
-      quantizeGeneric: RELEASE_MESHOPT_OPTIONS.quantizeGeneric,
-    }),
-    reorder({ encoder: MeshoptEncoder, target: 'performance', cleanup: true }),
-    meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
-  );
+  if (options.positionPrecisionPolicy === 'strict-clearance') {
+    if (options.sourceAssetId !== 'place_ceres_second_measure') {
+      throw new Error('strict-clearance position precision is reserved for place_ceres_second_measure');
+    }
+    const certificate = document.getRoot().getAsset().extras?.ceresSecondMeasure;
+    await document.transform(
+      weld({ overwrite: true }),
+      releasePlaceGeometryCompression({
+        assetId: options.sourceAssetId,
+        certificate,
+        encoder: MeshoptEncoder,
+      }),
+    );
+  } else {
+    if (options.positionPrecisionPolicy !== undefined && options.positionPrecisionPolicy !== 'standard') {
+      throw new Error(`Unknown render package position precision policy ${options.positionPrecisionPolicy}`);
+    }
+    await document.transform(
+      weld({ overwrite: true }),
+      quantize({
+        quantizePosition: RELEASE_MESHOPT_OPTIONS.quantizePosition,
+        quantizeNormal: RELEASE_MESHOPT_OPTIONS.quantizeNormal,
+        quantizeTexcoord: RELEASE_MESHOPT_OPTIONS.quantizeTexcoord,
+        quantizeColor: RELEASE_MESHOPT_OPTIONS.quantizeColor,
+        quantizeWeight: RELEASE_MESHOPT_OPTIONS.quantizeWeight,
+        quantizeGeneric: RELEASE_MESHOPT_OPTIONS.quantizeGeneric,
+      }),
+      reorder({ encoder: MeshoptEncoder, target: 'performance', cleanup: true }),
+      meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
+    );
+  }
+  for (const [node, { marker }] of dynamicMeshCarriers) {
+    node.removeChild(marker);
+    marker.dispose();
+  }
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
-  const renderBytes = await encodeRenderPackageGlb(io, document);
+  const encodedRenderBytes = await encodeRenderPackageGlb(io, document);
+  const externalized = options.externalizeKtx2 === true
+    ? externalizeRenderPackageKtx2(encodedRenderBytes, options.externalizeKtx2Hashes || null)
+    : { bytes: encodedRenderBytes, resources: [] };
+  const renderResources = externalized.resources;
+  const renderBytes = externalized.bytes;
   const renderHash = sha256(renderBytes);
   const sourceHash = sha256(sourceBytes);
   const semanticsHash = sha256(Buffer.from(stableJsonStringify(semanticManifest)));
   const sourceManifestHash = sourceManifestBytes ? sha256(sourceManifestBytes) : null;
-  const compiled = compileMetadataRecords(semanticManifest, resolvedNodes);
+  const compiled = compileMetadataRecords(semanticManifest, resolvedNodes, dynamicMeshCarriers);
 
   const metadataWithoutHash = stableJsonValue({
     schema: RENDER_PACKAGE_SCHEMA,
@@ -130,6 +168,14 @@ export async function compileRenderPackage(options = {}) {
       uri: RENDER_FILE_NAME,
       sha256: renderHash,
       bytes: renderBytes.length,
+      ...(renderResources.length ? {
+        resources: renderResources.map(({ uri, mimeType, sha256, bytes }) => ({
+          uri,
+          mimeType,
+          sha256,
+          bytes: bytes.length,
+        })),
+      } : {}),
     },
     provenance: {
       sourceGlb: {
@@ -157,6 +203,14 @@ export async function compileRenderPackage(options = {}) {
 
   const metadataBytes = Buffer.from(`${stableJsonStringify(metadata, 2)}\n`);
   await mkdir(outputDir, { recursive: true });
+  if (renderResources.length) {
+    const sharedImageDir = resolve(outputDir, '..', '_shared', 'images');
+    await mkdir(sharedImageDir, { recursive: true });
+    await Promise.all(renderResources.map((resource) => writeFileWithRetry(
+      resolve(sharedImageDir, `${resource.sha256}.ktx2`),
+      resource.bytes,
+    )));
+  }
   await Promise.all([
     writeFileWithRetry(renderPath, renderBytes),
     writeFileWithRetry(metadataPath, metadataBytes),
@@ -168,6 +222,8 @@ export async function compileRenderPackage(options = {}) {
     metadataPath,
     renderBytes: renderBytes.length,
     metadataBytes: metadataBytes.length,
+    renderResourceBytes: renderResources.reduce((sum, resource) => sum + resource.bytes.length, 0),
+    renderResources: renderResources.length,
   });
 }
 
@@ -706,7 +762,7 @@ function resolveSourceNodes(document, semanticManifest) {
   return { scene, semanticNodes, anchors };
 }
 
-function compileMetadataRecords(semanticManifest, resolved) {
+function compileMetadataRecords(semanticManifest, resolved, dynamicMeshCarriers = new Map()) {
   const currentPaths = indexScenePaths(resolved.scene);
   const nodes = semanticManifest.semanticNodes.map((entry) => {
     const source = resolved.semanticNodes.get(entry.id);
@@ -747,7 +803,9 @@ function compileMetadataRecords(semanticManifest, resolved) {
   const geometry = [];
   for (const semanticNode of semanticManifest.semanticNodes) {
     const sourceNode = resolved.semanticNodes.get(semanticNode.id).node;
-    const mesh = sourceNode.getMesh();
+    const carriedMesh = dynamicMeshCarriers.get(sourceNode)?.mesh;
+    const meshNode = sourceNode.getMesh() ? sourceNode : sourceNode.listChildren().find((node) => node.getMesh() === carriedMesh);
+    const mesh = meshNode?.getMesh();
     if (!mesh) continue;
     const primitives = mesh.listPrimitives();
     for (const [primitiveIndex, primitive] of primitives.entries()) {
@@ -768,7 +826,7 @@ function compileMetadataRecords(semanticManifest, resolved) {
         geometryHash: hashPrimitive(primitive),
         materialHash: materialRecord ? materialRecord.hash : null,
         materialPipelineKey: semanticNode.pipelineKey,
-        bounds: primitiveBounds(primitive, sourceNode.getWorldMatrix()),
+        bounds: primitiveBounds(primitive, meshNode.getWorldMatrix()),
       });
     }
   }

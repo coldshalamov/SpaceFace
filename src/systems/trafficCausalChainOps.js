@@ -1,4 +1,5 @@
 import { NPC_JOB_PHASE } from './npcJobs.js';
+import { validCausalManifest } from './traffic.js';
 import { isTallyPassageJob, tallyPassageTarget } from './tethysTallyPassage.js';
 import { normalizeWinnowRecovery } from '../world/vestaWinnowRecovery.js';
 import { normalizeCharonSupply, releaseCharonSupply } from '../world/charonSalvageSupply.js';
@@ -2404,13 +2405,38 @@ export const trafficCausalChainOps = {
     // market; it clears custody only after the synchronous intake acknowledgement says the exact
     // lot was accepted (including an idempotent duplicate acknowledgement).
     if (intent.kind === 'salvor') {
-      const context = this._jobTrafficContext(intent, 'salvor');
+      const context = this._salvorJobContext(intent);
       if (!context || this.helpers?.npcJobs?.get(context.jobId)?.control) return false;
+      const adoptedScavenger = this._isAdoptedScavengerJob(context.entry, context.entity);
+      if (!context.rec && !adoptedScavenger) return false;
       const destination = typeof intent.destination === 'string' ? intent.destination : '';
       if (!destination.startsWith('yard:') || destination.length <= 5) return false;
+      if (adoptedScavenger && (context.entry.sectorId !== this.state.world?.currentSectorId
+        || context.entry.job.phase !== NPC_JOB_PHASE.UNLOAD || context.entry.job.routeIndex !== 0
+        || destination !== context.entry.job.route?.[0]?.id)) return false;
       const manifest = context.entity.data && context.entity.data.cargoManifest
-        || context.rec.manifest;
+        || context.rec?.manifest;
       if (!manifest || !Array.isArray(manifest.lines)) return false;
+      if (adoptedScavenger && (context.entry.job.payload?.extracted !== true
+        || !this._salvorOwnsExtractedManifest(context.entry.job, manifest))) return false;
+      if (context.entry.job.payload?.salvageIntakeWait?.status === 'awaiting-intake') {
+        // A refused lot stays parked until a yard that can take it is presented. Direct
+        // unload at an eligible yard (Forge retry after an unsupported refuse, or a
+        // remainder after partial intake) must clear the hold and settle — the same
+        // gate maintenance uses via quoteNpcSalvageIntake. Same-yard refuse loops
+        // still return false while the quote stays ineligible.
+        if (manifest.salvageIntakeHeld) {
+          const yardId = destination.slice(5);
+          const economy = this._registry?.get?.('economy');
+          const quote = typeof economy?.quoteNpcSalvageIntake === 'function'
+            ? economy.quoteNpcSalvageIntake(yardId, manifest.lines)
+            : null;
+          if (!quote?.ok) return false;
+          delete manifest.salvageIntakeHeld;
+        }
+        delete context.entry.job.payload.salvageIntakeWait;
+        delete context.entry._salvorIntakeProbe;
+      }
       const yard = this._sectorStations().find(station => stationIdentity(station) === destination.slice(5));
       if (!yard || !this._salvorAtTarget(context.entity, yard,
         Math.max(this._salvorReach(context.entity, yard), yard.data?.dockRadius || 0))) return false;
@@ -2466,10 +2492,12 @@ export const trafficCausalChainOps = {
       Object.defineProperty(payload, 'commitCustody', { value: (result) => {
         // A listener may Continue, replace the job/hull, or settle this exact lot recursively.
         // Never clear a newer owner or newer load using a stale acknowledgement.
-        const current = this._jobTrafficContext(intent, 'salvor');
-        if (this.state.traffic !== run || !current || current.entity !== context.entity
+        const current = this._salvorJobContext(intent);
+        const currentManifest = current && (current.entity.data?.cargoManifest || current.rec?.manifest);
+        if (this.state.traffic !== run || !current || current.entry !== context.entry
+          || current.entry.job !== context.entry.job || current.entity !== context.entity
           || current.rec !== context.rec || context.entity.alive === false
-          || context.entity.data.cargoManifest !== manifest || context.rec.manifest !== manifest
+          || currentManifest !== manifest || (context.rec && context.rec.manifest !== manifest)
           || manifest.totalQty !== copiedQty || JSON.stringify(manifest.lines) !== offered) return false;
         if (!result || result.ok !== true) return false;
         if (result.intakeId !== payload.intakeId || result.yardId !== yardId
@@ -2490,13 +2518,20 @@ export const trafficCausalChainOps = {
           totalQty: copiedQty - acceptedQty, salvageIntakeGeneration: generation + 1, salvageIntakeHeld: true }
           : this._emptySalvorManifest(context.entity, intent.seq | 0);
         this._setTrafficManifest(context.entity, context.rec, next);
+        if (remainder.length) this._holdSalvorIntake(context, next, yardId, 'partial-intake');
+        else delete context.entry.job.payload.salvageIntakeWait;
         committed = true;
         return true;
       } });
       this.bus.emit('salvage:npcUnload', payload);
       if (!committed && this.state.traffic === run && context.entity.data.cargoManifest === manifest
         && ['unsupported_salvage_yard', 'salvage_listing_unavailable'].includes(payload.intakeResult?.reason)) {
-        manifest.salvageIntakeHeld = true;
+        this._holdSalvorIntake(context, manifest, yardId, payload.intakeResult.reason);
+      }
+      if (committed && adoptedScavenger && !(context.entity.data.cargoManifest?.totalQty > 0)) {
+        // Legacy scavenger ecology may resume only after the canonical yard accepts the finite
+        // hold. A refusal or partial receipt keeps the job and remaining manifest in custody.
+        this.helpers.npcJobs.release(context.jobId);
       }
       return committed;
     }

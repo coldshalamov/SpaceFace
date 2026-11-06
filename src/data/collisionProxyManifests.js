@@ -34,6 +34,7 @@ import {
 } from './modelTruth.js';
 import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from './physicsMaterials.js';
+import { foundryFurnitureProxy } from './foundryFurniture.js';
 
 export const COLLISION_PROXY_SCHEMA_VERSION = 1;
 
@@ -306,6 +307,13 @@ export function resolveCollisionProxyManifest(entity) {
   const authored = authoredProxyManifest(entity);
   if (authored) return authored;
   const data = entity && entity.data;
+  // Older scalar/typed room saves predate furniture proxies. Resolve only the
+  // existing room renderer's recognized kinds; generic stations keep their contract.
+  if (entity?.type === 'station' && data?.roomOwner === 'survival-arena'
+    && entity.physicsBody !== false && entity.collides !== false) {
+    const furniture = foundryFurnitureProxy(entity);
+    if (furniture) return furniture;
+  }
   const id = data && typeof data.collisionProxy === 'string' ? data.collisionProxy : null;
   const declared = id && COLLISION_PROXY_MANIFESTS[id] || null;
   // Eligibility owns the opt-outs: sensors, ghosts, and authored geometry never take a skin —

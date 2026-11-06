@@ -4,10 +4,28 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { paneBuilder } from '../src/ui/views/settingsControls.js';
+import { dressSettingsPane } from '../src/ui/orrery/settingsLayouts.js';
 import { applyTextScaleFromSettings } from '../src/ui/accessibility.js';
 import { flagsFromSettings } from '../src/ui/accessibilityChecklist.js';
 import { announceBindingConflict } from '../src/ui/screens/settings.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
+
+test('settings pointer focus stays put; keyboard focus scrolls only the pane', () => {
+  const doc = fakeDom();
+  const pane = doc.createElement('div');
+  pane.scrollTop = 0;
+  pane.getBoundingClientRect = () => ({ top: 0, bottom: 200 });
+  const row = { getBoundingClientRect: () => ({ top: 160, bottom: 190 }),
+    scrollIntoView() { assert.fail('focus must not scroll ancestor containers'); } };
+  const target = { closest: () => row };
+  dressSettingsPane(pane);
+  for (const fn of pane.listeners.pointerdown) fn({ target });
+  for (const fn of pane.listeners.focusin) fn({ target });
+  assert.equal(pane.scrollTop, 0, 'pointer down/up cannot move its target');
+  for (const fn of pane.listeners.keydown) fn({ target });
+  for (const fn of pane.listeners.focusin) fn({ target });
+  assert.equal(pane.scrollTop, 70, 'keyboard focus clears the pane’s lower fade');
+});
 
 test('FB-112 a slider speaks its value and text scale ignores UI scale', () => {
   const previous = globalThis.document;

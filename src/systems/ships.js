@@ -7,6 +7,8 @@
 // getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
+import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { isModelTruthCensusLoaded } from '../data/modelTruth.js';
 import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/saucer.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
@@ -16,6 +18,7 @@ import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
+import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -215,6 +218,24 @@ function derivedForOwned(defId, fittings, player, owned) {
     if (component?.slotType === 'shield' && Number.isFinite(derived.shieldMax)) derived.shieldMax *= factor;
     if (component?.slotType === 'sensor' && Number.isFinite(derived.radarRange)) derived.radarRange *= factor;
   }
+  // The head id is def-level and cache-safe; the behavior payload is not — it depends on the
+  // fitted instance's provenance, which the derived-stats key cannot see. Resolve it here on a
+  // shallow clone so the shared cached block is never mutated; no instance → the authored floor.
+  if (derived.lineHeadId) {
+    let headInstance = null, headDef = null;
+    for (const [slotIndex, instance] of Object.entries(owned && owned.fittedInstances || {})) {
+      const def = defById(instance && instance.defId);
+      if (def && def.mods && def.mods.lineHeadId === derived.lineHeadId) {
+        headInstance = instance;
+        headDef = def;
+        break;
+      }
+    }
+    derived = {
+      ...derived,
+      lineHead: lineHeadBehavior(derived.lineHeadId, normalizeModuleProvenance(headInstance, headDef)),
+    };
+  }
   const quirk = owned && owned.impoundQuirk;
   if (!quirk || quirk.kind !== 'overbored') return derived;
   return derivedWithOverbore(derived, quirk.accelMult);
@@ -278,16 +299,35 @@ function masslineHeadIdForDef(def) {
   return MASSLINE_HEAD_PRIORITY[id] ? id : null;
 }
 
-/** Return the differently slotted Massline head that makes this requested fit exclusive. Replacing
- * the head in its current slot is valid; fitting a second head elsewhere is not. */
+// The §7.1 behavior heads are the same kind of mutually exclusive fitting as the specialized-line
+// heads above: live fitting rejects multiples (same findMasslineHeadConflict seam is extended in
+// the fit UI), and this tier read keeps a malformed/manual fit deterministic — the rarest head
+// wins rather than whichever array slot happens to come first.
+function lineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.lineHeadId;
+  return LINE_HEAD_BY_ID[id] ? id : null;
+}
+function lineHeadTierFor(id) {
+  const head = LINE_HEAD_BY_ID[id];
+  const tier = head && PROVENANCE_TIERS[head.rarityFloor];
+  return tier ? tier.index + 1 : 0;
+}
+
+/** Return the differently slotted head that makes this requested fit exclusive, checked per
+ * axis: the §7.4 line-law heads (masslineHeadId) and the §7.1 behavior heads (lineHeadId) are
+ * independent fittings — a hull runs one law and one behavior, e.g. twin_bridle + Breaker is a
+ * legal ship. A head that carries both ids (Multi-latch) conflicts on both axes. */
 export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
-  if (!masslineHeadIdForDef(requestedDef)) return null;
+  const wantsLaw = masslineHeadIdForDef(requestedDef) != null;
+  const wantsBehavior = lineHeadIdForDef(requestedDef) != null;
+  if (!wantsLaw && !wantsBehavior) return null;
   const safeFittings = Array.isArray(fittings) ? fittings : [];
   for (let index = 0; index < safeFittings.length; index += 1) {
     const fittedId = safeFittings[index];
     if (index === slotIndex || !fittedId) continue;
     const fittedDef = defById(fittedId);
-    if (masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (wantsLaw && masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (wantsBehavior && lineHeadIdForDef(fittedDef)) return fittedDef;
   }
   return null;
 }
@@ -553,6 +593,43 @@ const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
 const BASE_RADAR_RANGE = 4000;
 const PLAYER_TURN_RATE_MULT = 0.78;
 const PLAYER_TURN_RATE_CAP = 3.8;
+
+const HULL_YAW_INERTIA_PER_MASS = new WeakMap();
+
+function hullYawInertiaPerMass(shipDef) {
+  if (!isModelTruthCensusLoaded() || !shipDef || typeof shipDef !== 'object') return null;
+  const cached = HULL_YAW_INERTIA_PER_MASS.get(shipDef);
+  if (cached !== undefined) return cached;
+
+  const radius = Math.max(0.1, Number(shipDef.collisionRadius) || 1);
+  const entity = { type: 'ship', radius, data: { defId: shipDef.id } };
+  const manifest = resolveCollisionProxyManifest(entity);
+  const vertices = manifest?.compactHull || manifest?.planarPolygon;
+  let ratio = 0;
+  if (Array.isArray(vertices) && vertices.length >= 3) {
+    let twiceArea = 0;
+    let polarMomentTimes12 = 0;
+    for (let i = 0; i < vertices.length; i += 1) {
+      const a = vertices[i];
+      const b = vertices[(i + 1) % vertices.length];
+      const cross = a.x * b.z - b.x * a.z;
+      twiceArea += cross;
+      polarMomentTimes12 += cross * (
+        a.x * a.x + a.x * b.x + b.x * b.x
+        + a.z * a.z + a.z * b.z + b.z * b.z
+      );
+    }
+    if (Number.isFinite(twiceArea) && Math.abs(twiceArea) > 1e-9
+      && Number.isFinite(polarMomentTimes12)) {
+      ratio = (polarMomentTimes12 / (6 * twiceArea)) * radius * radius;
+    }
+  }
+  // Measured skins use the polygon's uniform-area polar moment. Unmeasured legacy hulls use a
+  // disk estimate at the same collision radius, so their inertia remains dimensionally scaled.
+  if (!(ratio > 0) || !Number.isFinite(ratio)) ratio = 0.5 * radius * radius;
+  HULL_YAW_INERTIA_PER_MASS.set(shipDef, ratio);
+  return ratio;
+}
 
 const FLIGHT_CLASS_TUNING = {
   scout: { accel: 1.05, strafe: 0.58, turn: 1.08, brake: 1.1, assist: 1.15, inertia: 0.92 },
@@ -1191,7 +1268,13 @@ function flightClassForShip(shipDef) {
 
 function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
   const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
-  const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
+  const hullInertiaPerMass = hullYawInertiaPerMass(shipDef);
+  // Handling still shapes commanded angular acceleration above. Passive contact/impulse inertia
+  // comes from the hull's measured planar mass footprint; flightV3 and AI scale their requested
+  // angular acceleration by this value before the native body divides torque by its inertia.
+  const inertia = Math.max(1, hullInertiaPerMass == null
+    ? (totalMass / Math.max(0.3, handling)) * t.inertia
+    : totalMass * hullInertiaPerMass * t.inertia);
   const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
   return {
     flightClass,
@@ -1301,6 +1384,7 @@ function derivedStatsKey(defId, fittings, player) {
   const eff = (player && player.efficiencyMods) || {};
   return JSON.stringify([
     defId || 'ship_kestrel',
+    isModelTruthCensusLoaded(),
     Array.isArray(fittings) ? fittings : [],
     player ? {
       s: eff.shieldRegenMult, e: eff.energyRegenMult, c: eff.cargoCapMult,
@@ -1340,6 +1424,10 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let magnetRange = 0;
   let lootMagnetRange = 0;
   let masslineHeadId = null;
+  // §7.1 behavior heads: derived id only here — the behavior payload resolves in derivedForOwned
+  // where the fitted instance (and its provenance) is reachable; the derived-stats cache key
+  // covers defs, not instances.
+  let lineHeadId = null, lineHeadTier = 0;
   // TOY CHEST T13: a trophy head's higher break ceiling. Only a module that IS a Massline head can
   // carry it, and heads are mutually exclusive, so this can never raise another head's line.
   let masslineLoadCapacityMult = 1;
@@ -1460,6 +1548,13 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     }
     if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
       masslineHeadId = candidateHeadId;
+    }
+    const candidateLineHeadId = lineHeadIdForDef(d);
+    const candidateLineTier = candidateLineHeadId ? lineHeadTierFor(candidateLineHeadId) : 0;
+    if (candidateLineTier > lineHeadTier
+      || (candidateLineTier === lineHeadTier && candidateLineHeadId && (!lineHeadId || candidateLineHeadId < lineHeadId))) {
+      lineHeadId = candidateLineHeadId;
+      lineHeadTier = candidateLineTier;
     }
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
@@ -1603,6 +1698,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, masslineLoadCapacityMult, magnetRange,
+    lineHeadId,
     lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,
@@ -1825,6 +1921,23 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
   };
 }
 
+// Same physical hull/armor values used by a parked Shipjack body. The owned hull record carries
+// these while it has no live entity; repair remains on the live hull and is captured on departure.
+function parkedHullCondition(entity) {
+  if (!entity || !Number.isFinite(entity.hull)) return null;
+  const out = { hull: entity.hull };
+  if (Number.isFinite(entity.armorHp)) out.armorHp = entity.armorHp;
+  if (Number.isFinite(entity.armorMax)) out.armorMax = entity.armorMax;
+  return out;
+}
+
+function restoreParkedHullCondition(entity, condition) {
+  if (!entity || !condition) return;
+  if (Number.isFinite(condition.hull)) entity.hull = Math.max(0, Math.min(entity.hullMax, condition.hull));
+  if (Number.isFinite(condition.armorMax)) entity.armorMax = condition.armorMax;
+  if (Number.isFinite(condition.armorHp)) entity.armorHp = Math.max(0, Math.min(entity.armorMax, condition.armorHp));
+}
+
 // ---- the system singleton ------------------------------------------------------------------
 
 export const ships = {
@@ -1834,6 +1947,7 @@ export const ships = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._registry = ctx.registry || null;
     this._cargoMassRefreshPending = false;
     this._lastScarByCause = { weapon: null, slam: null };
     const bus = this.bus;
@@ -1868,7 +1982,7 @@ export const ships = {
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits. The
     // adapter validates the physical berth, while direct methods remain available to internal
     // crafting/reward/sandbox owners that do not originate at a station screen.
-    const withShipworksAccess = (capability, action) => (payload) => {
+    const withShipworksAccess = (capability, action, onRefuse = null) => (payload) => {
       const access = shipworksStationAccess(this.state);
       if (!access[capability]) {
         this.bus.emit('toast', {
@@ -1876,6 +1990,7 @@ export const ships = {
           kind: 'error',
           ttl: 3,
         });
+        if (onRefuse) onRefuse(payload || {});
         return false;
       }
       return action(payload || {});
@@ -1929,9 +2044,18 @@ export const ships = {
       const shipIndex = p && p.shipIndex;
       const slotIndex = p && p.slotIndex;
       const instanceId = p && typeof p.instanceId === 'string' && p.instanceId ? p.instanceId : null;
-      return this.fitModule({ shipIndex, slotIndex, instanceId });
+      return this.fitModule({ shipIndex, slotIndex, instanceId, operationId: p.operationId });
+    }, (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, instanceId: p.instanceId,
+        operationId: p.operationId, reason: 'station_unavailable',
+      });
     }));
-    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
+    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p), (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, operationId: p.operationId, reason: 'station_unavailable',
+      });
+    }));
     // Saving a preset snapshots the CURRENT fit — it mutates only the preset store, not the
     // ship, so it needs no station service and works on the flight host too (J13 packet).
     // Apply and delete DO change the fit / preset ownership: they stay behind the outfit gate.
@@ -2339,7 +2463,7 @@ export const ships = {
 
   /** Recompute derived stats for an entity from its def + fittings, copy onto the entity, and
    *  emit ship:statsChanged + ship:cargoCapChanged (§4.4). Returns the derived block. */
-  recomputeEntity(shipId, fittings) {
+  recomputeEntity(shipId, fittings, options = {}) {
     const e = this.state.entities.get(shipId);
     if (!e || !e.data) return null;
     const defId = e.data.defId;
@@ -2352,7 +2476,7 @@ export const ships = {
     }
     const player = isPlayer ? this.state.player : null;
     const prev = e.data.derived || {};
-    const ownedForQuirk = isPlayer ? this.ownedShip() : null;
+    const ownedForQuirk = isPlayer ? this.ownedShip() : (options.owned || null);
     const derived = derivedForOwned(defId, fit, player, ownedForQuirk);
 
     // preserve current hull/shield/cap fractions so a refit doesn't fully heal a damaged ship,
@@ -2360,11 +2484,18 @@ export const ships = {
     const hullFrac = prev.hullMax ? clamp01(e.hull / prev.hullMax) : 1;
     const shieldFrac = prev.shieldMax ? clamp01(e.shield / prev.shieldMax) : 1;
     const capFrac = prev.capMax ? clamp01(e.cap / prev.capMax) : 1;
+    const armorHp = e.armorHp;
+    const armorMax = e.armorMax;
 
     copyDerivedOntoEntity(e, derived);
     e.hull = derived.hullMax * hullFrac;
     e.shield = derived.shieldMax * shieldFrac;
     e.cap = derived.capMax * capFrac;
+    // The fitting derivation does not own physical armor; preserve its existing condition.
+    if (Number.isFinite(armorMax) && Number.isFinite(armorHp)) {
+      e.armorMax = armorMax;
+      e.armorHp = Math.max(0, Math.min(armorMax, armorHp));
+    }
 
     // refresh boost config (Phase 3) — preserve current energy fraction + cooldown timer so a
     // refit doesn't silently refill or reset boost.
@@ -2410,6 +2541,13 @@ export const ships = {
       + shipAppearanceSignature(e.data.appearance, defId);
 
     e.data.derived = derived;
+    // The §7.1 behavior head rides data.lineHeadId — the same stamp faction carriers hold — so
+    // every head owner (player or authored NPC) reads through one seam. Only the player's equip
+    // may clear it: an authored holder with no fitted module keeps its stamped head.
+    if (isPlayer) {
+      if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
+      else delete e.data.lineHeadId;
+    } else if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
     if (ownedForQuirk?.shipjackDriveRemoved) e.data.shipjackDriveRemoved = true;
     else if (Object.hasOwn(e.data, 'shipjackDriveRemoved')) delete e.data.shipjackDriveRemoved;
     if (isPlayer && this.state.ui) this.state.ui.radarRange = derived.radarRange;
@@ -2418,12 +2556,14 @@ export const ships = {
     e.data.fittings = newViewFittings;
     e.data._appearance = newAppearance;
 
-    this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
-    this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    if (!options.quiet) {
+      this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
+      this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    }
     // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
     // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
     // rebuilding the mesh on every pure-stat recompute (e.g. research efficiency ticks).
-    if (newAppearance !== prevAppearance) {
+    if (!options.quiet && newAppearance !== prevAppearance) {
       this.bus.emit('ship:appearanceChanged', { id: e.id });
     }
     return derived;
@@ -2502,6 +2642,12 @@ export const ships = {
     if (!def || def.intrinsicHull) return false;
     if (def.swarmEarned) {
       return swarmCrossoverEarned(def.swarmEarned)
+        || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
+    // Row 489: a Line-head the between-run ledger has not earned is not for
+    // sale; the station rack remains the only other door, same as swarmEarned.
+    if (def.lineGate) {
+      return lineMetaEarned(def.lineGate)
         || !!stationShopOffer(def, dockedShopStationId(this.state));
     }
     if (def.exclusivity && !exclusivityRepMet(def.exclusivity, this.state && this.state.factions)) {
@@ -2764,6 +2910,76 @@ export const ships = {
     return true;
   },
 
+  // The owned record holds the custody link; the automation fleet row remains the job owner.
+  claimFleetHull(index, fleetId) {
+    const p = this.state.player;
+    const owned = p && Array.isArray(p.ownedShips) ? p.ownedShips : [];
+    if (!Number.isInteger(index) || index < 0 || !owned[index]) return { ok: false, reason: 'missing' };
+    if (index === p.activeShipIndex) return { ok: false, reason: 'active' };
+    const ship = owned[index];
+    if (ship.vesselId) {
+      const sj = this.state.player?.shipjack || this.state.shipjack;
+      const vessel = sj?.vesselsById?.[ship.vesselId];
+      const stationId = this.state.ui?.docked === true ? this.state.ui.dockedStationId : null;
+      const shipjack = this._registry?.get('shipjack');
+      const body = vessel?.location?.entityId != null ? this.state.entities?.get(vessel.location.entityId) : null;
+      const anyLive = (this.state.entityList || []).some(e => e?.alive && e.data?.vesselId === ship.vesselId);
+      if (!vessel || vessel.defId !== ship.defId || vessel.custodian !== 'player'
+        || !stationId || vessel.location?.kind !== 'berth' || vessel.location.stationId !== stationId
+        || !shipjack?.stationEntity?.(stationId) || anyLive || (body?.alive && body.data?.vesselId === ship.vesselId)
+        || sj.yards?.[ship.vesselId] || sj.fleetOperations?.[ship.vesselId]
+        || !(vessel.condition?.hull > 0)) return { ok: false, reason: 'tracked_vessel' };
+    }
+    if (!ship.vesselId && Number.isFinite(ship.parkedBody?.hull) && ship.parkedBody.hull <= 0) {
+      return { ok: false, reason: 'destroyed' };
+    }
+    const prior = ship.fleetAssignmentId;
+    if (prior != null) {
+      // An ambiguous or still-live link is never silently stolen. A unique orphaned link
+      // can be replaced, for example after the existing fleet-loss path removed its row.
+      if (owned.filter((row) => row && row.fleetAssignmentId === prior).length !== 1
+        || (this.state.automation?.fleet || []).some((row) => row && row.id === prior)) {
+        return { ok: false, reason: 'assigned' };
+      }
+    }
+    ship.fleetAssignmentId = fleetId;
+    return { ok: true, ship };
+  },
+
+  fleetOwnedHull(fleetId) {
+    const matches = (this.state.player?.ownedShips || []).filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    return matches.length === 1 ? matches[0] : null;
+  },
+
+  fleetHullCondition(entity) { return parkedHullCondition(entity); },
+
+  fleetHullFraction(owned) {
+    const vessel = owned?.vesselId && (this.state.player?.shipjack || this.state.shipjack)?.vesselsById?.[owned.vesselId];
+    if (vessel && Number.isFinite(vessel.condition?.hull)) return clamp01(vessel.condition.hull);
+    if (!Number.isFinite(owned?.parkedBody?.hull)) return 1;
+    const max = derivedForOwned(owned.defId, owned.fittings || [], null, owned).hullMax;
+    return max > 0 ? clamp01(owned.parkedBody.hull / max) : 1;
+  },
+
+  configureFleetHull(entity, fleet) {
+    const owned = this.fleetOwnedHull(fleet.id);
+    if (!owned || !entity?.data) return false;
+    entity.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
+    this.recomputeEntity(entity.id, owned.fittings || [], { owned, quiet: true });
+    restoreParkedHullCondition(entity, fleet.parkedBody || owned.parkedBody);
+    return true;
+  },
+
+  releaseFleetHull(fleetId, entity, fleet) {
+    const owned = this.state.player?.ownedShips || [];
+    const matches = owned.filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    if (matches.length !== 1) return false;
+    const condition = parkedHullCondition(entity) || fleet?.parkedBody;
+    if (condition) matches[0].parkedBody = { ...condition };
+    delete matches[0].fleetAssignmentId;
+    return true;
+  },
+
   sellShip(index, { confirmedCargoUnits = null } = {}) {
     const p = this.state.player;
     if (index === p.activeShipIndex) {
@@ -2772,6 +2988,11 @@ export const ships = {
     }
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    if (owned.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before selling its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSaleRejected' });
+      return false;
+    }
     if (owned.vesselId) {
       // Tracked vessels require the same physical-inventory appraisal and terminal custody
       // receipt as the Registry. Legacy half-price sale also refunds every fitted module,
@@ -2820,6 +3041,12 @@ export const ships = {
     const p = this.state.player;
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    if (index !== p.activeShipIndex && owned.fleetAssignmentId != null
+      && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before flying its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSwitchRejected' });
+      return false;
+    }
     const vessel = owned.vesselId && this.state.shipjack?.vesselsById?.[owned.vesselId];
     if (index !== p.activeShipIndex && vessel
       && (vessel.location?.kind !== 'berth' || vessel.location.stationId !== this.state.ui?.dockedStationId)) {
@@ -2860,6 +3087,10 @@ export const ships = {
     if (isTransition) this.bus.emit('ship:berthSwitching', {
       fromId: this.state.playerId, fromVesselId: previousOwned?.vesselId || null, toVesselId: owned.vesselId || null,
     });
+    if (isTransition && previousOwned && !previousOwned.vesselId) {
+      const condition = parkedHullCondition(this.activeShipEntity());
+      if (condition) previousOwned.parkedBody = condition;
+    }
     p.activeShipIndex = index;
     // re-derive the player entity onto the new hull if it exists
     const e = this.state.entities.get(this.state.playerId);
@@ -2880,12 +3111,15 @@ export const ships = {
         // The ordinary berth adapter keeps its player body, but the incoming hull brings its
         // own damage. Outgoing hull integrity cannot repair a captured ship for free.
         const parked = vessel.parkedBody || {};
+        if (Number.isFinite(parked.armorMax)) e.armorMax = Math.max(0, parked.armorMax);
         e.hull = Math.min(e.hullMax, Number.isFinite(parked.hull) ? parked.hull
           : e.hullMax * Math.max(0, Math.min(1, Number(vessel.condition?.hull) || 0)));
         for (const [key, max] of [['armorHp','armorMax'], ['shield','shieldMax'], ['cap','capMax']]) {
           e[key] = Math.max(0, Math.min(e[max] || 0, Number.isFinite(parked[key]) ? parked[key] : 0));
         }
         if (parked.subsystems) this.helpers?.restoreShipjackSubsystems?.({ entityId: e.id, subsystems: parked.subsystems });
+      } else if (isTransition && owned.parkedBody) {
+        restoreParkedHullCondition(e, owned.parkedBody);
       }
     }
     if (isTransition) {
@@ -2923,6 +3157,9 @@ export const ships = {
   },
 
   ownedVesselLocationBlocker(owned, shipIndex) {
+    if (owned?.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row?.id === owned.fleetAssignmentId)) {
+      return { reason: 'fleet_assigned', text: 'Return this wingman to the hangar before changing its fittings.' };
+    }
     if (!owned?.vesselId || shipIndex == null || shipIndex === this.state.player.activeShipIndex) return null;
     const vessel = this.state.shipjack?.vesselsById?.[owned.vesselId];
     if (!vessel || (vessel.location?.kind === 'berth' && vessel.location.stationId === this.state.ui?.dockedStationId)) return null;
@@ -3047,7 +3284,7 @@ export const ships = {
 
   /** Fit a module (by inventory instanceId, or by defId — buying directly into a slot) into a
    *  slot on the active (or given) owned ship. */
-  fitModule({ shipIndex, slotIndex, instanceId, defId }) {
+  fitModule({ shipIndex, slotIndex, instanceId, defId, operationId }) {
     const refuse = (reason) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -3055,6 +3292,7 @@ export const ships = {
         defId,
         instanceId,
         reason: reason || 'refused',
+        ...(operationId ? { operationId } : {}),
       });
       return false;
     };
@@ -3111,16 +3349,15 @@ export const ships = {
     // Unfit whatever previously occupied the slot back to inventory after validation succeeds.
     if (displaced) p.moduleInventory.push({ ...displaced });
 
-    this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+    this.bus.emit('module:equipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId, instanceId } : {}) });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;
   },
 
-  unfitModule({ shipIndex, slotIndex }) {
-    // Research G / P08 residual — a refused unfit travels the SAME authoritative outcome channel
-    // as a refused fit: module:fitRefused names the reason, and the chooser's synchronous
-    // listener keeps the attempted slot mounted instead of playing the success detent over an
-    // intent the owner rejected (e.g. cargo capacity changed between render and intent).
+  unfitModule({ shipIndex, slotIndex, operationId }) {
+    // A refused unfit travels the same authoritative outcome channel as a refused fit.
+    // A worker-lane caller can correlate that receipt with its own pending action.
     const refuse = (reason, refusedDefId = null, refusedInstanceId = null) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -3128,6 +3365,7 @@ export const ships = {
         defId: refusedDefId,
         instanceId: refusedInstanceId,
         reason,
+        ...(operationId ? { operationId } : {}),
       });
       return false;
     };
@@ -3135,23 +3373,29 @@ export const ships = {
     const owned = this.ownedShip(shipIndex);
     if (!owned) return refuse('missing_ship');
     const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
-    if (locationBlocker) return refuse(locationBlocker.reason);
+    if (locationBlocker) {
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return refuse(locationBlocker.reason);
+    }
     const defId = owned.fittings[slotIndex];
     if (!defId) return refuse('empty_slot');
 
     const inst = this._takeFittedInstance(owned, slotIndex);
     owned.fittings[slotIndex] = null;
     if (this.wouldOverflowCargo(owned)) {
+      const used = Number(p.cargo?.usedVolume) || 0;
+      const capacity = getDerivedStats(owned.defId, owned.fittings, p).cargoCap;
       owned.fittings[slotIndex] = defId; // revert
       if (inst) {
         if (!owned.fittedInstances) owned.fittedInstances = {};
         owned.fittedInstances[slotIndex] = inst;
       }
-      this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: `Cargo would overflow: ${used.toLocaleString('en-US', { maximumFractionDigits: 2 })} used / ${capacity.toLocaleString('en-US')} capacity without this module. Sell or transfer cargo first.`, kind: 'error', ttl: 5 });
       return refuse('cargo_overflow', defId, inst ? inst.instanceId : null);
     }
     p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
-    this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+    this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId } : {}) });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;
   },
@@ -3278,6 +3522,12 @@ export const ships = {
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
     if (!owned) return false;
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) {
+      this.bus.emit('ship:loadoutPresetApplyRejected', { presetId, hullDefId: owned.defId, reason: locationBlocker.reason });
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return false;
+    }
     const shipDef = SHIP_BY_ID.get(owned.defId);
     if (!shipDef) return false;
     const preset = this.loadoutPresets().find((row) => row && row.id === presetId);

@@ -1622,12 +1622,18 @@ export function runCourierPublicRoute(options = {}) {
     for (const trade of trades) {
       const have = cargoQty(ctx, trade.cmdtyId);
       if (!(have > 0)) continue;
+      const beforeCr = ctx.state.player.credits | 0;
       const sellRes = executeMarketTrade(ctx, sellStationId, trade.cmdtyId, 'sell', have, costs, receipt);
       if (!sellRes.ok) {
         receipt.bottlenecks.push({ code: 'arb_sell_failed', detail: sellRes.reason });
         sellFailed = true;
         break;
       }
+      // An arbitrage sell can satisfy an accepted bulk_trade quota — missions' own
+      // economy:tradeCompleted listener pays that reward inside execute(), so book the
+      // overage the same way the contract-sell path does or the credit ledger leaks it.
+      const bonus = Math.max(0, (ctx.state.player.credits | 0) - beforeCr - (sellRes.total || 0));
+      if (bonus > 0) receipt.missionProceeds += bonus;
       arbSellTotal += sellRes.total || 0;
       arbSellQty += sellRes.qty || 0;
       advanceTime(ctx, COURIER_ROUTE_PACING.marketTicketS, budget, 'actionS');
@@ -1722,12 +1728,21 @@ function finalize(receipt, ctx, costs, budget, horizonS) {
     cohortRatio: cohortRate ? round2(receipt.creditsPerMin / cohortRate) : null,
     cohortUpperBand: 600,
   };
-  const accountedEnding = receipt.startingCapital + receipt.saleProceeds + receipt.missionProceeds
+  // Mission-class settlements can land inside raw bus emits (e.g. missions' own
+  // dock:docked listener completing a delivery between measured actions), outside
+  // the harness's before/after windows. The credit-authority ledger already
+  // attributes every grant by reason, so the accounting classifies them there;
+  // grant reasons outside the known channels still surface as residual.
+  const ledgerMissionProceeds = (ctx.creditAuthorityLedger || [])
+    .filter((row) => row.kind === 'grant' && /^(mission|career|collateral_refund):/.test(row.reason || ''))
+    .reduce((sum, row) => sum + (row.amount || 0), 0);
+  const accountedEnding = receipt.startingCapital + receipt.saleProceeds + ledgerMissionProceeds
     - receipt.purchaseSpend - costs.tollCost - costs.repairCost;
   receipt.creditAccounting = {
     startingCapital: receipt.startingCapital,
     saleProceeds: receipt.saleProceeds,
-    missionProceeds: receipt.missionProceeds,
+    missionProceeds: ledgerMissionProceeds,
+    measuredMissionProceeds: receipt.missionProceeds,
     purchaseSpend: receipt.purchaseSpend,
     tollCost: costs.tollCost,
     repairCost: costs.repairCost,

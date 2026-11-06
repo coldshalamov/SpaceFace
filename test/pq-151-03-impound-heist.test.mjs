@@ -376,3 +376,86 @@ test(`seed ${SEED}: save round-trips at the lock, then the heist still cuts`, ()
   assert.notEqual(second.state.player.wantedTier, WANTED_TIER.IMPOUND);
   second.sim.dispose();
 });
+
+test(`seed ${SEED}: a destroyed yard re-posts from the durable bill — the band never softlocks`, () => {
+  const { sim, state, posted } = boot(SEED);
+  raiseToImpound(sim, state);
+  sim.step();
+  assert.equal(posted.length, 1);
+  const bill = impoundBillFor(state);
+  assert.equal(bill.status, 'open');
+  const firstYard = liveYard(state);
+  assert.ok(firstYard);
+  firstYard.alive = false;
+  state.entities.delete(firstYard.id);
+  sim.step();
+
+  const pound = wantedImpoundFor(state);
+  assert.ok(pound, 'the pound re-posts after the yard is gone');
+  const yard = liveYard(state);
+  assert.ok(yard, 'a fresh yard stands where the bill says the lot is');
+  assert.notEqual(yard.id, firstYard.id);
+  assert.deepEqual(
+    { x: yard.pos.x, z: yard.pos.z },
+    { x: bill.yard.x, z: bill.yard.z },
+    'the repost lands at the durable bill position, not on the player',
+  );
+  assert.equal(posted.length, 2);
+  assert.equal(state.player.wantedTier, WANTED_TIER.IMPOUND);
+  sim.dispose();
+});
+
+test(`seed ${SEED}: a destroyed lock re-posts the lot — the heist verb never dies`, () => {
+  const { sim, state, player, recovered } = boot(SEED);
+  raiseToImpound(sim, state);
+  sim.step();
+  const firstLock = liveLock(state);
+  assert.ok(firstLock);
+  firstLock.alive = false;
+  state.entities.delete(firstLock.id);
+  sim.step();
+
+  const lock = liveLock(state);
+  assert.ok(lock, 'a fresh lock stands after the lot re-posted');
+  assert.notEqual(lock.id, firstLock.id);
+  player.pos.x = lock.pos.x;
+  player.pos.z = lock.pos.z;
+  sim.step();
+  assert.equal(recovered.length, 1);
+  assert.equal(recovered[0].method, 'steal');
+  sim.dispose();
+});
+
+test(`seed ${SEED}: a dead clerk re-staffs the desk — pay stays a door`, () => {
+  const { sim, state } = boot(SEED);
+  raiseToImpound(sim, state);
+  sim.step();
+  const clerk = liveClerk(state);
+  assert.ok(clerk);
+  clerk.alive = false;
+  state.entities.delete(clerk.id);
+  for (let i = 0; i < 20; i++) sim.step();
+
+  const restaffed = liveClerk(state);
+  assert.ok(restaffed, 'the desk re-staffs on the post cadence');
+  assert.notEqual(restaffed.id, clerk.id);
+  sim.dispose();
+});
+
+test(`seed ${SEED}: a warm deserialize drops the stale session record — the bill re-posts`, () => {
+  const { sim, state } = boot(SEED);
+  raiseToImpound(sim, state);
+  sim.step();
+  const yard = liveYard(state);
+  assert.ok(yard);
+  yard.alive = false;
+  state.entities.delete(yard.id);
+
+  const law = sim.registry.get('lawSecurity');
+  law.deserialize(JSON.parse(JSON.stringify(law.serialize())));
+  assert.equal(state.lawSecurity.wantedImpound == null, true,
+    'the load path clears the session record whose entity ids are dead');
+  sim.step();
+  assert.ok(liveYard(state), 'the pound re-posts from the durable bill');
+  sim.dispose();
+});

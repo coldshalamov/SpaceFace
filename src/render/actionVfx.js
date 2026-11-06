@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
 import { ForceParticleFlow } from './vfx/forceParticleFlow.js';
 import { ActionPrimitiveComposer, actionPrimitiveForVerb } from './vfx/actionPrimitives.js';
-import { ADDITIONAL_ACTION_VFX_RECIPES, resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
+import { ADDITIONAL_ACTION_VFX_RECIPES, resolveAdditionalActionVfxReceipt, committedAttackLaneReceipt } from './vfx/actionEventRecipes.js';
 import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
@@ -38,6 +38,11 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
   'salvage:reactorVented':recipe('vent',0xffb271,1.15),
   'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
+  // The magnet catch is the net catch's sibling verb — the same teal capture beat, riding the
+  // pod from its first pull (lootShards emits once per pod per sector window) so a furball
+  // catch reads on the glass instead of only in the speaker. The payload carries the pod's
+  // position at first pull; if the pod is consumed mid-beat the flash holds the catch point.
+  'loot:magnetCaptured':recipe('catch',0x85e7cf,.6,{surfaceCapture:true}),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
   // BombDetonationVfx owns all eight payloads, including their actual received contacts.
@@ -126,11 +131,13 @@ export class ActionVfx {
     this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
-      provenance:'none',sourceProvenance:'none',cmEffect:null,cmUntil:0,cmClosingAt:-1}));
+      provenance:'none',sourceProvenance:'none',cmEffect:null,cmUntil:0,cmClosingAt:-1,committedLane:null}));
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
+    if(name==='ai:doctrinePhase')return this._committedLanePhase(p,state);
     if(name==='salvageWatch:repairWork'&&!validWatchRepair(p,state))return false;
+    const committedLane=committedAttackLaneReceipt(name,p,state);
     p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
     const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
     const selectedRecipe=entry.variants?.[p.kind]??entry;
@@ -166,6 +173,7 @@ export class ActionVfx {
     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
     if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
     slot.watchReceipt=name==='salvageWatch:repairWork'?{...p}:null;
+    slot.committedLane=committedLane;
     slot.last=name==='salvageWatch:repairWork'?p.simTime:now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
@@ -254,6 +262,21 @@ export class ActionVfx {
       this.anchor.x=slot.sx;this.anchor.z=slot.sz;localOffset(this.anchor,source,slot,'o');
     }
     return true;
+  }
+  _committedLanePhase(p,state){
+    if(!Number.isSafeInteger(p?.sourceGeneration)||!Number.isInteger(p.tick))return false;
+    let handled=false;
+    for(const s of this.slots){
+      const lane=s.alive&&s.committedLane;
+      if(!lane||s.sourceId!==p.entityId||lane.sourceGeneration!==p.sourceGeneration||p.tick<lane.startTick)continue;
+      handled=true;
+      const aim=p.aimCommit;
+      const same=(p.phase==='engine_flare'||p.phase==='strike'||p.phase==='commit')
+        && p.targetId===lane.targetId&&p.targetGeneration===lane.targetGeneration
+        && aim&&aim.untilTick===lane.untilTick&&aim.bearing===lane.bearing&&aim.capRad===lane.capRad;
+      if(!same)s.committedLane=null;
+    }
+    return handled;
   }
   _follow(s,state){
     const alpha=finite(state.render?.interpolationAlpha,1);
@@ -344,8 +367,18 @@ export class ActionVfx {
         if(since<s.recipe.life&&s.cmClosingAt<0)this.composer.render(s,now,reduced,flash);
         this._countermeasureState(s,now,reduced,flash);
       }else{
-        if(attackTellReleased(state,s)||since>=s.recipe.life){s.alive=false;continue;}
-        this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
+        const lane=s.committedLane;
+        if(lane&&(entity(state,s.sourceId)!==s.source||s.source?.occupantGeneration!==lane.sourceGeneration
+          ||entity(state,lane.targetId)!==lane.target||lane.target?.alive===false
+          ||(lane.target?.occupantGeneration ?? null)!==lane.targetGeneration
+          ||(Number.isInteger(state.tick)&&state.tick>lane.untilTick)))s.committedLane=null;
+        if(attackTellReleased(state,s)||(!s.committedLane&&since>=s.recipe.life)){s.alive=false;continue;}
+        this.live++;this._follow(s,state);
+        if(since<s.recipe.life)this.composer.render(s,now,reduced,flash);
+        if(s.committedLane){
+          presentedAnchorXZ(s.source,finite(state.render?.interpolationAlpha,1),this.anchor);
+          this.composer.renderCommittedLane(s,this.anchor,flash);
+        }
       }
     }
     this.batch.end();this.mesh.visible=this.batch.count>0||this.particles.live>0;return this.live;

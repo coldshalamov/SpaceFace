@@ -31,7 +31,8 @@ const onboardingSrc = read('src/systems/onboarding.js');
 const flightDrillSrc = read('src/onboarding/flightDrill.js');
 const authoredOnboardingSrc = `${onboardingSrc}\n${flightDrillSrc}`;
 const storySrc = read('src/systems/story.js');
-const missionsSrc = read('src/systems/missions.js');
+const missionsSrc = ['missions', 'missionBoardOps', 'missionObjectiveOps', 'missionSpawningOps', 'missionStoryOps']
+  .map((f) => read(`src/systems/${f}.js`)).join('\n');
 const telemetrySrc = read('src/systems/telemetry.js');
 const newGameSrc = read('src/ui/screens/newGame.js');
 const mainMenuSrc = read('src/ui/screens/mainMenu.js');
@@ -235,7 +236,7 @@ assert.match(storySrc, /tutorial:finished/, 'story.js must release the deferred 
 assert.match(storySrc, /_recentTutorialLine/, 'story.js must suppress ambient comms near a tutorial line');
 assert.match(missionsSrc, /tutorial:finished.*_releaseStoryNavigationAfterTutorial/s,
   'missions.js must release the story waypoint only after the tutorial finishes');
-assert.match(missionsSrc, /_tutorialOwnsOpening\(\)/,
+assert.match(missionsSrc, /_onboardingOwnsOpeningNav\(\)/,
   'missions.js must not force story waypoint/toast over the tutorial opening');
 assert.match(onboardingSrc, /beat\.key === 'marker'[\s\S]*_setObjectiveWaypoint\(true\)/,
   'marker lesson must force its distinctive onboarding waypoint on beat entry');
@@ -287,8 +288,19 @@ assert.deepEqual(
   ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
   'the first-hour combat ramp must cover every ordinary first-hop Helios destination',
 );
+// The Ceres belt-shadow ambush is the first fight a new pilot goes LOOKING for: its authored
+// pack (3–4 bodies, detonator_dart weighted in) replaces the old duet so the flying bomb's
+// shove/tether lesson lands on the starter ring. Tethys/Vesta ambient hostiles stay basic
+// pirates, solo or pair.
+const STARTER_HOSTILE_CONTRACT = {
+  sector_ceres_belt: { archetypes: new Set(['reaver_pirate', 'wasp_swarmer', 'detonator_dart']), maxSquad: 4 },
+  sector_tethys_junction: { archetypes: new Set(['reaver_pirate', 'wasp_swarmer']), maxSquad: 2 },
+  sector_vesta_forge: { archetypes: new Set(['reaver_pirate', 'wasp_swarmer']), maxSquad: 2 },
+};
 for (const sector of starterNeighbors) {
   assert.deepEqual(sector.enemyLevel, [1, 2], `${sector.id} ambient enemies must stay level 1–2`);
+  const contract = STARTER_HOSTILE_CONTRACT[sector.id];
+  assert.ok(contract, `${sector.id} must declare its first-hour hostile contract`);
   for (let seed = 1; seed <= 128; seed++) {
     const intents = planZoneSpawns(
       sector.id,
@@ -299,15 +311,16 @@ for (const sector of starterNeighbors) {
     const squads = new Map();
     for (const intent of intents) {
       assert.ok(
-        intent.archetypeId === 'reaver_pirate' || intent.archetypeId === 'wasp_swarmer',
-        `${sector.id} starter hostile ${intent.archetypeId} must remain a basic pirate archetype`,
+        contract.archetypes.has(intent.archetypeId),
+        `${sector.id} starter hostile ${intent.archetypeId} is outside its authored roster`,
       );
       assert.ok(intent.level >= 1 && intent.level <= 2,
         `${sector.id} starter hostile level ${intent.level} must stay within 1–2`);
       squads.set(intent.squadId, (squads.get(intent.squadId) || 0) + 1);
     }
     for (const [squadId, count] of squads) {
-      assert.ok(count <= 2, `${sector.id}/${squadId} starter hostile squad must be solo or pair`);
+      assert.ok(count <= contract.maxSquad,
+        `${sector.id}/${squadId} starter hostile squad must stay within its authored size`);
     }
   }
 }
@@ -326,12 +339,14 @@ for (const id of [
 }
 
 // ── §3 menu polish ───────────────────────────────────────────────────────────────────────────
-assert.match(mainMenuSrc, /_startIdleAttract/, 'main menu must start a 12s idle attract (spec2/03 §3)');
-assert.match(mainMenuSrc, /ATTRACT_IDLE_MS = 12_000/, 'idle attract must trigger after 12s of no input');
-assert.match(mainMenuSrc, /stamp\(refs\.list\.children, \{ gap: 60/, 'main menu items must stamp in on a per-item delay on first show (kit motion; was sf-stagger/90 ms pre-ORRERY)');
+assert.match(mainMenuSrc, /_startIdleAttract/, 'main menu must start an idle attract (spec2/03 §3)');
+assert.match(mainMenuSrc, /ATTRACT_IDLE_MS = 6_000/, 'idle attract must trigger after the tuned 6s idle window');
+assert.match(mainMenuSrc, /stamp\(words, \{ gap: 60/, 'main menu items must stamp in on a per-item delay on first show (kit motion; was sf-stagger/90 ms pre-ORRERY)');
 assert.match(mainMenuSrc, /sf-continue-fade/, 'CONTINUE must fade to game with a location label');
 assert.match(newGameSrc, /showFirstRunSplash/, 'NEW GAME first-run must show the splash line');
-assert.match(newGameSrc, /Helios System\. Third shift\. The manifest is wrong\./, 'first-run splash line must be verbatim (spec2/03 §3)');
+// The manifest-is-wrong hook now lives in onboarding's COLD_OPEN_PREMISE (B0); the splash
+// carries the location stamp as re-authored in the ORRERY sweep.
+assert.match(newGameSrc, /Helios System · Third Shift Arrival/, 'first-run splash line must be verbatim');
 assert.match(newGameSrc, /launch\.disabled = launching/, 'START must disable itself while the launch hand-off covers the screen (was warmup veil after 300 ms pre-ORRERY)');
 
 // Difficulty copy must remain authored and safe for the inline option-card surface.

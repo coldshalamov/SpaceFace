@@ -20,7 +20,6 @@ const REQUIRED_MODULES = Object.freeze([
 ]);
 
 const REQUIRED_FULL_HANDOFF = Object.freeze([
-  'docs/handoffs/SG-06_AI_HANDOFF.md',
   'docs/Spec/SG-06_ACCEPTANCE.json',
   'third_party/reference-ledger-sg06.yml',
   'scripts/check-sg06-ai.mjs',
@@ -34,17 +33,13 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
   'src/ai/index.js',
   'src/systems/tacticalAI.js',
-  'docs/handoffs/SG-06_AI_HANDOFF.md',
 ]);
 
 const packageJson = json('package.json');
 const scripts = packageJson.scripts || {};
 
-assert(exists('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md'), 'SG-06 intake guard requires docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
-const intake = read('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
-assert(intake.includes('F10CC6B0FF01339EA90522D0C969DFE049DAF8788203580D3851B56220A358D5'),
-  'SG-06 intake doc must record the accepted zip SHA-256');
-assert(intake.includes('Accepted at port level'), 'SG-06 intake doc must mark the final artifact as accepted at port level');
+// Preserve source provenance; live contracts below establish the runtime state.
+assert(exists('third_party/reference-ledger-sg06.yml'), 'SG-06 requires its source provenance ledger');
 assert(scripts['check:sg06:intake'], 'package.json must expose check:sg06:intake');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:intake'),
   'package.json check:sg06 must include the SG-06 intake guard');
@@ -204,9 +199,24 @@ async function assertGatedProductionRegistration() {
     'SG-06 acceptance report generator must include the runtime capability gating status');
   assert(read('scripts/check-sg06-ai.mjs').includes('productionSpawnTacticalCapabilities'),
     'SG-06 acceptance report generator must include the production spawn tactical capability status');
-  const combat = read('src/systems/combat.js');
-  assert(combat.includes('tacticalCapabilitiesFor'), 'enemy spawn specs must author SG-06 tactical capability metadata');
-  assert(combat.includes('ARCHETYPE_TACTICAL_CAPABILITIES'), 'enemy spawn tactical capabilities must be explicit and reviewable');
+  const spawnBuilder = read('src/systems/enemySpawnSpec.js');
+  assert(spawnBuilder.includes('tacticalCapabilitiesFor'), 'enemy spawn specs must author SG-06 tactical capability metadata');
+  assert(spawnBuilder.includes('ARCHETYPE_TACTICAL_CAPABILITIES'), 'enemy spawn tactical capabilities must be explicit and reviewable');
+  // The deterministic builder also serves worker materializers. The combat API must keep
+  // using that exact owner after its extraction, and the authored tags must reach real specs.
+  const [{ makeEnemySpawnSpec }, { makeEnemySpawnSpec: canonicalSpawnSpec }] = await Promise.all([
+    import('../src/systems/combat.js'),
+    import('../src/systems/enemySpawnSpec.js'),
+  ]);
+  assert.strictEqual(makeEnemySpawnSpec, canonicalSpawnSpec,
+    'combat and worker materializers must share the canonical enemy spawn factory');
+  const lawman = makeEnemySpawnSpec('patrol_lawman', 3, { x: 0, z: 0 });
+  const capabilities = lawman.data.ai.capabilities;
+  for (const capability of ['drive', 'sensor', 'ranged', 'disable']) {
+    assert(capabilities.includes(capability), `lawful interceptor spawn must author ${capability}`);
+  }
+  assert.deepEqual(capabilities, [...new Set(capabilities)].sort(),
+    'production spawn tactical capabilities must be unique and deterministically ordered');
   const tactical = read('src/systems/tacticalAI.js');
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
   assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');

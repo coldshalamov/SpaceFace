@@ -6,6 +6,7 @@ import { core } from '../src/core/coreSystem.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { wingmen } from '../src/systems/wingmen.js';
+import { automation } from '../src/systems/automation.js';
 
 function createHarness() {
   const state = createGameState(23);
@@ -84,6 +85,38 @@ test('wingman hard sector exit leaves one canonical destroy receipt to core swee
     assert.equal(destroyed.length, 1, 'a later flush must not create a duplicate opportunity');
   } finally {
     wingmen.destroy?.();
+    core.destroy();
+  }
+});
+
+test('wingman death removes its fleet record and writes one automation loss receipt', () => {
+  const { state, bus, helpers } = createHarness();
+  const fleetShip = state.automation.fleet[0];
+  automation.init({ state, bus, helpers });
+  // Automation normalization owns the saved roster shape; restore the live record after init
+  // because this fixture has already materialized its wingman entity.
+  state.automation.fleet = [fleetShip];
+  const lost = [];
+  bus.on('automation:assetLost', (payload) => lost.push(payload));
+
+  try {
+    state.mode = 'flight';
+    const liveId = fleetShip._liveId;
+    const wingman = state.entities.get(liveId);
+    wingman.alive = false;
+    wingmen.update(1 / 60, state);
+    assert.equal(state.automation.fleet.includes(fleetShip), false);
+    assert.equal(state.automation.meta.lostAssetsLog.filter((row) => row.id === fleetShip.id).length, 1);
+    assert.deepEqual(lost.map(({ kind, id }) => ({ kind, id })), [
+      { kind: 'fleet', id: fleetShip.id },
+    ]);
+    wingmen.update(1 / 60, state);
+    bus.flush();
+    assert.equal(state.automation.meta.lostAssetsLog.filter((row) => row.id === fleetShip.id).length, 1,
+      'a repeated bus flush must not duplicate the fleet loss');
+  } finally {
+    wingmen.destroy?.();
+    automation.destroy?.();
     core.destroy();
   }
 });

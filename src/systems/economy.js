@@ -1,3 +1,4 @@
+import { settleCinderglassResult } from '../features/cinderglassJob/ownerSeams.js';
 import { winnowCarrierHandoffReady } from '../world/vestaWinnowRecovery.js';
 // economy system — stock-based market economy + SOLE writer of state.player.credits.
 // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
@@ -27,6 +28,8 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { stationInfo, toleratesContraband } from '../economy/stationMarketProfile.js';
+export { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
 import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
@@ -42,7 +45,7 @@ import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
-  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults,
+  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults, stationTradeMultParts,
   stationRefuelRationU, grudgeLive, splitStationConditionsForSave, stationGrudgeOwedCr,
 } from '../economy/stationConditions.js';
 import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
@@ -97,9 +100,10 @@ import {
 import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
-import { priceModForState, rankServiceDiscount } from './factions.js';
+import { priceModForState, rankFromRep, rankServiceDiscount } from './factions.js';
 import { swarmCrossoverServiceDiscount } from '../data/swarmCrossover.js';
 import { endingStationTradeMults } from '../story/endings/worldAfter.js';
+import { LONG_BERTH_STATION_ID, berthStageDef } from '../data/longBerth.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -158,10 +162,29 @@ const CARGO_POLICY_DANGER_MULT = 0.5;
 const CARGO_POLICY_COVER_FRAC = 0.6;
 // FB-101 — the hardship floor: the smallest fill that can still make a jump, once a day, filed
 // as debt. BASE_FUEL·LY·tier lands a real shortest leg at ~4–8u; eight covers it.
-const EMERGENCY_FUEL_U = 8;
+export const EMERGENCY_FUEL_U = 8;
 // A penniless hull can buy enough welding on its note to leave the berth and work again.
 // This is a daily survival floor; ordinary repairs still charge the full missing protection.
-const EMERGENCY_REPAIR_HULL_FRAC = 0.25;
+export const EMERGENCY_REPAIR_HULL_FRAC = 0.25;
+
+/**
+ * The zero-credit weld the berth will file on the note right now — one formula shared by the
+ * repair handler (which files it) and the dock service quote (which offers it). Pure read.
+ * `bookedHull` is hull already queued on the yard for this pilot.
+ */
+export function emergencyRepairReserve(state, entity, bookedHull = 0) {
+  const hullMax = Number(entity && entity.hullMax) || 0;
+  const hull = Number(entity && entity.hull) || 0;
+  const missHull = Math.max(0, hullMax - hull - (Number(bookedHull) || 0));
+  const day = state && Number.isInteger(state.days)
+    ? state.days : Math.floor((Number(state && state.simTime) || 0) / 600);
+  const stored = state && state.player && state.player.emergencyRepairBudget;
+  const budget = stored && stored.day === day ? stored : { day, usedHull: 0 };
+  const floor = hullMax * EMERGENCY_REPAIR_HULL_FRAC;
+  const allowance = Math.max(0, floor - (Number(budget.usedHull) || 0));
+  const reserve = Math.min(missHull, allowance, Math.max(0, floor - hull - (Number(bookedHull) || 0)));
+  return { day, budget, floor, allowance, reserve };
+}
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
@@ -236,13 +259,23 @@ export function serviceUnitCr(state, baseCr, service = null) {
 /**
  * Whether the docked berth actually runs this service — the contract the yard's own
  * enqueue gate enforces (stationServices.enqueuePlayerJob refuses a job the berth does not
- * offer) and the quote layer is expected to mirror. A berth with no services list is read
- * the same way the yard reads it: unknown, so the verb stays allowed.
+ * offer) and the quote layer is expected to mirror. A berth whose row is missing, or whose
+ * services list is absent or empty, offers nothing: 'unknown' must never read as 'all verbs'.
  */
-export function stationOffersService(state, service) {
-  const stationId = state && state.ui && state.ui.dockedStationId;
-  const info = stationId ? stationInfo(state, stationId) : null;
-  if (!info || !Array.isArray(info.services) || !info.services.length) return true;
+export function stationOffersService(state, service, berthId = null) {
+  const stationId = berthId || (state && state.ui && state.ui.dockedStationId);
+  if (!stationId) return false;
+  // The Long Berth is a runtime berth that never sits in the sector catalog: its offer set is
+  // the restored stage's own grant list — a pump and patch rail exist only once stage 3 hangs
+  // them, and the un-restored tug sells no services at all.
+  if (stationId === LONG_BERTH_STATION_ID) {
+    const stage = Number(state && state.longBerth && state.longBerth.stage) || 0;
+    const def = berthStageDef(stage);
+    const services = def && Array.isArray(def.services) ? def.services : [];
+    return services.includes(service);
+  }
+  const info = stationInfo(state, stationId);
+  if (!info || !Array.isArray(info.services) || !info.services.length) return false;
   return info.services.includes(service);
 }
 
@@ -461,40 +494,6 @@ function normalizeCredits(value) {
 // ---- static lookups (built once) ----------------------------------------------------------
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
-// station id -> { type, size, factionId, sectorId, tier, neighbors:[sectorId] } from the SECTORS graph.
-// (world is the runtime owner of sectors, but dock:docked only hands us a stationId, so we resolve
-//  the station's profile straight from the data catalog — same pattern ships/cargo use.)
-const STATION_INFO = new Map();
-for (const sec of SECTORS) {
-  for (const st of sec.stations || []) {
-    STATION_INFO.set(st.id, {
-      type: st.type, size: st.size || 'M', factionId: st.factionId,
-      sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
-      services: Array.isArray(st.services) ? st.services.slice() : [],
-      marketEquilibriumFactors: st.marketEquilibriumFactors || null,
-    });
-  }
-}
-
-/** Resolve a station's info, preferring a runtime content.sectors registry if present. */
-function stationInfo(state, stationId) {
-  const reg = state && state.content && state.content.sectors;
-  if (reg) {
-    const list = Array.isArray(reg) ? reg : Object.values(reg);
-    for (const sec of list) {
-      for (const st of sec.stations || []) {
-        if (st.id === stationId) {
-          return { type: st.type, size: st.size || 'M', factionId: st.factionId,
-                   sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
-                   services: Array.isArray(st.services) ? st.services.slice() : [],
-                   marketEquilibriumFactors: st.marketEquilibriumFactors || null };
-        }
-      }
-    }
-  }
-  return STATION_INFO.get(stationId) || null;
-}
-
 /** A berth's authored display name, falling back to the id when the registry has none. */
 function stationDisplayNameFor(state, stationId) {
   const reg = state && state.content && state.content.sectors;
@@ -517,15 +516,6 @@ function commodityDef(state, id) {
     if (c) return c;
   }
   return CMDTY_BY_ID.get(id) || null;
-}
-
-/** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
-function toleratesContraband(info) {
-  return !!(info && info.type === 'blackmarket');
-}
-
-export function salvageBaySaleAllowsIllicit(state, stationId = state.ui?.dockedStationId) {
-  return toleratesContraband(stationInfo(state, stationId));
 }
 
 // A station with an authored regional produce recipe makes the good locally, so it lists and
@@ -572,13 +562,20 @@ export function loanLimitFor(state, stationId) {
   const credits = Math.max(0, Math.round(Number(player.credits) || 0));
   const idx = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
   const owned = Array.isArray(player.ownedShips) ? player.ownedShips[idx] : null;
-  const hullCr = owned && owned.defId ? (SHIP_PRICE_BY_ID.get(owned.defId) || 0) : 0;
+  // A hull with no list price (the starter Hitch) still counts the hardship basis toward the
+  // pilot's worth — a zero-price line in the catalog must not erase the note it was issued for.
+  const listed = owned && owned.defId ? (SHIP_PRICE_BY_ID.get(owned.defId) || 0) : 0;
+  const hullCr = owned ? Math.max(listed, LOAN_BASE_CR) : 0;
   const netWorth = credits + hullCr + legalManifestValueCr(state);
   const info = stationId ? stationInfo(state, stationId) : null;
-  const rep = info && info.factionId && state.factions && state.factions[info.factionId]
-    ? Number(state.factions[info.factionId].rep) || 0 : 0;
+  const factionId = (info && info.factionId) || null;
+  const rep = factionId && state.factions && state.factions[factionId]
+    ? Number(state.factions[factionId].rep) || 0 : 0;
+  // Standing buys note room in named steps, not raw rep points: a starter at rep -2 is still
+  // 'Known' at the berth, and one stray encounter must not zero the hardship loan.
+  const rankStep = factionId ? rankFromRep(rep, factionId).step : 0;
   return Math.max(0, Math.min(LOAN_CAP_CR,
-    Math.round(LOAN_BASE_CR + netWorth * LOAN_NET_WORTH_FRAC + rep * LOAN_REP_STEP_CR)));
+    Math.round(LOAN_BASE_CR + netWorth * LOAN_NET_WORTH_FRAC + rankStep * LOAN_REP_STEP_CR)));
 }
 
 /**
@@ -1253,6 +1250,20 @@ function normalizeCargoKillChain(raw) {
     const qty = Math.max(0, Math.floor(Number(source[id]) || 0));
     if (qty > 0) salvaged[id] = qty;
   }
+  const redeemed = {};
+  const redeemedSource = raw.redeemed && typeof raw.redeemed === 'object' ? raw.redeemed : {};
+  for (const id of Object.keys(redeemedSource)) {
+    const qty = Math.max(0, Math.floor(Number(redeemedSource[id]) || 0));
+    if (qty > 0) redeemed[id] = qty;
+  }
+  const pressureReceipts = {};
+  for (const [id, fact] of Object.entries(raw.pressureReceipts || {})) {
+    if (!fact || typeof fact.receiptId !== 'string' || typeof fact.stationId !== 'string'
+      || typeof fact.saleStationId !== 'string' || !Number.isFinite(fact.seenAt)
+      || !(Number(fact.qty) > 0) || !redeemed[id]) continue;
+    pressureReceipts[id] = { receiptId: fact.receiptId, stationId: fact.stationId,
+      saleStationId: fact.saleStationId, seenAt: fact.seenAt, qty: Math.floor(fact.qty) };
+  }
   return {
     id: String(raw.id),
     victimId: raw.victimId,
@@ -1268,6 +1279,8 @@ function normalizeCargoKillChain(raw) {
     destStationId: typeof raw.destStationId === 'string' ? raw.destStationId : null,
     originStationId: typeof raw.originStationId === 'string' ? raw.originStationId : null,
     salvaged,
+    redeemed,
+    pressureReceipts,
     closed: raw.closed === true,
     saleStationId: typeof raw.saleStationId === 'string' ? raw.saleStationId : null,
   };
@@ -1478,6 +1491,22 @@ export function compareTwoStopFreight(plan) {
   };
 }
 
+// Player-facing words for a legBuyCapacity limit token: the comparison card names the real
+// binding input, and a leg the books could not price admits it plainly instead of 'unknown'.
+const FREIGHT_LIMIT_LABELS = Object.freeze({
+  credits: 'credits',
+  volume: 'hold space',
+  stock: 'berth stock',
+  quantity: 'the order size',
+});
+
+function freightLimitText(token) {
+  if (token == null) return null;
+  const key = String(token);
+  if (key === 'unknown') return 'route price unavailable';
+  return FREIGHT_LIMIT_LABELS[key] || 'route price unavailable';
+}
+
 export function formatFreightComparison(result) {
   if (!result) return '';
   const direct = !result.direct ? ''
@@ -1487,8 +1516,9 @@ export function formatFreightComparison(result) {
   const net = result.net == null
     ? 'two-stop estimate unknown'
     : `two-stop estimate ${result.net > 0 ? '+' : ''}${Math.round(result.net).toLocaleString('en-US')} cr`;
-  const leg = result.limitingLeg
-    ? `leg ${result.limitingLeg} limited by ${result.limitingInput}`
+  const limitText = freightLimitText(result.limitingInput);
+  const leg = result.limitingLeg && limitText
+    ? `leg ${result.limitingLeg} limited by ${limitText}`
     : '';
   const fee = result.operatingCost > 0
     ? `fees ${Math.round(result.operatingCost).toLocaleString('en-US')} cr once`
@@ -1565,54 +1595,71 @@ export function compareDockedFreight(state, hereStationId, trade) {
     .filter((id) => id !== hereStationId && id !== trade.destStation)
     .sort();
   if (!farIds.length) return null;
-  const farId = farIds[0];
   const midBook = books.get(trade.destStation) || new Map();
-  const farBook = books.get(farId) || new Map();
-  const commodityIds = [...new Set([...midBook.keys(), ...farBook.keys()])]
-    .filter((id) => id !== trade.cmdtyId)
-    .sort();
-  if (!commodityIds.length) return null;
-  const commodityId = commodityIds[0];
-  const mid = midBook.get(commodityId) || {};
-  const far = farBook.get(commodityId) || {};
   const here = state.economy && state.economy.markets && state.economy.markets[hereStationId];
   const hereEntry = here && here[trade.cmdtyId];
   const cargo = state.player && state.player.cargo || {};
   const held = Math.max(0, Math.floor(Number(cargo.items && cargo.items[trade.cmdtyId]) || 0));
   const def1 = CMDTY_BY_ID.get(trade.cmdtyId);
-  const def2 = CMDTY_BY_ID.get(commodityId);
   const seen = Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0;
   const stale = Math.max(0, (Number(state.simTime) || 0) - seen) >= 900;
-  return compareTwoStopFreight({
-    credits: state.player && state.player.credits,
-    capVolume: cargo.capVolume,
-    usedVolume: cargo.usedVolume,
-    midStationId: trade.destStation,
-    destStationId: farId,
-    direct: {
-      units: held,
-      sell: hereEntry ? hereEntry.lastSell : null,
-      certainty: 'quoted',
-    },
-    leg1: {
-      buy: trade.buyHere != null ? trade.buyHere : (hereEntry && hereEntry.lastBuy),
-      sell: trade.sellThere,
-      stock: projectedPurchasableStock(state, hereStationId, trade.cmdtyId, null),
-      volume: def1 && def1.volPerU > 0 ? def1.volPerU : 1,
-      buyCertainty: 'quoted',
-      sellCertainty: 'estimate',
-      stale,
-    },
-    leg2: {
-      buy: mid.buy,
-      sell: far.sell,
-      stock: projectedPurchasableStock(state, trade.destStation, commodityId, mid),
-      volume: def2 && def2.volPerU > 0 ? def2.volPerU : 1,
-      buyCertainty: 'estimate',
-      sellCertainty: 'estimate',
-      stale,
-    },
-  });
+  const leg1 = {
+    buy: trade.buyHere != null ? trade.buyHere : (hereEntry && hereEntry.lastBuy),
+    sell: trade.sellThere,
+    stock: projectedPurchasableStock(state, hereStationId, trade.cmdtyId, null),
+    volume: def1 && def1.volPerU > 0 ? def1.volPerU : 1,
+    buyCertainty: 'quoted',
+    sellCertainty: 'estimate',
+    stale,
+  };
+  // The second leg is a real pick, not the alphabet's first answer: price every remembered
+  // (far berth, good) pair the books can quote and keep the best positive margin. Nothing
+  // priced, or nothing that earns, means there is no second leg to print — return null.
+  let best = null;
+  for (const farId of farIds) {
+    const farBook = books.get(farId) || new Map();
+    const commodityIds = [...new Set([...midBook.keys(), ...farBook.keys()])]
+      .filter((id) => id !== trade.cmdtyId && CMDTY_BY_ID.has(id))
+      .sort();
+    for (const commodityId of commodityIds) {
+      const mid = midBook.get(commodityId) || {};
+      const far = farBook.get(commodityId) || {};
+      const def2 = CMDTY_BY_ID.get(commodityId);
+      const candidate = compareTwoStopFreight({
+        credits: state.player && state.player.credits,
+        capVolume: cargo.capVolume,
+        usedVolume: cargo.usedVolume,
+        midStationId: trade.destStation,
+        destStationId: farId,
+        direct: {
+          units: held,
+          sell: hereEntry ? hereEntry.lastSell : null,
+          certainty: 'quoted',
+        },
+        leg1,
+        leg2: {
+          buy: mid.buy,
+          sell: far.sell,
+          stock: projectedPurchasableStock(state, trade.destStation, commodityId, mid),
+          volume: def2 && def2.volPerU > 0 ? def2.volPerU : 1,
+          buyCertainty: 'estimate',
+          sellCertainty: 'estimate',
+          stale,
+        },
+      });
+      const leg2 = candidate && candidate.leg2;
+      const margin = leg2 && leg2.units > 0 && leg2.cost != null && leg2.proceeds != null
+        ? leg2.proceeds - leg2.cost
+        : null;
+      if (!(margin > 0)) continue;
+      if (!best || margin > best.margin
+        || (margin === best.margin
+          && (farId < best.farId || (farId === best.farId && commodityId < best.commodityId)))) {
+        best = { result: candidate, margin, farId, commodityId };
+      }
+    }
+  }
+  return best ? best.result : null;
 }
 
 function nextTradeSequence(player, ledger) {
@@ -1702,6 +1749,9 @@ export const economy = {
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
+    // The site emits this only after committing the completed physical brace. Economy
+    // authenticates that receipt and owns the one-time wage, including save/replay.
+    bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p));
     bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
     bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
     bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
@@ -1782,7 +1832,7 @@ export const economy = {
         this._lastDockedStation = p.stationId;
         this._stationServiceBerth = p.stationId;
         this.ensureStationMarkets(p.stationId);
-        this.snapshotIntel(p.stationId);
+        this.snapshotIntel(p.stationId, { arrival: true });
         this._runDockedCustomsPost(p.stationId);
         // FB-124: a cargo policy covers one trip. Docking under your own power ends it — a
         // defeat claim was already priced into the recovery plan before the rescue berth.
@@ -1819,7 +1869,9 @@ export const economy = {
     // A hull that broke a customs weir unread is a runner — the gate faction's scanners remember
     // it through the same hot-until record an evaded scan writes.
     bus.on('customs:weirBolt', (p) => { if (p && p.factionId) this._markFactionGatesHot(p.factionId); });
-    bus.on('contraband:bribe', (p) => this.payBribe(p || {}));
+    bus.on('contraband:bribe', (p) => {
+      if (p && typeof p === 'object') p.result = this.payBribe(p);
+    });
 
     // ---- event injection from other systems (missions, combat) ----------------------------
     bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); });
@@ -2484,9 +2536,11 @@ export const economy = {
     const state = this.state;
     const sz = (info && info.size) || 'M';
     const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
-    const equilibrium = economyEquilibriumForListing(info, def.id, 'none', baseEqRef);
+    // The drift target is the stock actually delivered — a liquidation listing opens empty and
+    // stays a sell-side book: a refused biohazard lot mints nothing the recovery tick can grow
+    // into sellable stock, and player-bought units bleed back out instead of restocking.
     const entry = {
-      stock: 0, equilibrium, baseEq: baseEqRef, role: 'none',
+      stock: 0, equilibrium: 0, baseEq: baseEqRef, role: 'none',
       lastMid: 0, lastBuy: 0, lastSell: 0, eventMods: [],
       demandMult: 1, demandDrivers: [],
     };
@@ -2549,6 +2603,29 @@ export const economy = {
     const record = { snapshot, seenAtT: state.simTime };
     if (source) record.source = source;
     state.economy.marketIntel[stationId] = record;
+    if (options?.arrival) {
+      const memory = state.player.berthMemory ||= {};
+      const row = memory[stationId] || (memory[stationId] = {});
+      const now = Math.max(0, Number(state.simTime) || 0);
+      const previous = Number.isFinite(row.visitedAt) ? row.visitedAt : null;
+      const quotes = row.berthQuotes;
+      let compared = 0, moved = false;
+      if (quotes && typeof quotes === 'object') {
+        for (const [cid, quote] of Object.entries(quotes)) {
+          const current = snapshot[cid];
+          if (!current || !quote || !Number.isFinite(current.buy) || !Number.isFinite(current.sell)
+            || !Number.isFinite(quote.buy) || !Number.isFinite(quote.sell)) continue;
+          compared++;
+          if (Math.round(current.buy) !== quote.buy || Math.round(current.sell) !== quote.sell) moved = true;
+        }
+      }
+      row.priorVisitAt = previous;
+      row.visitedAt = now;
+      row.berthBoard = compared && previous != null ? { moved, observedAt: previous, arrivalAt: now } : null;
+      row.berthQuotes = Object.fromEntries(Object.entries(snapshot).filter(([, quote]) =>
+        Number.isFinite(quote.buy) && Number.isFinite(quote.sell)).map(([cid, quote]) => [cid,
+        { buy: Math.round(quote.buy), sell: Math.round(quote.sell) }]));
+    }
     this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
   },
 
@@ -2601,7 +2678,22 @@ export const economy = {
     for (const station of sector.stations || []) {
       if (!station || !station.id) continue;
       const market = this.ensureMarket(station.id, station.type, station.size);
-      const memory = this.recordMarketMemory(station.id, market, { source: 'survey' });
+      // Same basis as a dock observation (snapshotIntel): strike, blockade, market day and
+      // festival folds are part of what the berth would actually charge, so a purchased
+      // survey remembers conditioned prices — never calm prices at an uncalm berth.
+      const trade = stationTradeMults(state, station.id, stationInfo(state, station.id));
+      const snapshot = {};
+      for (const cid in market) {
+        const e = market[cid];
+        if (!e) continue;
+        snapshot[cid] = {
+          buy: trade.buy === 1 || !Number.isFinite(e.lastBuy) ? e.lastBuy : e.lastBuy * trade.buy,
+          sell: trade.sell === 1 || !Number.isFinite(e.lastSell) ? e.lastSell : e.lastSell * trade.sell,
+          demandMult: Number(e.demandMult) || 1,
+          demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
+        };
+      }
+      const memory = this.recordMarketMemory(station.id, snapshot, { source: 'survey' });
       if (!memory) continue;
       stationCount++;
       listingCount += Object.keys(memory).length;
@@ -2721,7 +2813,9 @@ export const economy = {
     const standingBase = priceModForState(state, info && info.factionId);
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
     // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
-    const conditionMult = stationTradeMults(state, stationId, info);
+    // The causal half (strike, blockade) only worsens and rides the standing clamp; the calendar
+    // half (market day, festival) moves either way and is applied after it, like the ending terms.
+    const { causal: conditionMult, calendar: calendarMult } = stationTradeMultParts(state, stationId, info);
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     // Reputation alone, before the strike/blockade multiply. The market names this component
@@ -2731,6 +2825,8 @@ export const economy = {
     const endingTerms = endingStationTradeMults(state, stationId);
     standing.buy *= endingTerms.buy;
     standing.sell *= endingTerms.sell;
+    standing.buy *= calendarMult.buy;
+    standing.sell *= calendarMult.sell;
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -2969,7 +3065,11 @@ export const economy = {
       }
     }
     const q = this.quote(stationId, commodityId, side, qty);
-    if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
+    if (!q.ok) {
+      // Keep the refusal's own explanation: a quarantine note the quote attached must reach
+      // the player-facing branch, not die on the reason token.
+      return { ok: false, reason: q.reason || 'invalid', ...(q.policyNote ? { policyNote: q.policyNote } : {}) };
+    }
     if (opts && opts.requireFullQuantity && (q.qty !== requestedQty || q.partial || q.holdLimited
         || (q.acceptQty != null && q.acceptQty !== requestedQty))) return { ok: false, reason: 'load_changed' };
     qty = q.qty;
@@ -3134,7 +3234,7 @@ export const economy = {
         commodityId,
       });
     }
-    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty);
+    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty, receipt);
     return receipt;
   },
 
@@ -3226,56 +3326,85 @@ export const economy = {
 
   /**
    * After the salvaged goods are sold, raise the destination price. The shipment never arrived,
-   * so that station's book tightens. One chain, one move.
+   * so that station's book tightens. One chain, one move — and that move happens only once the
+   * chain's own salvaged units of the sold good are consumed: an ordinary hold sale that shares
+   * the commodity id debits the count it actually redeems, it does not settle the chain early.
    */
-  _closeCargoKillChain(saleStationId, commodityId, qty) {
+  _closeCargoKillChain(saleStationId, commodityId, qty, receipt = null) {
     const state = this.state;
     const chains = state && state.economy && state.economy.cargoKillChains;
     if (!Array.isArray(chains) || !commodityId) return null;
-    const chain = chains.find((row) => row && !row.closed
-      && row.salvaged && (row.salvaged[commodityId] || 0) > 0);
-    if (!chain) return null;
-    chain.closed = true;
-    chain.saleStationId = saleStationId;
-    const priceStationId = priceStationForCargoKill(saleStationId, chain);
-    let midBefore = null;
-    let midAfter = null;
-    if (priceStationId) {
-      const market = this.ensureMarket(priceStationId);
-      const entry = market && market[commodityId];
-      const def = commodityDef(state, commodityId);
-      if (entry && def && entry.stock > 1) {
-        midBefore = entry.lastMid;
-        let guard = 0;
-        while (entry.lastMid <= midBefore && guard < 4 && entry.stock > 2) {
-          const prevMid = entry.lastMid;
-          const step = Math.max(1, Math.ceil((entry.baseEq || 1) * 0.08));
-          this.applyStockPressure(priceStationId, commodityId, 'buy', Math.min(step, entry.stock - 1));
-          guard += 1;
-          // Pinned at the price band — further pressure burns stock without moving the mid.
-          if (entry.lastMid === prevMid) break;
-        }
-        midAfter = entry.lastMid;
+    let remaining = Math.max(0, Math.floor(Number(qty) || 0));
+    if (remaining <= 0) return null;
+    const facts = [];
+    // Cargo is fungible in the hold. Redeem a bulk sale against outstanding manifests in
+    // ledger order, so one sale can settle every chain whose salvaged units it actually sold.
+    for (const chain of chains) {
+      if (remaining <= 0) break;
+      if (!chain || chain.closed || !chain.salvaged) continue;
+      const outstanding = Math.max(0, Math.floor(Number(chain.salvaged[commodityId]) || 0));
+      if (outstanding <= 0) continue;
+      const consumed = Math.min(remaining, outstanding);
+      remaining -= consumed;
+      chain.salvaged[commodityId] = outstanding - consumed;
+      const redeemed = chain.redeemed && typeof chain.redeemed === 'object'
+        ? chain.redeemed : (chain.redeemed = {});
+      redeemed[commodityId] = Math.max(0, Math.floor(Number(redeemed[commodityId]) || 0)) + consumed;
+      if (chain.salvaged[commodityId] > 0) continue; // unsold units keep this chain open
+      delete chain.salvaged[commodityId];
+      const hasOtherOutstanding = Object.values(chain.salvaged)
+        .some((units) => Math.max(0, Math.floor(Number(units) || 0)) > 0);
+      if (!hasOtherOutstanding) {
+        chain.closed = true;
+        chain.saleStationId = saleStationId;
       }
+      const priceStationId = priceStationForCargoKill(saleStationId, chain);
+      let midBefore = null;
+      let midAfter = null;
+      if (priceStationId) {
+        const market = this.ensureMarket(priceStationId);
+        const entry = market && market[commodityId];
+        const def = commodityDef(state, commodityId);
+        if (entry && def && entry.stock > 1) {
+          midBefore = entry.lastMid;
+          let guard = 0;
+          while (entry.lastMid <= midBefore && guard < 4 && entry.stock > 2) {
+            const prevMid = entry.lastMid;
+            const step = Math.max(1, Math.ceil((entry.baseEq || 1) * 0.08));
+            this.applyStockPressure(priceStationId, commodityId, 'buy', Math.min(step, entry.stock - 1));
+            guard += 1;
+            // Pinned at the price band — further pressure burns stock without moving the mid.
+            if (entry.lastMid === prevMid) break;
+          }
+          midAfter = entry.lastMid;
+        }
+      }
+      if (receipt && receipt.receiptId && receipt.side === 'sell' && receipt.stationId === saleStationId
+        && receipt.commodityId === commodityId && midBefore != null && midAfter > midBefore) {
+        const receipts = chain.pressureReceipts || (chain.pressureReceipts = {});
+        receipts[commodityId] = { receiptId: receipt.receiptId, stationId: priceStationId,
+          saleStationId, seenAt: receipt.seenAt, qty: consumed };
+      }
+      const fact = {
+        kind: 'price_move',
+        opportunity: 'price_move',
+        chainId: chain.id,
+        victimId: chain.victimId,
+        manifestId: chain.manifestId,
+        commodityId,
+        qty: Math.max(0, Math.floor(Number(chain.redeemed[commodityId]) || 0)),
+        saleStationId,
+        stationId: priceStationId,
+        sectorId: chain.sectorId,
+        pos: { x: chain.pos.x, z: chain.pos.z },
+        midBefore,
+        midAfter,
+        moved: midBefore != null && midAfter != null && midAfter > midBefore,
+      };
+      this.bus.emit('economy:cargoKillOpportunity', fact);
+      facts.push(fact);
     }
-    const fact = {
-      kind: 'price_move',
-      opportunity: 'price_move',
-      chainId: chain.id,
-      victimId: chain.victimId,
-      manifestId: chain.manifestId,
-      commodityId,
-      qty: Math.max(0, Math.floor(Number(qty) || 0)),
-      saleStationId,
-      stationId: priceStationId,
-      sectorId: chain.sectorId,
-      pos: { x: chain.pos.x, z: chain.pos.z },
-      midBefore,
-      midAfter,
-      moved: midBefore != null && midAfter != null && midAfter > midBefore,
-    };
-    this.bus.emit('economy:cargoKillOpportunity', fact);
-    return fact;
+    return facts.length === 0 ? null : facts.length === 1 ? facts[0] : facts;
   },
 
   recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
@@ -3381,6 +3510,11 @@ export const economy = {
         : res.reason === 'no_stock' ? 'Station out of stock'
         : res.reason === 'price_changed'
           ? `Price changed since the quote (${Math.round(res.liveTotal)} vs ${Math.round(res.expectedTotal)} cr) — review and confirm again.`
+        : res.reason === 'contamination_refusal'
+          ? (res.policyNote || 'This berth refuses contaminated goods — the lot stays in your hold')
+        : res.reason === 'load_changed' ? 'The load changed since the quote — review and confirm again'
+        : res.reason === 'credits_cap' ? 'Sale refused — the proceeds would overflow the ledger'
+        : res.reason === 'untraded' ? 'This berth does not trade that good'
         : 'Trade failed';
       this.bus.emit('toast', { text: msg, kind: 'error', ttl: 3 });
       this.bus.emit('economy:tradeFailed', {
@@ -3754,12 +3888,13 @@ export const economy = {
       if (!id || !stationInfo(state, id)) continue;
       stations.push({ e, id });
     }
-    // The docked berth counts while the pod is inside its chute reach; a remembered berth after
-    // undock must not credit a pod slung halfway across the sector.
+    // The docked berth counts only while its live entity sits inside chute reach of the pod —
+    // a remembered berth after undock, or a dock record with no station body left in the
+    // world, must not credit a pod slung anywhere at all.
     const docked = this.dockedStationId();
     if (docked) {
       const dockEntity = stations.find((s) => s.id === docked);
-      if (!dockEntity || dist2To(dockEntity.e) <= reach2) stationId = docked;
+      if (dockEntity && dist2To(dockEntity.e) <= reach2) stationId = docked;
     }
     if (!stationId && pod.pos) {
       for (const s of stations) {
@@ -4105,6 +4240,73 @@ export const economy = {
       : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
     return { ok: true, duplicate: false, ...result };
   },
+  settleCeresBraceWage(event) {
+    const siteId = 'world_site_ceres_second_measure';
+    const receipt = event?.receipt;
+    const site = this.state.sites?.worldById?.[siteId];
+    const completed = site?.completedOperations?.brace_long_plate;
+    if (event?.siteId !== siteId || event.componentId !== 'long_plate_clamp'
+      || event.operationId !== 'brace_long_plate' || receipt?.complete !== true
+      || !Array.isArray(site?.receipts) || site.receipts.at(-1) !== receipt
+      || receipt.operationId !== 'brace_long_plate' || receipt.componentId !== 'long_plate_clamp'
+      || receipt.requestStreamId !== 'player-industrial-beam'
+      || receipt.workThreshold !== 24 || receipt.appliedTotal !== 24
+      || !(receipt.amountApplied > 0 && receipt.amountApplied <= 24)
+      || receipt.tick !== this.state.tick || receipt.requestSequence !== this.state.tick
+      || !completed || completed.receiptId !== receipt.receiptId
+      || completed.requestStreamId !== receipt.requestStreamId
+      || completed.requestSequence !== receipt.requestSequence || completed.tick !== receipt.tick
+      || completed.cycle !== receipt.cycle || completed.stateFrom !== 'unbraced' || completed.stateTo !== 'braced') {
+      return { ok: false, reason: 'brace-receipt-invalid' };
+    }
+    // One wage for this authored shift, even if a later component cycle is repaired.
+    const intents = ensureCommittedIntents(this.state), key = 'ceres:second-measure:brace-wage';
+    if (intents[key]) return { ok: true, duplicate: true, ...intents[key].result };
+    const before = normalizeCredits(this.state.player.credits);
+    const creditedCr = normalizeCredits(before + 400) - before;
+    const result = { receiptId: receipt.receiptId, creditedCr };
+    intents[key] = { receipt: { ...receipt }, result };
+    this.grantCredits(400, 'work:ceres-long-plate-brace');
+    this.bus.emit('comms:message', { sender: 'SECOND MEASURE YARD', channel: 'machine',
+      text: `Brace accepted. ${creditedCr} credits transferred for the shift. Clear the head; we'll take the plate.` });
+    return { ok: true, duplicate: false, ...result };
+  },
+
+  // Circuit awards are authorised by the live feature owner, never by a caller-supplied amount.
+  // The wallet, accepted receipt and feature record settle synchronously before outward events.
+  settleCinderglassResult,
+
+  settleCounterweightResult(eventId, attemptId) {
+    const owner = this.registryGet('counterweightCircuit');
+    const intents = ensureCommittedIntents(this.state);
+    const key = typeof eventId === 'string' ? `counterweight:first-completion:${eventId}` : '';
+    const prior = intents?.[key];
+    if (prior?.result?.eventId === eventId && prior.result.attemptId === attemptId
+      && owner?.payoutAlreadyAccepted?.(eventId)) return { ok: true, duplicate: true, ...prior.result };
+    const auth = owner?.payoutAuthorization?.(eventId, attemptId);
+    if (!auth || !Number.isSafeInteger(auth.amount) || auth.amount <= 0) return { ok: false, reason: 'unaccepted_result' };
+    if (!intents || !this.state.player) return { ok: false, reason: 'economy_unavailable' };
+    if (prior) {
+      if (prior.result?.eventId !== eventId || prior.result?.attemptId !== attemptId
+        || prior.result?.creditedCr !== auth.amount || !owner.acceptPayout(eventId, attemptId, prior.result.creditedCr)) {
+        return { ok: false, reason: 'receipt_mismatch' };
+      }
+      return { ok: true, duplicate: true, ...prior.result };
+    }
+    const player = this.state.player, before = normalizeCredits(player.credits);
+    if (normalizeCredits(before + auth.amount) - before !== auth.amount) return { ok: false, reason: 'wallet_full' };
+    const result = { eventId, attemptId, creditedCr: auth.amount, key: auth.key };
+    // No callbacks occur between these owner writes; a later credits listener can save or retry
+    // and will see both the accepted receipt and the updated wallet/feature record.
+    player.credits = before + auth.amount;
+    intents[auth.key] = { result };
+    owner.acceptPayout(eventId, attemptId, auth.amount);
+    recordEconomyCash(this.state.economy, this.state.simTime, auth.amount, auth.key);
+    if (player.stats) player.stats.creditsEarned = (player.stats.creditsEarned || 0) + auth.amount;
+    this.bus.emit('credits:changed', { delta: auth.amount, reason: auth.key, total: player.credits });
+    return { ok: true, duplicate: false, ...result };
+  },
+
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
@@ -4119,6 +4321,39 @@ export const economy = {
     this.grantCredits(receipt.quoteCr,'salvage:tally-three-return');
     this.applyStockPressure(receipt.stationId,receipt.commodityId,'sell',receipt.qty);
     this.bus.emit('cargo:tallyThreeDelivered',{...result,worldRecordId:receipt.worldRecordId});
+    return {ok:true,duplicate:false,...result};
+  },
+
+  // Breakwater's finite authored awards settle only against the live feature
+  // owner's pending accepted custody/work receipt. No caller chooses an amount.
+  settleBreakwaterReceipt(kind, sourceId) {
+    const amounts = { scrap:90, supply:160, defend:180, bonded:220, bond_refund:100 };
+    const amount = Object.hasOwn(amounts, kind) ? amounts[kind] : 0;
+    const owner = this.registryGet('breakwaterSpur');
+    if (!amount || typeof sourceId !== 'string' || !sourceId) return {ok:false,reason:'invalid_receipt'};
+    const key = `breakwater:first:${kind}`;
+    const intents = ensureCommittedIntents(this.state), prior = intents?.[key];
+    if (!intents || !this.state.player) return {ok:false,reason:'economy_unavailable'};
+    if (prior) {
+      if (prior.result?.kind !== kind || prior.result?.sourceId !== sourceId
+        || prior.result?.creditedCr !== amount) return {ok:false,reason:'receipt_mismatch'};
+      if (!owner?.payoutAlreadyAccepted?.(kind,sourceId)
+        && !owner?.acceptPayout?.(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+      return {ok:true,duplicate:true,...prior.result};
+    }
+    const auth = owner?.payoutAuthorization?.(kind,sourceId);
+    if (!auth || auth.key !== key || auth.amount !== amount || auth.sourceId !== sourceId)
+      return {ok:false,reason:'unaccepted_receipt'};
+    const player=this.state.player, before=normalizeCredits(player.credits);
+    if (normalizeCredits(before+amount)-before !== amount) return {ok:false,reason:'wallet_full'};
+    const result={kind,sourceId,creditedCr:amount,key};
+    if (!owner.acceptPayout(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+    // All three owner writes precede any outward event or reentrant save.
+    player.credits=before+amount;
+    intents[key]={result};
+    recordEconomyCash(this.state.economy,this.state.simTime,amount,key);
+    if (player.stats) player.stats.creditsEarned=(player.stats.creditsEarned||0)+amount;
+    this.bus.emit('credits:changed',{delta:amount,reason:key,total:player.credits});
     return {ok:true,duplicate:false,...result};
   },
 
@@ -4798,7 +5033,7 @@ export const economy = {
   // only after commit() accepts it; short money and a second buy write nothing.
   _handleSurveyFix() {
     const state = this.state;
-    if (!stationOffersService(state, 'scan_tech')) {
+    if (!stationOffersService(state, 'scan_tech', this._stationServiceStationId())) {
       this.bus.emit('toast', { text: 'No survey lab at this berth', kind: 'error', ttl: 3 });
       return;
     }
@@ -4872,7 +5107,7 @@ export const economy = {
     // the yard refuses the job and the instant-fallback below silently becomes the pump.
     if (type === 'refuel' || type === 'repair') {
       const need = type === 'refuel' ? 'refuel' : 'repair';
-      if (!stationOffersService(state, need)) {
+      if (!stationOffersService(state, need, this._stationServiceStationId())) {
         this.bus.emit('toast', {
           text: need === 'refuel'
             ? 'No fuel berth here — the yard has no pump'
@@ -4974,11 +5209,7 @@ export const economy = {
       const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       if (credits <= 0) {
-        const day = Number.isInteger(state.days) ? state.days : Math.floor((Number(state.simTime) || 0) / 600);
-        const budget = state.player.emergencyRepairBudget?.day === day ? state.player.emergencyRepairBudget : { day, usedHull: 0 };
-        const floor = hullMax * EMERGENCY_REPAIR_HULL_FRAC;
-        const allowance = Math.max(0, floor - (Number(budget.usedHull) || 0));
-        const reserve = Math.min(missHull, allowance, Math.max(0, floor - beforeHull - bookedRepair.hull));
+        const { day, budget, allowance, reserve } = emergencyRepairReserve(state, e, bookedRepair.hull);
         if (reserve > 0) {
           const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
           const debtCr = this._fileDebt(round(reserve * repairUnit));
@@ -5392,11 +5623,22 @@ export const economy = {
     if (services.includes('toll')) {
       const sec = Number(info && info.security) || 0;
       const toll = Math.round(DOCK_TOLL_BASE_CR + DOCK_TOLL_SECURITY_CR * sec);
-      if (toll > 0 && normalizeCredits(state.player && state.player.credits) > 0) {
-        this.chargeCredits(toll, 'service:dock_toll');
+      if (toll > 0) {
+        // Collect what the wallet actually holds and file the unpaid remainder on the note —
+        // the same shortfall style as the contraband fine path. The line names the real
+        // numbers: a partial wallet is not a full toll, and a dry wallet is not a waived one.
+        const credits = normalizeCredits(state.player && state.player.credits);
+        const collected = Math.min(toll, credits);
+        const filed = this._fileDebt(toll - collected);
+        if (collected > 0) this.chargeCredits(collected, 'service:dock_toll');
         // The berth-session receipt surface isn't up yet when the toll posts (economy runs
         // before ui on dock:docked), so name the debit on the toast rail — silent ~180 cr.
-        this.bus.emit('toast', { text: `BERTH TOLL — ${toll} cr posted.`, kind: 'info', ttl: 3 });
+        const text = collected >= toll
+          ? `BERTH TOLL — ${collected} cr posted.`
+          : collected > 0
+            ? `BERTH TOLL — ${collected} cr posted · ${filed} cr filed on the note.`
+            : `BERTH TOLL — ${filed} cr filed on the note.`;
+        this.bus.emit('toast', { text, kind: 'info', ttl: 3 });
       }
     }
   },
@@ -5472,6 +5714,8 @@ export const economy = {
       detected = !(roll > pScan);
       scannedPayload.detected = detected;
     }
+    // This is a scan fact, emitted during synchronous resolution; the pre-scan patrol/law owners
+    // provide the only actionable choice windows.
     this.bus.emit('player:scannedByPatrol', scannedPayload);
     if (!hasContraband) return { found: false };
     if (!detected) {
@@ -5528,13 +5772,29 @@ export const economy = {
     return { found: true, fine, confiscated, factionId, repHit };
   },
 
-  /** Bribe instead of full fine: pay 30% of the fine, keep some standing. */
+  /** Bribe instead of a full fine. The active patrol offer owns timing; economy owns the debit. */
   payBribe(p) {
-    const fine = p.fine || 0;
+    const state = this.state;
+    const player = state && state.player;
+    const fine = Math.max(0, Math.round(Number(p && p.fine) || 0));
     const cost = round(fine * BRIBE_FRAC);
-    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for the bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
-    this.chargeCredits(cost, 'bribe:contraband');
-    return { ok: true, cost };
+    if (!(cost > 0)) {
+      this.bus.emit('toast', { text: 'No fine on the table — bribe declined.', kind: 'info', ttl: 3 });
+      return { ok: false, reason: 'no_fine' };
+    }
+    if (!player || normalizeCredits(player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for the bribe', kind: 'error', ttl: 2 }); return { ok: false, reason: 'credits' }; }
+    // Use the exact-payment owner receipt. A credits:changed listener may legitimately award
+    // money before this call returns, so net wallet difference is not proof of debit acceptance.
+    const payment = {
+      amount: cost, reason: 'bribe:contraband', requireFull: true,
+      expectedCredits: normalizeCredits(player.credits), commit: () => true, result: false,
+    };
+    this._onChargeCreditsRequest(payment);
+    if (payment.result !== true) {
+      this.bus.emit('toast', { text: 'The bribe debit did not settle — offer remains open.', kind: 'error', ttl: 3 });
+      return { ok: false, reason: 'charge_failed', cost };
+    }
+    return { ok: true, cost, charged: cost };
   },
 
   factionOfEntity(id) {
@@ -5722,12 +5982,23 @@ export const economy = {
     return null;
   },
 
+  /** Resolve the berth owned by the current service session, never a remembered undocked id. */
+  _stationServiceStationId() {
+    const state = this.state;
+    const ui = state && state.ui;
+    if (ui && typeof ui.dockedStationId === 'string' && ui.dockedStationId && ui.docked !== false) {
+      return ui.dockedStationId;
+    }
+    if (this._stationServiceBerth && this._stationServicesDocked()) return this._stationServiceBerth;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    return player && player.flags && player.flags.docked ? this._lastDockedStation || null : null;
+  },
+
   /** Fail closed unless the player is at a live berth (ships.js shipworksStationAccess pattern). */
   _stationServicesDocked() {
     const ui = this.state && this.state.ui;
-    // Isolated service-math harnesses have no UI bag; production GameState always does.
-    if (!ui) return true;
-    if (typeof ui.dockedStationId === 'string' && ui.dockedStationId && ui.docked !== false) {
+    if (ui && typeof ui.dockedStationId === 'string' && ui.dockedStationId && ui.docked !== false) {
       // Production GameState defaults docked to false. Career/sandbox and living-hull
       // harnesses often stamp a berth id without uiRoot flipping the bool.
       return true;
@@ -5974,6 +6245,12 @@ export const economy = {
     delete econ.dockSlamLatch;
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
+    // Rebuilt histories and missing cycles must not depend on market activity in the session
+    // that happened to precede this load. Their draws start from the saved stream, which is
+    // restored again below so reconstruction does not consume the player's future RNG state.
+    econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
+      ? data.rngSeed >>> 0
+      : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._syntheticHistoryKeys = new Set();
     this._restoredQuoteKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.

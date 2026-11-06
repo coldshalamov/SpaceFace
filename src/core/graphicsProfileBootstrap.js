@@ -84,7 +84,8 @@ export function migrateGameMotionDefault(settings) {
   if (!isPlainObject(settings)) return settings;
   if (!isPlainObject(settings.accessibility)) settings.accessibility = {};
   const access = settings.accessibility;
-  if (access.motionDefaultVersion === GAME_MOTION_DEFAULT_VERSION) return settings;
+  if (typeof access.motionDefaultVersion === 'number'
+    && access.motionDefaultVersion >= GAME_MOTION_DEFAULT_VERSION) return settings;
   const video = isPlainObject(settings.video) ? settings.video : null;
   // Profiles older than motionPreference carried only the effective boolean, and there a true was
   // an explicit player choice. Alongside 'system' the same boolean is only the mirrored OS hint.
@@ -121,6 +122,16 @@ export function migrateDefaultShadowsProfile(settings) {
 export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
+
+  // Older profiles predate qualityMode. Do not let the current default ('auto') mask the old
+  // video values before qualityModeForVideo can distinguish an untouched Balanced profile from a
+  // player's saved custom/preset choice. Explicit Auto/Manual always wins.
+  const incomingVideo = profileSettings && profileSettings.video;
+  if (isPlainObject(incomingVideo)
+    && !Object.prototype.hasOwnProperty.call(incomingVideo, 'qualityMode')
+    && isPlainObject(merged.video)) {
+    delete merged.video.qualityMode;
+  }
 
   // Runtime backend selection is a build contract, not a player-profile choice. Preserve the
   // createGameState defaults even if a hand-edited/legacy profile contains these keys.

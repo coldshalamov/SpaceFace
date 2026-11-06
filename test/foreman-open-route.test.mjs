@@ -77,8 +77,10 @@ test('foreman TTK floor keeps a starter ship honest without a wall', () => {
   const laser = WEAPONS.find((w) => w.id === 'wpn_pulse_laser_s');
   const ehp = foreman.hull + foreman.shield;
   const floorS = ehp / laser.dps;
-  // 20s of uninterrupted starter-laser fire, before armor: a committed kill, never a
-  // one-pass delete — and the intended fast answer stays physical (dodge the charge,
-  // work the turn, throw a swarmer), not a bigger number.
-  assert.ok(floorS >= 15 && floorS <= 30, `unmitigated TTK floor ${floorS.toFixed(1)}s out of band`);
+  // ~32s of uninterrupted starter-laser fire, before armor — after ROW-482 retuned the starter
+  // bolt to its nudge role (dps 44 → 27.5), the pure-gun path on a heavy is deliberately the
+  // slow one. Still bounded on both ends: never a one-pass delete (15s floor), never an
+  // unwinnable wall (40s ceiling) — and the intended fast answer stays physical (dodge the
+  // charge, work the turn, throw a swarmer), not a bigger number.
+  assert.ok(floorS >= 15 && floorS <= 40, `unmitigated TTK floor ${floorS.toFixed(1)}s out of band`);
 });

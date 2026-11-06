@@ -1,5 +1,9 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
+import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
 
@@ -51,7 +55,13 @@ import {
   ORRIN_WITNESS_STATION_ID,
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
+// special-500 Phase 2 bar residents: the corridor's shroud painter (SP1-193) and the depot
+// bar's censer sommelier (SP2-065). Their settlements live in the sim legs; this module reads
+// the authored specs for the canonical rows and the reply branches.
+import { PORTRAIT_PAINTER } from '../../data/special500/portraitBuoyLine.js';
+import { SOMMELIER } from '../../data/special500/sommelier.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { contestedSectorForPair } from '../../data/conflictZones.js';
 import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
 import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
@@ -59,6 +69,10 @@ import { deedLine } from '../../data/deedPhrases.js';
 import { mostCitedShipDeed } from '../../systems/shipLedger.js';
 import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
 import { getActiveAceRouteForSector } from '../../data/namedAces.js';
+import {
+  STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_BUYER_DECLINE_CHOICE,
+  STORY_REWARD_BUYERS, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
+} from '../../data/storyRewardBuyers.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -226,6 +240,7 @@ function oreLotRumorForReply(state) {
 
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
+  if (payload.stationId === 'station_eris_margin' && payload.choiceId === 'eris_silence') return null;
   if (isKurtzDeskChoice(payload)) {
     bus.emit('ui:kurtzInteract', {
       action: payload.choiceId,
@@ -572,6 +587,50 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_fulfillment',
     line: 'Your order has always been important to us.',
   },
+  // SP2-041 "The Previous Tenant's Mail": the cushion letter's author, drinking at Quinn's
+  // under the same management. Six owners is the hull's count, not Rets's patience.
+  {
+    key: 'rets',
+    stationIds: ['station_smuggler'],
+    name: 'Rets',
+    role: 'pilot',
+    roleLabel: 'Retired Watch Regular',
+    factionId: 'faction_quiet',
+    line: '"You are sitting in the chair. The cushion before yours held better arguments than most crews."',
+  },
+  // SP1-193 "The Portrait Buoys": the corridor's shroud painter, findable at Reach Station.
+  // The buoy line (src/data/special500/portraitBuoyLine.js) hangs her work; she takes
+  // commissions and refuses payment in anything but a good story (settled by
+  // src/systems/special500PortraitBuoys.js on ui:talkContact).
+  {
+    key: 'painter',
+    stationIds: ['station_reach'],
+    name: 'Vesper',
+    role: 'pilot',
+    roleLabel: 'Shroud Painter',
+    factionId: 'faction_free',
+    line: 'Your hull is the newest frame on the corridor line. It is not finished. It will be, if the story is worth the canvas.',
+    choices: [
+      { id: 'commission', label: 'Commission the portrait — pay in a story.' },
+      { id: 'ask_paint', label: 'Ask why nobody signs them.' },
+    ],
+  },
+  // SP2-065 "The Sommelier of Coolant": the depot bar's retired Choir censer machine, which
+  // has rebranded its incense burn as "beverage temperature control" (settled by
+  // src/systems/special500Sommelier.js on ui:talkContact).
+  {
+    key: 'sommelier',
+    stationIds: ['station_depot3'],
+    name: 'The Sommelier of Coolant',
+    role: 'barkeep',
+    roleLabel: 'Retired Censer',
+    factionId: 'faction_choir',
+    line: 'This cell — cast on a Thursday. You will taste the Thursday.',
+    choices: [
+      { id: 'the_thursday', label: 'Buy "the Thursday" — 12 cr.' },
+      { id: 'ask_vintages', label: 'Ask what else is on the rail.' },
+    ],
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
@@ -774,7 +833,20 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.canonicalKey === 'kessler') {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
-      if (slipChoice) canonical.choices = [...getChoices(canonical.role, canonical), slipChoice];
+      const workChoice = kesslerStarterWorkChoice(state, stationId);
+      const freightChoice = kesslerFreightChoice(state, stationId);
+      const ceresChoice = kesslerCeresShiftChoice(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+        const choices = getChoices(canonical.role, canonical);
+        const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
+        const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
+        if (slipChoice) choices.push(slipChoice);
+        if (workChoice) choices.push(workChoice);
+        if (freightChoice) choices.push(freightChoice);
+        if (ceresChoice) choices.push(ceresChoice);
+        if (dismissChoice) choices.push(dismissChoice);
+        canonical.choices = choices;
+      }
     }
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
@@ -804,8 +876,18 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
   const sori = soriComparisonContact(state, stationId);
+  const erisChair = stationId === 'station_eris_margin'
+    && state?.story?.flags?.eris_choir_chair_claimed != null ? [{
+      id: 'contact_eris_choir_chair', canonicalKey: 'eris_choir_chair',
+      name: 'The Choir Chair', role: 'barkeep', roleLabel: 'Reserved chair',
+      factionId: 'faction_choir',
+      line: 'The chair at the window is yours. The room stands as you approach.',
+      approach: 'The barkeep waits beside your chair.',
+      erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
+        && state.story.flags.eris_choir_bar_service.served === true,
+    }] : [];
   const listed = [
-    ...endingCourier, ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -814,7 +896,84 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  stampCollectiveHours(listed, stationId, state);
+  stampQuinnsStool(listed, stationId, state);
+  // The wake silences this room's ambient patrons, not its mission and service contacts.
+  const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
+  if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
+      && erisSilentUntil > (Number(state?.simTime) || 0)) {
+    for (const contact of contacts) {
+      if (!contact.id.startsWith('contact_station_eris_margin_')) continue;
+      contact.erisChoirSilent = true;
+      contact.line = 'The room falls silent as you enter.';
+      contact.approach = 'The room stays silent.';
+      // A muted opener cannot consume a deed that nobody actually told.
+      delete contact.deedId;
+    }
+  }
   return listed;
+}
+
+function signedRep(n) { return `${n > 0 ? '+' : '\u2212'}${Math.abs(n)}`; }
+function creditsText(n) { return `${Math.round(n).toLocaleString('en-US')} cr`; }
+
+/**
+ * A claimed story item's buyer sits at the bar of a berth that matches one of its authored
+ * choices (data/storyRewardBuyers.js). The choice says the price and who it costs; choosing
+ * emits ui:talkContact, which the sim owner (systems/uniqueWrecks.js) settles. Once sold the
+ * record carries a disposition and this contact is no longer generated.
+ */
+export function storyBuyerContacts(state, stationId) {
+  const out = [];
+  for (const offer of storyBuyerOffersAt(state, stationId)) {
+    const item = STORY_REWARD_BUYERS[offer.rewardId];
+    const first = item.choices[offer.choiceIds[0]];
+    const choices = offer.choiceIds.map((choiceId) => {
+      const row = item.choices[choiceId];
+      const terms = [
+        ...(row.credits > 0 ? [creditsText(row.credits)] : []),
+        ...storyBuyerRepDeltas(row, stationId).map((rep) => {
+          const meta = FACTION_BY_ID.get(rep.factionId);
+          return `${(meta && (meta.short || meta.name)) || rep.factionId} ${signedRep(rep.delta)}`;
+        }),
+      ];
+      return { id: STORY_BUYER_CHOICE_PREFIX + choiceId, label: `${row.label} (${terms.join(' · ')})` };
+    });
+    choices.push({ id: STORY_BUYER_DECLINE_CHOICE, label: 'Not yet. It stays in my hold.' });
+    out.push({
+      id: STORY_BUYER_CONTACT_PREFIX + offer.rewardId,
+      name: first.buyerName,
+      role: first.role,
+      roleLabel: first.roleLabel,
+      factionId: barStationInfo(stationId, state)?.station?.factionId || null,
+      line: first.line,
+      canonicalKey: 'story_buyer',
+      storyBuyer: { rewardId: offer.rewardId, itemName: offer.itemName, choiceIds: [...offer.choiceIds] },
+      choices,
+    });
+  }
+  return out;
+}
+
+function storyBuyerReply(contact, choiceId) {
+  const rewardId = contact.storyBuyer.rewardId;
+  if (contact.storyBuyer.soldLine) return { text: contact.storyBuyer.soldLine };
+  if (typeof choiceId === 'string' && choiceId.startsWith(STORY_BUYER_CHOICE_PREFIX)) {
+    const row = storyBuyerRow(rewardId, choiceId.slice(STORY_BUYER_CHOICE_PREFIX.length));
+    if (row) {
+      // The sold buyer stays on the rail for this visit with one closing word, so the reply is
+      // read next to the face that said it; the next visit regenerates without them.
+      return {
+        text: row.reply,
+        pinContact: {
+          ...contact,
+          storyBuyer: { ...contact.storyBuyer, soldLine: row.reply },
+          choices: [{ id: 'story_buyer_closed', label: 'Done.' }],
+        },
+      };
+    }
+  }
+  return { text: `Then keep the ${contact.storyBuyer.itemName} close. Someone else will ask.` };
 }
 
 // The existing refinery host can discuss a filed local record without replacing local work,
@@ -862,6 +1021,35 @@ function stampHeliosBay7Rumor(contacts, stationId, state) {
   if (!kessler) return;
   kessler.line = 'Maintenance still files tickets about a smell in Bay 7. Nobody walks the pad.';
   kessler.bay7Rumor = true;
+}
+
+// SP1-173 "The Hours": the stamped ledger number persists, and the Collective's host at the
+// Ceres refinery references it with respect proportional to its size. No stamp, no change —
+// the host does not ask about hours nobody filed.
+function stampCollectiveHours(contacts, stationId, state) {
+  if (stationId !== 'station_ceres') return;
+  const flags = state && state.story && state.story.flags;
+  const hours = flags ? Math.floor(Number(flags.collective_credit_hours)) || 0 : 0;
+  if (hours <= 0) return;
+  const host = contacts.find((contact) => contact
+    && contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.collectiveHours = hours;
+  host.line = hours >= 75
+    ? `The host reads your stamped ledger — ${hours} credit hours — and stands to pour. Nobody stands to pour.`
+    : hours >= 30
+      ? `"${hours} credit hours," the host says, and checks the tally twice. Belt crews do not check numbers that low twice.`
+      : `The host nods at the stamp on your ledger. ${hours} credit hours. Everyone starts somewhere; most stay there.`;
+}
+
+// SP2-053 "The Third Stool's Letter": after the stool letter, Quinn's greeting is permanent.
+function stampQuinnsStool(contacts, stationId, state) {
+  const flags = state && state.story && state.story.flags;
+  if (!flags || flags.quinns_stool == null) return;
+  const quinn = contacts.find((contact) => contact && contact.canonicalKey === 'quinn');
+  if (!quinn) return;
+  quinn.line = 'Your stool. Same one.';
+  quinn.stoolRegular = true;
 }
 
 // U6 — the plated derelicts have first contact on the glass, but the bar — the place that
@@ -948,6 +1136,10 @@ function stampAceRouteRumor(contacts, stationId, state) {
 /* ── dialog option builders (per role) ────────────────────────────── */
 
 export function getChoices(role, contact = null) {
+  if (contact?.erisChoirSilent) return [{ id: 'eris_silence', label: 'Leave them in peace.' }];
+  if (contact?.canonicalKey === 'eris_choir_chair') return contact.erisChoirServed
+    ? [{ id: 'free_drink', label: 'Served this visit', disabled: true, reason: 'Your free drink has already been served this visit.' }]
+    : [{ id: 'free_drink', label: 'Take your free drink.' }];
   if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
@@ -1242,6 +1434,86 @@ function serviceSummary(stationId, state) {
   return names.slice(0, 3).join(' / ') || services.slice(0, 3).join(' / ');
 }
 
+// THE HOUSE'S WAR (inf-bar-war-front): the arrival desk names the house's war once per dock and
+// the chart renders the front, but the bar conversation — the place you sit down and ask for the
+// word — answered "things have been quiet" while the house was at war. This is the conversation
+// reading the same conflict truth: a pure read of state.conflicts (factions stays the sole
+// writer), gated exactly like the desk on the record's own 'war' state — cold and tense pairs
+// stay quiet, and a faction with no record stays wordless.
+export function warRecordForFaction(state, factionId) {
+  const conflicts = state && state.conflicts;
+  if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+    const pair = String(pairKey).split(':');
+    if (!pair.includes(factionId)) continue;
+    const rivalId = pair.find((id) => id && id !== factionId);
+    if (!rivalId) continue;
+    return { pairKey, factionId, rivalId, rec };
+  }
+  return null;
+}
+
+function factionShortName(factionId) {
+  const meta = FACTION_BY_ID.get(factionId);
+  return (meta && (meta.short || meta.name)) || String(factionId || '').replace(/^faction_/, '');
+}
+
+function warFrontName(war) {
+  const sectorId = contestedSectorForPair(war && war.pairKey);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return sector ? sector.name : 'the contested lane';
+}
+
+/** Player-lean read from the queried faction's side: positive means the war is going their way. */
+function warLeanForFaction(war) {
+  const lean = Number(war && war.rec && war.rec.playerLean) || 0;
+  const first = String(war && war.pairKey || '').split(':')[0];
+  return first === war.factionId ? -lean : lean;
+}
+
+const WAR_RUMOR_LINES = Object.freeze([
+  'Rumors? The war is the news. This house is at war with {rival}, and the front sits at {front}. Every lane through there is leaning on it.',
+  'You want rumors — the only story worth a tab is the war with {rival}. The front at {front} decides who eats on this station next season.',
+]);
+const WAR_RUMOR_BLOCKADE = 'The only story is the war with {rival}. Someone has been strangling the supply lane at {front} — half the dock is idle because of it.';
+const WAR_RUMOR_SIEGE = 'The war with {rival}, what else. They set a heavy hull over the front at {front}, and somebody cracked it. This room has told the story every night since.';
+const WAR_WORD_LINES = Object.freeze([
+  'The word is the war. {rival} holds the front at {front}, and this house is in it — watch the lanes, and watch the flags they fly on them.',
+  'Same word as every night this week: the war with {rival}. The front at {front} is where this station\'s luck is being decided.',
+]);
+const WAR_LEAN_FOR = ' The house knows which side your work has been feeding. It is noticed here.';
+const WAR_LEAN_AGAINST = ' And some of the work banked on that front is yours — against this house. Drink light, and keep your back to the wall.';
+
+/**
+ * One bar line for the house's war, in the room's voice. Deterministic: the same (seed, pair,
+ * slot) always answers the same way, and the front's own ledger facts (a blockaded lane, a
+ * cracked bastion, the player's banked lean) pick the variant — nothing invented, the same
+ * truth the chart's war front renders.
+ */
+export function barWarTalkLine(state, war, slot = 'rumors') {
+  if (!war) return null;
+  const rival = factionShortName(war.rivalId);
+  const front = warFrontName(war);
+  const values = { rival, front };
+  const frontRec = war.rec && typeof war.rec.front === 'object' ? war.rec.front : null;
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  let line;
+  if (slot === 'word') {
+    line = WAR_WORD_LINES[hash32(seed, 'bar-war', war.pairKey, 'word') % WAR_WORD_LINES.length];
+  } else if (frontRec && frontRec.siege > 0) {
+    line = WAR_RUMOR_SIEGE;
+  } else if (frontRec && frontRec.blockade > 0) {
+    line = WAR_RUMOR_BLOCKADE;
+  } else {
+    line = WAR_RUMOR_LINES[hash32(seed, 'bar-war', war.pairKey, 'rumors') % WAR_RUMOR_LINES.length];
+  }
+  const lean = warLeanForFaction(war);
+  const clause = lean >= 0.2 ? WAR_LEAN_FOR : lean <= -0.2 ? WAR_LEAN_AGAINST : '';
+  return localizeText(line + clause, values);
+}
+
 export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const role = contact.role || 'barkeep';
   const sec = currentSector(stationId, state);
@@ -1252,6 +1524,12 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
     if (!text) return;
     tags.push({ label, text, kind });
   };
+
+  // The house's war (inf-bar-war-front) is the loudest fact in the room: it leads the tags,
+  // naming the rival and the contested front the chart already renders. Contacts whose own
+  // house is the warring side carry their own war — a patron whose faction fights speaks for it.
+  const war = warRecordForFaction(state, contact.factionId);
+  if (war) add('War', `${factionShortName(war.rivalId)} — the front holds ${warFrontName(war)}`, 'bad');
 
   const memory = stationContactMemoryFor(state, contact.id);
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
@@ -1308,6 +1586,103 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   return tags.slice(0, 2);
 }
 
+// BAR-REGULAR: a seeded patron you have talked to before is a regular, and a regular's line
+// advances each visit instead of repeating one hashed bark forever. Pure function of the
+// persisted stationContacts memory (the stationContacts system stays the sole writer) and the
+// same live sector facts the intel tags read; DOM-free so checks can walk the ladder directly.
+const REGULAR_SUBJECT_WORDS = Object.freeze({
+  routes: 'trade routes', market: 'market prices', work: 'contract work',
+  outside: 'the lanes out there', black: 'quiet markets', contraband: 'papers',
+  tech: 'fitting advice', fix: 'yard repairs', bounties: 'posted bounties',
+  action: 'where the fights are', fields: 'the rich fields', ore_price: 'ore prices',
+  rumors: 'the rumors', word: 'the word on the docks', drink: 'the drink',
+});
+
+export function barRegularStoryLine(contact = {}, state = {}, stationId = '') {
+  if (contact.erisChoirSilent) return contact.line;
+  const memory = stationContactMemoryFor(state, contact.id);
+  if (!memory || !memory.met || memory.talkCount < 1) return null;
+  const firstName = String(contact.name || '').trim().split(/\s+/)[0] || 'The regular';
+  const subject = REGULAR_SUBJECT_WORDS[memory.lastChoice]
+    || (memory.lastChoice ? memory.lastChoice.replace(/_/g, ' ') : 'local work');
+
+  if (memory.talkCount === 1) {
+    return localizeText('Met once before. Back already — last time it was {subject}.', { subject });
+  }
+
+  // The middle visits are the trouble beat: the regular tells you what changed while you
+  // were out, grounded in the same live facts their intel tags carry. Two variants per role
+  // alternate by visit, so consecutive visits never repeat even when the world has not moved.
+  const trouble = barRegularTroubleLine(contact, state, stationId, memory.talkCount);
+  if (trouble) return trouble;
+
+  // Past the story, the relationship settles — warmer once the contact's standing earned it.
+  if (memory.standing >= 2) {
+    return localizeText('{name} keeps your usual on the ledger now. Whatever the lanes do, this stool is yours.', { name: firstName });
+  }
+  return localizeText('{name} nods without turning around. Regulars long enough — friends not yet.', { name: firstName });
+}
+
+function barRegularTroubleLine(contact, state, stationId, talkCount) {
+  if (talkCount < 2 || talkCount > 3) return null;
+  const variant = (hash32(String(contact.id || ''), 'bar-regular', talkCount) % 2) === 0;
+  const role = String(contact.role || '').toLowerCase();
+  const danger = role === 'pilot' || role === 'bounty_hunter' || role === 'miner'
+    ? dangerousSector(stationId, state) : null;
+  const event = localEconEvent(state, stationId);
+  const sec = currentSector(stationId, state);
+
+  // The war is what changed while you were out (inf-bar-war-front): a regular whose own house
+  // is at war — or who drinks in a house at war — opens with the front, not the weather.
+  const war = warRecordForFaction(state, contact.factionId)
+    || warRecordForFaction(state, stationFor(stationId, state)?.factionId || null);
+  if (war) {
+    const values = { rival: factionShortName(war.rivalId), front: warFrontName(war) };
+    return variant
+      ? localizeText('Since your last drink, the war with {rival} moved the front at {front}. The regulars argue about nothing else.', values)
+      : localizeText('You were gone one bell and the war with {rival} got closer. The front at {front} is all anyone will talk about.', values);
+  }
+
+  if (role === 'barkeep') {
+    if (event) {
+      return localizeText('Since your last drink, the shelf ran thin on {commodity}. The regulars count everything here.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    return variant
+      ? localizeText('The board has stayed quiet since you last sat down. Even the tollmen are bored.')
+      : localizeText('Same bar since you left. Quieter, if anything — and that worries the regulars.');
+  }
+  if (danger) {
+    return variant
+      ? localizeText('{sector} has turned into a {security} this week. Every stool here has a story about it.',
+        { sector: danger.name, security: securityLabel(danger) })
+      : localizeText('You were gone one bell and {sector} got louder. It is a {security} out there now.',
+        { sector: danger.name, security: securityLabel(danger) });
+  }
+  if (role === 'smuggler') {
+    return localizeText('Customs doubled its counts this week. The quiet ledger did not.');
+  }
+  if (role === 'merchant') {
+    if (event) {
+      return localizeText('Prices on {commodity} moved while you were out. Someone always pays for that.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    const slots = missionBoardSlots(state, stationId).length;
+    return localizeText('{count} live contracts on the board since you were last in. Someone is always a day late on one.',
+      { count: slots });
+  }
+  if (role === 'engineer') {
+    if (sec && sec.hazards && sec.hazards.length) {
+      return localizeText('The rocks outside have been chewing armor since you left. My bench has not cooled.');
+    }
+    return localizeText('The yard list grew while you were gone: {services}. It always grows.',
+      { services: serviceSummary(stationId, state) });
+  }
+  const slots = missionBoardSlots(state, stationId).length;
+  return localizeText('{count} live contracts on the board since you were last in.',
+    { count: slots });
+}
+
 /** Find best trade spread from marketIntel */
 function bestTradeRoute(state, currentStationId) {
   const intel = getMarketIntel(state);
@@ -1343,6 +1718,19 @@ function bestTradeRoute(state, currentStationId) {
  * Returns { text, missionOffer? }.
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (stationId === 'station_eris_margin' && contact?.canonicalKey === 'eris_choir_chair'
+      && choiceId === 'free_drink') {
+    const service = ctx?.state?.story?.flags?.eris_choir_bar_service;
+    if (!service?.active || !Number.isSafeInteger(service.visitId)) {
+      return { text: 'The barkeep checks your seat. One moment.' };
+    }
+    return { text: service?.active && service.served
+      ? 'Your drink for this visit has been served.'
+      : 'The barkeep checks your seat. One moment.' };
+  }
+  if (contact?.erisChoirSilent && stationId === 'station_eris_margin') {
+    return { text: 'The room stays silent.' };
+  }
   if (contact && contact.endgameChoice === 'E') {
     if (choiceId === 'accept_next_run') {
       if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
@@ -1360,6 +1748,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
+  if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
@@ -1458,6 +1847,29 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
     ? AUTHORED_DOCK_RUMORS[stationId]
     : null;
+
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
+
+  // THE HOUSE'S WAR (inf-bar-war-front): the desk names it on arrival and the chart renders the
+  // front; here the room's answers carry it. Rumor days: three days in four the war is the
+  // answer, outranking the keeper's repeating dock story; the other days the keeper sells the
+  // ledger, so the pitch never locks out for the war's whole life. One-shot leads above (a
+  // wreck bearing, a posted ore lot, a live entrance run, an ace sighting) and an authored
+  // keeper's own line still answer first.
+  const houseWar = role === 'barkeep'
+    ? warRecordForFaction(state, stationFor(stationId, state)?.factionId || null)
+    : null;
+  const warAnswersToday = houseWar
+    ? hash32(Number(state?.meta?.seed) || 0, 'bar-war-day', houseWar.pairKey,
+      Math.floor((Number(state?.simTime) || 0) / 600)) % 4 !== 0
+    : false;
+  if (role === 'barkeep' && choiceId === 'rumors' && houseWar && warAnswersToday) {
+    return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
+  }
+
   if (authoredDockRumor) {
     const rumor = frontierRumorOffer(state, stationId);
     return {
@@ -1465,11 +1877,6 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       frontierRumorOffer: rumor || null,
     };
   }
-
-  const canonical = contact && contact.canonicalKey
-    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
-    : null;
-  if (canonical) return canonical;
 
   switch (role) {
     /* ── BARKEEP ───────────────────────────────────────── */
@@ -1489,6 +1896,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
             surveyOffer: survey,
           };
         }
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
         const events = getEconEvents(state);
         if (events.length > 0) {
           const ev = events[0];
@@ -1500,6 +1908,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
       }
       if (choiceId === 'word') {
+        // "What's the word?" — during a war the word IS the war; the survey pitch keeps its
+        // rumor days and the barkeep's Survey tag.
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'word'), warPosture: houseWar.rec };
         const survey = availableSurveyOffer(state, stationId);
         if (survey) {
           return {
@@ -1787,6 +2198,12 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'kessler': {
       const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
       if (slipReply) return slipReply;
+      const workReply = kesslerStarterWorkReply(state, stationId, choiceId);
+      if (workReply) return workReply;
+      const freightReply = kesslerFreightReply(state, stationId, choiceId);
+      if (freightReply) return freightReply;
+      const ceresReply = kesslerCeresShiftReply(state, stationId, choiceId);
+      if (ceresReply) return ceresReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
@@ -1798,6 +2215,47 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
         return { text: 'The board says balanced. My ledger says the same manifest weighs less after every handoff. Both records are official if the right clerk initials them.' };
       }
       if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
+      return null;
+    }
+
+    // SP1-193 "The Portrait Buoys": the shroud painter's commission verb. The bar reply is the
+    // read; the settlement (the story taken, the flag written) is the sim leg's on ui:talkContact.
+    case 'painter': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'commission') {
+        if (flags[PORTRAIT_PAINTER.commissionFlag]) {
+          return { text: 'The frame came down and went back up finished. You have seen it. The rest is weather now — the same weather as everyone\'s.' };
+        }
+        const record = peekDeedRecord(state);
+        if (!record || !record.deeds || !record.deeds.length) {
+          return { text: 'Nothing yet worth the canvas. Fly something first. I do not paint intentions, and I do not paint on credit.' };
+        }
+        return {
+          text: 'Vesper listens all the way through the best story in your record — the parts you did not say, too. Payment accepted, in the only currency she takes. Come back after the next pass; the frame finishes in the cold.',
+        };
+      }
+      if (choiceId === 'ask_paint') {
+        return { text: 'Because the paint is the signature. You put a name on a shroud and it stops being everyone\'s, and then it starts being somebody\'s to argue about.' };
+      }
+      return null;
+    }
+
+    // SP2-065 "The Sommelier of Coolant": the depot bar's censer machine and its vintage rail.
+    // The purchase settles in the sim leg (src/systems/special500Sommelier.js); this reply is
+    // the liturgy.
+    case 'sommelier': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'the_thursday') {
+        if (flags[SOMMELIER.pourFlag]) {
+          return { text: 'The Thursday is poured, and it was drunk at the correct temperature. There will not be another Thursday this cycle. The censer remembers patronage; it does not repeat it.' };
+        }
+        return {
+          text: 'The censer hums its incense burn down to beverage temperature and sets the vintage on the rail. "Cast on a Thursday. You will taste the Thursday." 12 cr, and two cells for the road — poured, not sold. The Choir remembers patronage.',
+        };
+      }
+      if (choiceId === 'ask_vintages') {
+        return { text: 'The rail holds Monday, which is sharp and industrial; Wednesday, which is apologetic; and the Thursday. The Thursday is the only one with a congregation.' };
+      }
       return null;
     }
 

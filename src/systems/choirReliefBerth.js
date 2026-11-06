@@ -34,9 +34,30 @@ const nonNegOr = (value, fallback = null) => {
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
+const wholeNumberOr = (value, fallback = 0, max = Number.MAX_SAFE_INTEGER) => {
+  if (value == null) return fallback;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.min(Math.trunc(n), max) : fallback;
+};
+const runnerLossMaskOr = (value) => {
+  if (value == null) return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  const mask = Math.trunc(n);
+  return Number.isSafeInteger(mask) ? mask & ((1 << RUNNER_MAX) - 1) : 0;
+};
 
 export function normalizeChoirRelief(value) {
-  const runnersSent = nonNegOr(value?.runnersSent, 0);
+  const runnersSent = wholeNumberOr(value?.runnersSent, 0, RUNNER_MAX);
+  const runnersDeparted = wholeNumberOr(value?.runnersDeparted, 0, runnersSent);
+  const runnersLostMask = runnerLossMaskOr(value?.runnersLostMask) & ((1 << runnersSent) - 1);
+  // Fractional legacy values are floored, but never clamp an impossible ordinal onto a
+  // different live runner: that would fabricate a bed holder and a service clock.
+  const savedBedOrdinal = wholeNumberOr(value?.runnerBedOrdinal);
+  let runnerBedOrdinal = savedBedOrdinal <= runnersSent ? savedBedOrdinal : 0;
+  if (runnerBedOrdinal > 0 && (runnersLostMask & RUNNER_BIT(runnerBedOrdinal)) !== 0) {
+    runnerBedOrdinal = 0;
+  }
   return {
     attendantLost: value?.attendantLost === true,
     patientLost: value?.patientLost === true,
@@ -50,14 +71,13 @@ export function normalizeChoirRelief(value) {
     evacuatedAtS: nonNegOr(value?.evacuatedAtS),
     nextArrivalAtS: nonNegOr(value?.nextArrivalAtS),
     runnersSent,
-    runnersDeparted: nonNegOr(value?.runnersDeparted, 0),
-    runnersLostMask: nonNegOr(value?.runnersLostMask, 0),
+    runnersDeparted,
+    runnersLostMask,
     // An ordinal above the real sent-count can only be stale corruption — it must not hold
     // the bed: no runner of that ordinal was ever sent, so its admission would never be
     // examined and the bed would deadlock.
-    runnerBedOrdinal: Math.min(nonNegOr(value?.runnerBedOrdinal, 0),
-      Math.min(RUNNER_MAX, runnersSent)),
-    runnerAdmittedAtS: nonNegOr(value?.runnerAdmittedAtS),
+    runnerBedOrdinal,
+    runnerAdmittedAtS: runnerBedOrdinal > 0 ? nonNegOr(value?.runnerAdmittedAtS) : null,
   };
 }
 

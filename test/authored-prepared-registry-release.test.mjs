@@ -9,6 +9,11 @@ import {
   initializePresentationAdmission,
 } from '../src/core/presentationAdmission.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
+import { render, disposeObjectNode, disposeRendererOwnedResources } from '../src/render/renderer.js';
+import {
+  createPackageDetachManifest, detachPackageTexture, measureLivePackageCpuPayloads,
+  LIVE_PACKAGE_CPU_PAYLOAD, resetPackageDetachManifestsForTests,
+} from '../src/render/packageCpuDetach.js';
 
 Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
   Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
@@ -65,6 +70,97 @@ function fixtureRecord() {
     materials: [material],
   };
 }
+
+async function preparedLivePayload({ fail = false, stale = false } = {}) {
+  const scene = new THREE.Scene();
+  const owner = Object.assign(Object.create(render), { scene, state: { render: {} }, _rendererResourcesDisposed: false });
+  owner._installLivePackageCpuPayloads(scene);
+  const entity = capsuleEntity();
+  owner.state.entities = new Map([[entity.id, entity]]);
+  initializePresentationAdmission(entity);
+  const boundary = partsLibrary.buildAuthoredCargoCapsule(entity, { releaseMode: true, fallbackRoot: new THREE.Group() });
+  boundary.userData.presentationEntityId = entity.id;
+  scene.add(boundary);
+  const record = fixtureRecord();
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  texture.needsUpdate = true;
+  record.materials[0].map = texture;
+  const geometry = record.primitives[0].geometry;
+  createPackageDetachManifest({ contentHash: 'live-capsule', resources: [geometry, texture] }, {
+    redecode: () => { throw new Error('A live ready payload must not need a rotation decode'); },
+    collectResources: value => value.resources,
+  });
+  let pipelineObserved = false;
+  await boundary.userData.requestAuthoredUpgrade({}, scene, {
+    deferBoundaryPublication: true,
+    loadAuthoredPart: async () => record,
+    prepareAuthoredPipelines: async () => {
+      pipelineObserved = true;
+      assert.ok(owner._livePackageCpuPayloads.size > 0, 'the actual producer acquires before GPU admission');
+      assert.ok(partsLibrary.inspectAuthoredBoundaryRegistrations(scene, boundary).preparedRoots > 0);
+      assert.equal(detachPackageTexture(texture), false, 'the first upload cannot detach the live map');
+      if (fail) throw new Error('retired preparation');
+      if (stale) boundary.userData.admissionEpoch += 1;
+    },
+    prepareAuthoredGpuResidency: async () => ({}),
+  }).catch(error => { if (!fail && !stale) throw error; });
+  assert.equal(pipelineObserved, true);
+  return { owner, scene, boundary, texture };
+}
+
+test('actual prepared publication retains live maps until replacement disposal and session exit', async () => {
+  resetPackageDetachManifestsForTests();
+  const f = await preparedLivePayload();
+  try {
+    assert.equal(f.boundary.userData.authoredVisualRoot, 'authored-root', 'the real capsule producer publishes normally');
+    assert.equal(partsLibrary.inspectAuthoredBoundaryRegistrations(f.scene, f.boundary).preparedRoots, 0);
+    assert.equal(detachPackageTexture(f.texture), false, 'publication must not retire the live lease');
+    const root = f.boundary.children.find(child => child[LIVE_PACKAGE_CPU_PAYLOAD]);
+    assert.ok(root, 'the published authored root owns its disposal hook');
+    const bytes = measureLivePackageCpuPayloads(f.owner._livePackageCpuPayloads);
+    assert.ok(bytes.liveCpuBufferBytes >= 4);
+    disposeObjectNode(root);
+    assert.equal(f.owner._livePackageCpuPayloads.size, 0, 'replaced root disposal retires its exact lease');
+    assert.equal(detachPackageTexture(f.texture), true);
+    disposeRendererOwnedResources(f.owner);
+    assert.equal(f.scene[LIVE_PACKAGE_CPU_PAYLOAD], undefined);
+    assert.equal(f.owner._livePackageCpuPayloads, null);
+  } finally {
+    f.owner._releaseLivePackageCpuPayloads?.();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('failed actual prepared admission releases the existing owner claim without publication', async () => {
+  resetPackageDetachManifestsForTests();
+  const f = await preparedLivePayload({ fail: true });
+  try {
+    assert.equal(f.owner._livePackageCpuPayloads.size, 0);
+    assert.equal(detachPackageTexture(f.texture), true);
+  } finally {
+    f.owner._releaseLivePackageCpuPayloads?.();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('stale actual admission retires its epoch and session exit releases an admitted live cohort', async () => {
+  resetPackageDetachManifestsForTests();
+  const stale = await preparedLivePayload({ stale: true });
+  try {
+    assert.equal(stale.owner._livePackageCpuPayloads.size, 0);
+    assert.notEqual(stale.boundary.userData.authoredVisualRoot, 'authored-root');
+    assert.equal(detachPackageTexture(stale.texture), true);
+  } finally { stale.owner._releaseLivePackageCpuPayloads?.(); resetPackageDetachManifestsForTests(); }
+  const live = await preparedLivePayload();
+  try {
+    assert.ok(live.owner._livePackageCpuPayloads.size > 0);
+    disposeRendererOwnedResources(live.owner);
+    assert.equal(live.owner._livePackageCpuPayloads, null);
+    assert.equal(live.owner._releaseLivePackageCpuPayloads, null);
+    assert.equal(live.scene[LIVE_PACKAGE_CPU_PAYLOAD], undefined);
+    assert.equal(detachPackageTexture(live.texture), true);
+  } finally { live.owner._releaseLivePackageCpuPayloads?.(); resetPackageDetachManifestsForTests(); }
+});
 
 // A prepared admission whose boundary is detached before publication runs the parked
 // disposer. When a resource dispose() throws inside that disposer, the registry entry in

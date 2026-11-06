@@ -42,9 +42,10 @@ function withoutMediaBlocks(css) {
 }
 const hudCssBase = withoutMediaBlocks(hudCssSrc);
 
-test('uiRoot still mounts the extracted HUD stylesheet', () => {
-  assert.match(uiRootSrc, /from '\.\/views\/hudStyles\.js'/);
-  assert.match(uiRootSrc, /injectHudCss\(\)/);
+test('uiRoot uses the linked HUD stylesheet without importing its authored CSS text', () => {
+  assert.match(uiRootSrc, /from '\.\/views\/hudStylesheet\.js'/);
+  assert.match(uiRootSrc, /ensureHudStylesheet\(\)/);
+  assert.doesNotMatch(uiRootSrc, /from '\.\/views\/hudStyles\.js'/);
 });
 
 test('the default radar dial is exactly the size the canvas is drawn at', () => {

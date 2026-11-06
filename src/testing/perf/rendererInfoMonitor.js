@@ -30,6 +30,7 @@ export class RendererInfoMonitor {
   markWarmupComplete(currentPrograms = 0) {
     this.isWarmupDone = true;
     this.initialPrograms = currentPrograms;
+    this.lastProgramsCount = currentPrograms;
   }
 
   /**
@@ -60,7 +61,7 @@ export class RendererInfoMonitor {
     };
 
     // Detect late shader compilations (major cause of frame hitches)
-    if (this.isWarmupDone && programsCount > this.lastProgramsCount && this.lastProgramsCount > 0) {
+    if (this.isWarmupDone && programsCount > this.lastProgramsCount) {
       const delta = programsCount - this.lastProgramsCount;
       const anomaly = {
         type: 'mid_flight_shader_compilation',

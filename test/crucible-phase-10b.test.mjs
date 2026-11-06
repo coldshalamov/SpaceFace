@@ -21,7 +21,6 @@ import {
 import { SPAWN_BUDGET_DEFAULT_MAX } from '../src/data/survivalActs.js';
 import {
   SURVIVAL_POWER_AXES,
-  SURVIVAL_STARTER_DPS,
   SURVIVAL_UNLOCK_CATALOG,
   ZERO_POWER,
 } from '../src/data/survivalUnlocks.js';
@@ -276,7 +275,7 @@ test('versioned build codes name an earlier catalog and refuse to decode it', ()
   assert.equal(garbagePaths.includes('contentDigest'), false);
 });
 
-test('a fresh account is still viable: power axes stay zero and Pulse still leads', () => {
+test('a fresh account is still viable: every unlock remains on the zero-power axes', () => {
   const checked = validateUnlockCatalog();
   assert.equal(checked.ok, true, (checked.issues || []).join('; '));
   for (const entry of SURVIVAL_UNLOCK_CATALOG) {
@@ -290,9 +289,4 @@ test('a fresh account is still viable: power axes stay zero and Pulse still lead
     assert.equal(earned[axis], 0, axis);
     assert.equal(zeros[axis], 0, axis);
   }
-  const pulse = SURVIVAL_STARTER_DPS.wpn_pulse_laser_s;
-  assert.ok(pulse >= SURVIVAL_STARTER_DPS.wpn_flak_turret_s);
-  assert.ok(pulse >= SURVIVAL_STARTER_DPS.wpn_autocannon_s);
-  assert.ok(pulse >= SURVIVAL_STARTER_DPS.wpn_gravity_marker_s);
-  assert.ok(pulse >= SURVIVAL_STARTER_DPS.wpn_momentum_sink_s);
 });

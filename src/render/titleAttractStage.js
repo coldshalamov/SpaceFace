@@ -1,9 +1,59 @@
 // Attract tape v2 shares the Theater renderer: the exact recorded rope, field and
 // weapon language, on the existing UI WebGL renderer. No simulation runs at boot.
-import { decodeTape } from '../sim/titleAttractTape.js';
-import { TITLE_ATTRACT_TAPE } from '../sim/titleAttractTapeData.js';
+import { decodeTape, TITLE_ATTRACT_TAPE_SCHEMA } from '../sim/titleAttractTape.js';
 import { buildKillcamStage } from './killcamStage.js';
 import { KILLCAM_TAPE_SCHEMA } from '../sim/killcamTape.js';
+import { runtimeAssetUrl } from '../core/runtimeAssetUrl.js';
+
+const TITLE_ATTRACT_TAPE_ASSET = 'src/sim/titleAttractTapeData.json';
+const TITLE_ATTRACT_TAPE_TIMEOUT_MS = 15000;
+let titleAttractTapeRequest = null;
+
+export function resolveTitleAttractTapeUrl(options = {}) {
+  return runtimeAssetUrl(TITLE_ATTRACT_TAPE_ASSET, options.moduleUrl || import.meta.url, options);
+}
+
+export function createTitleAttractTapeRequest({ fetchImpl, url, timeoutMs = TITLE_ATTRACT_TAPE_TIMEOUT_MS } = {}) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('Title attract tape fetch implementation is required');
+  if (typeof url !== 'string' || !url) throw new TypeError('Title attract tape URL is required');
+  let pending = null;
+  return () => {
+    if (!pending) {
+      const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(timeoutMs) : undefined;
+      const options = { credentials: 'same-origin', ...(signal ? { signal } : {}) };
+      pending = Promise.resolve().then(() => fetchImpl(url, options)).then(async (response) => {
+        if (!response || response.ok !== true) {
+          throw new Error(`Title attract tape request failed${response ? ` (${response.status})` : ''}`);
+        }
+        const tape = await response.json();
+        if (!tape || tape.schema !== TITLE_ATTRACT_TAPE_SCHEMA || !Number.isSafeInteger(tape.seed)
+          || !Number.isSafeInteger(tape.ticks) || typeof tape.bin !== 'string') {
+          throw new Error('Title attract tape asset has an invalid schema');
+        }
+        return tape;
+      }).catch((error) => {
+        pending = null;
+        throw error;
+      });
+    }
+    return pending;
+  };
+}
+
+export function loadTitleAttractTape() {
+  if (!titleAttractTapeRequest) {
+    const fetchImpl = globalThis.fetch;
+    if (typeof fetchImpl !== 'function') {
+      return Promise.reject(new Error('Title attract tape is not available without fetch'));
+    }
+    titleAttractTapeRequest = createTitleAttractTapeRequest({
+      fetchImpl,
+      url: resolveTitleAttractTapeUrl(),
+    });
+  }
+  return titleAttractTapeRequest();
+}
 
 /** Authored impact size, or the flash-reduction cap while that cut is on. */
 export function attractFlashSize(fullSize, flashReduced) {
@@ -11,7 +61,7 @@ export function attractFlashSize(fullSize, flashReduced) {
   return flashReduced ? Math.min(full, 1.6) : full;
 }
 
-export function attractPlaybackTape(encoded = TITLE_ATTRACT_TAPE) {
+export function attractPlaybackTape(encoded) {
   const tape = decodeTape(encoded), rate = tape.tickRate / tape.shipRate;
   const ships = tape.ships.map((ship) => ({
     type: 'ship', player: ship.team === 0, team: ship.team, visual: ship.visual,
@@ -43,8 +93,8 @@ export function attractPlaybackTape(encoded = TITLE_ATTRACT_TAPE) {
     })) };
 }
 
-export async function buildTitleAttractStage(built, io) {
-  const tape = attractPlaybackTape();
+export async function buildTitleAttractStage(built, io, encodedTape = null) {
+  const tape = attractPlaybackTape(encodedTape || await loadTitleAttractTape());
   const seconds = tape.samples / tape.sampleRate;
   // Keep the physical encounter on the free right side of the title's menu.
   const framing = { recorded: true, focus: { x: -145, z: 0 }, zoom: 380 };

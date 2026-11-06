@@ -34,6 +34,7 @@ import { injectOrreryStationFactions } from '../../orrery/station-factionsLayout
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt, rollTo } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
+import { activeTreatiesFor } from '../../../data/factionTreaties.js';
 
 const STATION_FACTION = new Map();
 for (const sector of SECTORS) {
@@ -108,9 +109,14 @@ function liveFaction(state, id) {
 /** The standing as a linear position for the rim arcs: one unit per hundred points, so −120 draws longer than −50. */
 function bandPosOf(r) { return (Number(r) || 0) / 50; }
 
-function relationEntries(meta) {
+function relationEntries(meta, state = null) {
+  // A recovered treaty replaces the pair's authored rivalry (systems/factions.js relationWeightFor
+  // reads the same table), so the relation row says what the reputation owner now does.
+  const treaties = new Map(activeTreatiesFor(state, meta && meta.id).map((t) => [t.otherId, t.treaty]));
   return Object.entries((meta && meta.relations) || {})
-    .map(([id, weight]) => ({ id, weight: Number(weight) || 0 }))
+    .map(([id, weight]) => (treaties.has(id)
+      ? { id, weight: treaties.get(id).weight, treaty: treaties.get(id) }
+      : { id, weight: Number(weight) || 0 }))
     .filter((entry) => Math.abs(entry.weight) >= 0.19)
     .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
     .slice(0, 7);
@@ -257,7 +263,14 @@ export function createFactionsScreen(ctx) {
     const guidance = factionStandingGuidance(rep, f.meta || {}, live && live.lastDelta, {
       hideLastDelta: shouldHideOwnRepDelta(state),
     });
-    const relations = relationEntries(f.meta);
+    const relations = relationEntries(f.meta, state);
+    const treatyLines = activeTreatiesFor(state, f.id).map(({ treaty, otherId }) => {
+      const other = factions.find((candidate) => candidate.id === otherId);
+      const otherName = other ? ((other.meta && other.meta.short) || other.name) : otherId;
+      return `<p class="k-sentence k-sentence--emph sx-fac-treaty" data-treaty="${escapeHtml(treaty.id)}">` +
+        `<span class="k-good">${escapeHtml(treaty.name)}</span> · ${Math.round(treaty.weight * 100)}% of standing you earn or lose with ` +
+        `${escapeHtml((f.meta && f.meta.short) || f.name)} now carries to ${escapeHtml(otherName)}, instead of counting against you.</p>`;
+    }).join('');
     const authorityId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
     const controls = (f.meta && f.meta.controls) || [];
     const curIdx = tierIndex(rep);
@@ -286,10 +299,10 @@ export function createFactionsScreen(ctx) {
     const relationRows = relations.map((relation) => {
       const related = factions.find((candidate) => candidate.id === relation.id);
       const name = related ? related.name : relation.id;
-      const kind = relation.weight > 0 ? 'Align' : 'Rival';
+      const kind = relation.treaty ? 'Treaty' : relation.weight > 0 ? 'Align' : 'Rival';
       return (
         `<li><button type="button" ${stationControlAttrs('faction-relation')} class="sx-fac-node k-row" data-fac="${escapeHtml(relation.id)}"` +
-          ` aria-label="Inspect ${escapeHtml(name)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
+          ` aria-label="Inspect ${escapeHtml(name)}, ${relation.treaty ? 'treaty' : relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
           `<span class="k-row__name">${escapeHtml(name)}</span>` +
           `<span class="${relation.weight > 0 ? 'k-good' : 'k-bad'} sx-fac-node__kind">${kind}</span>` +
           `<span class="k-row__num">${Math.abs(relation.weight).toFixed(2)} <span class="k-row__sub">${signed(repOf(state, relation.id))}</span></span>` +
@@ -340,6 +353,7 @@ export function createFactionsScreen(ctx) {
           `</div>` +
           recentDeedsHtml(state, live, f) +
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
+            treatyLines +
             // folded: a word that unfolds the relations when asked
             (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +
             `<button type="button" ${stationControlAttrs('relations-toggle')} class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false" aria-controls="sx-fac-relations-box">${'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
@@ -369,7 +383,7 @@ export function createFactionsScreen(ctx) {
       selectedId: f.id,
       authorityId,
       swing: picked,
-      relations: relationEntries(f.meta).map((r) => ({ id: r.id, weight: r.weight })),
+      relations: relationEntries(f.meta, state).map((r) => ({ id: r.id, weight: r.weight })),
     });
     for (const stop of stopDecrypt.splice(0)) stop();
     if (reducedMotion()) return;

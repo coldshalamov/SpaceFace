@@ -42,12 +42,16 @@ export function shouldContinueAdmissionSlice(options = {}) {
   return (nowMs - startedAtMs) < targetMs;
 }
 
-export const HEAVY_ADMISSION_EVENTUAL_SKIP = 8;
+export const HEAVY_ADMISSION_EVENTUAL_SKIP = 3;
 
-export function shouldStartHeavyAdmission(lastPresentDtMs, lateMs = 22) {
+export function shouldStartHeavyAdmission(lastPresentDtMs, lateMs = 22, baselineMs = null) {
   const last = Number(lastPresentDtMs);
   if (!Number.isFinite(last)) return true;
-  return last <= lateMs;
+  // "Late" may be relative to this host's own cadence: pass baselineMs (smoothed present dt) and a
+  // steady 10-20 fps host stops reading every beat as a spike. lateMs stays the floor.
+  const base = Number(baselineMs);
+  const threshold = Number.isFinite(base) && base > 0 ? Math.max(lateMs, base * 1.6) : lateMs;
+  return last <= threshold;
 }
 
 /**
@@ -60,7 +64,7 @@ export function shouldStartHeavyAdmissionEventually(
   skippedCount,
   options = {},
 ) {
-  if (shouldStartHeavyAdmission(lastPresentDtMs, options.lateMs)) {
+  if (shouldStartHeavyAdmission(lastPresentDtMs, options.lateMs, options.baselineMs)) {
     return { start: true, skippedCount: 0 };
   }
   const maxSkip = Number.isFinite(Number(options.maxSkip))

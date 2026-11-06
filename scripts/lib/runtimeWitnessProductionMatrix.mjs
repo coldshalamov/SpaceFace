@@ -11,6 +11,38 @@ export const RUNTIME_WITNESS_PRODUCTION_ROUTES = Object.freeze([
   { id: 'busy-site-save-reload', label: 'busy-site save / reload', driver: 'public-save-reload' },
 ]);
 
+/** Installed in the page realm before the public New Game route. */
+export function installStartupRouteMarks() {
+  const marks = { launch: null, gameStarted: null, publicInput: null, inputPresented: null };
+  window.__SF_STARTUP_ROUTE_MARKS__ = marks;
+  document.addEventListener('click', event => {
+    const button = event.target?.closest?.('button');
+    if (!marks.launch && event.isTrusted === true && button?.closest?.('[data-screen="newGame"]')
+      && /^launch$/i.test(String(button.textContent || '').trim())) {
+      marks.launch = { atMs: performance.now(), trusted: true };
+    }
+  }, true);
+  document.addEventListener('keydown', event => {
+    if (!marks.publicInput && marks.launch && event.isTrusted === true && event.code === 'KeyW'
+      && window.SF?.state?.mode === 'flight') marks.publicInput = { atMs: performance.now(), trusted: true };
+  }, true);
+  window.SF?.bus?.on?.('game:started', () => {
+    if (!marks.gameStarted && marks.launch) marks.gameStarted = { atMs: performance.now() };
+  });
+}
+
+/** Align existing monotonic observations without inventing missing milestones. */
+export function alignStartupRouteMarks(marks, events = [], samples = []) {
+  const launch = Number.isFinite(marks?.launch?.atMs) ? marks.launch.atMs : null;
+  const align = rows => rows.map(row => ({ ...row,
+    sinceLaunchMs: launch !== null && Number.isFinite(row?.performanceAtMs) ? row.performanceAtMs - launch : null }));
+  const milestone = mark => mark ? { ...mark,
+    sinceLaunchMs: launch !== null && Number.isFinite(mark.atMs) ? mark.atMs - launch : null } : null;
+  return { launch: milestone(marks?.launch), gameStarted: milestone(marks?.gameStarted),
+    publicInput: milestone(marks?.publicInput), inputPresented: milestone(marks?.inputPresented),
+    workerHandshake: null, events: align(events), samples: align(samples) };
+}
+
 const ROUTE_BY_ID = new Map(RUNTIME_WITNESS_PRODUCTION_ROUTES.map((route) => [route.id, route]));
 
 // perfRuntime exposes cumulative counters, not one counter per frame. Count increments within

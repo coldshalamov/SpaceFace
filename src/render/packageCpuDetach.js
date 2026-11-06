@@ -46,6 +46,8 @@ const manifests = new Map();
 const manifestsByContentHash = new Map();
 let manifestSequence = 0;
 const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
+// Private scene/prepared-root handoff, never serialized into userData or exposed on the runtime API.
+export const LIVE_PACKAGE_CPU_PAYLOAD = Symbol('live-package-cpu-payload');
 // Material slots a presented draw binds. An emptied compressed map in one of these is the
 // texStorage `mipmaps[0].width` throw; scanning uniforms would walk every sky shader per draw.
 const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
@@ -58,6 +60,28 @@ const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
 // refills them before the next upload. Steady-state draws do not take the hold.
 let orientationHolds = new WeakSet();
 let presentedDetachRehydrate = null;
+let presentedDetachRequestedManifests = null;
+let presentedDetachHeldRenderers = null;
+
+// Private, bounded trace for the existing buffer-resize diagnostic. It records only the
+// refill owner and awaited stage; no resource objects or GPU queries cross this boundary.
+let refillDiagnosticRows = 0;
+function refillDiagnosticEnabled() {
+  return globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
+    || (typeof location !== 'undefined'
+      && new URLSearchParams(location.search).get('bufferResizeDiag') === '1');
+}
+function traceManifestRefill(manifest) {
+  if (!refillDiagnosticEnabled()) return null;
+  const started = performance.now();
+  return (stage) => {
+    if (refillDiagnosticRows++ >= 256) return;
+    console.info('[render:package-refill]', JSON.stringify({
+      manifestId: manifest.manifestId, assetId: manifest.assetId,
+      stage, at: performance.now(), elapsedMs: performance.now() - started,
+    }));
+  };
+}
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
@@ -184,9 +208,10 @@ function deinterleaveKeptAttribute(geometry, name) {
   }
 }
 
-// Rehydrate pairing fingerprint (SPEC F2 §3.5): attr name set + position/index counts +
-// per-attr itemSize/normalized — identical bytes re-decode deterministically, so any drift
-// means the package changed under its content hash and the entry stays detached.
+// Rehydrate pairing fingerprint (SPEC F2 §3.5): attribute identity is ordinal-paired only when
+// every source buffer still has the same shape. Position/index counts alone are insufficient:
+// Three caches the original GPU buffer byte length, so assigning a longer/shorter donor array to
+// an existing BufferAttribute makes its next update throw instead of resizing that buffer.
 function geometryFingerprint(geometry) {
   const attrs = geometry.attributes || {};
   // sfHullPosition is runtime shading layout, not part of the verified decoder's source shape.
@@ -194,32 +219,100 @@ function geometryFingerprint(geometry) {
   const names = Object.keys(attrs).filter(name => name !== 'sfHullPosition').sort();
   const itemSizes = {};
   const normalized = {};
+  const bufferShapes = {};
   for (const name of names) {
     const attribute = attrs[name];
     itemSizes[name] = attribute ? attribute.itemSize : 0;
     normalized[name] = !!(attribute && attribute.normalized);
+    const record = attribute && attribute.isInterleavedBufferAttribute === true
+      ? attribute.data
+      : attribute;
+    const array = record && record.array;
+    bufferShapes[name] = {
+      count: Number(attribute && attribute.count) || 0,
+      length: Number(array && array.length) || 0,
+      byteLength: Number(array && array.byteLength) || 0,
+      arrayType: array && array.constructor,
+      stride: attribute && attribute.isInterleavedBufferAttribute === true
+        ? Number(attribute.data && attribute.data.stride) || 0 : null,
+      offset: attribute && attribute.isInterleavedBufferAttribute === true
+        ? Number(attribute.offset) || 0 : null,
+    };
   }
   const position = attrs.position;
+  const indexArray = geometry.index && geometry.index.array;
   return {
     attrNames: names,
     positionCount: Number(position && position.count) || 0,
     indexCount: Number(geometry.index && geometry.index.count) || 0,
     itemSizes,
     normalized,
+    bufferShapes,
+    indexShape: {
+      count: Number(geometry.index && geometry.index.count) || 0,
+      length: Number(indexArray && indexArray.length) || 0,
+      byteLength: Number(indexArray && indexArray.byteLength) || 0,
+      arrayType: indexArray && indexArray.constructor,
+    },
   };
 }
 
 function sameGeometryFingerprint(a, b) {
   if (!a || !b) return false;
   if (a.positionCount !== b.positionCount || a.indexCount !== b.indexCount) return false;
+  if (!a.indexShape || !b.indexShape
+      || a.indexShape.count !== b.indexShape.count
+      || a.indexShape.length !== b.indexShape.length
+      || a.indexShape.byteLength !== b.indexShape.byteLength
+      || a.indexShape.arrayType !== b.indexShape.arrayType) return false;
   if (a.attrNames.length !== b.attrNames.length) return false;
   for (let i = 0; i < a.attrNames.length; i++) {
     const name = a.attrNames[i];
     if (b.attrNames[i] !== name) return false;
     if (a.itemSizes[name] !== b.itemSizes[name]) return false;
     if (a.normalized[name] !== b.normalized[name]) return false;
+    const aShape = a.bufferShapes && a.bufferShapes[name];
+    const bShape = b.bufferShapes && b.bufferShapes[name];
+    if (!aShape || !bShape
+        || aShape.count !== bShape.count
+        || aShape.length !== bShape.length
+        || aShape.byteLength !== bShape.byteLength
+        || aShape.arrayType !== bShape.arrayType
+        || aShape.stride !== bShape.stride
+        || aShape.offset !== bShape.offset) return false;
   }
   return true;
+}
+
+function geometryFingerprintEvidence(fingerprint) {
+  if (!fingerprint) return null;
+  const typeName = (ctor) => typeof ctor === 'function' ? ctor.name : null;
+  const bufferShapes = {};
+  for (const name of fingerprint.attrNames || []) {
+    const shape = fingerprint.bufferShapes && fingerprint.bufferShapes[name];
+    if (!shape) continue;
+    bufferShapes[name] = {
+      count: shape.count,
+      length: shape.length,
+      byteLength: shape.byteLength,
+      arrayType: typeName(shape.arrayType),
+      stride: shape.stride,
+      offset: shape.offset,
+    };
+  }
+  const index = fingerprint.indexShape;
+  return {
+    attrNames: [...(fingerprint.attrNames || [])],
+    positionCount: fingerprint.positionCount,
+    indexCount: fingerprint.indexCount,
+    indexShape: index ? {
+      count: index.count,
+      length: index.length,
+      byteLength: index.byteLength,
+      arrayType: typeName(index.arrayType),
+    } : null,
+    bufferShapes,
+  };
 }
 
 function payloadBytes(value) {
@@ -364,6 +457,10 @@ export function createPackageDetachManifest(loaded, options = {}) {
   });
   manifest.geometryEntries.forEach((entry, ordinal) => {
     const geometry = entry.geometry;
+    // Keep the donor-comparison shape from the decoder output. The retention pass below may
+    // split kept attributes out of a shared interleaved buffer, which is a runtime layout change
+    // and must not make an otherwise identical re-decode look like package drift.
+    entry.fingerprint = geometryFingerprint(geometry);
     // Pull position out of the shared interleaved buffer and cache bounds BEFORE any upload:
     // the first upload then builds the position VBO from the standalone array, and every later
     // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
@@ -373,7 +470,6 @@ export function createPackageDetachManifest(loaded, options = {}) {
       try { geometry.computeBoundingSphere(); } catch (_) {}
       try { geometry.computeBoundingBox(); } catch (_) {}
     }
-    entry.fingerprint = geometryFingerprint(geometry);
     geometry.userData = {
       ...(geometry.userData || {}),
       spacefaceCpuDetach: { ...mark, kind: 'geometry', ordinal },
@@ -394,11 +490,31 @@ export function createPackageDetachManifest(loaded, options = {}) {
  */
 export function computePlainFloat32Bounds(geometry) {
   const position = geometry && geometry.attributes && geometry.attributes.position;
-  if (!position || position.isInterleavedBufferAttribute || position.normalized
-    || position.itemSize !== 3 || !(position.array instanceof Float32Array)) return false;
+  if (!position || position.isInterleavedBufferAttribute || position.itemSize !== 3) return false;
+  // Quantized (KHR_mesh_quantization) normalized integer positions are the common release case;
+  // three's generic path pays getX/getY/getZ + denormalize per vertex. Dequantize into a scratch
+  // Float32Array once (same math as MathUtils.denormalize) and reuse the plain loops below.
+  let a = position.array;
+  if (!(a instanceof Float32Array)) {
+    let div = 0;
+    let lo = -Infinity;
+    if (position.normalized) {
+      if (a instanceof Uint16Array) { div = 65535; lo = 0; }
+      else if (a instanceof Int16Array) { div = 32767; lo = -1; }
+      else if (a instanceof Uint8Array) { div = 255; lo = 0; }
+      else if (a instanceof Int8Array) { div = 127; lo = -1; }
+    }
+    if (!div) return false;
+    const src = a;
+    a = new Float64Array(position.count * 3);
+    if (position.count * 3 > src.length) return false;
+    for (let i = 0, m = a.length; i < m; i++) {
+      const v = src[i] / div;
+      a[i] = v < lo ? lo : v;
+    }
+  } else if (position.normalized) return false;
   if (geometry.morphAttributes && geometry.morphAttributes.position
     && geometry.morphAttributes.position.length) return false;
-  const a = position.array;
   const n = position.count * 3;
   if (n > a.length) return false;
   if (!geometry.boundingBox) geometry.boundingBox = new Box3();
@@ -606,6 +722,61 @@ export function retainPackageGeometryCpu(geometries) {
     if (released) return;
     released = true;
     for (const entry of entries) entry.cpuReaders -= 1;
+    entries.clear();
+  };
+}
+
+/** On-demand accounting of actual backing buffers, deduplicated across live owners and clones. */
+export function measureLivePackageCpuPayloads(cohorts) {
+  const all = new Set(), protectedBuffers = new Set(), kept = new Set(), opaqueImages = new Set();
+  const geometries = new Set(), textures = new Set();
+  const formats = new Map();
+  const add = (value, protectedPayload) => {
+    const buffer = ArrayBuffer.isView(value) ? value.buffer
+      : value instanceof ArrayBuffer ? value : null;
+    if (!buffer) return;
+    all.add(buffer);
+    (protectedPayload ? protectedBuffers : kept).add(buffer);
+  };
+  for (const cohort of cohorts || []) {
+    for (const geometry of cohort.geometries || []) geometries.add(geometry);
+    for (const texture of cohort.textures || []) textures.add(texture);
+  }
+  for (const geometry of geometries) {
+    const detachable = !!geometryManifestEntry(geometry);
+    const attrs = geometry.attributes || {};
+    const keptRecords = new Set([geometry.index]);
+    for (const name of GEOMETRY_CPU_KEEP_ATTRIBUTES) {
+      const attr = attrs[name];
+      if (attr) keptRecords.add(attr.isInterleavedBufferAttribute ? attr.data : attr);
+    }
+    add(geometry.index?.array, false);
+    for (const attribute of Object.values(attrs)) {
+      const record = attribute?.isInterleavedBufferAttribute ? attribute.data : attribute;
+      add(record?.array, detachable && !keptRecords.has(record));
+    }
+  }
+  for (const texture of textures) {
+    const key = `${texture.format}/${texture.type}/${texture.isCompressedTexture === true}`;
+    const format = formats.get(key) || { format: texture.format, type: texture.type,
+      compressed: texture.isCompressedTexture === true, textures: 0 };
+    format.textures++;
+    formats.set(key, format);
+    const covered = packageTextureDetachCovers(texture);
+    for (const mip of texture.mipmaps || []) add(mip?.data ?? mip, covered);
+    const image = texture.source?.data;
+    add(image?.data ?? image, covered);
+    if (image && !ArrayBuffer.isView(image) && !(image instanceof ArrayBuffer)
+        && !image.data && !texture.isCompressedTexture && image.width && image.height) opaqueImages.add(image);
+  }
+  const bytes = (buffers) => { let total = 0; for (const buffer of buffers) total += buffer.byteLength; return total; };
+  const incremental = [...protectedBuffers].filter(buffer => !kept.has(buffer));
+  return {
+    geometries: geometries.size, textures: textures.size, uniqueBuffers: all.size,
+    liveCpuBufferBytes: bytes(all), incrementalCpuBufferBytes: bytes(incremental),
+    opaqueImages: opaqueImages.size,
+    textureFormats: [...formats.values()].slice(0, 32), textureFormatsTruncated: formats.size > 32,
+    note: 'Actual unique backing buffers, not total CPU heap. Incremental is an upper bound excluding buffers also required by kept positions/indices or uncovered clones; external cache references can reduce the eventual memory delta further. Opaque images are counted only.',
   };
 }
 
@@ -807,6 +978,88 @@ function textureFingerprint(resource) {
   };
 }
 
+function textureRefillPayloadShape(texture) {
+  const sourceData = texture?.source?.data || null;
+  const sourcePixels = sourceData?.data || null;
+  const mips = Array.isArray(texture?.mipmaps) ? texture.mipmaps : [];
+  return {
+    sourceDataPresent: !!sourceData,
+    sourceDataType: sourceData?.constructor?.name || null,
+    sourceWidth: Number(sourceData?.width) || 0,
+    sourceHeight: Number(sourceData?.height) || 0,
+    sourceDataByteLength: Number(sourceData?.byteLength) || 0,
+    sourcePixelsType: sourcePixels?.constructor?.name || null,
+    sourcePixelsByteLength: Number(sourcePixels?.byteLength ?? sourceData?.byteLength) || 0,
+    mipCount: mips.length,
+    mipLevels: mips.slice(0, 8).map((mip) => {
+      const payload = mip && (mip.data ?? mip);
+      return {
+        payloadType: payload?.constructor?.name || null,
+        width: Number(mip?.width) || 0,
+        height: Number(mip?.height) || 0,
+        byteLength: Number(payload?.byteLength) || 0,
+      };
+    }),
+  };
+}
+
+function hasTextureRefillPayload(entry, texture) {
+  if (!texture) return false;
+  const shape = textureRefillPayloadShape(texture);
+  if (entry.hadSourceData && (!shape.sourceDataPresent
+      || shape.sourceWidth <= 0 || shape.sourceHeight <= 0)) return false;
+  const sourceBytes = texture.source?.data?.data ?? texture.source?.data;
+  if (ArrayBuffer.isView(sourceBytes) && sourceBytes.byteLength === 0) return false;
+  if ((sourceBytes instanceof ArrayBuffer
+      || Object.prototype.toString.call(sourceBytes) === '[object ArrayBuffer]')
+      && sourceBytes.byteLength === 0) return false;
+  if ((entry.hadMipmaps || entry.compressed) && shape.mipCount === 0) return false;
+  if (entry.compressed || entry.hadMipmaps) {
+    const mips = Array.isArray(texture.mipmaps) ? texture.mipmaps : [];
+    if (mips.some((mip) => {
+      const payload = mip && (mip.data ?? mip);
+      return !(Number(mip?.width) > 0 && Number(mip?.height) > 0
+        && Number(payload?.byteLength) > 0);
+    })) return false;
+  }
+  return true;
+}
+
+function textureRefillMismatchReason(entry, texture) {
+  const fp = textureFingerprint(texture);
+  if (!fp) return 'ordinal-donor-missing';
+  if (fp.compressed !== entry.compressed || fp.format !== entry.format || fp.name !== entry.name) {
+    return 'ordinal-donor-shape-mismatch';
+  }
+  if (!hasTextureRefillPayload(entry, texture)) return 'ordinal-donor-cpu-payload-missing';
+  if ((entry.width > 0 && fp.width !== entry.width)
+      || (entry.height > 0 && fp.height !== entry.height)) return 'ordinal-donor-shape-mismatch';
+  return null;
+}
+
+function textureRefillMismatch(entry, manifest, texture, reason) {
+  return {
+    manifestId: manifest.manifestId,
+    contentHash: manifest.contentHash,
+    assetId: manifest.assetId,
+    textureOrdinal: entry.ordinal,
+    name: entry.name || null,
+    reason,
+    expected: {
+      compressed: entry.compressed,
+      format: entry.format,
+      width: entry.width,
+      height: entry.height,
+      hadMipmaps: entry.hadMipmaps,
+      hadSourceData: entry.hadSourceData,
+    },
+    actual: {
+      fingerprint: textureFingerprint(texture),
+      payload: textureRefillPayloadShape(texture),
+    },
+  };
+}
+
 /**
  * Mirrors three's setTexture2D upload gate (r184): whether this texture's next bind re-enters
  * uploadTexture — its version moved (needsUpdate) or its properties record was recreated after
@@ -896,19 +1149,79 @@ export function presentedDetachDrawsArmed(renderer) {
 }
 
 /**
- * One in-flight refill for every detached package. The draw guard and the orientation hold
- * share it so a rotation cannot decode the fleet twice. The hold drops only after the refill
- * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
+ * One in-flight presented refill. The draw guard and the orientation hold share it so a
+ * package cannot be decoded twice. A supplied resource cohort excludes unrelated cached
+ * packages; unscoped guard callers retain the complete-registry fallback. The hold drops only
+ * after the requested refill finishes, so the next frame cannot upload an empty mirror.
  */
-export function queuePresentedDetachRehydrate(renderer) {
-  if (presentedDetachRehydrate) return presentedDetachRehydrate;
-  const held = renderer || null;
+function presentedResourceManifests(resources) {
+  if (!resources) return detachedManifestList();
+  const wanted = new Set();
+  const add = (resource) => {
+    // Texture clones can carry the package mark while sharing its canonical Source. Refill
+    // that live generation too; the manifest's exact resource pairing still owns all writes.
+    const mark = resource?.userData?.spacefaceCpuDetach;
+    const manifest = mark && manifestForMark(mark);
+    if (manifest && !manifest.evicted && manifestHasDetachedEntries(manifest)) wanted.add(manifest);
+  };
+  for (const list of [resources.geometries, resources.textures]) {
+    for (const resource of list || []) add(resource);
+  }
+  // A blocked native draw already owns its exact geometry and material array. Use the same
+  // binding-slot vocabulary as preparePresentedDraw; no scene walk or fleet fallback.
+  add(resources.geometry);
+  const material = resources.material;
+  const array = Array.isArray(material);
+  for (let i = 0; i < (array ? material.length : material ? 1 : 0); i++) {
+    const item = array ? material[i] : material;
+    for (const key of PRESENTED_DETACH_TEXTURE_KEYS) add(item?.[key]);
+  }
+  return wanted;
+}
+
+export function queuePresentedDetachRehydrate(renderer, resources = null) {
+  const wanted = presentedResourceManifests(resources);
+  if (presentedDetachRehydrate) {
+    for (const manifest of wanted) presentedDetachRequestedManifests.add(manifest);
+    if (renderer) presentedDetachHeldRenderers.add(renderer);
+    return presentedDetachRehydrate;
+  }
+  // Cohorts joining during an awaited decode stay on this one serial runway. Offscreen
+  // cached packages are not a dependency of a scoped orientation request.
+  const requested = new Set(wanted);
+  refillDiagnosticRows = 0;
+  presentedDetachRequestedManifests = requested;
+  const held = new Set(renderer ? [renderer] : []);
+  presentedDetachHeldRenderers = held;
   let flight = null;
   flight = Promise.resolve()
-    .then(() => rehydrateDetachedPackages())
-    .finally(() => {
-      if (presentedDetachRehydrate === flight) presentedDetachRehydrate = null;
-      if (held) orientationHolds.delete(held);
+    .then(async () => {
+      try {
+        const completed = new Set();
+        let result = null;
+        do {
+          const batch = [...requested].filter(manifest => !completed.has(manifest));
+          const receipt = await rehydrateManifestList(batch);
+          for (const manifest of batch) completed.add(manifest);
+          if (!result) result = receipt;
+          else {
+            result.skipped &&= receipt.skipped;
+            for (const key of ['packages', 'textures', 'geometries', 'bytes']) result[key] += receipt[key];
+            for (const key of ['errors', 'geometryMismatches', 'textureMismatches']) result[key].push(...receipt[key]);
+          }
+        } while (completed.size < requested.size);
+        return result;
+      } finally {
+        // Close registration synchronously with the final drain, before resolving its promise:
+        // a late caller must join a still-draining flight or start its own, never miss both.
+        if (presentedDetachRehydrate === flight) {
+          presentedDetachRehydrate = null;
+          presentedDetachRequestedManifests = null;
+          presentedDetachHeldRenderers = null;
+        }
+        for (const target of held) orientationHolds.delete(target);
+        held.clear();
+      }
     });
   presentedDetachRehydrate = flight;
   return flight;
@@ -924,11 +1237,11 @@ export function presentedDetachRehydrateInFlight() {
  * for a refill. Used when the drawing buffer flips aspect (phone rotation): that is the
  * window that re-entered upload without a context-loss event.
  */
-export function noteOrientationDetachedHold(renderer) {
+export function noteOrientationDetachedHold(renderer, resources = null) {
   if (!renderer) return false;
   orientationHolds.add(renderer);
   bumpPackageDetachSerial();
-  queuePresentedDetachRehydrate(renderer);
+  queuePresentedDetachRehydrate(renderer, resources);
   return true;
 }
 
@@ -1043,6 +1356,7 @@ export function retainPresentedTextureLeases(textures) {
     if (released) return;
     released = true;
     for (const fn of release) fn();
+    release.length = 0;
   };
 }
 
@@ -1139,7 +1453,10 @@ export function orientationHoldHidesDrawable(renderer, object) {
 }
 
 async function rehydrateManifest(manifest) {
-  const decoded = await manifest.redecode();
+  const trace = traceManifestRefill(manifest);
+  trace?.('decode:start');
+  const decoded = await manifest.redecode(trace);
+  trace?.('rebind:start');
   const template = decodedTemplate(decoded);
   if (!template) throw new Error(`Render package ${manifest.assetId} rehydrate returned no scene.`);
   const freshResources = [...manifest.collectResources(template)];
@@ -1148,6 +1465,8 @@ async function rehydrateManifest(manifest) {
   let restored = 0;
   let restoredBytes = 0;
   let restoredGeometries = 0;
+  const geometryMismatches = [];
+  const textureMismatches = [];
   for (const entry of manifest.geometryEntries) {
     if (!entry.detached) continue;
     const donor = freshGeometries[entry.ordinal];
@@ -1155,6 +1474,14 @@ async function rehydrateManifest(manifest) {
     // changed under its content hash; keep the entry detached and count it (texture doctrine).
     if (!donor || !sameGeometryFingerprint(entry.fingerprint, geometryFingerprint(donor))) {
       manifest.totals.mismatches += 1;
+      geometryMismatches.push({
+        manifestId: manifest.manifestId,
+        contentHash: manifest.contentHash,
+        assetId: manifest.assetId,
+        geometryOrdinal: entry.ordinal,
+        expected: geometryFingerprintEvidence(entry.fingerprint),
+        actual: donor ? geometryFingerprintEvidence(geometryFingerprint(donor)) : null,
+      });
       continue;
     }
     for (const { name, record } of entry.released) {
@@ -1186,14 +1513,12 @@ async function rehydrateManifest(manifest) {
   for (const entry of manifest.entries) {
     if (!textureEntryReleased(entry)) continue;
     const fresh = freshTextures[entry.ordinal];
-    const fp = textureFingerprint(fresh);
-    if (!fp || fp.compressed !== entry.compressed || fp.format !== entry.format
-        || fp.name !== entry.name
-        || (entry.width > 0 && fp.width > 0 && fp.width !== entry.width)
-        || (entry.height > 0 && fp.height > 0 && fp.height !== entry.height)) {
-      // Identical bytes decode deterministically, so a mismatch means the package changed under
-      // the content hash — leave the entry detached and count it rather than corrupt the texture.
+    const mismatchReason = textureRefillMismatchReason(entry, fresh);
+    if (mismatchReason) {
+      // Never replace a live texture's source/mip chain with a missing or wrong ordinal donor.
+      // Keep the entry detached and retain asset/hash/ordinal evidence for the owning loader.
       manifest.totals.mismatches += 1;
+      textureMismatches.push(textureRefillMismatch(entry, manifest, fresh, mismatchReason));
       continue;
     }
     const texture = entry.texture;
@@ -1231,7 +1556,153 @@ async function rehydrateManifest(manifest) {
   for (const fresh of freshTextures) {
     try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
   }
-  return { textures: restored, geometries: restoredGeometries, bytes: restoredBytes };
+  trace?.('rebind:complete');
+  return {
+    textures: restored,
+    geometries: restoredGeometries,
+    bytes: restoredBytes,
+    geometryMismatches,
+    textureMismatches,
+  };
+}
+
+/** Fail closed when a requested geometry refill did not restore every released source buffer. */
+export function assertPackageGeometryRefillReady(geometries, receipt) {
+  const mismatches = Array.isArray(receipt?.geometryMismatches) ? receipt.geometryMismatches : [];
+  const errors = Array.isArray(receipt?.errors) ? receipt.errors : [];
+  const unresolved = [];
+  for (const geometry of geometries || []) {
+    if (!isPackageGeometryDetached(geometry)) continue;
+    const mark = geometry.userData?.spacefaceCpuDetach;
+    const manifest = mark && manifestForMark(mark);
+    const entry = manifest && manifest.geometryEntries[mark.ordinal];
+    unresolved.push({
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      manifestId: mark.manifestId ?? null,
+      contentHash: mark.contentHash || null,
+      assetId: manifest?.assetId || null,
+      geometryOrdinal: mark.ordinal ?? null,
+      expected: geometryFingerprintEvidence(entry?.fingerprint),
+      current: geometryFingerprintEvidence(geometryFingerprint(geometry)),
+    });
+  }
+  const requestedKeys = new Set((geometries || []).map((geometry) => {
+    const mark = geometry?.userData?.spacefaceCpuDetach;
+    return mark && mark.kind === 'geometry'
+      ? `${mark.manifestId}:${mark.ordinal}` : null;
+  }).filter(Boolean));
+  const requestedAssetIds = new Set(unresolved.map((row) => row.assetId).filter(Boolean));
+  const requestedMismatches = mismatches.filter((row) => requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const unrelatedMismatches = mismatches.filter((row) => !requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const requestedErrors = errors.filter((row) => requestedAssetIds.has(row.assetId));
+  const unrelatedErrors = errors.filter((row) => !requestedAssetIds.has(row.assetId));
+  if (unresolved.length === 0) {
+    return {
+      ready: true,
+      restoredGeometries: receipt?.geometries || 0,
+      unrelatedEvidence: {
+        geometryMismatches: unrelatedMismatches,
+        errors: unrelatedErrors,
+      },
+    };
+  }
+  const evidence = {
+    errors: requestedErrors,
+    geometryMismatches: requestedMismatches,
+    unresolved,
+    unrelatedEvidence: {
+      geometryMismatches: unrelatedMismatches,
+      errors: unrelatedErrors,
+    },
+  };
+  const error = new Error(`Package geometry CPU refill incomplete: ${JSON.stringify(evidence)}`);
+  error.name = 'PackageGeometryRefillError';
+  error.code = 'SF_PACKAGE_GEOMETRY_REFILL_INCOMPLETE';
+  error.geometryRefill = evidence;
+  throw error;
+}
+
+/** Fail context restore closed while a required scene texture still has no refilled CPU payload. */
+export function assertPackageTextureRefillReady(textures, receipt) {
+  const mismatches = Array.isArray(receipt?.textureMismatches) ? receipt.textureMismatches : [];
+  const errors = Array.isArray(receipt?.errors) ? receipt.errors : [];
+  const unresolved = [];
+  for (const texture of textures || []) {
+    if (!isPackageTextureDetached(texture)) continue;
+    const mark = texture.userData?.spacefaceCpuDetach || null;
+    const manifest = mark && manifestForMark(mark);
+    unresolved.push({
+      uuid: texture.uuid || null,
+      name: texture.name || null,
+      manifestId: mark?.manifestId ?? null,
+      contentHash: mark?.contentHash || null,
+      textureOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
+      assetId: manifest?.assetId || null,
+      current: textureRefillPayloadShape(texture),
+    });
+  }
+  if (unresolved.length === 0) {
+    return { ready: true, restoredTextures: receipt?.textures || 0 };
+  }
+  const unresolvedKeys = new Set(unresolved.map((row) => `${row.manifestId}:${row.textureOrdinal}`));
+  const evidence = {
+    errors,
+    textureMismatches: mismatches.filter((row) => unresolvedKeys.has(`${row.manifestId}:${row.textureOrdinal}`)),
+    unresolved,
+  };
+  const error = new Error(`Package texture CPU refill incomplete: ${JSON.stringify(evidence)}`);
+  error.name = 'PackageTextureRefillError';
+  error.code = 'SF_PACKAGE_TEXTURE_REFILL_INCOMPLETE';
+  error.textureRefill = evidence;
+  throw error;
+}
+
+/** Compact current/manifest geometry shapes for an exact-target VBO upload failure. */
+export function packageGeometryUploadDiagnostics(geometries, { limit = 24 } = {}) {
+  const input = Array.from(geometries || []).filter(isGeometryLike);
+  const rows = input.slice(0, Math.max(0, limit | 0)).map((geometry) => {
+    const mark = geometry.userData?.spacefaceCpuDetach || null;
+    const manifest = mark && manifestForMark(mark);
+    const entry = mark?.kind === 'geometry' && manifest
+      ? manifest.geometryEntries[mark.ordinal] : null;
+    const current = geometryFingerprint(geometry);
+    const currentAttributes = {};
+    for (const [name, attribute] of Object.entries(geometry.attributes || {})) {
+      const record = attribute?.isInterleavedBufferAttribute === true ? attribute.data : attribute;
+      const array = record?.array;
+      currentAttributes[name] = {
+        count: Number(attribute?.count) || 0,
+        itemSize: Number(attribute?.itemSize) || 0,
+        version: Number(record?.version) || 0,
+        length: Number(array?.length) || 0,
+        byteLength: Number(array?.byteLength) || 0,
+        arrayType: array?.constructor?.name || null,
+        stride: attribute?.isInterleavedBufferAttribute === true
+          ? Number(record?.stride) || 0 : null,
+        offset: attribute?.isInterleavedBufferAttribute === true
+          ? Number(attribute?.offset) || 0 : null,
+      };
+    }
+    const markMatches = entry ? sameGeometryFingerprint(entry.fingerprint, current) : null;
+    return {
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      detached: isPackageGeometryDetached(geometry),
+      mark: mark ? {
+        manifestId: mark.manifestId ?? null,
+        contentHash: mark.contentHash || null,
+        assetId: manifest?.assetId || null,
+        geometryOrdinal: mark.ordinal ?? null,
+      } : null,
+      manifestShapeMatches: markMatches,
+      expected: entry ? geometryFingerprintEvidence(entry.fingerprint) : null,
+      current: geometryFingerprintEvidence(current),
+      currentAttributes,
+      indexVersion: Number(geometry.index?.version) || 0,
+    };
+  });
+  return { total: input.length, truncated: input.length > rows.length, rows };
 }
 
 function rehydrateManifestOnce(manifest) {
@@ -1271,6 +1742,8 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
+    textureMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1279,6 +1752,8 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1308,6 +1783,8 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
+    textureMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1316,6 +1793,8 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1331,17 +1810,24 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
  * textures upload real bytes again.
  */
 export async function rehydrateDetachedPackages(options = {}) {
-  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
   const detached = detachedManifestList();
+  return rehydrateManifestList(detached, options);
+}
+
+async function rehydrateManifestList(detached, options = {}) {
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const count = detached.size ?? detached.length;
   const result = {
-    skipped: detached.length === 0,
+    skipped: count === 0,
     packages: 0,
     textures: 0,
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
+    textureMismatches: [],
   };
-  if (detached.length === 0) return result;
+  if (count === 0) return result;
   for (const manifest of detached) {
     if (manifest.evicted) continue;
     try {
@@ -1350,6 +1836,8 @@ export async function rehydrateDetachedPackages(options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1394,4 +1882,6 @@ export function resetPackageDetachManifestsForTests() {
   manifestSequence = 0;
   orientationHolds = new WeakSet();
   presentedDetachRehydrate = null;
+  presentedDetachRequestedManifests = null;
+  presentedDetachHeldRenderers = null;
 }

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -32,6 +33,7 @@ try {
   browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
+  await installFirstLightPromptHandler(page, () => {});
 
   await page.addInitScript((currentVersion) => {
     try {

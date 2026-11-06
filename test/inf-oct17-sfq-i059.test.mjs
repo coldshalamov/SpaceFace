@@ -37,7 +37,9 @@ test('SFQ-I059: buildMachineMesh(custodian) exposes updateAuthoredMotion and tog
 
   // Active branch: repairing is true -> restores active pulse >= 1.8
   const activeEntity = { data: { machine: { kind: 'custodian', repairing: true } } };
-  mesh.userData.updateAuthoredMotion(0.016, activeEntity);
+  // The authored tool motion eases into the working pose. Advance a full second
+  // so this assertion checks the settled active state, not the first animation frame.
+  mesh.userData.updateAuthoredMotion(1, activeEntity);
   for (const tip of tips) {
     assert.ok(
       tip.material.emissiveIntensity >= 1.8,
@@ -69,7 +71,8 @@ test('SFQ-I059: buildMachineMesh(mason) exposes updateAuthoredMotion and toggles
 
   // Active branch: working is true -> restores active pulse >= 1.8
   const activeEntity = { data: { machine: { kind: 'mason', working: true } } };
-  mesh.userData.updateAuthoredMotion(0.016, activeEntity);
+  // The authored weld light follows the same eased deployment as the tool arms.
+  mesh.userData.updateAuthoredMotion(1, activeEntity);
   for (const weld of welds) {
     assert.ok(
       weld.material.emissiveIntensity >= 1.8,

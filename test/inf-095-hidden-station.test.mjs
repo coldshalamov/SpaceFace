@@ -14,7 +14,12 @@ class FakeEl {
     this.tagName = String(tag).toUpperCase();
     this.children = [];
     this.dataset = {};
-    this.style = {};
+    // CSSStyleDeclaration: the Ladder's scroll cursor writes custom properties through setProperty.
+    this.style = {
+      setProperty(k, v) { this[k] = String(v); },
+      removeProperty(k) { delete this[k]; },
+      getPropertyValue(k) { return this[k] ?? ''; },
+    };
     this.attributes = {};
     this.parentNode = null;
     this.hidden = true;

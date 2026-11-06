@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-import { save, selectLatestOccupiedSlot } from '../src/save/saveSystem.js';
+import { isSaveSlotId as isSaveSlotIdFromOwner, save, selectLatestOccupiedSlot } from '../src/save/saveSystem.js';
+import {
+  isSaveSlotId as isSaveSlotIdReadModel,
+  selectLatestOccupiedSlot as selectLatestOccupiedSlotReadModel,
+} from '../src/save/saveSlotIdentity.js';
 import { fnv1a } from '../src/save/checksum.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { mainMenuScreen } from '../src/ui/screens/mainMenu.js';
@@ -109,6 +113,20 @@ test('title index and facade metadata cannot advertise reserved profile names as
   assert.equal(selectLatestOccupiedSlot(polluted), 'custom-route');
   assert.equal(selectLatestOccupiedSlot({ achievements: polluted.achievements,
     crucible_meta: polluted.crucible_meta }), null);
+});
+
+test('pure slot identity matches the registered save API for valid, reserved and unsafe keys', () => {
+  for (const slot of ['', 'index', '__proto__', 'constructor', 'prototype', 'achievements',
+    'crucible_meta', 'quick', 'custom-route']) {
+    assert.equal(isSaveSlotIdReadModel(slot), isSaveSlotIdFromOwner(slot), slot);
+  }
+  const polluted = {
+    achievements: { savedAt: '2099-01-01', playtimeS: 99999 },
+    crucible_meta: { savedAt: '2099-01-01', playtimeS: 99999 },
+    'custom-route': { savedAt: WHEN, playtimeS: 1 },
+  };
+  assert.equal(selectLatestOccupiedSlotReadModel(polluted, isSaveSlotIdReadModel), 'custom-route');
+  assert.equal(selectLatestOccupiedSlotReadModel(polluted, isSaveSlotIdFromOwner), 'custom-route');
 });
 
 test('sync and async save discovery reject even hash-matching profile index cards', async t => {

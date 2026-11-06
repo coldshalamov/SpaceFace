@@ -4,9 +4,9 @@
 // replay a reward; the single comms popup is dismissible, non-modal, and leaves controls free.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
 import { continueRecap } from '../src/ui/screens/missionLog.js';
+import { onboarding } from '../src/systems/onboarding.js';
 import { SECTORS } from '../src/data/sectors.js';
 
 const sectorId = SECTORS[0].id;
@@ -68,15 +68,27 @@ test('silence when there is nothing to restore, and no completed missions leak i
 });
 
 test('the recap speaks once on load through the dismissible comms surface', () => {
-  const source = readFileSync(new URL('../src/systems/onboarding.js', import.meta.url), 'utf8');
-  assert.match(
-    source,
-    /this\._speakContinueRecap\(p\);/,
-    'the returning-pilot path speaks the recap',
-  );
-  const method = source.slice(source.indexOf('_speakContinueRecap(payload)'));
-  assert.match(method, /continueRecap\(this\.state\)/, 'the recap reads restored state');
-  assert.match(method, /comms:popup/, 'it rides the existing dismissible comms surface');
-  assert.ok(!method.includes('economy:') && !method.includes('faction:'), 'no reward or rep intent can replay');
-  assert.ok(!method.includes("mode:changed") && !method.includes("state.mode"), 'no mode change — controls stay free');
+  const state = { ...stateWith({ missions: [escort], trackedId: 'm_1' }), mode: 'flight' };
+  const events = [];
+  onboarding._speakContinueRecap.call({
+    state,
+    bus: { emit: (event, payload) => events.push({ event, payload }) },
+  }, { loaded: true });
+  assert.equal(events.length, 1);
+  assert.equal(events[0].event, 'comms:popup');
+  assert.equal(events[0].payload.sender, 'Flight Log');
+  assert.match(events[0].payload.text, /Convoy screen.*Escort to/);
+  assert.equal(state.mode, 'flight');
+  assert.equal(events.some(({ event }) => event.startsWith('economy:') || event.startsWith('faction:')), false);
+});
+
+test('scenario and harness loads do not announce a player recap', () => {
+  const events = [];
+  for (const payload of [{ scenario: '47a' }, { harness: true }]) {
+    onboarding._speakContinueRecap.call({
+      state: stateWith({ missions: [escort], trackedId: 'm_1' }),
+      bus: { emit: (event, value) => events.push({ event, value }) },
+    }, payload);
+  }
+  assert.deepEqual(events, []);
 });

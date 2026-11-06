@@ -110,7 +110,7 @@ ${T} .sx-ct__active, ${T} .sx-ct__jobs, ${T} .sx-job { ${PLAIN} }
 ${T} .sx-job { padding:6px 0 !important; min-height:0 !important; }
 ${T} .sx-job__title { font-size:13px !important; color:rgb(248 244 234) !important; }
 ${T} .sx-job__meta { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
-${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.2em !important;
+${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .8) !important; }
 ${T} .sx-job__track::after { display:none !important; }
 ${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size: 12px; vertical-align:2px; color:rgb(248 244 234) !important; }
@@ -233,9 +233,25 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
   ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
 }
+/* …and in a narrow, tall desktop window (651–900 × 801+): the route orrery's 280px floor left the reading column 40–130px,
+   so the title broke into letters. One column instead: ACCEPT at its head, the reading, then the route orrery under it. */
+@media (min-width:651px) and (max-width:900px) and (min-height:801px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; row-gap:0 !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; margin:0 0 10px !important; }
+  ${D} .sx-dossier > .orr-ct-route { order:1 !important; align-self:center !important; justify-self:center !important; width:min(100%, 300px) !important; height:240px !important; margin:14px 0 0 !important; }
+  ${D} .sx-dossier__title { font-size:22px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:52px !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:112px minmax(0, 1fr) !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+}
 /* …and the same reading column in a narrow, tall desktop window (≤650 × 801+): the board takes the left half, the
    dossier the right, and the dossier scrolls with ACCEPT at its head. The term label stands over its value. */
-@media (max-width:650px) and (min-height:601px) {
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; height:100% !important; }
   ${D} .sx-ct__dossier { min-width:0 !important; }
   ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
@@ -265,7 +281,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 /* BAR in the same narrow, tall desktop window: the 360px rail left the reading a ~190px strip, so the contact's
    name set one syllable a line ("Capt / ain") and the reply and questions fell out of sight. The rail and the reading
    share the width, each contact's role stands under the name, and the portrait sits beside the name. */
-@media (max-width:650px) and (min-height:601px) {
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
   ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; }
   ${D} .sx-bar__rows .sx-bar-row { display:block !important; }
   ${D} .sx-bar-row__role { display:block !important; margin-top:1px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
@@ -306,8 +322,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
 }
-/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
-@media (max-width:480px) and (min-height:601px) {
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
   ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
@@ -316,6 +333,44 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   /* the dossier half opens on which job ACCEPT takes: kind and title, then the verbs, then the terms */
   ${D} .sx-dossier > .k-caps { order:-3 !important; }
   ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
+}
+/* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
+   and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
+   390×700 by 36px). The inset closes to 2px (the screen-reader route and risk lines keep a strip of their own above the kind) and the
+   dossier opens on its verb. */
+@media (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${D} .sx-ct__dossier { padding:0 0 0 10px !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+}
+/* the board shrinks under a whole row only at 720 tall or less (600×700: a 51px board for 56px rows); at 721–800 it keeps two rows and YOURS */
+@media (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${D} .sx-ct__hang { overscroll-behavior:contain; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-ct__hang > .sx-ct__board { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
+/* …under 481 the dossier is the lower half (~95px at 390×700): it gets three fifths, but the board never drops under the 66px
+   FEATURED row master shows at 420×601 (its text keeps the board labels' 26px inset),
+   kind and title close up, and ACCEPT sits right under the title inside the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:800px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-left:26px !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .sx-dossier__title { margin:2px 0 6px !important; }
+}
+/* …and at 601–660 tall (420×601: a 90px dossier) the kind steps under the verb so the title and ACCEPT still share the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
@@ -591,7 +646,7 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
   width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
-  ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+  ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
 /* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
@@ -637,6 +692,10 @@ ${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .85) !important; 
 ${T} .sx-fab-in.is-missing .sx-fab-in__source { order:3; }
 ${T} .sx-fab-notes { margin-top:4px !important; }
 ${T} .sx-fab-status { margin-top:8px !important; }
+/* System reduced motion can disable the entrance animation without setting the in-game class. */
+@media (prefers-reduced-motion: reduce) {
+  ${T} .orr-ind-chain .orr-chain__rise { animation:none !important; opacity:1 !important; }
+}
 ${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
 /* the ladder: the reason only on the chosen row; the tier alone on the rest */
 ${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
@@ -753,7 +812,9 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !importa
   width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { padding:2px 0 8px 26px !important; margin-top:-2px; flex-wrap:nowrap !important; align-items:baseline !important; gap:0 6px !important; min-width:0; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { flex:none; }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:block !important; white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+/* the tradeoff facts are a status, not a preview: they wrap to two lines (STATION_STANDARD §6 —
+   never clip a status with an ellipsis; the accessible name still carries the whole tradeoff) */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; line-height:1.3; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub::before { content:"· "; color:rgb(${BONE} / .4); }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
 /* the rail ends with its last row: each block carries its own length of scale, edge to edge */
@@ -850,6 +911,31 @@ ${T} .sx-ledger .st-ledger-nav { margin-top:10px !important; }
 ${T} .sx-ledger > .sx-ledger__right { position:absolute; left:calc(min(560px, 46%) + clamp(28px, 4vw, 72px)); right:0; top:0; bottom:0; display:flex; flex-direction:column; gap:14px; min-width:0; overflow:hidden; }
 ${T} .sx-ledger__right > .orr-ledger-tape { flex:none; width:100%; height:clamp(150px, 22vh, 210px); margin-top:8px; }
 ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-right:0 !important; margin:0 !important; }
+/* a narrow, tall desktop window (651–1000 × 801+): the 46% list left the reading 12–130px, so its words broke into
+   letters. The tape and reading stack under the list; the reading keeps the purse beside it. */
+@media (min-width:651px) and (max-width:1000px) and (min-height:801px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:200px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { gap:32px; }
+}
+/* a narrow window (not the phone sheet): the 46% column broke the title mid-word, so the tape and reading stack under it */
+@media (max-width:520px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { flex-direction:column; align-items:stretch; gap:16px; }
+  ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
+  ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
+}
+/* …and a 521–650 window (up to where the 651+ desktop bands start): the same 46% column left the reading 12px wide,
+   so it broke into letters. The tape and reading stack under the list; the reading keeps the purse beside it. */
+@media (min-width:521px) and (max-width:650px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { gap:24px; }
+}
 /* the empty state is one line, and the tape waits with it */
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows:auto auto auto auto auto !important; }
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .st-ledger-status { display:none !important; }
@@ -1194,6 +1280,15 @@ ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${
 ${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
 ${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; padding:14px 0 6px !important; background:linear-gradient(0deg, rgb(0 0 0 / .9) calc(100% - 14px), rgb(0 0 0 / 0)) !important;
   -webkit-mask-image:linear-gradient(90deg, #000 55%, transparent); mask-image:linear-gradient(90deg, #000 55%, transparent); }
+/* a narrow desktop window (≤650 × 601+) sets the foot in flow at the dossier's head, where that sticky backing's fade to
+   the right only dissolved ACCEPT's "hold to accept" note — it sat past the 55% stop in a 230-300px column — and cut the
+   key's hold track down to its right edge. The track stands 9px round the key, so the foot leaves it that room (the key
+   closes up a little to pay for it, so the two-line note still clears the column at 560 wide). */
+@media (max-width:650px) and (min-height:601px) {
+  ${D} .sx-dossier > .sx-dossier__foot { background:none !important; -webkit-mask-image:none !important; mask-image:none !important;
+    padding:6px 0 0 10px !important; margin:0 0 14px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding-left:14px !important; padding-right:18px !important; }
+}
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */
@@ -1321,12 +1416,32 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+  /* 960×540: the ~120px dossier faded the reward out under its fold (the left column ran caps, a two-line title, client and
+     a 26px figure), and ACCEPT's two-line "hold to accept" note ended on the frame's right edge. The left column closes up so
+     the reward reads on first paint; the key and its note give back ~11px so the note stands inside the frame. */
+  ${D} .sx-dossier { padding-top:0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .k-caps { margin:0 !important; line-height:1.2 !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.12 !important; margin:0 0 1px !important; }
+  ${D} .sx-dossier__client { margin:0 !important; line-height:1.25 !important; }
+  ${D} .sx-dossier .k-hero--hero { margin:2px 0 0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; line-height:1 !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
 }
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
   ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:2 !important; margin:0 0 8px !important; }
   ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
+}
+/* a mid-width, tall desktop window (901–1149 × 801+) kept the route orrery's column, so the reading column ran 230–420px:
+   a 36px title in four lines and the terms pushed ACCEPT ~300px under the dossier's fold. ACCEPT stands at the head of the
+   reading column instead, and the title takes the size it has at 1280. */
+@media (min-width:901px) and (max-width:1149px) and (min-height:801px) {
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; position:static !important; background:none !important; -webkit-mask-image:none !important; mask-image:none !important; margin:0 0 40px !important; padding:6px 0 0 !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
 }
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }
@@ -1465,6 +1580,15 @@ ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 /* ================================ ROUND 5: INDUSTRY ========================================= */
 /* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
 ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* In a short wide berth the reason above the ring and the Fabricate key below it share the
+   same narrow stage. Lift the chain and its key together so the reason, disabled explanation,
+   and action remain visible without changing the button's live/disabled semantics. */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the dial compact and reserve real flow space for its action and live queue status. */
+  ${T} .sx-fab { display:block !important; height:auto !important; }
+  ${T} .orr-ind-chain { height:max(180px, calc(var(--orr-chain-input-count, 1) * 70px + 40px)) !important; margin:0 0 28px !important; }
+  ${T} .sx-fab > .sx-fab-foot { position:static !important; transform:none !important; margin:12px 0 0 !important; }
+}
 /* the block note under the reason; the disabled key's outline is enough */
 ${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
@@ -1480,7 +1604,7 @@ ${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .66) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:block !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .36) !important; }
 ${T} .orr-chain__label.is-below { z-index:2; }
-${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.2em !important; opacity:.6; }
+${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.06em !important; opacity:.6; }
 ${T} .orr-chain__blocknote { display:block; margin-top:6px; }
 
 /* ================================ ROUND 8: MISSIONS ========================================= */
@@ -1612,6 +1736,10 @@ ${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label,
 /* ================================ ROUND 7: INDUSTRY ========================================= */
 /* the key is centred on the product's axis at every size */
 ${T} .sx-fab-foot { transform:translateX(-50%) !important; }
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the authored centered alignment while lifting the action clear of the short stage edge. */
+  ${T} .sx-fab-foot { transform:translate(-50%, -4px) !important; }
+}
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fab-foot { left:var(--fab-foot-x, 0) !important; right:auto !important; top:var(--fab-foot-y, auto) !important; bottom:auto !important; }
 }
@@ -1698,7 +1826,9 @@ ${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { display:
 ${T} .sx-ind-process__head .sx-ind-process__count { margin-left:10px; color:rgb(${BONE} / .45) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:10px; color:rgb(${BONE} / .66) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__block::before { content:"·  "; color:rgb(${BONE} / .4); }
-${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+/* the ladder ends on a whole rung: the fold is a rung deep and an overflowing list keeps that much
+   pad, so at scroll end the fade lands on empty column and the last module reads whole (RC-49) */
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; padding-bottom:24px !important; }
 
 /* ================================ ROUND 11: MISSIONS ======================================== */
 /* the rail runs through the seam between the board and YOURS: one scale with a block gap, ticks and all */
@@ -1894,6 +2024,8 @@ ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
   font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+/* phone: the consumed module keeps the rung's one line by drawing in its tracking, so the ladder head stays in view */
+@media (max-width:650px) and (min-height:601px) { ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:8px; letter-spacing:.05em; font-stretch:100%; font-variation-settings:"wght" 600, "wdth" 100; } }
 
 /* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */
 /* a ladder under the pointer or holding focus lifts its band (~.27 -> .38 bone) and its line */
@@ -1974,6 +2106,8 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  /* a way-out that wraps keeps both lines inside its outline, balanced and set right like the note above it */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:15em !important; margin-left:auto !important; margin-top:0 !important; padding:0 10px !important; line-height:13px !important; text-align:right !important; text-wrap:balance; overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none !important; }
   ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
@@ -2023,6 +2157,18 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-talk__choices { margin-top:6px !important; }
   ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
   ${D} .sx-talk__keys { display:none !important; }
+}
+/* Industry fab-chain at 651–1100 × ≤640: the short-body tuck above parks the product's
+   "1 · REFINED METALS per run" with translate(136px), which fits a wider reading but at
+   801–960-wide the stage is only ~429–553px — the unit hangs ~33–60px past stage right under
+   NEEDS REFINERY / Iron Ore / REFINE. Keep it within the stage width and below the reason/action block, with enough
+   separation for its multiline route button. The unit may wrap inside its own column. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(72px, -20px) !important; width:auto !important; max-width:38% !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
 }
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
@@ -2079,6 +2225,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-ledger__read-hand { display:none !important; }
+  /* the ~42px ring here is narrower than NET · CR at the label's .14em tracking, so the key's ends
+     printed across the ring's lower bends; the key tightens and lifts into the ring's wider middle */
+  ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
 }
 
 /* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
@@ -2091,6 +2240,38 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:stretch; width:auto !important; height:auto !important; min-height:180px; margin:0 !important; }
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
 }
+
+/* Ledger eligibility card at 1101–1440 × 461–720 (ui-polish-287): the card stacked eight lines in a 34ch column
+   under the tape, so at 1280×720 everything past Net worth fell below the panel. The tape gives up what the frame
+   lacks (172px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
+   scrolls (as its 651–1100 frames do) so an open reading never buries the card. */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
+  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0; padding:8px 14px;
+    display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__rows { grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0 18px;
+    margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--dp-ink, #e8e4d8) 12%, transparent); }
+  ${D} .sx-ledger__right > .dust-em .dust-em__row { grid-template-columns:minmax(0, 1fr); row-gap:2px; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__fig { text-align:left; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__foot { grid-column:1 / -1; margin-top:5px; font-size:12px; }
+}
+
+/* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
+   right, ~350px below its axis, so with no entry open the gauge stood alone in an empty field. It stands beside the
+   tape, centred on the tape's height, as 1101–1440 does; the reading keeps the full column under both. */
+@media (min-width:1441px) and (min-height:721px) {
+  ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 280px; grid-template-rows:auto minmax(0, 1fr); column-gap:24px; row-gap:6px !important; align-content:start; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+/* the case-board head broke one word, TOGETHER, onto its own line at 960–1920; the two lines now split evenly */
+${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
 
 /* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
    BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
@@ -2121,6 +2302,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+  /* with no entry open the reading hides and the tape spans both rows, but the purse's min-height:0 above left the grid
+     nothing to stand on: tape and purse fell to ~40px, the axis figures printed on each other and BOUGHT / SOLD were cut.
+     The purse keeps the 150px the 960 class gives it, so the tape stands with it. */
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .sx-ledger__row > .orr-ledger-purse { min-height:150px !important; }
 }
 
 /* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
@@ -2254,16 +2439,15 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
-   carries its rules: the empty state stretches and stands on ruled lines with the margin
-   column, so the void reads as a page waiting for its first entry, not dead glass. */
-${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
-  background:
-    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
 }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
 /* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
    a quiet field rule instead. The market search answers focus with a tick on its underline. */
 ${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }

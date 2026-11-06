@@ -6,7 +6,44 @@ import {
   productionRouteById,
   summarizeRuntimeWitnessProductionWindow,
   formatRuntimeWitnessProductionMatrix,
+  installStartupRouteMarks,
+  alignStartupRouteMarks,
 } from '../scripts/lib/runtimeWitnessProductionMatrix.mjs';
+
+test('startup marks require trusted Launch and align observed milestones without inventing missing data', () => {
+  const oldWindow = globalThis.window, oldDocument = globalThis.document, oldPerformance = globalThis.performance;
+  const handlers = {}, busHandlers = {};
+  let now = 100;
+  try {
+    globalThis.performance = { now: () => now };
+    globalThis.document = { addEventListener: (type, listener) => { handlers[type] = listener; } };
+    globalThis.window = { SF: { state: { mode: 'menu' }, bus: { on: (type, listener) => { busHandlers[type] = listener; } } } };
+    installStartupRouteMarks();
+    const button = { textContent: 'Launch', closest: () => ({}) };
+    const target = { closest: () => button };
+    handlers.click({ target, isTrusted: false });
+    assert.equal(window.__SF_STARTUP_ROUTE_MARKS__.launch, null);
+    handlers.click({ target, isTrusted: true });
+    now = 150; busHandlers['game:started']();
+    window.SF.state.mode = 'flight'; now = 200;
+    handlers.keydown({ code: 'KeyW', isTrusted: true });
+    const result = alignStartupRouteMarks(window.__SF_STARTUP_ROUTE_MARKS__,
+      [{ performanceAtMs: 125 }], [{ performanceAtMs: 175 }, {}]);
+    assert.equal(result.launch.sinceLaunchMs, 0);
+    assert.equal(result.gameStarted.sinceLaunchMs, 50);
+    assert.equal(result.publicInput.sinceLaunchMs, 100);
+    assert.equal(result.events[0].sinceLaunchMs, 25);
+    assert.equal(result.samples[0].sinceLaunchMs, 75);
+    assert.equal(result.samples[1].sinceLaunchMs, null);
+    assert.equal(result.inputPresented, null);
+    assert.equal(result.workerHandshake, null);
+    assert.equal(alignStartupRouteMarks(null, [{ performanceAtMs: 120 }]).events[0].sinceLaunchMs, null);
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
+    globalThis.performance = oldPerformance;
+  }
+});
 
 test('production matrix names all seven player-visible routes', () => {
   assert.deepEqual(RUNTIME_WITNESS_PRODUCTION_ROUTES.map((route) => route.id), [

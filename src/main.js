@@ -6,7 +6,6 @@ import { createGameState } from './core/gameState.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
-import { createRegistry } from './core/registry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
@@ -14,9 +13,7 @@ import { entityIsJournaled } from './world/presentationSources.js';
 import { configureRacingCorridorSession } from './world/racingCorridor.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
-import { installLiveClipDirector } from './ui/screens/clips.js';
-
-import { makeEnemySpawnSpec } from './systems/combat.js';
+import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
 
 import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
 import { createTelemetry } from './systems/telemetry.js';
@@ -49,15 +46,18 @@ import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameO
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
-import { ruckusWarmReady } from './render/characters/ruckusModel.js';
+import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
 import {
   settleRequiredPackageAdmission,
-  waitForOpeningFirstPicture,
+  waitForOpeningFirstPictureWithSingleOwnerRetry,
   holdOpeningPresentationUntilPaint,
 } from './render/pipelineReadiness.js';
 import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPacing.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
+import { loadModelTruthCensus } from './data/modelTruth.js';
+import { ensureLocaleReady, setGameLocale, startupLocale } from './localization/sourceText.js';
+import { runtimeAssetUrl } from './core/runtimeAssetUrl.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
 // Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
@@ -91,6 +91,8 @@ let diagnosticsState = null;
 async function boot() {
   installGlobalErrorBoundary();
   try {
+    const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
+    const runtimeDataReady = loadModelTruthCensus(modelTruthCensusUrl);
     // Kick the scenario-contract fetch+hash at boot top: it is consumed only at helpers
     // construction below, so the fetch RTT overlaps everything in between instead of
     // serializing ahead of registry init.
@@ -99,6 +101,8 @@ async function boot() {
     // Belt: a rejection surfacing before the real await below still counts as handled (a boot
     // error thrown earlier would otherwise leave it as an unhandled rejection).
     contractPromise.catch(() => {});
+    // Synchronous model measurements and localized copy are available before any system starts.
+    await runtimeDataReady;
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     diagnosticsState = state;
@@ -106,6 +110,10 @@ async function boot() {
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
     bootstrapProfileSettingsBeforeRegistry(state);
+    // English source copy needs no inventory. A saved language/URL choice is prepared before
+    // registry initialization can mount its first interactive localized screen.
+    await ensureLocaleReady(state.settings?.locale || startupLocale);
+    setGameLocale(state.settings?.locale || startupLocale);
     // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
     // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
     if (!state.settings.gameplay) state.settings.gameplay = {};
@@ -141,6 +149,8 @@ async function boot() {
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
     const helpers = {
+      prepareLocale: ensureLocaleReady,
+      modelTruthCensusUrl,
       scenarioContract: contract.document,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
@@ -161,7 +171,14 @@ async function boot() {
       simLane: simLaneFlags.lane,
     };
 
-    let registry = createRegistry(ctx);
+    const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
+    let registry;
+    if (ctx.simLane === 'worker') {
+      const { createPresentationRegistry } = await import('./runtime/presentationRegistry.js');
+      registry = createPresentationRegistry(ctx);
+    } else {
+      registry = await createFullRegistry();
+    }
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
@@ -197,10 +214,15 @@ async function boot() {
         state.entityList.length = 0;
         ctx.simLane = 'main';
         simLaneRuntime = null;
-        registry = createRegistry(ctx);
+        registry = await createFullRegistry();
         ctx.registry = registry;
         console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
       }
+    }
+    if (!simLaneRuntime && ctx.simLane === 'worker') {
+      ctx.simLane = 'main';
+      registry = await createFullRegistry();
+      ctx.registry = registry;
     }
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
@@ -216,6 +238,20 @@ async function boot() {
           label: 'Starting flight systems', detail: `${completed} of ${total} online`,
         });
       },
+    });
+    // The shell's normal close waits for the existing exit-save owner and queued mirrors.
+    window.spacefaceShell?.onPrepareQuit?.(async () => {
+      const owner = ctx.registry?.get?.('save');
+      const result = owner?.prepareForQuit ? await owner.prepareForQuit() : { ok: false, reason: 'save-system-unavailable' };
+      if (result?.ok !== true) return result;
+      const achievements = ctx.achievements;
+      let achievementResult;
+      try {
+        achievementResult = achievements?.prepareForQuit ? await achievements.prepareForQuit() : { ok: true };
+        return achievementResult;
+      } finally {
+        if (achievementResult?.ok !== true) await owner.cancelPreparedQuit?.();
+      }
     });
     SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
     // Kick SG-02 backend bring-up the moment the saved envelope decodes: the whole chunked
@@ -269,11 +305,9 @@ async function boot() {
       });
       // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
       // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
-      // of dead time before the slot scans and worker dispatch could even start. The
-      // ruckus warm rides alongside it (wave-143): restored entities can materialize RU-7
-      // visuals from the first restore frame, so the synchronous template() contract must
-      // already hold — it resolves in the boot window long before a click can reach here.
-      Promise.all([nextFrame(), ruckusWarmReady]).then(restore).catch((error) => {
+      // of dead time before the slot scans and worker dispatch could even start. Continue
+      // still warms RU-7 before restored entities can materialize its synchronous visual.
+      Promise.all([nextFrame(), warmRuckusModel()]).then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
         // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
         // failure receipts already carry `error`; this outer catch was the bare one.
@@ -660,7 +694,9 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
       newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
-      await ruckusWarmReady;
+      // Adventure keeps the authored Ceres actor ready for hard and continuous sector entry.
+      // A standalone Crucible run cannot enter Ceres and does not request RU-7's four payloads.
+      if (requiresRuckusWarmForNewGame(opts)) await warmRuckusModel();
       if (laneCommandSink()) {
         // Whole-sim-worker lane: the boot's sim mutations replay inside the worker's directive
         // window as one correlated rpc; its ack resolves after the physics-prep promise the
@@ -793,7 +829,10 @@ async function waitForRequiredOpeningPicture(state, isActive) {
     const budgetMs = state.run?.kind === 'survival'
       ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS
       : openingGateBudgetMs();
-    return await waitForOpeningFirstPicture(state, budgetMs, { isActive });
+    return await waitForOpeningFirstPictureWithSingleOwnerRetry(state, budgetMs, {
+      isActive,
+      isTransitionCurrent: isActive,
+    });
   } catch (cause) {
     const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
       cause?.message || 'The opening picture could not be prepared. Retry Launch.');
@@ -916,6 +955,10 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     continuePhysicsPrep.catch(() => {});
   }
   try {
+    const restoredSettings = state.settings;
+    await ensureLocaleReady(restoredSettings?.locale || startupLocale);
+    if (!runTransitionGuard.isCurrent(transitionToken) || state.settings !== restoredSettings) return { stale: true };
+    applyAccessibility(restoredSettings);
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
       progress: 0.25,

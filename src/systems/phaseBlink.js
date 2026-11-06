@@ -14,6 +14,14 @@ import {
 
 const NEARBY = [];
 const SOLIDS = new Set(['asteroid', 'station']);
+const PHASE_RESERVATIONS = new WeakMap();
+const RETURN_OFFSETS = Object.freeze([
+  Object.freeze([0, 0]),
+  Object.freeze([12, 0]), Object.freeze([0, 12]), Object.freeze([-12, 0]), Object.freeze([0, -12]),
+  Object.freeze([24, 0]), Object.freeze([0, 24]), Object.freeze([-24, 0]), Object.freeze([0, -24]),
+  Object.freeze([18, 18]), Object.freeze([-18, 18]), Object.freeze([-18, -18]), Object.freeze([18, -18]),
+  Object.freeze([36, 0]), Object.freeze([0, 36]), Object.freeze([-36, 0]), Object.freeze([0, -36]),
+]);
 
 // The sample ring is 96. A world's center sits hundreds of units past its skin,
 // so the ring never sees the body that owns the point. Read the exclusion
@@ -70,6 +78,7 @@ function runtime(entity) {
     readyAt: 0,
     suppressUntilRelease: false,
     emptyTold: false,
+    energyTold: false,
     blockedTold: false,
   });
 }
@@ -120,6 +129,77 @@ export function phaseBlinkClearDistance(state, entity, heading, want) {
     clear = d;
   }
   return clear;
+}
+
+/** Deterministic safe return search for a phase move that owns a previously reserved anchor. */
+export function certifyPhaseBlinkLanding(state, entity, anchor, maxDistance = 140) {
+  const ax = Number(anchor && anchor.x), az = Number(anchor && anchor.z);
+  const limit = Number(maxDistance);
+  if (!state || !entity || entity.alive === false || !Number.isFinite(ax) || !Number.isFinite(az)
+    || !Number.isFinite(limit) || limit < 0) return null;
+  for (const [dx, dz] of RETURN_OFFSETS) {
+    const x = ax + dx, z = az + dz;
+    if (Math.hypot(x - finite(entity.pos && entity.pos.x), z - finite(entity.pos && entity.pos.z)) > limit) continue;
+    if (!phaseBlinkBlocked(state, entity, x, z)) return { x, z };
+  }
+  return null;
+}
+
+/** Pay a phase return once at maneuver acceptance. The opaque token is bound to this exact hull life. */
+export function reservePhaseBlinkEnergy(entity, maxDistance, now = 0) {
+  const boost = entity && entity.boost;
+  const distance = Number(maxDistance);
+  const rt = entity ? runtime(entity) : null;
+  const clock = finite(now);
+  if (!entity || entity.alive === false || !boost || !Number.isFinite(distance) || distance < 0) return null;
+  if (clock < finite(rt?.readyAt)) return null;
+  const cost = phaseBlinkCommitCost(distance);
+  const energy = finite(boost.energy, NaN);
+  if (!Number.isFinite(energy) || energy < cost) return null;
+  const token = {};
+  PHASE_RESERVATIONS.set(token, {
+    entity,
+    life: entity.occupantGeneration,
+    cost,
+    maxDistance: distance,
+    createdAt: clock,
+  });
+  boost.energy = energy - cost;
+  return token;
+}
+
+/** Adopt a certified phase destination once. Refusal never substitutes a different pose. */
+export function commitReservedPhaseBlink(token, { entity, state, landing, bus, now = 0, source = 'phase-return' } = {}) {
+  const reservation = token && PHASE_RESERVATIONS.get(token);
+  if (!reservation) return { ok: false, reason: 'reservation_missing' };
+  PHASE_RESERVATIONS.delete(token);
+  const x = Number(landing && landing.x), z = Number(landing && landing.z);
+  const live = state && state.entities && state.entities.get && state.entities.get(entity && entity.id);
+  if (reservation.entity !== entity || entity?.alive === false || live !== entity
+    || reservation.life !== entity.occupantGeneration) return { ok: false, reason: 'actor_life_changed' };
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { ok: false, reason: 'landing_missing' };
+  const from = { x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) };
+  const dist = Math.hypot(x - from.x, z - from.z);
+  if (dist > reservation.maxDistance || phaseBlinkBlocked(state, entity, x, z)) {
+    return { ok: false, reason: 'landing_blocked' };
+  }
+  adoptPose(entity, x, z);
+  const rt = runtime(entity);
+  rt.readyAt = Math.max(finite(rt.readyAt), finite(now) + PHASE_BLINK.cooldownS);
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('ship:phaseBlink', {
+      shipId: entity.id, from, to: { x, z }, rot: finite(entity.rot), dist, source,
+    });
+    bus.emit('audio:cue', { id: 'sfx_phase_rift', gain: 0.9 });
+  }
+  return { ok: true, from, to: { x, z }, distance: dist, cost: reservation.cost };
+}
+
+/** Retire a reservation on interruption. Its accepted-start cost remains spent. */
+export function releasePhaseBlinkReservation(token) {
+  if (!token || !PHASE_RESERVATIONS.has(token)) return false;
+  PHASE_RESERVATIONS.delete(token);
+  return true;
 }
 
 function publishAim(rt, entity, state) {
@@ -176,6 +256,7 @@ export function stepPhaseBlink({ entity, held, dt, state, bus, now }) {
     rt.aiming = false;
     rt.active = false;
     rt.holdT = 0;
+    rt.energyTold = false;
     return { busy: false, committed };
   }
 
@@ -197,11 +278,26 @@ export function stepPhaseBlink({ entity, held, dt, state, bus, now }) {
     rt.aiming = true;
     rt.holdT = 0;
     rt.blockedTold = false;
+    rt.energyTold = false;
   }
 
+  const priorHoldT = rt.holdT;
   rt.holdT += step;
-  boost.energy = Math.max(0, finite(boost.energy) - PHASE_BLINK.aimDrain * step);
   publishAim(rt, entity, state);
+  const energy = Math.max(0, finite(boost.energy));
+  const afterAim = Math.max(0, energy - PHASE_BLINK.aimDrain * step);
+  if (afterAim < phaseBlinkCommitCost(rt.dist)) {
+    // Keep the last affordable shadow. A held charge must not spend the energy reserved for
+    // release, and moving it farther would turn a successful step into an unaffordable one.
+    rt.holdT = priorHoldT;
+    publishAim(rt, entity, state);
+    if (!rt.energyTold) {
+      rt.energyTold = true;
+      toast(bus, 'Veil at energy limit — release to step');
+    }
+    return { busy: true, committed: false };
+  }
+  boost.energy = afterAim;
   return { busy: true, committed: false };
 }
 
@@ -215,6 +311,13 @@ function tryCommit(rt, entity, state, bus, time, boost) {
   }
   if (!boost) return false;
   const cost = phaseBlinkCommitCost(rt.dist);
+  if (finite(boost.energy) < cost) {
+    if (!rt.energyTold) {
+      rt.energyTold = true;
+      toast(bus, 'Veil needs more energy — release only steps when charged');
+    }
+    return false;
+  }
   const from = {
     x: finite(entity.pos && entity.pos.x),
     z: finite(entity.pos && entity.pos.z),

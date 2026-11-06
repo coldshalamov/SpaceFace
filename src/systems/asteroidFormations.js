@@ -119,9 +119,32 @@ export const asteroidFormations = {
     // pulse has highlighted this epoch; discovery durable state lives in state.formations, so
     // this set may be dropped freely (a re-survey simply re-completes against durable records).
     this._rt = { model: null, sectorId: null, epoch: -1, seed: 0, surveyed: new Set() };
+    // asteroid:destroyed is emitted before mining flips alive=false. Retain the exact body
+    // identity through synchronous later listeners so an eager read cannot cache it back in.
+    this._destroyedBodies = new Map();
 
-    this.bus.on('sector:enter', () => { this._invalidate(); });
-    this.bus.on('save:loaded', () => { this._invalidate(); });
+    this.bus.on('sector:enter', () => { this._destroyedBodies.clear(); this._invalidate(); });
+    this.bus.on('save:loaded', () => { this._destroyedBodies.clear(); this._invalidate(); });
+    // Mining removes a body within the current sector epoch. The cached ambient model and its
+    // cumulative survey keys must stop naming the old field immediately after that producer's
+    // receipt; the durable discovered copy remains untouched.
+    this.bus.on('asteroid:destroyed', (payload = {}) => {
+      const body = this.state.entities && this.state.entities.get?.(payload.id)
+        || this.state.entityList?.find((entity) => entity && entity.id === payload.id);
+      if (body && body.type === 'asteroid') this._destroyedBodies.set(body.id, body);
+      this._invalidate();
+    });
+    // The core removal receipt covers combat, culling, and other entity owners. Its queued
+    // payload carries the removed generation even after the id is reusable; invalidate only
+    // asteroid removals and retire a matching mining tombstone once the entity is already gone.
+    this.bus.on('entity:destroyed', (payload = {}) => {
+      const body = payload.entity;
+      if (payload.type !== 'asteroid' && body?.type !== 'asteroid') return;
+      const id = payload.id ?? body?.id;
+      if (id == null) return;
+      if (body && this._destroyedBodies.get(id) === body) this._destroyedBodies.delete(id);
+      this._invalidate();
+    });
     // Reachability (default route): the scanner's sector pulse stamps scanHighlightUntil on every
     // asteroid it resolves, then emits scan:completed. A formation whose members have ALL been
     // highlighted (cumulatively, within this epoch) is surveyed → durably discovered. Cumulative
@@ -130,8 +153,21 @@ export const asteroidFormations = {
     this.bus.on('scan:completed', (p) => this._onScanCompleted(p || {}));
   },
 
+  update(_dt, state = this.state) {
+    // Mining publishes its pre-death receipt synchronously, then flips alive=false before this
+    // system's tick. Drop the body-reference tombstone after that write (or an id recycle).
+    for (const [id, body] of this._destroyedBodies) {
+      const current = state.entities && state.entities.get?.(id)
+        || state.entityList?.find((entity) => entity && entity.id === id);
+      if (!body || body.alive === false || current !== body) {
+        this._destroyedBodies.delete(id);
+      }
+    }
+  },
+
   newGame() {
     this.state.formations = makeDefaultFormations();
+    this._destroyedBodies.clear();
     this._invalidate();
   },
 
@@ -214,6 +250,9 @@ export const asteroidFormations = {
     const asteroids = [];
     const list = indexedTypeScan(state, 'asteroids');
     for (const e of list) {
+      const destroyed = this._destroyedBodies.get(e && e.id);
+      if (destroyed && destroyed !== e) this._destroyedBodies.delete(e.id); // entity id was recycled
+      if (destroyed === e) continue; // mining receipt precedes the entity's alive=false write
       if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
       asteroids.push(e);
     }

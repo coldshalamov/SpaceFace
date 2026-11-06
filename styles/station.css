@@ -480,14 +480,22 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
    gauges, the Intel systems board and the stats piled up at 360px wide. Pin the cells. */
 .sx-sw > .sx-sw__rail, .sx-sw > .sx-sw__chooser { grid-column: 1; grid-row: 1; }
 .sx-sw > .sx-sw__main { grid-column: 2; grid-row: 1; }
-.sx-chooser__panel { display: flex; flex-direction: column; min-height: 0; }
+.sx-chooser__panel { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.sx-chooser__head { flex: 0 0 auto; }
 .sx-chooser__head > * + * { margin-top: calc(12px * var(--k-s)); }
 .sx-chooser__head h3 { margin: 0; }
 .sx-chooser__kicker { margin: 0; }
 .sx-chooser__panel > .k-sentence, .sx-chooser__panel > .k-words { margin-top: calc(12px * var(--k-s)); }
-.sx-chooser__list { margin-top: calc(16px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; --k-row-cols: minmax(0, 1fr) auto; }
+.sx-chooser__list { flex: 1 1 0; margin-top: calc(16px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; --k-row-cols: minmax(0, 1fr) auto; }
 .sx-chooser__list > .sx-modrow:last-child { border-bottom: 1px solid var(--k-hair); }
 .sx-modrow { align-items: start; padding-top: calc(10px * var(--k-s)); padding-bottom: calc(10px * var(--k-s)); cursor: default; }
+/* Row 500 — the provenance rim on a module icon: one thin metal ring, the tier's mark. */
+.sx-provmark { display: inline-flex; border-radius: 3px; padding: 1px; }
+.sx-provmark[data-mark='copper'] { box-shadow: 0 0 0 1px rgb(217 138 74 / .85), 0 0 6px rgb(217 138 74 / .35); }
+.sx-provmark[data-mark='silver'] { box-shadow: 0 0 0 1px rgb(200 212 224 / .85), 0 0 6px rgb(200 212 224 / .35); }
+.sx-provmark[data-mark='gold']   { box-shadow: 0 0 0 1px rgb(232 184 74 / .9),  0 0 7px rgb(232 184 74 / .4); }
+.sx-provmark[data-mark='pearl']  { box-shadow: 0 0 0 1px rgb(244 240 255 / .9), 0 0 7px rgb(244 240 255 / .45); }
+.sx-provmark[data-mark='paper']  { box-shadow: 0 0 0 1px rgb(232 224 200 / .8); }
 .sx-modrow:focus-visible { outline: none; box-shadow: none; }
 .sx-modrow.is-eq .sx-modrow__name { color: var(--k-signal); }
 .sx-modrow.is-locked .sx-modrow__name { color: var(--k-bone-38); }
@@ -1140,8 +1148,10 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
    words for its rule, which is decoration, so the caption covers no body's words (a plate above
    the row landed on the market table, D248). It is one line, read from the rail's left, clipped
    only after the rail itself is full; the name's aria-label still speaks the whole line. Taller
-   windows keep it under the name. */
-@media (min-width: 641px) and (max-height: 900px) {
+   windows keep it under the name, except at 641–1700 wide, where seven lines under seven names
+   stood as narrow columns of four to ten lines each (768x1024, 960x1000, 1280x1000, 1600x1000) and the
+   Market table lost its commodity list under them. */
+@media (min-width: 641px) and (max-height: 900px), (min-width: 641px) and (max-width: 1700px), (max-width: 640px) and (max-height: 600px) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { flex: 0 0 auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) > .sx-tile { flex: none; width: auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
@@ -1184,8 +1194,48 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     visibility: hidden;
   }
 }
-@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce) {
+@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce), (min-width: 641px) and (max-width: 1700px) and (prefers-reduced-motion: reduce), (max-width: 640px) and (max-height: 600px) and (prefers-reduced-motion: reduce) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss { transition: none; }
+}
+/* Wider than 1700 and taller than 900, the help line stays under its name, but as at most two
+   lines: unclamped, each 120px column ran four or five lines deep at 1920x1080 and pushed the
+   Market body down. Two lines hold the gist; the name's aria-label still speaks the whole line. */
+@media (min-width: 1701px) and (min-height: 901px) {
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: break-word;
+  }
+  /* …and pointing at a tab, or focusing it from the keyboard, lifts its whole line into a plate
+     just above the tab (the clamp cut most lines in half). That includes the open tab, so its own
+     line is never stuck half cut (but not while that focus is quiet, data-sx-quiet-focus: the
+     station's own arrival focus, which would cover the body at rest); while any tab is pointed at,
+     only that one plate shows. The row keeps its height, since the other six lines still hold it,
+     so nothing under the rail moves. */
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock:has(.sx-tile__gloss) { overflow: visible; }
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { position: relative; align-content: flex-start; }
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:hover > .sx-tile__gloss,
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav:not(:has(> li:hover)) > li:has(> .sx-tile:focus-visible:not([data-sx-quiet-focus])) > .sx-tile__gloss {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 6px);
+    z-index: 6;
+    display: block;
+    width: 18rem;
+    max-width: none;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+    overflow: visible;
+    padding: 8px 12px 9px;
+    text-align: left;
+    color: var(--dp-ink, #e8e2d4);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--dp-ink, #e8e2d4) 22%, transparent);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  }
 }
 
 #screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
@@ -1282,6 +1332,12 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   background: none;
   box-shadow: none;
   color: var(--k-text-live);
+}
+
+/* The departure checklist must remain readable over the station's changing content. */
+#screens .sx-berth .sx-pop--dep { background: #0b0e12 !important; }
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-pop--dep { background: Canvas !important; }
 }
 
 html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__ident,
@@ -1391,6 +1447,38 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sxb-ops { gap: 8px; flex-wrap: wrap; background: none; }
   #screens .sx-berth .sx-comms { min-width: 120px; }
   #screens .sx-berth .sx-receipt { font-size: var(--k-fs-fine); }
+
+  /* A receipt can outlive its originating tab. Keep it in the same footer row across
+     destinations so a tab change cannot put it back over the navigation rail. */
+  #screens .sx-berth
+    .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) {
+    flex-wrap: wrap !important;
+  }
+  #screens .sx-berth
+    .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms {
+    display: contents !important;
+  }
+  #screens .sx-berth
+    .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) {
+    box-sizing: border-box !important;
+    position: static !important;
+    order: -1 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 2px 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.2 !important;
+  }
+  #screens .sx-berth
+    .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
 }
 
 @media (forced-colors: active) {

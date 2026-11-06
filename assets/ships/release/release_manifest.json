@@ -120,20 +120,6 @@
       "contractNodeCount": 1
     },
     {
-      "id": "fin_wedge",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_wedge.glb",
-      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
-      "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
-      "releaseSha256": "e5ab066bab0bfaa675ce217e62817c4110b3a47a34a966076ac9ca5a47eeef7e",
-      "sourceBytes": 2989344,
-      "releaseBytes": 4882636,
-      "textures": 5,
-      "ktx2Textures": 5,
-      "meshoptBufferViews": 22,
-      "contractNodeCount": 1
-    },
-    {
       "id": "greeble_armor_plates",
       "kind": "part:greebles",
       "source": "assets/ships/parts/greebles/greeble_armor_plates.glb",
@@ -4310,13 +4296,18 @@
       "source": "assets/ships/parts/hulls/hull_capital.glb",
       "release": "assets/ships/release/parts/hulls/hull_capital.glb",
       "sourceSha256": "a898cd84e5ccba5d906952cb9845571259156384cb034981e126e653f17cc376",
-      "releaseSha256": "fc889d1d2cd83f56da384d86b9053bfcb82156fbaedb7e91219b9eb4454a539f",
+      "releaseSha256": "9072ef61bca76c6dbf4cecf93c2d7e5a8d29bbcf02d6c5142fb237bbbe73c92e",
       "sourceBytes": 3019044,
-      "releaseBytes": 3101976,
+      "releaseBytes": 600324,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 19
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 19,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_corvette",
@@ -4324,13 +4315,18 @@
       "source": "assets/ships/parts/hulls/hull_corvette.glb",
       "release": "assets/ships/release/parts/hulls/hull_corvette.glb",
       "sourceSha256": "1f1fd46f9673bb6d251cf4647a48bd7e124e44427f471a311be5d0a5aa06ee6c",
-      "releaseSha256": "48a76dd6bf59c183f54e584a1e72ab372a4532a456f3624e3b0110c5c0a89fe6",
+      "releaseSha256": "6886f56996e0b13c6194c167bb51ddf97e880d6495acf57de09c9743ffeb3f02",
       "sourceBytes": 3260756,
-      "releaseBytes": 3369352,
+      "releaseBytes": 528912,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 34,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 45,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_fighter",
@@ -4338,13 +4334,18 @@
       "source": "assets/ships/parts/hulls/hull_fighter.glb",
       "release": "assets/ships/release/parts/hulls/hull_fighter.glb",
       "sourceSha256": "2c13bc5967ebb93ca14997a9e536556a09193ab44103ed0f1d5f6fb4e905369c",
-      "releaseSha256": "c2b95b8509c25bb5fb766e7eb4ab5245bd8f979fea60c8df3960042a15605573",
+      "releaseSha256": "497710a33f19e4971f6d5b0a4c6d1870168fdffaadfe5281160b95825b69a8e1",
       "sourceBytes": 2811496,
-      "releaseBytes": 2852856,
+      "releaseBytes": 458904,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 20,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_freighter",
@@ -4352,13 +4353,18 @@
       "source": "assets/ships/parts/hulls/hull_freighter.glb",
       "release": "assets/ships/release/parts/hulls/hull_freighter.glb",
       "sourceSha256": "056ae7ba211ef8cd0a86ba4262ca5f25efd6eff91b146409164ebdebb00576fe",
-      "releaseSha256": "92013de09e1bd83eca62177c3a994e2f88ee805665ec578b9aa3a2ad1bc096a6",
+      "releaseSha256": "2dd3995158b48c2867e0297dc3595a87b3c78048220b31f4d8b52cc1b87a671c",
       "sourceBytes": 3213976,
-      "releaseBytes": 3181584,
+      "releaseBytes": 596064,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 34,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 45,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_frigate",
@@ -4366,13 +4372,18 @@
       "source": "assets/ships/parts/hulls/hull_frigate.glb",
       "release": "assets/ships/release/parts/hulls/hull_frigate.glb",
       "sourceSha256": "fa42688849daf3ebefd011849670bc4b9eff4c0ba7d02ae70eec70613f09df60",
-      "releaseSha256": "2b2d876250223b4a1598319a12c1579adb2575b3fe8b9dbc6bdd4b831242a952",
+      "releaseSha256": "46aeea5cd6f885bbcdb536be5cb02de146d8cc1fe05b22b6d990bb071af84616",
       "sourceBytes": 3229000,
-      "releaseBytes": 3212160,
+      "releaseBytes": 627192,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_gunship",
@@ -4380,13 +4391,18 @@
       "source": "assets/ships/parts/hulls/hull_gunship.glb",
       "release": "assets/ships/release/parts/hulls/hull_gunship.glb",
       "sourceSha256": "ef69e0a1b55a9904eca354fba0c6a52d900da4fd5fe3982e0e31112b84f5cdfc",
-      "releaseSha256": "26ce3599bfdfdba7874e4eb9a3da6e589dc5c09c9930f6c924e59d8c184477a9",
+      "releaseSha256": "d9a5365efd1e367bd021bc7cc8d5841417296d1044a3878d572a58a3e00f1f8f",
       "sourceBytes": 3733500,
-      "releaseBytes": 3627552,
+      "releaseBytes": 700340,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 34,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 44,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_interceptor",
@@ -4394,13 +4410,18 @@
       "source": "assets/ships/parts/hulls/hull_interceptor.glb",
       "release": "assets/ships/release/parts/hulls/hull_interceptor.glb",
       "sourceSha256": "1d59c23fbc1ccdc68a2bdb8cbf33adfef64aedd5bd8f1cbe798c2ddaa9f4bbfb",
-      "releaseSha256": "742f63616099f2a7ccdbb41a2a69aa3e383a6515122af4dd6cb81e100881d468",
+      "releaseSha256": "357fc5ce95be2b3df29553249ec6e9151be1d939c5036501b6734e9b1d09cb06",
       "sourceBytes": 3263456,
-      "releaseBytes": 3327584,
+      "releaseBytes": 474752,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 34,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 45,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_miner",
@@ -4408,13 +4429,18 @@
       "source": "assets/ships/parts/hulls/hull_miner.glb",
       "release": "assets/ships/release/parts/hulls/hull_miner.glb",
       "sourceSha256": "c23bbf68d3d3d327b82024275d66d982002bcf60d19d503577ed01ebacf7c8a4",
-      "releaseSha256": "908cc4dc44e65f7b5c685000db69f8a89b2113de1034c53e2bd2c8325027e77d",
+      "releaseSha256": "c3f857bde2c8a30f545ce65bde823460f95aa6b7020ccc78d47fa4310ab0dbb2",
       "sourceBytes": 3960108,
-      "releaseBytes": 3048228,
+      "releaseBytes": 733588,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 19,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_multirole",
@@ -4422,13 +4448,18 @@
       "source": "assets/ships/parts/hulls/hull_multirole.glb",
       "release": "assets/ships/release/parts/hulls/hull_multirole.glb",
       "sourceSha256": "dca3f1d7f8022adb67fbef40de7eefb5d72fddadb1c21d087bf14dbc042d5d78",
-      "releaseSha256": "8abd21b3f452272f50ef14a087277deea7a7bf84260a4b701cbc347bf3fcd38d",
+      "releaseSha256": "9dcb2c44f412298f0925cd1aedb464eec305476a139ded445977ed544dde5286",
       "sourceBytes": 3143036,
-      "releaseBytes": 3255480,
+      "releaseBytes": 576952,
       "textures": 5,
       "ktx2Textures": 5,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 18
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 18,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "hull_starter",
@@ -4436,13 +4467,18 @@
       "source": "assets/ships/parts/hulls/hull_starter.glb",
       "release": "assets/ships/release/parts/hulls/hull_starter.glb",
       "sourceSha256": "af96ed8b755edb65b4161716f2f352dd59963a31108bbfc17ea314feb18ab489",
-      "releaseSha256": "6aa99e103d182875c2998c7bbfb7e0520e0984de1740eb1ad4a7a09109c30f2e",
+      "releaseSha256": "58b9172fcaaac099d297158d92c67b0075ace40f8c1672cf753620ab9ca8bf7f",
       "sourceBytes": 3677036,
-      "releaseBytes": 3009772,
+      "releaseBytes": 629336,
       "textures": 4,
       "ktx2Textures": 4,
-      "meshoptBufferViews": 27,
-      "contractNodeCount": 11
+      "meshoptBufferViews": 33,
+      "contractNodeCount": 11,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "pod_repair_patch",
@@ -6839,6 +6875,132 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_swarm_warden",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_warden.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_warden.glb",
+      "sourceSha256": "da8b1335706628bc9c0265afd929ae1c7d683173caf30260d7dcde8e3ca221aa",
+      "releaseSha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
+      "sourceBytes": 811816,
+      "releaseBytes": 526532,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 154,
+      "contractNodeCount": 62
+    },
+    {
+      "id": "wholeship_swarm_jackal",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_jackal.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_jackal.glb",
+      "sourceSha256": "8a8a18f9d02b99b71c15479e64453b376f724158662fb53381f0ab74084d377b",
+      "releaseSha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
+      "sourceBytes": 929628,
+      "releaseBytes": 558572,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 141,
+      "contractNodeCount": 54
+    },
+    {
+      "id": "wholeship_swarm_anchor",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_anchor.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_anchor.glb",
+      "sourceSha256": "9c612770a56392cecfff074dcbcd0ce7afa537a0bbdcc6735bbd7fc5d9b54886",
+      "releaseSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
+      "sourceBytes": 1011580,
+      "releaseBytes": 600224,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 181,
+      "contractNodeCount": 64
+    },
+    {
+      "id": "fin_wedge",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_wedge.glb",
+      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
+      "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
+      "releaseSha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
+      "sourceBytes": 2989344,
+      "releaseBytes": 3707428,
+      "textures": 4,
+      "ktx2Textures": 4,
+      "meshoptBufferViews": 22,
+      "contractNodeCount": 1
+    },
+    {
+      "id": "wholeship_hornet_scn_customs_cutter",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "sourceSha256": "8c4d100881b7a016a6472db2e3819cb4e6a0ed8c680729cbb869ad8835357133",
+      "releaseSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+      "sourceBytes": 1656744,
+      "releaseBytes": 782436,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 220,
+      "contractNodeCount": 75
+    },
+    {
+      "id": "wholeship_ashline_dart_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_dart_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_dart_lod1.glb",
+      "sourceSha256": "3796b7d55feecd66fa8843554b18e2beafdc6ec6f060ee0d9ed284ce85cc4a42",
+      "releaseSha256": "77e46eebb3d811d1e80d36a2ffcee58bcf3e650580c5e0842d8c872891788b66",
+      "sourceBytes": 766940,
+      "releaseBytes": 475072,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_dart_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_dart_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb",
+      "sourceSha256": "2692db35cb41f2b631be6ce6d0a979c9db37ec78b6aa2230823708725a98a307",
+      "releaseSha256": "1cbadd483fe70294097dfa6021b4b881dc65499284beae77491cc66c71996b13",
+      "sourceBytes": 501212,
+      "releaseBytes": 404784,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_rig_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_rig_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_rig_lod1.glb",
+      "sourceSha256": "aaf52bef4ff103f0b63d48f618fb0574bb06db344295123c057a080947c7a421",
+      "releaseSha256": "5179453eb60309271de00ecb90e0ce610e89aea58ed2d49a2ffb49c8db4ac10e",
+      "sourceBytes": 796604,
+      "releaseBytes": 491300,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 55,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_rig_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_rig_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_rig_lod2.glb",
+      "sourceSha256": "baf3334c5eec1efe328f704e4f0a0d65863df04b54e4f0313f7db774d8af95b3",
+      "releaseSha256": "7a88004eb46995c52cff854d84e0bb1f04b6574d78c59cd2f4665f6716d8a097",
+      "sourceBytes": 534584,
+      "releaseBytes": 419176,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 54,
+      "contractNodeCount": 26
     }
   ]
 }

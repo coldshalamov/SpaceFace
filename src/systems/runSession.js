@@ -19,6 +19,7 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
+const PURCHASE_RECEIPT_LIMIT = 64;
 // Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
 // unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
 const RUN_LIFETIMES = new WeakMap();
@@ -63,6 +64,27 @@ function toNonNegativeInt(value) {
   return n > 0 ? n : 0;
 }
 
+function rememberPurchaseReceipt(ledger, receipt) {
+  ledger.receipts.set(receipt.requestId, receipt);
+  while (ledger.receipts.size > PURCHASE_RECEIPT_LIMIT) {
+    const oldest = ledger.receipts.keys().next();
+    if (oldest.done) break;
+    ledger.receipts.delete(oldest.value);
+  }
+  return receipt;
+}
+
+function cachePurchaseResult(owner, ledger, receipt) {
+  rememberPurchaseReceipt(ledger, receipt);
+  owner._emit('run:purchaseResolved', receipt);
+  return receipt;
+}
+
+function safeRollback(commit) {
+  if (typeof commit?.rollback !== 'function') return;
+  try { commit.rollback(); } catch { /* Rollback diagnostics must not convert a refusal into a debit. */ }
+}
+
 // The stake's score factor rides every point the run tallies — kills, banks and chains all
 // pass through award, so scaling the seam scales the contract (integer-rounded, per
 // SWARM_PROGRAM.md §S1). A non-swarm or unstaked run reads 1.
@@ -86,6 +108,7 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:beginRequested', (payload) => this.begin(payload)));
     this._unsubs.push(this.bus.on('run:transitionRequested', (payload) => this.transition(payload)));
     this._unsubs.push(this.bus.on('run:endRequested', (payload) => this.end(payload)));
+    this._unsubs.push(this.bus.on('run:retireRequested', (payload) => this.retire(payload)));
     this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
     this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
     this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
@@ -135,6 +158,8 @@ export const runSession = {
       next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
     }
     if (next.kind === 'survival') {
+      this._retireSerial = (this._retireSerial || 0) + 1;
+      next.retireToken = this._retireSerial;
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
       const profile = loadCrucibleMeta();
       next.telemetry.hangar = migrateHangar(profile && profile.hangar);
@@ -188,6 +213,15 @@ export const runSession = {
       reason: request && request.reason != null ? request.reason : null,
       tick: request && request.tick != null ? request.tick : 0,
     });
+  },
+
+  retire(request) {
+    const run = this._liveRun();
+    if (!run || run.kind !== 'survival' || run.phase === 'inactive'
+      || run.phase === 'ended' || run.phase === 'victory'
+      || !Number.isSafeInteger(request?.token) || request.token !== run.retireToken) return false;
+    this.end({ outcome: 'aborted', reason: 'player_retired', tick: this.state?.tick });
+    return this.state.run?.result?.reason === 'player_retired';
   },
 
   end(request) {
@@ -280,6 +314,102 @@ export const runSession = {
       totalCredits: next.credits,
       reason: toReason(request && request.reason),
     });
+  },
+
+  /**
+   * Commit a run-wallet purchase only when its authoritative world commit succeeds.
+   * The callback is local to the sim owner; UI/worker commands carry data only. The callback may
+   * return { ok: true, rollback } after creating the purchased object. A failed/reentrant commit
+   * invokes rollback before returning and never publishes a debit.
+   */
+  purchase(request, commitWorld) {
+    const run = this._liveRun();
+    const receipt = (accepted, reason, credits = 0, totalCredits = run?.credits ?? 0) => Object.freeze({
+      requestId: request && request.requestId,
+      deviceId: request && typeof request.deviceId === 'string' ? request.deviceId : null,
+      socketId: request && typeof request.socketId === 'string' ? request.socketId : null,
+      accepted,
+      reason,
+      credits,
+      totalCredits,
+    });
+    if (!run || run.kind !== 'survival' || !isSwarmRuleset(run.ruleset)) return receipt(false, 'phase_closed');
+    const requestId = request && request.requestId;
+    if (!Number.isSafeInteger(requestId) || requestId < 1) return receipt(false, 'invalid_request');
+    const lifetime = runLifetime(run);
+    if (!lifetime) return receipt(false, 'run_lifetime_missing');
+    let ledger = lifetime.runPurchases;
+    if (!ledger) {
+      ledger = { highWatermark: 0, receipts: new Map(), committing: false };
+      lifetime.runPurchases = ledger;
+    }
+    if (ledger.receipts.has(requestId)) return ledger.receipts.get(requestId);
+    if (ledger.committing) return receipt(false, 'purchase_in_progress');
+    if (requestId <= ledger.highWatermark) return receipt(false, 'stale_request');
+    if (!['draft', 'refit'].includes(run.phase)) return receipt(false, 'phase_closed');
+    const amount = toNonNegativeInt(request && request.credits);
+    if (amount <= 0 || typeof commitWorld !== 'function') return receipt(false, 'invalid_purchase');
+    ledger.highWatermark = requestId;
+    if (run.credits < amount) {
+      const rejected = receipt(false, 'insufficient_funds');
+      rememberPurchaseReceipt(ledger, rejected);
+      this._emit('run:purchaseResolved', rejected);
+      return rejected;
+    }
+
+    ledger.committing = true;
+    let worldCommit = null;
+    let reason = 'world_commit_refused';
+    try {
+      worldCommit = commitWorld();
+      if (!worldCommit || worldCommit.ok !== true) {
+        reason = worldCommit && typeof worldCommit.reason === 'string' ? worldCommit.reason : reason;
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      // Spawn listeners run synchronously. They can end/replace the run or re-enter this API;
+      // publish no debit unless the exact wallet record and lifecycle survived the callback.
+      if (this.state.run !== run || runLifetime(this.state.run) !== lifetime
+        || run.credits < amount || !['draft', 'refit'].includes(run.phase)) {
+        reason = 'run_changed_during_purchase';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      const next = cloneRun(run);
+      if (!next) {
+        reason = 'run_clone_failed';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      next.credits -= amount;
+      if (!this._commitRun(next, 'run:spent', {
+        credits: amount,
+        totalCredits: next.credits,
+        reason: toReason(request && request.reason) || 'swarm_fortify',
+        requestId,
+      })) {
+        reason = 'wallet_commit_failed';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      const accepted = receipt(true, null, amount, next.credits);
+      rememberPurchaseReceipt(ledger, accepted);
+      this._emit('run:purchaseResolved', accepted);
+      return accepted;
+    } catch {
+      safeRollback(worldCommit);
+      return cachePurchaseResult(this, ledger, receipt(false, 'world_commit_failed'));
+    } finally {
+      ledger.committing = false;
+    }
+  },
+
+  purchaseReceipt(requestId) {
+    const run = this._liveRun();
+    if (!run || run.kind !== 'survival' || !isSwarmRuleset(run.ruleset)
+      || !Number.isSafeInteger(requestId) || requestId < 1) return null;
+    const ledger = runLifetime(run)?.runPurchases;
+    return ledger && ledger.receipts instanceof Map ? ledger.receipts.get(requestId) || null : null;
   },
 
   /**

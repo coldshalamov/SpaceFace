@@ -53,13 +53,14 @@ const SAMPLE_TICKS = 240;
 // with a sector the residency plan does NOT keep live (always a leak, budget zero).
 const CENSUS_BUDGET = Object.freeze({
   FULL: {
-    ship: { max: 16, from: '3 resident NPCs (wr_npc), 8 ambient convoy ships (3 haulers, ore carrier, surveyor, escort, salvor, patrol), 1 convoy yard tug, 1 closed-refinery scavenger, the Tally-3 claim assessor, Red Kite, 1 wreck-field scavenger (D207: now sector-tagged at spawn instead of untagged)' },
+    ship: { max: 20, from: '7 wr_npc records (3 resident NPCs, the closed-refinery scavenger, the wreck-field scavenger, plus further sector-tagged spawns), the ambient convoy set (haulers incl. Jorah of the Seam Haul, Rell of the Moisture Column ore carrier, surveyor, escort, salvor, patrol, yard tug, one unassigned convoy), the Second Measure shipbreak crew ship, the Tally-3 claim assessor, Red Kite' },
     station: { max: 6, from: 'Ceres Refinery, Belt Outpost, and the 4 sector gates (Helios Prime, Tethys Junction, Pallas Drift, Hyperion Cut)' },
-    asteroid: { max: 11, from: 'the geology/activity set on fields f_ceres_1, f_ceres_2, f_ceres_3 (the other ~320 rocks live in asteroidField), 3 kill-machine anvil rocks + 2 encounter terrain-anchor rocks (D207: now sector-tagged at spawn instead of untagged)' },
-    fx: { max: 21, from: '8 authored POI markers (Abandoned Driller, Refinery Flare Rack, Inbound Weigh Pin, Throughline Weigh Beacon, 3 Kettle Line, Rookery Prospect), 5 place-dressing pieces (Throughline Distress Beacon, Disabled Refinery Client, Throughline Bait Wreck, Cathedral Grave Shard, Refinery Cargo Staging Pod), 3 world-site roots (Cinder Sluice, Second Measure, Wreck Cathedral), 4 spectrum landmarks (reflector, relay, gallery rock, beacon), 1 reactive-matter crane' },
+    asteroid: { max: 12, from: 'the geology/activity set on fields f_ceres_1, f_ceres_2, f_ceres_3 (the other ~320 rocks live in asteroidField), 3 kill-machine anvil rocks + 3 encounter terrain-anchor rocks (D207: now sector-tagged at spawn instead of untagged; a third anchor rock landed with the later encounter passes)' },
+    fx: { max: 32, from: '16 authored POI markers (Abandoned Driller, Refinery Flare Rack, Inbound Weigh Pin, Throughline Weigh Beacon, 3 Kettle Line, Rookery Prospect, Claim Forty-Tag, Re-stake on Forty, Ash Pin on the Pallas Leg, Cathedral Vigil, Lapsed Claim Cache, Short-Ration Pod, Shaft 7 Stake, Three-Lamp Corner), 5 place-dressing pieces (Throughline Distress Beacon, Disabled Refinery Client, Throughline Bait Wreck, Cathedral Grave Shard, Refinery Cargo Staging Pod), 3 world-site roots (Cinder Sluice, Second Measure, Wreck Cathedral), 4 spectrum landmarks (reflector, relay, gallery rock, beacon), 1 reactive-matter crane, 3 Freight Spine ring markers' },
     wreck: { max: 14, from: 'The Long Berth one-off, Second Measure shipbreak (3 mesh-less targetable clamp components + 5 invisible solid collision-envelope colliders + 3 released payload wrecks = 11), Ceres Refinery Tender, 1 debris wreck' },
     fauna: { max: 12, from: 'closed_refinery fauna cast (11 scavengers + 1 sessile)' },
-    payload: { max: 9, from: '4 reactive-matter payloads (iron, spar, spring, fuel), 1 yard tug lot, 1 Tally-3 claim crate, 3 salvage-sort cores (D207: now sector-tagged at spawn instead of untagged)' },
+    payload: { max: 16, from: '4 reactive-matter payloads (iron, spar, spring, fuel), 1 yard tug lot, 1 Tally-3 claim crate, 3 salvage-sort/squatter cores (D207: now sector-tagged at spawn instead of untagged), 5 Hinge Works drift bodies (solvent tanks A+B, Morrow / disabled hauler, Iona + Merrit tank crews), the RATCHET Physical Rig Workshop body, 1 transient encounter survivor payload' },
+    beacon: { max: 1, from: 'the furnace intake beacon on the refinery disposal circuit (furnaceIntake + circuitMark)' },
     poi: { max: 4, from: 'Red Kite course marks (timing buoy + 3 gates)' },
     mine: { max: 1, from: '1 closed-refinery salvage-field mine' },
   },
@@ -70,7 +71,7 @@ const CENSUS_BUDGET = Object.freeze({
   },
   REDUCED: {
     station: { max: 11, from: 'Helios Prime (Helios Station, Coalition HQ, 3 gates) + Pallas Drift (Drift Market, Smuggler Den, 4 gates)' },
-    asteroid: { max: 5, from: 'Helios Prime 2 + Pallas Drift 3 field rocks' },
+    asteroid: { max: 6, from: 'Helios Prime 3 + Pallas Drift 3 field rocks' },
   },
   STRAY: {},
 });

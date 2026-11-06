@@ -69,10 +69,10 @@ export const RECOVERY_SCENARIO_IDS = Object.freeze([
 // values intentionally use the existing camera controller's public setZoom seam, so the Sandbox
 // does not grow a second camera implementation.
 export const SANDBOX_CAMERA_CANDIDATES = Object.freeze([
-  Object.freeze({ id: 'current', label: 'Current framing (72 WU)', zoom: 72 }),
-  Object.freeze({ id: 'medium_wide', label: 'Medium-wide (96 WU)', zoom: 96 }),
-  Object.freeze({ id: 'wide_gameplay', label: 'Wide gameplay (120 WU)', zoom: 120 }),
-  Object.freeze({ id: 'physics_study', label: 'Physics-speed study (144 WU)', zoom: 144 }),
+  Object.freeze({ id: 'current', label: 'Current framing (72 u)', zoom: 72 }),
+  Object.freeze({ id: 'medium_wide', label: 'Medium-wide (96 u)', zoom: 96 }),
+  Object.freeze({ id: 'wide_gameplay', label: 'Wide gameplay (120 u)', zoom: 120 }),
+  Object.freeze({ id: 'physics_study', label: 'Physics-speed study (144 u)', zoom: 144 }),
 ]);
 
 export const SANDBOX_PHYSICS_LOADOUTS = Object.freeze([
@@ -391,8 +391,9 @@ function gameNewOptionsForSandboxConfig(config) {
       openingLesson: config.openingLesson,
     });
   }
-  // The practice room needs native ships/fittings, not the page's read-only facades.
-  if (config.scenarioId === 'sling_practice' && laneCommandSink()) {
+  // Sandbox writes belong to the simulation lane. In worker mode, carry the complete validated
+  // preset in the awaited boot transaction instead of replaying writes through page read facades.
+  if (laneCommandSink() && config.survivalSetup == null) {
     out.sandboxSetup = buildSandboxLaunchConfig(config);
   }
   return out;
@@ -446,18 +447,22 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
   hookInstalled = true;
   // ctxRef is a thunk because uiRoot's ctx is enriched after this hook arms; resolve at fire time.
   const resolveCtx = typeof ctxRef === 'function' ? ctxRef : () => ctxRef;
-  const handler = () => {
+  const handler = (payload = {}) => {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
-    // Native newGameBoot settles this setup before its acknowledgement. Replaying
-    // facade calls here would silently skip ships and race the native run wallet.
+    // Worker newGameBoot applies Sandbox writes before publishing this receipt. Only the camera
+    // selection remains page-owned; replaying simulation writes through read facades can silently
+    // skip the hull/loadout and race the native boot transaction.
     if (laneCommandSink()) {
       if (cfg.survivalSetup) return;
-      if (cfg.scenarioId === 'sling_practice') {
+      if (payload?.sandboxSetupApplied === true) {
         applyCameraCandidate(resolveCtx(), cfg.cameraCandidate);
         return;
       }
+      console.error(`[sandbox] worker setup receipt missing for ${cfg.scenarioId || 'unnamed preset'}`);
+      bus.emit('toast', { text: 'Sandbox setup did not reach the simulation owner', kind: 'error', ttl: 6 });
+      return;
     }
     const apply = () => {
       try {

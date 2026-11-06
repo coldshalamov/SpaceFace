@@ -41,12 +41,19 @@ function parseNpmShim(cmdPath) {
   try {
     const text = readFileSync(cmdPath, 'utf8');
     const exe = text.match(/"%~dp0\\([^"]*?\.exe)"/i) || text.match(/%dp0%\\([^\s"']+?\.exe)/i);
-    if (exe) return { type: 'exe', exe: join(dirname(cmdPath), exe[1].replace(/\\/g, '\\')) };
+    const exePath = exe ? join(dirname(cmdPath), exe[1]) : null;
     const js = text.match(/"%~dp0\\([^"]*?\.js)"/i) || text.match(/%dp0%\\([^\s"']+?\.js)/i);
     if (js) {
       const entry = join(dirname(cmdPath), js[1]);
-      if (existsSync(entry)) return { type: 'js', exe: process.execPath, args: [entry] };
+      if (existsSync(entry)) {
+        // npm's Windows shim prefers an adjacent node.exe only when it exists; otherwise it
+        // falls back to `node` on PATH. Resolve that conditional instead of spawning a phantom
+        // `node.exe` from the npm directory. Keep the shim's own runtime when it is present.
+        return { type: 'js', exe: exePath && existsSync(exePath) ? exePath : process.execPath, args: [entry] };
+      }
     }
+    // Some package shims invoke a real executable directly and have no JS entrypoint.
+    if (exePath && existsSync(exePath)) return { type: 'exe', exe: exePath };
     return null;
   } catch { return null; }
 }

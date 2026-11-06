@@ -9,10 +9,13 @@ import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
 import { killReplay } from '../systems/killReplay.js';
+import { chainKills } from '../combat/chainKills.js';
 import { killcamRecorder } from '../sim/killcamTape.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
+import { swarmFortify } from '../systems/swarmFortify.js';
+import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
@@ -55,6 +58,8 @@ import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { borrowedSun } from '../systems/borrowedSun.js';
+import { borrowedSunPrompt } from '../ui/borrowedSunPrompt.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -147,6 +152,7 @@ import { factionConcord } from '../systems/faction_concord.js';
 import { factionMeridian } from '../systems/faction_meridian.js';
 import { factionHelix } from '../systems/faction_helix.js';
 import { factionDrift } from '../systems/faction_drift.js';
+import { lineHeads } from '../systems/lineHeads.js';
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
@@ -201,6 +207,7 @@ import { kesslerScale } from '../systems/kesslerScale.js';
 import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
+import { varianceAdjustmentBerth } from '../systems/varianceAdjustmentBerth.js';
 import { bouncer } from '../systems/bouncer.js';
 import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
@@ -234,6 +241,19 @@ import { priceForecastSystem } from '../ui/priceForecast.js';
 import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { moralMemorySystem } from '../systems/moralMemory.js';
+import { special500Director } from '../systems/special500Director.js';
+import { special500Spectacle } from '../systems/special500Spectacle.js';
+import { special500Question } from '../systems/special500Question.js';
+import { special500Invoice } from '../systems/special500Invoice.js';
+import { special500PortraitBuoys } from '../systems/special500PortraitBuoys.js';
+import { special500Sommelier } from '../systems/special500Sommelier.js';
+import { special500DockLedger } from '../systems/special500DockLedger.js';   // batch 18 counter legs: the per-station dock counter
+import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
+import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
+import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
+import { createSpecial500Confessional } from '../systems/special500Confessional.js';
+import { createSpecial500DeathBell } from '../systems/special500DeathBell.js';
+import { createSpecial500ForgeKaraoke } from '../systems/special500ForgeKaraoke.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -286,10 +306,13 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
     ['killReplay', killReplay],
+    ['chainKills', chainKills],
     ['killcamRecorder', killcamRecorder],
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],
+    ['swarmFortify', swarmFortify],
+    ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
     // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
@@ -362,6 +385,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ['borrowedSun', borrowedSun],
+    ['borrowedSunPrompt', borrowedSunPrompt],
     // Pro-experience owners (shipbreakingYard, rigWorkshop, salvageTender(+Prompt),
     // salvageOutfits(+Prompt), industrialDisasters) — node-safe sim entries shared with
     // the browser registry; shipbreakingYardBrowser stays browser-only by capability.
@@ -423,6 +448,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['faction_meridian', factionMeridian],
     ['faction_helix', factionHelix],
     ['faction_drift', factionDrift],
+    ['lineHeads', lineHeads],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],
@@ -495,6 +521,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['crafting', crafting],
     ['heat', heat],
     ['traffic', traffic],
+    ['varianceAdjustmentBerth', varianceAdjustmentBerth],
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth],
@@ -532,6 +559,19 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['contractClausesSystem', contractClausesSystem],
     ['moralTrapSystem', moralTrapSystem],
     ['moralMemory', moralMemorySystem],
+    ['special500', special500Director],
+    ['special500Spectacle', special500Spectacle],
+    ['special500Question', special500Question],
+    ['special500Invoice', special500Invoice],
+    ['special500PortraitBuoys', special500PortraitBuoys],
+    ['special500Sommelier', special500Sommelier],
+    ['special500DockLedger', special500DockLedger],
+    ['special500HullLog', special500HullLog],
+    ['special500ReadEverything', special500ReadEverything],
+    ['special500CollectiveHours', special500CollectiveHours],
+    ['special500Confessional', createSpecial500Confessional()],
+    ['special500DeathBell', createSpecial500DeathBell()],
+    ['special500ForgeKaraoke', createSpecial500ForgeKaraoke()],
     ['mail', mail],
     ['worldClock', worldClock],
     ['worldPressure', worldPressure],

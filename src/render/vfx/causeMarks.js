@@ -9,6 +9,7 @@ import {
   noteKillHandoff,
   offerWreckHandoff,
   releaseHullScars,
+  scarDrawColor,
   scarWorldEnds,
   wreckStreakOn,
 } from './effectsCause.js';
@@ -33,6 +34,7 @@ export class CauseMarkLayer {
     this._resolve = null;
     this._fallbackBook = { get: (id) => (this._resolve ? this._resolve(id) : null) };
     this._streak = { wreckId: 0, ax: 0, az: 0, bx: 0, bz: 0 };
+    this._scarRgb = [0, 0, 0];
     this.positions = new Float32Array(SEGMENTS * 2 * 3);
     this.colors = new Float32Array(SEGMENTS * 2 * 3);
     const geo = new THREE.BufferGeometry();
@@ -178,7 +180,10 @@ export class CauseMarkLayer {
         this.scars.slots.splice(i, 1);
         continue;
       }
-      cursor = this._seg(cursor, ends.ax, ends.az, ends.bx, ends.bz, 0.86 * scarGain, 0.62 * scarGain, 0.34 * scarGain);
+      // A fresh wound glows in the weapon's own colors and cools into the shared burn amber.
+      const scarColor = scarDrawColor(slot, now, this._scarRgb);
+      cursor = this._seg(cursor, ends.ax, ends.az, ends.bx, ends.bz,
+        scarColor[0] * scarGain, scarColor[1] * scarGain, scarColor[2] * scarGain);
     }
     this._resolve = resolveEntity || null;
     const lookup = entities && typeof entities.get === 'function' ? entities : this._fallbackBook;

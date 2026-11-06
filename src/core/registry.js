@@ -1,15 +1,20 @@
 // System registry: holds every system, runs init in registration order, runs the sim UPDATE_ORDER
 // each step (§2.3), and the render-phase systems each frame. main.js builds it with the ctx.
 import { core } from './coreSystem.js';
-import { runBootInitializers } from './bootSystemInit.js';
+import { TEARDOWN_DEPENDENCIES, createSystemLifecycle } from '../runtime/registryLifecycle.js';
+export { TEARDOWN_DEPENDENCIES, createSystemLifecycle, destroySystems, orderSystemsForTeardown } from '../runtime/registryLifecycle.js';
+import { createPresentationRegistry } from '../runtime/presentationRegistry.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
 import { killReplay } from '../systems/killReplay.js';
+import { chainKills } from '../combat/chainKills.js';
 import { killcamRecorder } from '../sim/killcamTape.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
+import { swarmFortify } from '../systems/swarmFortify.js';
+import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
@@ -22,7 +27,6 @@ import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
 import { physics } from './physics.js';
 import { input } from '../systems/input.js';
-import { createGamepad } from '../systems/gamepad.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
 import { scanner, setScannerSiteProjectionSource } from '../systems/scanner.js';
@@ -50,6 +54,8 @@ import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { borrowedSun } from '../systems/borrowedSun.js';
+import { borrowedSunPrompt } from '../ui/borrowedSunPrompt.js';
 import { createProExperienceSystemEntries } from '../features/proExperienceSystems.js';
 import { createShipbreakingYardBrowserEntries } from '../features/shipbreakingYard/browser.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
@@ -129,13 +135,11 @@ import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
 import { cargo } from '../systems/cargo.js';
 import { fragileCargo } from '../systems/fragileCargo.js';
-import { economy, economyReadView } from '../systems/economy.js';
+import { economy } from '../systems/economy.js';
 import { automation } from '../systems/automation.js';
 import {
   asteroidSites,
-  canInstallAsteroidSiteFromState,
   findAsteroidSiteFromState,
-  getAsteroidSiteFromState,
   projectAsteroidSiteFromState,
 } from '../systems/asteroidSites.js'; // durable in-asteroid machine sites (ASTEROID_SITES_BRIEF)
 import { asteroidFormations } from '../systems/asteroidFormations.js'; // discovered-formation knowledge owner (A02)
@@ -159,17 +163,14 @@ import { factionConcord } from '../systems/faction_concord.js';            // §
 import { factionMeridian } from '../systems/faction_meridian.js';          // §34 row 516 — cargo-spine couplers, hull tickers
 import { factionHelix } from '../systems/faction_helix.js';                // §34 row 526 — false-flag packs, lien drones
 import { factionDrift } from '../systems/faction_drift.js';                // §34 row 530 — claim pylons
+import { lineHeads } from '../systems/lineHeads.js';                       // w-501 — §7.1 behavior heads
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js'; // PQ-014/SF-15/W06 — drives the pure npcJobs kernel into live NPC miner/hauler/patrol hulls
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
 import { economyContracts } from '../systems/economyContracts.js';
-import {
-  careerOrigins,
-  getCareerOfferViewReadOnly,
-  getCareerProgress,
-} from '../careers/origins/careerOrigins.js';
-import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';
+import { careerOrigins } from '../careers/origins/careerOrigins.js';
+import { careerLadders } from '../careers/ladders/careerLadders.js';
 import { liveCareerLadderBranches } from '../careers/ladders/liveCareerLadderBranches.js';
 import { story } from '../systems/story.js';
 import { scenarioRuntime } from '../systems/scenarioRuntime.js';
@@ -179,9 +180,9 @@ import { ships } from '../systems/ships.js';
 import { crafting } from '../systems/crafting.js';
 import { heat } from '../systems/heat.js';
 import { traffic } from '../systems/traffic.js';
-import { drill, drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
+import { drill } from '../systems/drill.js';
 import { intervention } from '../systems/intervention.js';
-import { claims, claimsReadView } from '../systems/claims.js';
+import { claims } from '../systems/claims.js';
 import { beacons } from '../systems/beacons.js';
 import { onboarding } from '../systems/onboarding.js';
 // WORLD OVERHAUL / REVAMP 2.1 — Wave 1 systems (see design/revamp/REVAMP_MASTER.md).
@@ -214,6 +215,7 @@ import { kesslerScale } from '../systems/kesslerScale.js';
 import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
+import { varianceAdjustmentBerth } from '../systems/varianceAdjustmentBerth.js';
 import { bouncer } from '../systems/bouncer.js';
 import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
@@ -221,6 +223,18 @@ import { tallyho } from '../systems/tallyho.js';
 import { tare } from '../systems/tare.js';
 import { lamplighter } from '../systems/lamplighter.js';
 import { special500Director } from '../systems/special500Director.js';   // special-500 campaign catalog runtime
+import { special500Spectacle } from '../systems/special500Spectacle.js'; // special-500 spectacle leg owner (presentation registry runtime)
+import { special500Question } from '../systems/special500Question.js';       // SP2-012 leg: the question's reply-listen interpreter
+import { special500Invoice } from '../systems/special500Invoice.js';         // SP2-044 leg: the standby-fee invoice
+import { special500PortraitBuoys } from '../systems/special500PortraitBuoys.js'; // SP1-193 leg: the corridor's portrait buoy line
+import { special500Sommelier } from '../systems/special500Sommelier.js';     // SP2-065 leg: the depot bar's censer pour
+import { special500DockLedger } from '../systems/special500DockLedger.js';   // batch 18 counter legs: the per-station dock counter
+import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
+import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
+import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
+import { createSpecial500Confessional } from '../systems/special500Confessional.js';
+import { createSpecial500DeathBell } from '../systems/special500DeathBell.js';
+import { createSpecial500ForgeKaraoke } from '../systems/special500ForgeKaraoke.js';
 
 import { shepherd12 } from '../systems/shepherd12.js';
 import { quill } from '../systems/quill.js';
@@ -243,7 +257,7 @@ import { dangerGradient } from '../ui/dangerGradient.js';              // A9: da
 import { causeLedger } from '../ui/causeLedger.js';                    // E: "why prices changed" tooltip over the live driver tags (voice:none)
 // BP-12 remaining 7 packets — SYSTEMS-only surfacing + enrich modules (event-driven; no update;
 // DOM fully guarded; voice via ctx.helpers.voice; emit-only — single-writer honored).
-import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
+import { customsPrompt } from '../ui/customsPrompt.js';                // Customs result receipts; encounter and law systems own pre-scan choices
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
 import { warrantOfferPrompt } from '../ui/warrantOfferPrompt.js';        // world-remembers: the licensed hunter's offer as deck verbs over warrant:acceptPayment
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
@@ -287,19 +301,32 @@ import { createWreckCourtSystem } from '../systems/wreckCourt.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
-import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
-import { laneRpc, laneDomEvent, laneKeepalive } from './simLaneCommands.js';
-import {
-  computeDiscoveredRoute,
-  activeDriveForState,
-  wormholeGateCheck,
-  machineRouteStanding,
-} from '../systems/routePlanner.js';
+import { getSystemCapability, isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
-import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
+import { bindRuntimeToState } from '../runtime/bindRuntimeToState.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
-import { shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
+
+export function isMainLanePresentationSystemId(id) {
+  if (!isNodeSafeSystemId(id)) return false;
+  const capability = getSystemCapability(id);
+  return capability.phase === 'platform' || capability.domGuarded === true;
+}
+
+export function laneSimOwnedSystemIds(systemIds) {
+  return new Set((systemIds || []).filter((id) => (
+    isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id)
+  )));
+}
+
+export function updateMainLaneHudSystems(systems, frameDt, state, onError = null) {
+  for (const system of systems || []) {
+    if (typeof system?.update !== 'function') continue;
+    try { system.update(frameDt, state); }
+    catch (error) { if (typeof onError === 'function') onError(system, error); }
+  }
+}
 
 // Genie 01: one campaign-gated Chronicler per GameState. Crucible/lab runs are run-sealed and
 // never chronicled. The module's default singleton export is for standalone tooling — never
@@ -307,226 +334,6 @@ import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 const chronicler = createChronicler({
   shouldObserve: (state) => !isRunSealed(state),
 });
-
-/**
- * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
- * scene/GPU references before the owner that provides the resource (for example VFX before the
- * renderer/context). The registry keeps this separate from init/update order so a future owner
- * can add a dependency without relying on an incidental manifest-array position.
- */
-export const TEARDOWN_DEPENDENCIES = Object.freeze([
-  Object.freeze(['vfx', 'render']),
-  Object.freeze(['shipbreakingYardBrowser', 'render']),
-  Object.freeze(['salvageTender', 'render']),
-]);
-
-function uniqueSystemsInOrder(systems) {
-  const seen = new Set();
-  const unique = [];
-  for (const system of systems || []) {
-    if (!system || seen.has(system)) continue;
-    seen.add(system);
-    unique.push(system);
-  }
-  return unique;
-}
-
-// Presentation-lane facades must hand callers detached data.  Keep the clone small and local so
-// read selectors cannot acquire a reference to the mirrored authority object.  The JSON fallback
-// is for older probe hosts that do not expose structuredClone; all mirrored values are save-safe
-// plain data at this boundary.
-function cloneReadValue(value) {
-  if (value === undefined || value === null) return value;
-  try {
-    if (typeof structuredClone === 'function') return structuredClone(value);
-  } catch (_) { /* fall through to the plain-data fallback */ }
-  try { return JSON.parse(JSON.stringify(value)); } catch (_) { return value; }
-}
-
-// asteroidSites' projection/preview methods use its transient runtime caches.  Run those methods
-// against an isolated prototype view over one cloned mirrored site so a presentation read cannot
-// normalize or reconcile the main-lane mirror.  Volatile survey state is deliberately absent here;
-// durable survey records still read correctly and an unknown volatile assay stays unknown.
-function asteroidReadViewFor(state, siteId) {
-  const source = getAsteroidSiteFromState(state, siteId);
-  if (!source || typeof source !== 'object') return null;
-  const sites = state && state.sites && typeof state.sites === 'object' ? state.sites : {};
-  const isolated = {
-    ...(state || {}),
-    sites: {
-      ...sites,
-      byId: { ...(sites.byId || {}), [siteId]: cloneReadValue(source) },
-    },
-  };
-  const view = Object.create(asteroidSites);
-  view.state = isolated;
-  view._rt = new Map();
-  view._surveyByAsteroid = new Map();
-  view._accessCache = null;
-  view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
-  return view;
-}
-
-/**
- * Stable dependency ordering for shutdown. Every dependency edge is dependent → owner, so a
- * depth-first walk visits all dependents before their owner while preserving the existing registry
- * order for unrelated systems. Cycles are ignored at the back-edge; the declared contract remains
- * deterministic and a malformed future edge cannot make shutdown recurse forever.
- */
-export function orderSystemsForTeardown(systems, dependencies = TEARDOWN_DEPENDENCIES) {
-  const unique = uniqueSystemsInOrder(systems);
-  const byName = new Map();
-  for (const system of unique) {
-    if (typeof system.name === 'string' && system.name && !byName.has(system.name)) {
-      byName.set(system.name, system);
-    }
-  }
-
-  const dependentsByOwner = new Map();
-  for (const edge of dependencies || []) {
-    if (!Array.isArray(edge) || edge.length < 2) continue;
-    const dependent = byName.get(edge[0]);
-    const owner = byName.get(edge[1]);
-    if (!dependent || !owner || dependent === owner) continue;
-    const dependents = dependentsByOwner.get(owner) || [];
-    if (!dependents.includes(dependent)) dependents.push(dependent);
-    dependentsByOwner.set(owner, dependents);
-  }
-
-  const visiting = new Set();
-  const visited = new Set();
-  const ordered = [];
-  const visit = (system) => {
-    if (visited.has(system) || visiting.has(system)) return;
-    visiting.add(system);
-    for (const dependent of dependentsByOwner.get(system) || []) visit(dependent);
-    visiting.delete(system);
-    visited.add(system);
-    ordered.push(system);
-  };
-  for (const system of unique) visit(system);
-  return ordered;
-}
-
-/** Run every unique system destroy hook in the declared dependency order. */
-export function destroySystems(systems, dependencies = TEARDOWN_DEPENDENCIES) {
-  for (const system of orderSystemsForTeardown(systems, dependencies)) {
-    if (!system || typeof system.destroy !== 'function') continue;
-    try {
-      system.destroy();
-    } catch (error) {
-      // One broken subsystem must not strand every later owner. The shutdown caller has no useful
-      // recovery path here; retain the deterministic attempt order and continue.
-      console.error('[registry] destroy ' + (system.name || 'unnamed system'), error);
-    }
-  }
-}
-
-/**
- * Own the registry's one-way init/destroy lifecycle. A browser registry is built around module
- * singletons, so retrying a partial init or reinitializing after teardown would otherwise stack
- * every event subscription those singletons install. Init failure tears down every system whose
- * init was entered (including the throwing system), then permanently rejects retries.
- *
- * `getDestroyCandidates` is evaluated only when teardown starts. The normal registry supplies the
- * manifest update order plus init order; a partial init supplies only the systems it reached.
- *
- * @param {{systems?: object[], context?: object, getDestroyCandidates?: function, dependencies?: Array, onTeardown?: function}} options
- */
-export function createSystemLifecycle({
-  systems = [],
-  context = null,
-  getDestroyCandidates = null,
-  dependencies = TEARDOWN_DEPENDENCIES,
-  onTeardown = null,
-} = {}) {
-  const initSystems = Array.isArray(systems) ? systems : [];
-  const destroyCandidates = typeof getDestroyCandidates === 'function'
-    ? getDestroyCandidates
-    : () => initSystems;
-  let phase = 'new';
-  let initError = null;
-  let teardownStarted = false;
-  let pendingInit = null;
-
-  function lifecycleError(action) {
-    const error = new Error(`[registry] cannot ${action}: lifecycle is ${phase}`);
-    error.code = 'REGISTRY_LIFECYCLE_CLOSED';
-    error.lifecycleState = phase;
-    if (initError) error.cause = initError;
-    return error;
-  }
-
-  function teardown(candidates, finalPhase) {
-    if (teardownStarted) return;
-    teardownStarted = true;
-    phase = 'destroying';
-    try {
-      destroySystems(candidates, dependencies);
-    } finally {
-      try {
-        if (typeof onTeardown === 'function') onTeardown();
-      } finally {
-        phase = finalPhase;
-      }
-    }
-  }
-
-  function init() {
-    // A second call while active (or a reentrant call from an init hook) is a no-op. There is no
-    // second subscription pass and the original successful init keeps ownership of the runtime.
-    if (phase === 'active' || phase === 'initializing') return;
-    if (phase !== 'new') throw lifecycleError('initialize');
-
-    phase = 'initializing';
-    const attempted = [];
-    try {
-      for (const system of initSystems) {
-        if (!system || typeof system.init !== 'function') continue;
-        // Record before invoking init: a hook can install listeners and then throw, so its destroy
-        // hook is part of the partial-init rollback boundary too.
-        attempted.push(system);
-        system.init(context);
-      }
-      phase = 'active';
-    } catch (error) {
-      initError = error;
-      // Cleanup errors are isolated by destroySystems; preserve and rethrow the original init
-      // failure. `teardownStarted` makes a later destroy() unable to invoke any hook twice.
-      teardown(attempted, 'failed');
-      throw error;
-    }
-  }
-
-  function initAsync(options = {}) {
-    // Duplicate async callers join one pass; synchronous init() remains unchanged for sim tools.
-    if (phase === 'initializing' && pendingInit) return pendingInit;
-    if (phase === 'active') return Promise.resolve(null);
-    if (phase !== 'new') return Promise.reject(lifecycleError('initialize'));
-    phase = 'initializing';
-    const attempted = [];
-    // Assign ownership before any observer/hook can call back into initAsync().
-    pendingInit = Promise.resolve().then(() => runBootInitializers(initSystems, context, options, attempted))
-      .then((metrics) => { phase = 'active'; return metrics; })
-      .catch((error) => {
-        initError = error;
-        teardown(attempted, 'failed');
-        throw error;
-      });
-    return pendingInit;
-  }
-
-  function destroy() {
-    if (phase === 'destroyed' || phase === 'failed' || phase === 'destroying') return;
-    if (phase === 'initializing') throw lifecycleError('destroy');
-    // Preserve the historical ability to destroy a registry whose callers manually initialized
-    // selected systems without invoking registry.init(). A fresh registry has no lifecycle-owned
-    // init list, so this is the only safe compatibility path for that legacy usage.
-    teardown(destroyCandidates(), 'destroyed');
-  }
-
-  return { init, initAsync, destroy };
-}
 
 /**
  * Build the browser/registry system lookup table. Presentation platform systems live here;
@@ -548,10 +355,13 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
     ['killReplay', killReplay],
+    ['chainKills', chainKills],
     ['killcamRecorder', killcamRecorder],
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],
+    ['swarmFortify', swarmFortify],
+    ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
     ['swarmJuice', swarmJuice],
@@ -621,6 +431,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ['borrowedSun', borrowedSun],
+    ['borrowedSunPrompt', borrowedSunPrompt],
     ...createProExperienceSystemEntries(),
     ...createShipbreakingYardBrowserEntries(),
     ['planetRuntime', planetRuntime],
@@ -672,6 +484,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['faction_meridian', factionMeridian],
     ['faction_helix', factionHelix],
     ['faction_drift', factionDrift],
+    ['lineHeads', lineHeads],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],
@@ -724,6 +537,18 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['tare', tare],
     ['lamplighter', lamplighter],
     ['special500', special500Director],
+    ['special500Spectacle', special500Spectacle],
+    ['special500Question', special500Question],
+    ['special500Invoice', special500Invoice],
+    ['special500PortraitBuoys', special500PortraitBuoys],
+    ['special500Sommelier', special500Sommelier],
+    ['special500DockLedger', special500DockLedger],
+    ['special500HullLog', special500HullLog],
+    ['special500ReadEverything', special500ReadEverything],
+    ['special500CollectiveHours', special500CollectiveHours],
+    ['special500Confessional', createSpecial500Confessional()],
+    ['special500DeathBell', createSpecial500DeathBell()],
+    ['special500ForgeKaraoke', createSpecial500ForgeKaraoke()],
 
     ['shepherd12', shepherd12],
     ['quill', quill],
@@ -755,6 +580,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
     ['historyWear', historyWear], // PULSE-HISTORY: deeds → trinkets/decal/graffiti; loss ledger → memorial arrays
     ['traffic', traffic],
+    ['varianceAdjustmentBerth', varianceAdjustmentBerth],
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth], // GOLD-HOME: tow/restore/yard persistence on the abandoned tug
@@ -818,6 +644,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
 }
 
 export function createRegistry(ctx) {
+  if (ctx?.simLane === 'worker') return createPresentationRegistry(ctx);
   // The bore dead-drop cannot import the law system (cycle through combat and cargo): it gets the witness query here.
   setDeadDropWitnessSource(lawWitnessesNear);
   // The scanner cannot import the asteroid-site owner (cycle through drill, cargo and combat): same seam.
@@ -1061,439 +888,10 @@ export function createRegistry(ctx) {
   byName.set('aiSlot', aiSlot);
   byName.set('flightSlot', flightSlot);
 
-  // Stage-8 whole-sim worker lane: sim-owned (node-safe) systems init inside the
-  // worker realm, not on the presenting thread. registry.get answers with lane
-  // facades for the covered seams and undefined for the rest (the stage-5 census
-  // verified uncovered callers degrade via optional chaining / try-catch). The
-  // lifecycle init/destroy sets exclude sim-owned systems entirely — they are
-  // owned by the worker's own registry.
-  const laneWorker = ctx && ctx.simLane === 'worker';
-  // UI owns browser polling; the authoritative pad emits connection notices once.
-  if (laneWorker) ctx.gamepad = createGamepad(ctx, { connectionEvents: false, laneHaptics: true });
-  const laneSimOwned = laneWorker
-    ? new Set(resolved.authoritativeSystemIds.filter((id) => isNodeSafeSystemId(id)))
-    : null;
-
-  // Facade-miss diagnostic: a sim-owned id with no facade resolves undefined
-  // and every caller silently degrades — cargo:jettison proved that can mean
-  // a dead feature. Name each miss once so it surfaces instead.
-  const _laneFacadeMissNoted = laneWorker ? new Set() : null;
-  function _noteLaneFacadeMiss(name) {
-    if (!_laneFacadeMissNoted || _laneFacadeMissNoted.has(name)) return;
-    _laneFacadeMissNoted.add(name);
-    try { console.warn(`[lane] facade miss on sim-owned system '${name}' — registry.get resolves undefined`); } catch (_) {}
-    const bus = ctx && ctx.bus;
-    if (bus && typeof bus.emit === 'function') {
-      try { bus.emit('lane:facadeMiss', { name }); } catch (_) {}
-    }
-  }
-
-  function laneSystemFacade(name) {
-    const st = ctx && ctx.state;
-    switch (name) {
-      case 'survivalDraft': {
-        // Ephemeral stock and custody are computed by the native draft owner.
-        // UI mutations continue through its existing run:* intents.
-        const read = (key, fallback) => structuredClone(st?.survivalDraftPublic?.[key] ?? fallback);
-        return {
-          name: 'survivalDraft',
-          currentOffers: () => read('offers', []),
-          currentWave: () => read('wave', 0),
-          lastNotice: () => read('notice', null),
-          rerollState: () => read('reroll', null),
-          recommendedOffers: () => read('recommended', []),
-          preparationReceipt: () => read('preparation', null),
-          preparationGeneration: () => read('generation', 0),
-          refitRows: () => read('refitRows', []),
-        };
-      }
-      case 'survivalResults': {
-        // The worker owns the private receipt.  Its detached public snapshot is mirrored with
-        // the worker lifecycle generation so a late result from a prior New Game/restore cannot
-        // reopen the current plate. Keep the facade read-only; the worker publishes this
-        // generation-matched snapshot before its run:resultsReady event reaches presentation.
-        const readSnapshot = () => {
-          const snapshot = st && st.survivalResultsPublic;
-          if (!snapshot || typeof snapshot !== 'object') return null;
-          const readGeneration = ctx && ctx.helpers && ctx.helpers.workerReadGeneration;
-          if (typeof readGeneration === 'function') {
-            const current = readGeneration();
-            if (!Number.isSafeInteger(current) || current < 0
-              || !Number.isSafeInteger(snapshot.generation)
-              || snapshot.generation !== current) return null;
-          }
-          return snapshot;
-        };
-        return {
-          name: 'survivalResults',
-          lastResult: () => {
-            const snapshot = readSnapshot();
-            return snapshot ? cloneReadValue(snapshot.result || null) : null;
-          },
-          resultRevision: () => {
-            const snapshot = readSnapshot();
-            return snapshot && Number.isSafeInteger(snapshot.revision) ? snapshot.revision : 0;
-          },
-          resultGeneration: () => {
-            const snapshot = readSnapshot();
-            return snapshot && Number.isSafeInteger(snapshot.generation) ? snapshot.generation : 0;
-          },
-        };
-      }
-      case 'save':
-        return {
-          name: 'save',
-          save: (slot) => laneRpc('saveWrite', { slot: slot === undefined ? null : slot }),
-          load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
-          delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
-          // saveLoad.js's delete path — the delete must reach the worker's save
-          // system (staged store + index), not just main's localStorage.
-          deleteSlot: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
-          // File import: the File lives main-side (DOM), the envelope load is
-          // sim-owned. Reads the file here, then routes through saveImport.
-          importFile: (file, cb) => {
-            const finish = (ok) => { try { if (cb) cb(!!ok); } catch (_) {} };
-            if (!file || typeof FileReader === 'undefined') { finish(false); return; }
-            const reader = new FileReader();
-            reader.onload = () => {
-              try {
-                Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: 'quick' }))
-                  .then((ack) => finish(ack && ack.ok !== false))
-                  .catch(() => finish(false));
-              } catch (_) { finish(false); }
-            };
-            reader.onerror = () => finish(false);
-            reader.readAsText(file);
-          },
-          get slots() { return (st && st.save && st.save.slots) || []; },
-          get currentSlot() { return st && st.save ? st.save.currentSlot : null; },
-          isSharedStoreSyncPending: () => {
-            const value = st && st.save && st.save.sharedStoreStatus
-              && st.save.sharedStoreStatus.syncPending;
-            return typeof value === 'boolean' ? value : true;
-          },
-          isSharedStoreMirrorHealthy: () => {
-            const value = st && st.save && st.save.sharedStoreStatus
-              && st.save.sharedStoreStatus.mirrorHealthy;
-            return typeof value === 'boolean' ? value : false;
-          },
-          deferRunTransition: () => false,
-          deferLoadedGameRestore: () => false,
-        };
-      case 'physics':
-        return {
-          name: 'physics',
-          prepareBackend: (_st, opts) => laneRpc('physicsPrep', {
-            backend: (opts && opts.backend) || 'rapier-dynamic',
-          }).then((ack) => (ack && ack.ok === false
-            ? Promise.reject(new Error(ack.reason || 'physicsPrep failed'))
-            : ack)),
-          backend: () => (st && st.physicsBackend) || 'rapier-dynamic',
-        };
-      case 'input':
-        return {
-          name: 'input',
-          releaseHeldControls: () => laneDomEvent({ type: 'blur' }),
-          getInput: () => (st ? st.input : null),
-          get gamepad() { return ctx.gamepad; },
-          inputActivityStamp: () => null,
-          // worldObjectInteraction cancels the m2 object gesture via this — the
-          // gesture state is sim-owned, so it ships as a DOM descriptor.
-          cancelWorldObjectGesture: (reason) => laneDomEvent({
-            type: 'gestureCancel',
-            reason: typeof reason === 'string' ? reason : 'lifecycle',
-          }),
-        };
-      case 'economy': {
-        // quote() is a synchronous read — the stage-5 census missed that the
-        // market's trade console (selectedTradeQuote / contemplatedSaleQuote /
-        // tradeQuantityLimit / unitPrice) calls it in the buy/sell path, so a
-        // null stub left GO disabled and every trade dead on the lane. Run the
-        // real implementation on a prototype view over the mirrored economy
-        // root (claims/drill pattern). Mint paths can't run facade-side
-        // (worker rng + authoritative writes): the view signals them and this
-        // wrapper asks the worker to mint the real row — it arrives on the
-        // next mirror apply; until then the quote reads 'untraded', same as a
-        // main-lane quote on a genuinely untraded good.
-        const readView = economyReadView(st);
-        return {
-          name: 'economy',
-          quote: (stationId, commodityId, side, qty) => {
-            readView.__mintNeeded = null;
-            let q = null;
-            try { q = readView.quote(stationId, commodityId, side, qty); } catch (_) { q = null; }
-            if (readView.__mintNeeded) {
-              laneRpc('economyMintListing', {
-                stationId,
-                commodityId,
-                side,
-                kind: readView.__mintNeeded.kind,
-              });
-              return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
-            }
-            return q;
-          },
-        };
-      }
-      case 'cargo':
-        return {
-          name: 'cargo',
-          // Async hop: resolves the worker cargo.jettison's dumped count — the
-          // HUD toast awaits it (cargo:jettisoned bridges back for vfx/audio).
-          jettison: (commodityId, qty) => Promise.resolve(
-            laneRpc('cargoJettison', { commodityId, qty: qty || 1 })
-          ).then((ack) => (ack && ack.ok !== false ? (ack.result || 0) : 0)),
-        };
-      case 'claims': {
-        // Read names run the real implementations over the domain mirror via
-        // a prototype view; mutating calls ride the claimsCall rpc (fire-and-
-        // forget for the un-awaited sites, awaited at the confirm seams).
-        const readView = claimsReadView(st);
-        const call = (method, args) => Promise.resolve(laneRpc('claimsCall', { method, ...(args || {}) }))
-          .then((ack) => (ack && ack.ok !== false && ack.result !== null && ack.result !== undefined
-            ? ack.result.result : null));
-        return {
-          name: 'claims',
-          isClaimed: (poiId) => readView.isClaimed(poiId),
-          list: () => readView.list(),
-          ledger: (bodyId) => readView.ledger(bodyId),
-          _stationName: (stationId) => readView._stationName(stationId),
-          // 'claim' resolves to the new body row (the rpc ships it back) so the
-          // caller opens the Base screen without waiting on a mirror tick.
-          claim: (poiDef) => Promise.resolve(laneRpc('claimsCall', { method: 'claim', poi: poiDef }))
-            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true
-              ? (ack.result.body || null) : null)),
-          buildModule: (bodyId, modId) => call('buildModule', { bodyId, modId }),
-          specialize: (bodyId, specId) => call('specialize', { bodyId, specId }),
-          deliverToClaim: (bodyId, goodId, qty) => call('deliverToClaim', { bodyId, goodId, qty }),
-          collectFromClaim: (bodyId) => call('collectFromClaim', { bodyId }),
-          teleportFrom: (bodyId) => call('teleportFrom', { bodyId }),
-        };
-      }
-      case 'crafting':
-        return {
-          name: 'crafting',
-          // Async hop: the real build() commits worker-side; the fabricate
-          // hold's accept cue + landing await the ack.
-          build: (bpId, stationId) => Promise.resolve(laneRpc('craftingBuild', { bpId, stationId }))
-            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
-          // Scrapping a committed run is the same writer hop — the Industry screen awaits the
-          // ack before it re-reads the queue.
-          cancel: (stationId) => Promise.resolve(laneRpc('craftingCancel', { stationId }))
-            .then((ack) => (ack && ack.ok !== false && ack.result && ack.result.ok === true)),
-        };
-      case 'asteroidSites': {
-        // Site reads run over the mirrored state.  Runtime-backed reads use an isolated clone;
-        // writes stay on the worker through the narrow allowlist installed by simWorkerHost.
-        const call = (method, args) => Promise.resolve(
-          laneRpc('asteroidSitesCall', { method, args }),
-        ).then((ack) => {
-          if (!ack || ack.ok === false) {
-            return { ok: false, reason: ack && (ack.reason || ack.error) || 'asteroid-sites-rpc-failed' };
-          }
-          const native = ack.result;
-          // The worker handler returns { ok, result: nativeValue }; unwrap exactly that envelope
-          // and leave the native denial/result untouched.  A native boolean (tickWorkbench) stays
-          // a boolean so callers can distinguish a real answer from an absent response.
-          if (native && typeof native === 'object'
-            && Object.hasOwn(native, 'ok') && Object.hasOwn(native, 'result')) {
-            return native.result;
-          }
-          if (native === undefined) return { ok: false, reason: 'asteroid-sites-empty-result' };
-          return native;
-        });
-        const readView = (siteId) => asteroidReadViewFor(st, siteId);
-        // These selectors are cheap identity reads used by the screen's dirty probe. Callers only
-        // inspect the records; projection and preview paths below are the mutation-safe selectors
-        // that run over isolated clones.
-        const siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(st, asteroidId);
-        const getSite = (siteId) => getAsteroidSiteFromState(st, siteId);
-        const projection = (siteId) => projectAsteroidSiteFromState(st, siteId);
-        const canInstall = (request) => canInstallAsteroidSiteFromState(st, request || {});
-        return {
-          name: 'asteroidSites',
-          state: st,
-          bus: ctx && ctx.bus,
-          getSite,
-          siteForAsteroid,
-          projection,
-          canInstall,
-          machineAt: (site, col, row) => asteroidSites.machineAt(site, col, row),
-          hasCore: (site) => asteroidSites.hasCore(site),
-          previewBreak: (siteId, col, row) => {
-            const view = readView(siteId);
-            return view ? view.previewBreak(siteId, col, row) : null;
-          },
-          previewMachineRemoval: (siteId, machineId) => {
-            const view = readView(siteId);
-            return view ? view.previewMachineRemoval(siteId, machineId) : { spilledTotal: 0, spilled: [], placed: [] };
-          },
-          previewOverlayRemoval: (siteId, kind, col, row) => {
-            const view = readView(siteId);
-            return view ? view.previewOverlayRemoval(siteId, kind, col, row) : { spilledTotal: 0, spilled: [], placed: [] };
-          },
-          surveyStatusFor: (asteroidId) => {
-            const site = siteForAsteroid(asteroidId);
-            const view = site ? readView(site.id) : null;
-            return view ? view.surveyStatusFor(asteroidId) : null;
-          },
-          surveyCellRole: (asteroidId, index) => {
-            const site = siteForAsteroid(asteroidId);
-            const view = site ? readView(site.id) : null;
-            return view ? view.surveyCellRole(asteroidId, index) : null;
-          },
-          _fundingStoresFor: (site, col, row) => {
-            const view = site && readView(site.id);
-            const isolatedSite = view && view.getSite(site.id);
-            return view && isolatedSite ? view._fundingStoresFor(isolatedSite, col, row) : null;
-          },
-          _missingMaterials: (site, cost, stores) => {
-            const view = site && readView(site.id);
-            const isolatedSite = view && view.getSite(site.id);
-            return view && isolatedSite ? view._missingMaterials(isolatedSite, cost, stores) : {};
-          },
-          installMachine: (request) => call('installMachine', [request]),
-          removeMachine: (siteId, machineId, opts) => call('removeMachine', [siteId, machineId, opts]),
-          setOverlay: (siteId, kind, col, row, on, opts) => call('setOverlay', [siteId, kind, col, row, on, opts]),
-          setMachineMode: (siteId, machineId, mode) => call('setMachineMode', [siteId, machineId, mode]),
-          setExportFlag: (siteId, goodId, exported) => call('setExportFlag', [siteId, goodId, exported]),
-          setPodTarget: (siteId, target) => call('setPodTarget', [siteId, target]),
-          setPodDestination: (siteId, stationId) => call('setPodDestination', [siteId, stationId]),
-          transferGoods: (siteId, machineId, goodId, qty, dir) => call(
-            'transferGoods', [siteId, machineId, goodId, qty, dir],
-          ),
-          tickWorkbench: (dt, siteId) => call('tickWorkbench', [dt, siteId]),
-        };
-      }
-      case 'careerLadders': {
-        // Definitions are process-local data. The presenter derives offers/progress from the
-        // mirrored leaves; native getters hydrate state and must stay on the simulation owner.
-        return {
-          name: 'careerLadders',
-          getDefinition: (careerId) => careerLadders.getDefinition(careerId),
-          listLadderDefinitions,
-        };
-      }
-      case 'careerOrigins': {
-        // Origin reads must not call the native ensure/migrate path against a presentation mirror.
-        // getCareerProgress is run on a detached careers tree because its legacy projection still
-        // normalizes missing leaves; the normalization therefore cannot write worker-owned state.
-        const readState = () => ({
-          ...(st || {}),
-          careers: cloneReadValue(st && st.careers ? st.careers : {}),
-        });
-        return {
-          name: 'careerOrigins',
-          getOfferView: (careerId) => getCareerOfferViewReadOnly(readState(), careerId),
-          getProgress: (careerId) => getCareerProgress(readState(), careerId),
-        };
-      }
-      case 'drill': {
-        // The drill clock is the screen's rAF, not a sim tick — per-frame
-        // held-state ships as ordered domEvent descriptors inside the tick
-        // batch (never rpc: a promise per frame would queue orders worse than
-        // a folded descriptor). Reads run over the mirror via the read view;
-        // drill:* emits bridge back to bus subscribers (bridgeAll).
-        const readView = drillReadView(st);
-        const drillCall = (op, payload) => laneDomEvent({ type: 'drillCall', op, ...(payload || {}) });
-        return {
-          name: 'drill',
-          bus: ctx.bus,
-          state: st,
-          tickInput: (held, dt, opts) => laneDomEvent({ type: 'drillTick', held, dt, opts }),
-          begin: (asteroidId) => { if (asteroidId) drillCall('begin', { asteroidId }); return !!asteroidId; },
-          pulseScan: () => {
-            // Synchronous answer off the mirror (≤1-tick stale): a stale
-            // cooldown edge ships a refused pulse the worker drops silently.
-            const d = st && st.drill;
-            const ready = !!(d && d.active && (!d.scan || (Number(d.scan.cooldown) || 0) <= 0));
-            if (ready) drillCall('pulseScan');
-            return ready;
-          },
-          end: (opts) => { drillCall('end', { opts }); return null; },
-          // Bore-charge verbs ship as drillCall descriptors like begin/pulseScan; the
-          // boolean answers mirror-read the lane's last-settled drill state (same
-          // ≤1-tick staleness contract as pulseScan's ready).
-          armCharge: () => {
-            const d = st && st.drill;
-            const ready = !!(d && d.active && !d.charge && !(Number(d.chargeCooldown) > 0));
-            if (ready && !d.chargeArmed) drillCall('armCharge');
-            return ready;
-          },
-          disarmCharge: () => {
-            const armed = !!(st && st.drill && st.drill.chargeArmed);
-            if (armed) drillCall('disarmCharge');
-            return armed;
-          },
-          setChargeAim: (col, row) => { drillCall('setChargeAim', { col, row }); },
-          cycleChargePayload: () => {
-            const d = st && st.drill;
-            if (!d || !d.active || !d.chargeArmed) return null;
-            drillCall('cycleChargePayload');
-            const idx = CHARGE_PAYLOAD_ORDER.indexOf(d.chargePayload);
-            return CHARGE_PAYLOAD_ORDER[(idx + 1) % CHARGE_PAYLOAD_ORDER.length] || 'blast';
-          },
-          // The plant's own preview is the gate on the worker too: the op ships and the
-          // worker-side plantCharge refuses+warns on the bridge if the mirror was stale.
-          plantCharge: () => {
-            const active = !!(st && st.drill && st.drill.active);
-            if (active) drillCall('plantCharge');
-            return active;
-          },
-          chargePreview: () => readView.chargePreview(),
-          getDrillTier: () => readView.getDrillTier(),
-          getDrillDPS: () => readView.getDrillDPS(),
-          getTargetTelemetry: (col, row) => readView.getTargetTelemetry(col, row),
-          isHazardRevealed: (col, row) => readView.isHazardRevealed(col, row),
-          isTileSurveyed: (col, row) => readView.isTileSurveyed(col, row),
-        };
-      }
-      case 'missions':
-        return {
-          name: 'missions',
-          // armRacingContract folds the whole circuit arm into the racingArm
-          // rpc on the lane; this keeps the capability surface honest.
-          postAndAcceptAuthoredOffer: (offer) =>
-            Promise.resolve(laneRpc('missionsCall', { method: 'postAndAcceptAuthoredOffer', offer }))
-              .then((ack) => (ack && ack.ok !== false && ack.result !== null && ack.result !== undefined
-                ? ack.result.result : null)),
-        };
-      case 'world':
-        return {
-          name: 'world',
-          // galaxyMap's preview/alternatives calls are synchronous — the route
-          // Dijkstra runs here over the mirrored world state (identical math,
-          // shared module). A held handshake token counts as preview-open: the
-          // route exists, and the burn happens when the jump executes.
-          computeRoute: (targetSectorId, mode = 'fuel') => computeDiscoveredRoute(st, targetSectorId, mode, {
-            drive: activeDriveForState(st),
-            wormholeGate: (_st, sector) => {
-              const g = wormholeGateCheck(st, sector, machineRouteStanding);
-              return g.status === 'closed' ? 'closed' : 'open';
-            },
-          }),
-          // Mutating seam — racingLaunch folds these into the racingArm rpc;
-          // proof/lab paths tolerate the async hop (fire-and-forget).
-          enterSector: (sectorId) => laneRpc('worldCall', { method: 'enterSector', sectorId }),
-          relocatePlayerInSector: (pose, opts) =>
-            laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts }),
-        };
-      default:
-        _noteLaneFacadeMiss(name);
-        return undefined;
-    }
-  }
-
-  const lifecycleSystems = laneSimOwned
-    ? SYSTEMS.filter((s) => !(s && laneSimOwned.has(s.name)))
-    : SYSTEMS;
-
   const lifecycle = createSystemLifecycle({
-    systems: lifecycleSystems,
+    systems: SYSTEMS,
     context: ctx,
-    getDestroyCandidates: () => laneSimOwned
-      ? [...UPDATE_ORDER, ...SYSTEMS].filter((s) => !(s && laneSimOwned.has(s.name)))
-      : [...UPDATE_ORDER, ...SYSTEMS],
+    getDestroyCandidates: () => [...UPDATE_ORDER, ...SYSTEMS],
     dependencies: TEARDOWN_DEPENDENCIES,
     onTeardown: () => postInputPartitions.dispose(),
   });
@@ -1506,31 +904,14 @@ export function createRegistry(ctx) {
     runtimeManifest: resolved,
     ctx,
     get(name) {
-      if (laneSimOwned && laneSimOwned.has(name)) return laneSystemFacade(name);
       return byName.get(name);
     },
     init: lifecycle.init,
     initAsync: lifecycle.initAsync,
     destroy: lifecycle.destroy,
     keepalive(dt = 0, wallDt = dt) {
-      // Sim-owned keepalive lives in the worker realm under the flip — ship
-      // the wall-clock dt so the worker's registry keepalive can run the yard
-      // and friends while the world is frozen (steps:0 freezes must not starve
-      // a paid repair).
-      if (laneSimOwned) { laneKeepalive(wallDt); return; }
       const state = ctx.state;
-      if (input.update) input.update(dt, state);
-      if (save.update) save.update(dt, state);
-      // The yard is the one service the freeze must not starve: it only accepts a job while
-      // ui.docked is true — the same flag that freezes the world — and undock aborts the job, so
-      // without a keepalive tick a paid repair could never deliver. It runs on wall-clock dt:
-      // state.simTime stays frozen, so the seeded client schedule holds still with it.
-      const yard = byName.get('stationServices');
-      if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
-      const law = byName.get('lawSecurity');
-      if (law && typeof law.keepalive === 'function' && wallDt > 0) law.keepalive(wallDt);
-      const latch = byName.get('latchNine');
-      if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
+      runHiddenKeepalive({ state, dt, wallDt, input, getSystem: name => byName.get(name) });
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;

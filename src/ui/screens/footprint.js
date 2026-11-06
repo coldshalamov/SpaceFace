@@ -507,7 +507,7 @@ function heatWords(reading) {
   if (reading.held === 'impound') return { clears: 'held at the pound', short: 'held · impounded' };
   if (reading.held === 'docked') return { clears: 'held while docked', short: 'held · docked' };
   if (reading.held === 'inside') return { clears: 'held inside the search zone', short: 'held · inside the zone' };
-  return { clears: `clears in ${clearsText(reading.clearsIn)} outside a ${Math.round(reading.radius).toLocaleString('en-US')} wu search zone`, short: 'clears in' };
+  return { clears: `clears in ${clearsText(reading.clearsIn)} outside a ${Math.round(reading.radius).toLocaleString('en-US')} u search zone`, short: 'clears in' };
 }
 
 export const footprintScreen = {
@@ -523,6 +523,7 @@ export const footprintScreen = {
   _dial: null,
   _dialHost: null,
   _read: null,
+  _reading: null,
   _trace: null,
   _hang: null,
   _hangList: null,
@@ -604,13 +605,19 @@ export const footprintScreen = {
     this._incidentState = board.querySelector('.fp-col-state--incident');
     this._consequenceState = board.querySelector('.fp-col-state--consequence');
     // .k-foot — the verbs that answer the traced source; rebuilt by _renderVerbs.
+    // Kept outside .fp-read so the column's overflow fold cannot fade the words that answer it
+    // (compact desktop used to leave PAY/BRIBE/FIND under the mask at rest).
     const foot = el('footer', 'k-foot fp-answer');
     this._foot = foot;
     const record = el('div', 'fp-drawer');
     record.setAttribute('aria-label', 'Chain record');
     this._record = record;
-    read.append(stateHost, trace, board, foot, record);
-    stage.append(dialHost, read);
+    // .fp-reading — dial's neighbour: the scrolling reading, then the verbs, then the record.
+    const reading = el('div', 'fp-reading');
+    this._reading = reading;
+    read.append(stateHost, trace, board);
+    reading.append(read, foot, record);
+    stage.append(dialHost, reading);
     rootEl.append(title, stage);
 
     this._dial = createHeatDial(dialHost, {
@@ -897,7 +904,7 @@ export const footprintScreen = {
       top = bounty > 0 ? 'No search on you · the bounty stands' : (recordWord ? 'No search on you' : 'Clean record · no search on you');
       rule = recordWord ? '' : (settled ? `${settled} chain${settled === 1 ? '' : 's'} settled${older ? ` · ${older} older` : ''}` : 'No chain on the record');
     } else {
-      const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} wu`;
+      const zone = `Search zone ${Math.round(reading.radius).toLocaleString('en-US')} u`;
       if (reading.held === 'impound') top = 'Impounded · recover the hull at the pound';
       else if (reading.held === 'docked') top = `${zone} · the clock holds while docked`;
       else if (reading.held === 'inside') top = `${zone} · inside it · the clock holds`;
@@ -1230,7 +1237,7 @@ export const footprintScreen = {
     if (this._pendingFocusKey) {
       const target = this._nodeButtons.get(this._pendingFocusKey);
       if (target && typeof target.focus === 'function') {
-        try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+        try { target.focus({ preventScroll: false }); } catch (_) { target.focus(); }
       }
       this._pendingFocusKey = null;
     }
@@ -1605,7 +1612,7 @@ export const footprintScreen = {
     if (event.key === 'ArrowLeft') {
       // Back to the dial: the traced source's sector key.
       const dialKey = this._dial && this._tracedSourceId ? this._dial.keyFor(this._tracedSourceId) : null;
-      if (dialKey) { event.preventDefault(); try { dialKey.focus({ preventScroll: true }); } catch (_) { dialKey.focus(); } }
+      if (dialKey) { event.preventDefault(); try { dialKey.focus({ preventScroll: false }); } catch (_) { dialKey.focus(); } }
       return;
     }
     if (event.key === 'ArrowRight') {

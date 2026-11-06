@@ -329,7 +329,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de46f79bc2ee2b6ba0d4e8f2a788e1a67a68bc33c200d94387d6e39184943478",
+  "contentHash": "039ceeec4cf650bf020ad874c952c90061b789ac1bb1d00de782bf99540a2f67",
   "dynamicGroups": [
     {
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-clamp-port-armor.dynamic",
@@ -2403,14 +2403,14 @@
       "uri": "red_kite.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 560140,
-    "sha256": "a1c955e5b92e67108a9e468a0d923ea1972f9655520ce1014e1670976cb8f7f4",
+    "bytes": 560192,
+    "sha256": "340006036a8760138939a14da372b4f5e48c2ccf4328f44196c3e88e39b1397f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2521,6 +2521,43 @@
       },
       {
         "matrix": [
+          0.6850000619888306,
+          0,
+          0,
+          0,
+          0,
+          0.6850000619888306,
+          0,
+          0,
+          0,
+          0,
+          0.6850000619888306,
+          0,
+          -2.600000023841858,
+          1.695666790008545,
+          -0.6220254004001617,
+          1
+        ],
+        "name": "LOD0_MOTION_RED_KITE_CLAMP_PORT_Armor",
+        "planIndex": 19,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RED_KITE_CLAMP_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RED_KITE_CLAMP_PORT_Armor",
+            "recordIds": [
+              "sf.render.red-kite.node.lod0-motion-red-kite-clamp-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2539,7 +2576,7 @@
           1
         ],
         "name": "MOTION_RED_KITE_CLAMP_STARBOARD",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2591,6 +2628,43 @@
       },
       {
         "matrix": [
+          0.6850000619888306,
+          0,
+          0,
+          0,
+          0,
+          0.6850000619888306,
+          0,
+          0,
+          0,
+          0,
+          0.6850000619888306,
+          0,
+          -2.600000023841858,
+          1.695666790008545,
+          0.6220254004001617,
+          1
+        ],
+        "name": "LOD0_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+        "planIndex": 22,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.red-kite.node.lod0-motion-red-kite-clamp-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2609,7 +2683,7 @@
           1
         ],
         "name": "MOTION_RED_KITE_FLAP",
-        "planIndex": 22,
+        "planIndex": 24,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2661,6 +2735,43 @@
       },
       {
         "matrix": [
+          1.9961916208267212,
+          0,
+          0,
+          0,
+          0,
+          1.9961916208267212,
+          0,
+          0,
+          0,
+          0,
+          1.9961916208267212,
+          0,
+          -1.4961916208267212,
+          0.7250000238418579,
+          -6.450000047683716,
+          1
+        ],
+        "name": "LOD0_MOTION_RED_KITE_FLAP_Armor",
+        "planIndex": 25,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RED_KITE_FLAP_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RED_KITE_FLAP_Armor",
+            "recordIds": [
+              "sf.render.red-kite.node.lod0-motion-red-kite-flap-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2679,7 +2790,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 24,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2731,7 +2842,7 @@
           1
         ],
         "name": "SOCKET_Courier_Canister",
-        "planIndex": 25,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2783,7 +2894,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 26,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2835,7 +2946,7 @@
           1
         ],
         "name": "SOCKET_Engine_Port",
-        "planIndex": 27,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2887,7 +2998,7 @@
           1
         ],
         "name": "SOCKET_Engine_Starboard",
-        "planIndex": 28,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2939,7 +3050,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 29,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3062,17 +3173,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
+        "planIndex": 20,
         "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
         "role": "hull"
       }
     ],
@@ -3082,7 +3193,7 @@
       "sha256": "7401fdb3cb10c8d18c92b8f538bac39a27bd84fb5f51fcd0c6feb8e4676954ba",
       "uri": "assets/ships/motions/red-kite.motion.json"
     },
-    "nodeCount": 30,
+    "nodeCount": 33,
     "primitives": [
       {
         "canopy": false,
@@ -3314,8 +3425,8 @@
           -0.6220254004001617,
           1
         ],
-        "name": "LOD0_MOTION_RED_KITE_CLAMP_PORT_Armor",
-        "planIndex": 19,
+        "name": "LOD0_MOTION_RED_KITE_CLAMP_PORT_Armor_1",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3343,8 +3454,8 @@
           0.6220254004001617,
           1
         ],
-        "name": "LOD0_MOTION_RED_KITE_CLAMP_STARBOARD_Armor",
-        "planIndex": 21,
+        "name": "LOD0_MOTION_RED_KITE_CLAMP_STARBOARD_Armor_1",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3372,8 +3483,8 @@
           -6.450000047683716,
           1
         ],
-        "name": "LOD0_MOTION_RED_KITE_FLAP_Armor",
-        "planIndex": 23,
+        "name": "LOD0_MOTION_RED_KITE_FLAP_Armor_1",
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3386,7 +3497,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/red_kite.glb"
   },
-  "runtimeHash": "7c11776b74c63375a58d0ada22b854f2cae11117b366d024b4c8c1febf1274c5",
+  "runtimeHash": "80315604559c7626199b60874413c568fe77792e9c3addcd94b4f79e7cc9c6e0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -297,8 +297,9 @@ function makeHarness(overrides = {}) {
     'engine trails must not reintroduce moving point-particle bead chains');
   const fleet = system._energy && system._energy.fleet;
   assert(fleet && fleet.activeShipCount >= 1, 'production fleet must reserve the player');
-  const plume = system._energy && system._energy.plumeSystem;
-  assert(plume && plume.group.visible, 'player production plume remains the primary engine cue');
+  const plume = system._energy && system._energy.plasmaStream;
+  assert(plume && isParentedTo(plume.group, state.render.scene),
+    'player plasma stream remains attached to the live scene; throttle drawing is checked above');
 }
 
 {
@@ -321,6 +322,7 @@ function makeHarness(overrides = {}) {
     data: { defId: 'ship_wasp' },
     _flightFrame: { throttle: 1 },
   };
+  npc.mesh = new THREE.Group(); state.render.scene.add(npc.mesh);
   state.entities.set(npc.id, npc);
   state.entityList.push(npc);
   // Fillers must actually exceed the fleet's sanity ceiling for overflow to exist. The
@@ -339,6 +341,7 @@ function makeHarness(overrides = {}) {
       data: { defId: 'ship_mule' },
       _flightFrame: { throttle: 1 },
     };
+    filler.mesh = new THREE.Group(); state.render.scene.add(filler.mesh);
     state.entities.set(filler.id, filler);
     state.entityList.push(filler);
   }
@@ -356,13 +359,13 @@ function makeHarness(overrides = {}) {
   assert(system._trailStreakPool && system._trailStreakPool.capacity > 0, 'trail streak pool must be initialized');
   const fleet = system._energy && system._energy.fleet;
   assert(fleet, 'family production fleet required');
-  const ion = fleet.familyPlume('engine_ion_small');
+  const playerStream = system._energy.plasmaStream;
   const vector = fleet.familyPlume('engine_vector');
-  assert(ion && ion.group.visible && ion.pool.activeCount > 0,
-    'player production thruster must own the live engine cue');
+  assert(playerStream && playerStream.inspect().active && playerStream.group.visible,
+    'player plasma stream must own the live engine cue');
   assert(vector && vector.group.visible && vector.pool.activeCount > 0,
     'near NPC vector family must be live simultaneously (stronger multi-ship assertion)');
-  assert.ok(ion.getActiveGeometryStats().vertexCount > 4, 'production geometry must be segmented');
+  assert.ok(playerStream.inspect().ribbon.stations > 1, 'player production geometry must be segmented');
   // 94e336133 (2026-09-24, "Draw overflow thrust as short ribbon jets, not sprite needles")
   // moved fleet-overflow thrust off the retired instanced-streak substrate onto
   // OverflowRibbonJets — the same swept-ribbon PlasmaRibbonPlume sheet as the player plume,
@@ -399,7 +402,7 @@ function makeHarness(overrides = {}) {
     particleTrailTime: !!system._particleMat.uniforms.uTrailTime,
     streakPoolCap: system._trailStreakPool.capacity,
     productionPlume: true,
-    productionFamilies: [ion.group.visible, vector.group.visible],
+    productionFamilies: [playerStream.group.visible, vector.group.visible],
     engineProfileId: system._energy && system._energy.engineProfileId,
     overflowJetSlots: overflowSlots.length,
     overflowJetShader: jetPlume.material.type,
@@ -407,7 +410,7 @@ function makeHarness(overrides = {}) {
     overflowJetAdmitted: overflowJets.admitted,
     ribbonProcedural,
     trailParticlesSpawned: inspect.trails.trailParticlesSpawned,
-    segmentedVerts: ion.getActiveGeometryStats().vertexCount,
+    segmentedStations: playerStream.inspect().ribbon.stations,
   }));
 }
 

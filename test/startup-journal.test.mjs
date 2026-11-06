@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { installStartupJournal, STARTUP_JOURNAL_KEY } from '../src/core/startupJournal.js';
+import { buildDiagnosticsReport } from '../src/ui/diagnosticsReport.js';
 
 function fixture(storage = new Map()) {
   const listeners = new Map();
@@ -18,6 +19,48 @@ function fixture(storage = new Map()) {
   const journal = installStartupJournal({ bus, state, host, storage: store, now: () => ++time });
   return { bus, state, host, storage, journal, sample: () => interval?.() };
 }
+
+test('loading snapshot captures bounded detached authored blockers only on request', () => {
+  const f = fixture();
+  let reads = 0;
+  const pending = Array.from({ length: 15 }, (_, id) => ({ id, type: 'ship', status: 'loading', hook: true, promised: true }));
+  f.state.render.authoredVisualReadiness = () => { reads++; return { playerId: 1, playerStatus: 'loading',
+    startingHubId: 2, startingHubStatus: 'authored', pipelineReady: false, ready: false,
+    flightReadyBlockers: [{ kind: 'role', role: 'player', metadata: { id: 1, type: 'ship' } }], openingPipelinePending: pending }; };
+  f.state.render.openingAuthoredQueueDiagnostics = () => ({ present: true, pending: 15, inFlight: 1,
+    jobs: [{ key: 'ship-1', lifecycle: 'in-flight', status: 'loading' }] });
+  f.state.render.pendingPipelineAdmissions = () => 2;
+  f.state.mode = 'loading'; f.bus.emit('game:loadingProgress', { id: 'authored-visuals' }); f.sample();
+  assert.equal(reads, 0, 'periodic sampling does not scan authored state');
+  const snapshot = f.journal.snapshot();
+  assert.equal(reads, 1); assert.equal(snapshot.loading.playerStatus, 'loading');
+  assert.equal(snapshot.loading.openingPipelinePendingCount, 15);
+  assert.equal(snapshot.loading.openingPipelinePending.length, 12);
+  assert.equal(snapshot.loading.pendingPipelineAdmissions, 2);
+  assert.equal(snapshot.loading.pendingAuthoredGpuResidency, null);
+  pending[0].status = 'changed';
+  assert.equal(snapshot.loading.openingPipelinePending[0].status, 'loading');
+  const report = buildDiagnosticsReport(f.state, { startup: snapshot, errors: [], env: {} });
+  assert.match(report, /Opening staging: .*"playerStatus":"loading"/);
+  f.state.mode = 'flight'; assert.equal(f.journal.snapshot().loading, undefined);
+  assert.equal(reads, 1, 'flight snapshots do not scan');
+  f.journal.dispose();
+});
+
+test('first-picture hold remains observable after mode advances to flight', () => {
+  const f = fixture();
+  let reads = 0;
+  f.state.mode = 'flight'; f.state.tick = 0;
+  f.state.render.firstPlayableFrameAt = null;
+  f.state.render.releaseOpeningPresentationHold = () => false;
+  f.state.render.authoredVisualReadiness = () => { reads++; return { playerStatus: 'loading' }; };
+  assert.equal(f.journal.snapshot().loading.playerStatus, 'loading');
+  delete f.state.render.releaseOpeningPresentationHold;
+  f.state.render.firstPlayableFrameAt = 100;
+  assert.equal(f.journal.snapshot().loading, undefined);
+  assert.equal(reads, 1, 'released flight does not perform the staging census');
+  f.journal.dispose();
+});
 
 test('production startup evidence survives a new document without an unload callback', () => {
   const first = fixture();

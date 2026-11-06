@@ -59,6 +59,10 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // during authoring. Omitting this small JSON subtree rejects otherwise valid GLBs.
   Object.freeze({ source: 'assets/ships/motions', destination: 'assets/ships/motions' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod0.glb', destination: 'assets/characters/ruckus/ruckus-lod0.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod1.glb', destination: 'assets/characters/ruckus/ruckus-lod1.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod2.glb', destination: 'assets/characters/ruckus/ruckus-lod2.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/pressure-core.glb', destination: 'assets/characters/ruckus/pressure-core.glb' }),
   // The authored audio tree ships: SAMPLE_MANIFEST sfx, bark_* register clips, and music beds
   // are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
   // Omitting it silently degrades the retail build to synth-only voices.
@@ -77,6 +81,10 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // The live wreck investigation catalog imports this small authored variant table.
   Object.freeze({ source: 'assets/wreck-court', destination: 'assets/wreck-court' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),
+  Object.freeze({ source: 'src/data/modelTruthCensus.json', destination: 'src/data/modelTruthCensus.json' }),
+  Object.freeze({ source: 'src/sim/titleAttractTapeData.json', destination: 'src/sim/titleAttractTapeData.json' }),
+  Object.freeze({ source: 'src/localization/catalogs/en-US.generated.json', destination: 'src/localization/catalogs/en-US.generated.json' }),
+  Object.freeze({ source: 'src/localization/barks.generated.json', destination: 'src/localization/barks.generated.json' }),
   Object.freeze({ source: 'vendor/addons/libs', destination: 'vendor/addons/libs' }),
 ]);
 
@@ -196,8 +204,17 @@ export async function createReleaseCopyPlans({
       : [];
     if (mapping.exclude != null) {
       omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
-      omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
+    const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+    if ((await lstat(sourceRoot)).isDirectory()) {
+      const alreadyOmitted = new Set(omissions.map((entry) => entry.path));
+      for (const entry of await collectRuntimeToolCacheOmissions(projectRoot, mapping)) {
+        if (alreadyOmitted.has(entry.path)) continue;
+        omissions.push(entry);
+        alreadyOmitted.add(entry.path);
+      }
+    }
+    omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     plans.push({ mapping, projection, omissions });
   }
   return plans;
@@ -216,6 +233,12 @@ export async function copyReleaseRuntimeTrees({
     const source = resolveContained(projectRoot, plan.mapping.source, 'release copy source');
     const destination = resolveContained(bundleRoot, plan.mapping.destination, 'release copy destination');
     await assertNoSymlinkPath(bundleRoot, plan.mapping.destination, 'release copy destination', { allowMissing: true });
+    const sourceInfo = await lstat(source);
+    if (sourceInfo.isFile()) {
+      await mkdir(dirname(destination), { recursive: true });
+      await copyFile(source, destination);
+      continue;
+    }
     const excluded = new Set(plan.omissions.map((entry) => entry.path));
     await copyProjectedDir(source, destination, source, excluded);
   }
@@ -345,6 +368,14 @@ export async function validateReleaseBuildReceipt({
 export async function digestTree(root, { exclude = new Set() } = {}) {
   const base = resolve(root);
   const files = [];
+  const info = await lstat(base);
+  if (info.isSymbolicLink()) throw new Error(`release receipt refuses symbolic link ${base}`);
+  if (info.isFile()) {
+    const path = basename(base);
+    if (!exclude.has(path)) files.push({ path, bytes: info.size,
+      sha256: createHash('sha256').update(await readFile(base)).digest('hex') });
+    return digestFileRecords(files);
+  }
   await walk(base, base, files, exclude);
   return digestFileRecords(files);
 }
@@ -397,6 +428,22 @@ async function collectExcludedOmissions(projectRoot, mapping) {
     }
   }
   for (const f of files) f.reason = 'exclude';
+  return files;
+}
+
+async function collectRuntimeToolCacheOmissions(projectRoot, mapping) {
+  const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+  if (basename(sourceRoot) === '__pycache__') {
+    // A mapping may itself point at a Python cache; its contents are never runtime assets.
+    const files = [];
+    await walk(sourceRoot, sourceRoot, files, new Set());
+    for (const file of files) file.reason = 'runtime-tool-cache';
+    return files;
+  }
+  const files = [];
+  const isRuntimeToolCacheFile = (rel) => rel.split('/').includes('__pycache__') || rel.endsWith('.pyc');
+  await walk(sourceRoot, sourceRoot, files, new Set(), isRuntimeToolCacheFile);
+  for (const file of files) file.reason = 'runtime-tool-cache';
   return files;
 }
 
@@ -465,6 +512,42 @@ async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
     const renderRecord = await readFileRecord(renderPath, renderRel);
     if (metadata.render?.bytes !== renderRecord.bytes || metadata.render?.sha256 !== renderRecord.sha256) {
       throw new Error(`${metadataUrl} render payload does not match its bytes and SHA-256`);
+    }
+    const renderBytes = await readFile(renderPath);
+    const renderJsonLength = renderBytes.length >= 20 ? renderBytes.readUInt32LE(12) : 0;
+    if (renderBytes.length < 20 || renderBytes.readUInt32LE(0) !== 0x46546c67
+        || renderBytes.readUInt32LE(16) !== 0x4e4f534a || 20 + renderJsonLength > renderBytes.length) {
+      throw new Error(`${metadataUrl} render GLB has an invalid JSON chunk`);
+    }
+    const renderJson = JSON.parse(renderBytes.toString('utf8', 20, 20 + renderJsonLength));
+    const glbResourceUris = new Set();
+    for (const [index, image] of (renderJson.images || []).entries()) {
+      if (typeof image?.uri !== 'string' || /^data:/i.test(image.uri)) continue;
+      if (image.mimeType !== 'image/ktx2') {
+        throw new Error(`${metadataUrl} image ${index} has an unsupported external URI; only declared KTX2 resources are supported`);
+      }
+      glbResourceUris.add(image.uri);
+    }
+    const declaredResourceUris = new Set((metadata.render.resources || []).map((resource) => resource.uri));
+    if (glbResourceUris.size !== declaredResourceUris.size
+        || [...glbResourceUris].some((uri) => !declaredResourceUris.has(uri))) {
+      throw new Error(`${metadataUrl} GLB external KTX2 image URIs do not match render.resources`);
+    }
+    for (const resource of metadata.render.resources || []) {
+      const resourcePath = resolve(dirname(metadataPath), ...resource.uri.split('/'));
+      const resourceRel = normalizeRel(relative(mappingRoot, resourcePath));
+      if (!resourceRel || resourceRel === '..' || resourceRel.startsWith('../')) {
+        throw new Error(`${metadataUrl} resource ${resource.uri} escapes ${mapping.source}`);
+      }
+      await assertNoSymlinkPath(
+        projectRoot,
+        normalizeRel(relative(projectRoot, resourcePath)),
+        'render-package resource',
+      );
+      const resourceRecord = await readFileRecord(resourcePath, resourceRel);
+      if (resourceRecord.bytes !== resource.bytes || resourceRecord.sha256 !== resource.sha256) {
+        throw new Error(`${metadataUrl} shared render resource ${resource.uri} does not match its declared bytes and SHA-256`);
+      }
     }
     const expectedRuntime = await buildRuntimeTableForRenderGlb(renderPath, {
       url: pilot.sourceUrl,

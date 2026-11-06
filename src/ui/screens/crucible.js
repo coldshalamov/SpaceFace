@@ -4,11 +4,9 @@
 // (src/ui/crucibleLaunch.js). The results surface explains how the run ended and offers the same
 // seed again. Neither writes state.run, the phase, or a fitting.
 //
-// The door is Field Hardware POSTER: stencil title, imaged selector tiles, smoked window over the
-// arena, engraved seed, one hazard Launch key. Results stay a story: a hero number, a column of
-// sentences, the build as fine print. This file owns no stylesheet; hardware is produced kit
-// sprites pinned on the elements. The DOM is built with `el` + appendChild only, because the
-// results unit test mounts the plate against a minimal fake document.
+// The door composes the shared ORRERY words, tiles, keys and stage selectors. Results tell the
+// run's story through its score, consequences and build. The DOM uses `el` + appendChild so
+// the results surface also mounts against the focused test document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { todayRankedRuns } from '../../chronicler/recordsWall.js';
@@ -27,6 +25,7 @@ import {
   lastCrucibleSetup,
   normalizeSeed,
   practiceLaunchFor,
+  canChooseSwarmOpeningLesson,
 } from '../crucibleLaunch.js';
 import {
   SWARM_STAKES,
@@ -117,6 +116,7 @@ import {
   runWhatKilledYouOffer,
   grudgeLedgerFor,
   caseFilesFor,
+  trickBookFor,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -783,6 +783,7 @@ export const crucibleScreen = {
     const door = this;
     let enterButton = null;
     let preparation = null;
+    let syncTrainingChoice = () => {};
     ensurePhysicsLabRoute(ctx);
     // PQ-146 Phase 3: the Crucible play view's trick callouts mount with the door — this screen
     // family owns the layer (its own fixed overlay in src/ui/stuntCallout.js); the flight HUD is
@@ -1146,6 +1147,7 @@ export const crucibleScreen = {
     }
 
     function syncMode() {
+      syncTrainingChoice();
       // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
       // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
@@ -2250,6 +2252,23 @@ export const crucibleScreen = {
             }
             records.appendChild(grudgeBlock);
           }
+          // Row 475 — the Trick Book: all seventeen named tricks, proven ones marked by the
+          // filed Best Lines. The book always lists the full menu; proof is the margin note.
+          {
+            const book = trickBookFor(doorProfile);
+            if (book.length) {
+              const bookBlock = el('div', 'sf-crd-trickbook');
+              const provenCount = book.filter((row) => row.proven).length;
+              bookBlock.appendChild(el('p', 'k-t-fine fh-legend',
+                `Trick Book — ${provenCount} of ${book.length} proven`));
+              for (const row of book) {
+                const marks = row.variants.length ? ` · ${row.variants.join(', ')}` : '';
+                bookBlock.appendChild(el('p', 'k-t-fine k-38',
+                  `${row.proven ? '✓' : '·'} ${row.name}${row.family ? ` (${row.family})` : ''}${marks}`));
+              }
+              records.appendChild(bookBlock);
+            }
+          }
         }
         this._refreshCabinetBoard = () => {
           const profile = loadCrucibleMeta();
@@ -2307,6 +2326,7 @@ export const crucibleScreen = {
     const foot = el('footer', 'k-foot sf-crd-foot');
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Crucible');
+    let trainingOpening = false;
     // The one launch path, shared by Enter and Quick play. INF-038.
     function launchCurrent(trialRuleset = null) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
@@ -2368,6 +2388,7 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
+      payload.openingLesson = !conveyor && launchRuleset === SWARM_RULESET && trainingOpening;
       if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
@@ -2391,6 +2412,33 @@ export const crucibleScreen = {
       }
       requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
+    const training = word('Training: Off', 'k-word');
+    paintKey(training, 'small');
+    training.setAttribute('aria-pressed', 'false');
+    const trainingApplies = () => canChooseSwarmOpeningLesson({
+      ruleset, daily, weekly, raceGhost, pendingShare, practiceQueued,
+    });
+    syncTrainingChoice = () => {
+      const enabled = trainingApplies();
+      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      training.disabled = !enabled;
+      training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      training.setAttribute('aria-label', enabled
+        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
+        : 'Training opening unavailable for the selected mode or challenge.');
+      training.title = enabled
+        ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
+        : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
+    };
+    syncTrainingChoice();
+    training.addEventListener('click', () => {
+      if (!trainingApplies()) return;
+      trainingOpening = !trainingOpening;
+      training.setAttribute('aria-pressed', trainingOpening ? 'true' : 'false');
+      syncTrainingChoice();
+      cue('confirm');
+    });
+    addWord(footWords, training);
     const quick = word('Quick play', 'k-word--emph');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
     quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
@@ -2523,7 +2571,7 @@ export function resultRows(result) {
   if (!result) return [];
   const progress = roundProgress(result);
   return [
-    ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost'))],
+    ['Outcome', result.stopReason === 'player_retired' ? 'Retired · unranked' : (result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')))],
     ['Reached', reachedRow(result)],
     ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
     ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
@@ -2541,7 +2589,7 @@ export function resultRows(result) {
       ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
       : []),
     ['Score', String(result.score || 0)],
-    ['Salvage', `${result.credits || 0} cr`],
+    ['Run purse', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
     ['Seed', String(result.seed || 0)],
     // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:
@@ -2741,11 +2789,11 @@ export function buildLead(picks) {
 
 /**
  * Who, with what, from which side, through which layer — plus, when the run recorded one, the
- * telegraph the player missed with its warning time. Empty when no defeat receipt was published
+ * recorded tell or earlier damage with its timing. Empty when no defeat receipt was published
  * — which happens on a victory, on an abandoned run, AND on a defeat that carries no receipt
  * (`run:ended` defaults its outcome to 'defeat' whether or not anything killed the player).
  */
-export function killChainRows(defeat) {
+export function killChainRows(defeat, death = null) {
   if (!defeat) return [];
   const killer = defeat.attacker
     ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
@@ -2757,15 +2805,23 @@ export function killChainRows(defeat) {
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
-  // PQ-174.06: the telegraph as two lines beside the cause — the frontend direction sheet's
-  // "the cause of death and its telegraph as two lines". A receipt that predates the field
-  // renders exactly as before.
-  if (defeat.telegraphName && !(defeat.source && defeat.source.kind === 'environment')) {
-    const lead = Number.isFinite(Number(defeat.telegraphLeadMs))
-      ? ` — ${Math.max(0, Math.round(Number(defeat.telegraphLeadMs)))}ms before impact` : '';
-    rows.push(['It warned you', `${defeat.telegraphName}${lead}`]);
-  }
+  const leadIn = deathLeadInRow(defeat, death);
+  if (leadIn) rows.push(leadIn);
   return rows;
+}
+
+// Damage history is not an attack windup. The result's provenance outranks a richer old
+// defeat receipt; missing provenance stays neutral rather than borrowing its tell claim.
+function deathLeadInRow(receipt, death = null) {
+  const record = death ? { ...receipt, ...death, telegraphSource: death.telegraphSource } : receipt;
+  if (!record || record.source?.kind === 'environment'
+    || typeof record.telegraphName !== 'string' || !record.telegraphName) return null;
+  const label = record.telegraphSource === 'witnessed' ? 'Recorded tell'
+    : record.telegraphSource === 'incoming-fire' ? 'Earlier damage' : 'Recorded event';
+  const ms = record.telegraphLeadMs;
+  const lead = typeof ms === 'number' && Number.isFinite(ms)
+    ? ` — ${Math.max(0, Math.round(ms))} ms before the fatal hit` : '';
+  return [label, `${record.telegraphName}${lead}`];
 }
 
 /**
@@ -2791,6 +2847,7 @@ export function vitalsFigures(defeat) {
  */
 export function resultTitle(result) {
   if (result && result.outcome === 'victory') return 'Arena Cleared';
+  if (result && result.stopReason === 'player_retired') return 'Run Retired';
   if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';
   if (result && result.outcome === 'extracted') return 'Extracted';
   if (result && result.outcome === 'aborted') return 'Run Ended';
@@ -2924,13 +2981,8 @@ export function storySentences(result) {
     // at what the headline cannot say: the tell. causeText earns a line only without a receipt --
     // the trail-only "... fire took you apart" sentence, which the headline does not carry.
     if (!attacker && typeof death.causeText === 'string' && death.causeText) say(death.causeText);
-    if (typeof death.telegraphName === 'string' && death.telegraphName) {
-      const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? Number(death.telegraphLeadMs) : 0;
-      const tell = lowerFirstWord(death.telegraphName);
-      say(attacker
-        ? `${attacker}'s tell was ${tell} — ${lead} ms of warning.`
-        : `The tell was ${tell} — ${lead} ms of warning.`);
-    }
+    const leadIn = deathLeadInRow(result.defeat, death);
+    if (leadIn) say(`${leadIn[0]}: ${leadIn[1]}`);
     if (typeof death.counterplay === 'string' && death.counterplay) say(death.counterplay);
   }
   const moments = Array.isArray(result.moments) ? result.moments : [];
@@ -2952,12 +3004,6 @@ function sentence(text) {
   const line = String(text == null ? '' : text).trim();
   if (!line) return '';
   return /[.!?…:]$/.test(line) ? line : `${line}.`;
-}
-
-/** "Weapon charge" reads mid-sentence as "weapon charge"; "EMP burst" keeps its capitals. */
-function lowerFirstWord(text) {
-  const words = String(text || '').trim();
-  return /^[A-Z][a-z]/.test(words) ? words[0].toLowerCase() + words.slice(1) : words;
 }
 
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
@@ -3217,10 +3263,10 @@ function renderBestLineReview(line, hooks = {}) {
   return review;
 }
 
-function renderKillChain(band, defeat) {
+function renderKillChain(band, defeat, death = null) {
   // Threat colour on the two rows that name the enemy. The label beside each is the channel that
   // survives forced-colors and colour blindness; the tint is never the only one.
-  const chain = pairRows(killChainRows(defeat), 'sf-crres__chain',
+  const chain = pairRows(killChainRows(defeat, death), 'sf-crres__chain',
     (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
   band.appendChild(chain);
 
@@ -3259,7 +3305,14 @@ function renderLastSeconds(band, trail) {
 }
 
 function renderLedger(band, result) {
-  band.appendChild(pairRows(resultRows(result), 'sf-crd-grid'));
+  const ledger = el('ul', 'k-rows sf-crd-grid');
+  for (const [label, value] of resultRows(result)) {
+    if (label === 'Stake') {
+      ledger.appendChild(staticRow(label, swarmStakeFor(result.swarmStake).label,
+        { sub: swarmStakePitch(result.swarmStake) }));
+    } else ledger.appendChild(staticRow(label, value));
+  }
+  band.appendChild(ledger);
   // INF-035: the one real achievement, small and beside the score — the strongest banked
   // stunt as a cause-to-consequence line, or an honest alternative when there is none.
   const feat = featDiagram(result);
@@ -3569,6 +3622,7 @@ export const crucibleResultsScreen = {
   // the spec is plain data (no renderer import), and null is the designed fallback every
   // time: under reduced motion, after the visible SKIP, or when no tape was recorded.
   stage(ctx) {
+    if (resultsOwner(ctx)?.lastResult?.()?.stopReason === 'player_retired') return null;
     return killcamStageRequestFor(ctx && ctx.state);
   },
 
@@ -3595,7 +3649,7 @@ export const crucibleResultsScreen = {
 
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
     // idempotent and gets exactly this tape. A seal failure must never take down the plate.
-    try { takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
+    try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
 
     // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
     // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
@@ -3605,6 +3659,9 @@ export const crucibleResultsScreen = {
     title.appendChild(h);
     title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
       result && result.headline ? result.headline : 'The run ended.'));
+    if (result?.stopReason === 'player_retired' && result.bankLine) {
+      title.appendChild(el('p', 'k-sentence', result.bankLine));
+    }
     rootEl.appendChild(title);
 
     // SWARM-05 §7.4 — celebrate FIRST, post-mortem second. The swarm plate leads with what
@@ -3641,7 +3698,7 @@ export const crucibleResultsScreen = {
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
       if (id === 'story') renderStory(band, result);
-      else if (id === 'kill_chain') renderKillChain(band, result.defeat);
+      else if (id === 'kill_chain') renderKillChain(band, result.defeat, result.death);
       else if (id === 'last_seconds') renderLastSeconds(band, result.damageTrail);
       else if (id === 'ledger') renderLedger(band, result);
       else if (id === 'build') renderBuild(band, result);
@@ -3743,7 +3800,7 @@ export const crucibleResultsScreen = {
 
     // The kill-cam's visible SKIP: the fight is playing behind the plate right now, so the
     // word leads the ways out. After it, the authored still is the picture and stays so.
-    if (ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+    if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
       const skipCam = addWord(word('Skip the kill-cam', 'k-word--emph'));
       skipCam.addEventListener('click', () => {
         skipKillcamPlayback();
@@ -3977,6 +4034,9 @@ export function resultCelebration(result) {
     lines.push(banked > 0
       ? `${banked} cr banked into the hangar — the bounty now stands at ${chest} cr.`
       : `The hangar bounty stands at ${chest} cr.`);
+    if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
+      lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
+    }
   }
   const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
   for (const row of unlocks) {
@@ -4057,7 +4117,7 @@ function resultFigures(result) {
     ['Wave', String(reached || 0)],
     ['Kills', String(result.kills || 0)],
     swarm ? ['Best kill chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
-    ['Salvage', `${result.credits || 0}`],
+    ['Run purse', `${result.credits || 0}`],
   ];
   const box = el('div', 'orr-crres-figures');
   for (const [word, value] of figures) {
@@ -4082,13 +4142,9 @@ export function deathDialSpec(result, ctx) {
   const vitals = defeat.vitalsPct && typeof defeat.vitalsPct === 'object' ? defeat.vitalsPct : {};
   const trail = Array.isArray(result.damageTrail) ? result.damageTrail : [];
   const breakdown = damageBreakdown(trail);
-  const rows = new Map(killChainRows(defeat));
   const death = result.death && typeof result.death === 'object' ? result.death : null;
-  let warn = rows.get('It warned you') || '';
-  if (!warn && death && typeof death.telegraphName === 'string' && death.telegraphName) {
-    const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? ` — ${Math.round(Number(death.telegraphLeadMs))} ms before impact` : '';
-    warn = `${death.telegraphName}${lead}`;
-  }
+  const rows = new Map(killChainRows(defeat, death));
+  const leadIn = deathLeadInRow(defeat, death);
   const player = ctx && ctx.state && ctx.state.player;
   const ships = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
   const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
@@ -4108,7 +4164,7 @@ export function deathDialSpec(result, ctx) {
       label: 'Killed by',
       name: rows.get('Killed by') || 'Unidentified attacker',
       detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
-      warn: warn ? `It warned you: ${warn}` : '',
+      warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
     },
   };
 }

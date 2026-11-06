@@ -772,14 +772,22 @@ export class EnergyBoltPool {
     }
   }
 
-  dispose() {
+  dispose({ disposeGpu = true } = {}) {
     this._disposed = true;
     this._unregisterProjectileBody();
     unregisterDynamicBufferOwner(this.dynamicBufferOwner);
     this.dynamicBufferOwner = null;
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
-    this.geometry.dispose();
-    this.material.dispose();
+    this.mesh.count = 0;
+    this.entityIds.fill(-1);
+    this.occupantGenerations.fill(NaN);
+    this.byEntity.clear();
+    this._duplicateEntities.clear();
+    this.writeCount = 0;
+    if (disposeGpu) {
+      this.geometry.dispose();
+      this.material.dispose();
+    }
   }
 }
 

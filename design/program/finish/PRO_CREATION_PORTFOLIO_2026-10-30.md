@@ -1,0 +1,53 @@
+# Additional creation portfolio — 2026-10-30
+
+## Current status: Pro queued; usage limit observed
+
+November5,01:05UTC recheck: the actual regular ChatGPT menu still shows Pro5of5, Locked and Usage limit reached, with Chat selected and Work unselected. No prompt was entered/submitted; only the new empty check tab closed. All five remain unsent. Reset time is unknown; no substitute model/app is authorized.
+
+November4,21:52UTC: all five remain unsent. The integrated Browser is now reachable. A fresh regular
+ChatGPT page had Chat selected and Work unselected; its actual model menu showed **Pro,5of5**, a
+locked power slider and **Usage limit reached**. No prompt was submitted and no alternate model/app
+was used. Only the empty check tab created for this observation was closed. The earlier18:09UTC
+`Browser is not available: iab` result is historical; it does not describe the current browser.
+The quota reset time remains unknown. Refresh the exact remote base and interface packet before
+any later authorized Pro dispatch, and keep main game integration moving meanwhile.
+
+The integrated Browser connects in Codex. On the 2026-11-03 recheck, the actual regular ChatGPT
+page had **Chat** selected, **Work** unselected, and the GPT-6 family. The model/effort menu
+showed **Medium**, a disabled power control and **“Usage limit reached”**. Pro was not available
+in that observed menu. No prompt was submitted and the menu was closed. Correct Pro dispatches
+remain **zero**; all five briefs below remain unsent. Refresh their base/interface packet before dispatch.
+Use the integrated Browser for these new Pro conversations. Work, alternate models and native
+thread creation are not substitutes for this request. Keep the main game integration moving
+while the Pro jobs are blocked by the observed limit.
+
+## Earlier wrong-product attempts: rejected
+
+The five conversations below were created in ChatGPT Work on the default GPT-6.1 Sol Medium model.
+This was the wrong product for the request. **No ChatGPT Pro jobs were dispatched, no Pro artifacts
+are awaited, and none of these Work chats is accepted for the Pro request.** The user intended Pro
+through integrated Browser only. An earlier host-access error did not establish that the user was
+in Work or that their Browser setting was disabled, and did not authorize another product. That
+connection issue is historical; the current observed blocker is the Pro usage limit above.
+No further Work prompts or Work creation are authorized for this Pro request.
+
+All five Work chats were archived through native controls. A later native read confirmed every
+turn completed and every chat is idle; no generation remains active in them. Their chat IDs below
+are retained only as cleanup references, not as jobs or integration requirements. They were not
+cancelled, and completion/archiving establishes no refund or reversal of their past cost.
+
+The five prepared briefs remain **unsent Pro candidates**. They were designed with disjoint proposed
+scopes under `src/features/<id>/**` and `test/pro-<id>*`, using base
+`871c27854bb2acff09a80595844d9731d33b037a`. The listed branches are planning metadata only; no remote
+artifacts or branches are expected from the rejected Work chats. If dispatched through the intended
+Pro route later, the controller owns review, improvement, central registration, asset
+declaration/admission, ordinary-route placement, integration and direct verification. None of the
+current finishing work was delegated.
+
+| Prepared feature outcome | Archived Work chat ID (cleanup/audit reference only) | Proposed source scope | Planned branch (inactive) |
+|---|---|---|---|
+| **Tuning Fork Array:** towable relay-buoy signal puzzle that resolves a wreck beacon, with reversible recovery, deterministic geometry, choice and durable completion. | [6ae4233d-25f8-83ea-8099-3c01bbad4fd5](https://chatgpt.com/c/6ae4233d-25f8-83ea-8099-3c01bbad4fd5) | `src/features/tuning-fork-array/**`; `test/pro-tuning-fork-array*` | `codex/pro-tuning-fork-array` |
+| **Glassreef Garden:** bounded crystal-nursery harvest/rescue encounter with physical stress/viability, recoverable handling, and harvest/restoration choice. | [6ae42344-c2a0-83e9-8d22-90c3763890f8](https://chatgpt.com/c/6ae42344-c2a0-83e9-8d22-90c3763890f8) | `src/features/glassreef-garden/**`; `test/pro-glassreef-garden*` | `codex/pro-glassreef-garden` |
+| **Wayfarer House:** finite mobile habitat convoy and authored relocation journey where towing, supplies, defense and destination choice shape persistent consequences. | [6ae42345-39d8-83e9-bc6d-97da07c2967f](https://chatgpt.com/c/6ae42345-39d8-83e9-bc6d-97da07c2967f) | `src/features/wayfarer-house/**`; `test/pro-wayfarer-house*` | `codex/pro-wayfarer-house` |
+| **Iona Vey:** recurring salvage rival across three physical encounters, with fair claims, cooperation/rivalry outcomes and persistent cargo/receipt continuity. | [6ae42346-1428-83e8-a45c-09e282237aad](https://chatgpt.com/c/6ae42346-1428-83e8-a45c-09e282237aad) | `src/features/iona-vey-rival/**`; `test/pro-iona-vey-rival*` | `codex/pro-iona-vey-rival` |
+| **Nacre Sluice:** compact physical refinery basin and mission with baffles, gates, pressure jets, alternative solutions and recovery after mistakes. | [6ae42346-8fcc-83e8-ae03-bdb7d5d47f5c](https://chatgpt.com/c/6ae42346-8fcc-83e8-ae03-bdb7d5d47f5c) | `src/features/nacre-sluice/**`; `test/pro-nacre-sluice*` | `codex/pro-nacre-sluice` |

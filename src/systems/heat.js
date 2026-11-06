@@ -345,7 +345,8 @@ export const heat = {
     this.bus = ctx.bus;
     this.registry = ctx.registry;
     const player = this.state.player;
-    if (player && typeof player.heat !== 'number') player.heat = 0;
+    // NaN is 'number' — a torn scalar still normalizes clean.
+    if (player && !Number.isFinite(player.heat)) player.heat = 0;
     if (player) {
       ensureHeatZone(player);
       publishWantedTier(player);
@@ -499,6 +500,14 @@ export const heat = {
       rememberAppliedReport(player, reportId);
       return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
     }
+    // THE RUN SEAL (PQ-135) — same contract as _raise/_setHeat and the wreck-court listener,
+    // which checks the seal first. Refuse BEFORE the ledger write: a receipt consumed while the
+    // seal holds could never apply once the run ends — the id would read spent with no heat ever
+    // written. Refusing keeps the id unspent so a journal replay after the seal lifts still
+    // convicts.
+    if (isRunSealed(this.state)) {
+      return { applied: false, reason: 'sealed', incidentReceiptId, delta: 0 };
+    }
 
     const delta = receipt.kind === 'lawful_kill'
       ? KILL_NONHOSTILE * 1.3
@@ -565,6 +574,11 @@ export const heat = {
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
     if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
+    // A lawful target still chips while hostile: a lawful unit that only turned hostile because
+    // the player fired first must not launder the rest of the assault — without the factionLawful
+    // clause the first hit would provoke retaliation and every later hit would read "self-defense"
+    // for free. (A law hunter chasing a genuinely WANTED pilot never reaches this line: that
+    // pilot's heat already sits at/above HIT_SUSPICION_MAX, which returns below.)
     if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
       const player = this.state.player;
       // Suspicion, never conviction: unprovoked hits can fill the ledger up to just under
@@ -623,6 +637,9 @@ export const heat = {
       this._emitChanged('evidence expired', true);
     }
     const zone = ensureHeatZone(player);
+    // A torn scalar (NaN, ±Infinity, a foreign write) normalizes clean rather than
+    // riding the ledger forever — every reader keys on finite heat.
+    if (!Number.isFinite(player.heat)) player.heat = 0;
     if (!player.heat) {
       publishWantedTier(player);
       this._clearZone();
@@ -630,7 +647,12 @@ export const heat = {
     }
     const level = heatLevelFor(player.heat);
     if (level <= 0) {
-      this._setHeat(0, 'heat cleared');
+      // Suspicion residue is the ledger's memory of near-misses: hit chips banked under
+      // HIT_SUSPICION_MAX, an unread weir crossing, and partial cools all live below
+      // the WANTED gate and accumulate there until a signed clear lands. Zeroing the
+      // residue here made the plateau and the repeat-runner price unreachable — every
+      // sub-threshold write was discarded one tick later.
+      this._clearZone();
       return;
     }
     if (state.mode !== 'flight') return; // frozen in menus
@@ -692,7 +714,12 @@ export const heat = {
     if (method !== 'mass' && method !== 'speed' && method !== 'decoy') return;
     const player = this.state && this.state.player;
     if (!player || wantedTierFor(player.heat) !== WANTED_TIER.NETS) return;
-    this._dropOneLevel('broke wanted net');
+    // The nets band spans two levels, but the checkpoint is THE net: break_net is the tier's
+    // escape verb, so the drop always lands below the nets floor. A one-level step from the top
+    // of the band would leave the pilot inside nets and the law would post another checkpoint
+    // behind the one just broken — the escape would have changed nothing.
+    const dropTo = Math.min(heatLevelFor(player.heat) - 1, SCRUB_NETS_FLOOR_LEVEL - 1);
+    this._setHeat(dropTo <= 0 ? 0 : heatValueForLevel(dropTo), 'broke wanted net');
   },
 
   _onImpoundRecovered(payload) {
@@ -953,17 +980,41 @@ function killClassMultiplier(victimClass) {
 
 function isWantedHeatVictim(state, payload, victimId) {
   if (victimId != null && state && victimId === state.playerId) return false;
+  // Onboarding's scripted target actors (the flight trainer, the gunnery buoy,
+  // the Claim Jumper and its wing) are the lesson's own target dummies — the
+  // tutorial literally orders shots at them ("Fire a short burst into the
+  // raider"), and their passive ai flags would bank permanent suspicion residue
+  // for obeying the teacher. A kill stays adjudicated by lawSecurity as ever;
+  // unprovoked-hit chips are the class that must never mint on the training
+  // hulls. Set dressing (the raid hauler, the throw rock) still prices shots —
+  // nothing in the script tells the player to fire on the bystander.
+  const victim = victimId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(victimId)
+    : null;
+  const vd = victim && victim.data;
+  if (vd && (vd.onboardingTraining === true || vd.onboardingRaid === true || vd.onboardingRaidWing === true)) return false;
   const type = wantedHeatVictimType(state, payload, victimId);
   if (type && !WANTED_HEAT_VICTIM_TYPES.has(type)) return false;
   return true;
 }
 
+// `combat:damage` reuses `payload.type` for the dominant DAMAGE CHANNEL — 'kinetic', 'thermal',
+// 'ion', 'plasma', 'phase' (src/combat/damage.js:446), with the legacy alias words the channel
+// table also maps. The word never names the victim. Classify the victim from the live entity
+// record first; a payload type only counts as a victim kind when it could not be a channel word
+// (synthetic emitters that carry the entity kind, e.g. test harnesses and scripted payloads).
+const DAMAGE_CHANNEL_WORDS = new Set([
+  'kinetic', 'thermal', 'ion', 'plasma', 'phase', 'energy', 'explosive', 'emp',
+]);
+
 function wantedHeatVictimType(state, payload, victimId) {
-  if (payload && typeof payload.type === 'string' && payload.type) return payload.type;
   const entity = victimId != null && state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(victimId)
     : null;
-  return entity && entity.type || null;
+  if (entity && typeof entity.type === 'string' && entity.type) return entity.type;
+  const word = payload && typeof payload.type === 'string' && payload.type;
+  if (word && !DAMAGE_CHANNEL_WORDS.has(word)) return word;
+  return null;
 }
 // PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than
 // from a copy of it, and so tuning has one home.

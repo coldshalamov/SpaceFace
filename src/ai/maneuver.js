@@ -965,7 +965,14 @@ function predictFormationSlot(intent, predictionTicks) {
 }
 
 function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters, hullScale) {
-  if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
+  if (intent.matchFormationVelocity === true && intent.flightPoint
+      && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
+    // A committed moving socket holds its frame, not the universe's origin. The tracker
+    // handles relative braking; the stationary-slot brake must not erase that drift.
+    return { ...trackPoint(self, intent.flightPoint, intent.formationVelocity, 0.8), contactSeek: true };
+  }
+  if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)
+      && !(intent.seekContactWhenAvailable === true && target)) {
     const speed = intent.enemyMindOwned && intent.kind === ManeuverKind.RETREAT
       ? config.retreatSpeed : config.interceptSpeed;
     return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1));

@@ -745,6 +745,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     lastRecordTick = -1;
     rebuildRequired = false;
     rebuildReason = null;
+    suppressedDestroyIds.clear();
     return true;
   }
 

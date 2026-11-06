@@ -1,4 +1,15 @@
+import {
+  AUTOPILOT_ARRIVAL_RADIUS,
+  applyAutoTargetHelmProfile,
+  applyAutoTargetPathProfile,
+  resolveAutopilotTarget,
+} from '../core/flight/flightPresentationReads.js';
+export {
+  DOCK_ORBIT_RADIUS_MULT, DOCK_ORBIT_STEP_DEG, dockOrbitWaypoint,
+  applyAutoTargetHelmProfile, applyAutoTargetPathProfile, resolveAutopilotTarget,
+} from '../core/flight/flightPresentationReads.js';
 import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
+import { isSwarmCoverLive } from './swarmCoverSeek.js';
 import { isPlayerSaucer } from '../data/saucer.js';
 import { saucerVelocity } from '../core/flight/saucerControl.js';
 import { queueSaucerVelocity } from '../core/physicsAuthority.js';
@@ -20,7 +31,7 @@ import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
 import { composePlayerDriveAuthority, DAMAGED_DRIVE_AUTHORITY_FLOOR } from '../core/flight/driveAuthority.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { physicalObstacleBody, queryNearbyPhysicalObstacles } from '../core/physicalObstacleQuery.js';
 import {
   cryoLockStickLive,
   helmControlScaleFromCombat,
@@ -39,16 +50,8 @@ import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuit
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { raceGridHolding } from './racingSteer.js';
 import { consumePrecisionBoostIntent } from './racingPrecision.js';
-import {
-  corridorStateFor,
-  proxyScaleFor,
-  resolveBerthWorld,
-  resolveCollisionProxyManifest,
-  resolveCorridorAxisWorld,
-  resolveDockAnchor,
-} from '../data/collisionProxyManifests.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
-import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
+import { PLANET_SITE } from '../data/planets.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -72,13 +75,10 @@ export const FLIGHT_BANK_TUNING = Object.freeze({
 // Turn stays sharp: NPC yaw already goes through the torque-limited yaw controller.
 const NPC_INPUT_SLEW = 2.6;      // per second, throttle and strafe
 const AUTOPILOT_TURN_SOFT_ANGLE = 0.62;
-const AUTOPILOT_ARRIVAL_RADIUS = 38;
 const AUTOPILOT_MAX_LOOKAHEAD = 760;
 const AUTOPILOT_MIN_LOOKAHEAD = 180;
 const AUTOPILOT_CAPTURE_SPEED_FRACTION = 0.72;
 const AUTOPILOT_CAPTURE_ALIGNMENT = 0.58;
-const AUTO_TARGET_HELM_MULT = 1.5;
-const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
 
 // MASSLINE flight-lane handoff. A sling tag does not grant speed: it only tells the assisted
 // governor that the current overspeed came from an external physics verb, so the governor may
@@ -352,6 +352,38 @@ export const flightV3 = {
       this._syncPlayerFlightMode(state, autopilot);
     }
 
+    // Hero maneuvers publish bounded V3 inputs only. The choreography owner cannot write a
+    // pose or velocity; its life- and tick-bound packet is consumed here before propulsion.
+    const maneuverIntent = isPlayer && !saucer ? state.flightRuntime?.heroManeuverIntent : null;
+    const heroManeuverActive = !!(maneuverIntent && maneuverIntent.version === 1
+      && maneuverIntent.tick === state.tick
+      && maneuverIntent.playerId === entity.id
+      && maneuverIntent.occupantGeneration === entity.occupantGeneration);
+    const pinballBoostRequest = isPlayer && !saucer ? state.flightRuntime?.heroManeuverBoost : null;
+    const pinballBoostActive = !!(pinballBoostRequest && pinballBoostRequest.version === 1
+      && pinballBoostRequest.tick === state.tick
+      && pinballBoostRequest.playerId === entity.id
+      && pinballBoostRequest.occupantGeneration === entity.occupantGeneration
+      && pinballBoostRequest.suppressBoost === true);
+    if (heroManeuverActive) {
+      input.throttle = clamp(finite(maneuverIntent.throttle), -1, 1);
+      input.strafe = clamp(finite(maneuverIntent.strafe), -1, 1);
+      input.turn = clamp(finite(maneuverIntent.turn), -1, 1);
+      input.boost = maneuverIntent.boost === true;
+      input.boostPressed = input.boost && !this._prevBoost;
+      input.brake = false;
+      input.drawFlight = undefined;
+      input.travelDrive = undefined;
+      input.velocityVectoring = false;
+      input.unvectoredCruiseSteering = false;
+    }
+    if (pinballBoostActive) {
+      // A fitted Pinball Rush owns the Boost hold/release gesture for this exact hull life and
+      // tick. Ordinary steering remains live; only the competing boost/dash path is suppressed.
+      input.boost = false;
+      input.boostPressed = false;
+    }
+
     // Player boost/dash subsystem (port of src/systems/flight.js:118-188). Runs before
     // stepPropulsion so the resource-gated boost state feeds the propulsion kernel's thrust
     // scaling, and so the dash impulse is queued through physics authority this tick.
@@ -367,6 +399,51 @@ export const flightV3 = {
     if (entity.data?.shipjackDriveRemoved) {
       driveAuthority.forward = 0; driveAuthority.reverse = 0;
       driveAuthority.strafe = 0; driveAuthority.yaw = 0;
+    }
+    // A current rider spends no translation authority during its own live ride. Keep yaw and
+    // all pre-existing drive restrictions intact; field/physics forces remain independent.
+    const ride = entity.data?.swarmRide;
+    const run = state.run;
+    if (!isPlayer && ride && ride.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < ride.until
+      && (entity.data.swarmAffix === 'rider' || entity.data.swarmAffix2 === 'rider')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0; driveAuthority.strafe = 0;
+    }
+    // A coverseek elite (inf-coverseek) holds its ground while a room rock sits on the line
+    // to the player: forward/reverse cut, yaw and strafe intact — the hull coasts its orbit
+    // behind the stone until the pilot flanks or a hit flushes it. swarmElites owns the
+    // record's life cycle under the same run gates as the ride; flight only reads it live.
+    const cover = entity.data?.swarmCover;
+    if (!isPlayer && cover
+      && isSwarmCoverLive(cover, { tick: state.tick, life: entity.occupantGeneration ?? null })
+      && state.entities?.get(entity.id) === entity) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0;
+    }
+    // A committed diver (inf-well-dive) flies its approach THROUGH the room's pull: no drive
+    // authority is cut — the commit is the trick, thrust through the well arrives hot and
+    // bent — but while the hull is still outside the grip, translation answers the stamped
+    // well center: turn onto the dive bearing under a committed throttle floor, guns still on
+    // the pilot (NPC aim is not this record's business). Inside the grip the ordinary closing
+    // intent resumes and the field's own acceleration shapes the slingshot. swarmElites owns
+    // the record's life under the same run gates as the ride and cover; flight only reads it.
+    const dive = entity.data?.swarmDive;
+    if (!isPlayer && dive && dive.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < dive.until
+      && (entity.data.swarmAffix === 'diver' || entity.data.swarmAffix2 === 'diver')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')
+      && entity.pos && Number.isFinite(dive.cx) && Number.isFinite(dive.cz)) {
+      const wellDx = dive.cx - entity.pos.x;
+      const wellDz = dive.cz - entity.pos.z;
+      if (Math.hypot(wellDx, wellDz) > dive.radius * SWARM_DIVE_GRIP_FRAC) {
+        const diveBearing = Math.atan2(wellDz, wellDx);
+        const diveErr = wrapAngle(diveBearing - entity.rot);
+        input.turn = clamp(diveErr * SWARM_DIVE_TURN_GAIN, -1, 1);
+        if (input.throttle < SWARM_DIVE_THROTTLE_FLOOR) input.throttle = SWARM_DIVE_THROTTLE_FLOOR;
+        input.brake = false;
+      }
     }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
@@ -385,7 +462,8 @@ export const flightV3 = {
       // Shift throws a shadow ahead and the release puts the hull there. The
       // capacitor still refills through the boost machine, with the key forced
       // off so a dash impulse and the afterburner cannot also fire.
-      const veil = !saucer && !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      const veil = !saucer && !autoBoost && !pinballBoostActive
+        && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
       let veilBusy = false;
       if (veil) {
         const phase = stepPhaseBlink({
@@ -406,9 +484,22 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || veil || saucer,
+        suppressDash: autoBoost || veil || saucer || pinballBoostActive,
         suppressRegen: requestedTravelBurn || veilBusy,
       });
+      if (pinballBoostActive && typeof pinballBoostRequest.dashRequestId === 'string') {
+        const accepted = this._triggerDash(entity, normalizeBoostResource(entity), state,
+          pinballBoostRequest.dashScale);
+        const runtime = state.flightRuntime || (state.flightRuntime = {});
+        runtime.heroManeuverDashReceipt = {
+          requestId: pinballBoostRequest.dashRequestId,
+          tick: state.tick,
+          playerId: entity.id,
+          occupantGeneration: entity.occupantGeneration,
+          accepted,
+          reason: accepted ? null : 'dash_drive_or_energy_unavailable',
+        };
+      }
       input.boost = boosting;
       if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
         // F6: boost onset overshoots its accel mult for ~0.2 s — the kick after the dash impulse.
@@ -450,7 +541,7 @@ export const flightV3 = {
       // packet carries the resource-gated boost flag and the keys the boost block attached.
       const swingCommit = this._liveSwingCommit(entity, state, rawInput, input);
       orbitAssist = craftOrbitAssistStep(
-        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit,
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit, heroManeuverActive,
       );
       // Engagement memory (chord dwell, grace, tracked direction) lives on the entity and is
       // written only after this steering call, so both calls read the same previous-tick state.
@@ -484,7 +575,7 @@ export const flightV3 = {
       // The module returns ONE bounded additive impulse from thrust the hull already has —
       // it never writes velocity and never clamps earned speed.
       const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
-        controlsBlocked: gridHeld || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        controlsBlocked: gridHeld || heroManeuverActive || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
         tetherLive: !!(tether && tether.active === true),
         autopilotActive: !!(autopilot && autopilot.active),
       });
@@ -499,6 +590,10 @@ export const flightV3 = {
       input.brake = true;
       input.drawFlight = input.travelDrive = undefined;
     }
+    // Only the live manual helm opts into bounded back-thrust. Automatic/path/hero
+    // controllers retain their own counterthrust and brake leases; NPC packets never inherit it.
+    input.manualReverse = isPlayer && !saucer && !gridHeld && !pathActive && !heroManeuverActive
+      && !(autopilot && autopilot.active) && playerFlightControlsActive(state, entity);
     _stepArgs.dt = dt;
     _stepArgs.body = body;
     _stepArgs.input = input;
@@ -773,7 +868,7 @@ export const flightV3 = {
     return boosting;
   },
 
-  _triggerDash(e, boost, state) {
+  _triggerDash(e, boost, state, impulseScale = 1) {
     if (!(boost.dashImpulse > 0)) return false;
     if (boost.dashCdT > 0 || boost.energy < boost.dashCost) {
       // The press already happened. Don't play the success kick; say which gate held.
@@ -786,7 +881,7 @@ export const flightV3 = {
       return false;
     }
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
-    let imp = boost.dashImpulse;
+    let imp = boost.dashImpulse * clamp(finite(impulseScale, 1), 1, 1.5);
     let dirX = cf, dirZ = sf;
     let swung = false;
     let swingSign = 1;
@@ -960,12 +1055,15 @@ export const flightV3 = {
       ? sweptHullContacts(state, entity)
       : null;
     const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const contact = advisory.active ? contacts?.find(e => e.id === advisory.contactId) : null;
+    advisory.contactGeneration = contact?.occupantGeneration ?? null;
     const latch = this._sweptHull
       || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
     if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
       const now = finite(state && state.simTime, 0);
       const faceChanged = !latch.active
         || latch.contactId !== advisory.contactId
+        || latch.contactGeneration !== advisory.contactGeneration
         || latch.sliding !== advisory.sliding;
       if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
         this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
@@ -974,6 +1072,7 @@ export const flightV3 = {
     }
     latch.active = advisory.active;
     latch.contactId = advisory.contactId;
+    latch.contactGeneration = advisory.contactGeneration;
     latch.sliding = advisory.sliding;
     return advisory;
   },
@@ -1259,7 +1358,7 @@ const _diagArgs = { body: null, profile: null, control: _diagControl };
  * the probe's `.active` is always the steering call's `.active`: suppression owns exactly the
  * ticks the assist owns.
  */
-function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt, swingCommit) {
+function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt, swingCommit, maneuverActive = false) {
   const forward = finite(rawInput && (rawInput.moveZ ?? rawInput.throttle));
   const commitDirection = swingCommit && forward > ORBIT_ASSIST_TUNING_V1.minIntent
     ? swingCommit.direction
@@ -1281,7 +1380,7 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
     profile,
     strength: state.settings && state.settings.gameplay
       && state.settings.gameplay.orbitAssistStrength,
-    controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+    controlsBlocked: maneuverActive || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
   });
 }
 
@@ -1345,7 +1444,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.boost = boost && !gridHeld;
   o.boostPressed = o.boost && !previousBoost;
   o.boostReleased = !o.boost && previousBoost;
-  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn);
   o.assistMode = resolveAssistMode(entity, state, raw);
   o.drawFlight = isPlayer && !gridHeld && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist
@@ -1354,6 +1453,9 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
+  // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
+  o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
+  o.manualReverse = false;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;
@@ -1382,13 +1484,31 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     return null;
   }
 
-  const target = resolveAutopilotTarget(state, autopilot);
+  let target = resolveAutopilotTarget(state, autopilot);
   if (!target) {
     stopAutopilot(host, state, 'lost-target');
     return null;
   }
 
   if (autopilot.rendezvous === true) return resolveMovingRendezvous(host, entity, input, state, profile, target, autopilot);
+
+  // The chart's Orchard approach is on the frame side. Round the hazardous disc in
+  // short outer legs instead of drawing a chord through the planet from the far side.
+  const center = state?.planet?.center;
+  let perimeterLeg = false;
+  if (autopilot.planetaryApproach === PLANET_SITE.id && state?.planet?.active && center
+      && state?.world?.currentSectorId === PLANET_SITE.sectorId) {
+    const rx = entity.pos.x - center.x, rz = entity.pos.z - center.z;
+    const radius = Math.hypot(rx, rz), angle = Math.atan2(rz, rx);
+    const desired = Math.atan2(target.z - center.z, target.x - center.x);
+    const delta = wrapAngle(desired - angle);
+    const orbit = PLANET_SITE.bands.sling + PLANET_SITE.hysteresis + 380;
+    if (radius < orbit * 0.92 || Math.abs(delta) > Math.PI / 6) {
+      const next = radius < orbit * 0.92 ? angle : angle + Math.sign(delta) * Math.PI / 6;
+      target = { ...target, x: center.x + Math.cos(next) * orbit, z: center.z + Math.sin(next) * orbit };
+      perimeterLeg = true;
+    }
+  }
 
   const pos = entity.pos || { x: 0, z: 0 };
   const vel = entity.vel || { x: 0, z: 0 };
@@ -1397,7 +1517,22 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const dist = Math.hypot(dx, dz);
   const arrivalRadius = resolveAutopilotArrivalRadius(entity, autopilot, target);
   const speed = Math.hypot(finite(vel.x), finite(vel.z));
-  if (dist <= arrivalRadius && speed < 11) {
+  const underPlanetPull = !perimeterLeg && state?.planet?.active && center
+    && state?.world?.currentSectorId === PLANET_SITE.sectorId
+    && Math.hypot(target.x - center.x, target.z - center.z) < PLANET_SITE.bands.influence;
+  if (dist <= arrivalRadius && speed < 11 && underPlanetPull) {
+    if (!autopilot.arrivalHolding) {
+      autopilot.arrivalHolding = true;
+      autopilot.status = 'arrived';
+      host?.bus?.emit('nav:autopilot', autopilot);
+      host?.bus?.emit('toast', { text: 'Autopilot arrived', kind: 'info', ttl: 2 });
+    }
+    const counter = counterVelocityInput(entity);
+    const held = { ...input, ...counter, turn: 0, boost: false, brake: true };
+    syncAutopilotInput(state, held, { dist, arrivalRadius, braking: true, avoiding: false, target, status: 'arrived' });
+    return { active: true, input: held, telemetry: { dist, arrivalRadius, status: 'arrived', target } };
+  }
+  if (!perimeterLeg && dist <= arrivalRadius && speed < 11) {
     stopAutopilot(host, state, 'arrived');
     const arrivedInput = { ...input, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false };
     syncAutopilotInput(state, arrivedInput, { dist, arrivalRadius, braking: false, avoiding: false, target, status: 'arrived' });
@@ -1675,6 +1810,7 @@ function stopAutopilot(host, state, reason) {
   // latch is latent-only today but never meaningful once autopilot is off.
   autopilot.brakeSettled = false;
   autopilot.brakeHold = false;
+  autopilot.arrivalHolding = false;
   if (autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
@@ -1699,144 +1835,6 @@ function stopAutopilot(host, state, reason) {
       ttl: 2,
     });
   }
-}
-
-// Phase 2b #9 (tuning lab): the station a docking autopilot targets is excluded from its own
-// obstacle list, so a hull starting behind the station flew the straight line to the corridor mouth
-// THROUGH the station and ground against its proxy forever (measured: every 180° start, every hull,
-// ~7000 contacts at up to 158 wu/s, never docked). A far-side approach now rounds the station on a
-// circle of DOCK_ORBIT_RADIUS_MULT x mouth radius, aiming a carrot DOCK_ORBIT_STEP_DEG ahead toward
-// the corridor axis, until the hull is within that angle of the axis — then the authored mouth aim
-// takes over unchanged. Starts already inside the circle keep the mouth aim (the exit path).
-export const DOCK_ORBIT_RADIUS_MULT = 1.3;
-export const DOCK_ORBIT_STEP_DEG = 60;
-export function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
-  if (!player || !player.pos || !(mouthRadius > 0)) return null;
-  const R = mouthRadius * DOCK_ORBIT_RADIUS_MULT;
-  const rx = finite(player.pos.x) - finite(entity.pos.x);
-  const rz = finite(player.pos.z) - finite(entity.pos.z);
-  const along = rx * axis.x + rz * axis.z;
-  const lateral = rx * -axis.z + rz * axis.x;
-  const theta = Math.atan2(lateral, along);
-  const step = DOCK_ORBIT_STEP_DEG * Math.PI / 180;
-  if (Math.abs(theta) <= step || Math.hypot(rx, rz) < R * 0.9) return null;
-  const tw = theta - Math.sign(theta) * step;
-  const c = Math.cos(tw);
-  const s = Math.sin(tw);
-  return {
-    x: finite(entity.pos.x) + (axis.x * c - axis.z * s) * R,
-    z: finite(entity.pos.z) + (axis.z * c + axis.x * s) * R,
-  };
-}
-
-export function resolveAutopilotTarget(state, autopilot) {
-  if (!state || !autopilot) return null;
-  const id = autopilot.targetEntityId;
-  let entity = null;
-  if (autopilot.stable) {
-    // SF-244: the course owner stamped what the bind meant at arm time — a recycled id
-    // resolves closed and the burn falls back to the fix, never onto the new holder.
-    entity = resolveEntitySelection(state, autopilot.stable);
-  } else if (id != null && state.entities && typeof state.entities.get === 'function') {
-    entity = state.entities.get(id);
-    if (!entity && typeof id === 'string') {
-      const numeric = Number(id);
-      if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
-    }
-  }
-  if (entity && entity.alive !== false && entity.pos
-      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
-    // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
-    // legacy center-radius ring. A station waypoint still identifies the live entity, but default
-    // flight resolves its terminal point into the manifest-owned corridor. Its terminal radius is
-    // the same berth gate that owns the physical dock prompt, rather than a wider capture volume
-    // where autopilot could declare arrival without exposing that prompt.
-    const manifest = entity.type === 'station' ? resolveCollisionProxyManifest(entity) : null;
-    if (manifest && manifest.docking) {
-      const berth = resolveBerthWorld(entity, manifest);
-      const scale = proxyScaleFor(entity, manifest);
-      const axis = resolveCorridorAxisWorld(entity, manifest);
-      const mouthRadius = positive(manifest.docking.corridor && manifest.docking.corridor.mouthRadius, 0) * scale;
-      const approach = {
-        x: finite(entity.pos.x) + axis.x * mouthRadius,
-        z: finite(entity.pos.z) + axis.z * mouthRadius,
-      };
-      const berthDockRadius = positive(manifest.docking.berth && manifest.docking.berth.dockRadius, 12);
-      const captureHalfWidth = positive(
-        manifest.docking.capture && manifest.docking.capture.halfWidth,
-        0,
-      ) * positive(scale, 1);
-      const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
-        ? state.entities.get(state.playerId)
-        : null;
-      const corridor = player && player.pos
-        ? corridorStateFor(manifest, entity, player.pos, player.vel)
-        : null;
-      // Targeting the berth directly from an arbitrary bearing can drive the ship into the compound
-      // station silhouette outside its authored gap. First converge on the corridor mouth. Switch
-      // to the berth well before the terminal dock gate could stop/deactivate the staging course,
-      // or immediately when the ship is already geometrically inside the lane.
-      const inLane = !!(
-        corridor && (corridor.inCorridor || corridor.inCapture || corridor.berthed)
-      );
-      const approachDistance = player && player.pos
-        ? Math.hypot(finite(player.pos.x) - approach.x, finite(player.pos.z) - approach.z)
-        : 0;
-      // The berth stage holds the authored lane with lateral avoidance suppressed — it must only
-      // arm while the hull is geometrically in the lane, or just outside the mouth still aligned
-      // with the corridor wedge. A hull off the wedge — knocked into an inter-spar armpit by a
-      // traffic dodge or contact — keeps the mouth aim: the only path that exits back through the
-      // ring gap instead of grinding structure until the solver expels it.
-      const shipRelX = player && player.pos ? finite(player.pos.x) - finite(entity.pos.x) : 0;
-      const shipRelZ = player && player.pos ? finite(player.pos.z) - finite(entity.pos.z) : 0;
-      const shipAlong = shipRelX * axis.x + shipRelZ * axis.z;
-      const shipLateral = Math.abs(shipRelX * -axis.z + shipRelZ * axis.x);
-      const wedgeHalfWidth = Math.max(
-        captureHalfWidth,
-        Math.tan(finite(manifest.docking.corridor && manifest.docking.corridor.halfWidthDeg, 0)
-          * (Math.PI / 180)) * Math.max(shipAlong, 1),
-      );
-      const alignedWithLane = shipAlong > 0 && shipLateral <= wedgeHalfWidth;
-      const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
-      const berthStage = !player || !player.pos || inLane
-        || (approachDistance <= approachSwitchRadius && alignedWithLane);
-      // SF-130: the terminal anchor is the hull's own dock anchor — the deck berth when its
-      // planar envelope clears the pocket, else the corridor-axis mooring standoff. Same
-      // anchor the physics dock:range gate uses, so the autopilot can never park the hull
-      // somewhere the dock prompt will not fire.
-      const dockAnchor = resolveDockAnchor(entity, manifest, player) || {
-        x: berth.x, z: berth.z,
-        dockRadius: berthDockRadius,
-        speedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
-        kind: 'berth',
-      };
-      const orbit = berthStage ? null : dockOrbitWaypoint(entity, axis, mouthRadius, player);
-      return {
-        x: berthStage ? dockAnchor.x : orbit ? orbit.x : approach.x,
-        z: berthStage ? dockAnchor.z : orbit ? orbit.z : approach.z,
-        radius: 0,
-        arrivalRadius: dockAnchor.dockRadius,
-        dockingProxyId: manifest.id || null,
-        dockingStage: berthStage ? 'berth' : 'corridor-mouth',
-        dockAnchorKind: dockAnchor.kind,
-        corridorInLane: inLane,
-        dockSpeedGate: dockAnchor.speedGate,
-        approachPoint: approach,
-        entity,
-        label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',
-      };
-    }
-    return {
-      x: entity.pos.x,
-      z: entity.pos.z,
-      radius: entity.radius || 0,
-      entity,
-      label: autopilot.label || entity.name || (entity.data && entity.data.name) || entity.type || 'Autopilot target',
-    };
-  }
-  const target = autopilot.target;
-  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.z)) return null;
-  return { x: target.x, z: target.z, radius: 0, entity: null, label: autopilot.label || 'Autopilot target' };
 }
 
 export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
@@ -1982,6 +1980,7 @@ function deterministicAvoidanceSide(baseX, baseZ) {
 const AUTOPILOT_OBSTACLE_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
+const AUTOPILOT_DRESSING_BOUNDS = [];
 
 // An obstacle only matters when its center sits inside the lookahead capsule: projection within
 // (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
@@ -1998,18 +1997,21 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
   const clearanceSlack = positive(player.radius, 0) + 58 + 70;
   AUTOPILOT_OBSTACLE_QUERY_POS.x = px + baseX * halfProjection;
   AUTOPILOT_OBSTACLE_QUERY_POS.z = pz + baseZ * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     AUTOPILOT_OBSTACLE_QUERY_POS,
     halfProjection + clearanceSlack,
     AUTOPILOT_OBSTACLE_QUERY_SCRATCH,
   );
   for (const e of list) {
-    if (!e || e === player || e === target.entity || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    // A public station course resolves to its authored corridor mouth. From the far bearing,
+    // the straight path to that point can cross the station itself, so keep the target station
+    // in obstacle guidance until the ship is aligned for the final berth lane.
+    const targetStationBlocksMouthApproach = e === target.entity
+      && !!target.dockingProxyId && target.dockingStage === 'corridor-mouth';
+    if (e === player || (e === target.entity && !targetStationBlocksMouthApproach)) continue;
+    const obstacle = physicalObstacleBody(e, AUTOPILOT_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -2020,6 +2022,7 @@ const SWEPT_HULL_OBSTACLE_SCRATCH = [];
 const SWEPT_HULL_QUERY_SCRATCH = [];
 const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
 const SWEPT_HULL_NO_CONTACTS = [];
+const SWEPT_HULL_DRESSING_BOUNDS = [];
 
 // The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
 // covering that capsule returns every possible contributor — the hash buckets entities by their
@@ -2038,7 +2041,7 @@ function sweptHullContacts(state, entity) {
   const pz = finite(entity.pos && entity.pos.z);
   SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
   SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     SWEPT_HULL_QUERY_POS,
     halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
@@ -2047,11 +2050,9 @@ function sweptHullContacts(state, entity) {
   const out = SWEPT_HULL_OBSTACLE_SCRATCH;
   out.length = 0;
   for (const e of list) {
-    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    if (e === entity) continue;
+    const obstacle = physicalObstacleBody(e, SWEPT_HULL_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -2060,7 +2061,7 @@ function sweptHullContacts(state, entity) {
 // the ship:thrust contract. No field aliases a per-tick advisory object.
 const _sweptHullPayload = {
   shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
-  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  driftAngle: 0, contactId: null, contactGeneration: null, contactType: null, contactRadius: 0, timeToContactS: null,
   contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
   canStopBeforeContact: false, stopDistanceWU: 0,
 };
@@ -2076,6 +2077,7 @@ function sweptHullEventPayload(shipId, advisory) {
   P.lateralSpeed = advisory.lateralSpeed;
   P.driftAngle = advisory.driftAngle;
   P.contactId = advisory.contactId;
+  P.contactGeneration = advisory.contactGeneration;
   P.contactType = advisory.contactType;
   P.contactRadius = advisory.contactRadius;
   P.timeToContactS = advisory.timeToContactS;
@@ -2112,36 +2114,6 @@ function counterVelocityInput(entity) {
 
 function distance2(a, b) {
   return Math.hypot(finite(a && a.x) - finite(b && b.x), finite(a && a.z) - finite(b && b.z));
-}
-
-export function applyAutoTargetHelmProfile(profile) {
-  return {
-    ...profile,
-    maxYawRate: Number.isFinite(profile.maxYawRate)
-      ? profile.maxYawRate * AUTO_TARGET_HELM_MULT
-      : profile.maxYawRate,
-    yawAccel: Number.isFinite(profile.yawAccel)
-      ? profile.yawAccel * AUTO_TARGET_HELM_MULT
-      : profile.yawAccel,
-    yawBrake: Number.isFinite(profile.yawBrake)
-      ? profile.yawBrake * AUTO_TARGET_HELM_MULT
-      : profile.yawBrake,
-  };
-}
-
-export function applyAutoTargetPathProfile(profile) {
-  const scale = (value) => Number.isFinite(value)
-    ? value * AUTO_TARGET_PATH_OVERDRIVE_MULT
-    : value;
-  return {
-    ...profile,
-    mainAccel: scale(profile.mainAccel),
-    strafeAccel: scale(profile.strafeAccel),
-    reverseAccel: scale(profile.reverseAccel),
-    maxSpeed: scale(profile.maxSpeed),
-    combatSpeed: scale(profile.combatSpeed),
-    precisionSpeed: scale(profile.precisionSpeed),
-  };
 }
 
 function resolveAssistMode(entity, state, raw) {
@@ -2277,6 +2249,14 @@ export function npcFlightNeedsCommand(entity) {
 function npcIntentIsLive(entity, intent) {
   if (!intent || typeof intent !== 'object') return false;
   if (intent.boost || intent.fire) return true;
+  const rendezvous = intent.rendezvous;
+  if (rendezvous && Number.isFinite(rendezvous.velocity?.x)
+    && Number.isFinite(rendezvous.velocity?.z) && Number.isFinite(rendezvous.heading)) {
+    const vx = rendezvous.velocity.x - finite(entity.vel?.x);
+    const vz = rendezvous.velocity.z - finite(entity.vel?.z);
+    if (vx * vx + vz * vz > 1e-8
+      || Math.abs(wrapAngle(rendezvous.heading - finite(entity.rot))) > 0.01) return true;
+  }
   const mx = Number(intent.moveX) || 0;
   const mz = Number(intent.moveZ) || 0;
   const turn = Number(intent.turnIntent) || 0;
@@ -2290,6 +2270,12 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
+// The committed diver's steering shape (inf-well-dive): the grip fraction where the pull's own
+// acceleration takes the approach over, the heading gain onto the dive bearing, and the
+// throttle floor that makes the commit read as thrust through, not a drift.
+const SWARM_DIVE_GRIP_FRAC = 0.55;
+const SWARM_DIVE_TURN_GAIN = 2.2;
+const SWARM_DIVE_THROTTLE_FLOOR = 0.6;
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

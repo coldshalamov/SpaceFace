@@ -11,9 +11,14 @@ import { createSaveStage } from '../views/saveFrame.js';
 // (manifest: SaveLoadScreen reads sf.save.index).
 
 import { livingHullPatchedScars, livingHullScars, normalizeLivingHull } from '../../core/livingHull.js';
+import { FACTION_META } from '../../data/factions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { SECTORS } from '../../data/sectors.js';
+import { contestedSectorForPair } from '../../data/conflictZones.js';
 import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
+import { rankFromRep } from '../../systems/factions.js';
+import { localizeText } from '../../localization/sourceText.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { boundSlotThumbnail } from '../../save/slotStill.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
@@ -210,7 +215,7 @@ function paintSlotRow(row, selected) {
 }
 
 export const SAVE_PORTRAIT_SEED = 15610;
-export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
+export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'repairs', 'titles', 'standing', 'rapSheet', 'grudge']);
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -731,6 +736,80 @@ function buildGrudgeField(memory, meta) {
   return { aceId: null, name: '', returnTier: 0, line: portraitLine(meta && meta.grudge, 'No one hunts you') };
 }
 
+// THE STANDING LINE (inf-slot-standing): the slot card named the hull, the scars, the titles,
+// the rap and the grudge — everything the run did to its hull and its enemies, and nothing
+// about who the run was to the houses. The strongest standing the run earned (a rep at or past
+// the Trusted floor in either direction) reads back as "<House> · <rank title>" in the houses'
+// own ladder vocabulary, and a war still burning at save time rides the same line, so a
+// returned save opens on the world it left. A run with no deep standing and no war stands
+// alone — the honest empty line, never an invented house.
+const STANDING_FLOOR = 150;
+const FACTION_NAME_BY_ID = new Map(FACTION_META.map((row) => [row.id, row.short || row.name]));
+const SECTOR_NAME_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
+
+function factionCardName(factionId) {
+  return FACTION_NAME_BY_ID.get(factionId) || String(factionId || '').replace(/^faction_/, '');
+}
+
+function frontCardName(sectorId) {
+  return (sectorId && SECTOR_NAME_BY_ID.get(sectorId)) || 'the contested lane';
+}
+
+/** The saved envelope stores { factions: bag, conflicts: bag }; a live state stores both flat. */
+function unwrapStandingBags(data, state) {
+  const saved = data && data.factions && typeof data.factions === 'object' && !Array.isArray(data.factions)
+    ? data.factions
+    : null;
+  if (saved && saved.factions && typeof saved.factions === 'object') {
+    return { factions: saved.factions, conflicts: saved.conflicts || null };
+  }
+  if (saved && !Array.isArray(saved) && !saved.factions) {
+    // A legacy envelope that stored the flat rep bag directly.
+    return { factions: saved, conflicts: null };
+  }
+  if (state && state.factions && typeof state.factions === 'object') {
+    return { factions: state.factions, conflicts: state.conflicts || null };
+  }
+  return { factions: null, conflicts: null };
+}
+
+function buildStandingField(factionsBag, conflictsBag, meta) {
+  let best = null;
+  if (factionsBag && typeof factionsBag === 'object') {
+    for (const id of Object.keys(factionsBag)) {
+      if (!/^faction_/.test(String(id))) continue;
+      const rep = Number(factionsBag[id] && factionsBag[id].rep);
+      if (!Number.isFinite(rep) || Math.abs(rep) < STANDING_FLOOR) continue;
+      if (!best || Math.abs(rep) > Math.abs(best.rep)) best = { id, rep };
+    }
+  }
+  let war = null;
+  if (conflictsBag && typeof conflictsBag === 'object') {
+    for (const pairKey of Object.keys(conflictsBag)) {
+      const rec = conflictsBag[pairKey];
+      if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+      const [aId, bId] = String(pairKey).split(':');
+      if (!aId || !bId) continue;
+      war = { aId, bId, frontSectorId: contestedSectorForPair(pairKey) };
+      break;
+    }
+  }
+  if (!best && !war) {
+    return { factionId: null, warPair: null, line: localizeText('No house stands with you') };
+  }
+  let line = '';
+  if (best) {
+    line = localizeText('{house} · {rank}', { house: factionCardName(best.id), rank: rankFromRep(best.rep, best.id).name });
+  }
+  if (war) {
+    const clause = localizeText('The {a} and {b} front at {front} still burns', {
+      a: factionCardName(war.aId), b: factionCardName(war.bId), front: frontCardName(war.frontSectorId),
+    });
+    line = line ? `${line} · ${clause}` : clause;
+  }
+  return { factionId: best ? best.id : null, warPair: war ? `${war.aId}:${war.bId}` : null, line };
+}
+
 /** Headless model of the load-stage portrait: hull + scars + repairs + titles + rap sheet + grudge. */
 export function buildSavePortrait(source = {}) {
   const data = unwrapSaveData(source.data || source.envelope || source.save);
@@ -744,6 +823,7 @@ export function buildSavePortrait(source = {}) {
   const player = (data && data.player) || (useState && state.player) || {};
   const story = storyFromPortraitSource(data, useState ? state : null);
   const aceMemory = (data && data.aceMemory) || (useState && state.aceMemory) || {};
+  const standingBags = unwrapStandingBags(data, useState ? state : null);
   const ship = activeOwnedShip(player);
   const defId = slotShipId(meta, player);
   const hullName = (typeof source.shipName === 'string' && source.shipName.trim())
@@ -758,6 +838,7 @@ export function buildSavePortrait(source = {}) {
     scars: buildScarsField(ship && ship.livingHull, meta),
     repairs: buildRepairsField(ship && ship.livingHull, meta),
     titles: buildTitlesField(story, meta),
+    standing: buildStandingField(standingBags.factions, standingBags.conflicts, meta),
     rapSheet: buildRapSheetField(player, meta),
     grudge: buildGrudgeField(aceMemory, meta),
   };
@@ -789,6 +870,10 @@ export function paintSavePortrait(nodes, portrait) {
   if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
   if (nodes.repairs) nodes.repairs.textContent = portrait.repairs.line;
   if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
+  if (nodes.standing) {
+    paintEntityLine(nodes.standing, portrait.standing && portrait.standing.factionId
+      ? 'faction:' + portrait.standing.factionId : null, portrait.standing.line);
+  }
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
   paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
   return portrait;
@@ -1003,7 +1088,7 @@ export const saveLoadScreen = {
       },
     }) : null;
 
-    const { stage, caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    const { stage, caption, shipName, portrait, scars, repairs, titles, standing, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     stage.classList.add('sf-save-stage');
     caption.classList.add('sf-save-ledger');
     // The slot card's name is a content header (the header voice, set by the sheet), not a title.
@@ -1024,7 +1109,7 @@ export const saveLoadScreen = {
     facts.setAttribute('aria-label', 'Save facts');
     caption.insertBefore(facts, portrait);
     portrait.prepend(el('p', 'sf-ledger-head', 'Hull record'));
-    for (const [node, label] of [[scars, 'Scars'], [repairs, 'Repairs'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
+    for (const [node, label] of [[scars, 'Scars'], [repairs, 'Repairs'], [titles, 'Titles'], [standing, 'Standing'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
       if (!node) continue;
       const line = el('div', 'sf-ledger-line');
       portrait.insertBefore(line, node);
@@ -1367,6 +1452,11 @@ export const saveLoadScreen = {
         shipName: shipDisplayName(ctx, slotShipId(meta, saveData && saveData.player)),
       })
       : null;
+    if (portrait && !saveData && currentSlot !== id) {
+      for (const field of ['scars', 'repairs', 'titles', 'rapSheet', 'grudge']) {
+        portrait[field].line = 'Record not read';
+      }
+    }
     // The ship on the stage: the save's own; on an empty slot mid-run, the ship Save here would
     // file; on an empty slot at the title, none (the page stands beside the unlit save mark).
     const livePlayer = ctx && ctx.state && ctx.state.player;

@@ -10,6 +10,7 @@ import { armRacingContract, stageRacingLaunch } from '../racingLaunch.js';
 import { setSteeringView, lastRacingResult } from '../racingControls.js';
 import { BINDINGS } from '../bindings.js';
 import { createRacingMap, formatRaceTime } from '../racingMap.js';
+import { formatDistance } from '../units.js';
 import { DEFAULT_STARTER_ID, NEW_GAME_STARTERS } from '../../data/newGameDefaults.js';
 import { RACING_DRIVES } from '../../data/racingLoadouts.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
@@ -247,7 +248,7 @@ export const raceBoardScreen={
         const map=createRacingMap(course.gates,`${row.title} on ${level.name}, start and finish`);
         if(map)card.appendChild(map.element);
         card.append(el('p','k-sentence',level.blurb),
-          el('p','k-sentence',`${Math.round(course.courseLengthWU).toLocaleString()} wu / lap · ${course.gates.length-1} legs · start / finish aligned`));
+          el('p','k-sentence',`${formatDistance(course.courseLengthWU)} / lap · ${course.gates.length-1} legs · start / finish aligned`));
         const pieces=racingSetPieceDefinitions(course.courseId);
         if(pieces)card.appendChild(el('p','k-sentence',`Optional Massline anchors. ${pieces.crossing?'Watch for the scheduled cargo crossing; the amber ring marks a refuge.':pieces.wave?'Read the debris warning, then take a gap or wait in the amber refuge.':pieces.shutter?'A customs shutter closes the main cut; the green service lane stays open.':'Follow the marked line through the technical turns.'}`));
         if(fit.raceMode==='time-trial'&&course.medalTimes){

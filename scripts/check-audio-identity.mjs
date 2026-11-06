@@ -346,6 +346,14 @@ const EMITTED_CUES = {
   loot_collect: { distinct: true }, mining_core_fizzle: { distinct: true },
   shield_break: { distinct: true }, cm_chaff: { distinct: true }, cm_ecm: { distinct: true },
   sfx_explosion_small: { distinct: true },
+  // Berth & station lifecycle: the shift bell is the stationLife / forge-karaoke wake (emitted
+  // by literal recipe id); a refused self-serve decant rides the capacity-refusal voice, never
+  // a toast tone.
+  ambient_station_shift_bell: { distinct: true },
+  'service.decantRefused': { distinct: true },
+  // Survival arena's ranged-doctrine telegraph is emitted by its literal recipe id (no cue
+  // indirection) — listed so the drift guard sees the deliberate resolution.
+  sfx_doctrine_ranged_charge: { distinct: true },
   // Authored weapon/mining signatures emitted by their literal sfx_* recipe id (no cue indirection):
   // each resolves directly to a dedicated recipe via AUDIO_RECIPE_BY_ID, so they must be listed here
   // or the drift guard treats the literal emit as uncovered.
@@ -427,6 +435,9 @@ const EMITTED_CUES = {
   // recipe target) — each is its own authored recipe played by literal id.
   sfx_discovery_plate_note: { distinct: true },
   sfx_travel_interdiction: { distinct: true },
+  // Acceleration tier transition: heroManeuvers' dash voice and audioSystem's boost/sprint
+  // changeover both emit the literal recipe id — the authored transition motif, never a click.
+  sfx_accel_transition: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

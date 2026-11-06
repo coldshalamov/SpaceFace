@@ -4,7 +4,53 @@
 Owner commission: 500 special in-game things. Debate phase (rounds 1-4,
 ratified) produced `CONSENSUS_500.json`. Build phase status lives here.
 
-## Landed
+## Phase 2 — build the 500 things the player encounters (opened 2026-11-04)
+
+Owner direction: extend the campaign into its playable substance — 500 build
+units, equally small/medium/large, INFERENCE-style, orchestrated by subagents
+and landed on review. The decision, derivation and protocol live in
+[`PHASE2_PLAN.md`](./PHASE2_PLAN.md); the per-agent contract is
+[`PHASE2_BUILD_BRIEF.md`](./PHASE2_BUILD_BRIEF.md); the single status authority
+is [`BUILD_LEDGER.json`](./BUILD_LEDGER.json) (regenerable by
+`tools/derive-units.mjs`; preserves progress).
+
+Derivation (2026-11-04, from live catalog truth): 330 ratified followup legs +
+92 ratified spectacle-only + 14 dormant + 35 annex legs + 29 mail letters =
+**500 units** (167 small / 167 medium / 166 large), 43 batches. Infra:
+`INFRA-SPECTACLE-REGISTRY` (director emits `special500:spectacle`; presentation
+registry + system so every spectacle leg lands as data). Pilot batch 1 (12
+units, 6 families) dispatched; landed units will be recorded here per batch.
+
+### Landed (Phase 2)
+
+- `ab9b97e8196c` — INFRA spectacle registry + SP1-101 The Scheduled Ghost +
+  SP3-127 The Echo Wreck (first two spectacle rows; templates lightFlash,
+  echoRing, lampCascade, trafficAdvisory).
+- `387fd003dde0` — SP2-172 The Tether Memorial's New Line + SP2-157 The Eris
+  Last Pod (encounter legs 1310/1311; generated index carries a foreign worker's
+  1400 module pending its owner's commit).
+- `e28d9ac9e619` — pilot mail/codex slice: SP2-018, SP2-041 (+Rets bar contact),
+  SP2-004 (durable scanner read found — no writer needed; rep branch deferred),
+  SP2-112; ownedShips conjunct; mail occurrence rule gains 'flag'.
+- `d2341bcb4999` — spectacle batch 5 (14 rows; new bellVoice template through
+  the audio owner's existing cue seam) + concurrent loop-resurrection repair
+  preserved into the landed owner.
+- `99fbbf920f14` — mail batch 2 (14 letters; the serial mail pass opens).
+- `cd41374aad19` — mail batch 3 (14 letters; 28 special500 letters live).
+- `fc656797c52e` — mail batch 4 (8 letters; **serial mail pass complete: 29 letters**).
+- `1aaf75817f9d` — pilot choice/vendor slice: SP2-012 The Question, SP2-044 The Bill For
+  Nothing (+ three invoice papers appended to mail.js once it freed), SP1-193 The Portrait
+  Buoys, SP2-065 The Sommelier of Coolant; three new registered leg systems; concurrent
+  whitespace churn in the three shared registration tables rebuilt from HEAD bytes.
+- `6183617c4d24` — spectacle batch 6 (14 rows; 30 registry rows live; bellVoice meaning
+  widened; validator caught two authored cadences, rows re-paced).
+
+**Pilot batch complete: all 12 units + INFRA landed.** Every route proved: registry rows,
+encounter files, mail letters, codex overlays, choice mechanics, vendor mechanics.
+
+Running: codex batch 12, spectacle batch 7, counter batch 18.
+
+## Phase 1 — the catalog (complete)
 
 - `ebaea2ad5c1` — debate artifacts + ratified consensus (500 + 20 bench).
 - `d47d91c9e61` — spine: `src/data/special500/` catalog + `src/systems/special500Director.js`

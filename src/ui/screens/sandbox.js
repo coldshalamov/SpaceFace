@@ -628,7 +628,7 @@ export const sandboxScreen = {
     enemyCountInput.value = '';
     fine.appendChild(enemyCountLabel); fine.appendChild(enemyCountInput);
 
-    const lineLengthLabel = el('label', null, 'Massline length (WU)');
+    const lineLengthLabel = el('label', null, 'Massline length (u)');
     lineLengthLabel.htmlFor = 'sf-sandbox-line-length';
     const lineLengthInput = document.createElement('input');
     lineLengthInput.type = 'number';

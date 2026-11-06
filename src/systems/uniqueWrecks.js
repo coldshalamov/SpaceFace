@@ -4,10 +4,11 @@
 // state. Rewards route through cargo's pickup:collected seam and ships.grantModule().
 
 import { FLAVOR_SOURCE_BY_REF } from '../data/flavor/index.generated.js';
-import { ENCOUNTERS } from '../data/encounters/index.generated.js';
+import { ENCOUNTERS, ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
+import { NAMED_CAPTAINS } from '../data/encounters.js';
+import { planUniqueWreckEncounter as planUniqueWreckEncounterPure } from '../data/encounters/planning.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
-import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
@@ -21,11 +22,17 @@ import {
   movingRadiationGate,
   rewardDescriptors,
 } from '../core/uniqueWreckComplications.js';
+import { provenanceStamp } from '../data/lineProgression.js';
+import {
+  STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_REWARD_BUYERS,
+  storyBuyerAtStation, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
+} from '../data/storyRewardBuyers.js';
 import {
   UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
   UNIQUE_WRECK_STATE_SCHEMA_VERSION,
+  CERES_ACTIVITY_WRECKS,
   EXPANSION_ACTIVITY_WRECKS,
   UNIQUE_WRECKS,
   placementForUniqueWreck,
@@ -34,13 +41,13 @@ import {
   uniqueWreckById,
   uniqueWreckForSource,
 } from '../data/uniqueWrecks.js';
-import { planEncounterShape } from './encounterDirector.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   isPlayerWreckMarker,
   PLAYER_WRECK_ENCOUNTER_ID,
 } from './aftermathWrecks.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { cargoUnitVolume } from './cargo.js';
 import { createChoirReliefBerth, normalizeChoirRelief } from './choirReliefBerth.js';
 import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js';
 // PB-CONS-B (SF-156 + SF-162): the aftermath-people companions, same hosting law as the Choir
@@ -52,9 +59,22 @@ import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './sc
 // persistent, colliding, salvage-scoopable, and theft-priced by law through its owner stamp.
 import { spawnJettisonedCargoPod } from './lootShards.js';
 
+const SELF_REGISTERED_ENCOUNTER_IDS = new Set(ENCOUNTER_MODULES
+  .filter((module) => module && module.runtime)
+  .map((module) => module.trigger?.id));
+
 // The materialize phase set lives beside the registry so the sector decode warms grade
 // the same gate without importing this module (data/uniqueWrecks.js owns the constants).
 const VALID_PHASES = UNIQUE_WRECK_MATERIALIZE_PHASES;
+
+// Every def the runtime can mint a bearing for: D1-D16, the Ceres tender, and the expansion
+// activity hulls. Save normalization must walk all of them — walking only the sixteen authored
+// slots dropped a charted/salvaged Ceres or expansion hull on load, so it re-rumored and re-paid.
+const ALL_WRECK_DEFS = Object.freeze([
+  ...UNIQUE_WRECKS,
+  ...CERES_ACTIVITY_WRECKS,
+  ...EXPANSION_ACTIVITY_WRECKS,
+]);
 
 // The seven canon rumor channels remain native surfaces. A carrier event is only a transport:
 // `_recordRumor` additionally requires the exact primary sourceRef and matching channel.
@@ -175,30 +195,17 @@ function copyPoint(value, fallback) {
  * _activateEncounter and the renderer's decode warm so the warm replays the same shape.
  */
 export function planUniqueWreckEncounter({ programSeed, def, bearing, complication, sectorId, simTime, shape }) {
-  const center = globalToSectorLocalForSector(copyPoint(complication.anchor || bearing.exactPos), sectorId);
-  const rng = mulberry32(hash32(
+  return planUniqueWreckEncounterPure({
     programSeed,
-    def.id,
-    complication.encounterId,
-    'unique-wreck-direct-encounter:v1',
-  ) || 1);
-  const zone = {
-    id: `unique-wreck-zone:${def.id}`,
-    name: def.name,
-    type: 'unique_wreck',
-    center,
-    radius: 520,
-    threat: def.programSlot === 'D6' ? 4 : 3,
-    factionId: def.factionId,
-  };
-  return planEncounterShape(
-    shape,
-    zone,
+    def,
+    bearing,
+    complication,
     sectorId,
-    Math.floor(Math.max(0, finite(simTime, 0)) / 600),
-    0,
-    rng,
-  );
+    simTime,
+    shape,
+    selfRegisteredEncounterIds: SELF_REGISTERED_ENCOUNTER_IDS,
+    namedCaptains: NAMED_CAPTAINS,
+  });
 }
 
 export function createUniqueWreckState(metaSeed) {
@@ -261,9 +268,18 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       wrecks.push(wreck);
     }
     if (wrecks.length) out.crossRunWrecks = wrecks;
+    // Additive ledger (keyed by runShareWreckId, so the shared-wreck identity hash is untouched):
+    // a black box already pulled must not be offered again after leaving the sector or reloading.
+    const pulled = input.crossRunBlackBoxes && typeof input.crossRunBlackBoxes === 'object'
+      ? input.crossRunBlackBoxes : null;
+    if (pulled) {
+      const kept = {};
+      for (const id of seen) if (pulled[id] === true) kept[id] = true;
+      if (Object.keys(kept).length) out.crossRunBlackBoxes = kept;
+    }
   }
   const bearings = input.bearings && typeof input.bearings === 'object' ? input.bearings : {};
-  for (const def of UNIQUE_WRECKS) {
+  for (const def of ALL_WRECK_DEFS) {
     const record = bearings[def.id];
     if (!record || typeof record !== 'object') continue;
     const placement = placementForUniqueWreck(programSeed, def.id, def.sectorId);
@@ -295,7 +311,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       salvagedAtS: phase === 'salvaged' ? Math.max(0, finite(record.salvagedAtS, 0)) : null,
     };
   }
-  const dropIds = new Set(UNIQUE_WRECKS.flatMap((def) => rewardDescriptors(def)
+  const dropIds = new Set(ALL_WRECK_DEFS.flatMap((def) => rewardDescriptors(def)
     .filter((reward) => reward.kind === 'weapon' || reward.kind === 'module')
     .map((reward) => reward.id)));
   const grants = input.grants && typeof input.grants === 'object' ? input.grants : {};
@@ -307,7 +323,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       grantedAtS: Math.max(0, finite(grant.grantedAtS, 0)),
     };
   }
-  const storyRewardIds = new Set(UNIQUE_WRECKS.flatMap((def) => rewardDescriptors(def)
+  const storyRewardIds = new Set(ALL_WRECK_DEFS.flatMap((def) => rewardDescriptors(def)
     .filter((reward) => reward.kind === 'story_commodity' || reward.kind === 'story_data')
     .map((reward) => reward.id)));
   const storyRewards = input.storyRewards && typeof input.storyRewards === 'object' ? input.storyRewards : {};
@@ -319,6 +335,12 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       kind: String(reward.kind || 'story_data'),
       flagKey: typeof reward.flagKey === 'string' ? reward.flagKey : null,
       grantedAtS: Math.max(0, finite(reward.grantedAtS, 0)),
+      ...(typeof reward.unlockFlag === 'string' ? { unlockFlag: reward.unlockFlag } : {}),
+      ...(Array.isArray(reward.choices)
+        ? { choices: reward.choices.filter((c) => typeof c === 'string') } : {}),
+      // Additive: who bought the story item, where, and for what. Present only once sold.
+      ...(normalizeStoryDisposition(rewardId, reward.disposition)
+        ? { disposition: normalizeStoryDisposition(rewardId, reward.disposition) } : {}),
     };
   }
   const complications = input.complications && typeof input.complications === 'object' ? input.complications : {};
@@ -341,11 +363,11 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     };
   }
   const pingCounts = input.pingCounts && typeof input.pingCounts === 'object' ? input.pingCounts : {};
-  for (const def of UNIQUE_WRECKS) {
+  for (const def of ALL_WRECK_DEFS) {
     if (Number.isFinite(Number(pingCounts[def.id]))) out.pingCounts[def.id] = Math.max(0, Math.floor(Number(pingCounts[def.id])));
   }
   const pingRisks = input.pingRisks && typeof input.pingRisks === 'object' ? input.pingRisks : {};
-  for (const def of UNIQUE_WRECKS) {
+  for (const def of ALL_WRECK_DEFS) {
     const risk = pingRisks[def.id];
     if (!risk || typeof risk !== 'object') continue;
     out.pingRisks[def.id] = {
@@ -360,11 +382,11 @@ export function normalizeUniqueWreckState(value, metaSeed) {
   const offers = input.offers && typeof input.offers === 'object' ? input.offers : {};
   for (const [key, value] of Object.entries(offers)) if (value) out.offers[key] = true;
   const published = input.published && typeof input.published === 'object' ? input.published : {};
-  for (const def of UNIQUE_WRECKS) if (published[def.id]) out.published[def.id] = true;
+  for (const def of ALL_WRECK_DEFS) if (published[def.id]) out.published[def.id] = true;
   // SF-141: keep only authored-wreck warm ledgers; an unknown key or malformed record drops
   // rather than letting a stale save pin a spawn that never happened.
   const warm = input.warm && typeof input.warm === 'object' ? input.warm : {};
-  for (const def of UNIQUE_WRECKS) {
+  for (const def of ALL_WRECK_DEFS) {
     const rec = warm[def.id];
     if (!rec || typeof rec !== 'object' || !def.warm) continue;
     out.warm[def.id] = {
@@ -407,6 +429,22 @@ function normalizePlayerWreckRecord(input) {
 export function playerWreckCitation(state) {
   const own = state && state.player && state.player.uniqueWrecks;
   return own && own.playerWreck ? clonePlain(own.playerWreck) : null;
+}
+
+function normalizeStoryDisposition(rewardId, value) {
+  if (!value || typeof value !== 'object') return null;
+  if (typeof value.choiceId !== 'string' || !storyBuyerRow(rewardId, value.choiceId)) return null;
+  return {
+    choiceId: value.choiceId,
+    stationId: typeof value.stationId === 'string' ? value.stationId : null,
+    resolvedAtS: Math.max(0, finite(value.resolvedAtS, 0)),
+    credits: Math.max(0, Math.floor(finite(value.credits, 0))),
+    repDeltas: Array.isArray(value.repDeltas)
+      ? value.repDeltas
+        .filter((rep) => rep && typeof rep.factionId === 'string' && Number.isFinite(Number(rep.delta)))
+        .map((rep) => ({ factionId: rep.factionId, delta: Number(rep.delta) }))
+      : [],
+  };
 }
 
 function ensurePlayer(state) {
@@ -549,6 +587,9 @@ export const uniqueWrecks = {
     this._listen('wreckEcology:departed', (payload) => this._occupationSwitch.departed(payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
+    // A claimed story item's buyers wait at the bar of a matching berth (data/storyRewardBuyers.js).
+    this._listen('ui:talkContact', (payload) => this._onStoryBuyerTalk(payload));
+    this._listen('dock:docked', (payload) => this._onStoryBuyerDock(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
     this._listen('band:bearingRequest', (payload) => this._onBandBearingRequest(payload));
     this._listen('encounter:resolved', (payload) => this._onEncounterResolved(payload));
@@ -1103,7 +1144,7 @@ export const uniqueWrecks = {
   },
 
   _requestEncounter(def, encounterId, bearing, kind = 'authored_encounter', options = {}) {
-    if (!def || def.programSlot === 'D10' || !encounterId || !bearing) return null;
+    if (!def || !encounterId || !bearing) return null;
     const own = this._ensureState();
     const key = `${def.id}:encounter:${encounterId}`;
     const existing = own.complications[key];
@@ -1361,7 +1402,8 @@ export const uniqueWrecks = {
       if (wreck.sectorId !== sectorId) continue;
       const id = runShareWreckId(wreck);
       if (this._findLive(id)) continue;
-      const ship = SHIPS.find((def) => def.id === wreck.hullId);
+      // A hull id that left the catalog still gets a physical, scannable husk rather than a throw.
+      const ship = SHIPS.find((def) => def.id === wreck.hullId) || { name: 'hull', radius: 10, mass: 100 };
       const fittings = [];
       for (const entry of wreck.loadout) fittings[entry.slotIndex] = entry.defId;
       const entity = this.helpers.spawnEntity({
@@ -1376,14 +1418,14 @@ export const uniqueWrecks = {
           parentType: 'ship', wreckClass: 'battlefield',
           hulkOfDefId: wreck.hullId, hulkVisual: { defId: wreck.hullId, fittings },
           livingHull: clonePlain(wreck.livingHull), loadout: clonePlain(wreck.loadout), fittings,
-          ...(wreck.killReplay ? { blackBox: clonePlain(wreck.killReplay), blackBoxRecovered: false } : {}),
+          ...(wreck.killReplay ? { blackBox: clonePlain(wreck.killReplay), blackBoxRecovered: this._ensureState().crossRunBlackBoxes?.[id] === true } : {}),
           proportions: WRECK_COLLIDER_PROPORTIONS,
         },
       });
       if (entity) {
         this._entityByWreck.set(id, entity.id);
         this._wreckByEntity.set(entity.id, id);
-        syncEntitySectorMembership(this.state, entity, sectorId);
+        syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
       }
     }
   },
@@ -1603,7 +1645,16 @@ export const uniqueWrecks = {
 
     const salvage = this.registry && this.registry.get && this.registry.get('salvageActions');
     // Only a freshly fixed (not yet recovered) wreck arms its reactor; a husk has none to arm.
-    const arm = !!(def.reactor && record.phase === 'fixed');
+    // A fuse that already ran out while the player was away (or across a save) must not be
+    // restored onto a freshly reminted hull: the sweep would detonate it the instant the player
+    // returns and the claim would never open. A hull with no running fuse past its due time comes
+    // back disarmed and salvageable (and stays so on every re-bind); a hull whose fuse is already
+    // ticking in this session keeps it.
+    const fuseNow = finite(deferredEnterNow(this.state), finite(this.state && this.state.simTime, 0));
+    const fuseElapsed = record.reactorDueAt != null && finite(record.reactorDueAt, 0) <= fuseNow;
+    const fuseRunning = !!(data.unstableReactor && typeof data.unstableReactor === 'object'
+      && !data.unstableReactor.burst);
+    const arm = !!(def.reactor && record.phase === 'fixed') && !(fuseElapsed && !fuseRunning);
     const pool = husked ? huskPoolForRecord(def, record) : def.salvagePool;
     if (salvage && typeof salvage.configureAuthoredWreck === 'function') {
       salvage.configureAuthoredWreck(entity, {
@@ -1691,6 +1742,10 @@ export const uniqueWrecks = {
       if (!entity.pos || distance(origin, entity.pos) > UNIQUE_WRECK_SCAN_RADIUS) continue;
       data.blackBoxRecovered = true;
       data.scanned = true;
+      if (typeof data.uniqueWreckId === 'string') {
+        const ledger = own.crossRunBlackBoxes || (own.crossRunBlackBoxes = {});
+        ledger[data.uniqueWreckId] = true;
+      }
       const recording = blackBoxRecording(data.blackBox, {
         wreckId: data.uniqueWreckId, hullId: data.hulkOfDefId,
       });
@@ -1779,6 +1834,37 @@ export const uniqueWrecks = {
     return published;
   },
 
+  /** The legality-resolved bonus cargo a claim pays, keyed by commodity. */
+  _bonusCargoFor(def) {
+    const rawCargo = {};
+    for (const item of def.bonusCargo || []) {
+      rawCargo[item.commodityId] = (rawCargo[item.commodityId] || 0) + item.qty;
+    }
+    const rewardWreck = {
+      type: 'wreck',
+      data: {
+        parentType: def.wreckClass === 'military' ? 'military' : 'ship',
+        wreckClass: def.wreckClass,
+      },
+    };
+    return salvagePoolForWreck(rewardWreck, rawCargo);
+  },
+
+  /** Volume the hold lacks to take every unit of `cargo`, 0 when it fits (or no hold exists). */
+  _bonusCargoShortfall(cargo) {
+    const hold = this.state.player && this.state.player.cargo;
+    if (!hold || !Number.isFinite(hold.capVolume) || !Number.isFinite(hold.usedVolume)) return 0;
+    let free = hold.capVolume - hold.usedVolume;
+    let short = 0;
+    for (const [commodityId, amount] of Object.entries(cargo || {})) {
+      const need = Math.max(0, finite(amount, 0)) * cargoUnitVolume(this.state, commodityId);
+      if (need <= 0) continue;
+      if (need > free + 1e-9) short += need - Math.max(0, free);
+      free = Math.max(0, free - need);
+    }
+    return short;
+  },
+
   _onChoose(payload) {
     const def = uniqueWreckById(payload && payload.wreckId);
     const own = this._ensureState();
@@ -1787,6 +1873,27 @@ export const uniqueWrecks = {
     const choice = def.decision.choices.find((entry) => entry.id === payload.choiceId);
     if (!choice) {
       this._publishDecision(def.id, 'invalid-choice');
+      return null;
+    }
+
+    // Fit check BEFORE the latch: bonus cargo that does not fit the hold was silently discarded
+    // while the decision closed for good (Choir-Tender's 50 medical is 40 volume — a whole default
+    // hold). A choice that cannot be paid stays open so the pilot can make room and choose again.
+    const choiceCargo = choice.bonusCargo ? this._bonusCargoFor(def) : {};
+    const shortfall = this._bonusCargoShortfall(choiceCargo);
+    if (shortfall > 0) {
+      this.bus.emit('uniqueWreck:choiceBlocked', {
+        wreckId: def.id,
+        sectorId: def.sectorId,
+        choiceId: choice.id,
+        reason: 'cargo_full',
+        neededVolume: shortfall,
+      });
+      this.bus.emit('toast', {
+        text: `${choice.label}: the hold needs ${Math.ceil(shortfall)} more free volume for the cargo. Make room and choose again.`,
+        kind: 'warn',
+        ttl: 8,
+      });
       return null;
     }
 
@@ -1805,18 +1912,6 @@ export const uniqueWrecks = {
       || { x: 0, z: 0 };
     const cargoGranted = {};
     if (choice.bonusCargo) {
-      const rawCargo = {};
-      for (const item of def.bonusCargo || []) {
-        rawCargo[item.commodityId] = (rawCargo[item.commodityId] || 0) + item.qty;
-      }
-      const rewardWreck = {
-        type: 'wreck',
-        data: {
-          parentType: def.wreckClass === 'military' ? 'military' : 'ship',
-          wreckClass: def.wreckClass,
-        },
-      };
-      const choiceCargo = salvagePoolForWreck(rewardWreck, rawCargo);
       for (const [commodityId, amount] of Object.entries(choiceCargo)) {
         const before = finite(this.state.player && this.state.player.cargo
           && this.state.player.cargo.items && this.state.player.cargo.items[commodityId], 0);
@@ -1850,9 +1945,15 @@ export const uniqueWrecks = {
               && ships.grantModule({
                 defId: reward.id,
                 reason: `unique-wreck:${def.id}:${choice.id}`,
-                // NXB-032 — the recovered instance keeps where it came from through
-                // hold/fit/resale; plain string reads through formatInstanceProvenance.
-                provenance: `Recovered: ${def.name || def.id}`,
+                // NXB-032 + row 500 — the recovered instance keeps where it came from
+                // through hold/fit/resale. Salvage is an authored provenance source:
+                // a named hull's part carries the Storied rim and its deed.
+                provenance: provenanceStamp({
+                  tier: 'storied',
+                  label: `Recovered: ${def.name || def.id}`,
+                  source: 'wreck',
+                  deed: `hull of ${def.victimLabel || def.name || def.id}`,
+                }) || `Recovered: ${def.name || def.id}`,
               }));
             if (granted) own.grants[reward.id] = { wreckId: def.id, grantedAtS: resolvedAtS };
           }
@@ -1863,12 +1964,21 @@ export const uniqueWrecks = {
         let granted = !!own.storyRewards[reward.id];
         if (!granted) {
           const flags = ensurePlayer(this.state).flags;
+          // The authored row carries the buyer choices and the unlock flag; rewardDescriptors
+          // flattens them away, so read the source row. The unlock flag is what opens the
+          // downstream path (e.g. the Choir-Vael treaty) — a bare flagKey alone opened nothing.
+          const source = (def.uniqueDrops || []).find((drop) => drop && drop.id === reward.id) || {};
+          const choices = Array.isArray(source.choices) ? source.choices.filter((c) => typeof c === 'string') : null;
+          const unlockFlag = typeof source.unlockFlag === 'string' ? source.unlockFlag : null;
           if (reward.flagKey) flags[reward.flagKey] = true;
+          if (unlockFlag) flags[unlockFlag] = true;
           own.storyRewards[reward.id] = {
             wreckId: def.id,
             kind: reward.kind,
             flagKey: reward.flagKey || null,
             grantedAtS: resolvedAtS,
+            ...(unlockFlag ? { unlockFlag } : {}),
+            ...(choices ? { choices } : {}),
           };
           granted = true;
           this.bus.emit('uniqueWreck:storyRewardGranted', {
@@ -1877,6 +1987,8 @@ export const uniqueWrecks = {
             rewardId: reward.id,
             kind: reward.kind,
             flagKey: reward.flagKey || null,
+            unlockFlag,
+            choices: choices ? [...choices] : [],
           });
         }
         if (granted) storyRewardIds.push(reward.id);
@@ -1960,6 +2072,87 @@ export const uniqueWrecks = {
     // outcome-stamped scan identity, placard scan line, and the outcome's residual pool.
     this._materialize(def.id);
     return record;
+  },
+
+  /**
+   * Docking at a berth that keeps a buyer for an unsold story item says so once per dock, in the
+   * comms log: the buyer is at the bar. The offer itself is a pure read (storyBuyerOffersAt).
+   */
+  _onStoryBuyerDock(payload) {
+    const stationId = payload && payload.stationId;
+    if (!stationId || (this.host && this.host._saveRestoring)) return;
+    for (const offer of storyBuyerOffersAt(this.state, stationId)) {
+      const item = STORY_REWARD_BUYERS[offer.rewardId];
+      const row = item && item.choices[offer.choiceIds[0]];
+      if (!row) continue;
+      this.bus.emit('comms:log', {
+        from: row.buyerName,
+        text: `${row.buyerName} is asking at the bar about the ${offer.itemName}.`,
+        kind: 'story_buyer',
+        sourceRef: `storyBuyer:${offer.rewardId}:${stationId}`,
+      });
+    }
+  },
+
+  /**
+   * The bar buyer's choice (ui:talkContact from barContacts' story-buyer contact). Sole settler of
+   * a story item's disposition: validates berth + undisposed, records it durably, then asks the
+   * credit and reputation owners by intent and publishes the consequence.
+   */
+  _onStoryBuyerTalk(payload) {
+    if (!payload || typeof payload.contactId !== 'string' || typeof payload.choiceId !== 'string') return null;
+    if (!payload.contactId.startsWith(STORY_BUYER_CONTACT_PREFIX)) return null;
+    if (!payload.choiceId.startsWith(STORY_BUYER_CHOICE_PREFIX)) return null;
+    const rewardId = payload.contactId.slice(STORY_BUYER_CONTACT_PREFIX.length);
+    const choiceId = payload.choiceId.slice(STORY_BUYER_CHOICE_PREFIX.length);
+    return this.disposeStoryReward({ rewardId, choiceId, stationId: payload.stationId });
+  },
+
+  disposeStoryReward({ rewardId, choiceId, stationId } = {}) {
+    const own = this._ensureState();
+    const record = own.storyRewards[rewardId];
+    const row = storyBuyerRow(rewardId, choiceId);
+    if (!record || !row || record.disposition) return null;
+    if (Array.isArray(record.choices) && !record.choices.includes(choiceId)) return null;
+    const ui = this.state && this.state.ui;
+    const dockedAt = ui && ui.docked !== false && typeof ui.dockedStationId === 'string' ? ui.dockedStationId : null;
+    const at = typeof stationId === 'string' ? stationId : dockedAt;
+    if (!at || (dockedAt && dockedAt !== at) || !storyBuyerAtStation(rewardId, choiceId, at)) return null;
+
+    const repDeltas = storyBuyerRepDeltas(row, at);
+    const credits = Math.max(0, Math.floor(finite(row.credits, 0)));
+    record.disposition = {
+      choiceId,
+      stationId: at,
+      resolvedAtS: Math.max(0, finite(this.state && this.state.simTime, 0)),
+      credits,
+      repDeltas: repDeltas.map((rep) => ({ ...rep })),
+    };
+    const reason = `story-buyer:${rewardId}:${choiceId}`;
+    if (credits > 0) this.bus.emit('economy:grantCredits', { amount: credits, reason });
+    for (const rep of repDeltas) {
+      this.bus.emit('faction:repDelta', { factionId: rep.factionId, delta: rep.delta, reason });
+    }
+    this.bus.emit('news:publish', {
+      text: row.news,
+      kind: 'story_disposition',
+      sourceRef: `followup.${record.wreckId || rewardId}.${choiceId}`,
+      wreckId: record.wreckId || null,
+      rewardId,
+      choiceId,
+      stationId: at,
+      channelId: 'news',
+      followup: true,
+    });
+    this.bus.emit('uniqueWreck:storyRewardDisposed', {
+      rewardId,
+      wreckId: record.wreckId || null,
+      choiceId,
+      stationId: at,
+      credits,
+      repDeltas: repDeltas.map((rep) => ({ ...rep })),
+    });
+    return record.disposition;
   },
 
   _onEntityDestroyed(payload) {

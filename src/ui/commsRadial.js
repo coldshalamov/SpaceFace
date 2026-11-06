@@ -9,10 +9,12 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_RECEIPT_TTL_S,
   CONTACT_HAIL_REQUEST_TTL_S,
+  GENERIC_ROLE_LABELS,
   HEAVE_TO_COMPLIANT_ROLES,
   contactHailAvailability,
   createContactHailOffer,
 } from '../data/contactHail.js';
+import { hailRegistrySlot } from '../data/shipRegistry.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
@@ -24,7 +26,7 @@ import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
 import { injectCommsLayouts } from './orrery/commsLayouts.js';
-import { injectFlightRadialsLayouts } from './orrery/flight-radialsLayouts.js';
+import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight-radialsLayouts.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -89,12 +91,18 @@ function roleWord(entity) {
   return String(data.trafficRole || data.role || entity && entity.role || '').trim().toLowerCase();
 }
 
-function callsign(entity) {
+function callsign(entity, seed = 0) {
   const data = entity && entity.data || {};
-  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toUpperCase();
+  const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
+  if (authored) {
+    return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+  // Same registry the hail header reads (src/data/shipRegistry.js): an anonymous hull's deck
+  // label is its painted name and captain, not its job description.
+  const registry = hailRegistrySlot(entity, seed, GENERIC_ROLE_LABELS);
+  if (registry) return String(registry).replace(/\s+/g, ' ').trim().toUpperCase();
+  return String(data.trafficLabel || 'UNIDENTIFIED').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 function resolveFactionId(entity) {
@@ -138,7 +146,7 @@ export function resolveHailVisual(state, payload, availability = null) {
   const kind = String(availability && availability.kind || payload && payload.kind || '').trim();
   const role = roleWord(entity);
   const density = densityForContact(kind, role);
-  const pilot = callsign(entity);
+  const pilot = callsign(entity, state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0);
   const classWord = classWordFromOffer(payload, availability, entity);
   const factionId = resolveFactionId(entity);
   return {
@@ -625,6 +633,7 @@ export function createCommsRadial(ctx) {
     activePayload = probe;
     fan.hidden = false;
     fan.classList.add('is-open');
+    syncRadialOwnsFrame();
     if (!state.ui) state.ui = {};
     state.ui.commsRadialOpen = true;
     bus.emit('audio:cue', { id: 'ui_open' });
@@ -643,6 +652,7 @@ export function createCommsRadial(ctx) {
     lastWedgeSig = '';
     fan.classList.remove('is-open');
     fan.hidden = true;
+    syncRadialOwnsFrame();
     wedgeHost.replaceChildren();
     wedgeButtons = [];
     if (state.ui) state.ui.commsRadialOpen = false;
@@ -794,6 +804,7 @@ export function createCommsRadial(ctx) {
     deckOpen = true;
     deck.hidden = false;
     deck.classList.add('is-open');
+    syncRadialOwnsFrame();
     nextUiUpdateAt = Number(state.simTime) || 0;
     focusSafely(closeDeckBtn);
     return true;
@@ -805,6 +816,7 @@ export function createCommsRadial(ctx) {
     deckOpen = false;
     deck.classList.remove('is-open');
     deck.hidden = true;
+    syncRadialOwnsFrame();
     if (open) focusSafely(hubBtn);
     else if (heldFocus) restoreFlightFocus();
   }
@@ -1002,6 +1014,7 @@ export function createCommsRadial(ctx) {
     try { freqMorph.dispose(); } catch (_) {}
     fan.remove();
     deck.remove();
+    syncRadialOwnsFrame();
     // A torn-down fan must not leave the held-open flag set, or the velocity tape stays
     // suppressed on this state object with nothing left to clear it.
     if (state.ui) state.ui.commsRadialOpen = false;

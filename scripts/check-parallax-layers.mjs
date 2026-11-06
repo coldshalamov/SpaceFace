@@ -19,9 +19,11 @@ assert.equal(typeof parallaxLayers.update, 'function', 'parallaxLayers.update ex
 assert.equal(typeof parallaxLayers.dispose, 'function', 'parallaxLayers.dispose export missing');
 assert.equal(typeof parallaxLayers.wrapParallaxCoordinate, 'function', 'wrap helper export missing');
 
-checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 24, mid: 128, near: 24 });
-checkStack({ particleQuality: 'low', motionReduce: false }, { far: 24, mid: 128, near: 24 });
-checkStack({ particleQuality: 'low', motionReduce: true }, { far: 24, mid: 128, near: 24 });
+const authoredCounts = Object.fromEntries(Object.entries(parallaxLayers.PARALLAX_BANDS)
+  .map(([name, band]) => [name, band.count]));
+checkStack({ particleQuality: 'medium', motionReduce: false }, authoredCounts);
+checkStack({ particleQuality: 'low', motionReduce: false }, authoredCounts);
+checkStack({ particleQuality: 'low', motionReduce: true }, authoredCounts);
 checkWrapCellFrozenAcrossZoom();
 
 console.log('Parallax layers OK: frozen wrap cell, global-focus per-instance wrap, rebase continuity, static matrices, GPU spin');
@@ -72,8 +74,10 @@ function checkStack(video, expected) {
   const state = makeState(video);
   const stack = parallaxLayers.init(scene, state, null, state.render.sectorPalette);
 
-  assert.equal(stack.groups.length, 3, `${video.particleQuality}: expected 3 parallax groups`);
-  assert.equal(scene.children.length, 3, `${video.particleQuality}: expected 3 scene children`);
+  assert.deepEqual(stack.groups.map(group => group.userData.layer).sort(),
+    ['farDust', 'midDebris', 'nearSpeedMotes', 'driftSheet'].sort(),
+    'every authored depth band is present exactly once');
+  assert.equal(scene.children.length, stack.groups.length, 'each depth band is mounted in the scene');
 
   const far = stack.groups.find((group) => group.userData.layer === 'farDust');
   const mid = stack.groups.find((group) => group.userData.layer === 'midDebris');
@@ -81,12 +85,15 @@ function checkStack(video, expected) {
   assert.ok(far, 'far dust group missing');
   assert.ok(mid, 'mid debris group missing');
   assert.ok(near, 'near debris group missing');
+  const drift = stack.groups.find((group) => group.userData.layer === 'driftSheet');
+  assert.ok(drift, 'above-plane drift group missing');
+  assert.equal(drift.userData.activeCount, expected.drift, `${video.particleQuality}: drift count`);
 
   assert.equal(far.userData.activeCount, expected.far, `${video.particleQuality}: far count`);
   assert.equal(mid.userData.activeCount, expected.mid, `${video.particleQuality}: mid count`);
   assert.equal(near.userData.activeCount, expected.near, `${video.particleQuality}: near count`);
 
-  for (const [label, group] of [['far', far], ['mid', mid], ['near', near]]) {
+  for (const [label, group] of [['far', far], ['mid', mid], ['near', near], ['drift', drift]]) {
     const mesh = group.children[0];
     assert.equal(mesh.isInstancedMesh, true, `${video.particleQuality}: ${label} must be instanced meshes`);
     assert.equal(!!mesh.isPoints, false, `${video.particleQuality}: ${label} must not be point sprites`);

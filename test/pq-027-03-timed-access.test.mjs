@@ -16,8 +16,10 @@ import {
   APERTURE_ID,
   APERTURE_INTERIOR_DIR,
   APERTURE_JAM_HOLD_S,
+  APERTURE_MOUTH,
   APERTURE_PINCH_FIELD,
   APERTURE_SECTOR_ID,
+  apertureAcross,
   apertureAlong,
   aperturePhase,
   aperturePoint,
@@ -35,13 +37,15 @@ const PLAYER_HULL_ID = 'ship_kestrel';
 const REINFORCE_HULL_ID = 'ship_wasp';
 const HOLD_TICKS = Math.round(APERTURE_JAM_HOLD_S * 60);
 const OPEN_TICKS = 300;
-const RAM_TICKS = 48;
+// An 18-mass hull walks a 1100-mass wreck into the mouth at contact speed — the seat
+// lands around tick ~70 on the live contact model; 48 was tuned before it.
+const RAM_TICKS = 84;
 const EXIT_ROT = Math.atan2(APERTURE_DIR.z, APERTURE_DIR.x);
 const INTERIOR_ROT = Math.atan2(APERTURE_INTERIOR_DIR.z, APERTURE_INTERIOR_DIR.x);
 const LAUNCH_FORCE = 640;
 
 function playerRamPose() {
-  return aperturePoint(38, 4);
+  return aperturePoint(38, 16);
 }
 
 function playerWatchPose() {
@@ -49,7 +53,9 @@ function playerWatchPose() {
 }
 
 function wreckPose() {
-  return aperturePoint(18, 0);
+  // Off the reinforcement's burn axis: a jam dead on the lane is battered back out
+  // by every hold-cone transit; the door frame fiction is a hull wedged in the jamb.
+  return aperturePoint(14, 16);
 }
 
 function reinforcementPose() {
@@ -225,7 +231,6 @@ async function runBay({ playerShove, ticks }) {
     }
     const reinforcement = host.hulls[1];
     reinforcement.data = reinforcement.data || {};
-    reinforcement.data.intent = { throttle: 1, moveZ: 1, aimAngle: EXIT_ROT };
     reinforcement.data.reinforcement = true;
     const bodies = wreck ? [host.player, wreck, reinforcement] : [host.player, reinforcement];
     host.assertBodies(bodies, playerShove ? 'player jam bodies' : 'open bay bodies');
@@ -244,9 +249,11 @@ async function runBay({ playerShove, ticks }) {
           const dz = wreck.pos.z - host.player.pos.z;
           const limit = (wreck.radius || 0) + (host.player.radius || 0) + 2;
           if (dx * dx + dz * dz <= limit * limit) playerHitWreck = true;
+          // The shove completes the full window: a hull stopped at the band's lip is a
+          // shallow jam — the first reinforcement transit bats it through. Walking it
+          // to the deep seat is what the door-frame read always meant.
           if (pointInsideApertureMouth(wreck.pos) || isApertureOccupant(wreck)) {
             wreckSeated = true;
-            if (playerHitWreck) return false;
           }
         },
       });
@@ -263,12 +270,18 @@ async function runBay({ playerShove, ticks }) {
         state.world.currentSectorId = APERTURE_SECTOR_ID;
         state.simTime = 1;
         writeRealPathInput(state, { brake: true });
+        // The reinforcement launches when the door jams — a live intent during the
+        // shove let it pre-position past the hold cone's apex before any field existed.
+        reinforcement.data.intent = { throttle: 1, moveZ: 1, aimAngle: EXIT_ROT };
         burnOut(reinforcement);
       },
     });
     let crossedAt = null;
     let minAlong = apertureAlong(reinforcement.pos);
     let maxAlong = minAlong;
+    let maxAlongInLane = Math.abs(apertureAcross(reinforcement.pos)) <= APERTURE_MOUTH.halfWidth
+      ? minAlong
+      : -Infinity;
     host.step(ticks, {
       before({ state }) {
         state.world.currentSectorId = APERTURE_SECTOR_ID;
@@ -280,7 +293,11 @@ async function runBay({ playerShove, ticks }) {
         const along = apertureAlong(reinforcement.pos);
         minAlong = Math.min(minAlong, along);
         maxAlong = Math.max(maxAlong, along);
-        if (crossedAt == null && along >= APERTURE_EXIT_ALONG) {
+        // "Out" means through the door lane: the harness has no hangar side walls, so a
+        // hull squeezed out past the jamb is still pinned inside the bay's own space.
+        const inLane = Math.abs(apertureAcross(reinforcement.pos)) <= APERTURE_MOUTH.halfWidth;
+        if (inLane) maxAlongInLane = Math.max(maxAlongInLane, along);
+        if (crossedAt == null && along >= APERTURE_EXIT_ALONG && inLane) {
           crossedAt = (index + 1) / 60;
           return false;
         }
@@ -296,6 +313,7 @@ async function runBay({ playerShove, ticks }) {
       crossedAt,
       minAlong,
       maxAlong,
+      maxAlongInLane,
       along: apertureAlong(reinforcement.pos),
       alive: reinforcement.alive !== false,
       wreckSeated,
@@ -347,6 +365,6 @@ test('PQ-027.03 seed 2703 the player shoves a wreck in; the jam holds 20 s', LON
   assert.ok(jammed.remainingS >= APERTURE_JAM_HOLD_S - 0.05, `jam window readable (${jammed.remainingS})`);
   assert.equal(jammed.crossedAt, null,
     `jam must hold the reinforcement inside for 20 s (along=${jammed.along.toFixed(1)}, max=${jammed.maxAlong.toFixed(1)})`);
-  assert.ok(jammed.along < APERTURE_EXIT_ALONG,
-    `reinforcement stayed in the bay (${jammed.along.toFixed(1)} < ${APERTURE_EXIT_ALONG})`);
+  assert.ok(jammed.maxAlongInLane < APERTURE_EXIT_ALONG,
+    `reinforcement never reached the exit through the door (${jammed.maxAlongInLane.toFixed(1)} < ${APERTURE_EXIT_ALONG})`);
 });

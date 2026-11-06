@@ -3,6 +3,7 @@
 // from disposing the deck owner's resources. No simulation writes, cloned cargo or private loop.
 import * as THREE from 'three';
 import { createAuthoredAssetLease } from '../../render/assetLoader.js';
+import { nocturneForScene } from '../../render/nocturne/bridge.js';
 import { getSalvageTenderReadModel, salvageTenderBodyForState } from './readModel.js';
 
 const ROOT = 'assets/ships/release/parts/';
@@ -144,11 +145,14 @@ export function createSalvageTenderPresentation({
     group.add(fixture.group);
     return fixture;
   });
-  const deckLight = new THREE_NS.PointLight(0xffc071, 0, 65, 2);
+  const nocturne = nocturneForScene(scene);
+  const deckLight = nocturne
+    ? nocturne.createLight('salvage-tender:berth-lamp', 'point', { color: 0xffc071, range: 65, decay: 2, priority: 2 })
+    : new THREE_NS.PointLight(0xffc071, 0, 65, 2);
   deckLight.name = 'Morrowlight_BerthLamp';
   deckLight.castShadow = false;
   deckLight.position.set(0.42, 0.5, -0.23);
-  group.add(deckLight);
+  if (!nocturne) group.add(deckLight);
   const unbindAudio = bindSalvageTenderAudio(bus, () => liveState);
   const lifecycleUnsubs = [];
 
@@ -201,6 +205,7 @@ export function createSalvageTenderPresentation({
       else inverseScene.identity();
       group.matrix.multiplyMatrices(inverseScene, attachedRoot.matrixWorld);
       group.matrixWorldNeedsUpdate = true;
+      if (nocturne) deckLight.position.set(0.42, 0.5, -0.23).applyMatrix4(attachedRoot.matrixWorld);
       const reduceMotion = nextState.settings?.video?.motionReduce === true;
       const reduceFlash = nextState.settings?.video?.flashReduce === true
         || nextState.settings?.accessibility?.flashReduce === true

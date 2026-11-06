@@ -1,59 +1,55 @@
 <!-- LIFETIME: STABLE -->
 # Feature validation workflow
 
-This is the repository entry point for choosing proportionate proof. It explains how focused tests,
-the deterministic gameplay lab, the validation broker, and player-facing acceptance fit together.
-The selected active packet names the behavior and commands relevant to its change. Apply the cost
-rules below when older packet boilerplate demands unrelated full boots, captures, or batteries.
-Executable schemas, tests, and validation manifests remain the machine-enforced truth.
-
-For program lifecycle, review closure, and receipts, also read
-[`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md).
+This is the repository reference for choosing the smallest check that directly answers a claim.
+Root [`AGENTS.md`](../AGENTS.md) §9 and the active program's
+[`README.md`](../design/program/finish/README.md) §2 set current verification scope and cadence.
+Use this file for the validation tools and their limits; do not turn its examples into a checklist.
 For lab implementation work, read
 [`../src/testing/lab/AGENTS.md`](../src/testing/lab/AGENTS.md).
 
 ## The short version
 
-1. Reproduce or characterize the behavior at the narrow owner seam.
-2. Run syntax/schema and the focused owner test.
-3. For deterministic gameplay, use a scenario under `src/testing/scenarios/` and the correct
-   `sf lab` executor.
-4. Prove repeatability and save/load continuation when the feature owns those claims.
-5. Run adjacent ownership/save/integration checks named by the packet.
-6. When the change owns a Browser/Electron or public-route claim, run that route after its focused
-   gates pass, at the coherent integration boundary described below.
-7. When a unit itself claims a purely visual, accessibility, or performance fact that a number
-   cannot falsify, escalate exactly that claim. Headed capture is not the default review method
-   (owner 2026-09-16). Fixed-seed numbers describe handling and causal behavior; they do not prove
-   that play is fun or that a rendered scene looks good. Judge the actual appearance when that is
-   the claim, inspect the result, and use what you see to improve it.
-   A capture-harness failure never blocks `implemented`.
+1. Reproduce or characterize behavior at the narrow owner seam when it is uncertain.
+2. Run the focused owner check when it directly verifies the change.
+3. Use a deterministic scenario for repeatability, simulation, or continuation claims.
+4. Exercise the affected Browser/Electron route when the claim is ordinary route reachability.
+5. Inspect rendered output for a visual claim; use a matched comparison for a performance claim.
+
+These are choices by claim, not steps every edit must climb. Evidence supports the requested result;
+it is not a deliverable unless requested. Fixed-seed numbers can establish handling and causality, but
+not whether a scene looks good or play feels fun. A missing GPU or capture-harness failure leaves a
+dependent visual/performance claim unmeasured; it does not negate unrelated implementation work.
 
 Never rerun an unchanged expensive failure. Preserve its fingerprint, classify it, reduce it to a
 seconds-scale regression, change the owning source or evidence, and only then request another
 acceptance claim.
 
-## Player-truth acceptance gate (binding)
+## Player-truth batch check
 
-Any gameplay PR attaches the player-truth verdict (`verdict.md`) and contact sheet
-(`contact-sheet.jpg`) for every mode it touches. **A FAIL blocks landing.** An INCOMPLETE verdict
-(a check reported UNKNOWN) must name the unmeasured check in the PR; it never counts as PASS.
+During the Finish Program, run player-truth once per batch of about five packets for the modes the
+batch touched, as set out in Finish README §2. It is not a per-commit or per-PR attachment quota.
+Use focused owner checks between batch runs when they directly verify the change. Keep outcomes
+honest: a gameplay `FAIL` blocks the affected batch and can be an observed failure or a core UNKNOWN
+promoted by `--gate`; noncore `UNKNOWN`/`INCOMPLETE` names what the route did not measure and is not a
+pass. Handle a FAIL before declaring the affected batch accepted. A verdict or contact sheet is a
+working artifact unless the active task explicitly asks for it.
 
 ```
 npm run player-truth -- --mode=swarm --arena=all      # every reachable Crucible arena
 npm run player-truth -- --mode=gauntlet
 npm run player-truth -- --mode=adventure              # default New Game: Hitch, Helios, tutorials on
 npm run player-truth -- --mode=racing                 # Circuits, first course
-npm run player-truth -- --mode=swarm --gate           # PR gate: idle pass + active pass to round 3
-npm run player-truth -- --mode=swarm --gate --baseline=origin/master   # before/after table for the PR
+npm run player-truth -- --mode=swarm --gate           # idle pass + active pass to round 3
 ```
 
-**Gate preset (`--gate`, required for a gameplay PR).** Round modes run two passes: an *idle* pass
+**Gate preset (`--gate`).** Round modes run two passes: an *idle* pass
 (no input: kills, reward and spawn motion before input) and an *active* pass (the scripted fighter
-plays from 3 s and must reach round 3; each round start is shot densely and re-probed for ship
-model/LOD, thrust/yaw response, pinning and tumble). In gate mode an UNKNOWN on `player_control`,
-`tumble`, `player_ship`, `round_resolution` or `round_transitions` is a FAIL ("not measured" cannot
-pass a gameplay PR). No invulnerability is used.
+plays from 3 s and must reach round 3; each round start is checked for ship model/LOD, thrust/yaw
+response, pinning and tumble). A gameplay `FAIL` blocks landing for the affected batch. With `--gate`,
+UNKNOWN on `player_control`, `tumble`, `player_ship`, `round_resolution`, or `round_transitions` is
+promoted to FAIL and must be resolved. Unmeasured noncore visual/performance checks remain
+UNKNOWN/INCOMPLETE; do not report them as PASS. No invulnerability is used.
 The process exits 1 when any arena FAILs, including when another arena is ENVIRONMENT. ENVIRONMENT
 is a harness failure (stale served `assets/`, or a quoted route load error such as "The authored
 starter ship could not be loaded"). It is printed on its own line and is not a gameplay FAIL.
@@ -63,16 +59,8 @@ verdict is PASS. An INCOMPLETE verdict lists each UNKNOWN check that caused it. 
 `design/archive/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
 review. `--prune-frames` deletes those frames; it is off unless passed.
 `--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
-screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
-harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a
-before/after table. That checkout inherits the fleet sparse pattern (`!/assets/`). The harness then
-links the shared `share-assets` checkout when its asset commit matches `<ref>` and
-`git status --porcelain -- assets` is empty there. `diff-tree` ignores working-tree edits, so a dirty
-`assets/` is not linked. Otherwise it extracts `assets/` from `<ref>` (about 3.9 GB). That extract
-starts only when the baseline worktree's filesystem has at least 8 GB free; below that it prints
-`HARNESS ENVIRONMENT: not enough disk to extract baseline assets` and does not write the archive.
-Exit 4 applies when that is the only failure. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
-from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
+screen; or `--hull=<starter id>`) repeat the run per combination. `node scripts/player-truth/compare.mjs
+<before dir> <after dir>` compares two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
 combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
 Those per-pixel splits skip a sample taken while a `#screens` overlay is visible, or before the
 flight phase, and the verdict reports how many were skipped. Swarm preparation that is waiting on
@@ -131,24 +119,18 @@ started but was not watched.
 `offscreen_marker` grades the Wave G4 edge chip the player sees (`.sf-threat-halo__slot--arc`), not a second radar and not `weapons.js`. A marker whose center is more than 48 px from every screen edge fails. A marker while every hostile is in frame fails. One off-screen hostile and one marker must name the same side when that hostile is outside on one axis. Off-screen hostiles with no chip stay UNKNOWN: the HUD marks shooters inside the threat halo, and the trace cannot see that. No off-screen hostile is N/A. The check is not gate-strict.
 
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
-  renderer string. Frame-time grades require the dedicated machine's `SPACEFACE_QUIET_HOST=1`
-  marker (`QUIET_HOST_PROGRAM.md` §0); unmarked hosts retain numeric diagnostic timings as UNKNOWN.
-  Verdicts record the observer's render/readback and screenshot cadence within those timings.
+  renderer string. A `SPACEFACE_QUIET_HOST=1` receipt is required only for claims made by the
+  separate Quiet Host Program. The Finish Program measures on the owner's machine with a matched
+  within-session A/B and reports host contention; do not turn a loaded diagnostic into a quiet-host
+  result or discard a valid local comparison. Verdicts record observer render/readback cadence.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
   `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
 - **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
   fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
-  time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not a
-  PASS/FAIL. With `--baseline`, frame time FAILs only on a regression: p99 above 125% of baseline and
-  above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Each run records
-  `os.loadavg()` at start and end in `verdict.json` (`meta.loadavg`). When the mean of the
-  1-minute samples differs by more than 30% of the louder side, the regrade is ADVISORY instead of
-  FAIL. On this shared box the 1-minute load swings between about 5 and 12 during a gate, which is
-  more than 30% for most head/baseline pairs, so software-GL `frame_time` will usually be ADVISORY
-  and will not gate. That is accepted for SwiftShader. The compare output still prints each advisory
-  row, including the head p99, the baseline p99, and the long-task counts, so a large blowup stays
-  visible. It is not a REGRESSED row and it is not a FAIL. A missing load does not claim noise.
-  Without a baseline measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list.
+  time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not an
+  absolute hardware performance result. Report the renderer and relevant host conditions; an
+  unsuitable comparison remains UNKNOWN for the performance claim. The Finish Program uses its
+  matched within-session comparison on the owner's machine for its performance A/B.
   Long-task counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
@@ -191,8 +173,8 @@ Reuse an already observed result when the relevant owner, fixture, harness, runt
 inputs are unchanged. Name its scope and say when it predates the current edit. Do not relabel
 focused or detached evidence as a fresh rendered/public-route pass. New changes to a covered owner,
 a conflicting observation, or a candidate-bound release/performance claim need fresh affected
-evidence. Absolute performance belongs to the quiet-host program; workstation diagnostics may
-identify a cause but cannot substitute for its matched captures.
+evidence. For Finish Program performance claims, use the matched local comparison required by its
+README; a diagnostic timing without a comparison can identify a cause but cannot establish a win.
 
 Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
@@ -427,7 +409,8 @@ profiles, limitations, and reproduction commands.
 
 ## Expensive acceptance and the validation broker
 
-Broker-managed routes are declared under
+Use the broker only when the active task or candidate-bound acceptance route calls for it. Ordinary
+owner checks and route verifications do not need a broker. Broker-managed routes are declared under
 [`../scripts/validation-manifests/`](../scripts/validation-manifests/). Use a package command when
 one exists. Otherwise invoke the named manifest from the active packet:
 
@@ -441,7 +424,7 @@ The broker:
 - executes `requiresScenario` as a fresh fast gate and includes its path in the scenario digest;
 - binds the claim to candidate, scenario, harness, runtime, and manifest digests;
 - persists a one-use claim and disk ledger;
-- enforces `maxLaunchesPerCandidate`;
+- enforces `maxLaunchesPerCandidate` for that broker-managed claim (not a reviewer or progress quota);
 - records failure fingerprints and refuses unchanged repeats;
 - owns process timeout/cleanup and launch accounting.
 
@@ -449,9 +432,8 @@ The broker:
 **no acceptance launch**. Do not bypass them by calling the probe directly, renaming the cell,
 editing unrelated files to perturb a digest, or deleting broker artifacts.
 
-`--diagnostic` is non-promoting and does not consume acceptance quota. It is for one discriminating
-investigation, not an unlimited retry lane. A direct probe is diagnostic unless the execution
-protocol records why no broker is possible and the integrator creates an equivalent one-use claim.
+`--diagnostic` is non-promoting. Use it when a diagnostic can materially reduce uncertainty; it does
+not turn a direct probe into a broker acceptance claim. Do not repeat an unchanged failure.
 
 ### After an expensive failure
 
@@ -465,29 +447,18 @@ Classify the evidence before another launch:
 | `NONDETERMINISM` | hard stop; reduce to deterministic evidence before another route run |
 | `STALE_BASELINE` | deliberately update the contract; never rewrite a golden blindly |
 | `OUT_OF_SCOPE` | record a follow-up unless it invalidates the selected route. **Does not apply to a red check** — see below |
-| `INHERITED_RED` | see [`00_EXECUTION_PROTOCOL.md` §7](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) |
+| `INHERITED_RED` | fix a required red check before calling the affected route accepted |
 | `UNKNOWN` | fail closed and collect one discriminating diagnostic |
 
-`00_EXECUTION_PROTOCOL.md` §7 owns the full disposition rules, including the requirement that a red
-check is repaired rather than inherited. Follow that file when this table is less specific.
+Root `AGENTS.md` §7 owns how confirmed defects are handled; this table classifies only a brokered
+acceptance failure and does not create a second defect or review process.
 
 An unchanged cell and failure fingerprint cannot authorize another identical attempt. Repetition is
 not investigation.
 
-### Packet requirements before L3
-
-The active packet records:
-
-- the scenario path and the public executor that owns its claim;
-- `requiresScenario` in the broker manifest when that scenario is eligible;
-- an explicit exception naming the unrepresentable browser-only claim or missing lab/schema seam;
-- seeded soak invariants only when the unit owns a long-horizon stability claim that its shorter
-  fixture cannot answer;
-- the rendering, public-input, accessibility, performance, and visual judgments that genuinely
-  remain browser-only.
-
-A scenario exception is a gap declaration, not permission to run the same expensive discovery route
-repeatedly.
+For a public-route claim, state which ordinary route and visible behavior were exercised, and name
+any material part that remains unmeasured. Do not create a scenario or broker manifest solely to
+make evidence look more complete.
 
 ## Adding or changing validation infrastructure
 
@@ -503,16 +474,6 @@ Do not create a second simulator, alternate system list, private acceptance laun
 class in feature code. Extend the owning schema/runtime/broker surface and document the limitation
 until its proof path is real.
 
-## Context-compaction recovery
-
-After context compaction, do not continue from remembered check names or “green” claims. Re-read:
-
-1. root `AGENTS.md`;
-2. this workflow;
-3. the selected active packet and its exact validation commands;
-4. the nearest owner `AGENTS.md`;
-5. `src/testing/lab/KNOWN_GAPS.md` when using the lab;
-6. current Git diff, candidate revision, and broker/failure receipt.
-
-Resume at the lowest unproven layer. Never infer that a prior worker's green output belongs to the
-current candidate digest.
+For a resumed task, refresh the current owner, diff, and required direct check from root `AGENTS.md`
+and the active packet. Preserve prior evidence when relevant code and route inputs are unchanged;
+do not repeat unrelated discovery.

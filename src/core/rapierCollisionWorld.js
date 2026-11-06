@@ -44,15 +44,13 @@ export async function createRapierCollisionWorld() {
         rec = createRecord(e, dynamic, ccdEnabled);
         bodies.set(e.id, rec);
       } else if (Math.abs(rec.radius - e.radius) > 0.001) {
-        if (Array.isArray(rec.colliders) && rec.colliders.length > 1) {
-          // Compound proxy records cannot retune a single radius — rebuild the static set.
-          removeRecord(rec);
-          rec = createRecord(e, dynamic, ccdEnabled);
-          bodies.set(e.id, rec);
-        } else if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
-        else if (typeof rec.collider.setShape === 'function') rec.collider.setShape(new RAPIER.Ball(e.radius));
-        rec.radius = e.radius;
-        rec.queryShape = new RAPIER.Ball(e.radius);
+        // Retuning a Rapier collider in place leaves the observer world's broad/narrow phase with
+        // the previous contact pair on some body shapes. Rebuild the bounded proxy set so the new
+        // silhouette is authoritative before the next step; entity pose, velocity and CCD are
+        // copied from the current row below.
+        removeRecord(rec);
+        rec = createRecord(e, dynamic, ccdEnabled);
+        bodies.set(e.id, rec);
       }
       if (rec.ccdEnabled !== ccdEnabled) {
         if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(ccdEnabled);
@@ -213,27 +211,21 @@ export async function createRapierCollisionWorld() {
 
   function countContacts() {
     const pairs = new Set();
-    const identity = { x: 0, y: 0, z: 0, w: 1 };
     for (const rec of bodies.values()) {
-      const pos = rec.body.translation();
-      world.intersectionsWithShape(
-        pos,
-        identity,
-        rec.queryShape,
-        (collider) => {
-          const a = rec.collider.handle;
-          const b = collider.handle;
-          if (a === b) return true;
-          // Sibling colliders of one compound body permanently overlap by construction — they are
-          // not contacts. (Compare parent body handles, not collider handles.)
-          if (typeof collider.parent === 'function' && collider.parent() === rec.body) return true;
+      const colliders = Array.isArray(rec.colliders) && rec.colliders.length
+        ? rec.colliders
+        : [rec.collider];
+      for (const collider of colliders) {
+        // Count narrow-phase pairs for the registered silhouette. A bounding ball here reports
+        // contacts for craft whose compound/capsule colliders are still physically separated.
+        world.contactPairsWith(collider, (other) => {
+          const otherBody = typeof other.parent === 'function' ? other.parent() : null;
+          if (!otherBody || otherBody === rec.body) return;
+          const a = rec.body.handle;
+          const b = otherBody.handle;
           pairs.add(a < b ? `${a}:${b}` : `${b}:${a}`);
-          return true;
-        },
-        undefined,
-        undefined,
-        rec.collider,
-      );
+        });
+      }
     }
     return pairs.size;
   }

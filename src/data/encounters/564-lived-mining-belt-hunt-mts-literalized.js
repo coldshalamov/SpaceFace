@@ -1,6 +1,8 @@
 // SLOT ON THE MINING BELT — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Belt Outpost card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { stationLine } from '../communityPersonality.js';
 
 const spec = {
   "id": "lived_mining_belt_hunt_mts_literalized",
@@ -29,17 +31,17 @@ const spec = {
     {
       "id": "a",
       "label": "Track the mark",
-      "playerLine": "I will follow the slot trail, slow and outside your line."
+      "playerLine": "I’ll follow the slot trail, slow, outside your line."
     },
     {
       "id": "b",
       "label": "Share the bearing",
-      "playerLine": "Send me the last bearing before the mark went cold."
+      "playerLine": "Send the last bearing before the manifest went cold."
     },
     {
       "id": "c",
       "label": "Leave the search",
-      "playerLine": "I am not joining this hunt. Keep mining belt clear."
+      "playerLine": "Not my hunt. Keep my berth minutes clean."
     }
   ],
   "timeoutChoice": "c",
@@ -62,7 +64,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: We found the slot trail crossing mining belt. Stay outside it.",
+      "line": "DESK: The slot’s trail crosses the belt. Stay outside it; the Board is counting.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -77,7 +79,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The search grid has a gap where the old beacon failed.",
+      "line": "The search grid has a gap where the assay skiff stopped transmitting.",
       "channel": "info",
       "next": "p0"
     },
@@ -91,7 +93,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "DESK reads each empty square before moving the scope.",
+      "line": "DESK reads each empty square like a berth minute nobody can charge.",
       "channel": "info",
       "next": "p1"
     },
@@ -105,7 +107,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The slot has a serial someone still loves.",
+      "line": "The slot was weighed, tagged, and logged as delivered.",
       "channel": "info",
       "next": "p2"
     },
@@ -119,7 +121,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "Boost all you like; mining belt keeps its own volume.",
+      "line": stationLine('station_beltout', 0) || 'The belt counts its hunters by the gaps they leave.',
       "channel": "info",
       "next": "p3"
     },
@@ -140,7 +142,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: Holding. The lane keeps its own clock.",
+      "line": "DESK: Holding. The scope is honest; the manifest is optimistic.",
       "channel": "info",
       "next": "offer"
     },
@@ -158,7 +160,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The mark held. Your bearing put the trail back together.",
+      "line": "Mark tracked. Your bearing put the trail back on the books.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -185,7 +187,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Bearing shared. DESK kept the original search lead.",
+      "line": "Bearing shared. DESK kept the lead and lent you the copy.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -205,7 +207,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left. The slot trail kept crossing mining belt.",
+      "line": "You left. The slot keeps crossing the belt, delivered on paper.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -256,23 +258,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "SLOT ON THE MINING BELT",
-  "primaryLine": "DESK: We found the slot trail crossing mining belt. Stay outside it.",
+  "primaryLine": "DESK: The slot’s trail crosses the belt. Stay outside it; the Board is counting.",
   "factionId": "faction_mts",
   "choices": [
     {
       "id": "a",
       "label": "Track the mark",
-      "playerLine": "I will follow the slot trail, slow and outside your line."
+      "playerLine": "I’ll follow the slot trail, slow, outside your line."
     },
     {
       "id": "b",
       "label": "Share the bearing",
-      "playerLine": "Send me the last bearing before the mark went cold."
+      "playerLine": "Send the last bearing before the manifest went cold."
     },
     {
       "id": "c",
       "label": "Leave the search",
-      "playerLine": "I am not joining this hunt. Keep mining belt clear."
+      "playerLine": "Not my hunt. Keep my berth minutes clean."
     }
   ],
   "timeoutChoice": "c",

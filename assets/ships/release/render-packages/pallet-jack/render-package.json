@@ -437,7 +437,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "87cbcaf2e69ad5c2ff4e973cf75727150b1f67aa5bc2a5940c2ab7cfe2e9be6f",
+  "contentHash": "011b6a18671cc53f814c334a466cf4f83b22299601dedd0c302b2bfce5ba1a47",
   "dynamicGroups": [
     {
       "id": "sf.render.pallet-jack.node.lod0-motion-pallet-jack-clamp-armor.dynamic",
@@ -3205,14 +3205,14 @@
       "uri": "pallet_jack.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 503432,
-    "sha256": "c075e18e9b58cfc281a635c33a7b1d8e6d4f54a0872ec81659417b1962ad13a3",
+    "bytes": 503504,
+    "sha256": "d720f0f1ec98395e0b158b7f10285f1ae479858fa1b85dff2530ec87bd3d5d03",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3316,6 +3316,154 @@
       },
       {
         "matrix": [
+          4.934999942779541,
+          0,
+          0,
+          0,
+          0,
+          4.934999942779541,
+          0,
+          0,
+          0,
+          0,
+          4.934999942779541,
+          0,
+          2.0799999237060547,
+          1.9199999570846558,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Armor",
+        "planIndex": 26,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_PALLET_JACK_CLAMP_Armor",
+            "recordIds": [
+              "sf.render.pallet-jack.node.lod0-motion-pallet-jack-clamp-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.950000286102295,
+          0,
+          0,
+          0,
+          0,
+          6.950000286102295,
+          0,
+          0,
+          0,
+          0,
+          6.950000286102295,
+          0,
+          0.20000004768371582,
+          1.1799999475479126,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
+        "planIndex": 28,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
+            "recordIds": [
+              "sf.render.pallet-jack.node.lod0-motion-pallet-jack-clamp-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          7,
+          0,
+          0,
+          0,
+          0,
+          7,
+          0,
+          0,
+          0,
+          0,
+          7,
+          0,
+          2,
+          3.0999999046325684,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Livery",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_PALLET_JACK_CLAMP_Livery",
+            "recordIds": [
+              "sf.render.pallet-jack.node.lod0-motion-pallet-jack-clamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.990000247955322,
+          0,
+          0,
+          0,
+          0,
+          6.990000247955322,
+          0,
+          0,
+          0,
+          0,
+          6.990000247955322,
+          0,
+          2,
+          2.1424999237060547,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
+        "planIndex": 32,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
+            "recordIds": [
+              "sf.render.pallet-jack.node.lod0-motion-pallet-jack-clamp-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3334,7 +3482,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 30,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3386,7 +3534,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Cradle",
-        "planIndex": 31,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3438,7 +3586,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 32,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3490,7 +3638,7 @@
           1
         ],
         "name": "SOCKET_Engine_Port",
-        "planIndex": 33,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3542,7 +3690,7 @@
           1
         ],
         "name": "SOCKET_Engine_Reverse_1",
-        "planIndex": 34,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3594,7 +3742,7 @@
           1
         ],
         "name": "SOCKET_Engine_Reverse_2",
-        "planIndex": 35,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3646,7 +3794,7 @@
           1
         ],
         "name": "SOCKET_Engine_Reverse_3",
-        "planIndex": 36,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3698,7 +3846,7 @@
           1
         ],
         "name": "SOCKET_Engine_Reverse_4",
-        "planIndex": 37,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3750,7 +3898,7 @@
           1
         ],
         "name": "SOCKET_Engine_Starboard",
-        "planIndex": 38,
+        "planIndex": 42,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3909,22 +4057,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 27,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 29,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 28,
+        "planIndex": 31,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 29,
+        "planIndex": 33,
         "role": "mechanical"
       }
     ],
@@ -3934,7 +4082,7 @@
       "sha256": "1d94b371d9e9e19f0e6c806b0f16797f08063c571d12bfd6a1890fe3345b57e8",
       "uri": "assets/ships/motions/pallet-jack.motion.json"
     },
-    "nodeCount": 39,
+    "nodeCount": 43,
     "primitives": [
       {
         "canopy": false,
@@ -4515,8 +4663,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Armor",
-        "planIndex": 26,
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Armor_1",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4544,8 +4692,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
-        "planIndex": 27,
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_BrushedMetal_1",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4573,8 +4721,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Livery",
-        "planIndex": 28,
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_Livery_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4602,8 +4750,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
-        "planIndex": 29,
+        "name": "LOD0_MOTION_PALLET_JACK_CLAMP_MechanicalDark_1",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4616,7 +4764,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pallet_jack.glb"
   },
-  "runtimeHash": "b085ca351d696dc0c63af55873a6051ebd85e394c4e5050ce63081c7cfab4186",
+  "runtimeHash": "5558f1d8ec8ff9f5f929009eb6f00a4055104475c4d1efa2e1940c96cd4afd8d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

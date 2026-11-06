@@ -8,6 +8,7 @@ import { runNewGameSimBoot } from '../src/core/newGameBoot.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { laneRpc, laneSetMode } from '../src/core/simLaneCommands.js';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { CERES_REFERENCE_ACCEPTANCE_ENTRY } from '../src/data/sectorActivityPockets.js';
 
 const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
 
@@ -95,6 +96,38 @@ for (const laneName of ['main', 'worker']) {
       assert.deepEqual(cameraZooms, [120], 'the camera stays page-owned and is applied exactly once');
       bus.emit('game:started', {});
       assert.deepEqual(cameraZooms, [120], 'the later lifecycle receipt does not replay setup');
+
+      const ceres = sandbox.SCENARIO_PRESETS.find(row => row.id === 'ceres_reference_pocket');
+      assert.ok(ceres, 'the curated Ceres reference card is a public Sandbox preset');
+      let preparedReceipt = null;
+      const offPrepared = bus.on('game:scenePrepared', payload => { preparedReceipt = payload; });
+      try {
+        sandbox.requestSandboxGame(bus, sandbox.buildSandboxLaunchConfig(ceres.config));
+        assert.equal(opts.seed, 47, 'the public Ceres card keeps its fixed seed');
+        if (laneName === 'worker') {
+          assert.equal(opts.sandboxSetup?.scenarioId, 'ceres_reference_pocket',
+            'worker boot receives the selected public preset for canonical setup');
+          assert.equal(opts.sandboxSetup?.shipId, 'ship_hornet');
+          assert.deepEqual(opts.sandboxSetup?.physicsLoadout, 'physics_toolkit');
+        }
+        assert.equal((await boot(opts)).ok, true);
+        const active = state.player.ownedShips[state.player.activeShipIndex];
+        assert.equal(active?.defId, 'ship_hornet', 'the selected preset provisions its intended hull');
+        assert.equal(state.entities.get(state.playerId)?.data?.defId, 'ship_hornet',
+          'the live player entity uses the worker-owned hull');
+        assert.equal(state.world.currentSectorId, CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId);
+        for (const itemId of CERES_REFERENCE_ACCEPTANCE_ENTRY.itemIds) {
+          assert.ok(active.fittings.includes(itemId), `the named toolkit fits ${itemId}`);
+        }
+        assert.equal(state.player.credits, 5000,
+          'the isolated preset grants its hull/loadout without changing the fresh campaign wallet');
+        assert.equal(sandbox.hasPendingSandboxLaunch(), false,
+          'the prepared receipt consumes the pending public Sandbox request');
+        assert.equal(Boolean(preparedReceipt?.sandboxSetupApplied), laneName === 'worker',
+          'only the worker boot advertises that it applied this simulation setup');
+      } finally {
+        offPrepared?.();
+      }
     } finally { await close(); }
   });
 }

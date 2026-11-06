@@ -9,7 +9,7 @@
 // cards fired (recovery:started, pirateParley:demand, law:distressRaised). The deck's ladder made
 // that cross-card hiding obsolete: coexisting surfaces stack instead of erasing each other.
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../data/frontierRumors.js';
-import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './screens/codex.js';
+import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './codexRequests.js';
 import { getPromptDeck } from './promptDeck.js';
 
 const RECEIPT_TTL_S = 4;
@@ -63,7 +63,7 @@ export function signalMetaText(record) {
   }
   const distance = Math.max(0, Math.round(Number(record.distance) || 0)).toLocaleString('en-US');
   const pass = Math.max(1, Math.round(Number(record.scanCount) || 1));
-  return `${signalStrengthWord(record.strength)} · ${distance} WU · PASS ${pass}`;
+  return `${signalStrengthWord(record.strength)} · ${distance} u · PASS ${pass}`;
 }
 
 // The Tethys completion hands its exact persisted Codex plate identity ({ sectorId, poiId }, the

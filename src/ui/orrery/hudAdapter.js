@@ -159,8 +159,9 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     if (r.absent === true) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
-    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop"), not the band name.
-    if (pe && slot.index >= 1 && slot.index !== 6) entry.label = pe.label;
+    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
+    // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
+    if (pe && slot.index >= 1) entry.label = pe.label;
     if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));
@@ -298,9 +299,14 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
 const HOST_CSS = `
 #hud .orr-hud-cluster { position:absolute; left:18px; bottom:24px; z-index:5; pointer-events:none; }
 #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.85; }
-@media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
+/* Mirror of the cluster's scaled visual height (540px artboard × --orr-cluster-scale)
+   as an #hud-level var so bottom-anchored siblings (the drive tape) can clear it. */
+#hud { --orr-cluster-h: calc(540px * .85); }
+@media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; }
+  #hud { --orr-cluster-h: calc(540px * .7); } }
 @media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
-@media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; } }
+@media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; }
+  #hud { --orr-cluster-h: calc(540px * .6); } }
 `;
 
 /** Pure: is a projected point over (or within `pad` px of) a measured instrument box? The

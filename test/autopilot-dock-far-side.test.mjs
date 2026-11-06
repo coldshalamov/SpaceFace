@@ -63,9 +63,12 @@ test('approaches within the step of the axis keep the authored mouth aim exactly
   }
 });
 
-test('a hull already inside the orbit circle keeps the mouth aim (the exit path)', () => {
+test('a far-side hull inside the orbit circle aims outward before orbiting', () => {
   const player = hull(at(st, axis, 170, mouthR * 0.6));
   const t = resolve(st, player);
-  assert.equal(t.x, t.approachPoint.x);
-  assert.equal(t.z, t.approachPoint.z);
+  const rx = player.pos.x - st.pos.x, rz = player.pos.z - st.pos.z;
+  const tx = t.x - st.pos.x, tz = t.z - st.pos.z;
+  assert.ok(rx * tx + rz * tz > 0, 'escape stays on the same side of the station');
+  assert.ok(Math.abs(rx * tz - rz * tx) < 1e-6, 'escape is radial');
+  assert.ok(Math.hypot(tx, tz) > mouthR * DOCK_ORBIT_RADIUS_MULT);
 });

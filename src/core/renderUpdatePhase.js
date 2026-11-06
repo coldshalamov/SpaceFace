@@ -7,7 +7,7 @@
 import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
 import { vfx as liveVfx } from '../render/vfx.js';
 import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
-import { shouldFreezeFlightSubmit, shouldSkipFlightDraw } from './presentationFreeze.js';
+import { shouldFreezeFlightSubmit, shouldPresentPausedPhotoFrame, shouldSkipFlightDraw } from './presentationFreeze.js';
 import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 import { presentProExperiencesFrame, releaseProExperiencesPresentation } from '../features/proExperiencesBrowser.js';
 
@@ -43,13 +43,29 @@ export function runRenderUpdatePhase({
 } = {}) {
   const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
   const clock = typeof now === 'function' ? now : defaultNow;
+  const splitRender = !!(render
+    && typeof render.prepareFrame === 'function'
+    && typeof render.drawPreparedFrame === 'function');
+  const photoFrame = splitRender && shouldPresentPausedPhotoFrame(state);
 
   if (state?.mode !== 'flight') {
     releaseBombPresentation(state);
     releaseProExperiencesPresentation(state);
   }
 
-  if (shouldFreezeFlightSubmit(state)) {
+  if (feel && typeof feel.isDeathBellFrameHeld === 'function' && feel.isDeathBellFrameHeld(state)) {
+    // Preserve the submitted framebuffer, including against a death-sheet stage or prewarm.
+    // Feel drains its own lease on presentation time; UI and the simulation retain their
+    // existing clocks. Nothing prepared/consumed this frame's journal range, so reject it.
+    record('render', 0);
+    record('vfx', 0);
+    const errors = runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+    if (errors.feelError) throw errors.feelError;
+    if (errors.uiError) throw errors.uiError;
+    return false;
+  }
+
+  if (shouldFreezeFlightSubmit(state) && !photoFrame) {
     // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
     // lit world drawn here, in the game's one context, while the simulation stays stopped. A screen
     // that asked for nothing leaves the canvas exactly as it found it (pause keeps the held flight
@@ -74,18 +90,14 @@ export function runRenderUpdatePhase({
     return false;
   }
 
-  // Flight or loading: a stage that outlived its screen must not keep a second
-  // picture in the one GL context while the cook or first present runs.
-  if (uiStageResident() && state && (state.mode === 'flight' || state.mode === 'loading')) {
-    releaseUiStage(state.mode === 'loading' ? 'loading-started' : 'flight-resumed');
+  // A stage cannot cover a flight/loading or Photo picture in the one GL context.
+  if (uiStageResident() && state && (state.mode === 'flight' || state.mode === 'loading' || photoFrame)) {
+    releaseUiStage(photoFrame ? 'photo-entered' : state.mode === 'loading' ? 'loading-started' : 'flight-resumed');
   }
 
   let t = clock();
   let renderMs = 0;
   let renderedPreparedScene = false;
-  const splitRender = !!(render
-    && typeof render.prepareFrame === 'function'
-    && typeof render.drawPreparedFrame === 'function');
   // The berth prewarm (D67): a dock in range starts building the berth stage now, during the
   // approach, so the docked frame adopts a warm stage instead of compiling one under the station
   // screen. Its one warm-up draw is only ever taken directly ahead of a world draw in this same
@@ -101,7 +113,10 @@ export function runRenderUpdatePhase({
   const worldDrawFollows = !!(state && state.mode === 'flight' && !shouldSkipFlightDraw(state));
   let renderError = null;
   try {
-    if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt, presentationFrame) !== false;
+    // Photo advances only its camera controls. Every world presenter inside prepareFrame gets
+    // zero elapsed time, even the lanes that do not multiply their delta by timeScale.
+    if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, photoFrame ? 0 : frameDt,
+      presentationFrame, frameDt) !== false;
     else if (render && typeof render.renderFrame === 'function') {
       if (worldDrawFollows) warmUiStagePrewarm({ render, state });
       render.renderFrame(alpha, frameDt, presentationFrame);
@@ -114,16 +129,18 @@ export function runRenderUpdatePhase({
 
   let vfxError = null;
   t = clock();
-  try { updateBombPresentation(state, alpha); }
-  catch (err) { vfxError = err; }
-  try { presentProExperiencesFrame(state, bus, alpha); }
-  catch (err) { vfxError ||= err; }
-  // One cosmetic lane failing cannot suppress the existing detonation presenter either.
-  if (vfx && typeof vfx.update === 'function') {
-    try { vfx.update(frameDt, state); }
+  if (!photoFrame) {
+    try { updateBombPresentation(state, alpha); }
+    catch (err) { vfxError = err; }
+    try { presentProExperiencesFrame(state, bus, alpha); }
     catch (err) { vfxError ||= err; }
+    // One cosmetic lane failing cannot suppress the existing detonation presenter either.
+    if (vfx && typeof vfx.update === 'function') {
+      try { vfx.update(frameDt, state); }
+      catch (err) { vfxError ||= err; }
+    }
   }
-  record('vfx', clock() - t);
+  record('vfx', photoFrame ? 0 : clock() - t);
 
   let drawError = null;
   if (splitRender) {
@@ -146,7 +163,8 @@ export function runRenderUpdatePhase({
 
   let feelError = null;
   let uiError = null;
-  const overlayErrors = runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+  const overlayErrors = runFeelAndUi({ feel, ui, frameDt, feelFrameDt: photoFrame ? 0 : frameDt,
+    state, record, clock });
   feelError = overlayErrors.feelError;
   uiError = overlayErrors.uiError;
 
@@ -165,12 +183,12 @@ export function runRenderUpdatePhase({
   return true;
 }
 
-function runFeelAndUi({ feel, ui, frameDt, state, record, clock }) {
+function runFeelAndUi({ feel, ui, frameDt, feelFrameDt = frameDt, state, record, clock }) {
   let feelError = null;
   let uiError = null;
   if (feel && typeof feel.frame === 'function') {
     const t = clock();
-    try { feel.frame(frameDt, state); }
+    try { feel.frame(feelFrameDt, state); }
     catch (err) { feelError = err; }
     finally { record('feel', clock() - t); }
   } else {

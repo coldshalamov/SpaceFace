@@ -179,7 +179,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "SABLE: The 24 cr stays spent — the relief still runs on your credit at Mining Belt; the close-in just never came — WINCH ON THE MINING BELT.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",

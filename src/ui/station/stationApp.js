@@ -19,6 +19,8 @@ import { autoUpdate, computePosition, flip, offset, shift, size } from '@floatin
 import { el } from '../kit/index.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { disabledServiceWhy, disabledVitalActHtml, factionPresenceServiceRows, runFactionPresenceDockAction } from './serviceQuotes.js';
+import { decantQuote } from '../../systems/stationServices.js';
+import { localizeText } from '../../localization/sourceText.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
@@ -51,15 +53,25 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
+import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
-import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
+import { clearTradeExpectation, consumeStationTradeReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
+
+export function stationReceiptOverlapsControls(receiptRect, controls) {
+  return [...(controls || [])].some((el) => {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+    const rect = el.getBoundingClientRect();
+    return receiptRect.left < rect.right && receiptRect.right > rect.left
+      && receiptRect.top < rect.bottom && receiptRect.bottom > rect.top;
+  });
+}
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -157,6 +169,14 @@ export const STATION_HELP = {
   bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
   ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
 };
+
+// Drops a tile's data-sx-quiet-focus once the player acts on it (see the arrival focus below).
+function clearQuietFocus(ev) {
+  const tile = ev.currentTarget;
+  tile.removeAttribute('data-sx-quiet-focus');
+  tile.removeEventListener('keydown', clearQuietFocus);
+  tile.removeEventListener('blur', clearQuietFocus);
+}
 
 /** Put each destination's existing help line on the rail tile, as a sub and as its spoken name. */
 export function stampDestinationRail(dockEl, destinations = DESTINATIONS, help = STATION_HELP) {
@@ -262,6 +282,12 @@ function departureChipIntent(chip) {
   return explicitNav ? { navigate: explicitNav } : null;
 }
 
+function rememberTradeIntent(set, intentId) {
+  if (!(set instanceof Set) || typeof intentId !== 'string' || !intentId) return;
+  set.add(intentId);
+  while (set.size > 128) set.delete(set.values().next().value);
+}
+
 export function createStationApp(rootEl, ctx, opts = {}) {
   bindReturningPilotSummary(ctx && ctx.bus, ctx && ctx.state);
   ensureStylesheet();
@@ -279,6 +305,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
     injectOrreryStation(rootEl.ownerDocument || globalThis.document);
     injectOrreryStationTabs(rootEl.ownerDocument || globalThis.document);
+    // Station Standard (design/frontend/STATION_STANDARD.md): organised, legible layer over the above
+    injectStationStandard(rootEl.ownerDocument || globalThis.document);
     rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');
@@ -386,6 +414,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const receiptHistory = [];
   const pendingReceipts = [];
   const subscriptions = [];
+  const retiredMarketTradeIntentIds = new Set();
+  const shownTradeIntentIds = new Set();
 
   // ---------- popover ----------
   function stopFloating() {
@@ -688,9 +718,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const kiteButton = document.createElement('button');
   kiteButton.type = 'button'; kiteButton.className = 'k-word sx-kite-corner-open';
   kiteButton.textContent = 'Kite’s Corner';
+  markStationControl(kiteButton, 'kite-corner-open');
   kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
   kiteButton.setAttribute('aria-expanded', 'false');
-  helpEl.parentNode.insertBefore(kiteButton, helpEl);
+  // The station frame always parents the help word; a detached frame (a DOM double, a frame
+  // variant without the ops strip) keeps the entry unmounted instead of failing the whole dock.
+  if (helpEl && helpEl.parentNode) helpEl.parentNode.insertBefore(kiteButton, helpEl);
   let kiteScreen = null, kiteOpen = false;
   function kiteHere() { return state().ui?.docked === true && stationId() === 'station_ceres'; }
   function syncKiteEntry() { kiteButton.hidden = !kiteHere(); }
@@ -913,21 +946,56 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
 
-  subscribe('economy:tradeFailed', () => {
+  const retireMarketExpectation = () => {
+    const expectation = state().ui && state().ui[TRADE_EXPECTATION_KEY];
+    if (!expectation || typeof expectation.intentId !== 'string') return;
+    if (expectation.intentId.startsWith('market:')) {
+      rememberTradeIntent(retiredMarketTradeIntentIds, expectation.intentId);
+    }
+    clearTradeExpectation(state(), { intentId: expectation.intentId });
+  };
+  for (const event of ['game:new', 'game:newGame', 'save:loaded']) {
+    subscribe(event, retireMarketExpectation);
+  }
+  subscribe('station:marketTradeIntentRetired', (p = {}) => {
+    if (typeof p.intentId === 'string' && p.intentId.startsWith('market:')) {
+      rememberTradeIntent(retiredMarketTradeIntentIds, p.intentId);
+    }
+  });
+
+  subscribe('economy:tradeFailed', (p = {}) => {
+    // These are in-flight coordination replies, not terminal refusals. Keep the
+    // exact Market confirmation available for the authoritative success/failure.
+    if (p.reason === 'intent_pending' || p.reason === 'trade_pending') return;
+    const expectation = state().ui && state().ui[TRADE_EXPECTATION_KEY];
+    if (expectation && expectation.intentId === p.intentId && expectation.status === 'recovering'
+      && ['not_docked', 'station_changed'].includes(p.reason)) return;
     // A refused execute emits no tradeCompleted, so the market's confirmed-terms stamp would
     // outlive its trade — and simTime is frozen while docked, so the stamp's TTL never ages it
     // out. A later unstamped settle (an adventure decision on the same screen) must not borrow
     // confirmation it never made; the slot dies with the refusal.
-    const s = state();
-    if (s && s.ui) s.ui[TRADE_EXPECTATION_KEY] = null;
+    clearTradeExpectation(state(), p);
   });
   subscribe('economy:tradeCompleted', (p = {}) => {
+    const receipt = consumeStationTradeReceipt(state(), p, {
+      retiredIntentIds: retiredMarketTradeIntentIds,
+      shownIntentIds: shownTradeIntentIds,
+    });
+    if (!receipt) return;
     // SF-241: the receipt reads what settled through tradeTruth against the terms the market
     // confirmed — a partial fill says "6 of the 10 confirmed", a full fill reports agreement.
-    const receipt = tradeClearedReceipt(state(), p);
     showReceipt(receipt.title, receipt.line, receipt.detail);
     // The cargo handoff is a live task shortcut, not static onboarding copy. A completed trade
     // changes hold contents, credits, and whether the shortcut must open owned-only Sell mode.
+    refresh();
+  });
+  subscribe('station:marketTradeReceiptRecovered', (p = {}) => {
+    const receipt = consumeStationTradeReceipt(state(), p, {
+      retiredIntentIds: retiredMarketTradeIntentIds,
+      shownIntentIds: shownTradeIntentIds,
+    });
+    if (!receipt) return;
+    showReceipt(receipt.title, receipt.line, receipt.detail);
     refresh();
   });
   subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
@@ -961,32 +1029,47 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
-  // A live receipt must never stand on a control. The ORRERY sheet anchors it right of the comms
-  // word (left: calc(100% + 40px)), which on wide windows is ON the Undock key — the bench walk
-  // measured UNDOCK unreachable for the receipt's 3.6 s life ("centre hit reaches
-  // span.sx-receipt__delta"). The sheet already owns the resolution of this exact collision at
-  // narrower widths — under 1500 px it moves the receipt below the comms line, and the 651–800
-  // rules say it outright: "on its old anchor the receipt landed over UNDOCK". Same resolution
-  // here, applied only when the wide anchor would cover a control: the line moves above the rail,
-  // right-aligned, touching no control's centre. The sheet keeps the resting look; this only
-  // steps the live line out of the click path. (Inline !important is required to out-rank the
-  // sheet's own !important anchor.)
+  // A live receipt must never stand on a control. Anchored lanes move above the comms/command row
+  // only when their measured box covers an actual action. The narrow Market lane is static flow
+  // and is handled by its footer layout instead.
   function keepReceiptOffControls() {
     if (!receiptEl || receiptEl.hidden) return;
+    const styleReader = receiptEl.ownerDocument?.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+    if (typeof styleReader === 'function') {
+      try {
+        const position = styleReader.call(receiptEl.ownerDocument?.defaultView || globalThis, receiptEl)?.position;
+        // The narrow market lane is in normal flow; its stylesheet owns placement and naturally
+        // reflows it when the viewport or scrollable panel changes. Anchoring it here would put it
+        // back over the wrapped destination rail.
+        if (position === 'static') return;
+      } catch (_) { /* continue with measured collision handling in partial DOM hosts */ }
+    }
     const r = receiptEl.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const guards = [launchEl, commsToggle, helpEl, dock.el];
-    const hits = guards.some((el) => {
-      if (!el || !el.getBoundingClientRect) return false;
-      const c = el.getBoundingClientRect();
-      return r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
-    });
+    // The dock can be a one-row scroller while its children wrap or overflow on a narrow berth.
+    // Check the actual actionable boxes, not just that clipping wrapper's smaller rectangle.
+    const dockControls = [...(dock.el?.querySelectorAll?.('[data-nav], [data-act]') || [])];
+    const guards = [launchEl, commsToggle, helpEl, ...dockControls];
+    const hits = stationReceiptOverlapsControls(r, guards);
     if (!hits) return;
     receiptEl.style.setProperty('left', 'auto', 'important');
     receiptEl.style.setProperty('right', '0', 'important');
     receiptEl.style.setProperty('top', 'auto', 'important');
     receiptEl.style.setProperty('bottom', 'calc(100% + 10px)', 'important');
   }
+  let receiptPlacementFrame = 0;
+  const refreshReceiptPlacement = () => {
+    if (receiptPlacementFrame) return;
+    if (typeof requestAnimationFrame !== 'function') { keepReceiptOffControls(); return; }
+    receiptPlacementFrame = requestAnimationFrame(() => {
+      receiptPlacementFrame = 0;
+      keepReceiptOffControls();
+    });
+  };
+  window.addEventListener('resize', refreshReceiptPlacement);
+  // A station panel can scroll without scrolling the window. Capture its scroll changes so an
+  // anchored receipt is rechecked against the controls currently visible to the player.
+  rootEl.addEventListener('scroll', refreshReceiptPlacement, true);
 
   // ---------- dock actions ----------
   function actionCosts() {
@@ -1003,7 +1086,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!r) return { text: '—' };
         const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
           .filter(Boolean).join(' · ');
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why: disabledServiceWhy(r) };
+        if (r.disabled) {
+          // a blocked verb names its block in a word or two ("Repair · no yard"), not its own
+          // button label again ("Repair · Repair Hull"); done-state facts keep their label
+          const why = disabledServiceWhy(r);
+          const chips = Array.isArray(r.chips) ? r.chips : [];
+          const block = why && (chips.find((c) => c && (c.kind === 'bad' || c.kind === 'warn')) || chips[0]);
+          return { text: (block && block.text) || r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why };
+        }
         const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };
@@ -1185,15 +1275,38 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   /**
    * U5 self-serve decant: the fuel vital's second verb, offered only while the hold carries
    * fuel cells and the tank has room. It needs no station service — the pilot is the crew —
-   * so it renders even at the outposts the chart marks "no refuel".
+   * so it renders even at the outposts the chart marks "no refuel". The key names the fuel it
+   * will move BEFORE the press (inf-decant-quote): the same pre-commit read the verb resolves,
+   * so the label never promises a pour the yard's pump or a sealed manifest would refuse.
+   * New copy goes through localizeText.
    */
   function decantActHtml(s, fuel) {
-    const held = Math.floor(Number(s && s.player && s.player.cargo && s.player.cargo.items
-      && s.player.cargo.items.cmdty_fuel_cells) || 0);
+    const quote = decantQuote(s);
+    const held = quote && Number.isFinite(quote.held)
+      ? quote.held
+      : Math.floor(Number(s && s.player && s.player.cargo && s.player.cargo.items
+        && s.player.cargo.items.cmdty_fuel_cells) || 0);
     const room = Math.max(0, (Number(fuel && fuel.max) || 0) - (Number(fuel && fuel.current) || 0));
     if (held <= 0 || room <= 0) return '';
+    const count = { count: held, word: held === 1 ? 'cell' : 'cells' };
+    if (quote && quote.ok && quote.cells > 0) {
+      const aria = localizeText('Decant carried fuel cells into the tank — {count} {word} moves {units} fuel',
+        { count: quote.cells, word: quote.cells === 1 ? 'cell' : 'cells', units: quote.units });
+      return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
+        ` aria-label="${aria}">${localizeText('Decant +{units}', { units: quote.units })}</button>`;
+    }
+    // A press that would refuse still renders: the refusal speaks its reason out loud. The
+    // accessible name carries the same why before the click, not only after it.
+    const aria = quote && !quote.ok && quote.reason === 'pump_owns_tank'
+      ? localizeText('Decant refused — the paid pump owns {booked} of this tank, {count} {word} held', { ...count, booked: quote.booked })
+      : quote && !quote.ok && quote.reason === 'tank_room'
+        ? localizeText('Decant refused — {left} left in the tank and a fuel cell needs {cellUnits}, {count} {word} held',
+          { ...count, left: quote.left, cellUnits: quote.cellUnits })
+        : quote && !quote.ok && quote.reason === 'cells_sealed'
+          ? localizeText('Decant refused — every cell aboard is sealed, {count} {word} held', count)
+          : localizeText('Decant carried fuel cells into the tank — {count} {word} held', count);
     return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
-      ` aria-label="Decant carried fuel cells into the tank — ${held} cell${held === 1 ? '' : 's'} held">Decant</button>`;
+      ` aria-label="${aria}">${localizeText('Decant', {})}</button>`;
   }
 
   // A vital is one static kit row: the label at body 62 %, the value at emphasis (data-tone kept:
@@ -1588,7 +1701,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
       // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
       const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
-      if (activeTile) { try { activeTile.focus({ preventScroll: true }); } catch (_) {} }
+      if (activeTile) {
+        // Mark this arrival focus as quiet, the station's and not the player's: the wide-rail
+        // caption plate (station.css, 1701+ × 901+) stays off for it, so it can't cover the body at
+        // rest. The first key on the tab, or focus leaving it, hands the focus back to the player.
+        activeTile.setAttribute('data-sx-quiet-focus', '');
+        activeTile.addEventListener('keydown', clearQuietFocus);
+        activeTile.addEventListener('blur', clearQuietFocus);
+        try { activeTile.focus({ preventScroll: true }); } catch (_) {}
+      }
       const attention = applyDockAttention({ allowAutoOpen: !kiteOpen, refreshActive: !kiteOpen });
       if (!(attention && attention.autoOpen)) {
         const scr = activeScreen();
@@ -1636,6 +1757,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);
       if (receiptTimer) clearTimeout(receiptTimer);
+      if (receiptPlacementFrame && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(receiptPlacementFrame);
+        receiptPlacementFrame = 0;
+      }
+      window.removeEventListener('resize', refreshReceiptPlacement);
+      rootEl.removeEventListener('scroll', refreshReceiptPlacement, true);
       window.removeEventListener('keydown', onEscCapture, true);
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());

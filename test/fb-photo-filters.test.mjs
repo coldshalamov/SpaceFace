@@ -31,7 +31,16 @@ import {
 } from '../src/ui/screens/pause.js';
 
 function stubRenderer() {
-  return { isWebGLRenderer: true, capabilities: { isWebGL2: false } };
+  let target = null;
+  return {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+    autoClear: true,
+    getRenderTarget: () => target,
+    setRenderTarget: (next) => { target = next; },
+    clear() {},
+    render() {},
+  };
 }
 
 function buildGraph() {
@@ -104,10 +113,16 @@ test('filters off — the default — adds zero passes, zero targets and names n
 
 test('the grade stage turns on with one pass and the authored uniforms, and off with none', () => {
   const graph = buildGraph();
+  const baseTargets = graph.diagnostics().renderTargetCount;
   graph.setPhotoFilters({ enabled: true, look: 'warm' });
   assert.equal(graph._photoFiltersActive(), true);
   assert.equal(graph.diagnostics().passFamilies.photoGrade, 1);
   assert.equal(graph.diagnostics().photoFilterLook, 'warm');
+  graph.render(new THREE.Scene(), new THREE.PerspectiveCamera(), { time: 0 });
+  assert.equal(graph.diagnostics().renderTargetCount, baseTargets + 1,
+    'the photo-grade intermediate created for presentation appears in the target census');
+  assert.equal(graph.contextLossResources().length, graph.diagnostics().renderTargetCount,
+    'the target census must match resources invalidated on context loss');
   const warm = resolvePhotoFilterLook('warm');
   assert.deepEqual([...graph.gradeMaterial.uniforms.uFilterLift.value.toArray()], warm.lift);
   assert.equal(graph.gradeMaterial.uniforms.uFilterGamma.value, warm.gamma);
@@ -124,6 +139,8 @@ test('the grade stage turns on with one pass and the authored uniforms, and off 
   assert.equal(graph._photoFiltersActive(), false);
   assert.equal(graph.diagnostics().passFamilies.photoGrade, 0);
   assert.equal(graph.gradeTarget, null);
+  assert.equal(graph.diagnostics().renderTargetCount, baseTargets,
+    'turning grading off removes its intermediate from the target census');
   graph.dispose();
 });
 

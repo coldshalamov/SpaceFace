@@ -71,6 +71,12 @@ const CSS = `
   background: var(--dp-glass-flight, rgb(18 23 29 / .82));
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
+/* Same P9 law on the host scrim itself: .sf-find's blur(9px) otherwise repaints the whole
+   viewport behind the pane every frame the palette is up over live flight. The dim wash stays —
+   only the per-frame blur goes. */
+.sf-find.sf-find--host {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 /* The edge: four corner brackets floating just outside the glass — the tier's edge language,
    never a border. */
 .sf-find .sf-find__pane::before { content: ""; position: absolute; inset: -8px; pointer-events: none;
@@ -158,6 +164,16 @@ const CSS = `
   .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
   .sf-drawer--entity .sf-drawer__deck > .sf-drawer__apron { margin-top: auto; }
+}
+
+/* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
+   row and the taller apron buried POWERS under its fade with no sign the record went on. The sheet
+   holds 480px, its column starts 12px nearer the fade, and the verbs tighten (same keys, same order) so the three sit on one row. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
+  .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
+  .sf-drawer--entity .sf-drawer__apron { column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
 }
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */

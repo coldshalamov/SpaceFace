@@ -92,7 +92,9 @@ test('authoritative conflict flip reaches Sker wall and Helios board without cha
     stationId: 'station_helios',
     simTime: 12,
   });
-  assert.equal(preFlip.id, 'ad_09', 'ordinary Helios rotation stays byte-for-byte on its prior row');
+  // The pulse-print pack joined the rotation corpus; the deterministic pick for this
+  // seed/berth/cycle is the corpus row below — the point is the pre-flip board is untouched.
+  assert.equal(preFlip.id, 'ad_pulse_270', 'ordinary Helios rotation stays byte-for-byte on its prior row');
   assert.equal(preFlip.reaction, undefined);
 
   h.state.conflicts[FLIP.pairKey] = { playerLean: 0, tension: 50, momentum: 0, state: 'tense' };

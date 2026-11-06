@@ -1183,6 +1183,7 @@ export const heistFacilities = {
       transientSector: true,
     });
     const carrier = this.helpers.spawnEntity(carrierSpec);
+    if (!carrier || carrier.id == null) return null;
 
     // The caged load leaves at the same mouth position the free launch used, already moving with
     // the tug — the constraint holds it there, nothing teleports it during transit.
@@ -1194,6 +1195,12 @@ export const heistFacilities = {
       vel: { x: nx * carrierDef.cruiseSpeedWu, z: nz * carrierDef.cruiseSpeedWu },
       rot: heading,
     }));
+    if (!capsule || capsule.id == null) {
+      // The carrier is only useful as the load's custody owner. If the second body is refused by
+      // the entity budget, remove the first before returning so retries cannot leak empty tugs.
+      this.helpers.removeEntity(carrier.id);
+      return null;
+    }
 
     // The physics bodies for these brand-new entities register on the NEXT physics step, so the
     // joint cannot be created here — `_stepCarrier` binds it once the records exist.

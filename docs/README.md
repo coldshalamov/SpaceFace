@@ -11,11 +11,11 @@ This is the navigation front door for engineering and world-content documentatio
 | Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
 | Full working agreement (finish rules, `NOW.md` locks, `check:playable`, reporting) | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
 | Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
-| Enter implementation | [`../build_map.md`](../build_map.md) |
+| Active game-finishing work | [`../design/program/finish/README.md`](../design/program/finish/README.md) → the owning Lane 1/2/3 board; build-map rows remain specification detail while the Finish Program is active |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
-| Live leases and blockers | [`../design/program/NOW.md`](../design/program/NOW.md) |
-| Executable admitted packet | [`../design/program/roadmap/active/README.md`](../design/program/roadmap/active/README.md) |
-| Finite review/verification workflow | [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) |
+| Active work and lane ownership | [`../design/program/finish/README.md`](../design/program/finish/README.md) + its lane boards; use [`../design/program/NOW.md`](../design/program/NOW.md) for current checkpoints/liveness |
+| Current work packet | The ordered packet on the owning Lane 1/2/3 board in [`../design/program/finish/`](../design/program/finish/README.md) while the Finish Program is active |
+| Finish Program review and verification | [`../design/program/finish/README.md`](../design/program/finish/README.md) §§5.2–5.4; other work follows its selected packet and applicable verification route |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
 | Choose focused, lab, broker, and player-route validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) |
@@ -33,8 +33,8 @@ This is the navigation front door for engineering and world-content documentatio
 
 ## Documentation classes
 
-- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, and the selected active packet.
-- **Current status:** `design/program/`, with `NOW.md` limited to volatile leases and the queue/receipts owning durable facts.
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, the active Finish Program lane board, and its selected packet.
+- **Current status:** `design/program/finish/` lane boards own active finish assignments; other program status stays in the surface that currently governs it, with `NOW.md` for volatile claims and checkpoints.
 - **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
 - **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
 - **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.

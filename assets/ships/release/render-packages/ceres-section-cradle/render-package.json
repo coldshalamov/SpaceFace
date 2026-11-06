@@ -201,7 +201,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c00f119d95039a21d235e586910e4b18fa68b193ab07df8ccce953851829aa44",
+  "contentHash": "0692bb7cd51df87bc33ae502039ea92d639188229c06ef97c38070f0c91dd4cc",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-armor.dynamic",
@@ -7838,14 +7838,14 @@
       "uri": "place_ceres_section_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1042068,
-    "sha256": "7fd3207c5cf7f373d0c90bc5e2d1c0e5162ee98d6f1580bf556423af0ebba0d1",
+    "bytes": 1043036,
+    "sha256": "a68ae7f66b2ed8e56ce93a57910534b46bed8ea1e6952a3cb2f92a5179ca83b2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7906,7 +7906,7 @@
           1
         ],
         "name": "MOTION_RETENTION_PORT",
-        "planIndex": 49,
+        "planIndex": 58,
         "tags": {
           "motionGroup": true
         },
@@ -7953,6 +7953,546 @@
       },
       {
         "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          -37.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_PORT_Armor",
+        "planIndex": 59,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.75,
+          0,
+          0,
+          0,
+          0,
+          26.75,
+          0,
+          0,
+          0,
+          0,
+          26.75,
+          0,
+          -35.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_PORT_BrushedMetal",
+        "planIndex": 61,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          -37.5,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_PORT_Mechanical",
+        "planIndex": 63,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          -36.150001525878906,
+          0.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_PORT_MechanicalDark",
+        "planIndex": 65,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.5,
+          0,
+          0,
+          0,
+          0,
+          26.5,
+          0,
+          0,
+          0,
+          0,
+          26.5,
+          0,
+          -37.5,
+          2.25,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_PORT_Warning",
+        "planIndex": 67,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          -37.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_PORT_Armor",
+        "planIndex": 69,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.741779327392578,
+          0,
+          0,
+          0,
+          0,
+          26.741779327392578,
+          0,
+          0,
+          0,
+          0,
+          26.741779327392578,
+          0,
+          -35.500362396240234,
+          0.00006407499313354492,
+          -0.000064849853515625,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_PORT_BrushedMetal",
+        "planIndex": 71,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          -37.5,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_PORT_Mechanical",
+        "planIndex": 73,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.994598388671875,
+          0,
+          0,
+          0,
+          0,
+          26.994598388671875,
+          0,
+          0,
+          0,
+          0,
+          26.994598388671875,
+          0,
+          -36.15000343322754,
+          0.5000000298023224,
+          0.000003814697265625,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_PORT_MechanicalDark",
+        "planIndex": 75,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.492963790893555,
+          0,
+          0,
+          0,
+          0,
+          26.492963790893555,
+          0,
+          0,
+          0,
+          0,
+          26.492963790893555,
+          0,
+          -37.49711799621582,
+          2.25,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_PORT_Warning",
+        "planIndex": 77,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.97300910949707,
+          0,
+          0,
+          0,
+          0,
+          26.97300910949707,
+          0,
+          0,
+          0,
+          0,
+          26.97300910949707,
+          0,
+          -37.49245643615723,
+          -1.7881393432617188e-7,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_PORT_Armor",
+        "planIndex": 79,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.732078552246094,
+          0,
+          0,
+          0,
+          0,
+          26.732078552246094,
+          0,
+          0,
+          0,
+          0,
+          26.732078552246094,
+          0,
+          -35.50150489807129,
+          0.000013887882232666016,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_PORT_BrushedMetal",
+        "planIndex": 81,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          -37.48990249633789,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_PORT_Mechanical",
+        "planIndex": 83,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.980571746826172,
+          0,
+          0,
+          0,
+          0,
+          26.980571746826172,
+          0,
+          0,
+          0,
+          0,
+          26.980571746826172,
+          0,
+          -36.15000343322754,
+          0.49999985098838806,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_PORT_MechanicalDark",
+        "planIndex": 85,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.48093032836914,
+          0,
+          0,
+          0,
+          0,
+          26.48093032836914,
+          0,
+          0,
+          0,
+          0,
+          26.48093032836914,
+          0,
+          -37.50314521789551,
+          2.2491995096206665,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_PORT_Warning",
+        "planIndex": 87,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -7971,7 +8511,7 @@
           1
         ],
         "name": "MOTION_RETENTION_RAM_PORT_0",
-        "planIndex": 65,
+        "planIndex": 89,
         "tags": {
           "motionGroup": true
         },
@@ -8030,13 +8570,121 @@
           0,
           1,
           0,
+          -41,
+          0,
+          -24,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+        "planIndex": 90,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -41,
+          0.012744039297103882,
+          -24.009416580200195,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+        "planIndex": 92,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -41,
+          -0.05865520238876343,
+          -24.02427101135254,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+        "planIndex": 94,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -42,
           0,
           24,
           1
         ],
         "name": "MOTION_RETENTION_RAM_PORT_1",
-        "planIndex": 69,
+        "planIndex": 96,
         "tags": {
           "motionGroup": true
         },
@@ -8095,13 +8743,121 @@
           0,
           1,
           0,
+          -41,
+          0,
+          24,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+        "planIndex": 97,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -41,
+          -0.012744039297103882,
+          24.009416580200195,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+        "planIndex": 99,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -41,
+          0.05865520238876343,
+          24.02427101135254,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+        "planIndex": 101,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           42,
           0,
           -24,
           1
         ],
         "name": "MOTION_RETENTION_RAM_STARBOARD_0",
-        "planIndex": 73,
+        "planIndex": 103,
         "tags": {
           "motionGroup": true
         },
@@ -8160,13 +8916,121 @@
           0,
           1,
           0,
+          41,
+          5.960464477539063e-8,
+          -24,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 104,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          41,
+          8.940696716308594e-8,
+          -24.000000953674316,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 106,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          41,
+          -0.03066539764404297,
+          -23.97272300720215,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 108,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           42,
           0,
           24,
           1
         ],
         "name": "MOTION_RETENTION_RAM_STARBOARD_1",
-        "planIndex": 77,
+        "planIndex": 110,
         "tags": {
           "motionGroup": true
         },
@@ -8225,13 +9089,121 @@
           0,
           1,
           0,
+          41,
+          5.960464477539063e-8,
+          24,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 111,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          41,
+          0.012744218111038208,
+          24.000000953674316,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 113,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          41,
+          -0.024426311254501343,
+          24.00419807434082,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 115,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           37.5,
           0,
           0,
           1
         ],
         "name": "MOTION_RETENTION_STARBOARD",
-        "planIndex": 81,
+        "planIndex": 117,
         "tags": {
           "motionGroup": true
         },
@@ -8278,6 +9250,546 @@
       },
       {
         "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          37.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Armor",
+        "planIndex": 118,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.75,
+          0,
+          0,
+          0,
+          0,
+          26.75,
+          0,
+          0,
+          0,
+          0,
+          26.75,
+          0,
+          35.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_BrushedMetal",
+        "planIndex": 120,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          37.5,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Mechanical",
+        "planIndex": 122,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          36.150001525878906,
+          0.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_MechanicalDark",
+        "planIndex": 124,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.5,
+          0,
+          0,
+          0,
+          0,
+          26.5,
+          0,
+          0,
+          0,
+          0,
+          26.5,
+          0,
+          37.5,
+          2.25,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Warning",
+        "planIndex": 126,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_RETENTION_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_RETENTION_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          0,
+          0,
+          0,
+          27,
+          0,
+          37.5,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Armor",
+        "planIndex": 128,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.741844177246094,
+          0,
+          0,
+          0,
+          0,
+          26.741844177246094,
+          0,
+          0,
+          0,
+          0,
+          26.741844177246094,
+          0,
+          35.5,
+          0.00006413459777832031,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_BrushedMetal",
+        "planIndex": 130,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          37.5,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Mechanical",
+        "planIndex": 132,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.994598388671875,
+          0,
+          0,
+          0,
+          0,
+          26.994598388671875,
+          0,
+          0,
+          0,
+          0,
+          26.994598388671875,
+          0,
+          36.15007209777832,
+          0.5000000298023224,
+          -0.000003814697265625,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_MechanicalDark",
+        "planIndex": 134,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.492963790893555,
+          0,
+          0,
+          0,
+          0,
+          26.492963790893555,
+          0,
+          0,
+          0,
+          0,
+          26.492963790893555,
+          0,
+          37.49711799621582,
+          2.25,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Warning",
+        "planIndex": 136,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_RETENTION_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_RETENTION_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.97300910949707,
+          0,
+          0,
+          0,
+          0,
+          26.97300910949707,
+          0,
+          0,
+          0,
+          0,
+          26.97300910949707,
+          0,
+          37.49237823486328,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Armor",
+        "planIndex": 138,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.732078552246094,
+          0,
+          0,
+          0,
+          0,
+          26.732078552246094,
+          0,
+          0,
+          0,
+          0,
+          26.732078552246094,
+          0,
+          35.4986686706543,
+          0.000013589859008789062,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_BrushedMetal",
+        "planIndex": 140,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          0,
+          0,
+          0,
+          25.399999618530273,
+          0,
+          37.49765968322754,
+          0.25,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Mechanical",
+        "planIndex": 142,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.980571746826172,
+          0,
+          0,
+          0,
+          0,
+          26.980571746826172,
+          0,
+          0,
+          0,
+          0,
+          26.980571746826172,
+          0,
+          36.150001525878906,
+          0.49999985098838806,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_MechanicalDark",
+        "planIndex": 144,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          26.48093032836914,
+          0,
+          0,
+          0,
+          0,
+          26.48093032836914,
+          0,
+          0,
+          0,
+          0,
+          26.48093032836914,
+          0,
+          37.50314521789551,
+          2.2491995096206665,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Warning",
+        "planIndex": 146,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_RETENTION_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_RETENTION_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -8296,7 +9808,7 @@
           1
         ],
         "name": "SOCKET_Section_Receiver",
-        "planIndex": 97,
+        "planIndex": 148,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8348,7 +9860,7 @@
           1
         ],
         "name": "SOCKET_Service_Head",
-        "planIndex": 98,
+        "planIndex": 149,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8400,7 +9912,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 99,
+        "planIndex": 150,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8512,63 +10024,48 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 17,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "warning"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 25,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 22,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
         "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -8578,17 +10075,12 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8597,17 +10089,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 33,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 34,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
         "role": "mechanical"
       },
       {
@@ -8618,22 +10100,22 @@
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
         "role": "signal"
       },
       {
         "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 39,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8648,62 +10130,52 @@
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 44,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 45,
+        "planIndex": 44,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 46,
+        "planIndex": 45,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 48,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 50,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 52,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 53,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 54,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 55,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8713,16 +10185,6 @@
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 58,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 59,
         "role": "warning"
       },
       {
@@ -8732,23 +10194,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 61,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 62,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 63,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 64,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8757,23 +10209,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 67,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 68,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 70,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 71,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -8787,37 +10229,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 75,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 76,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 78,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 79,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 80,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 82,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 83,
+        "planIndex": 82,
         "role": "mechanical"
       },
       {
@@ -8827,52 +10254,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 85,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 86,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 87,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 88,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 89,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 90,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 91,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 92,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 93,
+        "planIndex": 91,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 94,
+        "planIndex": 93,
         "role": "mechanical"
       },
       {
@@ -8882,7 +10279,122 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 96,
+        "planIndex": 98,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 100,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 102,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 105,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 107,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 109,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 112,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 114,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 116,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 119,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 121,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 123,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 125,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 127,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 129,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 131,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 133,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 135,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 137,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 139,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 141,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 143,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 145,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 147,
         "role": "warning"
       }
     ],
@@ -8892,7 +10404,7 @@
       "sha256": "a5874b360c5bfc2c4d38c45543381dc4b352b3814ade0f53451b83dfe07df27a",
       "uri": "assets/ships/motions/ceres-section-cradle.motion.json"
     },
-    "nodeCount": 100,
+    "nodeCount": 151,
     "primitives": [
       {
         "canopy": false,
@@ -8995,8 +10507,8 @@
           30.475000381469727,
           1
         ],
-        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_Armor",
-        "planIndex": 16,
+        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_Armor_1",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9023,8 +10535,8 @@
           28.350000381469727,
           1
         ],
-        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_BrushedMetal",
-        "planIndex": 17,
+        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_BrushedMetal_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9051,8 +10563,8 @@
           30.375,
           1
         ],
-        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_Warning",
-        "planIndex": 18,
+        "name": "LOD0_HOOK_CERES_DEPTH_KEEPER_Warning_1",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9080,7 +10592,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9108,7 +10620,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -9135,7 +10647,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 21,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -9162,7 +10674,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 22,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -9189,7 +10701,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 23,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -9216,7 +10728,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 24,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -9243,7 +10755,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 25,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9270,7 +10782,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 26,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9297,7 +10809,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal",
-        "planIndex": 27,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9323,8 +10835,8 @@
           30.475000381469727,
           1
         ],
-        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_Armor",
-        "planIndex": 28,
+        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_Armor_1",
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9351,8 +10863,8 @@
           28.350000381469727,
           1
         ],
-        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_BrushedMetal",
-        "planIndex": 29,
+        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_BrushedMetal_1",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9379,8 +10891,8 @@
           30.375,
           1
         ],
-        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_Warning",
-        "planIndex": 30,
+        "name": "LOD1_HOOK_CERES_DEPTH_KEEPER_Warning_1",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9408,7 +10920,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 31,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9436,7 +10948,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 32,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9463,7 +10975,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 33,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9490,7 +11002,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 34,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9517,7 +11029,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 35,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9544,7 +11056,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 36,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -9571,7 +11083,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 37,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9598,7 +11110,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 38,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9625,7 +11137,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 39,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9651,8 +11163,8 @@
           30.475000381469727,
           1
         ],
-        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_Armor",
-        "planIndex": 40,
+        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_Armor_1",
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9679,8 +11191,8 @@
           28.350000381469727,
           1
         ],
-        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_BrushedMetal",
-        "planIndex": 41,
+        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_BrushedMetal_1",
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9707,8 +11219,8 @@
           30.375,
           1
         ],
-        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_Warning",
-        "planIndex": 42,
+        "name": "LOD2_HOOK_CERES_DEPTH_KEEPER_Warning_1",
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9736,7 +11248,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 43,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9764,7 +11276,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 44,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9791,7 +11303,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 45,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9818,7 +11330,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 46,
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9845,7 +11357,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 47,
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9872,7 +11384,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 48,
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -9898,8 +11410,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_PORT_Armor",
-        "planIndex": 50,
+        "name": "LOD0_MOTION_RETENTION_PORT_Armor_1",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9926,8 +11438,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_PORT_BrushedMetal",
-        "planIndex": 51,
+        "name": "LOD0_MOTION_RETENTION_PORT_BrushedMetal_1",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9954,8 +11466,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_PORT_Mechanical",
-        "planIndex": 52,
+        "name": "LOD0_MOTION_RETENTION_PORT_Mechanical_1",
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9982,8 +11494,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_PORT_MechanicalDark",
-        "planIndex": 53,
+        "name": "LOD0_MOTION_RETENTION_PORT_MechanicalDark_1",
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10010,8 +11522,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_PORT_Warning",
-        "planIndex": 54,
+        "name": "LOD0_MOTION_RETENTION_PORT_Warning_1",
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10038,8 +11550,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_PORT_Armor",
-        "planIndex": 55,
+        "name": "LOD1_MOTION_RETENTION_PORT_Armor_1",
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10066,8 +11578,8 @@
           -0.000064849853515625,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_PORT_BrushedMetal",
-        "planIndex": 56,
+        "name": "LOD1_MOTION_RETENTION_PORT_BrushedMetal_1",
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10094,8 +11606,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_PORT_Mechanical",
-        "planIndex": 57,
+        "name": "LOD1_MOTION_RETENTION_PORT_Mechanical_1",
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10122,8 +11634,8 @@
           0.000003814697265625,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_PORT_MechanicalDark",
-        "planIndex": 58,
+        "name": "LOD1_MOTION_RETENTION_PORT_MechanicalDark_1",
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10150,8 +11662,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_PORT_Warning",
-        "planIndex": 59,
+        "name": "LOD1_MOTION_RETENTION_PORT_Warning_1",
+        "planIndex": 78,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10178,8 +11690,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_PORT_Armor",
-        "planIndex": 60,
+        "name": "LOD2_MOTION_RETENTION_PORT_Armor_1",
+        "planIndex": 80,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10206,8 +11718,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_PORT_BrushedMetal",
-        "planIndex": 61,
+        "name": "LOD2_MOTION_RETENTION_PORT_BrushedMetal_1",
+        "planIndex": 82,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10234,8 +11746,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_PORT_Mechanical",
-        "planIndex": 62,
+        "name": "LOD2_MOTION_RETENTION_PORT_Mechanical_1",
+        "planIndex": 84,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10262,8 +11774,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_PORT_MechanicalDark",
-        "planIndex": 63,
+        "name": "LOD2_MOTION_RETENTION_PORT_MechanicalDark_1",
+        "planIndex": 86,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10290,8 +11802,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_PORT_Warning",
-        "planIndex": 64,
+        "name": "LOD2_MOTION_RETENTION_PORT_Warning_1",
+        "planIndex": 88,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10318,8 +11830,8 @@
           -24,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
-        "planIndex": 66,
+        "name": "LOD0_MOTION_RETENTION_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 91,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10346,8 +11858,8 @@
           -24.009416580200195,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
-        "planIndex": 67,
+        "name": "LOD1_MOTION_RETENTION_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 93,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10374,8 +11886,8 @@
           -24.02427101135254,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_RAM_PORT_0_BrushedMetal",
-        "planIndex": 68,
+        "name": "LOD2_MOTION_RETENTION_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 95,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10402,8 +11914,8 @@
           24,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
-        "planIndex": 70,
+        "name": "LOD0_MOTION_RETENTION_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 98,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10430,8 +11942,8 @@
           24.009416580200195,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
-        "planIndex": 71,
+        "name": "LOD1_MOTION_RETENTION_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 100,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10458,8 +11970,8 @@
           24.02427101135254,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_RAM_PORT_1_BrushedMetal",
-        "planIndex": 72,
+        "name": "LOD2_MOTION_RETENTION_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 102,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10486,8 +11998,8 @@
           -24,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 74,
+        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 105,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10514,8 +12026,8 @@
           -24.000000953674316,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 75,
+        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 107,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10542,8 +12054,8 @@
           -23.97272300720215,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 76,
+        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 109,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10570,8 +12082,8 @@
           24,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 78,
+        "name": "LOD0_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 112,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10598,8 +12110,8 @@
           24.000000953674316,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 79,
+        "name": "LOD1_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 114,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10626,8 +12138,8 @@
           24.00419807434082,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 80,
+        "name": "LOD2_MOTION_RETENTION_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 116,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10654,8 +12166,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_STARBOARD_Armor",
-        "planIndex": 82,
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Armor_1",
+        "planIndex": 119,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10682,8 +12194,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_STARBOARD_BrushedMetal",
-        "planIndex": 83,
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_BrushedMetal_1",
+        "planIndex": 121,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10710,8 +12222,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_STARBOARD_Mechanical",
-        "planIndex": 84,
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Mechanical_1",
+        "planIndex": 123,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10738,8 +12250,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_STARBOARD_MechanicalDark",
-        "planIndex": 85,
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_MechanicalDark_1",
+        "planIndex": 125,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10766,8 +12278,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_RETENTION_STARBOARD_Warning",
-        "planIndex": 86,
+        "name": "LOD0_MOTION_RETENTION_STARBOARD_Warning_1",
+        "planIndex": 127,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -10794,8 +12306,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_STARBOARD_Armor",
-        "planIndex": 87,
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Armor_1",
+        "planIndex": 129,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10822,8 +12334,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_STARBOARD_BrushedMetal",
-        "planIndex": 88,
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_BrushedMetal_1",
+        "planIndex": 131,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10850,8 +12362,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_STARBOARD_Mechanical",
-        "planIndex": 89,
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Mechanical_1",
+        "planIndex": 133,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10878,8 +12390,8 @@
           -0.000003814697265625,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_STARBOARD_MechanicalDark",
-        "planIndex": 90,
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_MechanicalDark_1",
+        "planIndex": 135,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10906,8 +12418,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_RETENTION_STARBOARD_Warning",
-        "planIndex": 91,
+        "name": "LOD1_MOTION_RETENTION_STARBOARD_Warning_1",
+        "planIndex": 137,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10934,8 +12446,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_STARBOARD_Armor",
-        "planIndex": 92,
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Armor_1",
+        "planIndex": 139,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10962,8 +12474,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_STARBOARD_BrushedMetal",
-        "planIndex": 93,
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_BrushedMetal_1",
+        "planIndex": 141,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10990,8 +12502,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_STARBOARD_Mechanical",
-        "planIndex": 94,
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Mechanical_1",
+        "planIndex": 143,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11018,8 +12530,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_STARBOARD_MechanicalDark",
-        "planIndex": 95,
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_MechanicalDark_1",
+        "planIndex": 145,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11046,8 +12558,8 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_RETENTION_STARBOARD_Warning",
-        "planIndex": 96,
+        "name": "LOD2_MOTION_RETENTION_STARBOARD_Warning_1",
+        "planIndex": 147,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11059,7 +12571,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_section_cradle.glb"
   },
-  "runtimeHash": "b1f00908b7b106f7c41fee7a08121aba792cc32e4e167b06e77bde0666baa6a5",
+  "runtimeHash": "b501b8b8f1aa60eec283174253c1dc943423785889bb555c3d23f9b03b8630b9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

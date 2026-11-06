@@ -383,11 +383,12 @@ test('a saved charge network respawns through the real load path', () => {
 
 // ── SF-281 ─────────────────────────────────────────────────────────────────────────────
 
-test('successful and failed writes leave a readable receipt; previous slot survives failures', () => {
+test('successful and failed writes leave a readable receipt; previous slot survives failures', async () => {
   const h = makeHarness();
   try {
     // 1. A durable write records a success receipt and no failure is pending.
     assert.equal(h.save.save('quick'), true);
+    await h.save._lastSaveDurability;
     const goodJson = h.storage.getItem('sf.save.quick');
     assert.ok(goodJson, 'primary must be written');
     assert.equal(h.state.save.pendingWrite, null);
@@ -434,10 +435,11 @@ test('successful and failed writes leave a readable receipt; previous slot survi
   } finally { h.restore(); }
 });
 
-test('quota refusal and unavailable storage are named failures, not silent loss', () => {
+test('quota refusal and unavailable storage are named failures, not silent loss', async () => {
   const h = makeHarness();
   try {
     assert.equal(h.save.save('quick'), true);
+    await h.save._lastSaveDurability;
     const goodJson = h.storage.getItem('sf.save.quick');
 
     // Every write refuses with QuotaExceededError; reads still work so the previous
@@ -468,6 +470,7 @@ test('quota refusal and unavailable storage are named failures, not silent loss'
     globalThis.localStorage = h.storage;
     assert.equal(h.state.player.credits, creditsBefore);
     assert.equal(h.save.save('quick'), true);
+    await h.save._lastSaveDurability;
     assert.equal(h.state.save.pendingWrite, null);
     assert.equal(h.state.save.lastWriteFailure, null);
     assert.equal(h.state.save.consecutiveWriteFailures, 0);
@@ -479,6 +482,7 @@ test('a superseded autosave is a cancellation, not a failure and not a success',
   const h = makeHarness();
   try {
     assert.equal(h.save.save('quick'), true);
+    await h.save._lastSaveDurability;
     assert.equal(h.state.save.lastWriteOk.slot, 'quick');
 
     // One real failure first, so the test can prove superseded neither clears nor increments it.
@@ -548,6 +552,7 @@ test('load-path errors never land on the write receipt', async () => {
 
     // And a subsequent good write still lands and records cleanly.
     assert.equal(h.save.save('quick'), true);
+    await h.save._lastSaveDurability;
     assert.equal(h.state.save.lastWriteOk.slot, 'quick');
     assert.equal(h.state.save.consecutiveWriteFailures, 0);
   } finally { h.restore(); }

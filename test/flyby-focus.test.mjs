@@ -147,7 +147,7 @@ function runtimeFor(contacts, options = {}) {
   const target = hostile(2);
   const distractor = {
     id: 3, type: 'asteroid', team: null, alive: true,
-    pos: { x: 30, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
+    pos: { x: 30, z: 30 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
   };
   const f = runtimeFor([target, distractor], { targetId: distractor.id });
   const starts = [];
@@ -208,7 +208,7 @@ function runtimeFor(contacts, options = {}) {
   const target = hostile(20, { pos: { x: 118, z: 0 } });
   const clutter = {
     id: 21, type: 'asteroid', team: null, alive: true,
-    pos: { x: 24, z: 0 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
+    pos: { x: 24, z: 30 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
   };
   const f = runtimeFor([target, clutter], { targetId: clutter.id });
   f.system.update(DT, f.state);
@@ -523,6 +523,32 @@ for (const ruleset of ['swarm', 'arc']) {
   f.system.update(DT, f.state);
   assert.equal(f.state.timeScale, 0.75, 'Focus does not clear another effect');
   f.system.destroy();
+}
+
+// An attached massline owns the verb: no lease while a line is out — except the flagged
+// trainer's staged pass, whose acquisition bias is inert until the line releases. Refusing it
+// would wall the onboarding beat the claimed-salvage path can deliver a towing player to.
+{
+  const trainer = {
+    id: 8, type: 'drone', team: 0, alive: true,
+    pos: { x: 138, z: 52 }, vel: { x: -118, z: 0 }, radius: 12, mass: 90,
+    data: {
+      onboardingTraining: true, trainingFocusEligible: true,
+      ai: { passive: true }, combat: {}, weapons: [],
+    },
+  };
+  const tethered = runtimeFor([trainer], { tetherActive: true });
+  tethered.system.update(DT, tethered.state);
+  assert.equal(tethered.state.player.flybyFocus.active, true,
+    'the flagged trainer still leases while a line is attached');
+  assert.equal(tethered.state.player.flybyFocus.targetId, 8);
+  tethered.system.destroy();
+
+  const refused = runtimeFor([hostile(2)], { tetherActive: true });
+  refused.system.update(DT, refused.state);
+  assert.equal(refused.state.player.flybyFocus.active, false,
+    'a hostile pass is still refused while a line is attached');
+  refused.system.destroy();
 }
 
 const source = readFileSync(new URL('../src/systems/flybyFocus.js', import.meta.url), 'utf8');

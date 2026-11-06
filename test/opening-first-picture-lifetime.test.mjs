@@ -4,6 +4,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createPresentationWorld } from '../src/render/presentationWorld.js';
+import { createSnapshotFence, packPresentationWorldToFenceSteps } from '../src/render/snapshotFence.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const canonicalRendererPath = path.resolve(
@@ -205,6 +207,39 @@ test('live owner preserves one TypeError re-mint and successful second publish',
   assert.equal(publishCalls, 3, 'initial fault remints once, then final publication runs once');
   assert.equal(syncFallbackCalls, 0, 'a live owner still succeeds before the sync fallback');
   assert.equal(fixture.owner._openingFirstPicturePrepared, true);
+});
+
+test('opening snapshot pack retires the parked frame writer and owns the fence through commit', () => {
+  const rows = Array.from({ length: 600 }, (_, index) => ({
+    id: index + 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: index, y: 0, z: 0 },
+    prevPos: { x: index, y: 0, z: 0 },
+    rot: 0,
+    radius: 1,
+  }));
+  const world = createPresentationWorld();
+  world.rebuildFromEntities(rows);
+  const fence = createSnapshotFence({ capacity: rows.length });
+  const parkedFramePack = packPresentationWorldToFenceSteps(world, fence, 1, 0);
+  const firstFrameStep = parkedFramePack.next();
+  assert.equal(firstFrameStep.done, false, 'the regular loading-frame pack parks after beginning its write');
+
+  const owner = Object.create(renderSystem);
+  owner._presentationWorld = world;
+  owner._snapshotFence = fence;
+  owner._fencePackPending = { iter: parkedFramePack };
+  const openingPack = owner._packOpeningSnapshotFenceSteps(2, 0);
+  let step = openingPack.next();
+  assert.equal(step.done, false, 'the opening pack remains paced');
+  assert.equal(owner._fencePackPending, null, 'the old frame iterator is closed before opening takes the writer');
+  assert.ok(owner._openingFencePackOwner, 'frame packing is gated while opening owns the single writer');
+  while (!step.done) step = openingPack.next();
+
+  assert.equal(fence.packCount, 1, 'the abandoned frame write never commits');
+  assert.equal(fence.latestSnapshot().count, rows.length, 'the opening commit publishes the complete resident set');
+  assert.equal(owner._openingFencePackOwner, null, 'ownership releases after the opening commit');
 });
 
 test('upgrade-owner cancellation closes its parked iterator before the skipped-settle fallback', async () => {

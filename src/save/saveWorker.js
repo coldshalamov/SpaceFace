@@ -246,7 +246,7 @@ export async function restorePrepareSaveJsonAsync(raw, currentVersion) {
 // Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
 // Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
 const PREFLIGHT_MAX_DEPTH = 64;
-const PREFLIGHT_MAX_NODES = 200_000;
+const PREFLIGHT_MAX_NODES = 500_000;
 const PREFLIGHT_MAX_COLLECTION_ITEMS = 50_000;
 const PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2_048;
 export function preflightSaveImport(value) {
@@ -343,6 +343,13 @@ export function peekCardDataJson(raw) {
   return cardData ? { ok: true, cardData } : { ok: false, reason: 'bad_format' };
 }
 
+// Stored/exported slots may wrap that same envelope in gzip. Reuse the bounded
+// public decoder; portrait projection still reads the stored shape without migration.
+export async function peekCardDataJsonAsync(raw) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  return decoded.ok ? peekCardDataJson(decoded.text) : decoded;
+}
+
 export function handleSaveWorkerRequest(message) {
   const request = message || {};
   return handleSaveWorkerRequestCore(request, { asyncFinal: false });
@@ -400,13 +407,18 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
   }
   if (request.type === 'peek_card_data') {
     const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return peekCardDataJsonAsync(request.payload && request.payload.raw)
+        .then(done, () => done({ ok: false, reason: 'parse_failed' }));
+    }
     let result;
     try {
       result = peekCardDataJson(request.payload && request.payload.raw);
     } catch (error) {
       result = { ok: false, reason: 'parse_failed' };
     }
-    return { id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started };
+    return done(result);
   }
   if (request.type === 'validate_begin') {
     capWorkerSessions(validationSessions);
@@ -840,7 +852,7 @@ function restorePrepareSaveJsonAsync(raw, currentVersion) {
   });
 }
 var PREFLIGHT_MAX_DEPTH = 64;
-var PREFLIGHT_MAX_NODES = 200000;
+var PREFLIGHT_MAX_NODES = 500000;
 var PREFLIGHT_MAX_COLLECTION_ITEMS = 50000;
 var PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2048;
 // Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
@@ -979,6 +991,11 @@ function peekCardDataJson(raw) {
   var cardData = cardDataFromEnvelope(env);
   return cardData ? { ok: true, cardData: cardData } : { ok: false, reason: 'bad_format' };
 }
+function peekCardDataJsonAsync(raw) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    return decoded.ok ? peekCardDataJson(decoded.text) : decoded;
+  });
+}
 self.addEventListener('message', function (event) {
   const request = event.data || {};
   try {
@@ -1045,17 +1062,16 @@ self.addEventListener('message', function (event) {
     }
     if (request.type === 'peek_card_data') {
       var startedPeek = now();
-      var peekResult;
-      try {
-        peekResult = peekCardDataJson(request.payload && request.payload.raw);
-      } catch (error) {
-        peekResult = { ok: false, reason: 'parse_failed' };
-      }
-      self.postMessage({
-        id: request.id,
-        type: 'peeked_card_data',
-        result: peekResult,
-        workerCpuMs: now() - startedPeek,
+      var postPeek = function (peekResult) {
+        self.postMessage({
+          id: request.id,
+          type: 'peeked_card_data',
+          result: peekResult,
+          workerCpuMs: now() - startedPeek,
+        });
+      };
+      peekCardDataJsonAsync(request.payload && request.payload.raw).then(postPeek, function () {
+        postPeek({ ok: false, reason: 'parse_failed' });
       });
       return;
     }

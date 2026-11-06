@@ -702,7 +702,8 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     pin += `<path class="orr-core orr-standing__bracket" d="M ${f(lo)} ${yb} L ${f(hi)} ${yb} M ${f(lo)} ${yb} L ${f(lo)} ${yb + 5} M ${f(hi)} ${yb} L ${f(hi)} ${yb + 5}" stroke-width="1.5"/>`;
     // a label sits outward from the cursor when asked (two brackets meeting at the cursor never overprint)
     const ba = b.anchor === 'start' ? 'start' : b.anchor === 'end' ? 'end' : 'middle';
-    const bx = ba === 'start' ? lo + 8 : ba === 'end' ? hi - 8 : (lo + hi) / 2;
+    // 14px clears the cursor's 10px bloom, so two labels meeting at it keep a readable gutter
+    const bx = ba === 'start' ? lo + 14 : ba === 'end' ? hi - 14 : (lo + hi) / 2;
     pin += `<text class="orr-standing__rep orr-standing__bracket-n" x="${f(bx)}" y="${yb - 5}" text-anchor="${ba}">${String(b.label)}</text>`;
   });
   out = out.replace('<!--pin-->', pin);

@@ -179,6 +179,15 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
   });
 }
 
+/** Whether the Crucible door may offer its optional ordinary-Swarm opening lesson. */
+export function canChooseSwarmOpeningLesson({
+  ruleset = SWARM_RULESET, daily = false, weekly = false, raceGhost = false,
+  pendingShare = null, practiceQueued = false,
+} = {}) {
+  return ruleset === SWARM_RULESET && daily !== true && weekly !== true
+    && raceGhost !== true && pendingShare == null && practiceQueued !== true;
+}
+
 /**
  * Launch a run. Remembers the setup so the results screen can replay this exact seed, then goes
  * through the real New Game request.
@@ -186,6 +195,9 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
 export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
   const candidate = setup && setup.value ? setup.value : setup;
   if (!candidate || candidate.ok === false) return false;
+  // Validation and native launch must use the same unwrapped setup. Passing a
+  // successful setup result must not send its { ok, value } envelope to boot.
+  setup = candidate;
   if (!Number.isInteger(candidate.seed) || candidate.seed < CRUCIBLE_SEED_MIN || candidate.seed > CRUCIBLE_SEED_MAX) {
     return false;
   }
@@ -209,6 +221,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
       ? Number(setup.ghostHash) >>> 0
       : null);
   const launchSetup = { ...setup };
+  delete launchSetup.openingLesson;
   delete launchSetup.dailyDateKey;
   delete launchSetup.weeklyMutatorId;
   delete launchSetup.ghostHash;
@@ -225,10 +238,13 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (weeklyMutatorId === 'weapons_cold') {
     launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
   }
+  const openingLesson = resolved === SWARM_RULESET && setup.openingLesson === true
+    && !dailyDateKey && !weeklyMutatorId && ghostHash == null;
   lastSetup = {
     ...launchSetup,
     ruleset: resolved,
     loadout: (launchSetup.loadout || []).map((entry) => ({ ...entry })),
+    ...(openingLesson ? { openingLesson: true } : {}),
   };
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
   if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
@@ -238,16 +254,8 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   // silently fly an easier room under the same result.
   if (swarmThreats.length) lastSetup.swarmThreats = swarmThreats.slice();
   if (swarmPerks && swarmPerks.length) lastSetup.swarmPerks = swarmPerks.slice();
-  let openingLesson = false;
-  if (resolved === SWARM_RULESET && !dailyDateKey && !weeklyMutatorId && ghostHash == null) {
-    try {
-      const profile = loadCrucibleMeta();
-      const history = profile && Array.isArray(profile.history) ? profile.history : [];
-      openingLesson = history.length === 0;
-    } catch {
-      openingLesson = false;
-    }
-  }
+  // Training is an explicit choice on the Crucible door. A new profile must meet the ordinary
+  // opening horde immediately; history is not consent to replace that encounter with a lesson.
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, {
     openingLesson,
     swarmStake,

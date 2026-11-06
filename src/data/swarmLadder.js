@@ -25,13 +25,16 @@
 // result; this module only ever sees plain facts.
 
 import {
+  SWARM_WAVE_MAX,
   swarmPlanBlock,
   swarmRosterFor,
 } from './swarmMode.js';
 import { swarmEventFor } from './swarmEvents.js';
+import { swarmSpecialistBriefForEnemy } from './swarmSpecialists.js';
 
 /** One zone is ten rounds, boss on the tenth — the same cadence the boss rotation ships. */
 export const SWARM_ZONE_LENGTH = 10;
+const SWARM_LAST_CLEARABLE_ZONE = Math.floor(SWARM_WAVE_MAX / SWARM_ZONE_LENGTH) - 1;
 
 /** The four authored names. A fifth zone repeats the first under a numeral. */
 export const SWARM_ZONE_NAMES = Object.freeze(['The Pack', 'The Wing', 'The Anvil', 'The Choir']);
@@ -108,12 +111,17 @@ export function swarmArcadeSeedFor(arenaId) {
 /** Total stars the profile has banked across every ladder arena. */
 export function swarmLadderStarTotal(ladder) {
   const arenas = ladder && typeof ladder === 'object' ? ladder.arenas : null;
-  if (!arenas || typeof arenas !== 'object') return 0;
+  if (!arenas || typeof arenas !== 'object' || Array.isArray(arenas)) return 0;
   let total = 0;
-  for (const rec of Object.values(arenas)) {
+  for (const arenaId of SWARM_LADDER_ARENA_ORDER) {
+    if (!Object.prototype.hasOwnProperty.call(arenas, arenaId)) continue;
+    const rec = arenas[arenaId];
     const zones = rec && rec.zones;
-    if (!zones || typeof zones !== 'object') continue;
-    for (const z of Object.values(zones)) {
+    if (!zones || typeof zones !== 'object' || Array.isArray(zones)) continue;
+    // Only zones whose boss can be cleared under the current wave cap may unlock a room.
+    // Migration keeps later zone records so a future build can still read that history.
+    for (let index = 0; index <= SWARM_LAST_CLEARABLE_ZONE; index += 1) {
+      const z = zones[String(index)];
       total += Number.isInteger(z && z.stars) ? Math.max(0, Math.min(3, z.stars)) : 0;
     }
   }
@@ -200,8 +208,9 @@ export function emptySwarmLadder() {
 }
 
 /**
- * Normalizer — unknown/garbage content decays to the empty slice; zone rows keep only the
- * fields the ladder owns. Schema stays the crucible-meta envelope's business.
+ * Normalizer — preserve arena records the current build does not recognize so a newer saved
+ * profile can round-trip through an older build. Unlock totals below count only current ladder
+ * arenas; recognized zone rows keep only the fields this ladder owns.
  */
 export function migrateSwarmLadder(raw) {
   const out = emptySwarmLadder();
@@ -313,6 +322,13 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
   const roster = (block.roster || [])
     .map((entry) => names.get(entry.enemyId) || entry.enemyId)
     .filter(Boolean);
+  // The roster is the unlocked catalog, not the encounter manifest. Brief only the actual
+  // newcomer selected for this authored wave so the armory does not claim every prior threat returns.
+  const specialistEntry = block.newcomer && swarmSpecialistBriefForEnemy(block.newcomer.enemyId)
+    ? block.newcomer : null;
+  const specialistBrief = specialistEntry ? {
+    ...swarmSpecialistBriefForEnemy(specialistEntry.enemyId),
+  } : null;
   const event = swarmEventFor({ arenaId, wave: w, seed });
   return {
     wave: w,
@@ -321,6 +337,7 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
     concurrent: block.concurrent,
     roster,
     newcomer: block.newcomer ? block.newcomer.name : null,
+    specialistBrief,
     boss: block.boss ? { label: block.bossLabel, line: block.bossLine } : null,
     event: event ? { name: event.name, telegraph: event.telegraph } : null,
   };

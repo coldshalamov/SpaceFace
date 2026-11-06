@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
-  enqueueMissingMeshBuildsSteps, render as renderSystem } from '../src/render/renderer.js';
+import { applyFirstPlayablePaintRelease, releaseOpeningGraphPublication, enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -14,7 +14,8 @@ import { createGasSystem } from '../src/render/combat/gas/gasVolumeField.js';
 import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
 import { SelectionSigil } from '../src/render/selectionSigil.js';
 import {
-  createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
+  createOpeningLoadingAdmission, waitForOpeningFirstPicture, waitForOpeningFirstPictureWithSingleOwnerRetry,
+  holdOpeningPresentationUntilPaint, openingLoadingModeResetAction,
   openingFirstPictureIsReady,
 } from '../src/render/pipelineReadiness.js';
 import { __setStartupBudgetScaleForTests } from '../src/render/startupPacing.js';
@@ -47,6 +48,7 @@ function loadingOwnerFixture() {
     world: { currentSectorId: 'sector_helios_prime', enterSerial: 1 },
     render: { admissionRunGeneration: 1, renderer: {} }, contextRestoreSeq: 0 };
   const built = [];
+  const scene = new THREE.Scene();
   const owner = { state, _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [],
     _meshBuildQueueHead: 0, _sessionLiveSectorCookedId: 'sector_helios_prime',
     _frameMembrane: { toLocal(pos, out) { out.x = pos.x; out.z = pos.z; return out; } },
@@ -65,18 +67,20 @@ function loadingOwnerFixture() {
   new Function('state', 'cam', 'THREE', 'openingSubmissionCamera', '_meshLocalXZ',
     'rendererGenerationIsActive', 'releaseOpeningGraphPublication', 'createOpeningLoadingAdmission',
     'enqueueMissingMeshBuildsSteps', 'observePipelineAdmission', 'yieldToBrowser',
-    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', source.slice(start, end))
+    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', 'resumeAuthoredUpgradeQueueForLoadingHulls', 'scene', source.slice(start, end))
     .call(owner, state, { obj: { updateMatrixWorld() {} } }, THREE,
       () => ({ frustum: { intersectsSphere: () => false } }), {}, () => true, () => {},
       createOpeningLoadingAdmission, enqueueMissingMeshBuildsSteps, promise => promise,
-      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity);
+      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls, scene);
   let loadingListener;
   const listenerStart = source.indexOf("onBus('mode:changed', ({ mode } = {}) => {");
   const listenerEnd = source.indexOf("onBus('jump:arrive'", listenerStart);
   new Function('onBus', 'state', 'vf', 'serviceFaultEpoch', 'mintResidentReattachSweep',
+    'openingLoadingModeResetAction', 'queueMicrotask',
     'resumeAuthoredUpgradeQueueForLoadingHulls', source.slice(listenerStart, listenerEnd))
     .call(owner, (_event, listener) => { loadingListener = listener; }, state,
-      { clearReadyPackagedBodies() {} }, () => 'fixture', () => {}, () => {});
+      { clearReadyPackagedBodies() {} }, () => 'fixture', () => {},
+      openingLoadingModeResetAction, queueMicrotask, () => {});
   return { state, owner, player, spindle, pelican, distant, built, loadingListener };
 }
 
@@ -94,19 +98,50 @@ test('loading cohort schedules valid runway actors outside the camera before the
   assert.deepEqual(new Set(built), new Set([1, 373, 534]));
 });
 
-test('delayed loading acknowledgement preserves the cohort that already owns this restore', async () => {
+test('replayed loading acknowledgement cannot revoke a ready picture after live state returns to flight', async () => {
+  const { state, owner, loadingListener } = loadingOwnerFixture();
+  await state.render.beginOpeningLoadingAdmission();
+  state.render.openingFirstPictureReady = true;
+  state.render.openingFirstPictureOwner = {
+    world: state.world, generation: state.render.admissionRunGeneration,
+    serial: state.world.enterSerial, sector: state.world.currentSectorId,
+    renderer: state.render.renderer, context: state.contextRestoreSeq,
+  };
+
+  loadingListener({ mode: 'loading' }); // simLaneMain is replaying the event-time mode
+  state.mode = 'flight'; // the reply's live/end mode is restored after dispatch
+  await flush();
+
+  assert.equal(state.render.openingFirstPictureReady, true);
+  assert.ok(state.render.openingFirstPictureOwner);
+  assert.ok(owner._openingLoadingAdmission,
+    'the stale loading event must not retire the current opening cohort');
+});
+
+test('delayed loading acknowledgement preserves the cohort and accepted receipt it owns', async () => {
   const { state, owner, loadingListener } = loadingOwnerFixture();
   await state.render.beginOpeningLoadingAdmission();
   const cohort = owner._openingLoadingAdmission;
   const ready = owner._openingLoadingMeshesReady;
+  state.render.openingFirstPictureReady = true;
+  state.render.openingFirstPictureOwner = {
+    world: state.world, generation: state.render.admissionRunGeneration,
+    serial: state.world.enterSerial, sector: state.world.currentSectorId,
+    renderer: state.render.renderer, context: state.contextRestoreSeq,
+  };
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, cohort,
     'the worker MODE acknowledgement must not retire the finite restore cohort');
   assert.equal(owner._openingLoadingMeshesReady, ready);
+  assert.equal(state.render.openingFirstPictureReady, true,
+    'a still-current exact receipt remains published');
   state.render.admissionRunGeneration++;
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, null, 'a new generation still resets the old owner');
   assert.equal(owner._openingLoadingMeshesReady, null);
+  assert.equal(state.render.openingFirstPictureReady, false);
 });
 
 test('another restore with the same player id still retires the prior cohort', async () => {
@@ -116,6 +151,7 @@ test('another restore with the same player id still retires the prior cohort', a
   state.entities.set(player.id, replacement);
   state.entityList[0] = replacement;
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, null,
     'an id reused by a different entity reference is a new restore owner');
   assert.equal(owner._openingLoadingMeshesReady, null);
@@ -397,6 +433,207 @@ test('New Game and Continue callers join one exact sequence and acceptance follo
   assert.equal(openingFirstPictureIsReady(state), true);
 });
 
+test('first-picture cancellation reports the exact captured and current residency owner bits', async () => {
+  const resources = deferred();
+  let isActive;
+  const { state } = fixture({
+    prepareOpeningGpuResources: (options) => {
+      isActive = options.isActive;
+      return resources.promise;
+    },
+  });
+  const first = waitForOpeningFirstPicture(state, 1000);
+  await flush();
+  assert.equal(typeof isActive?.ownerSnapshot, 'function');
+
+  state.mode = 'flight';
+  assert.deepEqual(isActive.ownerSnapshot(), {
+    localActive: true,
+    expectedMode: 'loading',
+    currentMode: 'flight',
+    renderMatches: true,
+    worldMatches: true,
+    expectedEnterSerial: 1,
+    currentEnterSerial: 1,
+    expectedSector: 'helios',
+    currentSector: 'helios',
+    expectedAdmissionGeneration: 1,
+    currentAdmissionGeneration: 1,
+    rendererMatches: true,
+    expectedContextRestoreSeq: null,
+    currentContextRestoreSeq: null,
+    transitionActive: true,
+  });
+  resources.resolve({ skipped: false });
+  await assert.rejects(first, (error) => error.name === 'AbortError');
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+});
+
+test('subject-bound residency keeps the first-picture owner diagnostic across its active wrapper', () => {
+  const subject = { name: 'opening subject' };
+  const snapshot = { currentMode: 'menu' };
+  const isActive = () => false;
+  isActive.ownerSnapshot = () => snapshot;
+  let captured;
+  preparePipelineSubjectResidency({
+    pendingFor: () => null,
+    prepare: (_subject, options) => { captured = options; return Promise.resolve(false); },
+  }, subject, { isActive });
+
+  assert.equal(captured.isActive(subject), false);
+  assert.deepEqual(captured.isActive.ownerSnapshot(), snapshot);
+});
+
+test('the opening cohort drops only a tagged upload retired with its exact required entity', async () => {
+  const original = { id: 'wasp', alive: true, type: 'ship' };
+  const replacement = { id: 'wasp', alive: true, type: 'ship' };
+  const entities = new Map([[original.id, original]]);
+  const cohort = createOpeningLoadingAdmission({
+    entities: [original],
+    isRequired: (entity) => entity.alive !== false && entities.get(entity.id) === entity,
+    isActive: () => true,
+  });
+  const retired = deferred();
+  const completion = cohort.track(retired.promise, {
+    isStillRequired: () => original.alive !== false
+      && entities.get(original.id) === original
+      && original.type === 'ship',
+  });
+  const drain = cohort.drain();
+
+  entities.set(original.id, replacement);
+  retired.reject(Object.assign(new Error('old pool owner retired before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(completion, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(await drain, { requiredCount: 1 },
+    'a same-id replacement retires the captured owner without poisoning the current launch');
+});
+
+test('a tagged inactive owner still fails while its captured entity remains required', async () => {
+  const entity = { id: 'live-wasp', alive: true, type: 'ship' };
+  const cohort = createOpeningLoadingAdmission({
+    entities: [entity], isRequired: (candidate) => candidate === entity && candidate.alive !== false,
+    isActive: () => true,
+  });
+  const retired = deferred();
+  cohort.track(retired.promise, {
+    isStillRequired: () => entity.alive !== false && entity.type === 'ship',
+  });
+  const drain = cohort.drain();
+  retired.reject(Object.assign(new Error('required owner retired before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(drain, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+});
+
+test('a non-owner GPU failure remains fatal even after its entity retires', async () => {
+  const entity = { id: 'failed-wasp', alive: true, type: 'ship' };
+  const cohort = createOpeningLoadingAdmission({
+    entities: [entity], isRequired: () => true, isActive: () => true,
+  });
+  const failed = deferred();
+  cohort.track(failed.promise, { isStillRequired: () => false });
+  const drain = cohort.drain();
+  failed.reject(new Error('required texture upload failed'));
+  await assert.rejects(drain, /required texture upload failed/);
+});
+
+test('only a current loading transition retries a typed owner-inactive first-picture gate once', async () => {
+  const ownerFailure = Object.assign(new Error('owner superseded before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  });
+  for (const scenario of [
+    { name: 'current owner', current: true, failure: ownerFailure, expectedAttempts: 2, resolves: true },
+    { name: 'stale transition', current: false, failure: ownerFailure, expectedAttempts: 1, resolves: false },
+    { name: 'real GPU failure', current: true, failure: new Error('texture upload failed'), expectedAttempts: 1, resolves: false },
+  ]) {
+    let sectorAttempts = 0;
+    const { state, calls } = fixture({
+      prepareLiveSectorBeforeFlight: () => {
+        sectorAttempts += 1;
+        return sectorAttempts === 1
+          ? Promise.reject(scenario.failure)
+          : { skipped: false, opening: { settled: true } };
+      },
+    });
+    const options = { isActive: () => true, isTransitionCurrent: () => scenario.current };
+    if (scenario.resolves) {
+      assert.equal(await waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, options), true,
+        scenario.name);
+      assert.equal(state.render.openingFirstPictureReady, true, scenario.name);
+    } else {
+      await assert.rejects(
+        waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, options),
+        scenario.failure,
+        scenario.name,
+      );
+      assert.notEqual(state.render.openingFirstPictureReady, true, scenario.name);
+    }
+    assert.equal(sectorAttempts, scenario.expectedAttempts, scenario.name);
+    if (scenario.resolves) {
+      assert.equal(calls.filter((call) => call === 'begin').length, 2,
+        'only the opening admission gate reruns; run preparation is outside this helper');
+    }
+  }
+});
+
+test('a late rejected owner cannot clear a newer first-picture run or sector cook', async () => {
+  const oldCook = deferred();
+  const newCook = deferred();
+  let cookCalls = 0;
+  const { state } = fixture({
+    prepareLiveSectorBeforeFlight: () => (++cookCalls === 1 ? oldCook.promise : newCook.promise),
+  });
+
+  const oldRun = waitForOpeningFirstPicture(state, 1000);
+  await flush();
+  const oldOwnerCook = state.render.openingLiveSectorReady;
+  assert.ok(oldOwnerCook);
+
+  state.render.admissionRunGeneration += 1;
+  state.render.openingLiveSectorReady = newCook.promise;
+  const newRun = waitForOpeningFirstPicture(state, 1000);
+  assert.notEqual(newRun, oldRun);
+  await flush();
+  assert.equal(state.render.openingLiveSectorReady, newCook.promise);
+
+  oldCook.reject(Object.assign(new Error('old residency owner retired'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(oldRun, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.equal(state.render.openingLiveSectorReady, newCook.promise,
+    'retiring the old run must preserve the newer owner’s sector cook');
+  assert.equal(waitForOpeningFirstPicture(state, 1000), newRun,
+    'the old rejection must not evict the newer cached first-picture run');
+
+  newCook.resolve({ skipped: false, opening: { settled: true } });
+  assert.equal(await newRun, true);
+});
+
+test('typed owner retry cannot start after the original readiness deadline expires', async () => {
+  let now = 0;
+  let sectorAttempts = 0;
+  const ownerFailure = Object.assign(new Error('owner superseded at the deadline'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  });
+  const { state } = fixture({
+    prepareLiveSectorBeforeFlight: () => {
+      sectorAttempts += 1;
+      now = 2000;
+      return Promise.reject(ownerFailure);
+    },
+  });
+
+  await assert.rejects(waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, {
+    isActive: () => true,
+    isTransitionCurrent: () => true,
+    now: () => now,
+    presentBudgetMs: 1000,
+  }), ownerFailure);
+  assert.equal(sectorAttempts, 1);
+});
+
 test('launch joins the current-sector cook before sealing the exact picture', async () => {
   const cook = deferred();
   const { state, calls } = fixture({ openingLiveSectorReady: cook.promise });
@@ -417,6 +654,34 @@ test('a failed or cancelled current-sector cook never authorizes the exact pictu
     assert.deepEqual(calls, ['begin']);
     assert.notEqual(state.render.openingFirstPictureReady, true);
   }
+});
+
+test('a failed current-sector composition preserves its bounded admission receipt', async () => {
+  const { state, calls } = fixture({ openingLiveSectorReady: Promise.resolve({
+    skipped: false,
+    opening: {
+      settled: false,
+      reason: 'unstartable',
+      pending: 7,
+      ids: ['player', 'wing', 'actor-3', 'actor-4', 'actor-5', 'actor-6', 'actor-7'],
+      statuses: ['player:loading', 'wing:no-hook', 'actor-3:loading'],
+    },
+  }) });
+
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), (error) => {
+    assert.match(error.message, /reason=unstartable pending=7/);
+    assert.match(error.message, /ids=player\/wing\/actor-3\/actor-4\/actor-5\/actor-6/);
+    assert.deepEqual(error.diagnostic, {
+      reason: 'unstartable',
+      pending: 7,
+      ids: ['player', 'wing', 'actor-3', 'actor-4', 'actor-5', 'actor-6'],
+      statuses: ['player:loading', 'wing:no-hook', 'actor-3:loading'],
+    });
+    assert.deepEqual(state.render.openingCurrentSectorFailure, error.diagnostic);
+    return true;
+  });
+  assert.deepEqual(calls, ['begin']);
+  assert.notEqual(state.render.openingFirstPictureReady, true);
 });
 
 test('the current-sector wait remains bounded and cannot submit after its deadline', async (t) => {
@@ -506,8 +771,8 @@ test('the real picture window still expires and its pool-census owner propagates
   const end = source.indexOf('\n      }\n      // Final ambient seal:', start);
   assert.ok(start > 0 && end > start);
   const finish = new Function('state', 'recordOpeningCookStep', 'censusStarted', 'firstPictureError',
-    'firstFrameResidency', source.slice(start, end));
-  assert.throws(() => finish(owner.state, () => {}, 0, error, { skipped: false }), /preparation timed out/);
+    'firstFrameResidency', 'firstPictureResidencySubjects', source.slice(start, end));
+  assert.throws(() => finish(owner.state, () => {}, 0, error, { skipped: false }, []), /preparation timed out/);
 });
 
 test('final live-sector handover replaces only stale composition samples with a fresh owner verdict', async () => {
@@ -594,6 +859,16 @@ test('incomplete plans, partial residency and failed resources cannot accept fli
     assert.notEqual(state.render.requiredPackageAdmission?.status, 'accepted');
     assert.notEqual(state.render.openingFirstPictureReady, true);
   }
+});
+
+test('strict picture failure retains its capture diagnostic for teardown', async () => {
+  const detail = { reason: 'incomplete-plan', blockingReasons: [{ role: 'player', reason: 'no-leaves' }] };
+  const { state } = fixture({ captureOpeningSubmissionPlan: () => {
+    state.render.openingPlanCaptureFailure = detail;
+    return { complete: false };
+  } });
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), /opening submission plan is incomplete/);
+  assert.equal(state.render.openingFirstPicturePlanFailure, detail);
 });
 
 test('a bounded readiness deadline stops late submission without authorizing flight', async (t) => {

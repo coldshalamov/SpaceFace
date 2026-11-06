@@ -53,6 +53,8 @@ test('a draw that waits on a still-linking program is recorded with its name and
   assert.equal(ledger.count, 0);
 
   const slow = program('SlowHullPaint', 25);
+  slow.id = 123;
+  slow.cacheKey = 'physical,point-lights-9';
   renderer.info.programs.push(slow);
   slow.getUniforms();
 
@@ -62,6 +64,8 @@ test('a draw that waits on a still-linking program is recorded with its name and
   assert.ok(ledger.totalMs >= 20, `recorded the wait: ${ledger.totalMs.toFixed(1)} ms`);
   assert.equal(ledger.worst.length, 1);
   assert.equal(ledger.worst[0].name, 'SlowHullPaint');
+  assert.equal(ledger.worst[0].programId, 123);
+  assert.equal(ledger.worst[0].cacheKey, 'physical,point-lights-9');
   assert.ok(ledger.worst[0].ms >= 20);
   assert.equal(typeof ledger.worst[0].stack, 'string', 'a long wait carries a stack naming the draw');
   assert.equal(ledger.byName.SlowHullPaint.count, 1);

@@ -54,9 +54,9 @@ test('over-class heat from the real owner drives the ship instrument and a visib
   view.update(f.state, f.player, p => ({ x: 480 + p.x * 4, y: 270, onScreen: true }));
   assert.equal(view.root.hidden, false);
   assert.equal(view.root.dataset.over, 'true');
-  assert.equal(view.root.children[0].textContent, 'LINE I · 500 T / 20 T');
+  assert.equal(view.root.children[0].textContent, 'LINE I · RATED 20 T');
   assert.match(view.root.children[1].textContent, /OVER CLASS · WINCH 64%/);
-  assert.match(view.root.attrs['aria-label'], /500 T/);
+  assert.match(view.root.attrs['aria-label'], /OVER CLASS/);
   assert.equal(view.root.attrs['aria-valuenow'], '64');
   assert.match(view.root.style.transform, /530px,290px/);
   assert.equal(JSON.stringify(f.state.lineProgression), before, 'all visual readers leave the sim owner untouched');
@@ -88,7 +88,7 @@ test('cold within-class tow and arcade routes never borrow permanent over-class 
   f.system.update(5, f.state);
   const line = readLineVisualProfile(f.state);
   assert.equal(line.overClass, false); assert.equal(line.heat, 0);
-  assert.match(lineStrainWords(f.state, line, f.target).detail, /WITHIN CLASS/);
+  assert.equal(lineStrainWords(f.state, line, f.target).detail, 'WINCH 0%');
   f.state.lineProgression.classIndex = 8; f.state.lineProgression.winchHeat = 1; f.state.lineProgression.overClass = true;
   for (const kind of ['survival', 'lab', 'sandbox']) {
     f.state.run = { kind, phase: 'running' };
@@ -149,4 +149,17 @@ test('fresh-system Continue resumes heat and the snap only from the live player-
       assert.equal(cuts.length, 1); assert.equal(cuts[0][0], 'saved-link');
     } else { assert.ok(state.lineProgression.winchHeat < .8); assert.equal(cuts.length, 0); }
   }
+});
+
+
+test('a heavy attached body with no owner verdict never claims it is within class', () => {
+  const f=fixture();
+  f.target.mass=960; f.state.lineProgression.overClass=false;
+  const profile=readLineVisualProfile(f.state);
+  const words=lineStrainWords(f.state, profile, f.target);
+  assert.equal(words.title,'LINE I · RATED 20 T');
+  assert.equal(words.detail,'WINCH 0%');
+  assert.doesNotMatch(`${words.title} ${words.detail}`,/WITHIN CLASS|960|\//);
+  f.state.lineProgression.overClass=true;
+  assert.match(lineStrainWords(f.state,readLineVisualProfile(f.state),f.target).detail,/OVER CLASS/);
 });

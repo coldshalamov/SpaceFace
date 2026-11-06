@@ -6,11 +6,26 @@ import { createContactHailPrompt } from '../src/ui/contactHailPrompt.js';
 // Minimal DOM only: actual layout is checked by the production-component browser harness.
 class El {
   constructor(tag) { this.tagName=tag;this.children=[];this.attrs={};this.style={};this.dataset={};this.hidden=false;this.nodes={};this.listeners={};const c=new Set();this.classList={add:(...x)=>x.forEach(v=>c.add(v)),remove:(...x)=>x.forEach(v=>c.delete(v)),contains:x=>c.has(x),toggle:(x,b)=>b?c.add(x):c.delete(x)}; }
-  set innerHTML(html) { for(const key of html.matchAll(/data-k="([^"]+)"/g)) { const el=new El('div');this.nodes[key[1]]=el;this.appendChild(el); } }
-  querySelector(selector) { return this.nodes[/data-k="([^"]+)"/.exec(selector)?.[1]]; }
+  set innerHTML(html) {
+    this.replaceChildren();this.nodes={};
+    const stack=[this];
+    for(const token of html.matchAll(/<\/?([\w-]+)\b([^>]*)>/g)) {
+      if(token[0].startsWith('</')) { if(stack.length>1) stack.pop();continue; }
+      const el=new El(token[1]);
+      for(const a of token[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) el.setAttribute(a[1],a[2]??'');
+      el.hidden=Object.hasOwn(el.attrs,'hidden');
+      const key=el.attrs['data-k'];if(key) {this.nodes[key]=el;el.dataset.k=key;}
+      stack.at(-1).appendChild(el);
+      if(!/^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/.test(token[1])&&!token[0].endsWith('/>')) stack.push(el);
+    }
+  }
+  querySelector(selector) { const key=/data-k="([^"]+)"/.exec(selector)?.[1];for(const child of this.children) {if(key&&child.dataset.k===key) return child;const nested=child.querySelector(selector);if(nested) return nested;}return null; }
   setAttribute(k,v){this.attrs[k]=String(v);} removeAttribute(k){delete this.attrs[k];}
-  appendChild(n){this.children.push(n);return n;} replaceChildren(...n){this.children=n;}
-  addEventListener(n,f){this.listeners[n]=f;} removeEventListener(){} remove(){} contains(n){return this===n||this.children.includes(n);} focus(){document.activeElement=this;}
+  appendChild(n){n.remove();this.children.push(n);n.parentNode=this;return n;}
+  removeChild(n){const i=this.children.indexOf(n);if(i>=0){this.children.splice(i,1);n.parentNode=null;}return n;}
+  replaceChildren(...n){for(const child of this.children) child.parentNode=null;this.children=[];for(const child of n) this.appendChild(child);}
+  getBoundingClientRect(){return {left:0,top:0,width:80,height:28};}
+  addEventListener(n,f){this.listeners[n]=f;} removeEventListener(){} remove(){this.parentNode?.removeChild(this);} contains(n){return this===n||this.children.some(child=>child.contains(n));} focus(){document.activeElement=this;}
 }
 function fixture() {
   const old=globalThis.document;const head=new El('head'),root=new El('div');
@@ -87,5 +102,27 @@ test('only matching scanner expiry retains a read-only route snapshot; other cle
   }
   f.bus.emit('contactHail:response',reply);f.bus.emit('contactHail:availability',{enabled:false,targetId:null});assert.equal(panel.hidden,true);
   f.bus.emit('contactHail:response',{...reply,actions:[{id:'status',label:'STATUS'}]});f.bus.emit('contactHail:clear',{reason:'expired',requestId:'r1',targetId:113});assert.equal(panel.hidden,true);
+ }finally{f.restore();}
+});
+
+
+test('hidden availability updates do not force layout; a revealed panel uses its current anchor', () => {
+ const f=fixture();try {
+  let reads=0, top=100;
+  f.prompt.el.getBoundingClientRect=()=>{reads++;return {left:100,top,width:80,height:28};};
+  for(let i=0;i<10;i++) f.bus.emit('contactHail:availability',{enabled:false,targetId:null});
+  f.bus.emit('contactHail:availability',{enabled:true,targetId:113,kind:'trader',label:'HAIL COLLECTOR'});
+  assert.equal(reads,0,'an unavailable or unrequested panel needs no layout read');
+  f.bus.emit('contactHail:offer',{targetId:113,kind:'trader',lines:['CONTACT'],expiresAt:5});
+  const panel=f.prompt.el.nodes.panel;
+  assert.equal(panel.hidden,false);
+  assert.equal(reads,1);
+  assert.equal(panel.style.left,'29px');
+  assert.equal(panel.style.top,'138px');
+  top=130;f.state.simTime=2;f.prompt.tick();
+  assert.equal(panel.style.top,'168px','a visible panel still follows its live button');
+  const visibleReads=reads;
+  f.bus.emit('contactHail:clear');
+  assert.equal(reads,visibleReads,'closing does not read layout for the hidden panel');
  }finally{f.restore();}
 });

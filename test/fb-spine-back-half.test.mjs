@@ -11,6 +11,8 @@
 // Run: node --test test/fb-spine-back-half.test.mjs
 
 import assert from 'node:assert/strict';
+import { admitMarkedSampleYield } from './helpers/pr825-sample-admission.mjs';
+import { installBook4Owners, completeBook4Spine, completeBook4Barn } from './helpers/pr825-book4-physical.mjs';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -49,6 +51,15 @@ import {
 } from '../src/story/campaign47a/index.js';
 
 const SEED = 4242;
+
+// This campaign fixture reports an impact from the actual supplied slag pod;
+// it does not simulate the player's physical throw.
+function hitSuppliedMawPod(h, mission, maw) {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  h.bus.emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating: 'solid' });
+}
 
 function cloneSystem(proto) {
   return Object.assign({}, proto);
@@ -101,7 +112,7 @@ function makeHarness(seed = SEED) {
     voice: { say: (line) => { voiceLines.push(line); return true; } },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
-      const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
+      const entity = { id, alive: true, occupantGeneration: id, vel: { x: 0, z: 0 }, ...spec, data: structuredClone(spec.data || {}) };
       state.entities.set(id, entity);
       state.entityList = state.entityList || [];
       state.entityList.push(entity);
@@ -130,6 +141,7 @@ function makeHarness(seed = SEED) {
   const registry = { get: (name) => systems[name] || null };
   const ctx = { state, bus, helpers, registry };
   missions.init(ctx);
+  installBook4Owners({ state, bus, helpers, registry, systems });
   story.init(ctx);
   heat.init(ctx);
   aftermath.init(ctx);
@@ -209,7 +221,7 @@ function completeSpineSetPiece(h, mission) {
     // The living maw refuses the line until the slag stuns land.
     const stuns = mission.params && mission.params.mawStunsNeeded;
     for (let i = 0; i < (stuns || 0); i++) {
-      h.bus.emit('tether:whipImpact', { victimId: target.id, rating: 'solid' });
+      hitSuppliedMawPod(h, mission, target);
     }
     h.bus.emit('tether:latched', { targetId: target.id });
     target.pos = { x: berth.pos.x, z: berth.pos.z };
@@ -382,13 +394,13 @@ function completePhysicalMission(h, mission) {
 function completeB0(h) {
   const { state, bus } = h;
   assert.equal(state.story.beatIndex, 0);
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 1, 'B0 completes on ordered mine then dock');
 }
 
 /** The live B1→B4 route: the authored book lists (w533/w534) driven physically. */
-function advanceB1ToB5(h) {
+async function advanceB1ToB5(h) {
   const { state, bus } = h;
   assert.equal(state.story.beatIndex, 1);
 
@@ -431,7 +443,7 @@ function advanceB1ToB5(h) {
   completePhysicalMission(h, intro);
   assert.equal(state.story.branch, 'traders');
   assert.equal(state.story.beatIndex, 4, 'the intro settles the door; the operation closes the book');
-  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b4:operation'));
+  await completeBook4Spine(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b4:operation'));
   assert.equal(state.story.beatIndex, 5);
 }
 
@@ -473,7 +485,7 @@ function completeB7(h) {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────────────────
 
-test('FB-063: the eight-beat walk on seed 4242 advances only through authored steps', () => {
+test('FB-063: the eight-beat walk on seed 4242 advances only through authored steps', async () => {
   const h = makeHarness();
   const sidecar = () => h.state.story.campaign47a;
 
@@ -481,13 +493,13 @@ test('FB-063: the eight-beat walk on seed 4242 advances only through authored st
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 0, 'dock before mine must not advance B0');
   assert.equal(isBeatStepsComplete(h.state, 0), false);
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   assert.equal(h.state.story.beatIndex, 0, 'mine without the dock step must not advance B0');
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 
   // B4's authored step is a mission:accepted carrying the branch-intro tag — nothing else counts.
-  advanceB1ToB5(h);
+  await advanceB1ToB5(h);
   const b4 = getBeatStepStatus(h.state, 4);
   assert.equal(b4.stepsComplete, true, 'B4 recorded its authored accept step');
   assert.deepEqual(b4.completed, ['branch_intro_accept', 'operation']);
@@ -519,10 +531,10 @@ test('FB-063: the eight-beat walk on seed 4242 advances only through authored st
   assert.equal(beatDefAt(7).observeOnly, true, 'B7 is observe-only — the sidecar owns no completion');
 });
 
-test('FB-063: a scripted beat-5 failure speaks the authored recovery line once, after cooldown', () => {
+test('FB-063: a scripted beat-5 failure speaks the authored recovery line once, after cooldown', async () => {
   const h = makeHarness();
   completeB0(h);
-  advanceB1ToB5(h);
+  await advanceB1ToB5(h);
   const recoveryLine = CAMPAIGN_BEATS[5].recovery.line;
   assert.ok(recoveryLine, 'beat 5 carries an authored recovery line');
   const heard = () => h.commsPopups.filter((p) => p && p.text === recoveryLine);

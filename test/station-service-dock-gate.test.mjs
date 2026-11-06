@@ -44,12 +44,13 @@ test('a remembered berth after undock does not sell services in open space', () 
   assert.equal(events.find((row) => row.name === 'toast')?.payload?.text, 'Dock first');
 });
 
-test('a harness with no UI bag can still run service math', () => {
-  const { state, sys } = serviceHarness({ docked: false });
+test('a service request with no UI bag and no live berth fails closed', () => {
+  const { state, sys, events } = serviceHarness({ docked: false });
   delete state.ui;
   sys.handleService({ type: 'refuel', amount: 10 });
-  assert.equal(state.fuel.current, 20);
-  assert.ok(state.player.credits < 1000);
+  assert.equal(state.fuel.current, 10);
+  assert.equal(state.player.credits, 1000);
+  assert.equal(events.find((row) => row.name === 'toast')?.payload?.text, 'Dock first');
 });
 
 test('a live dock:docked latch sells services without uiRoot flipping ui.docked', () => {

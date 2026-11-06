@@ -17,10 +17,7 @@ import {
   stampOpeningSubmissionPackage,
   validateOpeningSubmissionReceipt,
 } from '../src/render/openingSubmissionPlan.js';
-import {
-  collectOpeningEntityRootCandidates,
-  collectOpeningShadowCasterRootCandidates,
-} from '../src/render/renderer.js';
+import { collectOpeningEntityRootCandidates, collectOpeningShadowCasterRootCandidates } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { ensureOpeningGeneratedScenarioPropPackage } from '../src/render/precompile.js';
 import { build47aScenarioProp } from '../src/render/scenarioProps47a.js';
 

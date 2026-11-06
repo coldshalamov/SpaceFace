@@ -214,6 +214,8 @@ export function createCombatKernel(ctx, options = {}) {
     routeCombatDamage: (request) => routeDamage(request || {}),
     inspectCombat: (request) => inspect(request || {}),
     repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
+    repairCombatHulls: (repairs, source) => repairHulls(repairs, source),
+    prepareRepairCombatHulls: (repairs, source) => prepareRepairHulls(repairs, source),
     getCombatCapabilities: (entityId) => capabilities(entityId),
     reconcileCombatPhysicsAttachments: () => reconcilePhysicsAttachments(),
     describeCombatPhysicsAttachment: (attachmentId) => attachments.physicsContract(attachmentId),
@@ -236,6 +238,9 @@ export function createCombatKernel(ctx, options = {}) {
     reconcilePhysicsAttachments,
     inspect,
     repair,
+    repairHulls,
+    prepareRepairHulls,
+    pulseSubsystem,
     capabilities,
     capRegenMultiplier,
     setKillHandler(handler) { hooks.onKill = typeof handler === 'function' ? handler : null; },
@@ -434,6 +439,110 @@ export function createCombatKernel(ctx, options = {}) {
     const runtime = ensureCombatant(state, entity, catalog);
     const result = repairSubsystem(context, entity, runtime, subsystemId, Math.max(0, Number(amount) || 0), reason);
     return { ok: result.applied > 0, ...result };
+  }
+
+  function repairHulls(repairs, source = 'repair') {
+    const prepared = prepareRepairHulls(repairs, source);
+    if (!prepared.ok) return prepared;
+    const committed = prepared.commit();
+    if (!committed.ok) return committed;
+    return prepared.finalize();
+  }
+
+  function prepareRepairHulls(repairs, source = 'repair') {
+    if (!Array.isArray(repairs) || repairs.length === 0) return { ok: false, reason: 'invalid_repairs', results: [] };
+    const prepared = [];
+    const seen = new Set();
+    for (const row of repairs) {
+      const entityId = row && row.entityId;
+      const amount = Number(row && row.amount);
+      if (entityId == null || !Number.isFinite(amount) || amount <= 0 || seen.has(entityKey(entityId))) {
+        return { ok: false, reason: 'invalid_repair', results: [] };
+      }
+      seen.add(entityKey(entityId));
+      const entity = getEntity(entityId);
+      const hull = Number(entity && entity.hull);
+      const hullMax = Number(entity && entity.hullMax);
+      if (!entity || entity.alive === false || !Number.isFinite(hull) || hull <= 0
+        || !Number.isFinite(hullMax) || hullMax <= 0) {
+        return { ok: false, reason: 'entity_unavailable', results: [] };
+      }
+      prepared.push({ entityId, entity, amount, hull, hullMax });
+    }
+    const results = prepared.map(({ entityId, amount, hull, hullMax }) => {
+      const after = Math.min(hullMax, hull + amount);
+      return { entityId, before: hull, after, applied: Math.max(0, after - hull) };
+    });
+    if (!results.some((row) => row.applied > 0)) return { ok: false, reason: 'hull_full', results };
+    const attribution = typeof source === 'string' ? source : (source && typeof source === 'object' ? { ...source } : 'repair');
+    let status = 'prepared';
+    let receipt = null;
+    return Object.freeze({
+      ok: true,
+      repairs: results,
+      commit() {
+        if (status !== 'prepared') return { ok: false, reason: 'repair_not_prepared' };
+        for (const row of prepared) {
+          if (getEntity(row.entityId) !== row.entity || row.entity.alive === false
+            || row.entity.hull !== row.hull || row.entity.hullMax !== row.hullMax) {
+            return { ok: false, reason: 'repair_target_changed' };
+          }
+        }
+        noteCombatPrePhysicsWake();
+        for (const row of results) {
+          const target = prepared.find((entry) => entityKey(entry.entityId) === entityKey(row.entityId)).entity;
+          target.hull = row.after;
+        }
+        status = 'committed';
+        return { ok: true, source: attribution, repairs: results };
+      },
+      rollback() {
+        if (status !== 'committed') return false;
+        for (const row of prepared) {
+          if (getEntity(row.entityId) !== row.entity) return false;
+        }
+        // Subtract only this transaction's applied amount so a synchronous later hit is preserved.
+        for (let i = 0; i < results.length; i++) {
+          const target = prepared[i].entity;
+          target.hull = Math.max(0, Math.min(prepared[i].hullMax, target.hull - results[i].applied));
+        }
+        status = 'rolled_back';
+        return true;
+      },
+      finalize() {
+        if (status === 'finalized') return receipt;
+        if (status !== 'committed') return { ok: false, reason: 'repair_not_committed' };
+        receipt = { ok: true, source: attribution, repairs: results };
+        status = 'finalized';
+        if (bus && typeof bus.emit === 'function') bus.emit('combat:hullRepair', receipt);
+        appendCombatTrace(state.combat, state.tick, 'combat.hullRepaired', receipt);
+        return receipt;
+      },
+    });
+  }
+
+  function pulseSubsystem(entityId, subsystemId, pulse = 1, source = {}) {
+    const entity = getEntity(entityId);
+    if (!entity || entity.alive === false) return { ok: false, reason: 'entity_missing' };
+    const rawPulse = Number(pulse);
+    const amount = Number.isFinite(rawPulse) ? Math.max(0, Math.min(1, rawPulse)) : 0;
+    if (!(amount > 0)) return { ok: false, reason: 'invalid_pulse' };
+    // Authored reaction data uses the concise "drive" name; combat runtimes and traces use
+    // the catalog's stable subsystem_drive key.
+    const key = subsystemId === 'drive' ? 'subsystem_drive' : String(subsystemId || '');
+    const runtime = ensureCombatant(state, entity, catalog);
+    if (!runtime || !runtime.subsystems[key]) return { ok: false, reason: 'subsystem_missing' };
+    noteCombatPrePhysicsWake();
+    const previousAttackerId = context.currentAttackerId;
+    context.currentAttackerId = (source && (source.attackerId ?? source.sourceId)) ?? null;
+    try {
+      // Pulse is post-armor subsystem health units, bounded to one per call. Keep it on the
+      // ordinary subsystem damage owner so health, transition scheduling, and trace stay canonical.
+      const result = damageSubsystem(context, entity, runtime, key, amount, { thermal: 1 }, 1);
+      return { ok: result.applied > 0, ...result };
+    } finally {
+      context.currentAttackerId = previousAttackerId;
+    }
   }
 
   function shipjackActors(request, range) {

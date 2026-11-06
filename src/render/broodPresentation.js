@@ -17,19 +17,20 @@
 import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
   BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S,
+  BROOD_CASCADE_NONE, BROOD_CASCADE_PANIC, BROOD_CASCADE_AGGRESSION, BROOD_CASCADE_GRIEF,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, SWARM_BROOD_STRAINS } from '../data/swarmBroodLate.js';
+import { SWARM_MACHINE_FAMILIES } from '../data/swarmMachine.js';
 import { circleHitRadius, corridorHalfWidth, dashReach } from '../combat/telegraphFootprint.js';
 
-const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
+const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES, SWARM_MACHINE_FAMILIES);
 const FAMILY_N = DRAW_FAMILIES.length;
+const MACHINE_SET = new Set(SWARM_MACHINE_FAMILIES);
+const TAU = Math.PI * 2;
 
 function familyStretch(fam) {
-  const lateIndex = fam - SWARM_BROOD_FAMILIES.length;
-  if (lateIndex >= 0) {
-    const late = SWARM_BROOD_LATE_FAMILIES[lateIndex];
-    if (late && Array.isArray(late.stretch)) return late.stretch;
-  }
+  const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
+  if (drawn && Array.isArray(drawn.stretch)) return drawn.stretch;
   if (fam >= 0 && fam < FAMILY_STRETCH.length) return FAMILY_STRETCH[fam];
   return FAMILY_STRETCH[0];
 }
@@ -47,6 +48,88 @@ const FAMILY_STRETCH = Object.freeze([
   Object.freeze([1.9, 0.55, 0.65]),   // wake_eel — long ribbon
   Object.freeze([0.95, 1.5, 1.35]),   // bellows — a swelling sac
 ]);
+
+// ---- inf-brood-cascade-flush — the pack's coupling finally reads -----------------------------
+//
+// The Bloom spine authors the coupling web ("faint green filaments join members within this
+// radius; a node's death flares the web", bloomLadder.js) and the data contract on the cascade
+// kinds names the duty ("published on the view; the renderer flushes the filaments on them") —
+// yet the picture kept every body its calm family colour. The BLOOM pathology's authored
+// cascades ran as motion only, and in a 200-body furball a pack scattering in panic and a pack
+// feeding read identically until you have watched the motion for seconds.
+//
+// The honest reader is the filament flush the contract names, keyed to the view kind the sim
+// already publishes (view.cascade):
+//   PANIC — the web flares: bodies sweep hot pale acid green (the coupling lighting up as one
+//           animal breaks), an urgent pulse with a per-body stagger so the flare waves through
+//           the pack instead of recolouring it at once.
+//   GRIEF — the pack cools: bodies sink toward a desaturated slate (mourning dimming around
+//           the corpse), a slow breath.
+//   NONE  — null: the caller's colours stay bit-identical to the unwired path.
+// The flush rides the flock mesh only — the cascade windows arm cells, never Tendril segments.
+// The aggression kind is wired: the sim publishes it when a relay/Queen hit arms the rush
+// (swarmBrood relayHit → view.cascade), and its flush is the data contract's own words —
+// "the Queen (or a relay) taking a hit turns every linked member on the player at once;
+// the filaments flush red" (src/data/swarmBrood.js W-COUPLING).
+
+/** The web's flare: pale-hot acid green — the coupling colour burning, not a new family voice. */
+export const BROOD_FLUSH_PANIC_RGB = Object.freeze([0.86, 1.0, 0.68]);
+/** The mourning slate: desaturated, cool — the pack dimming around its dead. */
+export const BROOD_FLUSH_GRIEF_RGB = Object.freeze([0.3, 0.36, 0.33]);
+/** The aggression flush: hot anger red — the authored "filaments flush red" on the rush. */
+export const BROOD_FLUSH_AGGRESSION_RGB = Object.freeze([1.0, 0.3, 0.16]);
+
+const FLUSH_PANIC_HZ = 1.8;      // the flare's urgent pulse
+const FLUSH_GRIEF_PERIOD_S = 2.4; // the mourning breath
+const FLUSH_AGGRESSION_HZ = 2.6; // the rush's hotter beat — angrier than the panic flare
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/**
+ * The filament flush for one body of the pack. Pure function of (kind, simTime, phase,
+ * reducedMotion) — test-seam, no allocation (writes `out`). Returns null when no flush
+ * owns the view kind (NONE, unknown), so callers keep their exact unwired colours.
+ */
+export function resolveBroodCascadeFlush(cascade, simTime, phase01, reducedMotion, out = null) {
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  const ph = Number.isFinite(phase01) ? phase01 : 0;
+  const rec = out || { weight: 0, r: 0, g: 0, b: 0 };
+  if (cascade === BROOD_CASCADE_PANIC) {
+    rec.r = BROOD_FLUSH_PANIC_RGB[0];
+    rec.g = BROOD_FLUSH_PANIC_RGB[1];
+    rec.b = BROOD_FLUSH_PANIC_RGB[2];
+    // Reduced motion holds the flare at its floor weight — the coupling still reads,
+    // nothing pulses. The stagger (phase01) waves the flare through the pack.
+    rec.weight = reducedMotion
+      ? 0.5
+      : clamp01(0.5 + 0.18 * Math.sin((t * FLUSH_PANIC_HZ + ph * 0.35) * Math.PI * 2));
+    return rec;
+  }
+  if (cascade === BROOD_CASCADE_AGGRESSION) {
+    rec.r = BROOD_FLUSH_AGGRESSION_RGB[0];
+    rec.g = BROOD_FLUSH_AGGRESSION_RGB[1];
+    rec.b = BROOD_FLUSH_AGGRESSION_RGB[2];
+    // The rush's read: a hotter, faster beat than the panic flare — the pack is one angry
+    // animal charging you, not scattering. Same stagger law (the web lights up in a wave),
+    // and reduced motion holds a steady anger floor, never silent.
+    rec.weight = reducedMotion
+      ? 0.45
+      : clamp01(0.55 + 0.16 * Math.sin((t * FLUSH_AGGRESSION_HZ + ph * 0.5) * Math.PI * 2));
+    return rec;
+  }
+  if (cascade === BROOD_CASCADE_GRIEF) {
+    rec.r = BROOD_FLUSH_GRIEF_RGB[0];
+    rec.g = BROOD_FLUSH_GRIEF_RGB[1];
+    rec.b = BROOD_FLUSH_GRIEF_RGB[2];
+    rec.weight = reducedMotion
+      ? 0.4
+      : clamp01(0.4 + 0.08 * Math.sin(t * (Math.PI * 2 / FLUSH_GRIEF_PERIOD_S) + ph * 2.1));
+    return rec;
+  }
+  return null;
+}
 
 /**
  * The mite body: a faceted dart. Authored as raw triangles (non-indexed for flat facet
@@ -253,6 +336,32 @@ export function createBroodPresentation(scene, capacity = 400) {
   segs.renderOrder = 2;
   scene.add(segs);
   const SEG_BODY_COLOR = new THREE.Color(0.42, 0.34, 0.18);  // carapace bronze
+
+  // The Machine's instruments, drawn in its own cold voice: shield links are cyan lines
+  // on the pair, beam sweeps are hot blades, magnet auras are faint violet rings.
+  const mlinks = new THREE.InstancedMesh(lineGeo, flatMarkerMaterial(0x66e0ff, 0.55), LINE_CAP);
+  mlinks.name = 'sf-swarm-machine-links';
+  mlinks.frustumCulled = false;
+  mlinks.renderOrder = 6;
+  mlinks.count = 0;
+  mlinks.visible = false;
+  scene.add(mlinks);
+
+  const mbeams = new THREE.InstancedMesh(lineGeo, flatMarkerMaterial(0xffd28a, 0.8), LINE_CAP);
+  mbeams.name = 'sf-swarm-machine-beams';
+  mbeams.frustumCulled = false;
+  mbeams.renderOrder = 6;
+  mbeams.count = 0;
+  mbeams.visible = false;
+  scene.add(mbeams);
+
+  const mauras = new THREE.InstancedMesh(ringGeo, flatMarkerMaterial(0x7a9cff, 0.34), RING_CAP);
+  mauras.name = 'sf-swarm-machine-auras';
+  mauras.frustumCulled = false;
+  mauras.renderOrder = 5;
+  mauras.count = 0;
+  mauras.visible = false;
+  scene.add(mauras);
   const SEG_FREE_COLOR = new THREE.Color(0.9, 0.42, 0.16);   // the freed link burns hotter
 
   const matrix = new THREE.Matrix4();
@@ -271,11 +380,16 @@ export function createBroodPresentation(scene, capacity = 400) {
   const STRAIN_TINTS = SWARM_BROOD_STRAINS.map((strain) => color.clone().setRGB(
     strain.tint[0], strain.tint[1], strain.tint[2],
   ));
+  // The cascade flush's scratch (zero per-frame allocation): the target colour and the
+  // pure layer's output record, both retained.
+  const flushColor = new THREE.Color();
+  const flushScratch = { weight: 0, r: 0, g: 0, b: 0 };
 
   function dispose() {
-    for (const m of [mesh, rings, pools, lines, lanes, lobs, segs]) {
+    for (const m of [mesh, rings, pools, lines, lanes, lobs, segs, mlinks, mbeams, mauras]) {
       scene.remove(m);
-      if (m !== lanes) m.geometry.dispose(); // lanes shares the line geometry
+      // lanes/mlinks/mbeams share the line geometry; mauras shares the ring geometry.
+      if (m !== lanes && m !== mlinks && m !== mbeams && m !== mauras) m.geometry.dispose();
       m.material.dispose();
     }
   }
@@ -326,7 +440,8 @@ export function createBroodPresentation(scene, capacity = 400) {
         mesh.setMatrixAt(written, matrix);
         const c = drawn ? FAMILY_COLORS[fam] : FAMILY_COLORS[0];
         color.copy(c);
-        if (drawn && (drawn.splits || drawn.births) && Array.isArray(drawn.bodyEmissive)) {
+        if (drawn && Array.isArray(drawn.bodyEmissive)
+            && (drawn.splits || drawn.births || MACHINE_SET.has(drawn))) {
           splitTint.setRGB(drawn.bodyEmissive[0], drawn.bodyEmissive[1], drawn.bodyEmissive[2]);
           color.lerp(splitTint, drawn.births ? 0.55 : 0.45);
         }
@@ -334,9 +449,21 @@ export function createBroodPresentation(scene, capacity = 400) {
           const markTint = STRAIN_TINTS[view.affix[i] - 1];
           if (markTint) color.lerp(markTint, 0.72);
         }
+        // inf-brood-cascade-flush: the coupling web's flush, keyed to the view kind the
+        // engine publishes — panic flares the pack hot, grief cools it toward its dead.
+        // No cascade live (or an unwired kind) leaves the colour exactly as it was.
+        const flush = view.cascade && view.cascade !== BROOD_CASCADE_NONE
+          ? resolveBroodCascadeFlush(view.cascade, simTime,
+            (seedPhase[i] % TAU) / TAU, reduced, flushScratch)
+          : null;
+        if (flush) {
+          flushColor.setRGB(flush.r, flush.g, flush.b);
+          color.lerp(flushColor, flush.weight);
+        }
         mesh.setColorAt(written, color);
-        // The charger's line telegraph: one stretched marker per winding pass.
-        if (phase[i] === 1 && chargersWinding < LINE_CAP && drawn && drawn.id === 'charger') {
+        // The committed-pass telegraph: one stretched marker per winding pass — the
+        // charger's own line, and the formation drone's peel dive, which is the same law.
+        if (phase[i] === 1 && chargersWinding < LINE_CAP && drawn && (drawn.id === 'charger' || drawn.formation)) {
           const dx = teleX[i] - px[i];
           const dz = teleZ[i] - pz[i];
           const len = Math.sqrt(dx * dx + dz * dz);
@@ -370,6 +497,8 @@ export function createBroodPresentation(scene, capacity = 400) {
     // ---- the attack language -------------------------------------------------------
 
     // Spitter windup markers: the ground ring grows in as the splash approaches.
+    // The Machine's weld channels ride the same marker language: a ring on the wreck
+    // tightening as the channel lands — the salvager's teleX tracks the remain it eats.
     let ringN = 0;
     if (bodies) {
       const count = Math.min(view.cap, capacity);
@@ -377,11 +506,19 @@ export function createBroodPresentation(scene, capacity = 400) {
       for (let i = 0; i < count && ringN < RING_CAP; i++) {
         if (!alive[i] || phase[i] !== 1) continue;
         const fam = family[i];
-        if (!(fam >= 0 && fam < FAMILY_N) || DRAW_FAMILIES[fam].id !== 'spitter') continue;
-        // Grow from 0.2 to 1.0 across the windup so the marker tightens as it lands.
-        // The marker closes IN on the real splash radius and arrives at it exactly at impact.
-        writeRing(ringN, teleX[i], teleZ[i], spitterFootprintRadius(view), 1.0 - 0.48 * Math.max(0, Math.min(1, timer[i] / 0.8)));
-        ringN += 1;
+        if (!(fam >= 0 && fam < FAMILY_N)) continue;
+        const drawn = DRAW_FAMILIES[fam];
+        if (drawn.id === 'spitter') {
+          // Grow from 0.2 to 1.0 across the windup so the marker tightens as it lands.
+          // The marker closes IN on the real splash radius and arrives at it exactly at impact.
+          writeRing(ringN, teleX[i], teleZ[i], spitterFootprintRadius(view), 1.0 - 0.48 * Math.max(0, Math.min(1, timer[i] / 0.8)));
+          ringN += 1;
+        } else if (drawn.repairs || drawn.assembles) {
+          const channelS = drawn.repairs ? drawn.repairS : drawn.assembleS;
+          const grow = 1.0 - 0.6 * Math.max(0, Math.min(1, timer[i] / (channelS > 0 ? channelS : 3)));
+          writeRing(ringN, teleX[i], teleZ[i], 7, grow);
+          ringN += 1;
+        }
       }
     }
     rings.count = ringN;
@@ -417,6 +554,87 @@ export function createBroodPresentation(scene, capacity = 400) {
       lines.instanceMatrix.needsUpdate = true;
       lanes.instanceMatrix.needsUpdate = true;
     }
+
+    // ---- the Machine's instruments ---------------------------------------------------
+    // Shield links: one cyan line per live beam, linker to charge.
+    let linkN = 0;
+    if (view && Array.isArray(view.links)) {
+      for (const link of view.links) {
+        if (linkN >= LINE_CAP) break;
+        const dx = link.x2 - link.x1;
+        const dz = link.z2 - link.z1;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        if (!(len > 1)) continue;
+        quat.setFromAxisAngle(axis, Math.atan2(dz, dx));
+        pos.set(link.x1 + dx * 0.5, 0.5, link.z1 + dz * 0.5);
+        scl.set(len, 1, 0.8);
+        matrix.compose(pos, quat, scl);
+        mlinks.setMatrixAt(linkN, matrix);
+        linkN += 1;
+      }
+    }
+    mlinks.count = linkN;
+    mlinks.visible = linkN > 0;
+    if (linkN > 0) mlinks.instanceMatrix.needsUpdate = true;
+
+    // Beam instruments: a windup draws both arc edges as faint blades; a live sweep
+    // draws the walking edge at full burn — the marker IS the segment the engine cuts.
+    let beamN = 0;
+    if (view && Array.isArray(view.beams)) {
+      for (const beam of view.beams) {
+        if (beam.state === 0) {
+          if (beamN < LINE_CAP) {
+            quat.setFromAxisAngle(axis, beam.a0);
+            pos.set(beam.x + Math.cos(beam.a0) * beam.range * 0.5, 0.35,
+              beam.z + Math.sin(beam.a0) * beam.range * 0.5);
+            scl.set(beam.range, 0.5, 0.7);
+            matrix.compose(pos, quat, scl);
+            mbeams.setMatrixAt(beamN, matrix);
+            beamN += 1;
+          }
+          if (beamN < LINE_CAP) {
+            quat.setFromAxisAngle(axis, beam.a1);
+            pos.set(beam.x + Math.cos(beam.a1) * beam.range * 0.5, 0.35,
+              beam.z + Math.sin(beam.a1) * beam.range * 0.5);
+            scl.set(beam.range, 0.5, 0.7);
+            matrix.compose(pos, quat, scl);
+            mbeams.setMatrixAt(beamN, matrix);
+            beamN += 1;
+          }
+          continue;
+        }
+        if (beamN >= LINE_CAP) break;
+        const t = beam.total > 0 ? Math.min(1, beam.t / beam.total) : 1;
+        const a = beam.a0 + (beam.a1 - beam.a0) * t;
+        quat.setFromAxisAngle(axis, a);
+        pos.set(beam.x + Math.cos(a) * beam.range * 0.5, 0.45,
+          beam.z + Math.sin(a) * beam.range * 0.5);
+        scl.set(beam.range, 1, Math.max(1, beam.width / 0.14));
+        matrix.compose(pos, quat, scl);
+        mbeams.setMatrixAt(beamN, matrix);
+        beamN += 1;
+      }
+    }
+    mbeams.count = beamN;
+    mbeams.visible = beamN > 0;
+    if (beamN > 0) mbeams.instanceMatrix.needsUpdate = true;
+
+    // Magnet auras: the faint ring your shots bend into.
+    let auraN = 0;
+    if (view && Array.isArray(view.auras)) {
+      for (const aura of view.auras) {
+        if (auraN >= RING_CAP) break;
+        quat.identity();
+        pos.set(aura.x, 0.3, aura.z);
+        scl.set(aura.r, 1, aura.r);
+        matrix.compose(pos, quat, scl);
+        mauras.setMatrixAt(auraN, matrix);
+        auraN += 1;
+      }
+    }
+    mauras.count = auraN;
+    mauras.visible = auraN > 0;
+    if (auraN > 0) mauras.instanceMatrix.needsUpdate = true;
 
     // Acid lobs in flight: a dot on the arc, height keyed to flight progress.
     let lobN = 0;
@@ -467,9 +685,10 @@ export function createBroodPresentation(scene, capacity = 400) {
       if (segs.instanceColor) segs.instanceColor.needsUpdate = true;
     }
 
-    return written > 0 || ringN > 0 || poolN > 0 || chargersWinding > 0 || lobN > 0 || segN > 0;
+    return written > 0 || ringN > 0 || poolN > 0 || chargersWinding > 0 || lobN > 0 || segN > 0
+      || linkN > 0 || beamN > 0 || auraN > 0;
   }
 
-  return { mesh, rings, pools, lines, lanes, lobs, segs, update, dispose };
+  return { mesh, rings, pools, lines, lanes, lobs, segs, mlinks, mbeams, mauras, update, dispose };
 }
 

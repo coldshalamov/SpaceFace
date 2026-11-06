@@ -74,7 +74,7 @@ test('the reader keeps instrumentation in every split and projects the presented
   }
 });
 
-function attributionFixture({ extraCandidates = 0, frontVisible = true, unstable = false } = {}) {
+function attributionFixture({ extraCandidates = 0, frontVisible = true, unstable = false, vfxAttribution = false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-100, 100, 60, -60, 0.1, 500);
   camera.position.set(0, 100, 0); camera.up.set(0, 0, -1);
@@ -121,7 +121,7 @@ function attributionFixture({ extraCandidates = 0, frontVisible = true, unstable
     SF: { THREE, state: { mode: 'flight', simTime: 1, playerId: 1, entityList: [enemy],
       render: { renderer, scene, camera, meshes: new Map([[2, hull]]) } } },
   };
-  const reader = installPlayerTruthReader(win, { pxEvery: 1, vfxEvery: 1 });
+  const reader = installPlayerTruthReader(win, { pxEvery: 1, vfxEvery: 1, vfxAttribution });
   return { front, behind, sigil, renderer, originalTarget, draws,
     frame() { reader.start(); callback(); return reader.drain().samples[0]; },
     dispose() { reader.dispose(); sigil.dispose(); geometry.dispose(); material.dispose(); hull.material.dispose(); },
@@ -149,6 +149,29 @@ test('first-positive attribution finds the front contributor and excludes the be
     assert.equal(fixture.front.visible, true); assert.equal(fixture.behind.visible, true);
     assert.equal(fixture.renderer.getRenderTarget(), fixture.originalTarget);
     assert.deepEqual(fixture.renderer.info.render, { calls: 7, triangles: 99 });
+  } finally { fixture.dispose(); }
+});
+
+test('opt-in attribution enumerates candidates at a threat-hidden sample and reports per-box deltas', () => {
+  const fixture = attributionFixture({ extraCandidates: 10, vfxAttribution: true });
+  try {
+    const sample = fixture.frame(); const diagnostic = sample.px.attribution;
+    assert.equal(sample.px.ct, 1, 'the original positive threat mask remains graded');
+    assert.equal(diagnostic.status, 'individual-scan-complete');
+    assert.equal(diagnostic.extraDraws, diagnostic.candidates.length + 1, 'one stability draw plus each candidate');
+    assert.equal(diagnostic.unexaminedCandidateCount, 0);
+    assert.equal(diagnostic.individualDeltas.length, diagnostic.candidates.length);
+    assert.equal(diagnostic.contributors.length, 1);
+    assert.equal(diagnostic.contributors[0].name, 'FrontContact');
+    assert.equal(diagnostic.contributors[0].positiveThreatPixels,
+      diagnostic.individualDeltas.find(row => row.name === 'FrontContact').positiveThreatPixels);
+    assert.deepEqual(diagnostic.contributors[0].perThreat.map(({ id, positiveThreatPixels }) => ({ id, positiveThreatPixels })), [
+      { id: 2, positiveThreatPixels: diagnostic.contributors[0].positiveThreatPixels },
+    ]);
+    assert.ok(diagnostic.individualDeltas.filter(row => row.name !== 'FrontContact')
+      .every(row => row.positiveThreatPixels === 0), 'irrelevant candidate omissions do not explain the hidden-threat pixels');
+    assert.equal(fixture.front.visible, true); assert.equal(fixture.behind.visible, true);
+    assert.equal(fixture.renderer.getRenderTarget(), fixture.originalTarget);
   } finally { fixture.dispose(); }
 });
 

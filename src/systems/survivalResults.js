@@ -88,6 +88,7 @@ export function deathSentence(receipt, context = {}) {
  * contradictory outcome, and an unknown fallback string degrades to 'player_exit' rather
  * than leaking into the closed union. */
 export function stopReasonFor(outcome, reason, fallback = null) {
+  if (reason === 'player_retired' && outcome === 'aborted') return 'player_retired';
   if (outcome === 'victory') return 'victory';
   if (outcome === 'extracted') return 'extracted';
   const specific = reason === 'wave_plan_failed' || reason === 'player_death' ? reason
@@ -110,6 +111,7 @@ export function outcomeSentence(outcome, context = {}) {
       ? `You extracted at wave ${wave} with the haul you had.`
       : 'You extracted with the haul you had.';
   }
+  if (outcome === 'aborted' && context.retired) return wave ? `You retired at wave ${wave}.` : 'You retired before the run finished.';
   if (outcome === 'aborted') return 'You left the arena before the run finished.';
   return wave ? `The run ended on wave ${wave}.` : 'The run ended.';
 }
@@ -1060,7 +1062,7 @@ export const survivalResults = {
         ? `The arena could not build wave ${this._planFailure.wave}. The run was stopped.`
         : (outcome === 'defeat' && receipt
           ? deathSentence(receipt, { wave })
-          : outcomeSentence(outcome, { wave })),
+          : outcomeSentence(outcome, { wave, retired: run.result?.reason === 'player_retired' })),
       defeat: outcome === 'defeat' && receipt
         ? {
           attacker: receipt.attacker || null,
@@ -1179,8 +1181,13 @@ export const survivalResults = {
     // from the same combo snapshot — the results plate prints them beside the combo figures.
     result.stuntRoundRows = stuntRoundRows(result.combo);
     try {
-      const settled = settleCrucibleRun({ result, run });
-      result.unlocksEarned = settled.unlocksEarned.slice();
+      const retired = result.stopReason === 'player_retired';
+      if (retired) {
+        result.unranked = true;
+        result.bankLine = 'Retired run — unranked. Unbanked salvage does not carry back to the hangar.';
+      }
+      const settled = retired ? null : settleCrucibleRun({ result, run });
+      if (settled) result.unlocksEarned = settled.unlocksEarned.slice();
       const row = settled && settled.result;
       if (row) {
         if (row.cabinetEntryId) result.cabinetEntryId = row.cabinetEntryId;

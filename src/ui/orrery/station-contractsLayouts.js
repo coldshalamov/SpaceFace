@@ -15,17 +15,37 @@ const T = 'html body #screens > .sx-berth.orr-station';
 const BONE = '236 230 216';
 // one class deeper than stationTabsLayouts.js selectors, so same-property overrides win ties
 const TAB = `${T} .k-panel.sx-ct`;
+// the same tab in a desktop window (a phone's mobile sheet owns its own one-scroll column)
+const DTAB = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .k-panel.sx-ct';
 
 const CSS = `
 /* the commit under its terms: in flow, unplated, nothing over-paints the reading */
 ${TAB} .sx-dossier__foot { position: static !important; bottom: auto !important; background: none !important;
   z-index: auto !important; padding-block: 0 !important; }
+/* A short, mid-width berth leaves too little width for the dossier's two columns.
+   Keep the reading and its final action in one independently scrolling column. */
+@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+  ${DTAB} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:none !important; grid-auto-rows:max-content !important; row-gap:0 !important;
+    overflow-x:hidden !important; overflow-y:auto !important; }
+  ${DTAB} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; order:0 !important; width:auto !important; }
+  ${DTAB} .sx-dossier > .sx-dossier__foot { margin:8px 0 0 !important; }
+  ${DTAB} .sx-dossier__terms > li { grid-template-columns:max-content minmax(0, 1fr) !important; }
+  ${DTAB} .sx-dossier__terms > li > .k-62 { overflow-wrap:normal !important; }
+}
 /* short desktop stages (1080/900 with the arrival notice band mounted): the reading, verb last,
    keeps its air above the stage's foot — margins the shell's band media did not close */
 @media (min-width:1101px) and (min-height:801px) and (max-height:1140px) {
   ${TAB} .orr-ct-scales { margin-top: 8px !important; }
   ${TAB} .sx-dossier__terms > li { padding: 5px 0 !important; }
   ${TAB} .sx-dossier__foot { margin-top: 12px !important; }
+}
+/* a narrow desktop window 601–660 tall (420×601) leaves the board 66px: the 22px ladder gap under POSTED HERE and the 16px
+   fade left the only job row in view half-faded. The gap closes to 4px and the fade to 6px, so that row reads whole */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${DTAB} .sx-ct__hang > .sx-ct__board { padding-top: 4px !important; }
+  ${DTAB} .sx-ct__hang { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important;
+    mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important; }
 }
 /* the consequence scales' unpainted parts (the svg carries classes only, no colour literals):
    the risk band is the bone track under the lit stretch; the blade is bone, threat-red at the

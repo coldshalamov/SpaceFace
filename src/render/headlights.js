@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { LOOK_HEADLIGHT } from '../data/lookMoods.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
-export const HEADLIGHT_POOL_SIZE = 3;
+export const HEADLIGHT_POOL_SIZE = 1; // player bow only; NPC lamps were 2 more baked spot lights in every program
 // NPC lamp assignment is re-scored a few times a second; poses update every frame.
 const ASSIGN_INTERVAL = 0.25;
 

@@ -13,7 +13,7 @@ import {
   shouldSliceCompileAcrossPresents,
   shouldSliceFlightAdmission,
 } from '../src/render/compilePresentSlice.js';
-import { openingCompileIssueKey } from '../src/render/renderer.js';
+import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 
 test('collects mesh-like children and falls back to the root', () => {
   const leaf = { isMesh: true, name: 'hull' };

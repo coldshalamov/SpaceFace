@@ -206,14 +206,23 @@ test('TEACH-12 seed 4242: tutorialHints off, staged rail active, and touch devic
     assert.equal(quiet.braceHints().length, 0, 'active staged rail keeps voice');
     assert.equal(quiet.state.player.hints && quiet.state.player.hints.masslineBrace, undefined);
 
-    // touch device (empty binding label)
+    // The rail defers rather than drops: once it releases the voice the muted
+    // latch drains on the update cadence and still teaches.
     quiet.state.onboarding = { active: false, finished: true };
+    quiet.sim.registry.get('onboarding')._drainHintQueue();
+    assert.equal(quiet.braceHints().length, 1, 'the muted latch drains once the rail releases');
+  } finally { quiet.restore(); }
+
+  // touch device (empty binding label) on a profile that has not been taught yet
+  const touch = boot();
+  try {
+    const heavy = touch.spawnTarget(200);
     setPromptDevice('touch');
-    quiet.latch(heavy.id);
-    assert.equal(quiet.braceHints().length, 1, 'touch device produces hint');
-    const text = quiet.braceHints()[0].text;
+    touch.latch(heavy.id);
+    assert.equal(touch.braceHints().length, 1, 'touch device produces hint');
+    const text = touch.braceHints()[0].text;
     assert.match(text, /boost/i);
     assert.match(text, /brace/i);
     assert.equal(text.includes('undefined'), false, 'no undefined in touch text');
-  } finally { quiet.restore(); }
+  } finally { touch.restore(); }
 });

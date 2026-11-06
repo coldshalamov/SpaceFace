@@ -45,5 +45,11 @@ export function targetFrameHtml() {
     <div class="sf-target__weak mono" style="display:none"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__component mono" role="button" tabindex="0" aria-label="Cycle target component"
       style="display:none;margin-top:3px;font-size:var(--k-fs-data);pointer-events:auto;cursor:pointer;padding:0 0 .15em;border:0;border-bottom:1px solid var(--k-hair);color:var(--k-bone-62);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
-    <div class="sf-target__gimmick mono" style="display:none"></div>`;
+    <div class="sf-target__gimmick mono" style="display:none"></div>
+    <!-- The card is compact by default; targetPanel.js owns the sf-target--detail class and the
+         click/key/hover affordance. This row is the standing hint that a deeper readout exists —
+         every selectable contact carries at least one hidden row (a ship's triangle/parts, an
+         object's fact line), so the affordance never promises an empty expansion; the caret
+         answers expanded vs collapsed as a shape, never by colour alone. -->
+    <div class="sf-target__more mono" aria-hidden="true"><span>DETAIL</span><span class="sf-target__more-caret">▸</span></div>`;
 }
