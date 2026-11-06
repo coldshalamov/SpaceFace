@@ -242,7 +242,15 @@ export function dressLampKey(button, { hold = false, note = '' } = {}) {
       // Missions ACCEPT densify: two short lines ("HOLD TO" / "ACCEPT") so a ~184px foot
       // keeps the whole instruction beside the key instead of clipping a ~150px one-liner.
       if (button.classList.contains('sx-ct-commit') && /^hold to accept$/i.test(String(note).trim())) {
-        n.append('hold to', doc.createElement('br'), 'accept');
+        // Element.append(string) is fine in browsers but contract-hold CtNode mock (and other
+        // minimal docs) only accept nodes — build the two-line note with elements.
+        const line1 = doc.createElement('span');
+        line1.textContent = 'hold to';
+        const line2 = doc.createElement('span');
+        line2.textContent = 'accept';
+        n.appendChild(line1);
+        n.appendChild(doc.createElement('br'));
+        n.appendChild(line2);
       } else {
         n.textContent = note;
       }
