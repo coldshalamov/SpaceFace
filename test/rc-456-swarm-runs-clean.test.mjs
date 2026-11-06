@@ -103,6 +103,8 @@ function cohortHostiles(h) {
 }
 
 // The same payload shape the combat kernel and combat.js publish on a gunfire kill.
+// The despawn receipt follows as it does live, so the spawn budget releases the
+// slot the hull held — without it the arrival stream starves behind dead reservations.
 function killByGunfire(h, entity) {
   entity.alive = false;
   h.bus.emit('entity:killed', {
@@ -110,6 +112,10 @@ function killByGunfire(h, entity) {
     pos: { x: entity.pos.x, z: entity.pos.z }, factionId: entity.factionId || null,
     victimClass: (entity.data && entity.data.shipClass) || entity.type,
   });
+  h.state.entities.delete(entity.id);
+  const idx = h.state.entityList.indexOf(entity);
+  if (idx >= 0) h.state.entityList.splice(idx, 1);
+  h.bus.emit('entity:destroyed', { id: entity.id, entity });
 }
 
 function makeAdventureHarness() {
