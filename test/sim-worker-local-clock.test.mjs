@@ -1741,3 +1741,80 @@ test('active worker-local commands wait for the next timer tick', { timeout: 600
     else delete globalThis.self;
   }
 });
+
+test('freeze recorder opens an episode when applied replies starve during advancing flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 1;
+  f.lane.runner.setClockActive(true);
+
+  f.receive({
+    kind: 'clockTick',
+    seq: 'freeze-baseline',
+    clockSequence: 1,
+    commandSequence: 0,
+    stateTick: 1,
+    simTime: 1 / 60,
+    clockAccumulator: 0,
+    journalStart: 0,
+    journalEnd: 0,
+    pack: emptyPack(),
+    clockDiagnostics: {
+      active: true,
+      awaitingAck: true,
+      steps: 9,
+      retainedRows: 3,
+      shedEvents: 2,
+      timerPending: true,
+    },
+  });
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0);
+
+  // Replies stop arriving while the clock should advance. The sampler crosses
+  // the 350 ms gap on its second tick and must name the last-seen worker state.
+  f.dispatch(700);
+  const diag = f.lane.getDiagnostics();
+  assert.equal(diag.freezeActive, true, 'starved applied watermark reads as an open freeze');
+  assert.equal(diag.freezeEpisodes.length, 1);
+  const episode = diag.freezeEpisodes[0];
+  assert.ok(episode.gapAtOpenMs >= 350);
+  assert.equal(episode.snapshot.awaitingAck, true, 'snapshot preserves the last-seen ack state');
+  assert.equal(episode.snapshot.workerSteps, 9);
+  assert.equal(episode.snapshot.shedEvents, 2);
+  assert.equal(episode.snapshot.retainedRows, 3);
+  assert.ok(diag.msSinceLastAppliedReply >= 350);
+
+  // A fresh applied reply closes the episode with a duration and the state at
+  // the moment it recovered.
+  sendClockTick(f, 2);
+  f.dispatch(300);
+  const after = f.lane.getDiagnostics();
+  assert.equal(after.freezeActive, false);
+  assert.equal(after.freezeEpisodes.length, 1, 'a closed freeze stays recorded once');
+  assert.ok(after.freezeEpisodes[0].durationMs > 0);
+  assert.ok(after.freezeEpisodes[0].closingSnapshot);
+});
+
+test('freeze recorder stays quiet while paused or outside flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 0;
+  f.lane.runner.setClockActive(true);
+  sendClockTick(f, 1);
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'a paused timescale never counts as a freeze');
+
+  f.state.timeScale = 1;
+  f.state.mode = 'dock';
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'outside flight mode the recorder stays disarmed');
+
+  f.state.mode = 'flight';
+  sendClockTick(f, 2);
+  f.dispatch(700);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 1,
+    're-entering advancing flight re-arms the recorder');
+  assert.equal(f.lane.getDiagnostics().freezeActive, true);
+});
