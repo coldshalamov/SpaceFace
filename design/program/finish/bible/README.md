@@ -18,6 +18,11 @@ taste, and knows exactly when it's done.
 | [`ARENAS.md`](./ARENAS.md) | the seven Swarm arenas (layout, hazards, gates, depots, wave-10/15 transformations) and the wave-recipe book | SWARM F/S |
 | [`HOTSPOTS.md`](./HOTSPOTS.md) | the sixteen Hotspots as full dossiers: layout, crowd and routine, hazard, hero asset parts list, activities with rules, chaos chains, sound and light, done checklist | HOTSPOTS lane, KIT K7, CHAOS, WORLD |
 | [`WORLD.md`](./WORLD.md) | the ten sectors' identities, the fourteen factions' visual and behavioural grammar, the shape of the Adventure journey, the voice of the world | WORLD lane, CHAOS C2, LOOK & SOUND |
+| [`LOOK.md`](./LOOK.md) | luminous industrial: why it's dark-on-dark and the bloom looks cheap, value structure, tone mapping, energy-conserving bloom, HDR emissive authoring, light that lands, haze, golden frames | LIGHT lane, Lane 3 renderer, Lane 6 look |
+| [`FEEL.md`](./FEEL.md) | the real-feel layer: mass cues, engines that work (redline shake, RCS, retro, ignition), strain, impacts, damage, camera and sound weight | FEEL lane, SWARM S, CHAOS, audio |
+| [`ASSETS.md`](./ASSETS.md) | the asset refinery: hidden-geometry removal, joint cleanup, merge by material, trim sheets, LODs, textures, emissive/value/style passes, census | REFINERY lane, KIT, Lane 3 |
+| [`ENGINE.md`](./ENGINE.md) | the target architecture: five threads (render worker), SoA sim core, frame budgets, hitch-proof policies, flight recorder, decision gates | master-plan Lanes 1–3, 7 |
+| [`LANES.md`](./LANES.md) | prompts for the three bible lanes that had no owner: LIGHT, FEEL, REFINERY | you |
 
 ## How to use it
 
