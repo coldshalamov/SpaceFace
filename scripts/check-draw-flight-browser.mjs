@@ -95,14 +95,26 @@ try{
   assert.ok(Math.hypot(s.vector.screenX-beforePan.screenX,s.vector.screenY-beforePan.screenY)<1e-6,
     'camera motion does not move the physical virtual-stick knob');
 
-  // Deliberate brake outranks the combat stick without disabling target assist.
+  // S is the public reverse actuator. Holding it through zero must reverse the real hull
+  // while target assist stays engaged; it is deliberately distinct from the full-stop key.
   await page.keyboard.down('s');
+  s=await page.evaluate(()=>drawFlightFixture.step(240));
+  const reverseSpeed=await page.evaluate(()=>{
+    const p=drawFlightFixture.host.player;
+    return p.vel.x*Math.cos(p.rot)+p.vel.z*Math.sin(p.rot);
+  });
+  assert.ok(reverseSpeed<-5,'S commands real reverse thrust through a deflected combat stick');
+  assert.equal(s.auto,true,'reverse does not drop G target assist');
+  await page.keyboard.up('s');
+
+  // The dedicated 0 brake outranks the combat stick without disabling target assist.
+  await page.keyboard.down('0');
   s=await page.evaluate(()=>drawFlightFixture.step(240));
   assert.equal(s.command,null);
   assert.equal(s.active,false);
   assert.equal(s.auto,true,'braking does not drop G target assist');
-  assert.ok(s.speed<3,'S brake overrides a deflected combat stick');
-  await page.keyboard.up('s');
+  assert.ok(s.speed<3,'0 brake overrides a deflected combat stick');
+  await page.keyboard.up('0');
 
   // Releasing brake resumes the held vector; no fresh drawn stroke is required.
   s=await page.evaluate(()=>drawFlightFixture.step(90));

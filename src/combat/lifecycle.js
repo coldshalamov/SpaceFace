@@ -78,6 +78,11 @@ export function dyingMassOf(mass, radius) {
 export function dyingWindowS(input = {}) {
   const law = DYING_WINDOW_LAW;
   const mass = dyingMassOf(input.mass, input.radius);
+  // S1 Swarm feel: callers under a live Swarm run pass the profile through `input.feel`.
+  // Light hulls burst on the kill tick (window 0); mediums cap at the profile window.
+  // No feel input → the law below is bit-identical to before.
+  const feelDying = input.feel && input.feel.dying ? input.feel.dying : null;
+  if (feelDying && Number.isFinite(feelDying.instantBelowMassT) && mass <= feelDying.instantBelowMassT) return 0;
   const a = law.anchors;
   let seconds;
   if (mass <= a[0][0]) seconds = a[0][1];
@@ -96,6 +101,12 @@ export function dyingWindowS(input = {}) {
   }
   const overkill = Math.max(0, Math.min(1, finite(input.overkill, 0)));
   seconds *= 1 - (1 - law.overkillFloor) * overkill;
+  if (feelDying
+    && Number.isFinite(feelDying.mediumWindowS)
+    && Number.isFinite(feelDying.mediumBelowMassT)
+    && mass < feelDying.mediumBelowMassT) {
+    seconds = Math.min(seconds, feelDying.mediumWindowS);
+  }
   seconds = Math.max(law.minS, Math.min(law.maxS, seconds));
   // Quantize to the 60 Hz sim so the schedule is the same on every host.
   return Math.ceil(seconds * 60 - 1e-9) / 60;

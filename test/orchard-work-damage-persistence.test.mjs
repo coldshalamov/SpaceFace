@@ -115,6 +115,17 @@ test('actual activity demotion captures durable drive wound rather than offscree
   t.state.playerId=player.id;t.state.camera={zoom:144};t.state.settings.video={fov:50};
   ensureActivityClassified(t.state);
   const before=t.e.activity.simTier;
+  // The fixture suspends traffic.update. Let the real work owner observe its
+  // disabled drive and retire the pin it owns before asking distance to demote it.
+  // An active shift must remain exact even when the player flies away.
+  const recordId=t.e.data.worldRecordId;
+  assert.equal(t.e.data.anvilWorkLiveness,true);
+  assert.equal(t.e.data.transitCritical,true);
+  t.sim.registry.get('traffic')._stepAnvilWork(1/60,t.state);
+  assert.equal(t.e.data.anvilWorkLiveness,undefined);
+  assert.equal(t.e.data.transitCritical,undefined);
+  assert.equal(t.state.entities.get(t.e.id),t.e,'the original worker remains live');
+  assert.equal(t.e.data.worldRecordId,recordId,'work release preserves durable identity');
   player.pos.x+=10000;
   for(let i=0;i<180;i++){t.state.tick++;t.state.simTime+=1/60;ensureActivityClassified(t.state);}
   assert.notEqual(t.e.activity.simTier,before,'classification actually demoted the original');

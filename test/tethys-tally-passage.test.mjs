@@ -5,6 +5,9 @@ import { traffic } from '../src/systems/traffic.js';
 import { PRIORITY_COURIER_SERVICE as C, PRIORITY_COURIER_SERVICE_SCHEMA, PRIORITY_COURIER_ITINERARY_KIND } from '../src/data/laneContacts.js';
 import { hullEnvelopeWu } from '../src/data/collisionProxyManifests.js';
 import { tallyMarks } from '../src/data/tethysTallyPassage.js';
+import { pendingTallyClearanceBody } from '../src/world/tethysTallyResidency.js';
+import { ensureActivityClassified, physicsReachWuFromState } from '../src/world/activityRuntime.js';
+import { PIN_REASON, NEAR_EXIT_PAD_WU } from '../src/world/activityClassification.js';
 function routeFixture(destination = 'station_customs', modern = true) {
  const origin = destination === 'station_customs' ? 'station_tethys' : 'station_customs';
  const itinerary = {...(modern ? {countRouteId:'tethys:tally-passage:v1'} : {}),kind:PRIORITY_COURIER_ITINERARY_KIND,schema:PRIORITY_COURIER_SERVICE_SCHEMA,serviceId:C.id,contactId:C.contactId,sectorId:C.sectorId,originStationId:origin,destinationStationId:destination,legSeq:0,departureAt:14,dueAt:100};
@@ -34,6 +37,61 @@ function physicalFixture() {
  const entry={entityId:e.id,worldRecordId:e.data.worldRecordId,job:{...spec,phase:'transit',routeIndex:2,progress:.8,speed:96}};
  return {state,e,keg,entry,owner:{state}};
 }
+
+function pendingPassageFixture() {
+ const h=physicalFixture();
+ h.state.tick=60;h.state.camera={zoom:144};h.state.player={};
+ h.e.data.jobId='tally-job';h.e.data.itinerary.countRouteId=TETHYS_TALLY.id;
+ h.state.npcJobs={byId:{'tally-job':h.entry}};
+ h.state.entityIndex={__spacefaceEntityIndexV1:true,ready:true,version:1,physicsStaticVersion:0,
+  byWorldRecordId:new Map([[h.keg.data.worldRecordId,h.keg],[h.e.data.worldRecordId,h.e]])};
+ h.keg.data.worldOneOff=true;h.keg.physicsBody={dynamic:true,mass:140,radius:12};
+ return h;
+}
+test('pending count work owns the original keg native residency and releases at the physical clear mark',()=>{
+ const h=pendingPassageFixture(),data=structuredClone(h.keg.data);
+ assert.equal(pendingTallyClearanceBody(h.state),h.keg);
+ let runtime=ensureActivityClassified(h.state);
+ assert.ok(h.keg.activity.pins.includes(PIN_REASON.MISSION_CRITICAL));
+ assert.ok(runtime.physicsDynamics.includes(h.keg));
+ assert.equal(tallyClearance(h.owner,h.e).reason,'obstructed','residency is not a clearance receipt');
+ h.entry.job.routeIndex=3;runtime=ensureActivityClassified(h.state);
+ assert.equal(pendingTallyClearanceBody(h.state),null);
+ assert.equal(h.keg.activity.pins.includes(PIN_REASON.MISSION_CRITICAL),false);
+ assert.equal(runtime.physicsDynamics.includes(h.keg),false,'same-tick completion withdraws native demand');
+ assert.deepEqual(h.keg.data,data,'no persistent ownership or forged job is written to the keg');
+ h.entry.job.routeIndex=2;runtime=ensureActivityClassified(h.state);
+ assert.ok(runtime.physicsDynamics.includes(h.keg),'a resumed canonical passage rediscovers a dormant prerequisite');
+});
+test('count residency follows current job custody, sector and durable identities, never recycled IDs',()=>{
+ const cases=[
+  h=>{delete h.state.npcJobs.byId['tally-job'];},
+  h=>{h.entry.control={owner:'other'};},
+  h=>{h.entry.job.phase='flee';},
+  h=>{h.entry.job.phase='complete';},
+  h=>{h.entry.job.corrupt=true;},
+  h=>{h.e.alive=false;},
+  h=>{h.e.data.itinerary.legSeq++;},
+  h=>{h.state.world.currentSectorId='sector_ceres';},
+  h=>{h.state.mode='loading';},
+  h=>{h.entry.worldRecordId='another-courier';},
+  h=>{h.entry.job.route[2].pos={x:0,z:0};},
+  h=>{h.entry.job.route[4].pos={...h.e.pos};},
+  h=>{h.state.entities.get('station_customs').alive=false;},
+  h=>{h.state.entities.delete('station_tethys');},
+  h=>{h.keg.data.identityKey='worldOneOff:another';},
+  h=>{h.keg.data.worldRecordId='forged-keg';},
+  h=>{h.state.entities.set(h.keg.id,{...h.keg,data:{...h.keg.data,identityKey:'worldOneOff:recycled'}});},
+  h=>{h.state.entities.set(h.e.id,{...h.e,data:{...h.e.data,worldRecordId:'recycled-courier'}});},
+ ];
+ for(const change of cases){
+  const h=pendingPassageFixture();ensureActivityClassified(h.state);change(h);
+  assert.equal(pendingTallyClearanceBody(h.state),null,change.toString());
+  ensureActivityClassified(h.state);
+  assert.equal(h.keg.activity.pins.includes(PIN_REASON.MISSION_CRITICAL),false,change.toString());
+ }
+});
+
 test('actual swept hull corridor blocks, not a point-radius proximity trigger',()=>{
  const h=physicalFixture();assert.equal(tallyClearance(h.owner,h.e).reason,'obstructed');
  h.keg.pos.z+=60;assert.equal(tallyClearance(h.owner,h.e).reason,'clear');
@@ -46,6 +104,10 @@ test('unknown identity/native source is not successful clearance; live keg outra
  h.keg.data.oneOffId='another';assert.equal(tallyClearance(h.owner,h.e).reason,'unobserved');
  h.state.entities.delete(h.keg.id);assert.equal(tallyClearance(h.owner,h.e).reason,'removed');
  delete h.state.world.records.byId[h.keg.data.worldRecordId];assert.equal(tallyClearance(h.owner,h.e).clear,false);
+ const stale=physicalFixture();stale.state.entityIndex={__spacefaceEntityIndexV1:true,ready:true,
+  byWorldRecordId:new Map([[stale.keg.data.worldRecordId,stale.keg]])};
+ stale.keg.data.worldRecordId='recycled-record';
+ assert.equal(tallyClearance(stale.owner,stale.e).reason,'unobserved','a stale index hit cannot certify another record');
  const q=physicalFixture();q.state.settings.gameplay.physicsBackend='rapier-dynamic';assert.equal(tallyPassageTarget(q.owner,q.entry,q.e).blocked,true,'no native body is not a physical arrival');
  q.state.settings.gameplay.physicsBackend='unknown';assert.equal(tallyClearance(q.owner,q.e).reason,'unobserved');
 });
@@ -137,9 +199,21 @@ test('an ordinary early player clearance leaves the unobstructed physical courie
  const keg=h.state.entityList.find(e=>e.data?.oneOffId===TETHYS_TALLY.oneOffId),origin={...keg.pos},due=k.data.itinerary.dueAt;
  let aligned=false;for(let i=0;i<60*70&&!aligned;i++)aligned=fly(h,{x:origin.x,z:origin.z+120},20);
  assert.equal(aligned,true);
- for(let i=0;i<60*100&&k.data.itinerary.legSeq===0;i++)fly(h,{x:origin.x,z:origin.z-300},20);
+ let observedBeyondReach=false;
+ for(let i=0;i<60*100&&k.data.itinerary.legSeq===0;i++){
+  fly(h,{x:origin.x,z:origin.z-300},20);
+  const player=h.state.entities.get(h.state.playerId);
+  if(pendingTallyClearanceBody(h.state)===keg
+    && Math.hypot(keg.pos.x-player.pos.x,keg.pos.z-player.pos.z)>physicsReachWuFromState(h.state,player)+NEAR_EXIT_PAD_WU){
+   observedBeyondReach=true;
+   assert.equal(h.physics._sg02.records.get(keg.id)?.entity,keg,'unfinished passage retains its exact physical prerequisite beyond player reach');
+  }
+ }
  assert.equal(k.data.itinerary.legSeq,1);assert.equal(k.data.itinerary.previousTallyPassage.delayS,0);
  assert.ok(h.state.simTime<=due,`ordinary unblocked arrival ${h.state.simTime} must meet ${due}`);
+ ensureActivityClassified(h.state);
+ assert.equal(keg.activity.pins.includes(PIN_REASON.MISSION_CRITICAL),false,'completed passage releases the derived pin');
+ t.diagnostic(JSON.stringify({arrivalAt:h.state.simTime,dueAt:due,kegDisplacement:Math.hypot(keg.pos.x-origin.x,keg.pos.z-origin.z),observedBeyondReach}));
 });
 
 import { createContactHailResponse } from '../src/data/contactHail.js';
