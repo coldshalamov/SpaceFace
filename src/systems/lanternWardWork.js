@@ -831,7 +831,7 @@ export function lanternWardCompletionReceipt(owner, receiptId) {
 export function lanternWardStatus(owner) {
   const w = ward(owner), h = w.history;
   return { districtId: LANTERN_WARD_ID, phase: w.phase, blocked: !!w.blocked,
-    installed: w.phase === 'installed' && !w.lampMissing && !w.receiverMissing && !w.objects.lamp.lost && !w.objects.receiver.lost,
+    installed: w.phase === 'installed' && !w.needsReinstall && !w.lampMissing && !w.receiverMissing && !w.objects.lamp.lost && !w.objects.receiver.lost,
     damaged: w.phase === 'damaged', missingLamp: w.lampMissing || w.objects.lamp.lost,
     missingReceiver: w.receiverMissing || w.objects.receiver.lost,
     cradleMissing: w.objects.cradle.lost || w.cradleAway, cradleStolen: h.cradleStolen,
