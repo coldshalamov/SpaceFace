@@ -15,6 +15,7 @@
 import { el, words, settle, cue, attachHoldVerb } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectOrrery } from '../orrery/tokens.js';
+import { injectClipsLayouts } from '../orrery/clipsLayouts.js';
 import { svg } from '../orrery/svg.js';
 import { createSpring, reducedMotion } from '../orrery/motion.js';
 import { createCounter, decrypt } from '../orrery/text.js';
@@ -1101,9 +1102,10 @@ function exitReel(view) {
 
 function buildContent(container, ctx) {
   injectDeckplate();
-  // This screen's own placement lives in styles/ui.css (migrated screens own no CSS);
-  // the orrery tokens below are library material, owned by src/ui/orrery/tokens.js.
+  // Base placement lives in styles/ui.css; short densify / opaque lamp curtain live in
+  // orrery/clipsLayouts.js (ui-polish-378). Orrery tokens are library material.
   injectOrrery();
+  injectClipsLayouts();
   const director = resolveClipDirector(ctx);
   let clips = [];
   try {
