@@ -2170,6 +2170,20 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
 }
+/* ui-polish-350: at 651–800 × ≤640 the blocked reason column and ghost product qty still
+   stack — way-out "Find a refinery…" overlaps "1 · REFINED METALS per run" (~18px of ink) while
+   the reason sits only ~15px clear of the REFINE word. Densify the reason column and park the
+   product under a clear gap so the right side reads as one column beside the dial. */
+@media (min-width:651px) and (max-width:800px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(48px, 8px) !important; width:auto !important; max-width:34% !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
+  ${D} .orr-ind-chain .orr-chain__qty { font-size:26px !important; line-height:1 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:34% !important; top:-18px !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { font-size:14px !important; letter-spacing:.08em !important; line-height:1.05 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { font-size:12px !important; line-height:13px !important; letter-spacing:.06em !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:11em !important; line-height:12px !important; padding:0 6px !important; margin-top:0 !important; }
+}
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
    takes the whole first row; the standing keeps the right corner of the name's row, under the
