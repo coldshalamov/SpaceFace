@@ -2684,9 +2684,20 @@ export const missionLogScreen = {
         row.classList.add('tracked');
         row.setAttribute('aria-description', 'Tracked');
       }
-      if (urgentIds.has(m.id)) {
-        const sub = row.querySelector('.k-row__sub');
-        if (sub) sub.classList.add('k-bad');
+      const sub = row.querySelector('.k-row__sub');
+      if (sub) {
+        if (urgentIds.has(m.id)) sub.classList.add('k-bad');
+        // The row's summary is the objective plus a timer. The chosen mission's card beside the list says
+        // the objective itself, so on the selected row only the objective part steps back (consoleStandard
+        // hides `.sf-mlog-row-obj` when aria-selected) and the timer stays. Text content is unchanged.
+        const remaining = Math.max(0, (m.deadline_s || 0) - simTime);
+        const clock = remaining > 0 ? fmtTime(remaining) : '';
+        const objective = objectiveText(m);
+        if (objective && sub.textContent === [objective, clock].filter(Boolean).join(' · ')) {
+          sub.textContent = '';
+          sub.appendChild(el('span', 'sf-mlog-row-obj', objective));
+          if (clock) sub.appendChild(el('span', 'sf-mlog-row-clock', clock));
+        }
       }
     }
     // Focus traces, it does not choose: the arrows and the stick run the trace to a contract (its
