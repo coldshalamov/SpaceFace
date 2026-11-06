@@ -109,7 +109,8 @@ ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none
    so Autocannon faded under Back and "No prerequisites" never painted. Compress unlock art and
    dossier chrome so Unlocks+Requires clear the foot on first paint. */
 @media (min-width:761px) and (max-height:640px) {
-  ${T} > .con-side { padding-bottom:10px; }
+  /* Keep the final dossier line and focus underline above the inherited 26px fade. */
+  ${T} > .con-side { padding-bottom:30px; scroll-padding-bottom:30px; }
   ${T} .con-dossier { gap:4px; }
   ${T} .con-dossier__kicker { font-size:12px; letter-spacing:.18em; }
   ${T} .con-dossier__name { font-size:20px; line-height:1; }
@@ -128,7 +129,7 @@ ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none
    Autocannon∩BACK (mashVis via overflow boxes) and Requires under the fade. One more notch so all
    three unlock rows and Requires sit above Back without scrolling. */
 @media (min-width:761px) and (max-height:500px) {
-  ${T} > .con-side { padding:4px 0 6px;
+  ${T} > .con-side { padding:4px 0 12px; scroll-padding-bottom:12px;
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent);
     mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent); }
   ${T} .con-dossier { gap:2px; }
