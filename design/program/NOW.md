@@ -103,3 +103,22 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
 | Work | Owner | Exact write set | Note |
 |---|---|---|---|
 | W1 the Journey (diagnosis + inventory + Journey doc) | Lane 5 | NEW `finish/campaigns/W1/*` (DIAGNOSIS.md, inventory/*, JOURNEY.md, STATUS.md), append-only section in this file | Doc phase stops for owner approval before any src/ edit. No Swarm files, no lane-4 progression files. |
+
+<!-- Lane 2 SIM CORE (master plan) — active claims, 2026-11-06 -->
+## Lane 2 SIM CORE — master-plan campaigns E3 → E2 → E4
+
+Lane 2 of `finish/MASTER_PLAN.md` is active. Diagnosis memo:
+`finish/campaigns/E3/DIAGNOSIS.md`.
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| E3 mode-scoped simulation + simulation LOD | Lane 2 | `src/runtime/authoritativeSystemManifest.js`, `src/core/catchupPolicy.js`, `src/world/activityRuntime.js`, `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`, `finish/campaigns/E3/*` | **COMPLETE** (2026-11-06). 220 systems mapped with 0 violations; pre-partitioned mode queues; unified simulation LOD telemetry. Verification: `finish/campaigns/E3/VERIFY.md`. |
+| E2 the simulation hot path | Lane 2 | worker per-system profiler, batched impact buffer (`physics` / `combat` / `collisionConsequences`), physics shape, entity indices, telemetry off hot path, `finish/campaigns/E2/*` | active next |
+| E4 data-oriented core | Lane 2 | SoA entity store + facade migration, snapshot buffer alignment with Lane 1, `finish/campaigns/E4/*` | after E2 |
+
+<!-- Lane 6 LOOK & SOUND (master plan) — active claims, 2026-11-06 -->
+## Lane 6 LOOK & SOUND — master-plan campaigns X1 → X2 → X4 → X3 → X5
+
+Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/X1/DIAGNOSIS.md`,
+`finish/campaigns/X3/DIAGNOSIS.md`, `finish/campaigns/X4/DIAGNOSIS.md`,
+`finish/campaigns/X5/DIAGNOSIS.md`. X2 is gated on the owner approving X1's lineup.

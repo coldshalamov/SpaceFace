@@ -686,6 +686,320 @@ export function validateSystemClockDeclarations(updateIds = PRODUCTION_UPDATE_OR
   return violations;
 }
 
+/**
+ * E3 — Simulation execution modes and mode-scoped system scheduling.
+ * Every id in PRODUCTION_UPDATE_ORDER carries an explicit mode scope declaration.
+ * validateSystemModeDeclarations() verifies complete coverage.
+ */
+export const SIM_MODE = Object.freeze({
+  FLIGHT: 'flight',
+  DOCKED: 'docked',
+  SWARM: 'swarm',
+  YARD: 'shipbreakingYard',
+  UNSCOPED: 'unscoped',
+});
+
+export const ALL_SIM_MODES = Object.freeze([
+  SIM_MODE.FLIGHT,
+  SIM_MODE.DOCKED,
+  SIM_MODE.SWARM,
+  SIM_MODE.YARD,
+]);
+
+const MODE_SCOPE_ALWAYS = ALL_SIM_MODES;
+const MODE_SCOPE_ADVENTURE = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.DOCKED, SIM_MODE.YARD]);
+const MODE_SCOPE_FLIGHT_ONLY = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD]);
+const MODE_SCOPE_COMBAT_FLIGHT = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD, SIM_MODE.SWARM]);
+const MODE_SCOPE_SWARM_ONLY = Object.freeze([SIM_MODE.SWARM]);
+
+export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
+  // Input and core state authorities
+  input: MODE_SCOPE_ALWAYS,
+  actions: MODE_SCOPE_ALWAYS,
+  buildIdentity: MODE_SCOPE_ALWAYS,
+  titles: MODE_SCOPE_ALWAYS,
+  chronicler: MODE_SCOPE_ALWAYS,
+  voiceArbiter: MODE_SCOPE_ALWAYS,
+  save: MODE_SCOPE_ALWAYS,
+  world: MODE_SCOPE_ALWAYS,
+  physics: MODE_SCOPE_ALWAYS,
+
+  // HUD and Glass (DOM-guarded)
+  masslineHud: MODE_SCOPE_ALWAYS,
+  massSeedHud: MODE_SCOPE_ALWAYS,
+  fieldHud: MODE_SCOPE_ALWAYS,
+  gyreHud: MODE_SCOPE_ALWAYS,
+  pylonHud: MODE_SCOPE_ALWAYS,
+  planetHud: MODE_SCOPE_ALWAYS,
+  miningHud: MODE_SCOPE_ALWAYS,
+  survivalHud: MODE_SCOPE_ALWAYS,
+  swarmJuiceHud: MODE_SCOPE_ALWAYS,
+  crucibleFocus: MODE_SCOPE_ALWAYS,
+
+  // Swarm / Crucible arena systems
+  survivalArena: MODE_SCOPE_SWARM_ONLY,
+  swarmFortify: MODE_SCOPE_SWARM_ONLY,
+  swarmArena: MODE_SCOPE_SWARM_ONLY,
+  survivalWave: MODE_SCOPE_SWARM_ONLY,
+  survivalRun: MODE_SCOPE_SWARM_ONLY,
+  swarmChain: MODE_SCOPE_SWARM_ONLY,
+  killReplay: MODE_SCOPE_SWARM_ONLY,
+  killcamRecorder: MODE_SCOPE_SWARM_ONLY,
+  swarmJuice: MODE_SCOPE_SWARM_ONLY,
+  swarmElites: MODE_SCOPE_SWARM_ONLY,
+
+  // Flight & Swarm Combat systems (active when piloting or fighting, inactive when docked)
+  autoTargetAssist: MODE_SCOPE_COMBAT_FLIGHT,
+  bulletTime: MODE_SCOPE_COMBAT_FLIGHT,
+  cloak: MODE_SCOPE_COMBAT_FLIGHT,
+  flightSlot: MODE_SCOPE_COMBAT_FLIGHT,
+  heroManeuvers: MODE_SCOPE_COMBAT_FLIGHT,
+  tumbleStates: MODE_SCOPE_COMBAT_FLIGHT,
+  aiSlot: MODE_SCOPE_COMBAT_FLIGHT,
+  barkDirector: MODE_SCOPE_COMBAT_FLIGHT,
+  aiEncounter: MODE_SCOPE_COMBAT_FLIGHT,
+  aiPorts: MODE_SCOPE_COMBAT_FLIGHT,
+  collisionConsequences: MODE_SCOPE_COMBAT_FLIGHT,
+  stuntGrammar: MODE_SCOPE_COMBAT_FLIGHT,
+  weapons: MODE_SCOPE_COMBAT_FLIGHT,
+  countermeasures: MODE_SCOPE_COMBAT_FLIGHT,
+  bombs: MODE_SCOPE_COMBAT_FLIGHT,
+  emergentPrimitives: MODE_SCOPE_COMBAT_FLIGHT,
+  environmentMaterials: MODE_SCOPE_COMBAT_FLIGHT,
+  impulseCharges: MODE_SCOPE_COMBAT_FLIGHT,
+  hullBurst: MODE_SCOPE_COMBAT_FLIGHT,
+  mines: MODE_SCOPE_COMBAT_FLIGHT,
+  massSeed: MODE_SCOPE_COMBAT_FLIGHT,
+  uniqueLootAbilities: MODE_SCOPE_COMBAT_FLIGHT,
+  fields: MODE_SCOPE_COMBAT_FLIGHT,
+  gyreSnare: MODE_SCOPE_COMBAT_FLIGHT,
+  shieldPylons: MODE_SCOPE_COMBAT_FLIGHT,
+  combat: MODE_SCOPE_COMBAT_FLIGHT,
+  combatOutcome: MODE_SCOPE_COMBAT_FLIGHT,
+  dyingHull: MODE_SCOPE_COMBAT_FLIGHT,
+  wingMorale: MODE_SCOPE_COMBAT_FLIGHT,
+
+  // Open-World Adventure systems (Flight + Docked + Yard, not in Swarm)
+  nemesis: MODE_SCOPE_ADVENTURE,
+  latchNine: MODE_SCOPE_ADVENTURE,
+  aftermathWrecks: MODE_SCOPE_ADVENTURE,
+  shipjack: MODE_SCOPE_ADVENTURE,
+  custodyConsequences: MODE_SCOPE_ADVENTURE,
+  mercyService: MODE_SCOPE_ADVENTURE,
+  wreckCourt: MODE_SCOPE_ADVENTURE,
+  cargo: MODE_SCOPE_ADVENTURE,
+  crafting: MODE_SCOPE_ADVENTURE,
+  economy: MODE_SCOPE_ADVENTURE,
+  stationSideEventDirector: MODE_SCOPE_ADVENTURE,
+  stationServices: MODE_SCOPE_ADVENTURE,
+  difficultyDirector: MODE_SCOPE_ADVENTURE,
+  gateControlDirector: MODE_SCOPE_ADVENTURE,
+  factions: MODE_SCOPE_ADVENTURE,
+  vaelLiens: MODE_SCOPE_ADVENTURE,
+  archiveRedaction: MODE_SCOPE_ADVENTURE,
+  vergeCourt: MODE_SCOPE_ADVENTURE,
+  frontierHomesteads: MODE_SCOPE_ADVENTURE,
+  sectorSim: MODE_SCOPE_ADVENTURE,
+  rigWorkshop: MODE_SCOPE_ADVENTURE,
+  borrowedSun: MODE_SCOPE_ADVENTURE,
+  missions: MODE_SCOPE_ADVENTURE,
+  careerOrigins: MODE_SCOPE_ADVENTURE,
+  careerLadders: MODE_SCOPE_ADVENTURE,
+  liveCareerLadderBranches: MODE_SCOPE_ADVENTURE,
+  story: MODE_SCOPE_ADVENTURE,
+  scenarioRuntime: MODE_SCOPE_ADVENTURE,
+  heat: MODE_SCOPE_ADVENTURE,
+  drill: MODE_SCOPE_ADVENTURE,
+  claims: MODE_SCOPE_ADVENTURE,
+  longBerth: MODE_SCOPE_ADVENTURE,
+  crew: MODE_SCOPE_ADVENTURE,
+  bandRadio: MODE_SCOPE_ADVENTURE,
+  onboarding: MODE_SCOPE_ADVENTURE,
+  noFireAdvisory: MODE_SCOPE_ADVENTURE,
+  moralTrapSystem: MODE_SCOPE_ADVENTURE,
+  moralMemory: MODE_SCOPE_ADVENTURE,
+  special500: MODE_SCOPE_ADVENTURE,
+  special500Spectacle: MODE_SCOPE_ADVENTURE,
+  special500Question: MODE_SCOPE_ADVENTURE,
+  special500Invoice: MODE_SCOPE_ADVENTURE,
+  special500PortraitBuoys: MODE_SCOPE_ADVENTURE,
+  special500Sommelier: MODE_SCOPE_ADVENTURE,
+  special500CollectiveHours: MODE_SCOPE_ADVENTURE,
+  mail: MODE_SCOPE_ADVENTURE,
+  worldClock: MODE_SCOPE_ADVENTURE,
+  worldPressure: MODE_SCOPE_ADVENTURE,
+  lineProgression: MODE_SCOPE_ADVENTURE,
+
+  // Open-World Flight & Yard exploration (Flight + Yard only, not when Docked, not in Swarm)
+  flybyFocus: MODE_SCOPE_FLIGHT_ONLY,
+  scanner: MODE_SCOPE_FLIGHT_ONLY,
+  spectrum: MODE_SCOPE_FLIGHT_ONLY,
+  scanReveal: MODE_SCOPE_FLIGHT_ONLY,
+  lawSecurity: MODE_SCOPE_FLIGHT_ONLY,
+  pirateDisguise: MODE_SCOPE_FLIGHT_ONLY,
+  pirateParley: MODE_SCOPE_FLIGHT_ONLY,
+  pirateDisengage: MODE_SCOPE_FLIGHT_ONLY,
+  aceMemory: MODE_SCOPE_FLIGHT_ONLY,
+  factionPresence: MODE_SCOPE_FLIGHT_ONLY,
+  nemesisEncounter: MODE_SCOPE_FLIGHT_ONLY,
+  capitalBossEncounters: MODE_SCOPE_FLIGHT_ONLY,
+  kilnback: MODE_SCOPE_FLIGHT_ONLY,
+  mothlight: MODE_SCOPE_FLIGHT_ONLY,
+  palletJack: MODE_SCOPE_FLIGHT_ONLY,
+  secondRinse: MODE_SCOPE_FLIGHT_ONLY,
+  beacons: MODE_SCOPE_FLIGHT_ONLY,
+  travelLanes: MODE_SCOPE_FLIGHT_ONLY,
+  orbitalGallery: MODE_SCOPE_FLIGHT_ONLY,
+  kineticLeague: MODE_SCOPE_FLIGHT_ONLY,
+  cruise: MODE_SCOPE_FLIGHT_ONLY,
+  redKite: MODE_SCOPE_FLIGHT_ONLY,
+  ilexArk: MODE_SCOPE_FLIGHT_ONLY,
+  dockingCorridor: MODE_SCOPE_FLIGHT_ONLY,
+  environmentalMachinery: MODE_SCOPE_FLIGHT_ONLY,
+  planetRuntime: MODE_SCOPE_FLIGHT_ONLY,
+  morrow: MODE_SCOPE_FLIGHT_ONLY,
+  vesper: MODE_SCOPE_FLIGHT_ONLY,
+  bracket: MODE_SCOPE_FLIGHT_ONLY,
+  ravel: MODE_SCOPE_FLIGHT_ONLY,
+  solstice: MODE_SCOPE_FLIGHT_ONLY,
+  rubric: MODE_SCOPE_FLIGHT_ONLY,
+  ruckus: MODE_SCOPE_FLIGHT_ONLY,
+  ruud: MODE_SCOPE_FLIGHT_ONLY,
+  docket: MODE_SCOPE_FLIGHT_ONLY,
+  industrialDisasters: MODE_SCOPE_FLIGHT_ONLY,
+  salvageTender: MODE_SCOPE_FLIGHT_ONLY,
+  reactiveMatter: MODE_SCOPE_FLIGHT_ONLY,
+  tetherGameplay: MODE_SCOPE_FLIGHT_ONLY,
+  surrenderRecovery: MODE_SCOPE_FLIGHT_ONLY,
+  masslineTelemetry: MODE_SCOPE_FLIGHT_ONLY,
+  masslineThreats: MODE_SCOPE_FLIGHT_ONLY,
+  masslineImpacts: MODE_SCOPE_FLIGHT_ONLY,
+  masslineSnares: MODE_SCOPE_FLIGHT_ONLY,
+  masslineThrow: MODE_SCOPE_FLIGHT_ONLY,
+  masslineImpactDamage: MODE_SCOPE_FLIGHT_ONLY,
+  lootShards: MODE_SCOPE_FLIGHT_ONLY,
+  terrainAnchors: MODE_SCOPE_FLIGHT_ONLY,
+  jettisonImpulse: MODE_SCOPE_FLIGHT_ONLY,
+  lineHeads: MODE_SCOPE_FLIGHT_ONLY,
+  volatileExposure: MODE_SCOPE_FLIGHT_ONLY,
+  mining: MODE_SCOPE_FLIGHT_ONLY,
+  fieldDepletion: MODE_SCOPE_FLIGHT_ONLY,
+  fragileCargo: MODE_SCOPE_FLIGHT_ONLY,
+  moistureLoss: MODE_SCOPE_FLIGHT_ONLY,
+  automation: MODE_SCOPE_FLIGHT_ONLY,
+  asteroidSites: MODE_SCOPE_FLIGHT_ONLY,
+  asteroidFormations: MODE_SCOPE_FLIGHT_ONLY,
+  wingmen: MODE_SCOPE_FLIGHT_ONLY,
+  intervention: MODE_SCOPE_FLIGHT_ONLY,
+  heistFacilities: MODE_SCOPE_FLIGHT_ONLY,
+  regionalEcology: MODE_SCOPE_FLIGHT_ONLY,
+  tensionDirector: MODE_SCOPE_FLIGHT_ONLY,
+  encounterDirector: MODE_SCOPE_FLIGHT_ONLY,
+  rockCore: MODE_SCOPE_FLIGHT_ONLY,
+  scissorwake: MODE_SCOPE_FLIGHT_ONLY,
+  routeFollower: MODE_SCOPE_FLIGHT_ONLY,
+  livingPoiBehaviors: MODE_SCOPE_FLIGHT_ONLY,
+  pirateRumor: MODE_SCOPE_FLIGHT_ONLY,
+  ambushSignatures: MODE_SCOPE_FLIGHT_ONLY,
+  bountyHunt: MODE_SCOPE_FLIGHT_ONLY,
+  salvage: MODE_SCOPE_FLIGHT_ONLY,
+  tallyThree: MODE_SCOPE_FLIGHT_ONLY,
+  lastShift: MODE_SCOPE_FLIGHT_ONLY,
+  sableVenn: MODE_SCOPE_FLIGHT_ONLY,
+  lossInvestigation: MODE_SCOPE_FLIGHT_ONLY,
+  salvageActions: MODE_SCOPE_FLIGHT_ONLY,
+  survivorPod: MODE_SCOPE_FLIGHT_ONLY,
+  rookBooth: MODE_SCOPE_FLIGHT_ONLY,
+  kesslerScale: MODE_SCOPE_FLIGHT_ONLY,
+  furnaceIntake: MODE_SCOPE_FLIGHT_ONLY,
+  gateThreeWeir: MODE_SCOPE_FLIGHT_ONLY,
+  slateColumn: MODE_SCOPE_FLIGHT_ONLY,
+  bouncer: MODE_SCOPE_FLIGHT_ONLY,
+  receipt: MODE_SCOPE_FLIGHT_ONLY,
+  mop: MODE_SCOPE_FLIGHT_ONLY,
+  tallyho: MODE_SCOPE_FLIGHT_ONLY,
+  tare: MODE_SCOPE_FLIGHT_ONLY,
+  lamplighter: MODE_SCOPE_FLIGHT_ONLY,
+  shepherd12: MODE_SCOPE_FLIGHT_ONLY,
+  quill: MODE_SCOPE_FLIGHT_ONLY,
+  holdfast: MODE_SCOPE_FLIGHT_ONLY,
+  bellhop: MODE_SCOPE_FLIGHT_ONLY,
+  gravedigger: MODE_SCOPE_FLIGHT_ONLY,
+  recoveryEncounter: MODE_SCOPE_FLIGHT_ONLY,
+  massSignature: MODE_SCOPE_FLIGHT_ONLY,
+  faction_concord: MODE_SCOPE_FLIGHT_ONLY,
+  faction_meridian: MODE_SCOPE_FLIGHT_ONLY,
+  faction_helix: MODE_SCOPE_FLIGHT_ONLY,
+  faction_drift: MODE_SCOPE_FLIGHT_ONLY,
+  understoryGardens: MODE_SCOPE_FLIGHT_ONLY,
+  fulfillmentRoutes: MODE_SCOPE_FLIGHT_ONLY,
+  pitbornCull: MODE_SCOPE_FLIGHT_ONLY,
+  choirResonance: MODE_SCOPE_FLIGHT_ONLY,
+  towlineTable: MODE_SCOPE_FLIGHT_ONLY,
+  shipbreakingYard: MODE_SCOPE_FLIGHT_ONLY,
+  counterweightCircuit: MODE_SCOPE_FLIGHT_ONLY,
+  breakwaterSpur: MODE_SCOPE_FLIGHT_ONLY,
+  borrowedVoice: MODE_SCOPE_FLIGHT_ONLY,
+  salvageOutfits: MODE_SCOPE_FLIGHT_ONLY,
+  npcJobsRuntime: MODE_SCOPE_FLIGHT_ONLY,
+  cinderglassJob: MODE_SCOPE_FLIGHT_ONLY,
+  traffic: MODE_SCOPE_FLIGHT_ONLY,
+});
+
+export function getDeclaredSystemModeScope(id) {
+  const lookupId = clockLookupId(id);
+  const scope = SYSTEM_MODE_DECLARATIONS[lookupId];
+  return scope || null;
+}
+
+export function getSystemModeScope(id) {
+  const declared = getDeclaredSystemModeScope(id);
+  if (declared) return declared;
+  const lookupId = clockLookupId(id);
+  if (PRODUCTION_UPDATE_ORDER.includes(lookupId)) {
+    throw new Error(
+      `[manifest] system '${id}' is in PRODUCTION_UPDATE_ORDER but has no declared mode scope —`
+      + ' declare its mode scope in SYSTEM_MODE_DECLARATIONS',
+    );
+  }
+  return ALL_SIM_MODES;
+}
+
+export function systemRunsInMode(id, mode) {
+  if (!mode || mode === SIM_MODE.UNSCOPED) return true;
+  const scope = getSystemModeScope(id);
+  return scope.includes(mode);
+}
+
+export function validateSystemModeDeclarations(updateIds = PRODUCTION_UPDATE_ORDER) {
+  const violations = [];
+  const known = new Set([...PRODUCTION_UPDATE_ORDER, ...PRODUCTION_INIT_ORDER]);
+  for (const id of Object.keys(SYSTEM_MODE_DECLARATIONS)) {
+    if (!known.has(id)) {
+      violations.push(`'${id}' has a mode declaration but is not a registered system id`);
+    }
+    if (!updateIds.includes(id)) {
+      violations.push(`'${id}' has a mode declaration but is not in the update order`);
+    }
+    const scope = SYSTEM_MODE_DECLARATIONS[id];
+    if (!scope || (Array.isArray(scope) && scope.length === 0)) {
+      violations.push(`'${id}' has an empty mode declaration`);
+    } else if (Array.isArray(scope)) {
+      for (const m of scope) {
+        if (!ALL_SIM_MODES.includes(m)) {
+          violations.push(`'${id}' declares invalid simulation mode '${m}'`);
+        }
+      }
+    }
+  }
+  for (const id of updateIds) {
+    if (getDeclaredSystemModeScope(id) == null) {
+      violations.push(`'${id}' is in the update order with no declared mode scope`);
+    }
+  }
+  return violations;
+}
+
 /** 60 Hz combat island: table + near + glass. Calendar owners are not in this list. */
 export const PRODUCTION_COMBAT_UPDATE_ORDER = Object.freeze(
   PRODUCTION_UPDATE_ORDER.filter((id) => getSystemClock(id) !== SYSTEM_CLOCK.CALENDAR),
