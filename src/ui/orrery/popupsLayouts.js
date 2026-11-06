@@ -176,6 +176,49 @@ const CSS = `
   .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
 }
 
+/* Short densify (≤560 tall, desktop): the sticky apron was riding the scrollport foot and
+   slicing PLACES / body glyphs under OPEN ON THE CHART at 651/700/801×461 and 960×540
+   (body∩apron mashVis ~29440). The usual ≤460 very-short band never fired on 461-tall frames.
+   Extend through 560: fill the sheet, park the apron absolute on a 60px foot, and end the
+   deck scrollport ABOVE that foot (max-height calc(100% - 60px)) so body never paints under
+   the verbs. Compact gaps, title, tiles and link rungs so the Ascendant Choir record fits. */
+@media (min-width: 641px) and (max-height: 560px) {
+  .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
+  /* Scrollport ends ABOVE the apron band (60px foot): absolute verbs never paint over body
+     glyphs. Content that does not fit scrolls inside this shorter deck, not under the apron. */
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck {
+    flex: 1 1 auto; min-height: 0; height: auto;
+    max-height: calc(100% - 60px); margin-bottom: 60px;
+    gap: 8px; padding-top: 14px; padding-bottom: 10px; padding-right: 28px;
+  }
+  .sf-drawer--entity .sf-drawer__crest { gap: 4px; padding-bottom: 6px; padding-right: 36px; }
+  .sf-drawer--entity .sf-drawer__title { font-size: clamp(22px, 3.2vw, 32px); }
+  .sf-drawer--entity .sf-drawer__facts { gap: 8px 16px; }
+  .sf-drawer--entity .sf-drawer__facts .sf-tile { padding-top: 6px; gap: 2px; }
+  .sf-drawer--entity .sf-tile__v { font-size: 14px; }
+  .sf-drawer--entity .sf-tile--data .sf-tile__v { font-size: 18px; }
+  .sf-drawer--entity .sf-drawer__stage { gap: 8px; }
+  .sf-drawer--entity .sf-deck { gap: 2px; }
+  .sf-drawer--entity .sf-deck__label { font-size: 12px; letter-spacing: .14em; }
+  .sf-drawer--entity .sf-drawer__prose { font-size: 13px; line-height: 1.35; }
+  .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
+  .sf-drawer--entity .sf-drawer__apron {
+    position: absolute; left: 76px; right: 28px; bottom: 0;
+    z-index: 2; margin-top: 0; height: 60px; box-sizing: border-box;
+    padding-top: 10px; padding-bottom: 10px;
+    background: rgb(9 11 15);
+    box-shadow: 0 -16px 14px -6px rgb(9 11 15);
+  }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
+  .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 28px; height: 28px; }
+}
+/* ≤560 + 641–1100 already set padding-left:76px; keep apron left aligned to that column.
+   Wider short frames (≥1101) still use the entity sheet's 88px deck inset. */
+@media (min-width: 1101px) and (max-height: 560px) {
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 88px; }
+  .sf-drawer--entity .sf-drawer__apron { left: 88px; right: 36px; }
+}
+
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
 /* The quiet etched chevron — the door mark. Bone at rest, the lamp under the hand; it slides a
    few px toward the exit it names. */
