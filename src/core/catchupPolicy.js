@@ -281,12 +281,17 @@ export function updateQueueForThisStep(partitions, state) {
   }
 
   if (state && typeof state === 'object') {
-    state.simModeRuntime = {
-      mode,
-      activeCount: queue.length,
-      totalCount: partitions.all ? partitions.all.length : 0,
-      skippedCount: (partitions.all ? partitions.all.length : 0) - queue.length,
-    };
+    const totalCount = partitions.all ? partitions.all.length : 0;
+    const smr = state.simModeRuntime || (state.simModeRuntime = {
+      mode: null,
+      activeCount: 0,
+      totalCount: 0,
+      skippedCount: 0,
+    });
+    smr.mode = mode;
+    smr.activeCount = queue.length;
+    smr.totalCount = totalCount;
+    smr.skippedCount = totalCount - queue.length;
   }
 
   return queue;

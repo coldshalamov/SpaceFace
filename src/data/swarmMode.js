@@ -54,8 +54,10 @@ export const SWARM_WAVE_MAX = 999;
 export const SWARM_DRAFT_EVERY = 1;
 export const SWARM_REFIT_EVERY = 10;
 
-/** Every tenth wave is a boss wave: a Dreadnought on top of a (reduced) swarm. */
+/** S14 — the first boss arrives at wave 5 with the build still warm, then every tenth
+ *  after (15, 25, ...): a Dreadnought on top of a (reduced) swarm. */
 export const SWARM_BOSS_EVERY = 10;
+export const SWARM_BOSS_FIRST = 5;
 
 /**
  * HOW MANY HULLS ARE ON YOU.
@@ -694,7 +696,7 @@ function swarmEscalatedBoss(row, cycle) {
 export function swarmBossFor(wave) {
   const w = swarmWaveOf(wave);
   if (!isSwarmBossWave(w)) return null;
-  const step = Math.max(0, Math.floor(w / SWARM_BOSS_EVERY) - 1);
+  const step = Math.max(0, Math.floor((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY));
   const row = SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
   const cycle = Math.floor(step / SWARM_BOSS_ROTATION.length);
   return cycle > 0 ? swarmEscalatedBoss(row, cycle) : row;
@@ -716,7 +718,7 @@ export const SWARM_CHAMPION_LEAD_WAVES = 3;
  */
 export function swarmNextBossFor(wave) {
   const w = swarmWaveOf(wave);
-  const at = Math.ceil(w / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY;
+  const at = Math.ceil((w - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY + SWARM_BOSS_FIRST;
   if (at > SWARM_WAVE_MAX) return null;
   const boss = swarmBossFor(at);
   if (!boss) return null;
@@ -765,7 +767,7 @@ export function swarmWaveOf(wave) {
 
 export function isSwarmBossWave(wave) {
   const w = swarmWaveOf(wave);
-  return w % SWARM_BOSS_EVERY === 0;
+  return w >= SWARM_BOSS_FIRST && w % SWARM_BOSS_EVERY === SWARM_BOSS_FIRST;
 }
 
 export function isSwarmDraftWave(wave) {
@@ -1053,7 +1055,7 @@ export const SWARM_ACT_STAGED_DISTANCE = SWARM_DEBUT_DISTANCE;
  * are re-queued, never dropped.
  */
 export const SWARM_ACT = freezeDeep({
-  25: {
+  26: {
     id: SWARM_ACT_ID,
     round: 1,
     arenaPhase: 'loose_plate',
@@ -1066,7 +1068,7 @@ export const SWARM_ACT = freezeDeep({
       { enemyId: 'bruiser_brawler', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
     ]),
   },
-  26: {
+  27: {
     id: SWARM_ACT_ID,
     round: 2,
     arenaPhase: 'furnace_active',
@@ -1080,7 +1082,7 @@ export const SWARM_ACT = freezeDeep({
       { enemyId: 'tether_control_raider', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
     ]),
   },
-  27: {
+  28: {
     id: SWARM_ACT_ID,
     round: 3,
     arenaPhase: 'shutter_slow',

@@ -16,6 +16,7 @@ import {
   getStepExecutionStats,
   partitionUpdateSystems,
   resolveActiveSimMode,
+  shouldSkipSystemOnCatchup,
   shouldSkipSystemThisStep,
   updateQueueForThisStep,
 } from '../src/core/catchupPolicy.js';
@@ -173,6 +174,8 @@ test('E3: updateQueueForThisStep and telemetry update cleanly during step', () =
   assert.equal(state.simModeRuntime.totalCount, systems.length);
   assert.equal(state.simModeRuntime.skippedCount, systems.length - queue.length);
 
+  const initialSimModeRuntimeRef = state.simModeRuntime;
+
   const stats = getStepExecutionStats(partitions, state);
   assert.deepEqual(stats, state.simModeRuntime);
 
@@ -183,6 +186,8 @@ test('E3: updateQueueForThisStep and telemetry update cleanly during step', () =
   assert.equal(state.simModeRuntime.mode, SIM_MODE.SWARM);
   assert.equal(state.simModeRuntime.activeCount, swarmQueue.length);
   assert.notEqual(swarmQueue.length, queue.length);
+  // Verify in-place reuse of simModeRuntime object reference for zero allocation
+  assert.equal(state.simModeRuntime, initialSimModeRuntimeRef);
 
   // Transition back to Flight
   delete state.run;
@@ -190,6 +195,7 @@ test('E3: updateQueueForThisStep and telemetry update cleanly during step', () =
   const flightQueue = updateQueueForThisStep(partitions, state);
   assert.equal(state.simModeRuntime.mode, SIM_MODE.FLIGHT);
   assert.equal(state.simModeRuntime.activeCount, flightQueue.length);
+  assert.equal(state.simModeRuntime, initialSimModeRuntimeRef);
 });
 
 test('E3: Simulation LOD telemetry categorizes near, mid, far, and shelved entities', () => {
@@ -276,4 +282,39 @@ test('E3: createSimulation runs smoothly with dynamic mode switching', () => {
   assert.deepEqual(step3Ran, ['input', 'weapons', 'survivalWave', 'physics'], 'Swarm mode excludes stationServices');
 
   sim.dispose();
+});
+
+test('E3: catch-up steps in docked mode execute only table-clock docked systems', () => {
+  function makeStub(name) {
+    return { name, update() {} };
+  }
+  const systems = PRODUCTION_UPDATE_ORDER.map(makeStub);
+  const partitions = partitionUpdateSystems(systems);
+
+  const catchupDockedState = {
+    mode: 'docked',
+    simCatchupIndex: 1, // Indicates catch-up presentation skip
+    tick: 15,
+    runtime: { profileId: 'production' },
+  };
+
+  const queue = updateQueueForThisStep(partitions, catchupDockedState);
+  assert.ok(queue.length > 0);
+
+  // Weapons (combat-flight) must NOT run
+  assert.equal(queue.some((s) => s.name === 'weapons'), false);
+  // Survival wave (swarm-only) must NOT run
+  assert.equal(queue.some((s) => s.name === 'survivalWave'), false);
+  // Mining (flight-only) must NOT run
+  assert.equal(queue.some((s) => s.name === 'mining'), false);
+  // Station services is table clock and docked mode -> MUST run
+  assert.equal(queue.some((s) => s.name === 'stationServices'), true);
+  // Physics is table clock and always mode -> MUST run
+  assert.equal(queue.some((s) => s.name === 'physics'), true);
+
+  // shouldSkipSystemOnCatchup agrees
+  assert.equal(shouldSkipSystemOnCatchup('weapons', catchupDockedState), true);
+  assert.equal(shouldSkipSystemOnCatchup('survivalWave', catchupDockedState), true);
+  assert.equal(shouldSkipSystemOnCatchup('stationServices', catchupDockedState), false);
+  assert.equal(shouldSkipSystemOnCatchup('physics', catchupDockedState), false);
 });
