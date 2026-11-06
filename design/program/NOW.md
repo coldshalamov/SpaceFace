@@ -145,6 +145,21 @@ attribution is mixed in that one commit's message.
   five) in the three `swarm-event-*` tests. Lane S: perk chips + pulse are pure
   model data — `model.perks = [{id,name,icon}]`, `model.perkPulses` counts.
   `test/swarm-staples.test.mjs` covers the four proof points.
+- **S14 wave-5 boss (in tree):** `src/systems/capitalBossRuntime.js` wraps the
+  production encounters object (`withSwarmBossRites`, same mutate-in-place style
+  as `withLastArgument`). Each swarm score act carries an authored `callout`
+  (≤3 words, in `src/data/encounters/capital-boss/{iron-maw,foreman,regent}.js`);
+  `capitalBoss:actChanged` announces it through `swarm:announce` (`kind:'bossact'`).
+  Boss death on a `swarm:` fight spawns 4–6 persistent tetherable `throw_mass`
+  chunks where the hull fell (`record.swarmAmmoChunks` ledger; no re-mint) and,
+  for the run's first champion, stamps `run.telemetry.firstBossDown` and pushes
+  `crucibleResults` — the screen's milestone variant renders `<NAME> DOWN` with
+  the score's authored lesson and Keep going/Run it again/Main menu; mounting it
+  emits `swarm:bossMilestoneAck` which consumes the pending stamp. Boss card TTL
+  is 2.0 s and rotation `line`s are ≤6 words (`src/ui/swarmJuiceHud.js`,
+  `src/data/swarmMode.js`). Lane S: chunks carry
+  `data.tetherable`/`physicalRole:'throw_mass'`/`swarmBossChunk` — the ordinary
+  throw-mass outline treatment applies. `test/swarm-boss-rites.test.mjs` (4).
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)

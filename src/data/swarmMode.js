@@ -438,7 +438,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'iron_maw',
     label: "Dreadnought 'Iron Maw'",
-    line: 'A capital hull is on the field. Throw the pack into the flank berm.',
+    line: 'Throw the pack into it.',
     room: 'flank_berm',
     // RC-02 — the round-10 champion is the FIRST capital row: the same dreadnought_boss hull it
     // always fielded, now handed to the authored Iron Maw score (`capital_boss_hulk`) instead of
@@ -450,7 +450,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'mirrorjaw_foreman',
     label: 'Mirrorjaw Foreman',
-    line: 'The Foreman commits on a bearing. Cross the pass — the prow sheds head-on fire.',
+    line: 'Cross the pass behind it.',
     room: 'mirror_lane',
     enemyId: 'mirrorjaw_foreman',
     scoreId: 'capital_boss_foreman',
@@ -458,7 +458,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'forge_regent',
     label: 'Forge Regent',
-    line: 'The furnace wears a crown. Cross the pass; the whole front half is plate.',
+    line: 'Cross it; the front is plate.',
     room: 'crown_furnace',
     enemyId: 'forge_regent',
     scoreId: 'capital_boss_regent',
