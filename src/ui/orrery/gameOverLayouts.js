@@ -1,14 +1,13 @@
 // UI polish overlay for the Game Over after-action screen (design/frontend/ORRERY.md §6 Meta).
 // The composition itself lives in saveLayouts.js (GAME_OVER block); this file only raises contrast,
-// gives the secondary verbs a foot-rail affordance, shades the career-ring hub, keeps the foot on one
-// line at 720p and lifts the 1080p band. Scoped to `.orr-gameover`; selectors/IDs unchanged.
+// gives the secondary verbs a foot-rail affordance, shades the career-ring hub, keeps recovery actions inside their available
+// width and lifts the 1080p band. Scoped to `.orr-gameover`; selectors/IDs unchanged.
 
 import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-gameover-layouts';
 const BONE = '236 230 216';
 const GO = 'html body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover.orr-gameover';
-const GON = 'html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover.orr-gameover';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
 const HALO = 'text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9), 0 0 18px rgb(4 6 9 / .75) !important;';
 
@@ -20,8 +19,8 @@ ${GO} > .k-title .sf-go-sub { color:rgb(${BONE} / .84) !important; }
 ${GO} .sf-go-grid .k-hero__w { color:rgb(${BONE} / .84) !important; font-size:max(12px, calc(11px * var(--sv))) !important; }
 ${GO} > .k-stage > .k-sentence { color:rgb(${BONE} / .86) !important; }
 
-/* secondary verbs: one rail, brighter words, an underline that lights with the Hand */
-${GO} .sf-go-foot > .k-words { flex-wrap:nowrap !important; column-gap:calc(30px * var(--sv)) !important; }
+/* secondary verbs: brighter words and an underline that lights with the Hand */
+${GO} .sf-go-foot > .k-words { column-gap:calc(30px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb {
   position:relative !important; padding:10px 0 11px !important; min-height:44px !important; white-space:nowrap !important;
   font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.06em !important; color:rgb(250 247 240) !important;
@@ -38,11 +37,14 @@ ${GO} .sf-go-foot .k-word.sf-go-verb[aria-disabled="true"], ${GO} .sf-go-foot .k
   background:linear-gradient(0deg, rgb(${BONE} / .1) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb[aria-disabled="true"]::before { color:rgb(${BONE} / .3) !important; }
 
-/* expanded/pseudo locale: wrap foot actions and verb text so words never clip or crowd the dial */
-${GON} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(8px * var(--sv)) !important; max-width:100% !important; }
-${GON} .sf-go-foot > .k-words > li { max-width:100% !important; min-width:0 !important; }
-${GON} .sf-go-foot .k-word.sf-go-verb { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
-${GON} .sf-go-foot .k-word.orr-lampkey { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
+/* Reflow according to available space in every locale, including English at larger text sizes.
+   Keep actions on one row when they fit; let long labels grow the row instead of overflowing it. */
+${GO} .sf-go-foot { min-width:0; max-width:100%; }
+${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(8px * var(--sv)) !important; max-width:100% !important; }
+${GO} .sf-go-foot > .k-words > li { max-width:100% !important; min-width:0 !important; }
+${GO} .sf-go-foot .k-word.sf-go-verb { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
+${GO} .sf-go-foot .k-word.orr-lampkey { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; max-width:100% !important; min-width:0 !important; }
+${GO} .sf-go-foot .orr-lampkey__word { min-width:0; white-space:normal !important; overflow-wrap:anywhere; }
 
 /* career ring: a titled instrument, legible stations, and a shaded hub over the hull plan view */
 ${GO} .sf-go-recap__title { display:flex !important; align-items:center; justify-content:center; gap:14px;

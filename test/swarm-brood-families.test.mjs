@@ -137,7 +137,9 @@ test('the ship wave is untouched: quota, concurrency and roster pins hold', () =
   assert.equal(SWARM_BOSS_EVERY, 10);
   assert.equal(swarmConcurrent(1), 10);
   assert.equal(swarmQuota(1), 15);
-  assert.equal(swarmQuota(2), 24);
+  // Wave-2+ quota re-tuned by S10 round length (60–90 s rounds); the ship wave's own
+  // shape — opening quota, concurrency, boss cadence — is still the pins above/below.
+  assert.equal(swarmQuota(2), 34);
   assert.equal(swarmConcurrent(30), 18); // a boss round holds fewer bodies
   assert.equal(swarmConcurrent(31), 30);
   assert.equal(swarmQuota(10), 26);

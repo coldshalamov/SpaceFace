@@ -118,12 +118,13 @@ export const SWARM_REINFORCE_GAP_TICKS = 12;
 export const SWARM_REINFORCE_BATCH = 3;
 /**
  * SF-064 — a specialist's first body arrives alone, on its own bearing, a readable beat after
- * the opening burst lands (~4 s) and far enough out that its approach is the tell (210 WU vs the
- * ordinary 165). It is one of the wave's bodies — the planner gives its seat back from the
- * largest ordinary group — not an extra on top of the pressure math.
+ * the opening burst lands (~4 s) and far enough out that its approach is the tell (230 WU vs
+ * the ordinary 220; never inside the E4 1.3-screen line). It is one of the wave's bodies — the
+ * planner gives its seat back from the largest ordinary group — not an extra on top of the
+ * pressure math.
  */
 export const SWARM_DEBUT_TICKS = 4 * 60;
-export const SWARM_DEBUT_DISTANCE = 210;
+export const SWARM_DEBUT_DISTANCE = 230;
 /**
  * Ceiling on ONE telegraphed spend. Not an instant catch-up. The old deficit-adaptive surge
  * patched a big hole with half of itself the moment the gap elapsed, so a fast player never
@@ -196,6 +197,21 @@ export function swarmPressureIsHolding(state = livePressure) {
  */
 export function swarmPressureSuppressing(state = livePressure) {
   return state.holding === true && state.holdTicks < SWARM_BREATH_TICKS;
+}
+
+/**
+ * Advance a standing hold by one SIM TICK when the refill consult cannot run.
+ * `holdTicks` otherwise only moves inside `swarmReinforceDecision` — a hold armed
+ * while the ledger reads full (cohort + owed schedule at target) suppresses the
+ * consult that would age it, which freezes the breath open and starves the very
+ * schedule the hold is suppressing. The wave calls this on the consult it skips,
+ * so an earned breath always runs its four seconds out and then owes its spend.
+ */
+export function tickSwarmPressureHold(state = livePressure) {
+  if (state && state.holding === true && state.holdTicks < SWARM_BREATH_TICKS) {
+    state.holdTicks += 1;
+  }
+  return state;
 }
 
 /**
@@ -290,15 +306,43 @@ export function swarmReinforceCount(deficit) {
 }
 
 /**
+ * One "screen" of engagement range under the swarm camera — the unit AUDIT E4 measures
+ * arrival distance in. ui/crucibleFocus.js parks the chase camera at zoom 235; at that
+ * framing ~165 WU of radial distance is about the frame's reach, so 165 WU is one screen.
+ */
+export const SWARM_SCREEN_EDGE_WU = 165;
+
+/**
+ * E4's hard line: a hostile never MATERIALISES inside 1.3 screens of the pilot. The gate
+ * ring, the batch jitter and the blocked-arrival search all respect this floor; the gate
+ * flare tells the player what just arrived before the pack crosses the frame edge.
+ */
+export const SWARM_MIN_ARRIVAL_WU = Math.ceil(SWARM_SCREEN_EDGE_WU * 1.3);
+
+/**
  * How far out hostiles arrive.
  *
  * The arc uses 220 and calls it "just off the chase-camera bubble". That is fine for six bodies you
  * turn to face. It is wrong for a surround: a live projection of every hostile through the real
  * camera found the median one sitting at 200 units and only a fifth of them inside the frame.
- * Pulling arrivals in to 165 — together with the wider swarm camera in ui/crucibleFocus.js — puts
- * the fight where the player can see it, without spawning anything on top of them.
+ * The wider swarm camera (ui/crucibleFocus.js) widened the frame, and E4 then pushed the ring
+ * itself past the new edge: arrivals enter THROUGH a lit gate just off-frame and walk in, they
+ * do not pop into existence where the player can already reach them.
  */
-export const SWARM_SPAWN_DISTANCE = 165;
+export const SWARM_SPAWN_DISTANCE = 220;
+
+/** The gate flare's world lifetime — long enough to read as a lit arrival, not a landmark. */
+export const SWARM_GATE_FLARE_S = 1.0;
+
+/**
+ * The last three come to you. When a kill-round is down to at most this many actionable
+ * hulls and every one of them sits off-frame (beyond this radius), the wave commits them
+ * all to pack_pursuit — the grinder doctrine that presses the ~130 WU ring — and names them
+ * on `swarm:lastThree` so the HUD can pin edge pointers. No teleporting: they fly in.
+ */
+export const SWARM_LAST_THREE_MAX = 3;
+export const SWARM_LAST_THREE_OFFSCREEN_WU = 240;
+export const SWARM_LAST_THREE_DOCTRINE = 'pack_pursuit';
 
 /** Brief settlement beat before the player-controlled armory break. */
 export const SWARM_CLEANUP_TICKS = 45;
@@ -777,8 +821,21 @@ export const SWARM_QUOTA_MARGIN = 8;
 /** Wave-1-only quota-over-concurrent margin. Do not use this to weaken later waves or the cap. */
 export const SWARM_QUOTA_OPENING_MARGIN = 5;
 
-/** Wave-1 kill quota. Later waves keep `max(concurrent + SWARM_QUOTA_MARGIN, 20 + 2w)`. */
+/**
+ * Wave-1 kill quota. The opening lesson stays light — the .01 memo pins it at 15 while
+ * later waves carry `max(concurrent + SWARM_QUOTA_MARGIN, ramp)`.
+ */
 export const SWARM_OPENING_QUOTA = 15;
+
+/**
+ * The quota's deliverable bound. The stream's readable-arrival law — readable groups of
+ * ≤3 patching the room, telegraphed breath spends of ≤7 after a substantial clear —
+ * saturates near 42 admitted bodies a round under sustained fire: past that the
+ * post-clear deficit locks the wave into perpetual breath holds, arrivals collapse
+ * into isolated spends, and the room can no longer rebuild to opening strength
+ * between breaths (measured: live peak drops under the opening at quota ≥43).
+ */
+export const SWARM_QUOTA_DELIVERABLE = 42;
 
 export function swarmQuota(wave) {
   const w = swarmWaveOf(wave);
@@ -791,7 +848,14 @@ export function swarmQuota(wave) {
   if (w === 1) {
     return Math.min(SWARM_QUOTA_CAP, Math.max(floor, SWARM_OPENING_QUOTA));
   }
-  return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + w * 2));
+  // S10 round length: a competent pilot resolves ~0.4–0.6 hulls a second once
+  // dodging, aiming, and repositioning are priced in, so 26 + 4w lands waves
+  // 2–4 at the top of the 60–90 s round band — the stream's deliverable bound.
+  // The debut band holds there while new silhouettes still carry the escalation;
+  // once the whole roster is out the only lever left is body count, so the tail
+  // climbs to the hard cap by wave 22.
+  const bound = w < 16 ? SWARM_QUOTA_DELIVERABLE : Math.min(SWARM_QUOTA_CAP, w + 26);
+  return Math.min(bound, Math.max(floor, 26 + w * 4));
 }
 
 /**
