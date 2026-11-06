@@ -72,6 +72,23 @@ export const SWARM_FEEL_PROFILE = Object.freeze({
     mediumWindowS: 0.5,
   }),
 
+  // AUDIT V2 / S8 — a heavy kill is ammunition and a shove, not just a flash. The rupture
+  // sheds 3–6 ordinary hull chunks — the same collision tear-off body any wreck sheds:
+  // tetherable, ttl'd, pooled — stamped into the round so the Line's VERB-12 latch admits
+  // them as ammunition. A radial shockwave through the impulse membrane shoves every
+  // dynamic body in ~1 screen: one flat impulse, so light hulls fly (~56 WU/s on a wasp),
+  // heavies lurch (~13 on a bruiser) and the pilot feels a real kick (~18). A light or
+  // medium death does not get the wave; mediums shed one or two chunks.
+  death: Object.freeze({
+    mediumChunksMin: 1,
+    mediumChunksMax: 2,
+    heavyChunksMin: 3,
+    heavyChunksMax: 6,
+    shockwaveRadiusWu: 140,
+    shockwaveImpulse: 900,
+    shockwaveMaxDv: 70,
+  }),
+
   // AUDIT C1/C2 — the screen fills with fodder, not HP. Fodder hulls spawn killable in
   // ≤0.5 s for every Swarm starter kit's primary at mid range; shields and armor are zeroed
   // so nothing on a fodder frame gates a bullet. Non-fodder hulls keep authored stats —

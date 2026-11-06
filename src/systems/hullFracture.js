@@ -664,7 +664,11 @@ export function spawnCollisionTearOff(ctx, note) {
   const tz = n.x;
   const flingBase = TEAROFF_FLING_MIN + finite(note.closingSpeed, 0) * 0.18;
   const fling = Math.min(TEAROFF_FLING_MAX, Math.max(TEAROFF_FLING_MIN, flingBase));
-  const count = Math.max(1, Math.min(remaining, TEAROFF_PIECE_CAP, Math.trunc(finite(note.count, 1))));
+  // S8: a caller may name a bigger burst (a Swarm heavy break-up sheds 3–6 ammunition
+  // chunks). Every other caller keeps the authored two-piece cap — collision shave-offs
+  // stay rare.
+  const pieceCap = Math.max(1, Math.trunc(finite(note.pieceCap, TEAROFF_PIECE_CAP)));
+  const count = Math.max(1, Math.min(remaining, pieceCap, Math.trunc(finite(note.count, 1))));
   const sectorId = note.sectorId != null
     ? note.sectorId
     : (state.world && state.world.currentSectorId) || null;
