@@ -1966,6 +1966,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.mining.field_settle': 'sfx_mining_field_settle',
   'presentation.mining.heat_warning': 'sfx_mining_heat_warning',
   'world.foghorn': 'sfx_hauler_foghorn',
+  // The rescue delivery (survivorPod station handoff): the berth takes someone in — its own
+  // receiving chime, never the player hull's dock clunk and never a UI confirm blip.
+  'rescue.delivery': 'sfx_rescue_delivery_chime',
   'presentation.mining.vent_ready': 'sfx_vent_chime',
   'presentation.mining.yield': 'sfx_mining_yield',
   'presentation.mining.seismic_pulse': 'sfx_mining_seismic_pulse',

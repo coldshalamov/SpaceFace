@@ -408,6 +408,9 @@ const EMITTED_CUES = {
   // a direct recipe id, the foghorn maps through AUDIO_CUE_TO_RECIPE.
   sfx_salvage_plate: { distinct: true },
   'world.foghorn': { distinct: true },
+  // The rescue delivery (survivorPod.js station handoff): the receiving berth's own chime,
+  // distinct from the player hull's dock clunk on the same moment's seam.
+  'rescue.delivery': { distinct: true },
   // Direct-play recipe ids emitted as literal audio:cue payloads — each IS its own authored
   // recipe (cargo scoop, hull-burst grapple/yeet verbs, scrape, and the Eighth Bell toll),
   // so they resolve through AUDIO_RECIPE_BY_ID and only need the coverage row.

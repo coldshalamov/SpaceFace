@@ -2025,6 +2025,42 @@ export const RECIPES = [
   },
 
   // --- Comms & Mining Reward SFX ---
+  // The rescue delivery (survivorPod station handoff): the berth takes someone in. A warm
+  // struck bell with an answering fifth partial — the place's own receiving voice, below the
+  // PA desk chime's register and nothing like the player hull's dock clunk thud.
+  {
+    id: 'sfx_rescue_delivery_strike',
+    category: 'comms',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 386],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.004, sustain: 0.1, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 1200, filterQ: 0.8,
+    distortionAmount: 0.12, distortionCurve: 'tanh',
+    transientClick: { gain: 0.35 },
+    reverbMix: 0.3, reverbDecay: 1.1,
+  },
+  {
+    id: 'sfx_rescue_delivery_answer',
+    category: 'comms',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 587.3,
+    freqSweep: [587.3, 584],
+    sweepTimeS: 0.8,
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.9 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.4,
+    reverbMix: 0.35, reverbDecay: 1.0,
+  },
+  {
+    id: 'sfx_rescue_delivery_chime',
+    category: 'comms',
+    type: 'layered',
+    layers: ['sfx_rescue_delivery_strike', 'sfx_rescue_delivery_answer'],
+    gainMult: 1.0,
+  },
   {
     id: 'sfx_vent_chime',
     category: 'mining',

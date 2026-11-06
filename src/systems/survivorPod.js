@@ -1678,6 +1678,15 @@ export const survivorPod = {
           this._speakDeskAnswer(
             CAUSAL_DESK_ANSWER_TEXT(), factionId, `survivorDesk:${entityId}`, 0.6, entityId,
           );
+          // The delivery moment's own audio register (inf-rescue-delivery-chime): the berth's
+          // receiving chime answers the pod crossing the ring — the desk voice's sound, never
+          // the player hull's dock clunk and never a UI blip. The fence keeps its own desk
+          // voice and a black-market ring keeps quiet; an unattended claim chimes for nobody.
+          this._bus.emit('audio:cue', {
+            id: 'rescue.delivery',
+            position: entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null,
+            gain: 0.75,
+          });
         }
       }
     }
