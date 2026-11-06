@@ -9,6 +9,7 @@ on:
       - 'scripts/ui-bench.mjs'
       - 'scripts/lib/uiBench*'
       - 'tools/ui-bench*'
+      - 'test/ui-bench-arrival-reset.test.mjs'
       - '.github/workflows/ui-pr-review.yml'
   workflow_dispatch:
     inputs:
@@ -164,24 +165,46 @@ jobs:
               ['git', 'diff', '--name-only', '--no-renames', merge_base, head], text=True
           ).splitlines() if merge_base else []
           selected, unmapped, reasons = set(), [], {}
+          application_paths, harness_paths = [], []
           for path in changed:
               if path.startswith(('src/ui/', 'styles/')) and Path(path).suffix in ('.js', '.mjs', '.css'):
+                  application_paths.append(path)
                   matches = all_shots if path.startswith('styles/') else owners(path)
                   if matches:
                       selected.update(matches)
                       reasons[path] = sorted(matches)
                   else:
                       unmapped.append(path)
-              elif path.startswith(('scripts/ui-bench.', 'scripts/lib/uiBench', 'tools/ui-bench',
-                                    'src/systems/mobile/')):
+              elif path.startswith('src/systems/mobile/'):
+                  application_paths.append(path)
                   selected.update(all_shots)
-                  reasons[path] = ['shared bench or mobile infrastructure: mapped fixture set']
+                  reasons[path] = ['shared mobile infrastructure: full review fixture set']
+              elif path.startswith(('scripts/ui-bench.', 'scripts/lib/uiBench', 'tools/ui-bench')) \
+                      or path == 'test/ui-bench-arrival-reset.test.mjs':
+                  harness_paths.append(path)
+
+          application_fixtures = set(selected)
+          reset_representatives = {'help', 'station-contracts'}
+          selection_mode = 'changed-application-owners'
+          if harness_paths:
+              # A shared harness fix can be inherited by many application PRs. Each mixed
+              # head checks every changed owner plus both proven reset-leak fixtures.
+              # The harness-only head still checks the complete maintained review set.
+              # These representatives do not certify the unselected fixtures.
+              harness_fixtures = reset_representatives if application_paths else all_shots
+              selected.update(harness_fixtures)
+              selection_mode = ('application-owners-plus-reset-representatives' if application_paths
+                                else 'full-review-set-for-harness')
+              for path in harness_paths:
+                  reasons[path] = sorted(harness_fixtures)
 
           requested = {item.strip() for item in os.environ.get('REQUESTED_SHOTS', '').split(',') if item.strip()}
           if os.environ['EVENT_NAME'] == 'workflow_dispatch':
               selected = requested or all_shots
+              selection_mode = 'manual-requested-fixtures' if requested else 'manual-full-review-set'
           if not selected:
               selected = {'station-contracts', 'popup-dossier', 'new-game'}
+              selection_mode = 'workflow-smoke'
               reasons['workflow-smoke'] = sorted(selected)
           catalog = Path('scripts/lib/uiBenchCatalog.mjs').read_text(encoding='utf-8')
           known = set(re.findall(r"\bid:\s*'([^']+)'", catalog))
@@ -192,7 +215,14 @@ jobs:
               print('::warning::Unmapped UI owners require an explicit fixture route: ' + ', '.join(unmapped))
           selection = dict(head=head, base=base, mergeBase=merge_base, changed=changed,
                            reasons=reasons, unmapped=unmapped, fixtures=sorted(selected),
-                           scope='Real UI fixtures; not live-player acceptance or promoted visual baselines')
+                           selectionMode=selection_mode,
+                           applicationPaths=application_paths, applicationFixtures=sorted(application_fixtures),
+                           harnessPaths=harness_paths,
+                           resetRepresentativeFixtures=sorted(reset_representatives) if harness_paths else [],
+                           reviewFixtureSet=sorted(all_shots),
+                           unselectedReviewFixtures=sorted(all_shots - selected),
+                           registeredFixtureIdsOutsideReviewSet=sorted(known - all_shots),
+                           scope='Selected real UI fixtures only; not live-player acceptance or promoted visual baselines')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('matrix=' + json.dumps({'shot': sorted(selected)}, separators=(',', ':')) + '\n')
               output.write('selection=' + json.dumps(selection, separators=(',', ':')) + '\n')
@@ -200,6 +230,14 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write('## Selected UI fixtures\n\n' + ', '.join(sorted(selected)) + '\n\n')
               summary.write('Capturing exact head `' + head + '`. Each fixture retains arrival and walk evidence separately.\n')
+              summary.write('\nSelection: `' + selection_mode + '`. Selected ' + str(len(selected & all_shots))
+                            + ' of ' + str(len(all_shots)) + ' maintained review fixtures. '
+                            'This review set is not every alias/surface in the bench registry.\n')
+              if selection_mode == 'application-owners-plus-reset-representatives':
+                  summary.write('\nHarness coverage here is the changed application fixtures plus Help and Contracts. '
+                                'Unselected fixtures are not covered by this run; the harness-only head runs the full review set.\n')
+              if all_shots - selected:
+                  summary.write('\n**Not selected in this run:** ' + ', '.join(sorted(all_shots - selected)) + '\n')
               if unmapped:
                   summary.write('\n**Coverage gaps:** ' + ', '.join(unmapped) + '\n')
           print(json.dumps(selection, indent=2))
@@ -282,6 +320,7 @@ jobs:
               'contract_short_dossier': ('test/station-contracts-short-dossier.test.mjs', ['station-contracts'], 'pointer'),
               'refit': ('test/crucible-refit-compact-consequences.test.mjs', ['crucible-refit', 'crucible-refit-swarm'], 'refit_regression'),
               'fortify': ('test/swarm-fortify-compact-feedback.test.mjs', ['crucible-fortify'], 'fortify_regression'),
+              'arrival_reset': ('test/ui-bench-arrival-reset.test.mjs', ['help'], 'arrival_reset_regression'),
           }
           regression_scope = {}
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
@@ -361,6 +400,16 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+      - name: Verify available fixture arrival reset regression
+        id: arrival_reset_regression
+        if: ${{ !cancelled() && steps.evidence.outputs.arrival_reset == 'scheduled' }}
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          test -f test/ui-bench-arrival-reset.test.mjs
+          timeout --signal=TERM --kill-after=15s 300s node --test \
+            test/ui-bench-arrival-reset.test.mjs \
+            2>&1 | tee .devshots/ui-pr-review/walks/arrival-reset-regression.log
       - name: Verify available Refit consequence regression
         id: refit_regression
         if: ${{ !cancelled() && steps.evidence.outputs.refit == 'scheduled' }}
@@ -422,7 +471,7 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write('## Fixture: ' + os.environ['SHOT'] + '\n\n')
               summary.write('| Evidence phase | Outcome |\n|---|---|\n')
-              for name in ('pointer', 'desktop', 'phone', 'arrivals_upload', 'refit_regression', 'fortify_regression', 'desktop_walk', 'phone_walk'):
+              for name in ('pointer', 'desktop', 'phone', 'arrivals_upload', 'arrival_reset_regression', 'refit_regression', 'fortify_regression', 'desktop_walk', 'phone_walk'):
                   summary.write('| ' + name + ' | ' + str(outcomes.get(name, 'missing')) + ' |\n')
               summary.write('\n| Scoped regression | Coverage |\n|---|---|\n')
               for data in regressions.values():
@@ -461,6 +510,7 @@ jobs:
           scoped = [
               ('refit_regression', 'test/crucible-refit-compact-consequences.test.mjs', ['crucible-refit', 'crucible-refit-swarm']),
               ('fortify_regression', 'test/swarm-fortify-compact-feedback.test.mjs', ['crucible-fortify']),
+              ('arrival_reset_regression', 'test/ui-bench-arrival-reset.test.mjs', ['help']),
           ]
           for step, file, fixtures in scoped:
               if os.environ['SHOT'] in fixtures:
