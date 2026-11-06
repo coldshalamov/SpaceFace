@@ -834,6 +834,8 @@ ${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word) {
 ${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word):is(:hover, :focus-visible) {
   color:#fff !important; background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
 ${A} .orr-armory-reading { gap:40px !important; }
+/* a footer key that cannot be used (Re-roll with none left) must look disabled, not merely refuse a click */
+${A} .k-foot .k-word:is(:disabled, [aria-disabled="true"]) { opacity:.45 !important; cursor:not-allowed !important; }
 /* ── Crucible entry (the door), 821–960px tall ─────────────────────────────────────────────────────
    Mode, stake, arena and zone need ~650px; the panel has ~570 at 900. The Zone row was entirely hidden
    below the scroll edge and the arena names were cut mid-word, with nothing to say more was there.

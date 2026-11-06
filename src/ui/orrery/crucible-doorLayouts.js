@@ -147,6 +147,9 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary) {
   border:1px solid rgb(${BONE} / .34) !important; border-radius:2px !important; }
 ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary):is(:hover, :focus-visible) {
   color:#fff !important; background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+/* a toggle that is ON reads lit (amber is "armed"), so the state is not carried by its label alone */
+${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not(.k-word--primary) {
+  color:var(--dp-lamp-hot, #ffd98c) !important; background:rgb(242 185 80 / .10) !important; border-color:rgb(242 185 80 / .8) !important; }
 /* a short hero: the purse hairline collides with the arena line above it — the words climb and
    the rule retires (the 750 numeral still carries the purse) */
 @media (max-height:820px) {
