@@ -353,6 +353,56 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
   }
 });
 
+test('retained replies shed stale presentation events instead of marching to the durable limit', async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  try {
+    const worker = await import(`../src/core/wholeSimBrowserWorker.js?event-shed-${Date.now()}`);
+    const events = (from, to) => Array.from(
+      { length: to - from }, (_, i) => ({ t: 'physics:impact', p: { seq: from + i } }),
+    );
+    const reply = (clockSequence, from, to) => ({
+      kind: 'clockTick',
+      clockSequence,
+      journalStart: clockSequence * 10,
+      journalEnd: clockSequence * 10 + 2,
+      completedTick: {
+        sequence: clockSequence, tick: clockSequence,
+        journalStart: clockSequence * 10, journalEnd: clockSequence * 10 + 2,
+      },
+      events: events(from, to),
+    });
+    const first = reply(1, 0, 400);
+    first.commandAcks = [{ seq: 'a' }];
+    first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
+    const second = reply(2, 400, 700);
+    second.commandAcks = [{ seq: 'b' }];
+
+    const merged = worker.localMergeReply(first, second);
+    assert.equal(merged.events.length, 512, 'the retained event tail is capped at the shed limit');
+    assert.equal(merged.events[0].p.seq, 188, 'the oldest stale triggers are shed first');
+    assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
+    assert.equal(merged.commandAcks.length, 2, 'command receipts are correctness data and never shed');
+    assert.equal(merged.storageOps.length, 1, 'storage receipts are correctness data and never shed');
+
+    // Sustained retention under a stalled consumer stays bounded instead of
+    // accumulating event volume until the durable tripwire stops the clock.
+    const mergedAgain = worker.localMergeReply(merged, reply(3, 700, 1200));
+    assert.equal(mergedAgain.events.length, 512);
+    assert.equal(mergedAgain.events[0].p.seq, 688);
+    assert.equal(mergedAgain.events.at(-1).p.seq, 1199);
+
+    // Merges below the cap lose nothing — ordinary congestion keeps every trigger.
+    const small = worker.localMergeReply(reply(4, 0, 10), reply(5, 10, 25));
+    assert.equal(small.events.length, 25);
+    assert.equal(small.events[0].p.seq, 0);
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('public Bullet Time composes across the real worker clock, loading veil, hit-stop and pause', { timeout: 60000 }, async () => {
   const replies = [];
   const posts = [];

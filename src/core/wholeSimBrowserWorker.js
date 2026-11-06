@@ -63,6 +63,14 @@ const LOCAL_WORK_BUDGET_MS = 24;
 const LOCAL_HITCH_CATCHUP_STEPS = 2;
 const LOCAL_MAX_DEBT_SECONDS = 0.25;
 const LOCAL_DURABLE_LIMIT = 4096;
+// Presentation-trigger rows replay onto the main bus only when a reply is
+// actually published. Rows retained across a long ACK wait are stale by the
+// time they land, and an unbounded tail is what turns a slow consumer into the
+// multi-second main-lane apply that stops the world. Keep the newest bounded
+// tail — journal ordering is carried by pack segments and correctness
+// receipts ride the other durable keys, so shedding dead triggers can never
+// gap authoritative state.
+const LOCAL_EVENT_RETAIN_LIMIT = 512;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
 const LOCAL_MERGED_PACK_MAX_RECORDS = 32768;
@@ -369,6 +377,15 @@ function localMergeReply(previous, next) {
     if (!incoming || incoming.length === 0) continue;
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
+  }
+  // Shed the oldest presentation triggers once the retained tail is definitely
+  // stale; the newest window still carries recent triggers for the publish
+  // that finally lands. Without this bound the durable row count marches to
+  // LOCAL_DURABLE_LIMIT on event volume alone and the clock hard-stops.
+  if (Array.isArray(previous.events) && previous.events.length > LOCAL_EVENT_RETAIN_LIMIT) {
+    const shed = previous.events.length - LOCAL_EVENT_RETAIN_LIMIT;
+    previous.events.splice(0, shed);
+    localClock.shedEventCount = (localClock.shedEventCount || 0) + shed;
   }
   for (const key of LOCAL_LATEST_KEYS) localMergeLatestRows(previous, next, key);
   const previousFullRebuild = previous.journalFullRebuild === true;
@@ -698,6 +715,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
     awaitingAck: localClock.sentAwaitingAck,
+    shedEvents: localClock.shedEventCount || 0,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
     backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
