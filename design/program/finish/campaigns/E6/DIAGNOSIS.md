@@ -105,9 +105,11 @@ where that belongs. Cost of this change: days, and it removes the brick class ou
      never upload inside a presented frame.
 2. **The draw gate stays armed.** The scene walk may still disarm (that is what M2 measured); the
    per-draw compiled/resident check does not. This closes the post-settle link hole.
-3. **Bind hides until ready.** `_bindPresentationMesh` marks a freshly bound root
-   `geometryPending` and invisible when its subtree has unresident geometry, so the same frame it
-   binds can never draw it.
+3. **Hold the drawable, not the hull.** A drawable without resident geometry is hidden and queued
+   at its own granularity, so a late-mounted part, tether or prop waits without blanking the hull
+   that carries it. (The first plan was to hold the whole bound root; measurement and review made
+   clear that a per-leaf hold removes the same in-frame upload without ever making a ship
+   disappear, so the leaf is the unit.)
 4. **Predictive pre-admission replaces the skip counter.** The build and residency queues are
    ordered by **predicted time to glass** (position + velocity, 2 s lookahead) instead of
    "3 late frames → force one". A queued body that is about to enter the camera is urgent; a body

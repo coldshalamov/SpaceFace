@@ -63,4 +63,10 @@ first held, which is exactly the class predictive pre-admission is meant to driv
    Rerun both on a quiet host with the same route and compare the same counters.
 4. **Main-thread task > 50 ms**: not measured in this session's after-state (the host was
    saturated: 825/877 frames over 50 ms in the baseline, so a long-task claim needs a quiet host).
-5. **E7** has its own diagnosis; see `campaigns/E7/DIAGNOSIS.md`. Its measured work is not started.
+   The render-side frame cost is measured in `campaigns/E7/STATUS.md` (15.75 ms `drawPreparedFrame`
+   + 8.19 ms `prepareFrame` per frame on this host) — that is E7's bar, not E6's, and it is not met.
+5. **A deliberate contract change**: the draw guard used to leave a cold *unstamped* material alone
+   (it drew and linked in-frame). It now queues every cold material, stamped or not, because the
+   surviving in-frame links were exactly the unstamped VFX/plume/ribbon class. The guard test was
+   updated with that reason; review it in the E6 commit.
+6. **E7** has its own diagnosis and status; see `campaigns/E7/*`.
