@@ -720,29 +720,29 @@ function distressSpringR(live) {
   return genuine ? (live.shape.approachR || 900) : (live.shape.springR || 650);
 }
 
-function distressMarkPos(d, live) {
-  const hull = d.entsOf(live, 'victim')[0] || d.entsOf(live, 'bait')[0];
-  if (hull && hull.pos) return { x: hull.pos.x, z: hull.pos.z };
-  const anchor = live.anchor;
-  return anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)
-    ? { x: anchor.x, z: anchor.z }
+// The broadcasting hull can drift or be towed away from its spawn anchor. Navigation,
+// scanning and arrival must all refer to the same live signal, never an empty old site.
+function distressSignalPos(d, live) {
+  const role = live.plan && live.plan.variantKind === 'distress_genuine' ? 'victim' : 'bait';
+  const hull = d.entsOf(live, role)[0];
+  return hull && hull.pos && Number.isFinite(hull.pos.x) && Number.isFinite(hull.pos.z)
+    ? { x: hull.pos.x, z: hull.pos.z }
     : null;
 }
 
-/** Where the scan gate measures from. The pulse has always used the encounter anchor. */
-function distressTellPos(d, live) {
-  const player = d.player();
-  if (live.anchor && Number.isFinite(live.anchor.x) && Number.isFinite(live.anchor.z)) {
-    return { x: live.anchor.x, z: live.anchor.z };
-  }
-  return player && player.pos ? { x: player.pos.x, z: player.pos.z } : null;
+function refreshDistressMark(d, live, state, pos) {
+  const mark = state.nav && state.nav.waypoint;
+  // Following the hull must not reclaim navigation after the pilot selects another job.
+  if (!live.data.markSaved || !mark || mark.encounterId !== live.id || mark.kind !== 'distress_assist') return;
+  if (mark.pos && mark.pos.x === pos.x && mark.pos.z === pos.z) return;
+  d.markEncounter(live, { ...mark, pos });
 }
 
 /** The scan tell, shared by the C-key pulse and the card. False when the hull will not read. */
 function distressReadSignal(d, live) {
   if (live.data.toldTell) return true;
   const player = d.player();
-  const pos = distressTellPos(d, live);
+  const pos = distressSignalPos(d, live);
   if (!player || !player.pos || !pos) return false;
   if (dist2(player.pos.x, player.pos.z, pos.x, pos.z) > DIST_TELL_R * DIST_TELL_R) return false;
   live.data.toldTell = true;
@@ -796,10 +796,11 @@ const distress = {
   tick(d, live, state, now) {
     const p = d.player(); if (!p) return d.abort(live, 'no_player');
     const genuine = live.plan.variantKind === 'distress_genuine';
-    const anchor = live.anchor || p.pos;
-    const pd2 = dist2(p.pos.x, p.pos.z, anchor.x, anchor.z);
-
     if (live.phase === 'offer') {
+      const pos = distressSignalPos(d, live);
+      if (!pos) return d.resolve(live, 'lost');
+      refreshDistressMark(d, live, state, pos);
+      const pd2 = dist2(p.pos.x, p.pos.z, pos.x, pos.z);
       const springR = distressSpringR(live);
       if (pd2 <= springR * springR) {
         live.data.onScene = true;
@@ -849,7 +850,7 @@ const distress = {
       return;
     }
     if (choiceId === 'assist') {
-      const pos = distressMarkPos(d, live);
+      const pos = distressSignalPos(d, live);
       if (!pos) {
         distressOfferAgain(d, live);
         return;
@@ -877,7 +878,7 @@ const distress = {
       // A far click must not burn the card. The pulse path stays range-gated too.
       if (!distressReadSignal(d, live)) {
         const player = d.player();
-        const pos = distressTellPos(d, live);
+        const pos = distressSignalPos(d, live);
         const range = player && player.pos && pos
           ? Math.round(Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z))
           : null;
@@ -895,6 +896,12 @@ const distress = {
   event(d, live, state, name) {
     if (name !== 'scanPulse' || live.phase !== 'offer') return;
     distressReadSignal(d, live);
+  },
+
+  retire(d, live) {
+    // All terminal paths, including sector exit and a lost broadcaster, release only
+    // this encounter's mark and restore the navigation it temporarily borrowed.
+    d.clearEncounterMark(live);
   },
 };
 

@@ -136,7 +136,9 @@ test('seed 4242: Scan past the tell radius names the range and puts the card bac
   assert.equal(live.offerConsumed, false, 'a far scan does not burn the card');
   const line = h.voice.find((row) => row.encounterId === live.id && /WU out/.test(row.text || ''));
   assert.ok(line, 'the refusal names the range');
-  assert.match(line.text, /2200 WU out/);
+  const hull = broadcaster(h, live);
+  const range = Math.round(Math.hypot(h.player.pos.x - hull.pos.x, h.player.pos.z - hull.pos.z));
+  assert.ok(line.text.includes(`${range} WU out`), 'the refusal measures from the broadcasting hull');
   assert.ok(h.offered.length > offersBefore, 'the card is offered again');
   const card = h.offered.at(-1);
   assert.equal(card.encounterId, live.id);
@@ -145,5 +147,91 @@ test('seed 4242: Scan past the tell radius names the range and puts the card bac
   h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
   assert.equal(live.data.assisting, true);
   assert.equal(h.state.nav.waypoint.kind, 'distress_assist');
+  h.sim.dispose();
+});
+
+
+test('Assist follows a drifting signal; the old spawn site neither scans nor starts combat', () => {
+  const h = boot();
+  const live = fire(h, '-drift');
+  const hull = broadcaster(h, live);
+  const previous = { kind: 'mission', encounterId: 'other-job', label: 'YARD', pos: { x: 1, z: 2 } };
+  h.state.nav = { waypoint: previous };
+  h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+  hull.pos.x = ANCHOR.x + 3600;
+  hull.pos.z = ANCHOR.z + 1800;
+  h.player.pos.x = ANCHOR.x;
+  h.player.pos.z = ANCHOR.z;
+
+  h.bus.emit('scan:pulse', {});
+  h.sim.runTicks(130);
+  assert.equal(live.data.toldTell, false, 'the old site is not a readable signal');
+  assert.equal(live.phase, 'offer', 'visiting the old site does not spring the fight');
+  assert.deepEqual(h.state.nav.waypoint.pos, { x: hull.pos.x, z: hull.pos.z });
+  assert.deepEqual(live.data.previousWaypoint, previous, 'following does not overwrite the borrowed mark');
+  const updates = h.waypoints.length;
+  h.sim.runTicks(130);
+  assert.equal(h.waypoints.length, updates, 'a stationary mark does not emit redundant navigation updates');
+
+  h.player.pos.x = hull.pos.x - 1200;
+  h.player.pos.z = hull.pos.z;
+  h.bus.emit('scan:pulse', {});
+  h.sim.runTicks(2);
+  assert.equal(live.data.toldTell, true, 'the actual hull is readable before entering combat range');
+  h.player.pos.x = hull.pos.x;
+  h.sim.runTicks(130);
+  assert.equal(live.phase, 'conflict', 'arrival at the hull starts the encounter');
+  assert.deepEqual(h.state.nav.waypoint, previous, 'arrival returns the borrowed navigation');
+  h.sim.dispose();
+});
+
+test('a moving distress hull cannot reclaim a different waypoint selected after Assist', () => {
+  const h = boot();
+  const live = fire(h, '-yield-nav');
+  const hull = broadcaster(h, live);
+  h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+  const chosen = { kind: 'mission', encounterId: 'new-job', label: 'NEW JOB', pos: { x: 44, z: 55 } };
+  h.state.nav.waypoint = chosen;
+  hull.pos.x = ANCHOR.x + 3600;
+  hull.pos.z = ANCHOR.z;
+  h.sim.runTicks(130);
+  assert.equal(h.state.nav.waypoint, chosen, 'refresh respects the new navigation owner');
+  h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+  assert.equal(h.state.nav.waypoint, chosen, 'retirement also respects the new navigation owner');
+  h.sim.dispose();
+});
+
+for (const previous of [null, { kind: 'mission', label: 'HOME', pos: { x: 20, z: 30 } }]) {
+  test(`leaving an answered distress call restores ${previous ? 'the earlier mark' : 'an empty nav slot'}`, () => {
+    const h = boot();
+    const live = fire(h, previous ? '-exit-prior' : '-exit-empty');
+    h.state.nav = { waypoint: previous };
+    h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+    assert.equal(h.state.nav.waypoint.encounterId, live.id);
+    h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+    assert.equal(live.phase, 'done');
+    assert.equal(live.outcome, 'aborted:sector_exit');
+    assert.deepEqual(h.state.nav.waypoint, previous);
+    assert.equal(live.data.markSaved, false);
+    h.sim.dispose();
+  });
+}
+
+test('a broadcaster lost before arrival retires its mark without starting a fight or paying rescue credit', () => {
+  const h = boot();
+  const live = fire(h, '-lost-before-arrival');
+  const hull = broadcaster(h, live);
+  h.player.pos.x = ANCHOR.x + 4000;
+  h.state.nav = { waypoint: null };
+  const grants = [];
+  h.bus.on('economy:grantCredits', (payload) => grants.push(payload));
+  h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+  hull.alive = false;
+  h.sim.runTicks(130);
+  assert.equal(live.phase, 'done');
+  assert.equal(live.outcome, 'lost');
+  assert.equal(h.state.nav.waypoint, null);
+  assert.equal(live.data.onScene, false);
+  assert.equal(grants.length, 0);
   h.sim.dispose();
 });
