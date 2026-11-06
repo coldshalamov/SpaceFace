@@ -19,14 +19,45 @@
     p95 451 ms, **max 5.9 s**.
   - The presented clock read 60 ms behind the newest pack with depth 1 pack — zero tolerance
     for exactly this arrival jitter.
+- **Playout buffer implemented in `src/render/snapshotFence.js`** (the agreed pose-writer
+  interface; renderer callers unchanged):
+  - History ring 3 → **18 packs** (~300 ms at pack-per-tick); pack cost unchanged.
+  - Presented clock plays at `newestPack − playoutDelay` (adaptive **33–100 ms**, start 50 ms);
+    delay grows +8 ms per commit that lands with the buffer dry, eases −2 ms with headroom.
+  - Rate modulation: as the runway (history + extrapolation) drains the clock slows toward
+    0.15×, so a deep stall reads as brief slow motion, never a frozen ship.
+  - Interpolation between the history packs bracketing the presented moment; extrapolation
+    ≤ **150 ms** past the newest sample along per-row velocity (EXTRAPOLATION_MAX_WU teleport
+    guard kept); gap re-seat is a no-overshoot exponential (τ = 30 ms ≈ 90 ms settle).
+  - Snap only on flagged discontinuities: pose-epoch change (sector jump/rebuild), clock
+    rewind, extrapolated-travel overflow.
+  - `latestSnapshot()/previousSnapshot()` now serve the PRESENTED bracket (the pose-apply
+    contract is unchanged for the renderer); `newestSnapshot()` serves the pack writers so
+    clean-row copies never regress in time; `fence.sequence` reads as the presented bracket's
+    sequence while a sample is active (the renderer's `_snapshotPresentationSequence`
+    comparison keeps choosing the presented alpha).
+  - `presentedRowPose(entityId)` exposes the pose the player actually saw (E10's hold/jump
+    metric reads it; the mirrored row still updates at reply rate and is NOT the picture).
+- Tests: `test/snapshot-fence-playout-buffer.test.mjs` (3/3: late-burst-in-history with the
+  jump bound, presented-vs-newest accessors, adaptive delay grow/shrink) +
+  `snapshot-fence-span-alpha`/`pose-epoch` updated to the deliberate contract changes
+  (extrapolation bound 100→150 ms per the master plan; rewind reset re-seats at
+  newest−delay clamped to history) — 18/18 green; frame-truth 6/6; full transport cohort
+  55/55 green.
 
-## Next (order fixed by the spec)
-1. Fence history ring (~16 packs) + delayed presented clock (adaptive 33–100 ms).
-2. Extrapolation ≤ 150 ms; fixed-horizon smooth correction (80–120 ms); epoch/teleport snap kept.
-3. Verify on the laptop with the same stall cycle: jump bound, no repeat-pose frames > 2,
-   before/after video.
+## Next
+1. **Live AFTER re-record** with the corrected presented-pose metric (the first AFTER run,
+   `evidence/after-stall-trace.json`, measured the mirrored row — valid for BEFORE's
+   presentation where mesh ≈ newest pack, invalid after the buffer). Blocked only by machine
+   congestion: the shared dev server intermittently 404s and the worker's ~14 s boot loses
+   the lane's 5 s startup deadline while other agents compile. Retry when quiet.
+2. Before/after video of the same stall pattern (spec Verify).
+3. First-AFTER row-proxy observations (presented-pose fix landed mid-session): held streak
+   26 → 3–6 frames, jump-bound violations 78 → 2 (worst ratio 2.0 → 1.04) under reply gaps
+   p50 128 / p95 484 ms — consistent with the unit contract; the clean re-record replaces it.
 
 ## Evidence
 - `evidence/before-stall-trace.json` (+ `.devshots/e1-playout/before-*.png`, local).
-- test/frame-truth.test.mjs (3/3), sim-worker-local-clock + sim-lane-stall-confirmation +
-  worker-reply-work-budget (34/34).
+- `evidence/after-stall-trace.json` (row-proxy metric; superseded by pending re-record).
+- Tests: 18/18 fence, 6/6 frame-truth, 34/34 transport (sim-worker-local-clock +
+  sim-lane-stall-confirmation + worker-reply-work-budget).

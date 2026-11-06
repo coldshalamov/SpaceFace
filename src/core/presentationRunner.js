@@ -421,6 +421,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let motionHoldReports = 0;
   // E10: 1 Hz heap-sample gate for the frame-truth recorder (see the frame finally block).
   let frameTruthHeapLastAtMs = 0;
+  // E10/E1: scratch for the fence's presented player pose — reused, never allocated per frame.
+  const frameTruthPoseScratch = { x: 0, y: 0, z: 0 };
+  const frameTruthPoseScratchProxy = { pos: frameTruthPoseScratch, vx: 0, vz: 0 };
   function captureWitness() {
     try {
       const sample = witness.observe(state, {
@@ -1522,6 +1525,20 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           }
           const playerRow = state.entities && Number.isSafeInteger(state.playerId)
             ? (state.entities.get(state.playerId) || null) : null;
+          // The pose the player SAW is the fence's presented bracket, not the mirrored row
+          // (which updates at reply rate). The hold/jump metric must measure the picture.
+          let presentedPoseRow = playerRow;
+          if (fence && typeof fence.presentedRowPose === 'function' && playerRow) {
+            const presented = fence.presentedRowPose(state.playerId, frameTruthPoseScratch);
+            if (presented) {
+              frameTruthPoseScratchProxy.pos = presented;
+              frameTruthPoseScratchProxy.vx = Number.isFinite(playerRow.vx) ? playerRow.vx
+                : (playerRow.vel && Number.isFinite(playerRow.vel.x) ? playerRow.vel.x : 0);
+              frameTruthPoseScratchProxy.vz = Number.isFinite(playerRow.vz) ? playerRow.vz
+                : (playerRow.vel && Number.isFinite(playerRow.vel.z) ? playerRow.vel.z : 0);
+              presentedPoseRow = frameTruthPoseScratchProxy;
+            }
+          }
           frameTruth.ingestFrame({
             frameDtMs: frameDt * 1000,
             callbackMs: measureNow() - callbackStart,
@@ -1537,7 +1554,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
             playoutDelayMs: playout ? playout.delayMs : null,
             extrapolateMs: playout ? playout.extrapolateMs : null,
             bufferDepthPacks: playout ? playout.bufferDepthPacks : null,
-            playerRow,
+            playerRow: presentedPoseRow,
             drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
             trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,
             heapMB,
