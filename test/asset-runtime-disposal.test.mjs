@@ -130,6 +130,84 @@ async function testReleasedSourceUrlTaskRetriesThroughLoader() {
     'the stale released task is replaced, not left cached');
 }
 
+async function testDepartedSourceObserverRetiresReleasedTask() {
+  const url = 'assets/ships/release/parts/departed-release.glb';
+  const cacheKey = `${url}::hull`;
+  const stale = renderPackageFixture(url, 'released-generation');
+  stale.renderPackage.released = true;
+  const runtime = runtimeFixture();
+  runtime.assets.set(cacheKey, Promise.resolve(
+    assetLoader.assembleRenderPackageRecord(stale.renderPackage, url, 'departed-release'),
+  ));
+  runtime.renderPackages = { load() { assert.fail('a departed owner cannot re-admit a package'); } };
+
+  const record = await assetLoader.loadAuthoredRenderPackagePilot(runtime, {}, url, {
+    slot: 'hull', isResidencyOwnerActive: () => false,
+  });
+
+  assert.equal(record, null);
+  assert.equal(runtime.assets.has(cacheKey), false,
+    'an inactive observer retires an unmountable released record just like an evicted record');
+}
+
+async function testDepartedStaleObserverDoesNotJoinActiveReplacement() {
+  const url = 'assets/ships/release/parts/active-replacement.glb';
+  const cacheKey = `${url}::hull`;
+  const stale = renderPackageFixture(url, 'old-generation', { evicted: true });
+  const fresh = renderPackageFixture(url, 'new-generation');
+  const runtime = runtimeFixture();
+  const staleTask = Promise.resolve(
+    assetLoader.assembleRenderPackageRecord(stale.renderPackage, url, 'active-replacement'),
+  );
+  runtime.assets.set(cacheKey, staleTask);
+  const decode = deferred(), started = deferred();
+  let loads = 0;
+  runtime.renderPackages = { load() { loads++; started.resolve(); return decode.promise; } };
+
+  const active = assetLoader.loadAuthoredRenderPackagePilot(runtime, {}, url, {
+    slot: 'hull', isResidencyOwnerActive: () => true,
+  });
+  const departed = assetLoader.loadAuthoredRenderPackagePilot(runtime, {}, url, {
+    slot: 'hull', isResidencyOwnerActive: () => false,
+  });
+  await started.promise;
+  const departedBeforeDecode = await Promise.race([departed, Promise.resolve('still-pending')]);
+  const replacementTask = runtime.assets.get(cacheKey);
+  const replacementOwned = runtime.pendingAssetTasks.has(replacementTask);
+  decode.resolve(fresh.renderPackage);
+  assert.strictEqual((await active).renderPackage, fresh.renderPackage);
+  assert.equal(departedBeforeDecode, null,
+    'a departed stale observer settles while the replacement decode is still pending');
+  assert.ok(replacementTask && replacementTask !== staleTask);
+  assert.equal(replacementOwned, true,
+    'stale cleanup leaves the active replacement owned by the runtime');
+  assert.equal(loads, 1);
+  assert.strictEqual(runtime.assets.get(cacheKey), replacementTask);
+}
+
+async function testDepartedObserverPreservesMountableSharedTask() {
+  const url = 'assets/ships/release/parts/shared-live.glb';
+  const cacheKey = `${url}::hull`;
+  const fresh = renderPackageFixture(url, 'live-generation');
+  const runtime = runtimeFixture();
+  const decode = deferred();
+  let loads = 0;
+  runtime.renderPackages = { load() { loads++; return decode.promise; } };
+  const active = assetLoader.loadAuthoredRenderPackagePilot(runtime, {}, url, {
+    slot: 'hull', isResidencyOwnerActive: () => true,
+  });
+  const sharedTask = runtime.assets.get(cacheKey);
+  const departed = assetLoader.loadAuthoredRenderPackagePilot(runtime, {}, url, {
+    slot: 'hull', isResidencyOwnerActive: () => false,
+  });
+  decode.resolve(fresh.renderPackage);
+  assert.strictEqual((await active).renderPackage, fresh.renderPackage);
+  assert.equal(await departed, null);
+  assert.equal(loads, 1);
+  assert.strictEqual(runtime.assets.get(cacheKey), sharedTask,
+    'consumer retirement alone must never evict a mountable shared generation');
+}
+
 async function testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns() {
   assert.equal(typeof assetLoader.admitAuthoredAssetTask, 'function',
     'assetLoader must export the task-admission boundary used by live loads');
@@ -529,6 +607,9 @@ async function testSharedKtx2CreationFailureDoesNotLeakRefs() {
 await testTaskAdmissionEstablishesOwnershipBeforeFactoryRuns();
 await testEvictedSourceUrlTaskRetriesForEveryActiveObserver();
 await testReleasedSourceUrlTaskRetriesThroughLoader();
+await testDepartedSourceObserverRetiresReleasedTask();
+await testDepartedStaleObserverDoesNotJoinActiveReplacement();
+await testDepartedObserverPreservesMountableSharedTask();
 await testImmediateRetirementOwnsAdmittedTaskBeforeFactoryRuns();
 await testRetirementWaitsForOwnedTasks();
 await testCacheInvalidationCannotHideOwnedTask();
