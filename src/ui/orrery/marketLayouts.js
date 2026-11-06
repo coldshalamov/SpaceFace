@@ -1082,6 +1082,35 @@ ${M} .so-trade-breakdown[open] .sx-trade__rows > li > span { flex:none !importan
   font-size:12px !important; color:rgb(${BONE} / .72) !important; }
 ${M} .so-trade-breakdown[open] .sx-trade__rows > li > .k-row__num { flex:1 1 auto !important; min-width:0 !important; text-align:right !important;
   white-space:normal !important; overflow-wrap:normal !important; font-size:13px !important; }
+/* ---- 651–900 × 461–480 desktop (e.g. 700×461, 801×461): Station Standard's Fewer/qty/More/Max
+   stepper + 36px SELL sit in a ~146px console beside the analysis, but the Market body is only
+   ~175–180px tall here — BUY 1 clears by ~5–10px while SELL loses its lower half under the glass
+   (measured Sell oyB 11→16 against .sx-mkt; Buy oyB 5→10). Hide the idle quote breakdown, close
+   the trade rows, and shrink the stepper/verbs (outranking Standard's 36px keys with the Market
+   .orr-market scope) so both verbs end inside the stage. Taller short berths (750×500+) already clear. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:480px) {
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade {
+    row-gap:1px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade > .sx-qty {
+    gap:2px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-qty__k {
+    margin:0 0 1px !important; line-height:12px !important; font-size:12px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-qty__in {
+    height:28px !important; min-height:28px !important; line-height:28px !important; font-size:18px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market :is(.sx-qty__b, .sx-qty__max) {
+    min-height:28px !important; height:28px !important; padding:0 6px !important; font-size:12px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .so-trade-total {
+    height:15px !important; min-height:15px !important; line-height:14px !important; margin:0 !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .so-trade-breakdown:not([open]) {
+    display:none !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__words {
+    margin:0 !important; gap:0 4px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__go,
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__words > li > .sx-trade__go {
+    min-height:24px !important; height:24px !important; padding:0 8px !important; font-size:12px !important; line-height:24px !important; }
+  html:root:root:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station.orr-station .sx-mkt.orr-market .sx-trade__go.orr-lampkey {
+    min-height:24px !important; height:24px !important; padding:0 12px 0 8px !important; }
+}
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {
