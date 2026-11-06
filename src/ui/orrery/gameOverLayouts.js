@@ -131,6 +131,14 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   /* a blank record has no rim stations, so its bare dial takes a slightly taller host */
   ${GO} > .sf-go-recap.is-blank { height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
 }
+/* short narrow desktop (641–800 × ≤560, e.g. 651×461 / 700×461): the one-line verb rail
+   (Continue + Load save + Load latest) overruns the right edge — Load latest offR 76/27 —
+   because the 1101–1400 wrap and the phone ≤640 wrap leave this band on nowrap. Primary keeps
+   its own line; the two loads sit beneath it, inside the column. 801+ already fits. */
+@media (min-width:641px) and (max-width:800px) and (max-height:560px) {
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(4px * var(--sv)) !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex-basis:100%; }
+}
 /* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
    lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears
    the bezel; the diagonals step out sideways by their sy^2 (0 at 3 and 9 o'clock), so nothing moves
