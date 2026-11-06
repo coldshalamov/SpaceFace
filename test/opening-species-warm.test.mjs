@@ -558,7 +558,7 @@ test('a stale queued first-use cannot double-retire a pin already replaced by a 
     assert.equal(textureDisposals, 6, 'old pin textures are retired once on replacement');
 
     rafQueue[0]();
-    idleQueue[0]();
+    assert.equal(idleQueue.length, 0, 'stale animation callback cannot enqueue new idle work');
     assert.equal(materialDisposals, 1, 'old idle callback cannot dispose the replaced pin again');
     assert.equal(textureDisposals, 6, 'old idle callback cannot dispose its textures twice');
     assert.equal(owner._openingHulkKeyWarmResource.material, owner._openingHulkKeyWarmHold.material,

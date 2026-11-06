@@ -22491,6 +22491,7 @@ export const render = {
     let hold = null;
     let compileSettled = false;
     let geometryReleased = false;
+    let scheduledFirstUse = null;
     const candidate = { renderer, context, material: null, textures, retired: false, retire: null };
     candidate.retire = (force = false, { contextLost = false } = {}) => {
       if (candidate.retired || (!force && this._openingHulkKeyWarmResource === candidate)) return;
@@ -22508,6 +22509,9 @@ export const render = {
     const release = ({ contextLost = false } = {}) => {
       if (!hold) return;
       hold.releaseRequested = true;
+      const scheduled = scheduledFirstUse;
+      scheduledFirstUse = null;
+      try { scheduled?.cancel?.(scheduled.id); } catch (_) { /* late callbacks still check their owner */ }
       if (this._openingHulkKeyWarmHold === hold) this._openingHulkKeyWarmHold = null;
       try {
         const abandonGpu = contextLost || this._contextLost === true || state.contextRestoreSeq !== context
@@ -22537,8 +22541,27 @@ export const render = {
     const idle = (fn) => {
       const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback : null;
       const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
-      if (raf && ric) raf(() => ric(fn, { timeout: 250 }));
-      else setTimeout(fn, 0);
+      const run = () => {
+        scheduledFirstUse = null;
+        if (!owns()) { release(); return; }
+        fn();
+      };
+      if (raf && ric) {
+        const id = raf(() => {
+          scheduledFirstUse = null;
+          if (!owns()) { release(); return; }
+          scheduledFirstUse = {
+            id: ric(run, { timeout: 250 }),
+            cancel: typeof cancelIdleCallback === 'function' ? cancelIdleCallback : null,
+          };
+        });
+        scheduledFirstUse = {
+          id,
+          cancel: typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : null,
+        };
+      } else {
+        scheduledFirstUse = { id: setTimeout(run, 0), cancel: clearTimeout };
+      }
     };
     try {
       // Forge hull surface: map, ao, normal, emissive, metalness, roughness; illustrated

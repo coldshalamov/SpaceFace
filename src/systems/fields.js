@@ -1,9 +1,11 @@
 import {
-  FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, fieldLifecyclePhase,
+  FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
+  fieldLifecyclePhase,
   collectorFitted, playerFieldSpec, isForceableFieldBody, pullMarkTargetEligible,
   fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
   EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
+import { swarmFeel } from '../data/swarmFeelProfile.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
   FIELD_PHASE_WINDING, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
@@ -1214,6 +1216,21 @@ export const fields = {
       ? { ...FIELD_DEFS.well, durationS: COLLECTOR_KNOT.durationS, cooldownS: COLLECTOR_KNOT.cooldownS, hull: COLLECTOR_KNOT.hull }
       : FIELD_DEFS[kind];
     const now = nowOf(state);
+    // S1 Swarm feel (audit P4/P5): under a live Swarm run, Pull deploys as a yank-and-hold
+    // and Shove as a punch that fades — a phase table stamped onto the same kernel record.
+    // The collector knot and every non-Swarm deploy keep the authored def untouched.
+    const feel = swarmFeel(state);
+    const swarmPhases = !collector && feel && (kind === 'well' || kind === 'repulsor')
+      ? (kind === 'well'
+        ? { punchS: feel.pull.yankS, punchStrengthMult: feel.pull.yankStrengthMult,
+            punchDampingMult: feel.pull.yankDampingMult, fadeS: feel.pull.holdS, fadeTo: 1 }
+        : { punchS: feel.shove.punchS, punchStrengthMult: feel.shove.punchStrengthMult,
+            punchDampingMult: 1, fadeS: feel.shove.bermS, fadeTo: 0 })
+      : null;
+    const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
+    const deployCooldownS = swarmPhases
+      ? (kind === 'well' ? feel.pull.cooldownS : feel.shove.cooldownS)
+      : def.cooldownS;
     const cd = rt.cooldowns[kind] || 0;
     if (now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1229,7 +1246,7 @@ export const fields = {
     // ship (behind you mid-chase). The one rule the held-key preview also reads.
     const spec = collector
       ? { ...playerFieldSpec(kind, player, state), durationS: def.durationS }
-      : playerFieldSpec(kind, player, state);
+      : { ...playerFieldSpec(kind, player, state), durationS: deployDurationS };
     const cx = spec.center.x, cz = spec.center.z;
 
     // Replacing an empty collector: recall the old emitter first (its cooldown gate passed above).
@@ -1244,7 +1261,7 @@ export const fields = {
     if (typeof spawnEntity !== 'function') return;
     advanceEntityIdPastOccupied(state);
     const fieldId = `field_${kind}_${state.tick}_${player.id}`;
-    const expireAt = now + def.durationS;
+    const expireAt = now + deployDurationS;
     const emitter = spawnEntity({
       type: EMITTER_TYPE,
       pos: { x: cx, z: cz },
@@ -1258,7 +1275,7 @@ export const fields = {
       physicsBody: { dynamic: false, ccd: false, material: EMITTER_MATERIAL, mass: 20, radius: def.emitterRadius },
       team: player.team,
       ownerId: player.id,
-      ttl: def.durationS + 1, // hard backstop; the system despawns on expireAt first
+      ttl: deployDurationS + 1, // hard backstop; the system despawns on expireAt first
       data: {
         kind: 'field_emitter',
         fieldEmitter: true,
@@ -1285,8 +1302,12 @@ export const fields = {
     });
     rt.deployed[fieldId] = collector
       ? { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt, collector: true }
-      : { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt };
-    rt.cooldowns[kind] = now + def.cooldownS;
+      : { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt,
+          // S1: the kernel record stays normalized, so the phase table rides the deployed
+          // receipt; _applySwarmDeployedPhases rewrites strength/damping each force pass.
+          swarmFeelPhases: swarmPhases || undefined,
+          baseStrength: spec.strength, baseDamping: spec.damping || 0 };
+    rt.cooldowns[kind] = now + deployCooldownS;
     rt.lastDenial = null;
 
     this.bus.emit('fields:deployed', collector
@@ -1892,6 +1913,42 @@ export const fields = {
     });
   },
 
+  // S1 (audit P4/P5) — a Swarm-deployed well/repulsor runs the profile phase table carried
+  // on its deployed receipt: punchS at punchStrengthMult (and the well's lower yank damping),
+  // then the fade beat — the well holds at authored strength, the repulsor berm fades to
+  // nothing. Runs after applyFieldLifecycle so the profile's values own the tick's sampling.
+  _applySwarmDeployedPhases(state, rt, now) {
+    const deployed = rt && rt.deployed;
+    if (!deployed || !this._kernel || typeof this._kernel.get !== 'function') return;
+    for (const fieldId in deployed) {
+      const dep = deployed[fieldId];
+      const p = dep && dep.swarmFeelPhases;
+      if (!p) continue;
+      const rec = this._kernel.get(fieldId);
+      if (!rec) continue;
+      const baseStrength = Number.isFinite(dep.baseStrength) ? dep.baseStrength : rec.strength;
+      const baseDamping = Number.isFinite(dep.baseDamping) ? dep.baseDamping : (rec.damping || 0);
+      const elapsed = Math.max(0, now - (Number.isFinite(dep.deployedAt) ? dep.deployedAt : rec.createdAt));
+      let strength;
+      let damping;
+      let phase;
+      if (elapsed < p.punchS) {
+        strength = baseStrength * p.punchStrengthMult;
+        damping = baseDamping * p.punchDampingMult;
+        phase = FIELD_PHASE_ACTIVE;
+      } else {
+        const t = p.fadeS > 0 ? Math.min(1, (elapsed - p.punchS) / p.fadeS) : 1;
+        const fadeTo = Number.isFinite(p.fadeTo) ? p.fadeTo : 0;
+        strength = baseStrength * (1 + (fadeTo - 1) * t);
+        damping = baseDamping;
+        phase = fadeTo >= 1 ? FIELD_PHASE_ACTIVE : FIELD_PHASE_DISSIPATING;
+      }
+      rec.lifecyclePhase = phase;
+      if (typeof this._kernel.update === 'function') this._kernel.update(fieldId, { strength, damping });
+      else { rec.strength = strength; rec.damping = damping; }
+    }
+  },
+
   _applyForces(dt, state, rt) {
     const pass = ++this._fieldForcePass;
     const now = nowOf(state);
@@ -1899,6 +1956,8 @@ export const fields = {
     const fieldsList = this._kernel.list();
     // INF-042: the lifecycle runs before sampling, so force, predictor, and records agree.
     applyFieldLifecycle(fieldsList, now);
+    // S1: after the generic ramp so the profile's phase table wins the tick for its records.
+    this._applySwarmDeployedPhases(state, rt, now);
     if (fieldsList.some(f => f.thermal)) applyThermalFields({ state, fields: fieldsList,
       kernel: this._combatKernel, dt, bus: this.bus, candidatesFor: field => {
         this._collectFieldCandidates(field, state, this._queryOut); return this._queryOut;

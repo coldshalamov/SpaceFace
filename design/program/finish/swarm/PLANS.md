@@ -27,6 +27,7 @@ render; DOM UI; the simulation may run in a worker — profile values and gates 
 | B | S6 readable horde · S7 enemy character · S8 explosions and deaths · S9 arenas | character and spectacle |
 | C | S10 round shape · S11 pick one · S12 Zombies staples · S13 payoff and sound | the loop |
 | D | S14 bosses · S15 combo cards · S16 full-run rehearsal | the showpiece |
+| E | S17 in-arena depots · S18 named wave recipes · S19 arena escalation | after S16 (creative direction) |
 
 S1 lands first (others read it). S2–S5 can run in parallel with each other. Phase B needs S1.
 Phase C needs S2/S3. S16 is last.
@@ -726,3 +727,48 @@ from the capture alone.
 5. Repeat until one full run has no finding; keep that capture as the reference.
 
 **Done when:** one recorded full run with an empty findings list, reviewed by an independent agent.
+
+---
+
+# Phase E — after S16 (creative direction additions, 2026-11-06)
+
+From `design/program/finish/DIRECTION.md` §4. Start only after S1–S16 have landed. Lane split:
+Lane F builds the sim side, Lane S the screens and presentation, as before.
+
+## S17 — The depot is in the arena (Zombies wall-buys)
+
+**Player outcome:** mid-wave, the player makes a desperate run to a lit depot pad to buy the weapon
+they need, standing still for 1.5 s under fire.
+- Each arena has 2–3 physical depots, each with a small fixed selection (e.g. webs and wells; heavy
+  guns; repair and shields), placed to create risky routes.
+- Points come from credited kills (S3). Buying = fly onto the pad, hold 1.5 s, choose from ≤ 3 items
+  on a world-space sign. The between-wave pick-one (S11) stays as the breather.
+- Reuse: S11 offer data (authored cards only), run wallet, Fortify sockets for placement, S5 F key.
+- **Done when:** in a live run the player buys from a depot mid-wave at least once without a menu
+  opening; enemies visibly punish standing on the pad; capture judged against README §4.
+- **Goes wrong if:** the depot pauses the game; it sells the 107-row catalog; it's safe.
+
+## S18 — Named wave recipes, gates and lanes
+
+**Player outcome:** waves have names and character people talk about; pressure arrives along
+lanes you can read and defend.
+- A wave = enemy mix × terrain event × modifier, from a named recipe table (*The Dart Rush*,
+  *Spitter Rain*, *The Warden Wall*, *Blackout*, *Hold the Line* — survive a 60 s timer,
+  *Gravity Storm*). The recipe name is the round title.
+- Enemies stream from visible gates along visible lanes (Mindustry); Fortify pieces read against
+  the lanes.
+- Reuse: S10 arrivals, S12 special rounds (`swarmEvents.js`), Fortify.
+- **Done when:** ≥ 12 recipes exist; 20 consecutive waves never repeat a recipe back-to-back; a
+  capture of each recipe's opening 10 s reads distinctly without the HUD.
+- **Goes wrong if:** recipes differ only in numbers.
+
+## S19 — The arena escalates
+
+**Player outcome:** at wave 10 the arena itself transforms; at wave 15 it does again — the place
+gets more dangerous and more useful, not just the numbers.
+- Per arena: a wave-10 transformation (the Foundry's crusher wakes; the Mill's grinders turn; the
+  Hive's sacs burst; Cryo's ice cracks into shard fields) and a wave-15 one with a second boss.
+- Reuse: S9 signature hazards, environmental machinery, S14 bosses.
+- **Done when:** each arena's two transformations are captured and each creates a new way to kill
+  the horde and a new way to die.
+- **Goes wrong if:** a transformation is only a recolour or a stat change.
