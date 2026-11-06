@@ -4,6 +4,7 @@
 
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { isRedKiteEntity } from '../data/redKiteBody.js';
+import { pendingTallyClearanceBody } from './tethysTallyResidency.js';
 import {
   TABLE_REFERENCE_SPEED_WU,
   TABLE_SIM_ASPECT,
@@ -1065,6 +1066,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
     add(state.entities && state.entities.get(runtime.nearIds[i]));
   }
   for (const id of runtime.pinFacts._gyreThreatScratch || []) add(state.entities?.get(id));
+  add(runtime.tallyClearanceBody);
   const projectileIndex = state.entityIndex;
   const projectiles = projectileIndex && projectileIndex.__spacefaceEntityIndexV1
     && projectileIndex.ready === true && Array.isArray(projectileIndex.projectiles)
@@ -1962,6 +1964,7 @@ function classifyWorld(state, runtime) {
       || (ai && ai.namedAceId)
     );
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
+      || entity === runtime.tallyClearanceBody
       // One budgeted named courier must physically finish/return across the whole
       // surveyed course, including corners beyond the player's local physics reach.
       || (isRedKiteEntity(entity) && data.homeSectorId === state.world?.currentSectorId)
@@ -2171,6 +2174,20 @@ export function ensureActivityClassified(state) {
   // Before same-tick/quiet returns: death, recycling and absolute expiry withdraw
   // native admission even when membership, player pose and camera have not changed.
   prunePhysicalInterests(state, runtime);
+  // A pending physical passage owns its obstacle's residency, not its outcome.
+  // Derive the demand before quiet/same-tick caches so job release, passage,
+  // control transfer, restore and sector exit cannot leave a saved or stale pin.
+  const tallyBody = pendingTallyClearanceBody(state);
+  if (tallyBody !== (runtime.tallyClearanceBody || null)) {
+    const prior = runtime.tallyClearanceBody;
+    runtime.tallyClearanceBody = tallyBody;
+    runtime.pinFacts._revision = (runtime.pinFacts._revision | 0) + 1;
+    if (prior) {
+      (runtime.physicsInterestWithdrawals || (runtime.physicsInterestWithdrawals = new Set())).add(prior);
+      requestActivityReclassify(state, prior, { physicsPublication: true });
+    }
+    if (tallyBody) requestActivityReclassify(state, tallyBody, { physicsPublication: true });
+  }
   const tick = state.tick | 0;
   // Sanctioned membership moves through the entity index: spawnEntity/removeEntityIndex bump
   // `version` immediately, so a mid-tick spawn must be admitted to this same tick's owner views —

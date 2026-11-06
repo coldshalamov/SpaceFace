@@ -4494,21 +4494,156 @@ export function* instantiatePackagedPrimitivesSteps(record, parent, options = {}
     }
   }
   const primitives = (record && record.primitives) || [];
+  // Same-material opaque leaves collapse into one mesh (shared cached geometry per record):
+  // a hulk fragment is ~50 leaves over ~12 materials. The flat route bakes every transform
+  // and binds no pivots, so nothing addresses a leaf by name.
+  const mergeable = includeAllLods ? null : new Map();
   for (let i = 0; i < primitives.length; i++) {
     if (i > 0 && (i % 128) === 0) yield;
     const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!includeAllLods && !isLod0Primitive(primitive)) continue;
-    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
-    mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
     else if (Array.isArray(primitive.matrix) && primitive.matrix.length === 16) tmp.fromArray(primitive.matrix);
     else tmp.identity();
+    // A mirrored leaf relies on three flipping the front face from the mesh matrix; baked vertices would not.
+    if (mergeable && tmp.determinant() > 0 && isMergeablePackagedPrimitive(primitive)) {
+      let list = mergeable.get(primitive.material);
+      if (!list) { list = []; mergeable.set(primitive.material, list); }
+      list.push({ primitive, matrix: tmp.clone() });
+      continue;
+    }
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name || 'PackagedPrimitive';
     mesh.applyMatrix4(tmp);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
   }
+  if (!mergeable) return;
+  for (const [material, list] of mergeable) {
+    yield;
+    const merged = list.length > 1 ? mergedPackagedGeometry(record, material, list) : null;
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.name = `${list[0].primitive.name || 'PackagedPrimitive'}+${list.length}`;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      continue;
+    }
+    for (const { primitive, matrix } of list) {
+      const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+      mesh.name = primitive.name || 'PackagedPrimitive';
+      mesh.applyMatrix4(matrix);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+    }
+  }
+}
+
+function isMergeablePackagedPrimitive(primitive) {
+  const material = primitive.material, geometry = primitive.geometry;
+  if (Array.isArray(material) || !geometry.isBufferGeometry || !geometry.getAttribute('position')) return false;
+  if (material.transparent === true || material.depthWrite === false || material.blending !== THREE.NormalBlending
+      || (material.transmission || 0) > 0) return false;
+  if (geometry.groups.length > 0 || geometry.drawRange.start !== 0 || geometry.drawRange.count !== Infinity) return false;
+  if (geometry.getAttribute('skinIndex') || (geometry.morphAttributes && geometry.morphAttributes.position)) return false;
+  if (/collision/i.test(String(primitive.name || ''))) return false;
+  return true;
+}
+
+// Cached per decoded record + material so every wreck of one file shares a single GPU upload.
+// A bounded LRU really disposes the oldest; a disposed entry still drawn just re-uploads.
+const _packagedMergeCache = new WeakMap();
+const _packagedMergeLru = [];
+const PACKAGED_MERGE_LRU_MAX = 96;
+
+function mergedPackagedGeometry(record, material, list) {
+  if (!record || typeof record !== 'object') return null;
+  let byMaterial = _packagedMergeCache.get(record);
+  if (!byMaterial) { byMaterial = new Map(); _packagedMergeCache.set(record, byMaterial); }
+  const sig = `${list.length}:${list.map((item) => item.primitive.name).join('|')}`;
+  let entry = byMaterial.get(material);
+  if (entry && entry.sig === sig) return entry.geometry;
+  const geometry = mergePackagedLeafGeometries(list);
+  if (!geometry) return null;
+  geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true };
+  const realDispose = geometry.dispose.bind(geometry);
+  geometry.dispose = () => {};
+  entry = { sig, geometry, realDispose };
+  byMaterial.set(material, entry);
+  _packagedMergeLru.push(entry);
+  if (_packagedMergeLru.length > PACKAGED_MERGE_LRU_MAX) {
+    const old = _packagedMergeLru.shift();
+    try { old.realDispose(); } catch (_) { /* best effort */ }
+  }
+  return geometry;
+}
+
+const _mergeV = new THREE.Vector3();
+const _mergeN = new THREE.Vector3();
+const _mergeNormalMatrix = new THREE.Matrix3();
+
+// Bakes each leaf's matrix into float vertex data. Reads through getX() so quantized
+// (normalized Int16/Int8) glTF attributes decode instead of clamping.
+function mergePackagedLeafGeometries(list) {
+  const first = list[0].primitive.geometry;
+  const names = Object.keys(first.attributes).sort();
+  const indexed = !!first.index;
+  let vertexTotal = 0, indexTotal = 0;
+  for (const { primitive } of list) {
+    const g = primitive.geometry;
+    const other = Object.keys(g.attributes).sort();
+    if (other.length !== names.length || other.some((n, i) => n !== names[i]) || !!g.index !== indexed) return null;
+    for (const n of names) {
+      const a = g.attributes[n];
+      if (a.isInterleavedBufferAttribute === true || a.itemSize !== first.attributes[n].itemSize) return null;
+    }
+    vertexTotal += g.attributes.position.count;
+    if (indexed) indexTotal += g.index.count;
+  }
+  if (vertexTotal > 4000000) return null;
+  const out = {};
+  for (const n of names) out[n] = new Float32Array(vertexTotal * first.attributes[n].itemSize);
+  const index = indexed ? new Uint32Array(indexTotal) : null;
+  let vOffset = 0, iOffset = 0;
+  for (const { primitive, matrix } of list) {
+    const g = primitive.geometry;
+    const count = g.attributes.position.count;
+    _mergeNormalMatrix.getNormalMatrix(matrix);
+    for (const n of names) {
+      const a = g.attributes[n], size = a.itemSize, dst = out[n];
+      for (let v = 0; v < count; v++) {
+        const o = (vOffset + v) * size;
+        if (n === 'position') {
+          _mergeV.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix4(matrix);
+          dst[o] = _mergeV.x; dst[o + 1] = _mergeV.y; dst[o + 2] = _mergeV.z;
+        } else if (n === 'normal') {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix3(_mergeNormalMatrix).normalize();
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z;
+        } else if (n === 'tangent' && size === 4) {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).transformDirection(matrix);
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z; dst[o + 3] = a.getW(v);
+        } else {
+          for (let c = 0; c < size; c++) dst[o + c] = c === 0 ? a.getX(v) : c === 1 ? a.getY(v) : c === 2 ? a.getZ(v) : a.getW(v);
+        }
+      }
+    }
+    if (indexed) {
+      const src = g.index;
+      for (let k = 0; k < src.count; k++) index[iOffset + k] = src.getX(k) + vOffset;
+      iOffset += src.count;
+    }
+    vOffset += count;
+  }
+  const merged = new THREE.BufferGeometry();
+  for (const n of names) merged.setAttribute(n, new THREE.BufferAttribute(out[n], first.attributes[n].itemSize));
+  if (index) merged.setIndex(new THREE.BufferAttribute(index, 1));
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+  return merged;
 }
 
 export function fitPackagedGroup(group, targetRadius) {
@@ -5272,14 +5407,19 @@ function buildDrone(e) {
   const R = e.radius || 4;
   const pal = resolvePalette(e);
   const g = new THREE.Group();
-  const core = new THREE.Mesh(getGeometry('drone:core', () => new THREE.OctahedronGeometry(0.6, 0)), hullMaterial(pal));
+  // Core + both arms share one hull material: one cached unit-space merged body is a single
+  // draw instead of three. Only the emissive glow stays separate (different material).
+  const core = new THREE.Mesh(getGeometry('drone:body', () => {
+    const parts = [new THREE.OctahedronGeometry(0.6, 0)];
+    for (const sgn of [1, -1]) {
+      parts.push(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2).translate(0, 0, sgn * 0.5));
+    }
+    const flat = parts.map((part) => (part.index ? part.toNonIndexed() : part));
+    return mergeGeometries(flat, false) || flat[0];
+  }), hullMaterial(pal));
   core.scale.setScalar(R); g.add(core);
   const glow = new THREE.Mesh(getGeometry('drone:glow', () => new THREE.SphereGeometry(0.22, 8, 6)), emissiveMaterial(pal.accent, 2.2));
   glow.scale.setScalar(R); g.add(glow);
-  for (const sgn of [1, -1]) {
-    const arm = new THREE.Mesh(getGeometry('drone:arm', () => new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2)), hullMaterial(pal));
-    arm.position.set(0, 0, sgn * R * 0.5); arm.scale.setScalar(R); g.add(arm);
-  }
   g.userData.kind = 'drone';
   return attachPackagedBody(g, DRONE_PACKAGED_FILE, e);
 }

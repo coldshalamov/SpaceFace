@@ -307,7 +307,12 @@ export class Sg02DynamicBodyOwner {
     this.world.timestep = this.fixedDt;
     if (this.world.integrationParameters) {
       this.world.integrationParameters.maxCcdSubsteps = 4;
-      this.world.integrationParameters.numSolverIterations = 12;
+      // Smooth Program (owner direction): 12 solver iterations ≈ doubled the cost of every
+      // Rapier step while a 2.5D game never stacks deep piles. 6 keeps tethers/contacts stable
+      // and is the largest single measured saving left in the step. A save written under a
+      // different count is refused by the native runtime contract and takes the designed
+      // scalar-rebuild path — that IS the migration; no envelope/schema bump required.
+      this.world.integrationParameters.numSolverIterations = 6;
       this.world.integrationParameters.normalizedPredictionDistance = 3.5;
       this.world.integrationParameters.contact_natural_frequency = 240;
     }
@@ -362,6 +367,62 @@ export class Sg02DynamicBodyOwner {
       const s = this._contactPointScratch;
       s.x = finite(point && point.x, s.x);
       s.z = finite(point && point.z, s.z);
+    };
+    // A contact island is physical narrow-phase state, not the subset of contacts loud
+    // enough to publish a gameplay impact receipt. Keep this callback owner-bound and reused.
+    this._contactMotionProbeFound = false;
+    this._contactMotionProbeCb = (manifold) => {
+      if (manifold.numSolverContacts() > 0) this._contactMotionProbeFound = true;
+    };
+    // Reuse the broad-phase visitor too; its current endpoint/collider live only for the
+    // synchronous contactPairsWith call below.
+    this._contactMotionPairsCb = (other) => {
+      const rec = this._contactMotionProbeRec;
+      const collider = this._contactMotionProbeCollider;
+      if (!rec || !other || other.isSensor()) return;
+      const target = this._colliderOwners.get(other.handle)?.rec;
+      if (target === rec) return;
+      if (target) {
+        let recTargets = rec._contactMotionProbeTargets;
+        if (!recTargets) recTargets = rec._contactMotionProbeTargets = new Set();
+        if (recTargets.has(target)) return;
+      }
+      this._contactMotionProbeFound = false;
+      this.world.contactPair(collider, other, this._contactMotionProbeCb);
+      if (!this._contactMotionProbeFound) return;
+      if (!target) {
+        // An unowned manifold endpoint may be a static world surface or an external dynamic
+        // body. Preserve the native response for this whole island until ownership is known.
+        const root = contactMotionRoot(rec);
+        root._contactMotionUnmeasured = true;
+        return;
+      }
+      let recTargets = rec._contactMotionProbeTargets;
+      if (!recTargets) recTargets = rec._contactMotionProbeTargets = new Set();
+      recTargets.add(target);
+      if (target.spec?.dynamic) {
+        if (target._contactMotionNodeTick !== this.tick) {
+          target._contactMotionNodeTick = this.tick;
+          target._contactMotionParent = target;
+          target._contactMotionRank = 0;
+          target._contactMotionAnchored = false;
+          target._contactMotionUnmeasured = target.entity?.isPlayer === true || this._contactMotionJointEndpoints.has(target)
+            || !Number.isFinite(target.expected?.vx) || !Number.isFinite(target.expected?.vz)
+            || !Number.isFinite(target.expected?.wy);
+          target._contactMotionMass = effectiveMass(target);
+          target._contactMotionInertia = positive(target.effectiveInertiaY, target.spec.inertiaY);
+          this._contactMotionNodes.push(target);
+        }
+        let targetTargets = target._contactMotionProbeTargets;
+        if (!targetTargets) targetTargets = target._contactMotionProbeTargets = new Set();
+        targetTargets.add(rec);
+        unionContactMotionNodes(rec, target);
+      } else {
+        const root = contactMotionRoot(rec);
+        root._contactMotionAnchored = true;
+        const recoil = target.entity?.physicsBody?.anchorRecoil;
+        if (recoil && recoil.settled !== true) root._contactMotionUnmeasured = true;
+      }
     };
     this._diagnostics = {
       schemaVersion: SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
@@ -959,6 +1020,8 @@ export class Sg02DynamicBodyOwner {
     const previousWorld = this.world, previousQueue = this._eventQueue;
     const previousFailures = this._pendingNativeRebuilds;
     const contactCallback = this._contactManifoldCb;
+    const contactMotionProbeCallback = this._contactMotionProbeCb;
+    const contactMotionPairsCallback = this._contactMotionPairsCb;
     // Native staging must not publish a partial set of sleeping mirrors either. Game entities
     // use ordinary data properties; refuse accessor/read-only destinations before writing any.
     for (const rec of candidate.records.values()) {
@@ -1001,6 +1064,8 @@ export class Sg02DynamicBodyOwner {
     }
     const descriptors = Object.getOwnPropertyDescriptors(candidate);
     descriptors._contactManifoldCb.value = contactCallback;
+    descriptors._contactMotionProbeCb.value = contactMotionProbeCallback;
+    descriptors._contactMotionPairsCb.value = contactMotionPairsCallback;
     for (const key of Object.keys(this)) if (!(key in descriptors)) delete this[key];
     Object.defineProperties(this, descriptors);
     ORCHARD_OWNER_CAPABILITIES.set(this,ORCHARD_OWNER_CAPABILITIES.get(candidate));
@@ -2171,6 +2236,7 @@ export class Sg02DynamicBodyOwner {
   _prepareContactMotionBudgets(receipts) {
     if (!receipts.length) return;
     const jointEndpoints = this._contactMotionJointEndpoints || (this._contactMotionJointEndpoints = new Set());
+    this._contactMotionJointEndpoints = jointEndpoints;
     const nodes = this._contactMotionNodes || (this._contactMotionNodes = []);
     jointEndpoints.clear();
     nodes.length = 0;
@@ -2215,6 +2281,37 @@ export class Sg02DynamicBodyOwner {
         root._contactMotionUnmeasured = true;
       }
     }
+    // Force-event receipts deliberately omit quiet support contacts. Walk the active manifold
+    // graph from receipt endpoints so a low-force edge to the player or a driven anchor keeps
+    // the entire physical island under its established native response policy.
+    const world = this.world;
+    if (world && typeof world.contactPairsWith === 'function' && typeof world.contactPair === 'function') {
+      for (let cursor = 0; cursor < nodes.length; cursor++) {
+        const rec = nodes[cursor];
+        let recTargets = rec._contactMotionProbeTargets;
+        if (!recTargets) recTargets = rec._contactMotionProbeTargets = new Set();
+        if (rec._contactMotionProbeTick !== this.tick) {
+          recTargets.clear();
+          rec._contactMotionProbeTick = this.tick;
+        }
+        const colliders = rec.colliders;
+        for (let i = 0; i < colliders.length; i++) {
+          const collider = colliders[i];
+          if (!collider || collider.isSensor()) continue;
+          this._contactMotionProbeRec = rec;
+          this._contactMotionProbeCollider = collider;
+          try {
+            world.contactPairsWith(collider, this._contactMotionPairsCb);
+          } finally {
+            this._contactMotionProbeRec = null;
+            this._contactMotionProbeCollider = null;
+          }
+        }
+      }
+    }
+    // Neighbor sets are scratch graph edges. Clear the record references immediately so
+    // removed bodies are never kept alive between contact ticks.
+    for (const rec of nodes) rec._contactMotionProbeTargets?.clear();
     for (const rec of nodes) {
       const root = contactMotionRoot(rec);
       if (root._contactMotionTotalsTick !== this.tick) {
