@@ -218,3 +218,35 @@ test('an unmarked scripted motor retains the forced contact path for independent
   assert.equal(result.activeTicks, 0);
   assert.ok(result.contacts > 0, 'this is a physical contact proof, unlike successful avoidance');
 });
+
+
+test('avoiding the earliest collision cannot deepen another predicted collision', () => {
+  for (const angle of [0, Math.PI / 4, Math.PI / 2]) for (const offset of [0, 12000]) {
+    const h = fixture();
+    // The primary overtaking ship intersects first. The rock also intersects the
+    // original route, so treating only previously clear neighbours as constraints
+    // would choose a positive-Z dodge that drives farther into this rock.
+    const blocker = body(8, 110, 23, 0, 0, { type: 'asteroid', radius: 10, data: {} });
+    h.state.entities.set(blocker.id, blocker); h.state.entityList.push(blocker);
+    const rotate = p => ({ x: p.x * Math.cos(angle) - p.z * Math.sin(angle),
+      z: p.x * Math.sin(angle) + p.z * Math.cos(angle) });
+    for (const entity of h.state.entityList) {
+      const p = rotate(entity.pos); entity.pos = { x: p.x + offset, z: p.z - offset };
+      entity.vel = rotate(entity.vel); entity.rot = angle;
+      if (entity.data.intent) entity.data.intent.aimAngle = angle;
+    }
+    const initial = rotate({ x: 50, z: 0 });
+    const primary = predictTrafficContact(h.ship, h.player, initial);
+    const secondary = predictTrafficContact(h.ship, blocker, initial);
+    assert.ok(primary && secondary && primary.time < secondary.time,
+      'both collisions must actually be forecast, with the ship first');
+    const before = structuredClone(h);
+    const result = plan(h);
+    assert.equal(result.active, true, 'the opposite side remains a physically clear option');
+    assert.equal(result.otherId, h.player.id);
+    assert.equal(predictTrafficContact(h.ship, h.player, result.velocity), null);
+    assert.equal(predictTrafficContact(h.ship, blocker, result.velocity), null,
+      'the second threat must also clear instead of absorbing a worse collision');
+    assert.deepEqual(h, before, 'planning still writes neither pose nor route intent');
+  }
+});

@@ -1,11 +1,13 @@
 // Swarm-only counterplay tuning. Timings are 60 Hz simulation ticks.
+// S7 — a dangerous ability needs its tell in front by at least 0.6 s (36 fixed ticks). The
+// specialist windups sit at exactly that floor; adventure doctrines keep their own beat.
 export const SWARM_SPECIALIST_TUNING = Object.freeze({
   warden: Object.freeze({ linkRange: 300, linkMaxEnergy: 92, redirectFraction: 0.4,
-    windupTicks: 30, activeTicks: 180, recoveryTicks: 90 }),
-  jackal: Object.freeze({ windupTicks: 30, activeTicks: 70, recoveryTicks: 45,
+    windupTicks: 36, activeTicks: 180, recoveryTicks: 90 }),
+  jackal: Object.freeze({ windupTicks: 36, activeTicks: 70, recoveryTicks: 45,
     salvoCount: 3, salvoSpacingTicks: 18, salvoSpacingWU: 34, mineCap: 3, cooldownTicks: 360,
     armDelayTicks: 90, lifetimeTicks: 720, triggerRadius: 52, blastDamage: 34, mineHull: 24 }),
-  anchor: Object.freeze({ windupTicks: 30, activeTicks: 180, recoveryTicks: 75,
+  anchor: Object.freeze({ windupTicks: 36, activeTicks: 180, recoveryTicks: 75,
     recoveryMaxTicks: 200, interruptDisplacement: 36, activeRadius: 220, activeStrength: 88 }),
 });
 

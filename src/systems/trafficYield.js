@@ -184,11 +184,12 @@ export function planCivilianTrafficYield(state, entity, raw, input, profile, aut
     const candidateSpeed = Math.hypot(candidate.x, candidate.z);
     const cap = Math.max(speed, nominalSpeed);
     if (candidateSpeed > cap) { candidate.x *= cap / candidateSpeed; candidate.z *= cap / candidateSpeed; }
-    // Never buy clearance from one ship by steering into a previously clear neighbour/rock.
+    // Never buy clearance from one ship by steering into a neighbour/rock, including
+    // a second predicted collision. An already unsafe path is not permission to deepen it.
     // This is a conservative circular preview, not a guarantee that finite thrust can avoid
     // every encounter. Native collision response remains intact for unavoidable contacts.
-    if (CONTACTS.some(other => other !== threat && missClearance(self, other, velocity) >= 0
-      && missClearance(self, other, candidate) < 0)) continue;
+    if (CONTACTS.some(other => other !== threat
+      && missClearance(self, other, candidate) < Math.min(0, missClearance(self, other, velocity)))) continue;
     const clearance = missClearance(self, threat, candidate);
     if (clearance > bestClearance + 1e-6) { chosen = candidate; bestClearance = clearance; }
     if (chosen && bestClearance >= 0) break;
