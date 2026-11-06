@@ -1358,18 +1358,19 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-row__name,
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-row__num { font-size:12px !important; line-height:1.1 !important; white-space:nowrap !important; }
 }
-/* 1280×720 short seat: another ~8px so handling clears Save Fit without raising stats into Hitch. */
+/* 1280×720 short seat: another ~8px so handling clears Save Fit without raising stats into Hitch.
+   Reviewer nudge: keep 2-up densify; pull the handling stack ~6px (Hitch already flush — cannot raise stats). */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:740px) {
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:20px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:18px !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability'], [data-band='identity']) .k-hero__n {
     font-size:12px !important;
   }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability'], [data-band='identity']) .k-hero__w {
     font-size:12px !important; letter-spacing:.08em !important;
   }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--handling { margin-bottom:0 !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bars { margin-bottom:0 !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar { line-height:1 !important; padding:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--handling { margin-top:-4px !important; margin-bottom:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bars { margin-top:-2px !important; margin-bottom:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar { line-height:1 !important; padding:0 !important; min-height:0 !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-bar { height:2px !important; }
 }
 
