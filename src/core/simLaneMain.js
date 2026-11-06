@@ -1655,7 +1655,10 @@ export function createSimLaneRuntime({
 
     // Same displayed-camera transport as the main-clock flush: only real
     // command batches carry it — a bare clock ack never forces one into being.
-    appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
+    // Unchanged frames are pure overhead (envelope build + worker apply + a
+    // commandAck row per post): the per-frame presentation flush picks the
+    // changed camera up within a frame anyway.
+    if (hasCameraChange) appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
     const ack = workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
