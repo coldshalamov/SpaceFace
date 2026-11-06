@@ -478,6 +478,99 @@ ${C} .gm-apron:has(.gm-deck:not([hidden])) { height:var(--gm-apron-h); }
   ${CD} .gm-search-container { grid-column:1 / -1 !important; grid-row:3 !important; width:100% !important; }
   ${CD} .gm-weather { grid-column:1 / -1 !important; grid-row:4 !important; justify-self:start; text-align:left; }
   ${CD} .gm-rail { grid-column:1 / -1 !important; grid-row:5 !important; }
+  /* Desktop English tab strip (~875px) was one nowrap row; wrap starts only at 761px, so on
+     narrow desktop Services/Discovery/History sat past the right edge with no pointer reach.
+     Mirror the ≥761 wrap here (phone sheet already wraps under mobileScreenLayouts). */
+  ${CD} .gm-tabs.k-words { display:flex !important; flex-wrap:wrap !important; align-items:end;
+    width:100% !important; max-width:100% !important; min-width:0 !important; gap:8px 12px !important;
+    grid-template-columns:none !important; }
+  ${CD} .gm-tab.k-word { flex:0 0 auto !important; }
+}
+
+/* Compact/narrow hang: navigationStyles lays lenses as a wrapping row, but the orrery word
+   rule keeps each lens at width:100%, so the band stacks ten full-width rows (~500px) inside a
+   22%/40% max-height scroller — Faction/Hazard fall past the fold and Engage mashes the foot.
+   Auto-width chips restore the intended wrap. */
+${C}[data-layout="compact"] .gm-layer-btn.k-word,
+${C}[data-layout="narrow"] .gm-layer-btn.k-word {
+  width:auto !important; max-width:100% !important; flex:0 0 auto !important;
+  padding-right:10px !important;
+}
+${C}[data-layout="compact"] .gm-layer-buttons,
+${C}[data-layout="narrow"] .gm-layer-buttons,
+${C}[data-layout="compact"] .gm-layer-bank,
+${C}[data-layout="narrow"] .gm-layer-bank {
+  flex-direction:row !important; flex-wrap:wrap !important; align-items:baseline !important;
+  gap:2px 10px !important;
+}
+
+/* SHORT DENSIFY (ui-polish-364): below ~820 of height the narrow hang's 22% bound collapses to
+   ~20px (scrollH 521 into clientH 20) and the compact hang's 40% still hides the last lenses
+   under the foot. Raise a scroll-bound floor, densify the stacked head, and let the frame
+   scroll so Engage Route clears the nav tape. */
+/* SHORT + NARROW desktop: mirror the phone sheet's stack-and-scroll. A 461-tall narrow
+   window cannot keep hang + absolute map + inspector + foot in one fold without mash; the page
+   owns the scroll, the map is a sized band (not inset:0), and the inspector runs its full
+   length so tabs and ENGAGE ROUTE stay on-page instead of clipped inside a 30% pane. */
+@media (max-height: 819px) and (max-width: 760px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="narrow"] {
+    overflow-y:auto !important; overflow-x:hidden !important;
+    grid-template-rows:repeat(3, max-content) !important; align-content:start !important;
+    background-attachment:local !important;
+  }
+  ${CD} .gm-head { row-gap:4px !important; }
+  ${CD} .gm-search-input.k-input { min-height:30px !important; padding-bottom:6px !important; }
+  ${CD} .gm-weather { margin:0 !important; }
+  ${CD} .gm-body-container {
+    grid-template-rows:repeat(3, max-content) !important; row-gap:8px !important;
+    overflow:visible !important; min-height:0 !important;
+  }
+  ${CD} .gm-left-rail {
+    position:relative; z-index:1;
+    max-height:max(64px, 20vh) !important; overflow-x:hidden !important; overflow-y:auto !important;
+    -webkit-mask-image:none !important; mask-image:none !important;
+  }
+  ${CD} .gm-viewport {
+    position:relative !important; inset:auto !important; z-index:0 !important;
+    grid-area:stage; height:clamp(160px, 36vh, 280px); width:auto !important;
+  }
+  ${CD} .gm-right-inspector {
+    position:relative; z-index:1;
+    max-height:none !important; overflow:visible !important;
+  }
+  ${CD} .gm-apron { max-height:none !important; position:relative; z-index:2; }
+  ${CD} .gm-navfoot { position:relative; z-index:2; }
+  ${CD} .gm-tab.k-word { padding:2px 0 8px !important; letter-spacing:.08em !important; }
+  ${CD} .gm-ins-plate { --gm-plate:64px; padding:2px 0 6px 4px; }
+  ${CD} .gm-frame-group { flex-wrap:wrap !important; }
+  ${CD} .gm-frame-group .gm-frame-btn {
+    max-width:100% !important; white-space:normal !important; text-align:left !important; line-height:1.25 !important;
+  }
+}
+
+@media (max-height: 640px) and (min-width: 761px) and (max-width: 1179px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="compact"] {
+    overflow-y:auto !important; overflow-x:hidden !important;
+  }
+  ${C}[data-layout="compact"] .gm-left-rail {
+    max-height:max(72px, 24vh) !important; overflow-x:hidden !important; overflow-y:auto !important;
+    -webkit-mask-image:none !important; mask-image:none !important;
+  }
+  ${C}[data-layout="compact"] .gm-layer-btn.k-word { min-height:24px !important; }
+  ${C}[data-layout="compact"] .gm-apron { position:relative; z-index:3; }
+  ${C}[data-layout="compact"] .gm-navfoot { position:relative; z-index:3; }
+  /* Engage Route's lamp key hung ~14–16px into the foot tape at 801×461. Keep the inspector
+     a height-bound scroller so the key stays inside the column above the apron. */
+  ${C}[data-layout="compact"] .gm-body-container { min-height:0 !important; overflow:hidden !important; }
+  ${C}[data-layout="compact"] .gm-right-inspector {
+    max-height:100% !important; min-height:0 !important;
+    overflow-x:hidden !important; overflow-y:auto !important;
+    padding-bottom:0 !important;
+  }
+  ${C}[data-layout="compact"] .gm-inspector-actions { margin:0 !important; padding-bottom:2px !important; flex-shrink:0; }
+  ${C}[data-layout="compact"] #gm-engage-route-btn.orr-lampkey { margin-top:0 !important; margin-bottom:0 !important; }
+  ${C}[data-layout="compact"] .gm-tabs.k-words { gap:6px 10px !important; }
+  ${C}[data-layout="compact"] .gm-tab.k-word { padding:1px 0 7px !important; }
 }
 
 /* the two ways back keep their whole words above phone width: a second row, never a clipped ZOOM
