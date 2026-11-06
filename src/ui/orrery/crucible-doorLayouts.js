@@ -112,6 +112,38 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
   ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:34px !important; padding:6px 0 8px !important; }
   ${D} .sf-crd-zone { margin:4px 0 0 !important; }
 }
+/* Short densify (960×540 / 801×461): the stake purse sat 7px under the stage fold (cutBy 7 at
+   960×540) and pressure/yield painted through Training / Quick play; at ≤800 wide the four mode
+   faces wrapped to a second row and Foundry Block / Daily clipped mid-glyph. One denser band keeps
+   Mode on a single row and trims Stake to legend + purse so both clear the fold on first paint. */
+@media (max-height:560px) {
+  ${D} .orr-prep-settings.orr-prep-settings { gap:8px !important; }
+  ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)) !important; }
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:48px !important; padding:4px 4px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { height:22px !important; }
+  ${D} .sf-crd-modes .fh-tile-art svg { width:22px !important; height:22px !important; }
+  ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important; }
+  ${D} .sf-crd-mode-sub { display:none !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; padding:4px 2px 6px !important; }
+  ${D} .orr-prep-stake-number { font-size:17px !important; line-height:1.05 !important; }
+  ${D} .orr-prep-stake-pressure, ${D} .orr-prep-stake-yield { display:none !important; }
+  ${D} .sf-crd-stake-sub { display:none !important; }
+  ${D} .orr-prep-daily { display:none !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:4px !important; font-size:12px !important; }
+  ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:28px !important; padding:4px 0 6px !important; }
+  ${D} .sf-crd-zone { margin:2px 0 0 !important; font-size:12px !important; }
+  ${D} .sf-crd-stakes .fh-tile-legend { white-space:normal !important; overflow:visible !important;
+    text-overflow:clip !important; font-size:12px !important; letter-spacing:.06em !important;
+    font-variation-settings:'wdth' 92 !important; line-height:1.15 !important; }
+}
+@media (max-height:500px) {
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:40px !important; padding:2px 2px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { height:18px !important; }
+  ${D} .sf-crd-modes .fh-tile-art svg { width:18px !important; height:18px !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:40px !important; padding:2px 2px 4px !important; }
+  ${D} .orr-prep-stake-number { font-size:16px !important; }
+  ${D} .orr-prep-settings.orr-prep-settings { gap:6px !important; }
+}
 /* --- the arena strip reads by its words --------------------------------------------------- */
 ${D} .sf-crd-arenas .fh-tile-art img { width:100% !important; height:44px !important; object-fit:cover !important;
   opacity:.7 !important; filter:saturate(.8) !important; transition:opacity .18s linear, filter .18s linear; }
@@ -144,6 +176,14 @@ ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(${BONE} / .3
 @media (max-height:820px) {
   ${D} .orr-prep-brief { border-top:0 !important; padding-top:8px !important; }
   ${D} .orr-door-hero__words { bottom:150px !important; }
+}
+/* Short densify hero: the 150px climb pushed the arena sentence above the short hero crop
+   ("machinery…" cut mid-glyph at 801×461). Drop the words into the visible frame. */
+@media (max-height:560px) {
+  ${D} .orr-door-hero__words { bottom:100px !important; }
+}
+@media (max-height:500px) {
+  ${D} .orr-door-hero__words { bottom:110px !important; }
 }
 /* reduced motion: the one transition this sheet adds follows the game's own setting */
 html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !important; }
