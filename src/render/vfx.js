@@ -166,6 +166,12 @@ import {
 } from './vfx/mineStrikeRead.js';
 // The strike scrape's fixed scatter fan (radians off the contact bearing).
 const MINE_STRIKE_SCATTER_FAN = Object.freeze([-0.45, 0.1, 0.6]);
+import {
+  isWreckResolveMoment,
+  wreckResolvePlan,
+  WRECK_PING_WINDOW_S,
+  WRECK_RESOLVE_PRIORITY,
+} from './vfx/wreckResolveRead.js';
 import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
@@ -2995,6 +3001,9 @@ export const vfx = {
     // scrape keyed to the throw's speed and custody, and a field-turned mine's claim beat.
     add('mines:struck', (p) => this._onMineStruck(p));
     add('mines:turned', (p) => this._onMineTurned(p));
+    // inf-wreck-resolve-read: the first pulse that resolves a derelict lands at the hull —
+    // a landing beat plus the quiet marker lamp that holds for the ping window.
+    add('scan:wreckResolved', (p) => this._onWreckResolved(p));
     // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
     // small surface read — the wave becomes a sequence of responses, nearest first.
     add('combat:shockwavePass', (p) => this._onShockwavePass(p));
@@ -10274,6 +10283,33 @@ export const vfx = {
       plan.claim.size1, plan.claim.op0, 0.0, plan.claim.color, 0, 0, 1, null, MINE_STRIKE_PRIORITY);
     this._eventLight({ x: pos.x, z: pos.z }, 'impact',
       { color: plan.claim.color, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-wreck-resolve-read: the first pulse that resolves a derelict lands at the hull.
+  // The landing beat is the pulse arriving (ring out from the contact, white-hot core); the
+  // marker lamp is the ANSWER — the resolved wreck stays quietly lit for the scanner's ping
+  // window, so the hull you identified stays findable in a field of anonymous hulks. The
+  // lamp is the utility: reduced motion keeps it steady and only halves the landing beat.
+  _onWreckResolved(p) {
+    if (!isWreckResolveMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const reduced = this._isReduced();
+    const plan = wreckResolvePlan(WRECK_PING_WINDOW_S, reduced);
+    this._spawnSprite(SPR_RING, pos.x, 0.4, pos.z, plan.landing.ring.life, plan.landing.ring.size0,
+      plan.landing.ring.size1, plan.landing.ring.op0, 0.0, plan.landing.ring.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.landing.core.life, plan.landing.core.size0,
+      plan.landing.core.size1, plan.landing.core.op0, 0.0, plan.landing.core.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    // The marker lamp outlives the beat many times over — one quiet soft body per resolved
+    // wreck. It rides the puff family, never a flash: the S8 law caps every flash at 0.2 s,
+    // and a lamp is not a flash. All sprites retire on sector change, so the lamp can never
+    // haunt the next sector.
+    this._spawnSprite(SPR_PUFF, pos.x, 0.6, pos.z, plan.marker.life, plan.marker.size0,
+      plan.marker.size1, plan.marker.op0, 0.0, plan.marker.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: plan.marker.color, peak: plan.light.peak, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
