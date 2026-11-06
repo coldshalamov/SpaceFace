@@ -47,6 +47,7 @@ import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/mass
 import { announceStrokeGrade } from './stuntCallout.js';
 import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -1357,7 +1358,9 @@ export const masslineHud = {
     // visually identical and halves that layout flush. Hidden-to-shown transitions still
     // land within one extra frame.
     this._strainFlip = !this._strainFlip;
-    if (this._strainFlip || !this._lineStrainReadout?.root || this._lineStrainReadout.root.hidden) {
+    const swarm = isSwarmGlass(state);
+    if (swarm) this._lineStrainReadout?.hide();
+    else if (this._strainFlip || !this._lineStrainReadout?.root || this._lineStrainReadout.root.hidden) {
       this._lineStrainReadout?.update(state, player, w2s);
     }
     let obstacles = EMPTY_FLIGHT_OBSTACLES;
@@ -1380,12 +1383,27 @@ export const masslineHud = {
     this._updateThrowMark(dom, ml2.throw, state, w2s);
     this._updateSelfMark(dom, ml2.throw, state, w2s);
     this._updateThreatMark(dom, state, w2s);
-    this._updateSnagMark(dom, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateOrbitRing(dom, player, state, w2s);
     this._updateDrawInk(dom, state, w2s);
-    this._updateMeters(dom, ml2, state);
-    this._updateCadenceReadout(state);
+    // Swarm glass (design/program/finish/swarm S2 task 3): the massline's physical marks stay —
+    // they are how the round is aimed and thrown — but its Adventure telemetry words do not draw.
+    if (swarm) this._hideSwarmJargon(dom);
+    else {
+      this._updateSnagMark(dom, state, w2s);
+      this._updateMeters(dom, ml2, state);
+      this._updateCadenceReadout(state);
+    }
+  },
+
+  _hideSwarmJargon(dom) {
+    setStyle(dom.snagMark, 'display', 'none');
+    setStyle(dom.btPill, 'display', 'none');
+    setStyle(dom.ckPill, 'display', 'none');
+    if (dom.strainPill) setStyle(dom.strainPill, 'display', 'none');
+    if (dom.ridePill) setStyle(dom.ridePill, 'display', 'none');
+    this._lineStrainReadout?.hide();
+    this._cadenceReadout?.hide();
   },
 
   // The pre-latch answer to "what will the Massline grab?" (PHYSICAL_PLAY_GRAMMAR §7.1, rule 2).

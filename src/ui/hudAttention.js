@@ -6,6 +6,7 @@ import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
+import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
 
 export const RECEIPT_MAX = 2;
 export const VITAL_NUMERIC_LOW = 0.5;
@@ -62,6 +63,20 @@ export function admitReceipt({
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
+  // Swarm glass (design/program/finish/swarm S2): a live Swarm round admits only fight
+  // sources — chatter, news, codex, discovery, target cards and massline telemetry never
+  // draw. Errors stay admitted (actionable failures like a denied purchase); boss-channel
+  // receipts read as 'boss'; stunt receipts must also be a readable plain callout.
+  if (isSwarmGlass(state)) {
+    const k0 = String(kind || 'info');
+    const source = channel === 'capitalBoss' ? 'boss' : (channel || k0);
+    if (k0 === 'stunt') {
+      // Stunt receipts are a fight source gated by the callout's readability instead.
+      if (!swarmCalloutText(line)) return { admit: false, reason: 'swarm-glass' };
+    } else if (!swarmGlassAdmits(state, { source }) && k0 !== 'error') {
+      return { admit: false, reason: 'swarm-glass' };
+    }
+  }
   if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {

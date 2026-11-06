@@ -45,6 +45,7 @@ import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { isSwarmGlass } from '../ui/swarmGlass.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -7168,6 +7169,10 @@ export const audio = {
 
   _onBarkVoice(payload) {
     if (!payload) return;
+    // Swarm glass (design/program/finish/swarm S2): a live Swarm round mutes NPC radio barks.
+    // Boss voice does not ride this channel (its callouts are the juice/name-card lanes), and
+    // the mechanic keeps shop speech — his lines are purchase feedback, not chatter.
+    if (isSwarmGlass(this.state) && !(payload.mechanic || payload.kind === 'mechanic')) return;
     const rt0 = this.rt;
     const sectorId = (this.state && this.state.world && this.state.world.currentSectorId) || '';
     const combat = rt0 && (rt0.musicState === 'combat' || (rt0._encounterArc && rt0._encounterArc.inCombat));

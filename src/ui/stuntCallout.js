@@ -35,6 +35,7 @@ import { injectOrrery } from './orrery/tokens.js';
 import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { isSwarmGlass, swarmCalloutText } from './swarmGlass.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -925,6 +926,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     // Silent seams: the event itself had no subscriber that a pilot could see or hear.
     const speak = (line) => {
       if (!line) return;
+      // Swarm glass (design/program/finish/swarm S2 task 3): a live Swarm round draws a
+      // moment only when it reads as a plain ≤3-word callout — LOG registers, snag/ride/
+      // strain telemetry and mass figures never reach the lane.
+      if (isSwarmGlass(state) && !swarmCalloutText(line.name)) return;
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;
