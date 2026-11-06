@@ -14,7 +14,7 @@
 import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
-import { swarmDoctrineStamp } from '../data/swarmMode.js';
+import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
 import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
@@ -284,6 +284,7 @@ export function materializeWaveBatch(ctx, request) {
   const spawnedIds = [];
   const reserved = [];
   let ingressPose = null;
+  let arrival = null;
   let deferred = 0;
   // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
   // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
@@ -293,7 +294,10 @@ export function materializeWaveBatch(ctx, request) {
   let clumpZ = 0;
   if (clumped) {
     const clumpAngle = baseAngle + (rng() - 0.5) * GATE_SPREAD_RAD;
-    const clumpDist = distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER);
+    // E4: the whole clump — centre plus the pack's own radius — stays outside the
+    // 1.3-screen materialisation line. Depth jitter slides along the bearing, never under it.
+    const clumpDist = Math.max(SWARM_MIN_ARRIVAL_WU + SWARM_CLUMP_RADIUS_WU,
+      distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER));
     clumpX = anchor.x + Math.cos(clumpAngle) * clumpDist;
     clumpZ = anchor.z + Math.sin(clumpAngle) * clumpDist;
   }
@@ -309,7 +313,10 @@ export function materializeWaveBatch(ctx, request) {
         // formation, not a stack of coincident hulls at one point.
         const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
         const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
-        const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
+        // E4: a lone swarm body (or a scored fan) never materialises inside the line either —
+        // the jitter swings around the ring, never under it.
+        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU : 0,
+          distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER));
         pos = {
           x: anchor.x + Math.cos(angle) * radius,
           z: anchor.z + Math.sin(angle) * radius,
@@ -323,7 +330,15 @@ export function materializeWaveBatch(ctx, request) {
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
           { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
             clusterRadius: SWARM_CLUMP_RADIUS_WU });
-        if (!open) { deferred++; continue; }
+        // E4: the blocked-arrival search may legally settle closer than the materialisation
+        // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
+        // spot outside the line defers — the batch retries next window, it does not pop in.
+        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
+        if (!open || (player && player.pos
+          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
+          deferred++;
+          continue;
+        }
         spec.pos = open;
       }
       spec.data = spec.data || {};
@@ -433,6 +448,11 @@ export function materializeWaveBatch(ctx, request) {
         continue;
       }
       if (fortifiedIngress && !ingressPose) ingressPose = { ...spec.data.swarmIngressPose };
+      // E4: the group's true entry point, for the gate flare and the arrival receipt —
+      // the clump centre when the pack is throw-shaped, else the first hull's own spot.
+      if (req.swarm === true && !arrival) {
+        arrival = clumped ? { x: clumpX, z: clumpZ } : { x: spec.pos.x, z: spec.pos.z };
+      }
       spawnedIds.push(id);
       reserved.push(spec);
     }
@@ -449,6 +469,7 @@ export function materializeWaveBatch(ctx, request) {
     admitted: spawnedIds.length,
     spawnedIds,
     rejected: requested - spawnedIds.length,
+    ...(req.swarm === true && arrival ? { arrival, gateGroup: ingressGroup } : {}),
     ...(fortifiedIngress ? {
       gateGroup: ingressGroup,
       sourceGateGroup: req.gateGroup,

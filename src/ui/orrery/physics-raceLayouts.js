@@ -287,11 +287,12 @@ ${R} .pv-tools > button:is(:hover, :focus-visible)::after { color:rgb(255 253 24
   }
   ${R} .pv-lane__head { margin:0 0 6px !important; padding-bottom:6px !important; }
   ${R} .pv-lane__scroll {
-    scroll-padding-bottom:18px;
+    /* The final rung must scroll above the 28px fade, including its focus outline. */
+    scroll-padding-bottom:32px;
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important;
     mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important;
   }
-  ${R} .pv-lane .k-rows { padding-bottom:18px !important; }
+  ${R} .pv-lane .k-rows { padding-bottom:32px !important; }
   ${R} .pv-lane .k-row { margin-bottom:4px !important; padding-top:6px !important; padding-bottom:6px !important; }
   ${R} > .pv-foot { margin-top:4px !important; padding-top:10px !important; }
 }
