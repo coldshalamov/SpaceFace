@@ -93,6 +93,10 @@ const PRESETS = {
   tellMark: { color: '#ffd9a0', peak: 2.6, decay: 9, distance: 140, priority: 0.5 },
   tellMarkCalm: { color: '#ffd9a0', peak: 1.4, decay: 9, distance: 140, priority: 0.5 },
   tellLink: { color: '#ffd9a0', peak: 1.8, decay: 10, distance: 110, priority: 0.45 },
+  // tell/mayday — a survivor pod's beacon shouting its first full-power burst at ejection.
+  // Colour is the lamp's warning red (survivorPodVisual.js); the row owns a slow fade so the
+  // eye keeps the light after the retro flash dies.
+  tellMayday: { color: '#ff4a3c', peak: 3.4, decay: 5, distance: 210, priority: 0.55 },
 
   // Law/heat flip accent — colour stays on LAW_HEAT_COLORS at the call site; the calm severity
   // is the reduced-motion form (lower peak, slower snap).

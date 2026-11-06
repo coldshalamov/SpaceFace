@@ -37,6 +37,7 @@ import {
   heatSeekerProfileFor,
 } from '../data/massSignature.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 // ── EXP-25 dials ───────────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,11 @@ export const massSignature = {
   update(dt, state) {
     const sig = ensureSignatureState(state);
     const now = Number(state.simTime) || 0;
-    const step = Number(dt) > 0 ? Number(dt) : 1 / 60;
+    // Sensor reads are dwell-timed over seconds: 30 Hz with the accumulated step is exact
+    // for dwell/quiet accumulators and halves the per-body classification scan.
+    const stepDt = strideDt(this, 'sweep', Number(dt) > 0 ? Number(dt) : 1 / 60, 2, state);
+    if (stepDt <= 0) return;
+    const step = stepDt;
     const entities = entityListOf(state);
     const playerId = state.playerId;
 

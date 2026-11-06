@@ -2589,7 +2589,7 @@ export function resultRows(result) {
       ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
       : []),
     ['Score', String(result.score || 0)],
-    ['Salvage', `${result.credits || 0} cr`],
+    ['Run purse', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
     ['Seed', String(result.seed || 0)],
     // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:
@@ -2789,11 +2789,11 @@ export function buildLead(picks) {
 
 /**
  * Who, with what, from which side, through which layer — plus, when the run recorded one, the
- * telegraph the player missed with its warning time. Empty when no defeat receipt was published
+ * recorded tell or earlier damage with its timing. Empty when no defeat receipt was published
  * — which happens on a victory, on an abandoned run, AND on a defeat that carries no receipt
  * (`run:ended` defaults its outcome to 'defeat' whether or not anything killed the player).
  */
-export function killChainRows(defeat) {
+export function killChainRows(defeat, death = null) {
   if (!defeat) return [];
   const killer = defeat.attacker
     ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
@@ -2805,15 +2805,23 @@ export function killChainRows(defeat) {
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
-  // PQ-174.06: the telegraph as two lines beside the cause — the frontend direction sheet's
-  // "the cause of death and its telegraph as two lines". A receipt that predates the field
-  // renders exactly as before.
-  if (defeat.telegraphName && !(defeat.source && defeat.source.kind === 'environment')) {
-    const lead = Number.isFinite(Number(defeat.telegraphLeadMs))
-      ? ` — ${Math.max(0, Math.round(Number(defeat.telegraphLeadMs)))}ms before impact` : '';
-    rows.push(['It warned you', `${defeat.telegraphName}${lead}`]);
-  }
+  const leadIn = deathLeadInRow(defeat, death);
+  if (leadIn) rows.push(leadIn);
   return rows;
+}
+
+// Damage history is not an attack windup. The result's provenance outranks a richer old
+// defeat receipt; missing provenance stays neutral rather than borrowing its tell claim.
+function deathLeadInRow(receipt, death = null) {
+  const record = death ? { ...receipt, ...death, telegraphSource: death.telegraphSource } : receipt;
+  if (!record || record.source?.kind === 'environment'
+    || typeof record.telegraphName !== 'string' || !record.telegraphName) return null;
+  const label = record.telegraphSource === 'witnessed' ? 'Recorded tell'
+    : record.telegraphSource === 'incoming-fire' ? 'Earlier damage' : 'Recorded event';
+  const ms = record.telegraphLeadMs;
+  const lead = typeof ms === 'number' && Number.isFinite(ms)
+    ? ` — ${Math.max(0, Math.round(ms))} ms before the fatal hit` : '';
+  return [label, `${record.telegraphName}${lead}`];
 }
 
 /**
@@ -2973,13 +2981,8 @@ export function storySentences(result) {
     // at what the headline cannot say: the tell. causeText earns a line only without a receipt --
     // the trail-only "... fire took you apart" sentence, which the headline does not carry.
     if (!attacker && typeof death.causeText === 'string' && death.causeText) say(death.causeText);
-    if (typeof death.telegraphName === 'string' && death.telegraphName) {
-      const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? Number(death.telegraphLeadMs) : 0;
-      const tell = lowerFirstWord(death.telegraphName);
-      say(attacker
-        ? `${attacker}'s tell was ${tell} — ${lead} ms of warning.`
-        : `The tell was ${tell} — ${lead} ms of warning.`);
-    }
+    const leadIn = deathLeadInRow(result.defeat, death);
+    if (leadIn) say(`${leadIn[0]}: ${leadIn[1]}`);
     if (typeof death.counterplay === 'string' && death.counterplay) say(death.counterplay);
   }
   const moments = Array.isArray(result.moments) ? result.moments : [];
@@ -3001,12 +3004,6 @@ function sentence(text) {
   const line = String(text == null ? '' : text).trim();
   if (!line) return '';
   return /[.!?…:]$/.test(line) ? line : `${line}.`;
-}
-
-/** "Weapon charge" reads mid-sentence as "weapon charge"; "EMP burst" keeps its capitals. */
-function lowerFirstWord(text) {
-  const words = String(text || '').trim();
-  return /^[A-Z][a-z]/.test(words) ? words[0].toLowerCase() + words.slice(1) : words;
 }
 
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
@@ -3266,10 +3263,10 @@ function renderBestLineReview(line, hooks = {}) {
   return review;
 }
 
-function renderKillChain(band, defeat) {
+function renderKillChain(band, defeat, death = null) {
   // Threat colour on the two rows that name the enemy. The label beside each is the channel that
   // survives forced-colors and colour blindness; the tint is never the only one.
-  const chain = pairRows(killChainRows(defeat), 'sf-crres__chain',
+  const chain = pairRows(killChainRows(defeat, death), 'sf-crres__chain',
     (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
   band.appendChild(chain);
 
@@ -3701,7 +3698,7 @@ export const crucibleResultsScreen = {
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
       if (id === 'story') renderStory(band, result);
-      else if (id === 'kill_chain') renderKillChain(band, result.defeat);
+      else if (id === 'kill_chain') renderKillChain(band, result.defeat, result.death);
       else if (id === 'last_seconds') renderLastSeconds(band, result.damageTrail);
       else if (id === 'ledger') renderLedger(band, result);
       else if (id === 'build') renderBuild(band, result);
@@ -4037,6 +4034,9 @@ export function resultCelebration(result) {
     lines.push(banked > 0
       ? `${banked} cr banked into the hangar — the bounty now stands at ${chest} cr.`
       : `The hangar bounty stands at ${chest} cr.`);
+    if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
+      lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
+    }
   }
   const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
   for (const row of unlocks) {
@@ -4117,7 +4117,7 @@ function resultFigures(result) {
     ['Wave', String(reached || 0)],
     ['Kills', String(result.kills || 0)],
     swarm ? ['Best kill chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
-    ['Salvage', `${result.credits || 0}`],
+    ['Run purse', `${result.credits || 0}`],
   ];
   const box = el('div', 'orr-crres-figures');
   for (const [word, value] of figures) {
@@ -4142,13 +4142,9 @@ export function deathDialSpec(result, ctx) {
   const vitals = defeat.vitalsPct && typeof defeat.vitalsPct === 'object' ? defeat.vitalsPct : {};
   const trail = Array.isArray(result.damageTrail) ? result.damageTrail : [];
   const breakdown = damageBreakdown(trail);
-  const rows = new Map(killChainRows(defeat));
   const death = result.death && typeof result.death === 'object' ? result.death : null;
-  let warn = rows.get('It warned you') || '';
-  if (!warn && death && typeof death.telegraphName === 'string' && death.telegraphName) {
-    const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? ` — ${Math.round(Number(death.telegraphLeadMs))} ms before impact` : '';
-    warn = `${death.telegraphName}${lead}`;
-  }
+  const rows = new Map(killChainRows(defeat, death));
+  const leadIn = deathLeadInRow(defeat, death);
   const player = ctx && ctx.state && ctx.state.player;
   const ships = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
   const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
@@ -4168,7 +4164,7 @@ export function deathDialSpec(result, ctx) {
       label: 'Killed by',
       name: rows.get('Killed by') || 'Unidentified attacker',
       detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
-      warn: warn ? `It warned you: ${warn}` : '',
+      warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
     },
   };
 }

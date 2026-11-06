@@ -173,6 +173,11 @@ function isLiveFirstFlightEffect(object) {
   if (data.precompileStaging === true) return false;
   if (data.continuousPlume === true) return true;
   if (name === 'sf-liquid-plasma-root') return true;
+  // Tether/Massline and held-power overlays are built hidden at init; their programs first linked on
+  // the first TETHER / POWER key press mid-flight. Same meshes, so program keys match by construction.
+  if (name === 'sf-tether-core' || name === 'sf-tether-halo' || name === 'sf-tether-ferrules'
+    || name === 'sf-massline-swing-trace' || name === 'sf-massline-latch-rim'
+    || name === 'sf-massline-chain-readout' || name === 'sf-power-preview-root') return true;
   if (name === 'sf-retro-volume-root' || name.startsWith('sf-retro-volume')) return true;
   // PlayerRetroJets (the bow retro pair) roots as `sf-retro-jets-root`. The name test above missed it,
   // so its two ShaderMaterial programs first linked mid-flight (swarm GPU brick, 2026-09-13).

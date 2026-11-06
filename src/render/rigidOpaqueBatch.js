@@ -692,7 +692,7 @@ function buildCandidate(scene, plan, options) {
 }
 
 function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
-  materialUniformStability = null, noteCheck = null) {
+  materialUniformStability = null, noteCheck = null, shadowDepthDisabled = false) {
   const check = (name, ok) => { if (!ok && noteCheck) noteCheck(name); return ok; };
   const source = entry.source;
   const material = source && source.material;
@@ -731,8 +731,8 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && check('after-render-swap', !material || material.onAfterRender === entry.materialOnAfterRender)
     && check('render-order', source.renderOrder === entry.renderOrder)
     && check('layer-mask', source.layers && source.layers.mask === (directSuppressed ? 0 : entry.layersMask))
-    && check('cast-shadow', source.castShadow === entry.castShadow)
-    && check('receive-shadow', source.receiveShadow === entry.receiveShadow)
+    && check('cast-shadow', shadowDepthDisabled || source.castShadow === entry.castShadow)
+    && check('receive-shadow', shadowDepthDisabled || source.receiveShadow === entry.receiveShadow)
     && check('custom-depth', source.customDepthMaterial == null)
     && check('custom-distance', source.customDistanceMaterial == null)
     && check('morph-influences', source.morphTargetInfluences == null)
@@ -800,6 +800,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   // flips have gone quiet for a short window so the sweep collapses into one recommit.
   const RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET = 45;
   const shadowFlipMemory = new WeakMap();
+  let shadowDepthDisabled = false;
   let syncSerial = 0;
   let lastShadowFlipSync = Number.NEGATIVE_INFINITY;
   const noteShadowFlip = (source) => {
@@ -821,7 +822,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const isRenderHookSafe = (source) => {
     try {
       return !mutableMaterials.has(source?.material)
-        && shadowLaneQuiet(source)
+        && (shadowDepthDisabled || shadowLaneQuiet(source))
         && (!selectSource || selectSource(source) === true)
         && (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
           (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
@@ -1157,7 +1158,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     const shadowChangedOwners = new Map();
     for (const entry of active.entries) {
       const source = entry.source;
-      const changedPolicy = source?.castShadow !== entry.castShadow
+      const changedPolicy = shadowDepthDisabled ? null : source?.castShadow !== entry.castShadow
         ? 'cast-shadow'
         : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
       if (!changedPolicy) continue;
@@ -1178,7 +1179,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
       if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
-        materialUniformStability, noteUnstableCheck(entry))) return false;
+        materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled)) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -1224,7 +1225,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     materialProgramKey: (material, source) => options.isAshlineFactorSource?.(source) === true
       ? (ashlineFactorMaterialKey(material, source) || rigidOpaqueMaterialProgramKey(material))
       : rigidOpaqueMaterialProgramKey(material),
-    shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
+    shadowLane: (source) => shadowDepthDisabled ? 'nocast|noreceive'
+      : `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
   });
 
   const request = (roots, requestOptions = {}) => {
@@ -1500,7 +1502,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         const shadowChangedOwners = new Map();
         for (const entry of candidate.entries) {
           const source = entry.source;
-          const changedPolicy = source?.castShadow !== entry.castShadow
+          const changedPolicy = shadowDepthDisabled ? null : source?.castShadow !== entry.castShadow
             ? 'cast-shadow'
             : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
           if (!changedPolicy) continue;
@@ -1544,7 +1546,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         const materialUniformStability = new Map();
         if (!topologyStable
             || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
-              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry)))) {
+              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled))) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
@@ -1627,6 +1629,14 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   return {
     sync: request,
     request,
+    setShadowDepthDisabled(disabled) {
+      const next = disabled === true;
+      if (next === shadowDepthDisabled) return false;
+      // Restore sources and cancel asynchronous work before changing lane semantics.
+      this.rollback('shadow-depth-mode-changed');
+      shadowDepthDisabled = next;
+      return true;
+    },
     retireUnusableActiveResources() {
       if (!active || active.batches.every(hasLiveBatchDataTextures)) return false;
       stats.lastDetail = 'disposed-batch-resources';

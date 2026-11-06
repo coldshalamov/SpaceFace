@@ -1291,11 +1291,37 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.fillStyle = 'rgba(255,84,112,0.03)';
   g.strokeStyle = outside ? 'rgba(255,205,95,0.68)' : 'rgba(255,84,112,0.58)';
   g.lineWidth = outside ? 1.25 : 1;
-  g.setLineDash(outside ? [7, 4] : [4, 5]);
-  g.beginPath();
-  g.arc(x, y, zoneRadius, 0, Math.PI * 2);
-  g.fill();
-  g.stroke();
+  const dash = outside ? [7, 4] : [4, 5];
+  const toDial = Math.hypot(center - x, center - y);
+  if (toDial + radius < zoneRadius - 2) {
+    // Dial wholly inside the zone: no ring visible, just the tint.
+    g.fillRect(center - radius, center - radius, radius * 2, radius * 2);
+  } else {
+    g.beginPath();
+    g.arc(x, y, zoneRadius, 0, Math.PI * 2);
+    g.fill();
+    // Dashing a huge circle is expensive; stroke only the arc that can reach the dial.
+    let a0 = 0;
+    let a1 = Math.PI * 2;
+    let offset = 0;
+    if (zoneRadius > radius * 3 && toDial > 1e-3) {
+      const cosA = (zoneRadius * zoneRadius + toDial * toDial - radius * radius) / (2 * zoneRadius * toDial);
+      if (cosA > -1 && cosA < 1) {
+        const half = Math.min(Math.PI, Math.acos(cosA) + 0.05);
+        const mid = Math.atan2(center - y, center - x);
+        a0 = mid - half;
+        a1 = mid + half;
+        const period = dash[0] + dash[1];
+        offset = -(((a0 * zoneRadius) % period) + period) % period;
+      }
+    }
+    g.setLineDash(dash);
+    g.lineDashOffset = a1 - a0 < Math.PI * 2 ? offset : 0;
+    g.beginPath();
+    g.arc(x, y, zoneRadius, a0, a1);
+    g.stroke();
+    g.lineDashOffset = 0;
+  }
   g.setLineDash([]);
   g.restore();
 

@@ -2694,6 +2694,27 @@ export function thrownWreckBarkFor(index) {
   return typeof line === 'string' && line.length ? line : null;
 }
 
+// ── A failing hull confesses before it is a distress mission ──────────────────────────────────
+//
+// Spoken by the hull whose main drive just died (`combat:subsystemDisabled`, barkDirector, once
+// per drive-down episode, inside combat-radio reach): "we are not going anywhere" reaches the
+// band while the hull is still a person with a problem, not a posthumous distress or a silent
+// slab a tender silently drags. One register for every faction — the drive did this, not a
+// grudge. `{place}` is the sector the hull is adrift in, so the mayday names where to look.
+export const ADRIFT_CONFESSION_BARKS = Object.freeze([
+  'Drive\'s dead. We are adrift at {place} — hull\'s fine, heading\'s gone.',
+  'We\'ve lost the drive. Drifting at {place}; this is not a drill.',
+  'Main drive just quit. We are a rock now, {place} — anybody close?',
+  'No drive, no steer. Adrift at {place}. Somebody log that.',
+]);
+
+export function adriftConfessionBarkFor(index, place) {
+  const line = ADRIFT_CONFESSION_BARKS[pickIndex(index, ADRIFT_CONFESSION_BARKS.length)] || ADRIFT_CONFESSION_BARKS[0];
+  if (typeof line !== 'string' || !line.length) return null;
+  const where = typeof place === 'string' && place.length ? place : 'the drift';
+  return line.replace('{place}', where);
+}
+
 // ── Dock control remembers the pilot (THE WORLD REMEMBERS, U-E) ──────────────────────────────
 //
 // Spoken once on `dock:docked` when the station's faction weighs the Record at or past ±4. The

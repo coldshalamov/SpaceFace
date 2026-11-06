@@ -118,8 +118,10 @@ test('the live owner is wired: the adapter walks the same drive read the nozzles
   const vfx = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.match(vfx, /sub\.engineWash = this\._updateEngineWash\(\) \? 1 : 0;/,
     'the frame update walks the wash next to the cradle');
-  assert.match(vfx, /const drive = this\._engineDriveFor\(ship, this\._engineWashDriveScratch \|\|= {}\)\.drive;/,
-    'the wash reads the same _engineDriveFor number the nozzles draw with');
+  assert.match(vfx, /const drive = this\._engineDriveFor\(e, this\._engineWashDriveScratch \|\|= {}\)\.drive;/,
+    'the wash reads the same _engineDriveFor number the nozzles draw with once per candidate');
+  assert.match(vfx, /drives\[candidates\.length\] = drive;/,
+    'the wash copies each drive scalar before the shared scratch is refilled');
   assert.match(vfx, /gas\.emitFractureDust\(\{[\s\S]*?occluderRadius: surfR \* 0\.9/,);
   assert.match(vfx, /indexedTypeScan\(state, bucketName\)/,
     'surfaces come from the entity index buckets, not a second spatial pass');

@@ -11,10 +11,11 @@ export function createAftermathChoicePrompt(ctx = {}) {
   if (!bus || typeof bus.on !== 'function') return inertPrompt();
   const deckOf = () => (ctx.deck != null ? ctx.deck : getPromptDeck());
   let observed = null, pending = null, waitingForObservation = false, disposed = false;
+  let open = false, submitting = false;
 
   const currentPlayer = () => state?.entities?.get?.(state.playerId);
   const sector = () => state?.world?.currentSectorId || null;
-  const close = () => { const deck = deckOf(); deck?.resolveDecision?.(DECISION_ID); };
+  const close = () => { open = false; submitting = false; const deck = deckOf(); deck?.resolveDecision?.(DECISION_ID); };
   const nearby = (anchor) => {
     const pos = currentPlayer()?.pos;
     return !!(pos && anchor && Number.isFinite(pos.x) && Number.isFinite(pos.z)
@@ -59,24 +60,43 @@ export function createAftermathChoicePrompt(ctx = {}) {
     if (!deck || typeof deck.offerDecision !== 'function') return false;
     if (choices.length < 2) { pending = null; waitingForObservation = false; close(); return false; }
     if (payload.sectorId !== sector()) { pending = null; waitingForObservation = false; close(); return false; }
+    // Retain refreshes for a genuinely unresolved offer awaiting observation.
+    // A refresh after an answer still cannot create a new decision.
+    if (payload.refreshOnly && !open && !waitingForObservation) return false;
     pending = payload;
+    if (payload.stale) submitting = false;
     if (!relevant() && Array.isArray(payload.custody) && payload.custody.length) rememberPlayerLocation(payload.sectorId);
     if (!relevant()) { waitingForObservation = true; close(); return false; }
     waitingForObservation = false;
-    return deck.offerDecision({
-      id: DECISION_ID, kind: 'info', sender: 'AFTERMATH', headline: 'FIELD STILL LIVE', deadlineAt: null,
+    const descriptions = { salvage: 'Wreck available', pursuit: 'Ship recorded fleeing', rescue: 'Survivor available' };
+    const contexts = choices.map((choice) => choice?.context || descriptions[choice?.id]).filter(Boolean);
+    const spec = {
+      id: DECISION_ID, kind: 'info', sender: 'AFTERMATH', headline: 'FIELD RESPONSE', deadlineAt: null,
+      detail: contexts.length ? contexts.join(' · ') : 'Choose a response. Flight remains active.',
       choices: choices.map((choice) => ({ id: String(choice?.id || ''), label: String(choice?.label || choice?.id || '') })).filter((choice) => choice.id),
       // Retain the exact unresolved choice without claiming keys away from the field.
       // The deck restores it automatically if the pilot returns before a lifecycle reset.
       onTick: () => { deck.setDecisionVisible?.(DECISION_ID, relevant()); },
       onChoose: (choiceId) => {
         if (!relevant()) { pending = null; close(); return; }
-        pending = null; close(); bus.emit('combat:aftermathChoose', { choiceId, source: 'deck' });
+        if (submitting) return;
+        const choice = pending?.choices?.find((item) => item.id === choiceId);
+        if (!choice) return;
+        submitting = true;
+        bus.emit('combat:aftermathChoose', { choiceId, source: 'deck',
+          ...(choice.targetIdentity != null ? { targetIdentity: choice.targetIdentity } : {}) });
       },
-    });
+    };
+    if (payload.refreshOnly && open && typeof deck.updateDecision === 'function') {
+      return deck.updateDecision(DECISION_ID, spec);
+    }
+    open = true;
+    return deck.offerDecision(spec);
   };
   const reset = () => { observed = null; pending = null; waitingForObservation = false; close(); };
+  const chosen = () => { pending = null; waitingForObservation = false; close(); };
   const unsubs = [bus.on('combat:outcome', observe), bus.on('combat:aftermathChoices', show),
+    bus.on('combat:aftermathChosen', chosen),
     bus.on('sector:exit', reset), bus.on('game:new', reset), bus.on('save:loaded', reset)];
   return {
     show,

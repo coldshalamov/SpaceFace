@@ -214,8 +214,8 @@ test('opening preparation links every composite output variant before full-res a
       await bloom.prepareResources();
       const composite = bloom.openingProgramMaterials()[1];
       assert.equal(programs.get(composite).has('canvas'), true);
-      assert.equal(programs.get(composite).has('working'), belowDisplayResolution,
-        'only an existing CAS intermediate target requires the offscreen composite variant');
+      assert.equal(programs.get(composite).has('working'), true,
+        'the reserved CAS target prepares the offscreen variant before the first Auto reduction');
       const warmedLinks = links;
       bloom.render({ kind: 'scene' }, { kind: 'camera' });
       assert.equal(links, warmedLinks, 'the first real composite/CAS pass must not link another program');

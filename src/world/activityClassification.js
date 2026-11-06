@@ -63,16 +63,27 @@ function hypot2(ax, az, bx, bz) {
  * is off-screen is culled while its body is still on it.
  */
 export function entityPresenceRadius(entity) {
-  const data = entity && entity.data || {};
-  return Math.max(
-    0,
-    finite(entity && entity.radius),
-    finite(data.visualRadius),
-    finite(data.placeRadius),
-    finite(data.placeTargetRadius),
-    finite(entity && entity.placeTargetRadius),
-    entity && entity.type === 'station' ? finite(data.dockRadius) : 0,
-  );
+  // Hot path (called per candidate per classify pass): no allocation, no variadic Math.max.
+  // Same result as max(0, finite(...) of each envelope field).
+  if (!entity) return 0;
+  let r = entity.radius;
+  r = (typeof r === 'number' && r > 0 && r !== Infinity) ? r : 0;
+  const data = entity.data;
+  if (data) {
+    let v = data.visualRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    v = data.placeRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    v = data.placeTargetRadius;
+    if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    if (entity.type === 'station') {
+      v = data.dockRadius;
+      if (typeof v === 'number' && v > r && v !== Infinity) r = v;
+    }
+  }
+  const t = entity.placeTargetRadius;
+  if (typeof t === 'number' && t > r && t !== Infinity) r = t;
+  return r;
 }
 
 export function physicsReachWu(options = {}) {

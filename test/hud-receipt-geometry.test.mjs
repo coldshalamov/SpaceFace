@@ -12,8 +12,24 @@ const names = new Set(['readReceiptRect', 'setReceiptStyle', 'setReceiptPlacemen
   'freeOverlayBands', 'placeCaptionInSafeSlot', 'placeOrdinaryCaptionInSafeBands',
   'placeReceiptLane', 'flushReceiptLane']);
 const owners = [];
+const extraNames = new Set(['placeExternalFlightCaptions', 'restoreYieldedFlightVisuals',
+  'yieldFlightVisual', 'registerExternalFlightCaption', 'refreshExternalFlightCaption',
+  'releaseExternalFlightCaption', 'clearExternalFlightCaptionPlacement',
+  'refreshFlightTextObstacleSnapshot', 'plateBox', 'objectiveEdgeObstacles',
+  'invalidateObjectiveEdgeBoxes', 'invalidateTransientOverlayGeometry', 'invalidateAndPlaceHudOverlays']);
+const extraOwners = new Map();
+let overlayResizeOwner;
 function visit(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'AssignmentExpression' && node.left?.name === 'overlayLayoutObserver'
+    && node.right?.type === 'NewExpression' && node.right.callee?.name === 'ResizeObserver') {
+    const callback = node.right.arguments[0];
+    overlayResizeOwner = source.slice(callback.start, callback.end);
+  }
+  if (node.type === 'FunctionDeclaration' && extraNames.has(node.id?.name)) {
+    extraOwners.set(node.id.name, source.slice(node.start, node.end));
+    return;
+  }
   if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
     owners.push(source.slice(node.start, node.end));
     return;
@@ -25,7 +41,8 @@ function visit(node) {
 }
 visit(parse(source, { sourceType: 'module' }));
 
-function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot = true } = {}) {
+function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot = true,
+  externalOwner = false } = {}) {
   const events = [], reads = new Map();
   let dirty = false, flushes = 0;
   const read = (name, kind = 'rect') => {
@@ -75,13 +92,17 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
   const layout = { viewport: { width: 1000 }, receipt: { width: 300, height: 50 } };
   const slot = { x: 12, width: 400, ...(captionSlot ? { captionSlot: { x: 12, width: 120 } } : {}) };
   let externalPlacements = 0;
+  let published = [];
   const context = {
     Set,
     root: { querySelectorAll: () => [obstacle], querySelector: () => true },
-    document: { querySelectorAll: () => [], getElementById: () => laneRoot },
+    document: { querySelectorAll: () => [], getElementById: id => id === 'toasts' ? laneRoot : null },
     window: { innerWidth: 1000, innerHeight: 720 },
-    caption, toastsLaneEl: laneRoot, lastReceiptObstacle: null, lastCaptionObstacleVisible: null,
+    caption, toastsLaneEl: laneRoot, alertsEl: null, lastReceiptObstacle: null, lastCaptionObstacleVisible: null,
     externalFlightCaptions: new Set(), yieldedFlightVisuals: new Map(),
+    externalCaptionOpacity: new Map(), overlayLayoutObserver: null,
+    leftContext: null, rightDock: null,
+    flightTextObstacleCache: { publish(entries) { published = entries; } },
     externalCaptionsStale: true, flightTextObstaclesStale: true, alertLanePlacementStale: true,
     receiptLanePlacementDirty: true,
     objectiveEdgeObstacles: () => ({}), responsiveOverlayObstacles: () => [control, obstacle],
@@ -96,14 +117,20 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
     },
     getComputedStyle: () => ({ rowGap: '4px' }),
   };
+  const extraCode = externalOwner ? [...extraOwners].filter(([name]) =>
+    !['objectiveEdgeObstacles', 'invalidateObjectiveEdgeBoxes', 'invalidateTransientOverlayGeometry',
+      'invalidateAndPlaceHudOverlays'].includes(name)).map(([, code]) => code).join('\n') : '';
   const api = runInNewContext(`let receiptPlacementMode = ${JSON.stringify(mode)};
     let receiptGeometryRects = new Map();
-    ${owners.join('\n')}; ({ freeOverlayBands, flushReceiptLane, placeReceiptLane,
+    ${owners.join('\n')}; ${extraCode}; ({ freeOverlayBands, flushReceiptLane, placeReceiptLane, readReceiptRect,
       placeCaptionInSafeSlot, ${owners.some(s => s.startsWith('function setReceiptPlacementMode')) ? 'setReceiptPlacementMode,' : ''}
       ${owners.some(s => s.startsWith('function setReceiptStyle')) ? 'setReceiptStyle,' : ''}
+      ${externalOwner ? 'registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,' : ''}
       cacheActive: () => receiptGeometryRects !== null })`, context);
   return { ...api, context, slot, layout, obstacle, control, caption, laneRoot, receiptCards, reads, events,
-    read, get flushes() { return flushes; }, get externalPlacements() { return externalPlacements; } };
+    read, element, resetMeasurements() { reads.clear(); events.length = 0; dirty = false; flushes = 0; },
+    get published() { return published; },
+    get flushes() { return flushes; }, get externalPlacements() { return externalPlacements; } };
 }
 
 test('settled obstacles are read once across alternate bands and duplicate responsive candidates', () => {
@@ -231,4 +258,149 @@ test('mode switching invalidates placement without changing receipt content and 
   fx.context.overlaySafeSlot = () => { throw new Error('layout owner failed'); };
   assert.throws(() => fx.flushReceiptLane(), /layout owner failed/);
   assert.equal(fx.cacheActive(), false, 'failure cannot retain an element snapshot');
+});
+
+test('out-of-flow placement retains siblings but evicts moved descendants and ancestors', () => {
+  const fx = fixture();
+  const child = fx.receiptCards[0];
+  const ancestor = fx.element('hud', { left: 0, top: 0, width: 1000, height: 720 });
+  fx.laneRoot.contains = el => el === child || el === fx.laneRoot;
+  ancestor.contains = el => el === fx.laneRoot || el === child;
+  for (const el of [fx.obstacle, fx.control, fx.laneRoot, child, ancestor]) fx.readReceiptRect(el);
+  fx.setReceiptStyle(fx.laneRoot, 'width', '220px');
+  for (const el of [fx.obstacle, fx.control, fx.laneRoot, child, ancestor]) fx.readReceiptRect(el);
+  assert.equal(fx.reads.get('mission:rect'), 1);
+  assert.equal(fx.reads.get('touch:rect'), 1);
+  for (const name of ['lane', 'card0', 'hud']) assert.equal(fx.reads.get(`${name}:rect`), 2);
+});
+
+test('real external caption search and final publisher share settled obstacles through wrapping writes', t => {
+  const metrics = [];
+  for (const mode of ['original', 'shared']) {
+    const fx = fixture({ mode, externalOwner: true, captionSlot: false });
+    for (let i = 0; i < 3; i++) {
+      const notice = fx.element(`external${i}`, { left: 0, top: 0, width: 120, height: 48 });
+      fx.registerExternalFlightCaption(notice);
+    }
+    assert.equal(fx.reads.size, 0, 'registration defers geometry to the pre-paint flush');
+    fx.flushReceiptLane();
+    fx.resetMeasurements();
+    for (const notice of fx.context.externalFlightCaptions) fx.refreshExternalFlightCaption(notice);
+    fx.flushReceiptLane();
+    assert.equal(fx.published.filter(entry => entry.owner === 'flight-caption').length, 3);
+    for (const entry of fx.published.filter(entry => entry.owner === 'flight-caption')) {
+      assert.ok(entry.rect.top >= 8 && entry.rect.bottom <= 712);
+    }
+    metrics.push({ mode, missionReads: fx.reads.get('mission:rect'), touchReads: fx.reads.get('touch:rect'),
+      fixtureReadAfterWriteBoundaries: fx.flushes });
+    if (mode === 'shared') {
+      assert.equal(fx.reads.get('mission:rect'), 1, 'caption width/position writes cannot dirty a sibling mission');
+      assert.equal(fx.reads.get('touch:rect'), 1, 'controls are not reread by each caption and the publisher');
+    }
+  }
+  assert.ok(metrics[0].missionReads > metrics[1].missionReads);
+  assert.ok(metrics[0].touchReads > metrics[1].touchReads);
+  assert.ok(metrics[0].fixtureReadAfterWriteBoundaries > metrics[1].fixtureReadAfterWriteBoundaries);
+  t.diagnostic(JSON.stringify(metrics));
+});
+
+test('a settled external caption keeps its cap and avoids repeated size-write layout boundaries', () => {
+  const fx = fixture({ externalOwner: true, cards: 0, captionHeight: 0 });
+  const notice = fx.element('external', { left: 0, top: 0, width: 120, height: 48 });
+  fx.registerExternalFlightCaption(notice);
+  fx.flushReceiptLane();
+  const placement = { ...notice.style };
+  fx.resetMeasurements();
+  fx.refreshExternalFlightCaption(notice);
+  fx.flushReceiptLane();
+  assert.deepEqual({ ...notice.style }, placement);
+  assert.equal(fx.flushes, 0, 'unchanged natural wrapping does not toggle maxHeight none -> px');
+  assert.equal(fx.reads.get('external:scroll'), 1, 'settled column reuses its measured height at final placement');
+});
+
+test('responsive resize, moving obstacles and arriving/refreshed/released critical text use current geometry', () => {
+  const fx = fixture({ externalOwner: true, captionHeight: 0, cards: 0, captionSlot: false });
+  fx.flushReceiptLane();
+  const notice = fx.element('critical', { left: 0, top: 0, width: 120, height: 56 });
+  notice.dataset.flightCritical = 'true';
+  fx.registerExternalFlightCaption(notice);
+  fx.flushReceiptLane();
+  const top = Number.parseFloat(notice.style.top);
+  assert.ok(top >= 8 && top + 56 <= 232, 'new critical text places in the largest clear band before the first paint');
+  fx.context.window.innerWidth = 390;
+  fx.context.window.innerHeight = 844;
+  fx.layout.viewport.width = 390;
+  fx.slot.width = 366;
+  fx.obstacle.box = { left: 12, top: 8, width: 366, height: 200 };
+  fx.control.box = { left: 250, top: 620, width: 128, height: 216 };
+  fx.refreshExternalFlightCaption(notice);
+  fx.flushReceiptLane();
+  assert.equal(notice.style.maxWidth, '366px');
+  assert.ok(Number.parseFloat(notice.style.top) >= 208);
+  assert.ok(Number.parseFloat(notice.style.top) + 56 <= 612);
+  fx.obstacle.box.height = 400;
+  fx.refreshExternalFlightCaption(notice);
+  fx.flushReceiptLane();
+  assert.ok(Number.parseFloat(notice.style.top) >= 408, 'a moving/growing obstacle is remeasured on the next flush');
+  assert.equal(fx.releaseExternalFlightCaption(notice), true);
+  fx.flushReceiptLane();
+  assert.equal(notice.style.top, '', 'release restores caller placement');
+  assert.equal(fx.published.some(entry => entry.owner === 'flight-caption'), false);
+  assert.equal(fx.context.externalCaptionOpacity.size, 0);
+  const reads = [...fx.reads];
+  fx.flushReceiptLane();
+  assert.deepEqual([...fx.reads], reads, 'no repeated read after cleanup settles');
+});
+
+test('transient invalidation preserves structural boxes; resize batches objective reads before one changed CSS write', () => {
+  const events = [];
+  const structural = (name, left) => ({ isConnected: true, getBoundingClientRect() {
+    events.push(`read:${name}`);
+    return { left, top: 400, right: left + 100, bottom: 700, width: 100, height: 300 };
+  } });
+  const left = structural('left', 12), right = structural('right', 880), rail = structural('rail', 20);
+  let dockValue = '';
+  const context = {
+    objectiveEdgeBoxes: { stale: true }, leftContext: left, rightDock: right,
+    orreryCluster: { host: { querySelector: () => rail } }, root: { querySelector: () => rail },
+    readReceiptRect: el => el.getBoundingClientRect(),
+    document: { documentElement: { style: {
+      getPropertyValue: () => dockValue,
+      setProperty(key, value) { events.push(`write:${key}`); dockValue = value; },
+    } } },
+    externalCaptionsStale: false, flightTextObstaclesStale: false, alertLanePlacementStale: false,
+    receiptLanePlacementDirty: false,
+    invalidateReceiptLane() { context.receiptLanePlacementDirty = true; },
+  };
+  const api = runInNewContext([...extraOwners].filter(([name]) =>
+    ['plateBox', 'objectiveEdgeObstacles', 'invalidateObjectiveEdgeBoxes',
+      'invalidateTransientOverlayGeometry', 'invalidateAndPlaceHudOverlays'].includes(name))
+    .map(([, code]) => code).join('\n') +
+    '; ({ objectiveEdgeObstacles, invalidateTransientOverlayGeometry, invalidateAndPlaceHudOverlays })', context);
+  api.objectiveEdgeObstacles();
+  assert.deepEqual(events, ['read:left', 'read:right', 'read:rail', 'write:--sf-rightdock-left']);
+  events.length = 0;
+  for (let i = 0; i < 20; i++) {
+    api.invalidateTransientOverlayGeometry();
+    api.objectiveEdgeObstacles();
+  }
+  assert.deepEqual(events, [], 'moving callouts do not remeasure settled structural boxes');
+  for (const key of ['externalCaptionsStale', 'flightTextObstaclesStale', 'alertLanePlacementStale',
+    'receiptLanePlacementDirty']) assert.equal(context[key], true, `${key} still invalidates`);
+  api.invalidateAndPlaceHudOverlays();
+  api.objectiveEdgeObstacles();
+  assert.deepEqual(events, ['read:left', 'read:right', 'read:rail'], 'resize remeasures, unchanged CSS is not rewritten');
+  events.length = 0;
+  const notice = {};
+  const resize = runInNewContext(`(${overlayResizeOwner})`, {
+    externalFlightCaptions: new Set([notice]),
+    invalidateTransientOverlayGeometry: api.invalidateTransientOverlayGeometry,
+    invalidateAndPlaceHudOverlays: api.invalidateAndPlaceHudOverlays,
+  });
+  resize([{ target: notice }]);
+  api.objectiveEdgeObstacles();
+  assert.deepEqual(events, [], 'caption-only ResizeObserver delivery keeps the structural cache');
+  resize([{ target: notice }, { target: left }]);
+  api.objectiveEdgeObstacles();
+  assert.deepEqual(events, ['read:left', 'read:right', 'read:rail'], 'mixed delivery still remeasures real HUD resize');
 });

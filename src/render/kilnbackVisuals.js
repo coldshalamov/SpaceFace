@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { KILNBACK as C, KILNBACK_CASK_IDS } from '../data/kilnback.js';
 import { kilnbackPresentation } from '../systems/kilnback.js';
 import { readFrameOrigin } from './frameCoordinates.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const KILNBACK_ASSET_ID = 'SF_SHIP_KILNBACK';
 export const KILNBACK_FILE = 'wholeships/kilnback.glb';
@@ -91,7 +92,7 @@ export function createKilnbackVisualDriver(root, entity) {
       const selected = materials.map(material => {
         if (!material.name?.startsWith('Material_Ceramic')) return material;
         changed = true;
-        if (!localClones.has(material)) { const clone = material.clone(); localClones.set(material, clone);
+        if (!localClones.has(material)) { const clone = cloneMaterialPreservingShaderHooks(material); localClones.set(material, clone);
           owned.push({ material: clone, color: material.color.clone(), roughness: material.roughness }); }
         return localClones.get(material);
       });

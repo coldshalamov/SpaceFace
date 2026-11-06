@@ -25,6 +25,9 @@ const newStatsResult = () => ({
   drainStage: 'idle',
 });
 
+// On-glass roots are invisible until residency lands; a larger chunk halves the yields a burst pays.
+const URGENT_PREPARE_CHUNK = 16;
+
 export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatch, yieldToMain, isActive, isUrgent, onReady, onError, priorityOf, priorityContext }) {
   const pending = [];
   // Stats memo: the pending ids/types arrays are queue-membership data, so a
@@ -241,12 +244,12 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
       });
     }
     if (typeof prepareBatch === 'function') {
-      // Merged residency, sliced ~8 roots a pass: a large on-glass burst no
+      // Merged residency, sliced ~16 roots a pass: a large on-glass burst no
       // longer pays one count-unbounded prepare inside a single task. Each
       // chunk's onReady still clears its own latch at its own residency.
-      for (let i = 0; i < live.length; i += 8) {
-        const chunk = live.slice(i, i + 8);
-        drainStage = `batch-prepare:${Math.min(i + 8, live.length)}/${live.length}`;
+      for (let i = 0; i < live.length; i += URGENT_PREPARE_CHUNK) {
+        const chunk = live.slice(i, i + URGENT_PREPARE_CHUNK);
+        drainStage = `batch-prepare:${Math.min(i + URGENT_PREPARE_CHUNK, live.length)}/${live.length}`;
         const result = await prepareBatch(
           chunk.map((entry) => entry.root),
           {
@@ -260,7 +263,7 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
           entry.readied = true;
           done.add(entry);
         }
-        if (i + 8 < live.length) await yieldToMain();
+        if (i + URGENT_PREPARE_CHUNK < live.length) await yieldToMain();
       }
     } else {
       for (const entry of live) {

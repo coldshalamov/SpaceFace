@@ -26,7 +26,7 @@ test('mounted current action follows selected commission and restores native and
       window.__benchRefresh();
     });
     const current = page.locator('.sf-mlog-recommend');
-    assert.match(await current.innerText(), /Take a haul/i);
+    assert.match(await current.innerText(), /Weigh-In/i);
     await page.evaluate(() => {
       const s = window.__BENCH_STATE;
       s.cinderglassJobView = { operationId:'cg:1', journal:{id:'cinderglassJob',title:'The Cinderglass Job',objective:'Tow the same CG-7 pod to Tala’s cradle below 8 WU/s. Khand accepts only an intact original.',facts:[],outcome:null},
@@ -37,7 +37,7 @@ test('mounted current action follows selected commission and restores native and
     });
     assert.match(await current.innerText(), /The Cinderglass Job/i);
     assert.match(await current.innerText(), /Tow the same CG-7 pod/);
-    assert.doesNotMatch(await current.innerText(), /Take a haul|no goal marker/i);
+    assert.doesNotMatch(await current.innerText(), /Weigh-In|no goal marker/i);
     assert.equal(await current.locator('button').count(), 0);
     await page.waitForTimeout(1600);
     picture = await page.screenshot();
@@ -76,7 +76,7 @@ test('mounted current action follows selected commission and restores native and
     assert.notEqual((await current.innerText()).trim(), '');
     assert.doesNotMatch(await current.innerText(), /southeast receiving mark/);
     await page.evaluate(() => { const s=window.__BENCH_STATE; s.story.endgameResolved=false; s.story.endgameChoice=null; s.story.postEnding=null; window.__benchRefresh(); });
-    assert.match(await current.innerText(), /Take a haul/i, 'removing commissions restores ordinary recommendation');
+    assert.match(await current.innerText(), /Weigh-In/i, 'removing commissions restores ordinary recommendation');
     assert.deepEqual(await page.evaluate(() => window.__journalEvents), []);
     await page.close();
   } finally { await browser.close(); await server.close(); }

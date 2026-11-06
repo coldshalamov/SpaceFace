@@ -53,6 +53,7 @@ import {
 } from '../data/factions/free.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 const touching = (a, b) => dist2(a.pos, b.pos) <= (a.radius + b.radius + 2) ** 2;
@@ -2338,7 +2339,8 @@ export const frontierHomesteads = {
     this._tickLeads(state);
     this._tickDebts(state);
     this._tickDisputes(state);
-    this._tickRaids(state, dt);
+    const raidDt = strideDt(this, 'raids', dt, 3, state);
+    if (raidDt > 0) this._tickRaids(state, raidDt);
     this._tickVendettas(state);
   },
 };

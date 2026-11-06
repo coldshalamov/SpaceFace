@@ -81,6 +81,7 @@ import {
   BROOD_TERRAIN_SLAM_FACTOR,
   BROOD_PLAYER_RAM_SPEED,
   BROOD_POOL_MAX,
+  BROOD_QUEEN_LOOT_ID,
   BROOD_SEP_RADIUS,
   BROOD_SHED_SPEED,
   BROOD_SPITTER_COOLDOWN_S,
@@ -94,6 +95,24 @@ import {
   BROOD_SPITTER_WINDUP_S,
   BROOD_WHIP_BAT_SPEED,
   BROOD_WHIP_KILL_SPEED,
+  BROOD_AGGRESSION_ACCEL,
+  BROOD_AGGRESSION_S,
+  BROOD_CASCADE_AGGRESSION,
+  BROOD_CASCADE_GRIEF,
+  BROOD_CASCADE_NONE,
+  BROOD_CASCADE_PANIC,
+  BROOD_CASCADE_RADIUS,
+  BROOD_FILAMENT_FLINCH_DV,
+  BROOD_GRIEF_ACCEL,
+  BROOD_GRIEF_RING,
+  BROOD_GRIEF_S,
+  BROOD_PANIC_KILL_MASS,
+  BROOD_PANIC_KNOT_RADIUS,
+  BROOD_PANIC_REFORM_ACCEL,
+  BROOD_PANIC_REFORM_S,
+  BROOD_PANIC_SCATTER_ACCEL,
+  BROOD_PANIC_SCATTER_MAX_S,
+  BROOD_PANIC_SCATTER_MIN_S,
   HIVE_POOL_TTL_S,
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_KILL_CAUSES,
@@ -120,6 +139,7 @@ import {
   swarmBroodPlan,
   swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
+import { HIVE_SAC_PERIOD_S } from './theHiveArena.js';
 import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
@@ -364,6 +384,44 @@ export function createBroodEngine(deps = {}) {
   const CAUSE_INDEX = {};
   SWARM_BROOD_KILL_CAUSES.forEach((cause, i) => { CAUSE_INDEX[cause] = i; });
 
+  // --- B-BLOOM pathology: the room notices a kill (the ladder's own numbers) --------------
+  //
+  // Grief — "cluster around the corpse for this long": a credited death arms every living
+  // neighbor inside the cascade reach; each mourner bends toward ITS corpse until it
+  // reaches the mourning ring or the clock lets go. The bend rides the ordinary flock
+  // integration (semi-implicit Euler, family speed cap, windup hold), so it can never
+  // outrun the room's own levers. The filament flinch — "a node's death pushes linked
+  // members outward this hard" — rides the same death seam as an additive Δv, the exact
+  // shape the Domino shove lands through. A Hive node's death answers through the same
+  // loop (BROOD_CASCADE_EVENTS names `swarm:hiveSacKilled` a cascade seam; the arena calls
+  // hiveSacFell at the corpse, the authored "a Hive node dying" trigger).
+  const griefUntil = new Float64Array(CAP);
+  const griefX = new Float32Array(CAP);
+  const griefZ = new Float32Array(CAP);
+  // Panic — "a mass kill above BROOD_PANIC_KILL_MASS inside the pack scatters it for
+  // 1.5–2.5 s (fixed-seed per body), then re-forms it into a tight knot": each living
+  // neighbor inside the cascade reach bolts outward from the trigger centroid for its own
+  // seeded slice of the band, then converges back onto it for the reform window. The knot's
+  // target is the panic centroid itself (the corpse) — the tight ball the spec promises,
+  // "the best throw of the fight". The cascade REPLACES the ordinary jitter for its window
+  // (the animal's own steering, never the room's fields), rides the ordinary integration
+  // below — family speed cap, windup hold — and outranks grief while it is live.
+  const panicUntil = new Float64Array(CAP);
+  const knotUntil = new Float64Array(CAP);
+  const panicX = new Float32Array(CAP);
+  const panicZ = new Float32Array(CAP);
+  // Aggression — "a relay or the Queen taking a hit turns every linked member on you": a hit
+  // on the brood's relay node (BROOD_QUEEN_LOOT_ID, or the Tendril's head for its wave) arms
+  // every living neighbor inside the cascade reach for the authored BROOD_AGGRESSION_S
+  // window. Each aggravated body rushes the player at BROOD_AGGRESSION_ACCEL — the
+  // grief/panic family's own wu/s² unit — and the rush target is the player's LIVE position,
+  // not a stamped point: the pack tracks you for the whole window. Same law as its siblings:
+  // the cascade replaces the ordinary flock jitter (never the room's fields), the attack
+  // language outranks it, a live panic outranks it, and it outranks grief (mourning resumes
+  // on its own clock when the rush lets go). The kind publishes on the view
+  // (BROOD_CASCADE_AGGRESSION) and the arm receipts as `swarm:broodAggression`.
+  const aggrUntil = new Float64Array(CAP);
+
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
   const creditAccel = { ax: 0, az: 0 };
@@ -418,6 +476,13 @@ export function createBroodEngine(deps = {}) {
   // share, which is the tide the player cut.
   let hiveMode = false;
   let sacBudget = 0;
+  // The tide's heartbeat: simTime of the last successful sacRelease. A live unspent sac
+  // births every HIVE_SAC_PERIOD_S, so a budget that has been silent for over two full
+  // cadences has no sac left to deliver it — the authored strand, not a pending tide.
+  let sacLastBirthAt = -Infinity;
+  // Two cadences plus a cadence of honest tick jitter: the widest silence a live sac can
+  // produce is one period; anything past this is absence.
+  const SAC_TIDE_SILENCE_S = HIVE_SAC_PERIOD_S * 2 + 2;
   let splitterReserve = 0;
   let motherReserve = 0;
   const birthLeft = new Uint8Array(CAP);
@@ -640,6 +705,11 @@ export function createBroodEngine(deps = {}) {
     headFound = false;
     hiveMode = false;
     sacBudget = 0;
+    sacLastBirthAt = -Infinity;
+    griefUntil.fill(0);
+    panicUntil.fill(0);
+    knotUntil.fill(0);
+    aggrUntil.fill(0);
     splitterReserve = 0;
     motherReserve = 0;
     birthLeft.fill(0);
@@ -697,6 +767,8 @@ export function createBroodEngine(deps = {}) {
     for (const part of pendingPlan) planned += Number.isInteger(part.count) ? part.count : 0;
     sacBudget = swarmBroodSacReserve(planned, run && run.arenaId);
     hiveMode = sacBudget > 0;
+    // A fresh tide is deliverable from install: its sacs' first births are due one period out.
+    sacLastBirthAt = finite(getState()?.simTime);
     immediateQuota = planned - sacBudget;
     // Plan only the immediate share here. Deferred geometry never consumes the Hive reserve.
     let immediateLeft = immediateQuota;
@@ -880,6 +952,11 @@ export function createBroodEngine(deps = {}) {
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
     dragTold[slot] = 0;
+    // A reused slot never inherits a dead cell's mourning — or its panic, or its rush.
+    griefUntil[slot] = 0;
+    panicUntil[slot] = 0;
+    knotUntil[slot] = 0;
+    aggrUntil[slot] = 0;
     // Per-slot reserve flags die with the body too — a reused slot never inherits a dead
     // mother's told-flag or an unspent share of her tide.
     birthLeft[slot] = 0;
@@ -1123,10 +1200,19 @@ export function createBroodEngine(deps = {}) {
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
     const tendrilWatching = tendrilMode && !tendrilDone;
     // B4 — the sac reserve keeps the step alive too: the Hive's tide may still be held.
+    // But a held tide is deliverable only while a live unspent sac still births on its
+    // cadence. Every sac killed before its share hatches strands that share on purpose
+    // ("the tide the player cut"), and a budget that has stayed silent past two full
+    // cadences has no sac left to deliver it — it must not hold the step's door open.
+    // Without this read, an emptied Hive room whose sacs all died unspent grinds the
+    // whole engine (player/rock/mover caches, the grid, the aura and link passes) on
+    // zero bodies every tick until the wave refit. The budget itself stays accounted:
+    // the strand is the authored tide, now named where the room can read it.
+    const sacTidePending = sacTidePendingAt(finite(state.simTime));
     // B5 — so does an armed late reserve whose drop clock has already been set.
     const reservePending = reserveBudget > 0 && Number.isFinite(reserveReleaseAt);
     if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0 && segAliveCount <= 0
-      && !tendrilWatching && sacBudget <= 0 && !reservePending) { publish(); return false; }
+      && !tendrilWatching && !sacTidePending && !reservePending) { publish(); return false; }
 
     cachePlayer(state);
     cacheRocks(state);
@@ -1391,6 +1477,41 @@ export function createBroodEngine(deps = {}) {
           continue;
         }
 
+        // -- B-BLOOM panic: while the window is live the cascade replaces the ordinary
+        // jitter — scatter bolts outward from the trigger centroid, the knot converges
+        // back onto it. The room's fields below still add on top: a panicking pack is
+        // still mass in the room's physics, the same law the current-rider keeps. Only
+        // plain flocking panics: a windup holds so the telegraph tells the truth, a
+        // committed dash runs its line, a staged bank beat runs its own language — the
+        // attack language outranks the cascade. Inside the knot radius the override lets
+        // go: the ball has re-formed and the pack's own cohesion holds it tight. Grief
+        // yields while the fresher cascade runs and resumes on its own clock when the
+        // panic lets go.
+        if (panicUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
+          const pdx = bx - panicX[i];
+          const pdz = bz - panicZ[i];
+          const pd = Math.hypot(pdx, pdz) || 1;
+          ax = (pdx / pd) * BROOD_PANIC_SCATTER_ACCEL;
+          az = (pdz / pd) * BROOD_PANIC_SCATTER_ACCEL;
+        } else if (knotUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
+          const kdx = panicX[i] - bx;
+          const kdz = panicZ[i] - bz;
+          const kd = Math.hypot(kdx, kdz);
+          if (kd > BROOD_PANIC_KNOT_RADIUS) {
+            ax = (kdx / kd) * BROOD_PANIC_REFORM_ACCEL;
+            az = (kdz / kd) * BROOD_PANIC_REFORM_ACCEL;
+          }
+        } else if (aggrUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
+          // -- B-BLOOM aggression: the relay was hit — the brood stops feeding and rushes
+          // the player together, tracking the LIVE signature for its whole authored window.
+          // The room's fields still add on top below: a rushing pack is still mass in the
+          // room's physics, the same law the panic keeps.
+          if (dp > 1e-4) {
+            ax = (dxp / dp) * BROOD_AGGRESSION_ACCEL;
+            az = (dzp / dp) * BROOD_AGGRESSION_ACCEL;
+          }
+        }
+
         // -- the room's fields: the SAME kernel the ships feel, sampled at the brood's own point
         if (!fieldsEmpty) {
           posScratch.x = px[i];
@@ -1405,6 +1526,25 @@ export function createBroodEngine(deps = {}) {
           if (playerFields.length) {
             sampleFieldAcceleration(posScratch, velScratch, playerFields, simTime, fieldProfileScratch, creditAccel);
             if (Math.abs(creditAccel.ax) + Math.abs(creditAccel.az) > 1e-6) creditUntil[i] = simTime + BROOD_CREDIT_WINDOW_S;
+          }
+        }
+        // -- B-BLOOM grief: a mourner bends toward its corpse until it reaches the mourning
+        // ring or the clock lets go. Only plain flocking bends: a windup holds so the
+        // telegraph tells the truth, a committed dash runs the line it drew, a latched
+        // body rides its host, a staged bank beat runs its own language — the attack
+        // language outranks the mourning. A live panic or aggression window outranks it
+        // too (the fresher cascade replaces the jitter; the grief clock keeps running
+        // underneath and resumes when the window lets go). The bend rides the ordinary
+        // integration below, so the family speed cap and the drag stay honest.
+        if (griefUntil[i] > simTime && panicUntil[i] <= simTime && knotUntil[i] <= simTime
+            && aggrUntil[i] <= simTime
+            && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
+          const gdx = griefX[i] - bx;
+          const gdz = griefZ[i] - bz;
+          const gd = Math.hypot(gdx, gdz);
+          if (gd > BROOD_GRIEF_RING) {
+            ax += (gdx / gd) * BROOD_GRIEF_ACCEL;
+            az += (gdz / gd) * BROOD_GRIEF_ACCEL;
           }
         }
 
@@ -1658,6 +1798,18 @@ export function createBroodEngine(deps = {}) {
 
   function bankLife(slot, life) { return alive[slot] && serial[slot] === life; }
 
+  // B-BLOOM yield: a staged bank slot runs its own beat. The composition's attack language
+  // outranks the cascades exactly like the windup hold does — without this, a mourner's bend
+  // (or a panic bolt) walks the NEXT staged pass off its flank into the room's scrum before
+  // its stage ever calls it, and the authored beat dies of room noise. The room's mourning
+  // keeps everything else it had: unstaged cells bend, the clock runs, nothing is cancelled.
+  function bankStaged(i) {
+    return bank != null
+      && ((i === bank.first && serial[i] === bank.firstLife)
+        || (i === bank.spit && serial[i] === bank.spitLife)
+        || (i === bank.second && serial[i] === bank.secondLife));
+  }
+
   function advanceBank(now) {
     if (!bank) return;
     if (now >= bank.until) { bank = null; return; }
@@ -1706,6 +1858,7 @@ export function createBroodEngine(deps = {}) {
       teleX[i] += bank.flankX * 38;
       teleZ[i] += bank.flankZ * 38;
     }
+    plantOnLine(i);
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_SPITTER_WINDUP_S;
     emitTelegraph(i, def);
@@ -1848,9 +2001,26 @@ export function createBroodEngine(deps = {}) {
     teleX[i] = playerX + playerVX * lead;
     teleZ[i] = playerZ + playerVZ * lead;
     teleDir[i] = Math.atan2(teleZ[i] - pz[i], teleX[i] - px[i]);
+    plantOnLine(i);
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_CHARGER_WINDUP_S;
     emitTelegraph(i, def);
+  }
+
+  // The plant: lateral velocity off the drawn line dies at the stamp. The hold law says the
+  // body plants while its marker speaks — the buried family's windup has always zeroed the
+  // velocity outright, and this is that same truth for the LED-drawn holds, kept axial so an
+  // inward run keeps its inward speed. A body the room shoved or grieved sideways starts its
+  // hold on the line, not drifting across it.
+  function plantOnLine(i) {
+    const dx = teleX[i] - px[i];
+    const dz = teleZ[i] - pz[i];
+    const d = Math.hypot(dx, dz);
+    if (!(d > 1e-4)) return;
+    const ax = dx / d, az = dz / d;
+    const along = vx[i] * ax + vz[i] * az;
+    vx[i] = along * ax;
+    vz[i] = along * az;
   }
 
   /** One tick of a live pass: the hull takes it and the shove it carries, once per dash. */
@@ -3285,6 +3455,24 @@ export function createBroodEngine(deps = {}) {
     }
     alive[i] = 0;
     aliveCount -= 1;
+    // B-BLOOM filament flinch: a node's death pushes its linked partner outward this
+    // hard — the web's visible recoil, an additive Δv along the corpse→partner axis,
+    // the same write shape the Domino shove lands through. A winding or committed
+    // body does not flinch: its hold is the telegraph's truth, and a committed pass
+    // runs the line it drew.
+    if (linkPartner[i] >= 0) {
+      const flinchPartner = linkPartner[i];
+      if (alive[flinchPartner]
+        && (phase[flinchPartner] === BROOD_PHASE_FLOCK || phase[flinchPartner] === BROOD_PHASE_RECOVER)) {
+        const fdx = px[flinchPartner] - px[i];
+        const fdz = pz[flinchPartner] - pz[i];
+        const fd = Math.hypot(fdx, fdz);
+        if (fd > 1e-4) {
+          vx[flinchPartner] += (fdx / fd) * BROOD_FILAMENT_FLINCH_DV;
+          vz[flinchPartner] += (fdz / fd) * BROOD_FILAMENT_FLINCH_DV;
+        }
+      }
+    }
     // A dying turret's sweep dies with it; a dying linker's charge drops its shield
     // THIS tick — the link pass only rebuilds flags for the living.
     freeBeamOf(i);
@@ -3349,6 +3537,80 @@ export function createBroodEngine(deps = {}) {
     // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
+    armGrief(i, finite(getState()?.simTime));
+    // B-BLOOM panic: a MASS kill is the pack's worst moment. One credited death of a body
+    // at or above BROOD_PANIC_KILL_MASS inside the pack (the cascade reach) breaks it like
+    // one animal — scatter, then the knot. Same credit law as grief: a kill nobody credits
+    // is a kill the room does not answer.
+    if (liveFamilyMass[family[i]] >= BROOD_PANIC_KILL_MASS) {
+      armPanic(px[i], pz[i], finite(getState()?.simTime));
+    }
+  }
+
+  // B-BLOOM grief: a kill the game credits is a kill the room notices. Every living
+  // neighbor inside the cascade reach mourns THIS corpse for the authored window —
+  // the freshest corpse wins a mourner that was already grieving an older one, the
+  // same last-write the Domino ledger keeps. The victim itself is already dead.
+  function armGrief(victim, now) {
+    armGriefAt(px[victim], pz[victim], now);
+  }
+
+  // The position form of the same law. A Hive node is not a brood cell — the sac is an
+  // entity in the room (the arena's own buffers), so its death cannot ride the credited
+  // cell path above. BROOD_CASCADE_EVENTS names its receipt (`swarm:hiveSacKilled`) a
+  // cascade seam, and the authored grief trigger says "a Hive node dying clusters linked
+  // members around the body" — so the arena answers it here, at the corpse's own
+  // coordinates, with the identical radius/window/last-write law.
+  function armGriefAt(x, z, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
+      if (dx * dx + dz * dz > cr2) continue;
+      griefUntil[j] = now + BROOD_GRIEF_S;
+      griefX[j] = x;
+      griefZ[j] = z;
+    }
+  }
+
+  // B-BLOOM panic: the position form every trigger uses (the credited mass kill rides the
+  // cell's own coordinates). Each living neighbor inside the cascade reach draws its own
+  // seeded slice of the authored scatter band — the seed every cell already carries at
+  // spawn, so the same pack replays the same break — and knots on the centroid after it.
+  // The centroid is the corpse itself: the scatter flees it, the knot re-forms on it, the
+  // tight ball "the best throw of the fight" promises. A mourner already grieving an older
+  // corpse yields for the window — the fresher cascade replaces the jitter — and grief
+  // resumes on its own clock when the panic lets go.
+  function armPanic(x, z, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
+      if (dx * dx + dz * dz > cr2) continue;
+      const dur = BROOD_PANIC_SCATTER_MIN_S
+        + (seedPhase[j] % 1) * (BROOD_PANIC_SCATTER_MAX_S - BROOD_PANIC_SCATTER_MIN_S);
+      panicUntil[j] = now + dur;
+      knotUntil[j] = panicUntil[j] + BROOD_PANIC_REFORM_S;
+      panicX[j] = x;
+      panicZ[j] = z;
+    }
+  }
+
+  // B-BLOOM aggression: the position form the relay seam uses — every living neighbor inside
+  // the cascade reach of the RELAY joins the rush window. The rush's target is not stamped
+  // here: the integration tracks the player's live position, so a strafing pilot drags the
+  // whole angry pack with them for the authored BROOD_AGGRESSION_S.
+  function armAggressionAt(x, z, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
+      if (dx * dx + dz * dz > cr2) continue;
+      aggrUntil[j] = now + BROOD_AGGRESSION_S;
+    }
   }
 
   // W-BLOOM-LOW: a burst remain's splash kills by 'explosive' law around the impact point —
@@ -3568,8 +3830,118 @@ export function createBroodEngine(deps = {}) {
       sacBudget -= 1;
       born += 1;
     }
-    if (born > 0) publish();
+    if (born > 0) {
+      sacLastBirthAt = finite(getState()?.simTime);
+      publish();
+    }
     return born;
+  }
+
+  // B4 — the room answers a sac's death: the authored grief loop arms at the corpse. A sac
+  // is the Hive node the cascade contract names (BROOD_CASCADE_EVENTS); the brood it was
+  // feeding mourn around the burst exactly as they mourn a credited cell. Returns the
+  // mourners armed (0 when the burst fell where no living brood could hear it — an
+  // honest no-op, not a pretend room).
+  function hiveSacFell(x, z) {
+    if (!hiveMode) return 0;
+    const now = finite(getState()?.simTime);
+    armGriefAt(finite(x), finite(z), now);
+    const mourners = griefMournerCount(now);
+    if (mourners > 0) publish();
+    return mourners;
+  }
+
+  // B-BLOOM aggression — the relay/hit seam BROOD_CASCADE_EVENTS' comment names ("queen
+  // hits"): a hit on the brood's relay node turns the linked brood on the hitter. The arena
+  // forwards the ordinary `combat:damage` receipt for a relay entity (the Queen champion, or
+  // the Tendril's head — the two nodes the data contract stamps); this engine owns the law:
+  // only an authored relay id counts, only a live run arms, only neighbors inside the
+  // cascade reach join, and the window is the authored BROOD_AGGRESSION_S. Every hit re-arms
+  // — keeping the pressure on the relay is what the window means. Returns the members armed.
+  function relayHit(request) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave) return 0;
+    const relayLootId = request && request.relayLootId;
+    if (relayLootId !== BROOD_QUEEN_LOOT_ID && relayLootId !== TENDRIL_HEAD_LOOT_ID) return 0;
+    const x = finite(request?.x);
+    const z = finite(request?.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
+    const now = finite(state?.simTime);
+    armAggressionAt(x, z, now);
+    const members = aggressionCount(now);
+    if (members > 0) {
+      if (bus) {
+        bus.emit('swarm:broodAggression', {
+          wave: liveWave, relayLootId, members,
+          window: BROOD_AGGRESSION_S, pos: { x, z },
+        });
+      }
+      publish();
+    }
+    return members;
+  }
+
+  // The tide is deliverable while some live unspent sac still owes a birth: one heartbeat
+  // (successful sacRelease) within the last SAC_TIDE_SILENCE_S, or a tide fresh from install.
+  function sacTidePendingAt(now) {
+    if (!hiveMode || sacBudget <= 0) return false;
+    return Math.max(0, finite(now) - sacLastBirthAt) <= SAC_TIDE_SILENCE_S;
+  }
+
+  // The authored strand, named: the held share once no sac remains to deliver it.
+  function sacStrandedAt(now) {
+    return (hiveMode && sacBudget > 0 && !sacTidePendingAt(now)) ? sacBudget : 0;
+  }
+
+  // The mourning census: living cells still bending toward a corpse.
+  function griefLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && griefUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function griefMournerCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && griefUntil[j] > finite(now)) count += 1;
+    }
+    return count;
+  }
+
+  // The panic census: living cells mid-scatter or mid-knot (scatter always ends before its
+  // knot does, so one upper bound answers both).
+  function panicLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && knotUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function panicCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && knotUntil[j] > finite(now)) count += 1;
+    }
+    return count;
+  }
+
+  // The aggression census: living cells mid-rush (the window is one flat authored band, so
+  // one clock answers the whole kind — unlike panic's scatter-then-knot pair).
+  function aggressionLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && aggrUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function aggressionCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && aggrUntil[j] > finite(now)) count += 1;
+    }
+    return count;
   }
 
   /** A sac's acid drip — the same pool pipeline a spitter splash leaves behind. */
@@ -3626,6 +3998,14 @@ export function createBroodEngine(deps = {}) {
     view.segAliveCount = segAliveCount;
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
+    view.sacStranded = sacStrandedAt(finite(getState()?.simTime));
+    // B-BLOOM cascade kind on the view — the data contract's own seam ("published on the
+    // view"); the authored urgency order reads panic (the pack breaking), then aggression
+    // (the pack rushing you), then grief (the pack mourning) while each window is live.
+    const cascadeNow = finite(getState()?.simTime);
+    view.cascade = panicLive(cascadeNow) ? BROOD_CASCADE_PANIC
+      : (aggressionLive(cascadeNow) ? BROOD_CASCADE_AGGRESSION
+      : (griefLive(cascadeNow) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE));
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
@@ -3718,19 +4098,37 @@ export function createBroodEngine(deps = {}) {
     queryNearestDirectTarget,
     commitProjectileHit,
     damageSegment,
-    // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
+    // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid, and a sac's
+    // death is answered by the authored grief loop at the corpse (BROOD_CASCADE_EVENTS).
     sacRelease,
     hivePool,
+    hiveSacFell,
+    // B-BLOOM aggression — the relay/hit seam: the arena forwards a relay entity's hit
+    // receipt (`combat:damage` on the Queen or the Tendril's head) and the authored
+    // aggression cascade arms here.
+    relayHit,
     // Row-270 — the Domino shove lands here through the arena, never across the buffers' owner.
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
-      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget, machineReserve };
+      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget,
+        sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve,
+        mourners: griefMournerCount(finite(getState()?.simTime)),
+        panicking: panicCount(finite(getState()?.simTime)),
+        aggravated: aggressionCount(finite(getState()?.simTime)) };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
     _machine() {
       return { reserve: machineReserve, squads: squadCount, beams: beamCount };
+    },
+    // The staged composition, read-only for tests and the lab overlay: null when no bank
+    // is live, else its phase and the three (slot, spawn serial) pairs it holds.
+    _bank() {
+      return bank
+        ? { phase: bank.phase, until: bank.until,
+          slots: [[bank.first, bank.firstLife], [bank.spit, bank.spitLife], [bank.second, bank.secondLife]] }
+        : null;
     },
     _beams: { x: beamX, z: beamZ, a0: beamA0, a1: beamA1, t: beamT, total: beamTotal, range: beamRange, width: beamWidth, alive: beamAlive, owner: beamOwner },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
@@ -3741,7 +4139,8 @@ export function createBroodEngine(deps = {}) {
       return { mode: tendrilMode, headSeen: tendrilHeadSeen, done: tendrilDone, spawned: wormSpawned, headFound };
     },
     _hive() {
-      return { mode: hiveMode, sacBudget, immediateQuota };
+      return { mode: hiveMode, sacBudget, immediateQuota,
+        sacStranded: sacStrandedAt(finite(getState()?.simTime)), lastBirthAt: sacLastBirthAt };
     },
     _splitter() {
       return { reserve: splitterReserve };

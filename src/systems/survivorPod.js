@@ -42,6 +42,7 @@ import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { fenceForStation } from '../data/fences.js';
+import { localizeText } from '../localization/sourceText.js';
 
 const MISSION_ID = 'wm_survivor_pod';
 const CONCORD_FACTION_ID = 'faction_scn';
@@ -556,14 +557,49 @@ function victimMaydayLabel(victim) {
 function causalMaydayText(victim) {
   const label = victimMaydayLabel(victim);
   return label
-    ? `Mayday, mayday — ${label} going down, pod away.`
-    : 'Mayday, mayday — we are going down, pod away.';
+    ? localizeText('Mayday, mayday — {label} going down, pod away.', { label })
+    : localizeText('Mayday, mayday — we are going down, pod away.');
 }
 
 function causalSalvageReceiptText(rec) {
   const who = (rec && rec.victimLabel) || "The pod's survivor";
-  return `SURVIVOR PAID · ${who} is aboard — ${CAUSAL_RESCUE_SALVAGE_FEE_CR} cr salvage fee`;
+  return localizeText('SURVIVOR PAID · {who} is aboard — {fee} cr salvage fee', {
+    who,
+    fee: CAUSAL_RESCUE_SALVAGE_FEE_CR,
+  });
 }
+
+// ── Tow voice ── the person on your cable, between the mayday and the fee receipt ──────────────
+// Three lines, once each, all while the player's line actually holds: a grip when the tow starts,
+// and two air calls that read the same clock the scan label shows. One line per threshold — the
+// arbiter owns pacing; the voiceId receipt keeps the radio voice off a dropped line.
+
+const CAUSAL_TOW_GRIP_TEXT = () =>
+  localizeText("You've got us — whoever you are, don't let go. Get us inside a bubble.");
+const CAUSAL_TOW_AIR_CALLS = [
+  {
+    leftS: 60,
+    stamp: 'towAir60',
+    text: () => localizeText("Air reads sixty seconds. Whatever you're doing, do it faster."),
+    importance: 0.7,
+  },
+  {
+    leftS: 20,
+    stamp: 'towAir20',
+    text: () => localizeText('Twenty seconds of air. Please.'),
+    importance: 0.9,
+  },
+];
+
+// The delivery answer — the rescue's payer speaks where the fee receipt only pays. A pod the
+// player towed into a station's bubble gets the receiving desk's own line (a bunk offered, the
+// debt named in words, not numbers — the fee receipt already says the figure), and a pod handed
+// to a rescue hull gets that hull's crew answering the cable before they cast off. Each speaks
+// once per rescue, pod-scoped, riding the same arbiter floor as the tow voice.
+const CAUSAL_DESK_ANSWER_TEXT = () =>
+  localizeText("Dock control: pod secured. Medbay has a bunk with their name on it — your fee is posted at the desk.");
+const CAUSAL_HANDOFF_CREW_TEXT = () =>
+  localizeText("We'll take the line from here — good tow. They'll breathe when we open up.");
 
 /**
  * Player attribution for the causal rescue fee. _tickCausal resolves 'station_delivery' and
@@ -610,7 +646,7 @@ export const survivorPod = {
     this._onHeatCooled = (p) => {
       if (!(p?.cooled > 0)) return;
       this._bus.emit('toast', {
-        text: 'RESCUED PILOT — testimony filed; heat reduced.', kind: 'info', ttl: 4,
+        text: localizeText('RESCUED PILOT — testimony filed; heat reduced.'), kind: 'info', ttl: 4,
       });
     };
     this._onNewGame = () => this.newGame();
@@ -1132,6 +1168,11 @@ export const survivorPod = {
           ejectedAt: stamp.ejectedAt || 0,
           expireAt: stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S),
           playerNoticedAt: Number.isFinite(stamp.playerNoticedAt) ? stamp.playerNoticedAt : null,
+          // The tow voice's spent lines ride the stamp: a save/restore re-adoption must not
+          // re-speak a grip or air call the survivor already said.
+          towGripSpoken: stamp.towGripSpoken === true,
+          towAir60: stamp.towAir60 === true,
+          towAir20: stamp.towAir20 === true,
           resolved: false,
         };
       }
@@ -1189,6 +1230,8 @@ export const survivorPod = {
 
       // Player must be latched for handoff decisions (tow agency).
       if (!player || !playerLatchedTo(state, entity.id)) continue;
+      // The tow voice reads the same clock the scan label shows, once per threshold.
+      this._speakTowAir(rec, entity, now);
       if (distance2(player.pos, entity.pos) > CAUSAL_HANDOFF_RANGE_WU * CAUSAL_HANDOFF_RANGE_WU) {
         continue;
       }
@@ -1263,6 +1306,18 @@ export const survivorPod = {
       id: entry.id, custodyId: entry.id, entityId: entry.entityId, rescueHullId: entry.carrierEntityId,
       rescueHullGeneration: entry.carrierGeneration, reason: entry.pickupReason,
     });
+    // The crew of the hull that just opened up answers the cable that fed them — only when the
+    // PLAYER made the handoff (an unattended pod an ambulance claims on its own credits nobody).
+    // One line, pod-scoped; the hull's own faction register, like every voice on the band.
+    if (detail.reason === 'player_handoff_rescue_hull') {
+      this._speakDeskAnswer(
+        CAUSAL_HANDOFF_CREW_TEXT(),
+        hull.factionId || hull.data?.factionId || 'neutral',
+        `survivorDesk:${pod.id}`,
+        0.6,
+        pod.id,
+      );
+    }
     return true;
   },
 
@@ -1410,6 +1465,101 @@ export const survivorPod = {
     const own = ensureState(state);
     if (!own) return;
     this._tickCausal(state, own);
+    // The latch is the moment the tow becomes a person on a cable. A same-tick custody resolve
+    // (pod already inside the bubble) has removed the record — nobody towed anybody, no grip.
+    this._speakTowGrip(state, own, payload.targetId);
+  },
+
+  // First tow line, once per pod: the survivor answers the cable that just caught them.
+  _speakTowGrip(state, own, targetId) {
+    const rec = own && own.causal ? own.causal.byEntityId[targetId] : null;
+    if (!rec || rec.resolved || rec.towGripSpoken) return;
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId)
+      : null;
+    if (!isCausalSurvivorPod(entity)) return;
+    rec.towGripSpoken = true;
+    if (entity.data) entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+    this._speakTowLine(CAUSAL_TOW_GRIP_TEXT(), entity, rec, `survivorTowGrip:${rec.entityId}`, 0.55);
+  },
+
+  // Air calls ride the tow ticks: same clock the scan label names, spoken once per threshold,
+  // and only while the line holds (an unlatched pod answers nobody).
+  _speakTowAir(rec, entity, now) {
+    if (!Number.isFinite(rec.expireAt)) return;
+    const left = Math.ceil((Number(rec.expireAt) || 0) - now);
+    for (const call of CAUSAL_TOW_AIR_CALLS) {
+      if (left > call.leftS) break; // thresholds descend; the rest are further out
+      if (rec[call.stamp]) continue;
+      rec[call.stamp] = true;
+      if (entity.data) entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+      this._speakTowLine(
+        call.text(), entity, rec, `survivorAir:${call.stamp}:${rec.entityId}`, call.importance,
+      );
+      break; // one call per tick — the next threshold waits for a later tick
+    }
+  },
+
+  // The audible route, same contract as the mayday's voice-or-toast: the arbiter floor (say) plus
+  // a barkDirector:voice receipt carrying the same id as voiceId, so the radio voice schedules on
+  // the real floor — a queued line never sounds early and a dropped line never sounds at all.
+  _speakTowLine(text, entity, rec, id, importance) {
+    const factionId = rec.factionId || 'neutral';
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorMayday',
+        ttl: 4,
+        id,
+        factionId,
+      });
+      if (this._bus && typeof this._bus.emit === 'function') {
+        this._bus.emit('barkDirector:voice', {
+          situation: 'distress',
+          text,
+          factionId,
+          voiceId: id,
+          importance,
+          entityId: entity ? entity.id : (rec.entityId != null ? rec.entityId : null),
+          t: Number(this._state && this._state.simTime) || 0,
+        });
+      }
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorMayday', ttl: 4 });
+    }
+  },
+
+  // The delivery answer uses the same seam but the receiver's own register: the desk speaks for
+  // the house that took the person in (its authority faction), the rescue hull's crew for the
+  // hull that opened up. A custom situation (neither immediate nor chatter) rides the arbiter at
+  // line priority — the fee receipt is the payoff, this is the place answering it.
+  _speakDeskAnswer(text, factionId, id, importance, entityId) {
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'survivorDeskAnswer',
+        ttl: 4,
+        id,
+        factionId: factionId || CONCORD_FACTION_ID,
+      });
+      if (this._bus && typeof this._bus.emit === 'function') {
+        this._bus.emit('barkDirector:voice', {
+          situation: 'desk',
+          text,
+          factionId: factionId || CONCORD_FACTION_ID,
+          voiceId: id,
+          importance,
+          entityId: entityId != null ? entityId : null,
+          t: Number(this._state && this._state.simTime) || 0,
+        });
+      }
+    } else if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('toast', { text, kind: 'survivorDeskAnswer', ttl: 4 });
+    }
   },
 
   _resolveCausal(state, own, rec, entity, outcome, detail = {}) {
@@ -1509,6 +1659,14 @@ export const survivorPod = {
           victimId: rec.victimId,
         });
         this._speakSalvageReceipt(rec, entityId, factionId);
+        // The station that took the person in answers the tow — a bunk and the debt, once,
+        // in the receiving house's register. A custody ride to the same outcome already heard
+        // the ambulance crew at the handoff, so only the direct bubble delivery speaks here.
+        if (detail.reason === 'station_delivery') {
+          this._speakDeskAnswer(
+            CAUSAL_DESK_ANSWER_TEXT(), factionId, `survivorDesk:${entityId}`, 0.6, entityId,
+          );
+        }
       }
     }
 

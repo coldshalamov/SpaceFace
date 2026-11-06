@@ -38,6 +38,11 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
   'salvage:reactorVented':recipe('vent',0xffb271,1.15),
   'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
+  // The magnet catch is the net catch's sibling verb — the same teal capture beat, riding the
+  // pod from its first pull (lootShards emits once per pod per sector window) so a furball
+  // catch reads on the glass instead of only in the speaker. The payload carries the pod's
+  // position at first pull; if the pod is consumed mid-beat the flash holds the catch point.
+  'loot:magnetCaptured':recipe('catch',0x85e7cf,.6,{surfaceCapture:true}),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
   // BombDetonationVfx owns all eight payloads, including their actual received contacts.

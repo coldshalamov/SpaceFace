@@ -12,9 +12,9 @@ const ROLES = ['Armor', 'BrushedMetal', 'Hull', 'Livery', 'Mechanical', 'Mechani
 // Shipped hierarchies, semantic tags, identities and verified motion banks; small Three geometry
 // and materials stand in for compressed GPU payloads. This checks submission ownership, not look
 // or native GPU performance. No browser, WebGL context, or real GPU is created.
-async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }) } = {}) {
+async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }), families = ['ashline-rig', 'ashline-dart'] } = {}) {
   const scene = new THREE.Scene(), entities = new Map(), meshes = new Map(), records = [];
-  for (const family of ['ashline-rig', 'ashline-dart']) {
+  for (const family of families) {
     const manifest = JSON.parse(readFileSync(`assets/ships/release/render-packages/${family}/render-package.json`));
     const ref = manifest.runtime.motionBank;
     const bytes = new TextEncoder().encode(readFileSync(ref.uri, 'utf8').replace(/\r\n/g, '\n'));
@@ -25,7 +25,7 @@ async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }) }
     const tags = new Map(manifest.runtime.primitives.map(primitive => [primitive.name, primitive.tags]));
     for (let copy = 0; copy < 2; copy++) {
       const id = records.length + 1, root = new THREE.Group(), packageRoot = sceneFromGlbJson(json);
-      const dart = family === 'ashline-dart', defId = dart ? 'ship_wasp' : 'ship_lancet';
+      const dart = family.startsWith('ashline-dart'), defId = dart ? 'ship_wasp' : 'ship_lancet';
       root.userData = {
         presentationEntityId: id, presentationEntityType: 'ship', presentationOccupantGeneration: 4,
         presentationShipDefId: defId, authoredAssetState: 'authored', authoredSlots: { hull: [url] },
@@ -338,3 +338,45 @@ test('a second Rig writer or live material override restores direct appearance',
     assert.equal(peer.cold[0].layers.mask, 1, 'live appearance mutation falls back to its canonical material');
   } finally { other?.dispose(); f.dispose(); }
 });
+
+for (const family of ['ashline-dart-lod1', 'ashline-dart-lod2', 'ashline-rig-lod1', 'ashline-rig-lod2']) {
+  test(`${family} retained planner accepts its exact sealed motion identity`, async () => {
+    const f = await fixture({ families: [family] });
+    try {
+      f.owner._enableRigidOpaqueBatch(true); await f.owner._syncRigidOpaqueBatchProbe();
+      const diag = f.owner.getRigidOpaqueBatchDiagnosticsForBench();
+      assert.equal(diag.instances, 14, JSON.stringify(diag));
+      assert.equal(diag.batches, 7);
+      assert.ok(f.records.every(record => record.cold.every(leaf => leaf.layers.mask === 0)));
+      const record = f.records[0], leaf = record.cold[0], before = leaf.matrixWorld.clone();
+      record.motion.handleEvent('ship:boostStart', {}, 0); record.motion.update(0.31);
+      await f.owner._syncRigidOpaqueBatchProbe();
+      assert.notDeepEqual(leaf.matrixWorld.elements, before.elements);
+      assert.ok(instanceMatrixFor(f.scene, leaf), 'batch follows the verified native motion writer');
+    } finally { f.dispose(); }
+  });
+}
+
+for (const family of ['ashline-dart-lod1', 'ashline-dart-lod2', 'ashline-rig-lod1', 'ashline-rig-lod2']) for (const kind of ['hash', 'bank', 'url', 'stale']) {
+  test(`${family} retained planner rejects ${kind} identity drift`, async () => {
+    const f = await fixture({ families: [family] });
+    try {
+      for (const record of f.records) {
+        if (kind === 'hash') record.packageRoot.userData.spacefaceRenderPackage = { ...record.identity, contentHash: '0'.repeat(64) };
+        if (kind === 'url') for (const leaf of record.cold) leaf.userData.spacefacePartUrl = `assets/ships/release/parts/wholeships/${family.replaceAll('-', '_').replace(/lod[12]$/, family.endsWith('lod1') ? 'lod2' : 'lod1')}.glb`;
+        if (kind === 'stale') { record.root.userData.presentationOccupantGeneration++; f.state.entities.get(record.id).occupantGeneration++; }
+        if (kind === 'bank') {
+          const otherFamily = family.startsWith('ashline-dart') ? 'ashline-rig-lod1' : 'ashline-dart-lod1';
+          const other = JSON.parse(readFileSync(`assets/ships/release/render-packages/${otherFamily}/render-package.json`)).runtime.motionBank;
+          const bytes = new TextEncoder().encode(readFileSync(other.uri, 'utf8').replace(/\r\n/g, '\n'));
+          const wrong = await loadMotionBank(other, async () => ({ ok: true, arrayBuffer: async () => bytes.slice().buffer }));
+          record.motion.dispose();
+          record.motion = bindInstanceMotion(record.packageRoot, wrong, { sourceAssetId: wrong.bank.sourceAssetId, packageIdentity: record.identity, residencyOwner: record.root });
+          record.root.userData.authoredMotionControllers = [record.motion];
+        }
+      }
+      f.owner._enableRigidOpaqueBatch(true); await f.owner._syncRigidOpaqueBatchProbe();
+      assert.ok(f.records.every(record => record.cold.every(leaf => leaf.layers.mask === 1)), 'unattested leaves remain direct');
+    } finally { f.dispose(); }
+  });
+}
