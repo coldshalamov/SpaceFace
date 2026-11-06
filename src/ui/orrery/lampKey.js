@@ -73,17 +73,45 @@ const CSS = `
   background:var(--dp-hand-hot, #ffd98c); box-shadow:0 0 10px 3px rgb(255 217 140 / .7);
   offset-path:var(--orr-hold-path); offset-distance:calc(var(--sf-hold-p, 0) * 100%); offset-rotate:0deg; opacity:0; transition:opacity .12s linear; }
 .orr-lampkey.is-holding .orr-lampkey__bead { opacity:1; }
-/* the word under the key's left edge */
+/* the word under the key's left edge (default: beside, for Industry/Clips hold notes with room) */
 .orr-lampkey .orr-lampkey__note { position:absolute; left:100%; right:auto; top:50%; transform:translateY(-50%); margin:0 0 0 18px; width:auto; text-align:left; pointer-events:none;
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
 .orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
 .orr-lampkey.orr-lampkey--small .orr-lampkey__note { margin-left:14px; font-size: 12px; }
-/* the Missions ACCEPT key: small, it sits in the dossier's right-hand commit row (960x540, 1280x720) and a narrow window's half column
-   (≤650 wide): one line of "HOLD TO ACCEPT" ran ~160px past a gap of 80-150px and the dossier cut it to "HOLD TO".
-   There its note stands as two short lines beside the key, so the whole instruction reads. */
-.orr-lampkey.orr-lampkey--small.sx-ct-commit .orr-lampkey__note { white-space:normal; text-wrap:balance; width:max-content; max-width:7em; margin-left:14px; letter-spacing:.08em; line-height:1.15; }
+/* the Missions ACCEPT key: a short dossier column (700×461 foot≈184px, key≈120px) cut a
+   beside-note "HOLD TO ACCEPT" (overflowX≈98 → "HOLD T"/"ACCE"). Keep the note beside the key as
+   two 12px lines ("HOLD TO" / "ACCEPT") with zero tracking so the leftover gap fits it; tall sticky
+   feet park the note under the key (opaque left of the 90° foot mask). Scoped to .sx-ct-commit. */
+/* free ~12px in the densify foot so the 12px two-line note clears the column */
+html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-dossier__foot .orr-lampkey.orr-lampkey--small.sx-ct-commit:has(.orr-lampkey__note),
+.orr-lampkey.orr-lampkey--small.sx-ct-commit:has(.orr-lampkey__note) {
+  padding:0 8px 0 6px !important; letter-spacing:.1em !important; min-width:0 !important;
+}
+html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-dossier__foot .orr-lampkey.orr-lampkey--small.sx-ct-commit .orr-lampkey__note,
+.orr-lampkey.orr-lampkey--small.sx-ct-commit .orr-lampkey__note {
+  white-space:normal !important; width:max-content !important; max-width:none !important;
+  margin-left:0 !important; letter-spacing:0 !important; line-height:1.1 !important;
+  font-size:12px !important; font-stretch:100% !important; text-align:left !important;
+}
 @media (min-width:481px) and (max-width:650px) {
-  .orr-lampkey.sx-ct-commit .orr-lampkey__note { white-space:normal; text-wrap:balance; width:max-content; max-width:7em; margin-left:14px; letter-spacing:.08em; line-height:1.15; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-dossier__foot .orr-lampkey.sx-ct-commit .orr-lampkey__note,
+  .orr-lampkey.sx-ct-commit .orr-lampkey__note {
+    white-space:normal !important; width:max-content !important; max-width:none !important;
+    margin-left:4px !important; letter-spacing:0 !important; line-height:1.1 !important;
+    font-size:12px !important; font-stretch:100% !important; text-align:left !important;
+  }
+}
+/* tall sticky-foot: park under the key so the foot's 90° mask does not dissolve the note */
+@media (min-height:801px) and (min-width:481px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-dossier__foot .orr-lampkey.sx-ct-commit:has(.orr-lampkey__note),
+  .orr-lampkey.sx-ct-commit:has(.orr-lampkey__note) { margin-bottom:36px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-dossier__foot .orr-lampkey.sx-ct-commit .orr-lampkey__note,
+  .orr-lampkey.sx-ct-commit .orr-lampkey__note {
+    left:0 !important; right:auto !important; top:calc(100% + 6px) !important; transform:none !important;
+    margin:0 !important; width:max-content !important; max-width:none !important;
+    white-space:normal !important; letter-spacing:.06em !important; line-height:1.15 !important;
+    font-size:12px !important; text-align:left !important;
+  }
 }
 html.sf-reduce-motion .orr-lampkey::after { animation:none; }
 `;
@@ -211,7 +239,13 @@ export function dressLampKey(button, { hold = false, note = '' } = {}) {
       const n = doc.createElement('span');
       n.className = 'orr-lampkey__note';
       n.setAttribute('aria-hidden', 'true');
-      n.textContent = note;
+      // Missions ACCEPT densify: two short lines ("HOLD TO" / "ACCEPT") so a ~184px foot
+      // keeps the whole instruction beside the key instead of clipping a ~150px one-liner.
+      if (button.classList.contains('sx-ct-commit') && /^hold to accept$/i.test(String(note).trim())) {
+        n.append('hold to', doc.createElement('br'), 'accept');
+      } else {
+        n.textContent = note;
+      }
       button.appendChild(n);
     }
   }
