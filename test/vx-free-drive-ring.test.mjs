@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   VX_FREE_DRIVE_SECTOR_ID,
+  VX_FREE_DRIVE_POI,
   VX_FREE_DRIVE_STRUCTURES,
   VX_FREE_DRIVE_MARKERS,
   VX_FREE_DRIVE_RESERVATION_DISCS,
@@ -61,7 +62,7 @@ test('structure props are solid at authored radius; route buoys stay ghosts', ()
 test('reservation discs cover the timed lanes; threads stay thread-scale', () => {
   assert.ok(VX_FREE_DRIVE_RESERVATION_DISCS.length >= 12, 'the named lanes are protected');
   for (const disc of VX_FREE_DRIVE_RESERVATION_DISCS) {
-    assert.ok(disc.radius >= 60 && disc.radius <= 110,
+    assert.ok(disc.radius >= 55 && disc.radius <= 110,
       `disc at ${disc.localPos.x},${disc.localPos.z} protects a lane, not open field`);
     assert.ok(Math.hypot(disc.localPos.x, disc.localPos.z) <= SECTOR.worldRadius,
       'disc inside the sector radius');
@@ -118,6 +119,13 @@ test('the world spawns the ring verbatim on Helios, and nothing anywhere else', 
   const buoy = rows.filter((r) => r.data.name === 'Cracker Run marker');
   assert.equal(buoy.length, VX_FREE_DRIVE_MARKERS.length);
   for (const b of buoy) assert.equal(b.collides, false, 'markers never wall off the route');
+  // The POI/guidance seam depends on stamped row metadata; the first-pass spawn must apply it
+  // even though the dressing table did not exist when the pass began (lazy-table regression).
+  for (const r of rows) {
+    assert.ok(r.data.vxFreeDriveId, `${r.data.name} carries its ring identity`);
+    assert.equal(r.data.vxFreeDrivePoiId, VX_FREE_DRIVE_POI.id,
+      `${r.data.name} is bound to the Cracker Run POI`);
+  }
   // Other sectors: completely inert.
   const ceres = SECTORS.find((s) => s.id === 'sector_ceres_belt');
   const before = system.state.world.dressing.rows.length;

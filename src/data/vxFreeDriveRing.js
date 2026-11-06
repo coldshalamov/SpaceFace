@@ -39,7 +39,7 @@ export const VX_FREE_DRIVE_POI = Object.freeze({
   name: 'Cracker Run',
   pos: Object.freeze({ x: 1060, z: 40 }),
   runtimeOwner: 'vxFreeDriveRing',
-  chartNote: 'Stripped ore berth for unscored free flying; no start to trigger. This fix is the outer entry buoy. Round the solid Mouth gantry, then follow buoys north between the ribs. Fly the loop or bring a load on the Line. The low road south of the Helios Claim Cracker avoids its southward shove; its warning precedes the surge. Wait for calm before the narrow anvil thread.',
+  chartNote: 'Unscored free flying around the solid berth ribs of a stripped ore yard; no start to trigger. This fix is the outer entry buoy: round the solid Mouth, then follow buoys north. Fly the loop or bring a load on the Line. The low road south of the Helios Claim Cracker is always open — its warning precedes the surge\'s southward shove, so wait for calm before the narrow anvil thread.',
 });
 
 // Arrival copy names an existing body. These are presentation semantics, not a

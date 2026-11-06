@@ -3725,14 +3725,16 @@ export const world = {
     const structures = vxFreeDriveStructuresFor(sector.id);
     const markers = vxFreeDriveMarkersFor(sector.id);
     if (!structures.length || !active?.dressing) return;
-    const table = this.state.world.dressing;
+    // Read the table lazily: the first _spawnPlaceProp inside this pass creates
+    // state.world.dressing, so a captured handle from before the loop can be stale.
+    const dressingTable = () => this.state.world && this.state.world.dressing;
     let known = 0, needsStamp = false;
     // Cached FULL promotion is hot. Correct, missing, dead or replaced slots
     // need no new allocation or write; only an original missing metadata does.
     for (const slot of active.dressing) {
       if (!slot.vxFreeDriveId) continue;
       known++;
-      const body = table?.byId?.get(slot.id);
+      const body = dressingTable()?.byId?.get(slot.id);
       if (body && body === slot._vxFreeDriveOriginal && body.alive !== false
           && (body.data?.vxFreeDriveId !== slot.vxFreeDriveId
             || body.data?.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id)) needsStamp = true;
@@ -3750,7 +3752,7 @@ export const world = {
         if (!candidate.vxFreeDriveId && candidate.placeId === placeId
             && candidate.pos?.x === pos.x && candidate.pos?.z === pos.z) slot = candidate;
       }
-      let body = slot && table?.byId?.get(slot.id);
+      let body = slot && dressingTable()?.byId?.get(slot.id);
       if (!slot) {
         if (metadataOnly) return;
         body = this._spawnPlaceProp(active, sector, placeId, pos, {
@@ -3765,7 +3767,7 @@ export const world = {
       slot.vxFreeDriveId = source.id;
       const data = body?.data;
       if (!body || body.alive === false || body.type !== 'fx'
-          || table?.byId?.get(slot.id) !== body
+          || dressingTable()?.byId?.get(slot.id) !== body
           || (this.state.entities?.has(body.id) && this.state.entities.get(body.id) !== body)
           || (slot._vxFreeDriveOriginal && slot._vxFreeDriveOriginal !== body)
           || data?.worldDressing !== true || data.worldOneOff !== true

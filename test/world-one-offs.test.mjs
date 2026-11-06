@@ -354,7 +354,7 @@ test('D176: a body stranded at the pre-fix spot re-seats; a hauled wreck keeps i
 
 test('world.js owns the pass end to end: spawn on dressing, tick in update, reset on strip', () => {
   const source = readFileSync(fileURLToPath(new URL('../src/systems/world.js', import.meta.url)), 'utf8');
-  assert.match(source, /import \{ WORLD_ONE_OFFS \} from '\.\.\/data\/worldOneOffs\.js';/,
+  assert.match(source, /import \{[^}]*\bWORLD_ONE_OFFS\b[^}]*\} from '\.\.\/data\/worldOneOffs\.js';/,
     'the one-off data is imported, not duplicated');
   // The materialize scheduler interleaves a yield marker between dressing passes; the pin is
   // that one-offs run in the same dressing sequence directly after wreck aftermath, not that
