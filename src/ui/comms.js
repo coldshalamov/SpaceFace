@@ -28,6 +28,7 @@ import { createCommsRadial } from './commsRadial.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
 import { createCommsTrace } from './effects/commsTrace.js';
 import { openingInstructionSolo } from './hudAttention.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 const PLACE_GRAFFITI_HOLD_MS = 8000;
@@ -369,6 +370,9 @@ export function createComms(ctx) {
 
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
+    // Swarm glass (design/program/finish/swarm S2): a live Swarm round never shows the
+    // comms feed — the whole channel is narrative chatter, not the fight.
+    if (isSwarmGlass(state)) return;
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
     traceFactionId = resolveCommsFactionId(p, state, traceFactionId);
     const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);

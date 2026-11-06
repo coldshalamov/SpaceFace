@@ -4,6 +4,8 @@ import { collectCameraWitness } from '../render/cameraWitness.js';
 // order never changes while the game runs: a loop that simulates first on some frames and draws
 // first on others shows the world at a moment it has already shown, then leaps.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { ensureFrameTruth, frameTruthRequestedByParam } from './frameTruth.js';
+import { getLatestSnapshotFence } from '../render/snapshotFence.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import {
   HITCH_CATCHUP_STEPS,
@@ -398,12 +400,36 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const witness = createRuntimeWitness({ nowMs, readSample: readWitnessSample,
     readCamera: () => collectCameraWitness(state) });
   state.runtimeWitness = witness;
+  // E10 frame truth: one always-on recorder fed once per presented frame below, plus the
+  // dev overlay (?frameTruth=1 or Ctrl+Alt+F) and the JSON trace export (Ctrl+Alt+J).
+  const frameTruth = ensureFrameTruth(state);
+  if (frameTruthRequestedByParam(typeof globalThis.location !== 'undefined'
+    ? globalThis.location.search : '')) {
+    frameTruth.setOverlayVisible(true);
+  }
+  // Name the active stall script in the trace so before/after exports self-identify.
+  try {
+    const stallParam = new URLSearchParams(typeof globalThis.location !== 'undefined'
+      ? globalThis.location.search : '').get('simStall');
+    if (stallParam) frameTruth.note = `simStall=${stallParam}`;
+  } catch (_) { /* note is cosmetic */ }
+  // E5 probe: every trace export carries the sim-lane transport state (lane, SAB journal,
+  // worker clock) next to crossOriginIsolated/sharedArrayBuffer, so "the SAB lane active"
+  // is citable from the same evidence.
+  frameTruth.extraProviders.push(() => ({
+    simLane: simulationRunner.getDiagnostics ? simulationRunner.getDiagnostics() : null,
+  }));
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
   }
   let previousMotionSample = null;
   let lastMotionHoldReportMs = -Infinity;
   let motionHoldReports = 0;
+  // E10: 1 Hz heap-sample gate for the frame-truth recorder (see the frame finally block).
+  let frameTruthHeapLastAtMs = 0;
+  // E10/E1: scratch for the fence's presented player pose — reused, never allocated per frame.
+  const frameTruthPoseScratch = { x: 0, y: 0, z: 0 };
+  const frameTruthPoseScratchProxy = { pos: frameTruthPoseScratch, vx: 0, vz: 0 };
   function captureWitness() {
     try {
       const sample = witness.observe(state, {
@@ -1242,6 +1268,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
     if (frameDt > 0.25) frameDt = 0.25;
     last = now;
+    // Declared at frame scope so the finally's frame-truth ingest can read the present cost
+    // even when the present threw (the value then is the last measured one, or 0).
+    let presentationMs = 0;
 
     try {
       perf = ensurePerfRuntime(state);
@@ -1294,7 +1323,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       //
       // Only a restore frame presents without advancing: its picture must go out before the
       // clock restarts. A draw throw must not undo the sim that already ran this callback.
-      let presentationMs = 0;
       let presentationError = null;
       _stepCapArgs.frameDt = frameDt;
       _stepCapArgs.fixedDt = fixedDt;
@@ -1482,6 +1510,61 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         if (perf && typeof perf.recordFrameCallback === 'function') {
           perf.recordFrameCallback(measureNow() - callbackStart);
+        }
+        // E10 frame truth: one preallocated ring row per presented frame. Every probe
+        // read here already exists; a missing one records as 0 and never aborts the loop.
+        if (renderedSnapshot || diagnostics.stepsThisFrame > 0) {
+          const laneSample = simulationRunner.getFrameTruthSample?.() || null;
+          const fence = getLatestSnapshotFence();
+          const playout = fence && typeof fence.getPlayoutDiagnostics === 'function'
+            ? fence.getPlayoutDiagnostics() : null;
+          const renderInfo = state.render && state.render.diagnostics
+            ? state.render.diagnostics.info : null;
+          // performance.memory builds a MemoryInfo (~50–90 µs in Chromium) — sample it at 1 Hz,
+          // never per frame, and only when the browser exposes it.
+          let heapMB = null;
+          if (now - frameTruthHeapLastAtMs >= 1000) {
+            frameTruthHeapLastAtMs = now;
+            const memory = typeof performance !== 'undefined' ? performance.memory : null;
+            heapMB = memory && Number.isFinite(memory.usedJSHeapSize)
+              ? memory.usedJSHeapSize / 1048576 : null;
+          }
+          const playerRow = state.entities && Number.isSafeInteger(state.playerId)
+            ? (state.entities.get(state.playerId) || null) : null;
+          // The pose the player SAW is the fence's presented bracket, not the mirrored row
+          // (which updates at reply rate). The hold/jump metric must measure the picture.
+          let presentedPoseRow = playerRow;
+          if (fence && typeof fence.presentedRowPose === 'function' && playerRow) {
+            const presented = fence.presentedRowPose(state.playerId, frameTruthPoseScratch);
+            if (presented) {
+              frameTruthPoseScratchProxy.pos = presented;
+              frameTruthPoseScratchProxy.vx = Number.isFinite(playerRow.vx) ? playerRow.vx
+                : (playerRow.vel && Number.isFinite(playerRow.vel.x) ? playerRow.vel.x : 0);
+              frameTruthPoseScratchProxy.vz = Number.isFinite(playerRow.vz) ? playerRow.vz
+                : (playerRow.vel && Number.isFinite(playerRow.vel.z) ? playerRow.vel.z : 0);
+              presentedPoseRow = frameTruthPoseScratchProxy;
+            }
+          }
+          frameTruth.ingestFrame({
+            frameDtMs: frameDt * 1000,
+            callbackMs: measureNow() - callbackStart,
+            presentMs: presentationMs,
+            steps: diagnostics.stepsThisFrame,
+            simTimeS: state.simTime,
+            tick: state.tick,
+            replyAgeMs: laneSample ? laneSample.replyAgeMs : null,
+            workerWorkMs: laneSample ? laneSample.workerWorkMs : null,
+            workerStepsMs: laneSample ? laneSample.workerStepsMs : null,
+            workerPackMs: laneSample ? laneSample.workerPackMs : null,
+            applyMs: laneSample ? laneSample.applyMs : null,
+            playoutDelayMs: playout ? playout.delayMs : null,
+            extrapolateMs: playout ? playout.extrapolateMs : null,
+            bufferDepthPacks: playout ? playout.bufferDepthPacks : null,
+            playerRow: presentedPoseRow,
+            drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
+            trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,
+            heapMB,
+          });
         }
         // In the same `finally` as recordFrameCallback so a frame that threw still closes its
         // counter frame. Without this an error would fold two frames' counts into one and

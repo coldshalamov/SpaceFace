@@ -176,6 +176,7 @@ export const survivalRewards = {
     // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
     const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;
     const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run) * bountyMult));
+    if (bountyMult > 1) this._emit('swarm:perkTrigger', { perkId: 'bounty_hunter', wave: run.wave });
     r.baseCash += credits;
     r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
     this._dropRunChip(victim, payload, threat, credits);

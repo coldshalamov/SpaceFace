@@ -21,6 +21,7 @@ import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_R
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES, SWARM_BROOD_STRAINS } from '../data/swarmBroodLate.js';
 import { SWARM_MACHINE_FAMILIES } from '../data/swarmMachine.js';
+import { swarmBroodCharacterFor } from '../data/swarmCharacter.js';
 import { circleHitRadius, corridorHalfWidth, dashReach } from '../combat/telegraphFootprint.js';
 
 const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES, SWARM_MACHINE_FAMILIES);
@@ -433,7 +434,10 @@ export function createBroodPresentation(scene, capacity = 400) {
         pos.set(px[i], 0.6 + bob, pz[i]);
         const fam = family[i];
         const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
-        const base = drawn ? drawn.radius / 2.4 : 1;
+        // S6: the E1 draw scale lives on Lane F's character sheet (drawScale 1.5 — draw only,
+        // the collision radius in swarmBrood.js never moves).
+        const charScale = drawn ? (swarmBroodCharacterFor(drawn.id)?.drawScale || 1) : 1;
+        const base = (drawn ? drawn.radius / 2.4 : 1) * charScale;
         const stretch = familyStretch(fam);
         scl.set(base * stretch[0], base * stretch[1], base * stretch[2]);
         matrix.compose(pos, quat, scl);

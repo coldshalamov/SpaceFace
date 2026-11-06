@@ -48,7 +48,7 @@ function harness() {
     _drawBufferAspectClass: 'land',
     state: {
       settings: { video: { qualityMode: 'auto', renderScale: 1, pixelRatioCap: 2, sharpen: false } },
-      render: { dynResScale: 1, gpu: { tier: 'integrated' } },
+      render: { dynResScale: 1, gpu: { tier: 'discrete' } },
     },
   });
   return { renderer, bloom, owner, draws, compiled };

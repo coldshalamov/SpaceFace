@@ -325,3 +325,10 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     spawnPos: { x: -1100, z: -450 },
   },
 ]);
+
+// S9 — "the round looks like the arena's picture." Arenas whose fiction is a room you're
+// INSIDE (living walls that close around the fight, a sluice channel with a mouth that
+// eats it) do not show the open-sector ringed planet: the generic sky is the wrong
+// picture for an interior. Render reads this list; open-space arenas keep the authored
+// ARENA_BACKDROP_FOCUS dim.
+export const ENCLOSED_SKY_ARENA_IDS = new Set(['the_hive', 'cinder_sluice']);

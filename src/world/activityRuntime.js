@@ -293,6 +293,33 @@ function publishScalars(state, runtime) {
   published.exactCount = runtime.exactIds.length;
   published.aggregatePopulation = counts.s4;
   state.activityRuntime = published;
+
+  const farRows = (state.world && state.world.farActors && Array.isArray(state.world.farActors.rows))
+    ? state.world.farActors.rows.length
+    : 0;
+  const simLOD = state.simLOD || (state.simLOD = {
+    near: 0,
+    mid: 0,
+    far: 0,
+    tiers: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, shelved: 0 },
+    physics: 0,
+    activeAi: 0,
+    activeTraffic: 0,
+    tick: -1,
+  });
+  simLOD.near = (counts.s0 || 0) + (counts.s1 || 0);
+  simLOD.mid = counts.s2 || 0;
+  simLOD.far = (counts.s3 || 0) + (counts.s4 || 0) + farRows;
+  simLOD.tiers.s0 = counts.s0 || 0;
+  simLOD.tiers.s1 = counts.s1 || 0;
+  simLOD.tiers.s2 = counts.s2 || 0;
+  simLOD.tiers.s3 = counts.s3 || 0;
+  simLOD.tiers.s4 = counts.s4 || 0;
+  simLOD.tiers.shelved = farRows;
+  simLOD.physics = counts.physics || 0;
+  simLOD.activeAi = runtime.activeAiEntities ? runtime.activeAiEntities.length : 0;
+  simLOD.activeTraffic = runtime.activeTrafficEntities ? runtime.activeTrafficEntities.length : 0;
+  simLOD.tick = runtime.classifiedTick;
 }
 
 function captureDematerialized(state, entity, simTime, abstractTier) {
@@ -2443,4 +2470,26 @@ export function entityNeedsAiThink(entity, state = null) {
     return Number.isFinite(due) && due >= 0 && simTime >= due;
   }
   return isExactTier(tier);
+}
+
+/**
+ * Unified Simulation Level-of-Detail (LOD) telemetry.
+ * Reports active physics (near: S0/S1), simplified kinematics (mid: S2),
+ * and dormant/aggregate/shelved far records (far: S3/S4 + farActorTable).
+ */
+export function getSimulationLODTelemetry(state) {
+  if (!state || typeof state !== 'object') {
+    return {
+      near: 0,
+      mid: 0,
+      far: 0,
+      tiers: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, shelved: 0 },
+      physics: 0,
+      activeAi: 0,
+      activeTraffic: 0,
+      tick: -1,
+    };
+  }
+  ensureActivityClassified(state);
+  return state.simLOD;
 }

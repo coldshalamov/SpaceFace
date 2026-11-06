@@ -65,20 +65,6 @@ export const PHYSICS_BODY_RESPONSE_LIMITS = Object.freeze({ minScale: 0.25, maxS
 
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
-// Gameplay readers opt in by entity lifetime without enabling diagnostic publication for the
-// entire world. Weak ownership keeps requests out of serialized entities and releases retired ones.
-const TELEMETRY_REQUESTS = new WeakMap();
-
-export function requestPhysicsTelemetry(entity) {
-  if (!entity || typeof entity !== 'object' || entity.alive === false) return false;
-  TELEMETRY_REQUESTS.set(entity, entity.occupantGeneration ?? null);
-  return true;
-}
-
-export function hasPhysicsTelemetryRequest(entity) {
-  return !!entity && typeof entity === 'object' && entity.alive !== false
-    && TELEMETRY_REQUESTS.get(entity) === (entity.occupantGeneration ?? null);
-}
 // Exceptional native construction failures are process-local, never save authority. Most
 // callers need no native-ready protocol; only a failed live replacement closes this gate.
 const NATIVE_BODY_FAILURES = new WeakMap();
@@ -340,15 +326,13 @@ export function clearPhysicsAuthority(entity) {
   BODY_RESPONSE_RECORDS.delete(entity);
   PROJECTILE_CONTINUATIONS.delete(entity);
   TELEMETRY.delete(entity);
-  TELEMETRY_REQUESTS.delete(entity);
   AUTHORITY_CACHE.delete(entity);
   NORMALIZED_BODY_CACHE.delete(entity);
   RESOLVED_BODY_CACHE.delete(entity);
 }
 
 /** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
-export function writePhysicsTelemetry(entity, telemetry = {}) {
-  if (!entity || typeof entity !== 'object') return null;
+export function writePhysicsTelemetry(entity, telemetry = {}) {  if (!entity || typeof entity !== 'object') return null;
   const previous = TELEMETRY.get(entity);
   const value = Object.freeze({
     schemaVersion: PHYSICS_TELEMETRY_SCHEMA_VERSION,
@@ -376,6 +360,27 @@ export function writePhysicsTelemetry(entity, telemetry = {}) {
 
 export function readPhysicsTelemetry(entity) {
   return entity && TELEMETRY.get(entity) || null;
+}
+
+/**
+ * Physics-only: declare that gameplay inspects this body's measured post-solve state.
+ *
+ * The per-body telemetry publication is a frozen object plus a thruster-authority read on every
+ * dynamic body every tick. Only two gameplay owners read it (the Crucible room's jammed-shutter
+ * logic and the Kilnback capital's closing-speed completion), so a body that nobody inspects must
+ * not pay for it. Callers opt in once, where they bind the body they inspect; `readPhysicsTelemetry`
+ * keeps its exact contract for opted-in bodies and returns null (as it always has for unmeasured
+ * bodies) for everything else.
+ */
+export function requestPhysicsTelemetry(entity) {
+  if (!entity || typeof entity !== 'object') return false;
+  if (entity.physicsTelemetryRequested === true) return false;
+  entity.physicsTelemetryRequested = true;
+  return true;
+}
+
+export function wantsPhysicsTelemetry(entity) {
+  return !!(entity && entity.physicsTelemetryRequested === true);
 }
 
 export function shouldSyncPhysicsBodyEntity(entity) {

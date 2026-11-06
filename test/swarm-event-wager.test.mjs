@@ -198,8 +198,8 @@ test('a wave ending mid-windup stands the wager down — declined, not spent', (
 });
 
 test('boss waves and ordinary waves offer nothing — the wager is the event round', () => {
-  for (const wave of [6, 10]) {
-    assert.equal(isSwarmBossWave(wave), wave === 10);
+  for (const wave of [6, 15]) {
+    assert.equal(isSwarmBossWave(wave), wave === 15);
     const h = armedDirector({ arenaId: 'asteroid_mill', wave });
     startWave(h, wave);
     assert.equal(telegraphed(h).length, 0, `wave ${wave} offers no wager`);

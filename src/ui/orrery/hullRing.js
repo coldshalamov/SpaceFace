@@ -28,7 +28,7 @@ const CSS = `
   font-variation-settings:"wght" 250, "wdth" 100; letter-spacing:-.01em; fill:rgb(246 241 230); paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:4px; stroke-linejoin:round; }
 .orr-svg text.orr-hullring__num tspan { font-size: 12px; font-weight:500; font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.08em; fill:rgb(${BONE} / .66); }
 .orr-svg text.orr-hullring__label { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
-  font-variation-settings:"wght" 600, "wdth" 112; letter-spacing:.24em; text-transform:uppercase; fill:rgb(${BONE} / .66);
+  font-variation-settings:"wght" 600, "wdth" 100; letter-spacing:.14em; text-transform:uppercase; fill:rgb(${BONE} / .66);
   paint-order:stroke; stroke:rgb(4 6 9 / .7); stroke-width:3px; stroke-linejoin:round; }
 .orr-svg text.orr-hullring__gloss { font-family:var(--dp-face-label, var(--dp-face-display, "Archivo")), sans-serif; font-size: 12px;
   font-variation-settings:"wght" 500, "wdth" 100; letter-spacing:.04em; fill:rgb(${BONE} / .45);
@@ -80,7 +80,11 @@ export function createHullRing({ host, anchor } = {}) {
     const hb = host.getBoundingClientRect();
     const ab = anchor.getBoundingClientRect();
     if (!hb.width || !ab.width) { box = null; return; }
-    box = { w: hb.width, h: hb.height, cx: ab.left - hb.left + ab.width / 2, cy: ab.top - hb.top + ab.height / 2, rx: ab.width / 2 + 6, ry: ab.height / 2 + 6 };
+    // roomL / roomR: window margin beside the stage. A side reading may use it (see the fit below) so a
+    // narrow stage does not push LINE / MASS back onto their own arcs while the window has space to spare.
+    const view = (doc.defaultView && doc.defaultView.innerWidth) || 0;
+    box = { w: hb.width, h: hb.height, cx: ab.left - hb.left + ab.width / 2, cy: ab.top - hb.top + ab.height / 2, rx: ab.width / 2 + 6, ry: ab.height / 2 + 6,
+      roomL: view ? Math.max(0, hb.left) : 0, roomR: view ? Math.max(0, view - hb.right) : 0 };
   }
 
   // the setters touch the page only when a value really changed
@@ -228,7 +232,10 @@ export function createHullRing({ host, anchor } = {}) {
             try { width = Math.max(width, node.getComputedTextLength ? node.getComputedTextLength() : 0); } catch { /* unrendered host: keep the reserve */ }
           }
           const x0 = parseFloat(seg.num.getAttribute('x'));
-          const nx = def.side === 'right' ? Math.min(x0, box.w - 8 - width) : Math.max(x0, width + 8);
+          const edge = 16; // keep this much window between a reading and the screen edge
+          const nx = def.side === 'right'
+            ? Math.min(x0, box.w + Math.max(0, box.roomR - edge) - 8 - width)
+            : Math.max(x0, width + 8 - Math.max(0, box.roomL - edge));
           if (nx !== x0) for (const node of [seg.num, seg.label, seg.gloss]) setAttr(node, 'x', f(nx));
         }
       }
