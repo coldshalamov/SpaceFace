@@ -919,7 +919,11 @@ export function createSimLaneRuntime({
     if (workerClockMode === 'worker-local') {
       // Input/UI batches are a valid projection boundary. RPC-only batches
       // deliberately stay projection-free and preserve the command FIFO.
-      flushDirectives({ projectCursor: d.kind === 'domEvent' });
+      // DOM events flush on a short coalescing window — OS key repeats and the
+      // paired mousemove/pointermove listeners otherwise mint one transport post
+      // per raw event.
+      if (d.kind === 'domEvent') scheduleDomEventFlush();
+      else flushDirectives({ projectCursor: false });
     }
     // Input/UI descriptors should not wait for the next render callback while the worker owns
     // the clock. A single disposable zero-delay wake preserves FIFO order and coalesces pointer
@@ -1187,6 +1191,8 @@ export function createSimLaneRuntime({
         backpressureEpisodes: bounded(d.backpressureEpisodes),
         backpressureMs: bounded(d.backpressureMs, Number.MAX_SAFE_INTEGER),
         shedEvents: bounded(d.shedEvents),
+        shedInputPublishes: bounded(d.shedInputPublishes),
+        shedCommands: bounded(d.shedCommands),
         staleAckRecoveries: bounded(d.staleAckRecoveries),
       };
     }
@@ -1332,6 +1338,19 @@ export function createSimLaneRuntime({
   const FREEZE_GAP_MS = 350;
   const FREEZE_SAMPLE_MS = 250;
   const FREEZE_EPISODE_LIMIT = 24;
+  // DOM events each used to ship their own clockCommand post — and each post
+  // pays a gamepad sample, cursor raycast, camera payload, and postMessage.
+  // OS key repeats run ~30 Hz per held key, so holding thrust + turn + pointer
+  // motion saturated the main thread and starved reply application. Batches
+  // now coalesce onto a short window: the first event still posts immediately
+  // (edge latency preserved) and the trailing burst ships once per window.
+  const DOM_EVENT_FLUSH_MIN_MS = 8;
+  // Held-key repeats only matter to the worker as a kbm-liveness stamp (a quiet
+  // pad must not steal the helm mid-hold). One repeat per heartbeat window keeps
+  // the stamp fresh without paying full transport cost at OS repeat rate.
+  const DOM_REPEAT_HEARTBEAT_MS = 150;
+  let domEventFlushTimer = null;
+  let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
   // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
@@ -1690,6 +1709,24 @@ export function createSimLaneRuntime({
     postLaneDirective(msg);
   }
 
+  function scheduleDomEventFlush() {
+    if (laneClosed || !ready) return;
+    const now = nowMs();
+    const delay = DOM_EVENT_FLUSH_MIN_MS - (now - lastDomEventFlushAtMs);
+    if (delay <= 0) {
+      lastDomEventFlushAtMs = now;
+      flushDirectives({ projectCursor: true });
+      return;
+    }
+    if (domEventFlushTimer !== null) return;
+    domEventFlushTimer = setTimeout(() => {
+      domEventFlushTimer = null;
+      if (laneClosed) return;
+      lastDomEventFlushAtMs = nowMs();
+      flushDirectives({ projectCursor: true });
+    }, delay);
+  }
+
   function flushDirectives(options = {}) {
     if (laneClosed || !ready) return;
     if (workerClockMode === 'worker-local') {
@@ -1830,12 +1867,21 @@ export function createSimLaneRuntime({
       laneDomEvent({ type: 'resize' });
       laneViewport(viewportSize().w, viewportSize().h);
     });
+    let lastKeyRepeatShipAtMs = -Infinity;
     listen(window, 'keydown', (e) => {
+      const repeat = e.repeat === true;
+      if (repeat) {
+        // Held-key repeats only carry the kbm-liveness stamp worker-side; a
+        // heartbeat keeps it fresh without posting at OS repeat rate.
+        const now = nowMs();
+        if (now - lastKeyRepeatShipAtMs < DOM_REPEAT_HEARTBEAT_MS) return;
+        lastKeyRepeatShipAtMs = now;
+      }
       laneDomEvent({
         type: 'keydown',
         code: eventCode(e),
         pressed: true,
-        repeat: e.repeat === true,
+        repeat,
         blocked: modalInputActive()
           || isTextEntryTarget(e.target)
           || isUiCommandTarget(e.target),
@@ -2308,6 +2354,10 @@ export function createSimLaneRuntime({
     if (freezeSampler !== null) {
       clearTimeout(freezeSampler);
       freezeSampler = null;
+    }
+    if (domEventFlushTimer !== null) {
+      clearTimeout(domEventFlushTimer);
+      domEventFlushTimer = null;
     }
     workerClockCommandFlight = null;
     workerClockLatestCommandFlight = null;

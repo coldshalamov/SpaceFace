@@ -71,6 +71,24 @@ const LOCAL_DURABLE_LIMIT = 4096;
 // receipts ride the other durable keys, so shedding dead triggers can never
 // gap authoritative state.
 const LOCAL_EVENT_RETAIN_LIMIT = 512;
+// Same class: each stepped tick clones the full input state into a durable row,
+// but the presentation side only ever consumes the newest few through a
+// capacity-8 ring. Unbounded retained clones are payload weight, not data.
+const LOCAL_INPUT_PUBLISH_RETAIN_LIMIT = 64;
+// Queued wire commands wait for the next fixed tick and the drain sits outside
+// the step work budget — an input flood otherwise piles up unboundedly and the
+// next tick pays the whole backlog in one synchronous run. Latest-wins rows
+// (camera/viewport/timeEffects envelopes, pointer-move and sample dom payloads)
+// are sheddable; correctness envelopes (key edges, input, bus, rpc, settings,
+// spawn...) are never dropped — a lost keyup is a stuck key.
+const LOCAL_PENDING_COMMAND_LIMIT = 1024;
+const LOCAL_STALE_COMMAND_TYPES = new Set(['camera', 'viewport', 'timeEffects']);
+const LOCAL_STALE_DOM_TYPES = new Set(['mousemove', 'pointermove', 'gamepadFrame', 'cursorProjection']);
+function localCommandEnvelopeStale(env) {
+  if (!env || typeof env.t !== 'string') return false;
+  if (LOCAL_STALE_COMMAND_TYPES.has(env.t)) return true;
+  return env.t === 'dom' && env.p && env.p.d && LOCAL_STALE_DOM_TYPES.has(env.p.d.type);
+}
 // A publish whose ACK never lands wedges sentAwaitingAck forever: every later
 // tick only deepens the retained reply while presentation freezes at the last
 // applied pose — invisible to the in-flight watchdog because nothing is in
@@ -108,6 +126,8 @@ const localClock = {
   ackWatchdogTimer: null,
   staleAckRecoveries: 0,
   shedEventCount: 0,
+  shedInputPublishCount: 0,
+  shedCommandCount: 0,
   latestReply: null,
   sabArena: null,
   needsRebuildOnSend: false,
@@ -396,6 +416,11 @@ function localMergeReply(previous, next) {
     const shed = previous.events.length - LOCAL_EVENT_RETAIN_LIMIT;
     previous.events.splice(0, shed);
     localClock.shedEventCount = (localClock.shedEventCount || 0) + shed;
+  }
+  if (Array.isArray(previous.inputPublishes) && previous.inputPublishes.length > LOCAL_INPUT_PUBLISH_RETAIN_LIMIT) {
+    const shed = previous.inputPublishes.length - LOCAL_INPUT_PUBLISH_RETAIN_LIMIT;
+    previous.inputPublishes.splice(0, shed);
+    localClock.shedInputPublishCount = (localClock.shedInputPublishCount || 0) + shed;
   }
   for (const key of LOCAL_LATEST_KEYS) localMergeLatestRows(previous, next, key);
   const previousFullRebuild = previous.journalFullRebuild === true;
@@ -754,6 +779,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     appliedCommandSequence: localClock.appliedCommandSequence,
     awaitingAck: localClock.sentAwaitingAck,
     shedEvents: localClock.shedEventCount || 0,
+    shedInputPublishes: localClock.shedInputPublishCount || 0,
+    shedCommands: localClock.shedCommandCount || 0,
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
@@ -942,6 +969,12 @@ async function handleLocalClockCommand(msg) {
   }
   if (Array.isArray(msg.commands) && msg.commands.length) {
     localClock.pendingCommands.push(...msg.commands);
+    if (localClock.pendingCommands.length > LOCAL_PENDING_COMMAND_LIMIT) {
+      const kept = localClock.pendingCommands.filter((env) => !localCommandEnvelopeStale(env));
+      localClock.shedCommandCount = (localClock.shedCommandCount || 0)
+        + (localClock.pendingCommands.length - kept.length);
+      localClock.pendingCommands = kept;
+    }
   }
   const explicitSteps = Number.isSafeInteger(msg.steps) ? msg.steps : 0;
   // A command arriving while the autonomous clock is active can join the next

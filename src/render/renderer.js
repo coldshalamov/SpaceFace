@@ -33836,14 +33836,23 @@ function applyRendererSize(renderer, state) {
   // it now only shrinks the bloom content sub-rect via setContentScale — see _applySize.
   const tier = state.render && state.render.gpu && state.render.gpu.tier;
   const tierCap = tier === 'software' ? 1 : tier === 'integrated' ? 1.5 : 4;
-  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
+  // Integrated-GPU relief, gated on the same Auto-quality predicate the adaptive
+  // controller uses: dynResScale only shrinks the bloom content sub-rect, so an
+  // iGPU-bound scene needs fill relief at the raster source. Runtime intent only
+  // — never a settings.video write — and any explicit video key flips quality to
+  // Manual and restores the player's own resolution choice in the same publish.
+  const reliefGpu = state.render && state.render.gpu;
+  const relief = reliefGpu && reliefGpu.tier === 'integrated'
+    && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;
+  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap, relief ? 1 : 4);
   // The default bloom route applies renderScale at the drawing buffer. The optional graph needs a
   // native presentation buffer and owns its clamped internal scene scale, so applying the same
   // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.
   const graphOwnsScale = vd.renderGraph === true
     && state.render?.renderGraphUnavailable !== true
     && !renderGraphDynResBlocked(state);
-  const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
+  const configuredScale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  const scale = graphOwnsScale ? 1 : (relief ? Math.min(configuredScale, 0.75) : configuredScale);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
   // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale

@@ -376,6 +376,7 @@ test('retained replies shed stale presentation events instead of marching to the
     const first = reply(1, 0, 400);
     first.commandAcks = [{ seq: 'a' }];
     first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
+    first.inputPublishes = Array.from({ length: 100 }, (_, i) => ({ seq: i }));
     const second = reply(2, 400, 700);
     second.commandAcks = [{ seq: 'b' }];
 
@@ -383,6 +384,8 @@ test('retained replies shed stale presentation events instead of marching to the
     assert.equal(merged.events.length, 512, 'the retained event tail is capped at the shed limit');
     assert.equal(merged.events[0].p.seq, 188, 'the oldest stale triggers are shed first');
     assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
+    assert.equal(merged.inputPublishes.length, 64, 'input snapshots are bounded to the newest tail');
+    assert.equal(merged.inputPublishes[0].seq, 36, 'stale input clones shed before live ones');
     assert.equal(merged.commandAcks.length, 2, 'command receipts are correctness data and never shed');
     assert.equal(merged.storageOps.length, 1, 'storage receipts are correctness data and never shed');
 
@@ -894,6 +897,9 @@ test('a stale local completion cannot close a replacement command', async (t) =>
     stateTick: 1, simTime: 1 / 60, clockAccumulator: 0,
     journalStart: 0, journalEnd: 0, pack: emptyPack(),
   });
+  // DOM-event posts coalesce onto a short window; spacing the wall clock past
+  // it models two distinct user inputs.
+  f.advanceWall(9);
   laneDomEvent({ type: 'resize' });
   const replacement = f.posts.at(-1);
   assert.equal(replacement.kind, 'clockCommand');
@@ -919,6 +925,50 @@ test('a stale local completion cannot close a replacement command', async (t) =>
   });
   assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
   assert.equal(f.lane.runner.isClosed(), false);
+});
+
+test('DOM input batches coalesce onto one transport post per window', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.lane.runner.setClockActive(true);
+  laneDomEvent({ type: 'resize' });
+  const first = f.posts.at(-1);
+  assert.equal(first.kind, 'clockCommand', 'the leading event posts immediately');
+  f.receive({
+    kind: 'clockTick', clockSequence: 1, commandSequence: first.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: first.commandSequence },
+    stateTick: 1, simTime: 1 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  const postsAfterFirst = f.posts.length;
+
+  // A held-key/pointer burst inside the window mints no new posts — each raw
+  // event used to pay a gamepad sample, raycast, camera payload, and post.
+  laneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
+  laneDomEvent({ type: 'keydown', code: 'BracketLeft', pressed: true });
+  laneDomEvent({ type: 'mousemove', clientX: 100, clientY: 100 });
+  laneDomEvent({ type: 'pointermove', clientX: 100, clientY: 100 });
+  assert.equal(f.posts.length, postsAfterFirst, 'burst inside the window coalesces');
+
+  // The trailing flush ships every queued envelope in one command.
+  t.mock.timers.tick(9);
+  const batched = f.posts.at(-1);
+  assert.equal(batched.kind, 'clockCommand');
+  assert.notEqual(batched.commandSequence, first.commandSequence);
+  assert.equal(batched.commands.filter((env) => env.t === 'dom').length, 4);
+
+  // An event outside the window posts on the leading edge again.
+  f.receive({
+    kind: 'clockTick', clockSequence: 2, commandSequence: batched.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: batched.commandSequence },
+    stateTick: 2, simTime: 2 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  f.advanceWall(9);
+  laneDomEvent({ type: 'keyup', code: 'KeyW', pressed: false });
+  const second = f.posts.at(-1);
+  assert.equal(second.kind, 'clockCommand');
+  assert.notEqual(second.commandSequence, batched.commandSequence);
+  assert.equal(second.commands.filter((env) => env.t === 'dom').length, 1);
 });
 
 test('worker-local completed metadata coalesces a blocked presentation without losing rebuild boundaries', async (t) => {

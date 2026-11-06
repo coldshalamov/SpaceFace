@@ -6270,6 +6270,12 @@ export function createHud(ctx, alerts) {
   }
   const flightTextObstacleCache = createFlightTextObstacleCache();
   let externalCaptionsStale = true;
+  // Receipt churn can invalidate the obstacle set many times per second and each
+  // snapshot re-measures the whole DOM. A 100 ms floor bounds the layout storm;
+  // a trailing retry guarantees convergence when the caller stops calling.
+  const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
+  let flightTextObstacleSnapshotAt = -Infinity;
+  let flightTextObstacleRetry = null;
   let flightTextObstaclesStale = true;
   let alertLanePlacementStale = true;
   let alertLanePlacementActive = false;
@@ -6279,6 +6285,18 @@ export function createHud(ctx, alerts) {
 
   function refreshFlightTextObstacleSnapshot() {
     if (!flightTextObstaclesStale) return;
+    const nowMs = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
+    const sinceLast = nowMs - flightTextObstacleSnapshotAt;
+    if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) {
+      if (flightTextObstacleRetry === null && typeof setTimeout === 'function') {
+        flightTextObstacleRetry = setTimeout(() => {
+          flightTextObstacleRetry = null;
+          refreshFlightTextObstacleSnapshot();
+        }, Math.ceil(FLIGHT_TEXT_OBSTACLE_MIN_MS - sinceLast) + 4);
+      }
+      return;
+    }
     const qsa = (scope, selector) => {
       if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
       const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
@@ -6337,6 +6355,7 @@ export function createHud(ctx, alerts) {
     }
 
     flightTextObstacleCache.publish(entries);
+    flightTextObstacleSnapshotAt = nowMs;
     flightTextObstaclesStale = false;
   }
 
@@ -6359,6 +6378,12 @@ export function createHud(ctx, alerts) {
     if (leftContext) overlayLayoutObserver.observe(leftContext);
     hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
   }
+  hudUnsubscribers.push(() => {
+    if (flightTextObstacleRetry !== null) {
+      clearTimeout(flightTextObstacleRetry);
+      flightTextObstacleRetry = null;
+    }
+  });
   on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
   on('settings:changed', invalidateAndPlaceHudOverlays);
   hudUnsubscribers.push(() => {

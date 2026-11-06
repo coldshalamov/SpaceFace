@@ -3839,6 +3839,10 @@ try {
             readModelEntities: diag.readModelEntities,
             boundaryErrorCount: diag.boundaryErrorCount,
             droppedEnvelopes: diag.droppedEnvelopes,
+            freezeActive: diag.freezeActive,
+            freezeEpisodes: diag.freezeEpisodes,
+            msSinceLastAppliedReply: diag.msSinceLastAppliedReply,
+            workerApplyMaxMs: diag.workerApplyMaxMs,
             error: diag.error, errorSite: diag.errorSite,
           } : null,
         };
