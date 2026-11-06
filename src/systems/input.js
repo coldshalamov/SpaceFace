@@ -62,7 +62,8 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
-import { isSwarmControls, swarmFlightActionAllowed, SWARM_DEFAULT_BINDINGS } from '../data/swarmControls.js';
+import { isSwarmControls } from '../data/swarmControls.js';
+import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
@@ -439,12 +440,13 @@ function binding(state, action) {
   const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
   const scheme = SCHEME_BINDINGS[activeScheme(state)];
   const power = powerVerbFor(action);
-  // S5: a live Swarm run admits only its arcade set — every other verb resolves to no binding.
-  if (!swarmFlightActionAllowed(state, power)) return [];
+  // X5: the active context admits only its short set — every other verb resolves to no binding.
+  // Swarm keeps S5's exact set; station/map have no flight verbs; combat has the fight set.
+  if (!contextActionAllowed(state, power)) return [];
   const saved = power === action ? (cfg && cfg[action]) : undefined;
   const custom = saved || (POWER_VERBS.includes(power) ? savedCodesForPower(cfg, power) : undefined);
   const list = custom
-    || (isSwarmControls(state) ? SWARM_DEFAULT_BINDINGS[power] : undefined)
+    || (contextStockBindings(state)?.[power] || undefined)
     || scheme[power] || DEFAULT_BINDINGS[power];
   return Array.isArray(list) ? list : (list ? [list] : []);
 }
@@ -1638,14 +1640,14 @@ export const input = {
 
   /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
   _padEdge(gp, action) {
-    return !!(gp && gp.isConnected() && swarmFlightActionAllowed(this.state, action)
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
       && this._gamepadLifecycleActionAllowed(action)
       && gp.actions[action] && gp.actions[action].pressed);
   },
 
   /** Quarantine-gated pad action hold — same seam for level verbs (bulletTime, siteBeam). */
   _padHeld(gp, action) {
-    return !!(gp && gp.isConnected() && swarmFlightActionAllowed(this.state, action)
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
       && this._gamepadLifecycleActionAllowed(action)
       && gp.actions[action] && gp.actions[action].held);
   },

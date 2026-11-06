@@ -29,6 +29,7 @@ import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { isSwarmControls, SWARM_HELP_ROWS } from '../../data/swarmControls.js';
+import { contextHelpRows, inputContextFor } from '../../data/inputContexts.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -224,7 +225,7 @@ export function controlSections(state) {
     holdLine && `Hold + ${holdLine}: reel/pay out/orbit`,
     pump && `${pump} pump`,
   ].filter(Boolean).join('; ');
-  return [
+  const sections = [
     ['Flight', [
       ['Throttle forward', 'forward'],
       ['Reverse thrust', 'reverse'],
@@ -309,6 +310,14 @@ export function controlSections(state) {
       ['Pause / Help route', null, 'Pause button → Help / Controls'],
     ]],
   ];
+  // X5: the short card for where the player is, before the full reference. The long sheet stays
+  // below it, so discoverability is not lost.
+  const context = inputContextFor(state);
+  const contextTitle = context === 'combat' ? 'Combat now'
+    : context === 'station' ? 'Station now'
+      : context === 'map' ? 'Map now' : 'Flight now';
+  const contextCard = contextHelpRows(state).map(([keys, verb]) => [verb, null, keys]);
+  return [[contextTitle, contextCard], ...sections];
 }
 
 function keyLabel(state, action, def) {

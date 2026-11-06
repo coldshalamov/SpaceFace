@@ -61,6 +61,7 @@ import {
 import {
   resolveThemeMatrix,
   scoreStemWeights,
+  STEM_KEYS,
   swarmChainLift,
   wantedMotifRate,
   TRAVEL_MOTIF,
@@ -2643,8 +2644,8 @@ export const audio = {
     rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
     rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
     rt.loops = {};                // keyed sustained voices: beam/mining/per-owner weapon beams
-    rt.stems = { A: null, B: null, C: null, D: null };
-    rt.stemGains = { A: null, B: null, C: null, D: null };
+    rt.stems = { A: null, B: null, C: null, D: null, E: null };
+    rt.stemGains = { A: null, B: null, C: null, D: null, E: null };
     rt.musicState = 'calm';
     rt.threat = 0;
     rt.alarms = { lowShield: false, lowHull: false };
@@ -2882,6 +2883,27 @@ export const audio = {
     });
     bus.on('entity:killed', (p) => this._onKilled(p), { presentation: true });
     bus.on('entity:destroyed', (p) => this._onDestroyed(p), { presentation: true });
+    // X4 boss read: a boss body's spawn/end is the music's own event, not a per-frame scan.
+    // A capital boss or an arena boss (bossDressing) enters the boss stem; its death releases it.
+    const noteBossSpawn = (p) => {
+      const e = p && p.entity;
+      const d = e && e.data;
+      if (!e || !d) return;
+      if (d.isBoss === true || d.bossDressing != null || d.missionTag === 'capital_boss') {
+        const rt = this.rt;
+        rt._bossIds = rt._bossIds || new Set();
+        rt._bossIds.add(e.id);
+        rt._bossActive = true;
+      }
+    };
+    const noteBossEnd = (p) => {
+      const rt = this.rt;
+      if (!rt || !rt._bossIds || p == null || p.id == null) return;
+      if (rt._bossIds.delete(p.id)) rt._bossActive = rt._bossIds.size > 0;
+    };
+    bus.on('entity:spawned', noteBossSpawn, { presentation: true });
+    bus.on('entity:killed', noteBossEnd, { presentation: true });
+    bus.on('entity:destroyed', noteBossEnd, { presentation: true });
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
     bus.on('mining:start', (p) => this._onMiningStart(p));
@@ -3604,7 +3626,7 @@ export const audio = {
   _pauseMusicSchedulers() {
     const stems = this.rt && this.rt.stems;
     if (!stems) return;
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const stem = stems[key];
       if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
     }
@@ -3613,7 +3635,7 @@ export const audio = {
   _resumeMusicSchedulers() {
     const stems = this.rt && this.rt.stems;
     if (!stems) return;
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const stem = stems[key];
       if (this.rt._stemIdle && this.rt._stemIdle[key]) continue;
       if (stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
@@ -3641,7 +3663,7 @@ export const audio = {
     rt._stemTargets = rt._stemTargets || {};
     rt._stemIdle = rt._stemIdle || {};
     rt._stemQuietSince = rt._stemQuietSince || {};
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const g = rt.stemGains[key]; if (!g) continue;
       const target = Math.max(0.0001, w[key] || 0);
       rt._stemTargets[key] = target;
@@ -3665,7 +3687,7 @@ export const audio = {
   _idleQuietStems() {
     const rt = this.rt, ctx = rt && rt.ctx;
     if (!ctx || !rt._stemQuietSince) return;
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const since = rt._stemQuietSince[key];
       if (since == null || rt._stemIdle[key] || ctx.currentTime - since < XFADE_S * 2) continue;
       const stem = rt.stems && rt.stems[key];
@@ -3678,7 +3700,7 @@ export const audio = {
     const rt = this.rt;
     const stems = rt && rt.stems;
     if (!stems) return;
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const stem = stems[key];
       if (stem && typeof stem.stop === 'function') stem.stop();
       stems[key] = null;
@@ -7643,9 +7665,9 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || rt._musicStarted) return;
     rt._musicStarted = true;
-    // Map our 4 states to MUSIC_STEMS indices: A=calm, B=tense, C=combat, D=docked(reuse boss/warm).
-    const stemKeys = ['A', 'B', 'C', 'D'];
-    for (let i = 0; i < 4; i++) {
+    // X4: every authored row is a stem. A=travel, B=tension, C=combat, D=station, E=boss.
+    const stemKeys = STEM_KEYS;
+    for (let i = 0; i < stemKeys.length; i++) {
       const key = stemKeys[i];
       const def = MUSIC_STEMS[i] || MUSIC_STEMS[MUSIC_STEMS.length - 1];
       const g = ctx.createGain();
@@ -8308,14 +8330,14 @@ export const audio = {
       || (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
       || STEM_WEIGHTS[stateName]
       || STEM_WEIGHTS.calm;
-    rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
+    rt._musicFeed = STEM_KEYS.reduce((sum, key) => sum + (w[key] || 0), 0);
     const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
     const t = ctx.currentTime;
     if (!instant) {
       this._applyStemTargets(w, xf / 3, frame ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 1);
       return;
     }
-    for (const key of ['A', 'B', 'C', 'D']) {
+    for (const key of STEM_KEYS) {
       const g = rt.stemGains[key]; if (!g) continue;
       const target = Math.max(0.0001, w[key]);
       try {
@@ -8368,6 +8390,7 @@ export const audio = {
     const theme = resolveThemeMatrix({
       docked,
       wanted,
+      bossActive: rt._bossActive === true,
       inCombat: threat >= 0.6,
       threat,
       // THE EAR: the score director reads live hostiles only (the pressure bed's read).
@@ -8382,7 +8405,7 @@ export const audio = {
     rt._themeMatrix = theme;
     this._applySectorBed(theme);
     this._syncEnvironmentMix(docked);
-    let desired = theme.state || theme.musicState
+    let desired = theme.musicState || theme.state
       || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
     if (theme.state === 'station') desired = 'docked';
 
@@ -8421,7 +8444,7 @@ export const audio = {
       const phaseMoved = !!frame && rt._scoreTransitionsSeen !== frame.transitions;
       if (frame) rt._scoreTransitionsSeen = frame.transitions;
       if (w && (phaseMoved || !last || ['A', 'B', 'C', 'D'].some((k) => Math.abs((w[k] || 0) - (last[k] || 0)) > 0.04))) {
-        rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
+        rt._musicFeed = STEM_KEYS.reduce((sum, key) => sum + (w[key] || 0), 0);
         this._applyStemTargets(w, phaseMoved ? XFADE_S / 3 : 1.2, phaseMoved ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 0);
       }
       this._idleQuietStems();

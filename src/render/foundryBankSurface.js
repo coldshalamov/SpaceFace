@@ -5,15 +5,20 @@ import * as THREE from 'three';
 export function createFoundryBankSurface() {
   const positions = [], normals = [], colors = [];
   const palette = {
-    side: new THREE.Color(0x383632),
-    end: new THREE.Color(0x403d37),
-    bottom: new THREE.Color(0x292824),
-    panel: new THREE.Color(0x55534d),
-    panelAlternate: new THREE.Color(0x504e49),
-    seam: new THREE.Color(0x605d55),
-    bevel: new THREE.Color(0x605e57),
-    endBevel: new THREE.Color(0x55534e),
-    mark: new THREE.Color(0x987b49),
+    // X1 style bible §3: three values. The top is the light primary (the read from the chase
+    // camera), the sides are the mid/dark mechanical, the underside is near-black. Seams are
+    // DARK recesses, never bright tape; the bevel catches the key. A recessed hatch breaks the
+    // large top face.
+    side: new THREE.Color(0x343a41),
+    end: new THREE.Color(0x3d444c),
+    bottom: new THREE.Color(0x1a1e24),
+    panel: new THREE.Color(0x9ba3ab),
+    panelAlternate: new THREE.Color(0x8e969e),
+    seam: new THREE.Color(0x3c444c),
+    bevel: new THREE.Color(0xa7afb7),
+    endBevel: new THREE.Color(0x8f979f),
+    mark: new THREE.Color(0xd9a03a),
+    hatch: new THREE.Color(0x5a6168),
   };
   function quad(points, normal, color) {
     for (const i of [0, 1, 2, 0, 2, 3]) {
@@ -31,8 +36,14 @@ export function createFoundryBankSurface() {
   for (let x = 0; x < xs.length - 1; x++) {
     for (let z = 0; z < zs.length - 1; z++) {
       const seam = x === 3 || x === 5;
-      const color = x === 1 && z === 1 ? palette.mark
-        : seam ? palette.seam : x === 4 ? palette.panelAlternate : palette.panel;
+      // A dashed safety band along one long edge, two recessed hatches, and one alternate
+      // panel plate: enough authored structure that the slab reads as a deck, not a card.
+      const hazard = z === 0 && x >= 1 && x <= 6;
+      const color = hazard
+        ? (x % 2 === 1 ? palette.mark : palette.hatch)
+        : seam ? palette.seam
+          : (x === 2 && z === 2) || (x === 5 && z === 1) ? palette.hatch
+            : (x === 4 || (x === 1 && z === 2)) ? palette.panelAlternate : palette.panel;
       quad([[xs[x], 1, zs[z]], [xs[x], 1, zs[z + 1]],
         [xs[x + 1], 1, zs[z + 1]], [xs[x + 1], 1, zs[z]]], [0, 1, 0], color);
     }

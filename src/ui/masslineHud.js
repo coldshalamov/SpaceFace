@@ -48,6 +48,7 @@ import { announceStrokeGrade } from './stuntCallout.js';
 import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { isAdventureFlight } from './attentionGlass.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -1358,8 +1359,10 @@ export const masslineHud = {
     // visually identical and halves that layout flush. Hidden-to-shown transitions still
     // land within one extra frame.
     this._strainFlip = !this._strainFlip;
-    const swarm = isSwarmGlass(state);
-    if (swarm) this._lineStrainReadout?.hide();
+    // S2 + X3: the Line's physical marks always draw; its telemetry words never do on a flight
+    // glass. Adventure keeps the winch/tonnage readout behind the Details surface.
+    const quietTelemetry = isSwarmGlass(state) || isAdventureFlight(state);
+    if (quietTelemetry) this._lineStrainReadout?.hide();
     else if (this._strainFlip || !this._lineStrainReadout?.root || this._lineStrainReadout.root.hidden) {
       this._lineStrainReadout?.update(state, player, w2s);
     }
@@ -1386,9 +1389,9 @@ export const masslineHud = {
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateOrbitRing(dom, player, state, w2s);
     this._updateDrawInk(dom, state, w2s);
-    // Swarm glass (design/program/finish/swarm S2 task 3): the massline's physical marks stay —
-    // they are how the round is aimed and thrown — but its Adventure telemetry words do not draw.
-    if (swarm) this._hideSwarmJargon(dom);
+    // Swarm glass (S2 task 3) + X3 Adventure glass: the massline's physical marks stay —
+    // they are how the Line is aimed and thrown — but its telemetry words do not draw.
+    if (quietTelemetry) this._hideSwarmJargon(dom);
     else {
       this._updateSnagMark(dom, state, w2s);
       this._updateMeters(dom, ml2, state);
@@ -1413,6 +1416,9 @@ export const masslineHud = {
   // that does not exist yet — only the real rendered Massline may connect the player to an object.
   // The mark is what makes the caption world-anchored, so no connector is needed.
   _updateAcquisitionPreview(dom, state, player, w2s) {
+    // X3: on a flight glass the bracket says a plain verb at the target ("GRAB", "TOO HEAVY"),
+    // never the mass/tonnage register. The number stays on the target dossier.
+    const quietTelemetry = isSwarmGlass(state) || isAdventureFlight(state);
     // M3: a live latch denial wins the slot for its full 1.2 s floor — a press that grabbed
     // nothing must still say so, in words, at the spot it was aimed.
     // INF-015: a successful latch clears the pill at once — the tether mirror is the truth,
@@ -1483,7 +1489,12 @@ export const masslineHud = {
     const seedText = masslineSeedPreviewText(seedPreview);
     // F4: a latchable body with mass answers the swing question on the same caption line.
     const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
-    const massText = !seedPreview && ready ? massPreviewWord(target, playerMass, state) : '';
+    const massRead = massPreviewRead(target, playerMass);
+    const massText = !seedPreview && ready
+      ? (quietTelemetry
+        ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : 'GRAB')
+        : massPreviewWord(target, playerMass, state))
+      : '';
     const text = seedText || massText || bracketReadText(read);
     const paint = seedText || massText || bracketPaintText(read);
     const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
