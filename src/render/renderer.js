@@ -19563,6 +19563,8 @@ export const render = {
         const adaptiveEnabled = adaptiveResolutionEnabledForSettings(state.render.gpu, vd);
         if (adaptiveEnabled) this._adaptive.syncScale(state.render.dynResScale);
         this._adaptive.setEnabled(adaptiveEnabled);
+        // The integrated relief rides the same Auto predicate — re-resolve the combined floor.
+        if (this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
       }
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
@@ -24959,6 +24961,22 @@ export const render = {
     }
   },
 
+  // Effective dyn-res floor for the current automatic raster reliefs. Integrated relief and
+  // hitch-governor rung 3 already shrink the drawing buffer itself, so the content sub-rect
+  // must stay proportionally shallower or the two reliefs compound far below the readability
+  // floor (integrated + hitch + old dyn floor presented ~0.36×). Manual renderScale choices
+  // are the player's own and do not raise the floor. Software keeps its emergency depth.
+  _adaptiveFloorForRelief() {
+    const renderState = this.state && this.state.render;
+    const gpu = renderState && renderState.gpu;
+    if (!gpu || gpu.tier === 'software') return this._dynFloor || dynResFloorForTier(gpu && gpu.tier);
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const hitch = finiteInRange(renderState && renderState.hitchReliefScale, 0.5, 1, 1);
+    const relief = gpu.tier === 'integrated' && adaptiveResolutionEnabledForSettings(gpu, vd)
+      ? Math.min(hitch, INTEGRATED_RELIEF_RASTER_CAP) : hitch;
+    return adaptiveFloorForCombinedScale(this._dynFloor || dynResFloorForTier(gpu.tier), relief);
+  },
+
   _setHitchReliefLevel(renderState, level, eased) {
     const rel = this._hitchRelief;
     rel.level = level;
@@ -24968,6 +24986,9 @@ export const render = {
     renderState.hitchReliefScale = level >= 3 ? HITCH_RELIEF_SCALE : 1;
     this._invalidatePostOptionsCache();
     this._syncPostOptions();
+    // Raster relief just changed — retighten/loosen the dyn-res floor so relief × content
+    // scale holds the combined readability floor (see _adaptiveFloorForRelief).
+    if (this._adaptive && this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
     if (prevScale !== renderState.hitchReliefScale) this._applySize();
     if (eased === null) return;
     try {
@@ -34035,6 +34056,10 @@ const HITCH_RELIEF_DOWN_COOLDOWN_MS = 2500;
 const HITCH_RELIEF_UP_COOLDOWN_MS = 8000;
 const HITCH_RELIEF_SCALE = 0.8;
 const HITCH_RELIEF_MAX_LEVEL = 3;
+// Automatic raster relief for integrated GPUs on the Auto quality policy — applyRendererSize
+// caps the configured scale here; _adaptiveFloorForRelief folds the same value into the
+// dyn-res floor so the two reductions never compound past the readability floor.
+const INTEGRATED_RELIEF_RASTER_CAP = 0.9;
 
 function aspectClassFromSize(size) {
   return size.x >= size.y ? 'land' : 'port';
@@ -34069,7 +34094,7 @@ function applyRendererSize(renderer, state) {
   // (0.9 × 0.8 = 0.72 was player-rejected as too soft). Effective scale is min(configured,
   // tier relief, hitch floor): integrated 0.9→0.8 under stress, discrete 1.0→0.8.
   const hitchCap = finiteInRange(state.render && state.render.hitchReliefScale, 0.5, 1, 1);
-  const scale = graphOwnsScale ? 1 : Math.min(relief ? Math.min(configuredScale, 0.9) : configuredScale, hitchCap);
+  const scale = graphOwnsScale ? 1 : Math.min(relief ? Math.min(configuredScale, INTEGRATED_RELIEF_RASTER_CAP) : configuredScale, hitchCap);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
   // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale
