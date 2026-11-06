@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-05",
+  "updated": "2026-11-06",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,45 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inference26-scan-hail-identity",
-      "date": "2026-10-26",
-      "wf": "WF-01",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Contact dialogue binds the original body lifetime and rejects stale choices after id reuse or a same-tick reopen",
-      "fingerprint": "verb=hail,subject=contact-lifetime,sector=ordinary-route,domain=wf-01",
-      "references": [],
-      "integration": "live",
-      "commit": "ed54ea13247",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-recovery-recycled-body",
-      "date": "2026-10-26",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Historical recovery records cannot consume events for a newer wreck with the recycled entity id",
-      "fingerprint": "verb=resolve,subject=new-wreck,sector=ordinary-route,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "263588e5dab",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-career-sync-totals",
-      "date": "2026-10-26",
-      "wf": "WF-07",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Live career samplers extend merged shared-store distance and residence totals instead of overwriting them",
-      "fingerprint": "verb=sync,subject=career-totals,sector=ordinary-route,domain=wf-07",
-      "references": [],
-      "integration": "live",
-      "commit": "7a6a6c66dc0",
-      "verification": "focused_green"
-    },
     {
       "id": "inference26-career-current-residence",
       "date": "2026-10-26",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "c4b44ae548ba",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-mine-strike",
+      "date": "2026-11-06",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a rock, hull or kill-wreck you hurl through a mine fence sets off the mine it strikes; the layer's own wingman thrown into its fence is your kill",
+      "fingerprint": "verb=strike,subject=mine fence fuze,sector=mine-field,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "56245c71d773",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-brood-chain-open",
+      "date": "2026-11-06",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a brood wipe that opens a chain now counts every body it killed instead of one, without throwing dozens of broken-chain receipts",
+      "fingerprint": "verb=climb,subject=brood wipe chain step,sector=crucible-swarm,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "80e753f8cced",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-overdrive-voice",
+      "date": "2026-11-06",
+      "wf": "WF-14",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "the chain's triple-rate guns at the score cap are named when they open and when the break takes them away, with their own chime and dip",
+      "fingerprint": "verb=announce,subject=chain overdrive window,sector=crucible-swarm,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "3af98ae577c6",
       "verification": "focused_green"
     }
   ],

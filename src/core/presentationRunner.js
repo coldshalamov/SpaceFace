@@ -413,6 +413,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       ? globalThis.location.search : '').get('simStall');
     if (stallParam) frameTruth.note = `simStall=${stallParam}`;
   } catch (_) { /* note is cosmetic */ }
+  // E5 probe: every trace export carries the sim-lane transport state (lane, SAB journal,
+  // worker clock) next to crossOriginIsolated/sharedArrayBuffer, so "the SAB lane active"
+  // is citable from the same evidence.
+  frameTruth.extraProviders.push(() => ({
+    simLane: simulationRunner.getDiagnostics ? simulationRunner.getDiagnostics() : null,
+  }));
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
   }

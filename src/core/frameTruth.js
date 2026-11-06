@@ -184,6 +184,9 @@ export function ensureFrameTruth(state) {
     overlayTimer: null,
     hotkeysInstalled: false,
     note: '',
+    // Export-time extras (E5 probe): providers push () => ({...}) objects folded into
+    // every trace — the sim-lane/SAB state rides the same evidence as the frame data.
+    extraProviders: [],
     lastPlayerX: NaN,
     lastPlayerZ: NaN,
   };
@@ -327,6 +330,12 @@ export function ensureFrameTruth(state) {
         ? fence.getPlayoutDiagnostics() : null,
     };
     if (typeof options.extra === 'object' && options.extra) Object.assign(trace, options.extra);
+    for (const provider of recorder.extraProviders) {
+      try {
+        const extra = provider();
+        if (extra && typeof extra === 'object') Object.assign(trace, extra);
+      } catch (_) { /* a broken probe never blocks the export */ }
+    }
     const text = JSON.stringify(trace);
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     download(`frame-truth-${stamp}.json`, text);

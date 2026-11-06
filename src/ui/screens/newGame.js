@@ -16,6 +16,7 @@ import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { starterAirCard } from '../starterAirCard.js';
+import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../ship/shipSheet.js';
 import { paintStarterWorkPreview } from '../starterWorkPreview.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
@@ -479,7 +480,9 @@ export const newGameScreen = {
     const starterWords = words(NEW_GAME_STARTERS.map((s) => ({
       action: 'starter:' + s.id,
       label: s.name,
-      sub: s.tag,
+      // P1 — the word under a starter is the ship sheet's own identity, so the choice and the
+      // ship screen never name the same hull two different things.
+      sub: (starterAirCard(s).identity || s.tag),
     })), {
       row: true, size: 'body', ariaLabel: 'Start as',
       onPick: (action) => this._setStarter(action.slice('starter:'.length)),
@@ -809,6 +812,17 @@ export const newGameScreen = {
       const stats = el('div', 'orr-ng-stats');
       stats.setAttribute('aria-hidden', 'true');
       caption.insertBefore(stats, loadoutField.wrap);
+      // P1 — the six-stat sheet beside the hull, so the starter choice is a character decision:
+      // the same six 1–10 bars the dock and THE SHIP print, with the engineering numbers behind
+      // their own Details door.
+      ensureShipSheetStyles();
+      const sheetHost = el('div', 'sf-ng-sheet');
+      caption.appendChild(sheetHost);
+      this._paintStarterSheet = (starter) => {
+        const card = starterAirCard(starter);
+        sheetHost.innerHTML = shipSheetHtml(card.sheet, { compact: true });
+        bindShipSheet(sheetHost.querySelector('[data-sfs]'));
+      };
       // one ring round the hull (ORRERY 6): mass left, thrust over the top, line right; the other starters as ghosts
       // the readings between two hulls (f = 0 at a, 1 at b): while the yard turns they sweep from one to the
       // next; every starter stands on each arc as a ghost tick, so the lit value travels between them
@@ -826,6 +840,7 @@ export const newGameScreen = {
       this._paintStats = (starter) => {
         if (this._hullRing) this._hullRing.paint(ringStats(starter));
         else paintStarterStats(stats, starterAirCard(starter), scale, NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
+        if (this._paintStarterSheet) this._paintStarterSheet(starter);
         this._lastStarter = starter;
       };
       // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
