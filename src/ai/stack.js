@@ -98,19 +98,22 @@ export class TacticalAIStack {
     perceptionsByEntity.clear();
     const orderedMembers = uniqueMembers(roster, roster[NORMALIZED_ROSTER_FLAG] === true, this.orderedMemberScratch, this.seenMemberScratch);
     const activeMembers = this.memberBatchEnabled ? this._activeDecisionMembers(orderedMembers, tick) : null;
+    // Combat members beyond FAR_DOCTRINE_WU of the player refresh perception/doctrine at half rate
+    // (decisions are replayed from cache in between), staggered by id so the load stays flat.
+    const farOrigin = this.memberBatchEnabled ? this._farOrigin() : null;
     let liveFrames = null;
     if (!this.freezeResults && typeof this.ports.sensors.liveFramesFor === 'function') {
       const refreshIds = this.refreshMemberIdsScratch;
       refreshIds.length = 0;
       for (const member of orderedMembers) {
         const cached = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-        if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers)) refreshIds.push(member.id);
+        if (!this.memberBatchEnabled || !cached || memberRefreshDue(member, tick, activeMembers, farOrigin)) refreshIds.push(member.id);
       }
       liveFrames = this.ports.sensors.liveFramesFor(refreshIds, tick, this.liveSensorBatchOptions);
     }
     for (const member of orderedMembers) {
       let perception = this.memberBatchEnabled ? this.perceptionCache.get(member.id) : null;
-      if (!this.memberBatchEnabled || !perception || memberRefreshDue(member, tick, activeMembers)) {
+      if (!this.memberBatchEnabled || !perception || memberRefreshDue(member, tick, activeMembers, farOrigin)) {
         const frame = liveFrames && liveFrames.has(member.id)
           ? liveFrames.get(member.id)
           : !this.freezeResults && typeof this.ports.sensors.liveFrameFor === 'function'
@@ -200,7 +203,7 @@ export class TacticalAIStack {
         const effectiveDirective = applyEnemyMindDirective(
           combatDoctrine ? overrideDirectiveForCombatDoctrine(directive, combatDoctrine) : directive, mind, freeze);
         const priorDecision = this.lastDecisionByEntity.get(member.id);
-        if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers)
+        if (this.memberBatchEnabled && !retreatOrdered && !memberRefreshDue(member, tick, activeMembers, farOrigin)
           && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)
           && !enemyMindDecisionChanged(priorDecision.enemyMind || null, mind)) {
           let cached = retickDecision(priorDecision, tick, combatDoctrine);
@@ -304,6 +307,13 @@ export class TacticalAIStack {
     this.perceptionCache.delete(entityId);
     this.lastDecisionByEntity.delete(entityId);
     this.entitySquad.delete(entityId);
+  }
+
+  _farOrigin() {
+    const player = this.ports && this.ports.world && typeof this.ports.world.player === 'function'
+      ? this.ports.world.player()
+      : null;
+    return player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z) ? player.pos : null;
   }
 
   _activeDecisionMembers(orderedMembers, tick) {
@@ -572,7 +582,10 @@ function clearCachedDoctrineEdges(doctrine) {
   return Object.freeze({ ...doctrine, telegraphStarted: false, phaseChanged: false });
 }
 
-function doctrineRefreshDue(member, tick) {
+const FAR_DOCTRINE_WU = 1200;
+const FAR_DOCTRINE_WU_SQ = FAR_DOCTRINE_WU * FAR_DOCTRINE_WU;
+
+function doctrineRefreshDue(member, tick, farOrigin = null) {
   if (!member || normalizeCombatDoctrineId(member.combatDoctrineId) == null) return false;
   const id = member.id;
   let bucket = 0;
@@ -587,12 +600,22 @@ function doctrineRefreshDue(member, tick) {
     }
     bucket = hash % DOCTRINE_REFRESH_TICKS;
   }
-  return bucket === tick % DOCTRINE_REFRESH_TICKS;
+  if (bucket !== tick % DOCTRINE_REFRESH_TICKS) return false;
+  if (farOrigin) {
+    const pos = member.pos || (member.self && member.self.pos);
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+      const dx = pos.x - farOrigin.x, dz = pos.z - farOrigin.z;
+      if (dx * dx + dz * dz > FAR_DOCTRINE_WU_SQ) {
+        return (Math.floor(tick / (DOCTRINE_REFRESH_TICKS * 2)) & 1) === (bucket & 1);
+      }
+    }
+  }
+  return true;
 }
 
-function memberRefreshDue(member, tick, activeMembers) {
+function memberRefreshDue(member, tick, activeMembers, farOrigin = null) {
   return normalizeCombatDoctrineId(member && member.combatDoctrineId) != null
-    ? doctrineRefreshDue(member, tick)
+    ? doctrineRefreshDue(member, tick, farOrigin)
     : activeMembers.has(member.id);
 }
 

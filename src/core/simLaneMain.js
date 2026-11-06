@@ -693,7 +693,7 @@ export function createSimLaneRuntime({
     // at the worker and carry the command sequence that has been applied.
     if (msg.kind === 'clockTick') {
       try {
-        applyTickReply(msg);
+        applyTickReplyTimed(msg);
         if (Number.isSafeInteger(msg.clockSequence)) {
           workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
           workerClockAckPending = {
@@ -730,9 +730,10 @@ export function createSimLaneRuntime({
         ready = true;
         tracked.resolve?.(msg);
         startWorkerPump();
+        scheduleFreezeSample();
       } else if (msg.kind === 'tickDone') {
         if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
-        applyTickReply(msg);
+        applyTickReplyTimed(msg);
         tracked.resolve?.(msg);
       } else if (msg.kind === 'done' || msg.kind === 'bye') {
         if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
@@ -1185,6 +1186,8 @@ export function createSimLaneRuntime({
         retainedDomainUpdates: bounded(d.retainedDomainUpdates),
         backpressureEpisodes: bounded(d.backpressureEpisodes),
         backpressureMs: bounded(d.backpressureMs, Number.MAX_SAFE_INTEGER),
+        shedEvents: bounded(d.shedEvents),
+        staleAckRecoveries: bounded(d.staleAckRecoveries),
       };
     }
 
@@ -1316,6 +1319,29 @@ export function createSimLaneRuntime({
   // owns only this lane's cadence; main fallback never sees these fields or methods.
   let workerPumpRequested = false;
   let workerClockRequested = false;
+  // Freeze episode recorder. The ship only freezes while presentation keeps
+  // animating when applied worker state stops arriving while the clock should
+  // be advancing. Sampling the applied watermark on a wall-clock interval —
+  // independent of the frame loop and the reply handler — names the culprit
+  // at the moment it happens: awaitingAck with no in-flight work = the worker
+  // retaining against the reply/ACK protocol; an aged in-flight command or
+  // directive = the worker busy inside it (save/RPC); neither = the worker
+  // inside a long authoritative tick (physics/heavy step), which the next
+  // reply's workMs then prices. A large applyMs on the closing reply = the
+  // main-side apply itself was the stall.
+  const FREEZE_GAP_MS = 350;
+  const FREEZE_SAMPLE_MS = 250;
+  const FREEZE_EPISODE_LIMIT = 24;
+  const freezeEpisodes = [];
+  if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
+  // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
+  // mocked clock) and must not read as "never applied".
+  let lastAppliedAtMs = -1;
+  let workerApplyMs = 0;
+  let workerApplyMaxMs = 0;
+  let workerApplyOver100 = 0;
+  let openFreeze = null;
+  let freezeSampler = null;
   let workerClockGeneration = 0;
   let workerClockCommandSequence = 0;
   let workerClockCommandInFlight = false;
@@ -1492,6 +1518,77 @@ export function createSimLaneRuntime({
     }
   }
 
+  function freezeSnapshot() {
+    const d = workerClockLastDiagnostics;
+    return {
+      awaitingAck: d ? d.awaitingAck === true : null,
+      backpressured: d ? d.backpressured === true : null,
+      retainedRows: d && Number.isSafeInteger(d.retainedRows) ? d.retainedRows : null,
+      shedEvents: d && Number.isSafeInteger(d.shedEvents) ? d.shedEvents : null,
+      staleAckRecoveries: d && Number.isSafeInteger(d.staleAckRecoveries) ? d.staleAckRecoveries : null,
+      workerSteps: d && Number.isSafeInteger(d.steps) ? d.steps : null,
+      timerPending: d ? d.timerPending === true : null,
+      commandInFlight: workerClockCommandInFlight,
+      commandInFlightWallMs: workerClockCommandFlight
+        ? Math.max(0, nowMs() - workerClockCommandFlight.sentMs) : null,
+      commandInFlightOps: workerClockCommandFlight && Array.isArray(workerClockCommandFlight.ops)
+        ? workerClockCommandFlight.ops.slice() : null,
+      directiveInFlight: inFlight != null,
+      directiveInFlightWallMs: inFlight ? Math.max(0, nowMs() - inFlight.sentMs) : null,
+      directiveInFlightOp: inFlight ? inFlight.op || 'tick' : null,
+      pendingSteps,
+      lastApplyMs: workerApplyMs,
+      maxApplyMs: workerApplyMaxMs,
+      appliesOver100ms: workerApplyOver100,
+      lastReplyWork: workerLastReplyWork ? { ...workerLastReplyWork } : null,
+    };
+  }
+
+  function freezeSample() {
+    if (laneClosed || !ready) return;
+    const advancing = workerClockRequested === true
+      && state && state.mode === 'flight'
+      && Number.isFinite(state.timeScale) && state.timeScale > 0;
+    const gapMs = lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : 0;
+    if (advancing && gapMs > FREEZE_GAP_MS) {
+      if (!openFreeze) {
+        openFreeze = { openedAtMs: nowMs(), gapAtOpenMs: gapMs, snapshot: freezeSnapshot() };
+        freezeEpisodes.push(openFreeze);
+        if (freezeEpisodes.length > FREEZE_EPISODE_LIMIT) {
+          freezeEpisodes.splice(0, freezeEpisodes.length - FREEZE_EPISODE_LIMIT);
+        }
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[simLane] freeze episode opened', JSON.stringify(openFreeze.snapshot));
+        }
+      }
+    } else if (openFreeze) {
+      openFreeze.durationMs = Math.max(0, nowMs() - openFreeze.openedAtMs);
+      openFreeze.closingSnapshot = freezeSnapshot();
+      openFreeze = null;
+    }
+  }
+
+  function scheduleFreezeSample() {
+    if (freezeSampler !== null || laneClosed) return;
+    freezeSampler = setTimeout(() => {
+      freezeSampler = null;
+      freezeSample();
+      scheduleFreezeSample();
+    }, FREEZE_SAMPLE_MS);
+  }
+
+  function applyTickReplyTimed(msg) {
+    const started = nowMs();
+    try {
+      applyTickReply(msg);
+    } finally {
+      workerApplyMs = Math.max(0, nowMs() - started);
+      if (workerApplyMs > workerApplyMaxMs) workerApplyMaxMs = workerApplyMs;
+      if (workerApplyMs > 100) workerApplyOver100++;
+      lastAppliedAtMs = nowMs();
+    }
+  }
+
   function flushWorkerClockDirectives({ projectCursor = false } = {}) {
     if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
     if (projectCursor) cursorProjectionPending = true;
@@ -1576,6 +1673,8 @@ export function createSimLaneRuntime({
       commandSequence,
       sentMs: nowMs(),
       mainThreadDelayedMs: 0,
+      ops: Array.isArray(msg.commands)
+        ? msg.commands.slice(0, 12).map((command) => command?.t || '?') : [],
     };
     workerClockLatestCommandFlight = commandFlight;
     postedDirectives++;
@@ -2101,6 +2200,13 @@ export function createSimLaneRuntime({
         laneReady: ready,
         replyCount,
         workerLastReplyWork,
+        workerApplyMs,
+        workerApplyMaxMs,
+        workerApplyOver100,
+        freezeActive: openFreeze != null,
+        freezeEpisodes,
+        msSinceLastAppliedReply: lastAppliedAtMs >= 0
+          ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
         postedDirectives,
         postedSteps,
         pendingSteps,
@@ -2198,6 +2304,10 @@ export function createSimLaneRuntime({
     if (stallWatchdogTimer !== null) {
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;
+    }
+    if (freezeSampler !== null) {
+      clearTimeout(freezeSampler);
+      freezeSampler = null;
     }
     workerClockCommandFlight = null;
     workerClockLatestCommandFlight = null;

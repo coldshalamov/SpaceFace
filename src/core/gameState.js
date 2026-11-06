@@ -47,7 +47,12 @@ function defaultSettings() {
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
     video: { renderScale: 1.0, bloom: true, bloomStrength: 0.40, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, nocturne: true, nocturneShadows: false, nocturneAtmosphere: true, nocturneQuality: 'auto', energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityMode: 'auto', chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
     gameplay: {
-      autosaveIntervalS: 120,
+      // 300s default: the worker-lane autosave captures in one synchronous task,
+      // which stalls sim ticks for its full duration on mature saves. Until the
+      // capture is sliced, a longer interval trades a staler recovery point for
+      // materially fewer blocking pauses per session — the user-authorized
+      // playability tradeoff. Still selectable Off/60/120/300 in Settings.
+      autosaveIntervalS: 300,
       tutorialHints: true,
       difficulty: 'standard',
       pauseOnFocusLoss: true,

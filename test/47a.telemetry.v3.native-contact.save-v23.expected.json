@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c",
+    "authoritativeHash": "fb39af114ff669a1f21834fad54f172050bfc90308d0d03e19562a014d4715b5",
     "authoritativeHashByReloadAt": {
-      "60": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c",
-      "600": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c"
+      "60": "fb39af114ff669a1f21834fad54f172050bfc90308d0d03e19562a014d4715b5",
+      "600": "fb39af114ff669a1f21834fad54f172050bfc90308d0d03e19562a014d4715b5"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -288,6 +288,10 @@
     "With the slower trajectory, the same17 fires produce17 hits/damage instead of10; cue and cueApplied counts14->21. All seven former surviving projectiles now hit; entity count17->10. Tether attach4/break129 and boost121/181 are unchanged.",
     "The paired authoritative delta is confined to motion/aim, projectile lifecycle, target shield, propulsion energy/heat, wreck worldRecordId and native bodies. No economy, mission, story, settings, input-tape or scenario-contract fields changed.",
     "Current canonical reload60 and reload600 snapshots have the same26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b hash. The exact seed47,720 ticks,input tape,event families,bounds,five-run minimum and reload-equivalence checks remain enforced.",
-    "Root-approved source17efe: Ward save22->23 changes only canonical $.meta.version; diagnostic23->22 restores both exact old hashes, with identical events/physics and one V3 leaf delta. Both historical parent fixtures remain unchanged."
+    "Root-approved source17efe: Ward save22->23 changes only canonical $.meta.version; diagnostic23->22 restores both exact old hashes, with identical events/physics and one V3 leaf delta. Both historical parent fixtures remain unchanged.",
+    "2026-11-05 deliberate re-record: Rapier numSolverIterations 12 to 6 (Smooth Program owner direction). Hash is reload-invariant: reload-at 60 and 600 produce the identical run.",
+    "Evidence method: in-tree A/B at identical seed 47, 720 ticks, input tape, repeat 5. The solver-12 run reproduced the prior hash 30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c exactly, then only the iteration constant changed.",
+    "14 motion leaf fields moved; worst drift about 1.5 WU on the player after the tethered-wreck contact, velocities within 0.11 WU/s. Downstream fields (aimWorld, propulsion energySpent/heat, physics mirror poses) reflect the same poses.",
+    "phase0ObservedTraceCounts are UNCHANGED: identical fires, hits, tether attach/break ticks, damage, economy, alerts."
   ]
 }

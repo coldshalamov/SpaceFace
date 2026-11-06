@@ -76,16 +76,79 @@ Twelve parallel packages, disjoint file ownership, focused tests only. Measured 
 - **Slow-host admission**: heavy work is "late" relative to the host's own smoothed cadence; forced
   after 3 skips; on-glass geometry batches of 16 (models stop waiting forever on slow machines).
 
-## 4. Round 2 — in flight (2026-11-05 evening)
+## 4. Round 2 — landed (commit `53e69d314d03`, measured 2026-11-05)
 
-| Package | Target |
+| Package | Result |
 |---|---|
-| R2-A Draw-call merge | ships draw ~14 leaves each (326 leaves in ordinary flight), drones 184, wrecks 103 — merge static same-material leaves / widen the retained rigid opaque batch path |
-| R2-B HUD/radar | per-placement rect/candidate caching and unchanged-signature skip; radar static layers to an offscreen canvas; readout layout reads cached |
-| R2-C In-flight loading | package loader / CPU detach / scene-pipeline touches / presented matrices / BVH builds that still run in steady flight → zero when unchanged, ≤8 ms slices otherwise |
-| R2-D Physics solver | Rapier `numSolverIterations` 12 (Rapier default 4) — forward-migrate the save runtime contract and reduce safely |
-| R2-E AI/flight at scale | tacticalAI / flightV3 / weapons hot loops; K-nearest targeting; wider cadence for non-engaged far NPCs |
-| R2-G Stand-ins + sector prewarm | on-glass roots draw a resident proxy instead of nothing; every ship family / asteroid variant a sector can spawn is decoded and compiled behind the loading screen |
+| R2-A Draw-call merge | Packaged hulk leaves merge per material (shared cached merged geometry); fallback drone body 3 meshes → 1. Ship-hull merge still open — the biggest leaf count |
+| R2-B HUD/radar | Selector walks + band solves memoized per flush; radar heat ring on an offscreen layer repainted only when it moves; line-strain readout dirty-gated, viewport cached |
+| R2-C In-flight loading | Quantized/normalized position bounds take the plain fast path exactly (was the ~0.5 s/30 s slow path on new ship models) |
+| R2-D Physics solver | **Landed** — Rapier `numSolverIterations` 12 → 6 in `sg02DynamicBodyOwner.js` (owner approval 2026-11-05). Dense-contact + rope microbench: physics step −25–30 % (0.69–0.76 vs 0.89–1.00 ms/step, 44 bodies/10 ropes). Migration = the designed path: a legacy-iterations snapshot is refused by the native runtime contract and rebuilds scalar — old saves still load, they just take the already-tested slow-adopt once. Golden re-record was deliberate and reviewed: in-tree A/B reproduced both prior hashes exactly under 12, then under 6 only motion leaf fields moved (≤1.5 WU player, ≤0.3 WU others, ≤0.4 WU/s) — identical fires/hits/tether ticks/damage; both gated envelopes updated with the evidence in `notes` |
+| R2-E AI/flight at scale | Far-from-player combat members refresh perception/doctrine at half rate; NPC job threat scans read the ship lane of the entity index (map-validated) instead of all entities |
+| R2-G Stand-ins + sector prewarm | Pending roots already drawing a resident proxy stay on glass; `_noMesh` rows stop holding the opening gate; every asteroid size class the range can spawn is warmed |
+
+Measured (quiet host): Swarm wave 15 at 23 hostiles — **43.1 sim steps/s** (was 37.9 after
+Round 1), longest presented freeze 190 ms; Adventure cruise 18–22 fps / 47–54 steps/s. The
+first noisy-machine re-run looked like a regression — it was host contention again; always
+re-measure on a quiet machine before judging. One 1.3 s first-run tether stall observed once
+(big journal flush of arrivals), not reproduced on the second run.
+
+Left uncommitted in the tree (deliberate): the pre-existing `isStartupPackagedContactEntity`
+hunks in `renderer.js`/`partsLibrary.js` — they keep models loaded that tests say should be
+let go; they are not part of this program until that disagreement is resolved.
+
+Follow-up (same session): the `_threatCandidates` ship-lane scan now validates each indexed row
+against the entity map (`entities.get(id) === entity`) and only latches its cache when a real
+index version exists — raw `entities.delete()` removals can no longer strand a stale ship in the
+lane. The four resume-work regressions this caused are green again (60/60 focused batch).
+
+Fresh `?simLane=main` profile on the Round-2 build (30 s Adventure flight, quiet host) —
+what the remaining cost actually is:
+
+| Cost (self, /30 s) | Where | Verdict |
+|---|---|---|
+| ~1.2 s | Rapier/SG-02 fixed step | owner decision §6 (solver 12 → 6 + save migration) |
+| ~0.9 s | `readReceiptRect` layout reads | receipt flush read-write-read thrash; needs a write-deferral restructure, not a cache tweak |
+| ~0.6 s | `physics:impact` listener fan-out | already deduped/gated at each layer (admitPair, quiet latches); coalescing proven a dead end in the prior investigation |
+| ~0.5 s | `clearIneligibleAIFiringIntents` sweep | **not stridable**: guns fire directly off `intent.fire` in `weapons.js` — the fail-closed sweep is the authority, not hygiene |
+| ~0.3 s | `classifyWorld` activity classification | per-tick, already single-pass; staleness gates physics lanes — risky to stride |
+| ~0.57 s | footage `convertToBlob` | already inside the capture worker, not the main thread |
+
+Honest read: the cheap sim-side wins are landed. What remains is the solver decision,
+the ship-hull merge (largest draw-call lever), the HUD write-phase restructure, and reply-size
+work — all multi-hour, each itemized in §5.
+
+**2026-11-05 residency measurement (wave-15 swarm, `swarm-residency-probe.mjs` — samples each
+hostile's `userData.authoredAssetState` through the fight):**
+
+- p50 time-alive-until-authored **12.1 s**, p90 13.5 s, max 18.5 s; 12/32 spawned hostiles never
+  reached authored in 45 s (died or still pending as stand-ins).
+- Steady state mid-fight: ~5 of 20 hostiles pending — `compiling-pipelines` ~4–6, `loading` ~1–4.
+- Stage dwell: `loading → authored` avg 11.4 s; **`compiling-pipelines → authored` avg 7.2 s** —
+  the pipeline tail, not the decode, is the dominant late-load.
+- Root cause: every in-flight authored admission runs the serial paced lane —
+  `yieldBetweenGpuStages = (mode === 'flight')` unconditionally, ~8+ present-yields per entity plus
+  queue depth, with no resident-program fast path. Repeat-archetype enemies whose programs are
+  already linked pay the same tail as first-of-family.
+- Caveat: the probe's `jumpToWave` skips the armory dwells where `_warmSwarmDeferredRoster`
+  builds exemplars, so this run measured the cold path. Real wave play is warmer; the cold path
+  is still what reinforcements, boss wings, spawn-late traffic and adventure mid-sector spawns hit.
+- Census (ordinary flight): 756 visible drawables; `kind:ship` 326 + `kind:drone` 184 +
+  `kind:wreck` 103 = **81 %, zero instanced**. `rigidOpaqueBatch` (BatchedMesh) is proven but
+  scoped to the player + ashline cohort only.
+- **Ship cohort batching already exists** — `isRigidOpaqueShipCohortRoot` admits every authored
+  traffic ship (≤24 roots). Live wave-15 diagnosis (`swarm-batch-probe.mjs`): status stayed
+  `preparing` for the whole fight, roots 1→5, **0 batches committed**. Not churn — the pending
+  prepare correctly survives new arrivals (rigidOpaqueBatch ~1283); it never lands because its
+  group compiles queued ambient behind ~20 enemy mounts for the whole fight.
+  **FIXED (urgent lane):** batch group compiles now carry `urgent` in flight — they are on-glass
+  deadline work (sources draw individually every frame until commit). Re-probe: **commits twice
+  mid-fight, 7 batches collapsing 110 then 210 sources**; departures already remove instances
+  incrementally (deleteInstance), so the preparing gaps are new-arrival replans landing ~6 s.
+  Remaining lever on this row: raise `RIGID_OPAQUE_SHIP_COHORT_MAX_ROOTS` (24) or instance-at-mount
+  for repeat archetypes to skip the replan cycle entirely.
+- `kind:payload` reached 228 drawables mid-fight (~25 drops × ~9 shared-geometry parts) —
+  factory-shared (geometry, material) pairs, simplest instancing target after enemy hulls.
 
 ## 5. The ranked backlog (what else to do, highest ROI first)
 
@@ -93,26 +156,39 @@ Each row is a self-contained agent package: owned files, measured before-cost, t
 
 1. **Sim step under 8 ms at 30 hostiles.** Worker per-system timing RPC (wrap `s.update` in
    `authoritativeSimStep.js`, expose next to `probePerformance`) so every later package measures the
-   worker directly; then physics (solver, contact fan-out listeners on `physics:impact`, proxy-id
-   dirty flag in `syncFromEntityLayers`), AI, flight.
-2. **Draw calls under 300 in a Swarm fight.** Merged hulls (R2-A), instanced drones/pickups/debris,
-   far-ship impostors, fewer distinct materials (each is a program + uniform upload).
-3. **Zero first-use compiles in flight.** CI-style check: `renderer.info.programs` must not grow after
+   worker directly; then physics (contact fan-out listeners on `physics:impact`, proxy-id
+   dirty flag in `syncFromEntityLayers` — solver-iteration reduction landed in R2-D), AI, flight.
+2. **Crowd batching — the single biggest fps lever.** 613 of 756 drawables are
+   ship/drone/wreck leaves, zero instanced (census above). Widen `rigidOpaqueBatch` admission
+   (`selectSource`/`isTransformOnlySource`/`isRigidOpaqueBatchMotionSafe` in
+   `rigidOpaqueBatch.js`/`rigidOpaqueBatchPolicy.js`) beyond the player+ashline pilot to
+   repeated authored leaves sharing (geometry, material) — same-defId enemies, drones, wrecks.
+   Turret/animated nodes stay direct via the existing motion-safety gate. Target: crowd draw
+   calls 613 → <150.
+3. **Resident-program fast lane — the biggest load-latency lever.** The 7 s `compiling-pipelines`
+   dwell is mostly paced queue, not GPU work: `yieldBetweenGpuStages` paces every flight
+   admission unconditionally (`partsLibrary.js` ~7639/8257). Add a program-resident verdict
+   (canonical program registry / `programCanon` linked-key check across the boundary's material
+   set); when every program is already linked, run the prepare's stages back-to-back without
+   present-yields. Repeat-archetype enemies — the entire swarm crowd — go ~7 s → sub-second.
+4. **Zero first-use compiles in flight.** CI-style check: `renderer.info.programs` must not grow after
    the first 5 s of flight across boost, tether, each power, docking, weapons, explosions. Every
    offender goes into the precompile salvo / first-flight warm set.
-4. **Nothing pops in.** Stand-in proxy on glass (R2-G), sector-wide prefetch from spawn tables,
-   decode runway scaled by speed, wave hull keys warmed at round start.
-5. **HUD near zero.** One read phase and one write phase per frame across all HUD owners; signature
+5. **Warm coverage at spawn intent.** `run:wavePlanned` exemplar warm covers the natural dwell;
+   extend the same mount+compile warm (not just decode) to wave-jump/restore/reinforcement
+   paths (`_reinforceSwarm`, `capitalBoss` wings, adventure mid-sector spawn kicks) so no
+   archetype's first compile happens inside the fight.
+6. **HUD near zero.** One read phase and one write phase per frame across all HUD owners; signature
    skips; no `getBoundingClientRect` in steady state.
-6. **Presentation bookkeeping.** `syncEntityViews` skips unchanged off-glass roots; `matrixAutoUpdate`
+7. **Presentation bookkeeping.** `syncEntityViews` skips unchanged off-glass roots; `matrixAutoUpdate`
    off for static stations/props/background; maintained lists instead of scene traversals.
-7. **Adaptive quality that actually adapts.** Auto lowers render scale on iGPU when frames are slow
+8. **Adaptive quality that actually adapts.** Auto lowers render scale on iGPU when frames are slow
    (Round 1 halved its reaction time); add a "Smooth" preset that also trims particles and bloom.
-8. **Worker reply size.** Ship vitals only for changed fields; event replay coalescing; transform-only
+9. **Worker reply size.** Ship vitals only for changed fields; event replay coalescing; transform-only
    journal visits.
-9. **Load path.** One manifest-driven start set; landmarks/works/wreck places out of the first-sector
+10. **Load path.** One manifest-driven start set; landmarks/works/wreck places out of the first-sector
    bundle; re-encode the 20 release GLBs over 2 MB (`fin_wedge` release is larger than its source).
-10. **Delete over-built machinery** when a package proves it costs more than it gives (candidates:
+11. **Delete over-built machinery** when a package proves it costs more than it gives (candidates:
    duplicated legacy `worker-pump` clock path in `simLaneMain.js`, per-frame guards that re-prove
    settled programs, observer recorders at 60 Hz such as kill replay).
 
@@ -121,7 +197,7 @@ Each row is a self-contained agent package: owned files, measured before-cost, t
 | Option | Gain | Cost |
 |---|---|---|
 | Cap the exceptional-speed zoom-out 3.5× → ~2.5× (`tabletopPolicy.js` `PHYSICS_EARNED_SPEED_ZOOM_MAX`, FEEL_CONTRACT §C) | far fewer objects on screen while boosting (drawables doubled at 3.5×) | the "world opens up" at extreme speed is less dramatic |
-| Rapier solver iterations 12 → 6 (R2-D) | up to ~20–30 % of the physics step | piles/tethers slightly softer; needs a save-contract migration |
+| ~~Rapier solver iterations 12 → 6~~ | **approved and landed (R2-D)** | — |
 | NPC headlight beams (removed in Round 1) | 2 fewer lights in every shader | NPC ships no longer cast beams |
 
 ## 7. Finish line
