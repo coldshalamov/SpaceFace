@@ -405,8 +405,14 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-berth .so-station-title .dp-title__name,
   ${P} .sxb-berth .sxb-berth__name { font-size:26px !important; line-height:1.05 !important; }
   /* beat the shared :is(.sxb-berth__ident,…) .03em and the base .06em so ink drops ~301–311px */
-  ${P} .sxb-berth .so-station-title .sxb-berth__ident { letter-spacing:0 !important; }
-  ${P} .sxb-berth .so-station-title { max-width:100% !important; min-width:0 !important; }
+  ${P} .sxb-berth .so-station-title .sxb-berth__ident { letter-spacing:0 !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    overflow-wrap:anywhere; line-height:1.3 !important; }
+  /* A larger name track fits Helios; wrapping keeps longer authored station/faction names
+     readable too, instead of restoring the base nameplate's ellipsis at the new width. */
+  ${P} .sxb-berth .so-station-title { width:100% !important; max-width:100% !important; min-width:0 !important; }
+  ${P} .sxb-berth .so-station-title .dp-title__name { min-width:0; max-width:100%; white-space:normal !important;
+    overflow-wrap:anywhere; }
   ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;

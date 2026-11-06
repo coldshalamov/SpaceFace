@@ -21,6 +21,7 @@
 // no ambient randomness.
 
 import { SIM_DT } from '../../../src/core/sim.js';
+import { loadModelTruthCensus } from '../../../src/data/modelTruth.js';
 import {
   applyFeatureConfigToMaps,
   combatFlag,
@@ -159,6 +160,10 @@ export function realPathProof(runtime) {
  */
 export async function bootRealPath({ seed, systems, hulls = [], prepareState = null, profileId = 'production', bounds = null, seedProcessMaps = true } = {}) {
   if (!Number.isFinite(seed)) throw new Error('bootRealPath: `seed` must be a finite number (fixed seeds or it did not happen)');
+  // Browser fixtures share production boot's measured-data prerequisite. Node initializes
+  // this census on import; browsers must finish its fetch before runtime/ship construction
+  // reaches synchronous collision, mass, or model consumers.
+  await loadModelTruthCensus();
   const resolved = resolveSystems(systems);
   if (!resolved.some((s) => s && s.name === 'physics')) resolved.push(physics);
 

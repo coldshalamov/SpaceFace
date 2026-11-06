@@ -162,17 +162,42 @@ function ejectCaptain(rt, preRemembered = false) {
   removeResident(rt, entity);
   return { entity, pod, row, ejections, remembered };
 }
-function settlePod(rt, pod, playerAnswered = true) {
+function boardPod(rt, pod, playerAnswered = true) {
   const pos = { x: pod.pos.x, z: pod.pos.z };
-  resident(rt, { id: 1, type: 'ship', pos, data: {} });
-  resident(rt, { id: 2, type: 'ship', pos, data: { trafficRole: 'rescue' } });
+  const player = rt.state.entities.get(1) || resident(rt, { id: 1, type: 'ship', pos, data: {} });
+  player.pos = { ...pos };
+  const station = resident(rt, { id: rt.state.nextEntityId++, type: 'station', hull: 1000,
+    pos: { x: pos.x + 200, z: pos.z }, data: { stationId: 'station_helios', sectorId: rt.state.world.currentSectorId } });
+  const rescuer = resident(rt, { ...makeShipEntitySpec('ship_kestrel', { team: 2, pos }),
+    id: rt.state.nextEntityId++ });
+  Object.assign(rescuer.data, { trafficRole: 'rescue', role: 'rescue', worldRecordId: `test-rescue:${rescuer.id}` });
+  const rescueRecord = { id: rescuer.id, role: 'rescue', targetId: station.id, carryingSurvivor: false };
+  rt.state.traffic.freighters.push(rescueRecord);
   rt.state.player.tether = { active: playerAnswered, targetId: playerAnswered ? pod.id : null };
-  const receipts = [], grants = [];
+  const receipts = [], grants = [], boarded = [];
   rt.bus.on('survivorPod:rescued', event => receipts.push(event));
+  rt.bus.on('survivorPod:boarded', event => boarded.push(event));
   rt.bus.on('economy:grantCredits', event => grants.push(event));
   rt.survivorPod.update(0, rt.state);
-  assert.equal(receipts.length, 1);
-  return { receipt: receipts[0], grants };
+  assert.equal(boarded.length, 1);
+  assert.equal(receipts.length, 0, 'boarding does not settle the rescue');
+  assert.equal(grants.length, 0, 'boarding does not pay a fee');
+  const custody = rt.state.survivorPod.causal.receipts.find(row => row.id === boarded[0].custodyId);
+  assert.equal(custody.outcome, 'in_transit');
+  assert.equal(rt.state.entities.has(pod.id), false, 'the original pod is retired into custody');
+  return { rescuer, rescueRecord, station: rt.state.entities.get(rescueRecord.targetId), custody, receipts, grants };
+}
+function deliverPod(rt, ride) {
+  // Focused handoff geometry; the real traffic and survivor owners perform delivery.
+  // This fixture does not claim a physically flown route.
+  ride.rescuer.pos = { ...ride.station.pos };
+  rt.traffic._stepRescue(ride.rescuer, ride.rescueRecord, [ride.station], rt.state, 0);
+  assert.equal(ride.receipts.length, 1);
+  assert.equal(ride.rescueRecord.carryingSurvivor, false);
+  return { receipt: ride.receipts[0], grants: ride.grants };
+}
+function settlePod(rt, pod, playerAnswered = true) {
+  return deliverPod(rt, boardPod(rt, pod, playerAnswered));
 }
 
 for (const preRemembered of [false, true]) {
@@ -259,8 +284,83 @@ test('4242: unattended real rescue never grants the captain standing-client cred
   const before = jsonCopy(row), { receipt, grants } = settlePod(rt, pod, false);
   assert.notEqual(receipt.playerAnswered, true); assert.equal(grants.length, 0);
   assert.deepEqual(row, before);
+  rt.bus.emit('survivorPod:rescued', { ...receipt, playerAnswered: true, captainPodKey: row.podKey });
+  assert.deepEqual(row, before, 'a replay cannot upgrade the canonical unattended receipt');
   rt.state.simTime = 1800;
   assert.equal(rt.missions.ensureBoard('station_helios').slots.some(offer => offer.giverId === row.id), false);
+});
+
+test('4242: saved custody carries the captain binding past recycled pod and victim slots', () => {
+  const rt = boot({ pods: true }), { pod, row, entity } = ejectCaptain(rt);
+  const ride = boardPod(rt, pod), key = row.podKey;
+  assert.equal(ride.custody.survivor.captainPodKey, key);
+  const saved = jsonCopy(rt.survivorPod.serialize());
+  rt.survivorPod.deserialize(saved);
+  assert.equal(rt.state.survivorPod.causal.receipts.find(item => item.id === ride.custody.id).survivor.captainPodKey, key);
+  const unrelated = captain(rt, pod.id);
+  rt.bus.emit('freight:cargoSpilled', { carrierId: unrelated.id, attackerId: 1, receiptId: 'recycled-pod-slot' });
+  const other = rt.state.traffic.captainRoster.find(item => item.id === unrelated.data.captainId);
+  other.podKey = 'captain-pod:another-person'; unrelated.data.captainPodKey = other.podKey;
+  resident(rt, { id: entity.id, type: 'ship', pos: { x: 9000, z: 9000 }, data: { captainPodKey: other.podKey } });
+  const otherBefore = jsonCopy(other);
+  const { receipt, grants } = deliverPod(rt, ride);
+  assert.equal(receipt.captainPodKey, key); assert.equal(grants.length, 1);
+  assert.equal(row.outcomes.rescued, 1); assert.equal(row.alive, true);
+  assert.deepEqual(other, otherBefore, 'numeric slots never replace the passenger identity');
+  const once = jsonCopy(row);
+  rt.state.simTime = 50;
+  rt.bus.emit('survivorPod:rescued', { ...receipt, captainPodKey: other.podKey,
+    receiptId: 'forged-second-receipt', victimId: unrelated.id, entityId: unrelated.id });
+  assert.deepEqual(row, once, 'the owner receipt also controls duplicate suppression and due time');
+  assert.deepEqual(other, otherBefore, 'a forged payload key cannot redirect a canonical rescue');
+});
+
+test('4242: a disabled carrier returns the same bound captain before a second real delivery', () => {
+  const rt = boot({ pods: true }), { pod, row } = ejectCaptain(rt);
+  const ride = boardPod(rt, pod), memoryId = ride.custody.id, key = row.podKey;
+  rt.state.player.tether = { active: false, targetId: null };
+  ride.rescuer.data.disabled = true;
+  rt.survivorPod.update(0, rt.state);
+  const returned = rt.state.entityList.filter(item => item.alive !== false
+    && item.data?.survivorPodCausal?.memoryId === memoryId);
+  assert.equal(returned.length, 1); assert.notEqual(returned[0].id, pod.id);
+  assert.equal(returned[0].data.captainPodKey, key);
+  assert.equal(returned[0].data.survivorPodCausal.captainPodKey, key);
+  assert.equal(ride.custody.outcome, 'adrift'); assert.equal(row.alive, false);
+  assert.equal(ride.receipts.length, 0); assert.equal(ride.grants.length, 0);
+  const { receipt, grants } = settlePod(rt, returned[0]);
+  assert.equal(receipt.id, memoryId); assert.equal(receipt.captainPodKey, key);
+  assert.equal(row.outcomes.rescued, 1); assert.equal(row.alive, true); assert.equal(grants.length, 1);
+});
+
+test('4242: pending, unknown and ambiguous receipts cannot grant captain credit from a payload key', () => {
+  const rt = boot({ pods: true }), { pod, row } = ejectCaptain(rt);
+  const ride = boardPod(rt, pod), before = jsonCopy(row);
+  const forged = { id: ride.custody.id, entityId: pod.id, captainPodKey: row.podKey, playerAnswered: true };
+  rt.bus.emit('survivorPod:rescued', forged);
+  rt.bus.emit('survivorPod:rescued', { ...forged, id: 'unknown-receipt' });
+  assert.deepEqual(row, before, 'neither raw keys nor a pending owner receipt establish rescue');
+  rt.state.survivorPod.causal.receipts.push({ ...ride.custody, outcome: 'rescued', playerAnswered: true,
+    captainPodKey: row.podKey });
+  rt.bus.emit('survivorPod:rescued', forged);
+  assert.deepEqual(row, before, 'duplicate canonical IDs are ambiguous, even with a terminal-looking row');
+});
+
+test('4242: an old keyless terminal receipt cannot borrow a recycled live pod binding', () => {
+  const rt = boot({ pods: true }), { pod, row } = ejectCaptain(rt);
+  const ride = boardPod(rt, pod);
+  delete ride.custody.survivor.captainPodKey;
+  const unrelated = captain(rt, pod.id);
+  rt.bus.emit('freight:cargoSpilled', { carrierId: unrelated.id, attackerId: 1, receiptId: 'other-occupant' });
+  const other = rt.state.traffic.captainRoster.find(item => item.id === unrelated.data.captainId);
+  other.podKey = 'captain-pod:unrelated-live-pod';
+  unrelated.data.captainPodKey = other.podKey;
+  unrelated.data.survivorPodCausal = { memoryId: 'different-passenger' };
+  const before = jsonCopy(rt.state.traffic.captainRoster);
+  const { receipt } = deliverPod(rt, ride);
+  assert.equal(receipt.captainPodKey, undefined);
+  assert.deepEqual(rt.state.traffic.captainRoster, before);
+  assert.equal(row.alive, false);
 });
 
 for (const binding of ['missing', 'unknown', 'ambiguous', 'evicted']) {
@@ -329,4 +429,92 @@ test('4242: non-pod encounter memory keeps its identity, duplicate receipt and b
   });
   assert.equal(row.outcomes.robbed, 12); assert.equal(row.receiptIds.length, 8);
   assert.equal(row.id, entity.data.captainId);
+});
+
+test('a captain aboard a transient lifter survives production Continue, recovery and actual station delivery', { timeout: 20000 }, async () => {
+  const { productionContinueFixture, nextHostTurn } = await import('./fixtures/production-continue-finalizer.mjs');
+  const h = await productionContinueFixture();
+  try {
+    const { runtime, state, bus, registry } = h;
+    const player = state.entities.get(state.playerId);
+    const victim = runtime.spawn(makeShipEntitySpec('ship_mule', {
+      team: 2, factionId: 'faction_mts', pos: { x: player.pos.x + 400, z: player.pos.z },
+    }));
+    Object.assign(victim.data, { trafficRole: 'hauler', homeSectorId: 'sector_helios_prime' });
+    for (let i = 0; i < 100; i++) {
+      victim.data.worldRecordId = `custody-continue-captain:${i}`;
+      if (shouldEjectCausalSurvivorPod(state, victim)) break;
+    }
+    assert.ok(shouldEjectCausalSurvivorPod(state, victim));
+    const identity = stampCaptainIdentity(state, victim);
+    const ejected = [], rescued = [], grants = [];
+    bus.on('survivorPod:ejected', receipt => ejected.push(receipt));
+    bus.on('survivorPod:rescued', receipt => rescued.push(receipt));
+    bus.on('economy:grantCredits', intent => {
+      if (String(intent.reason).startsWith('survivor_mayday:')) grants.push(intent);
+    });
+    victim.alive = false;
+    bus.emit('entity:killed', { id: victim.id, type: 'ship', killerId: state.playerId,
+      pos: { ...victim.pos }, vel: { ...victim.vel }, factionId: victim.factionId, data: victim.data });
+    assert.equal(ejected.length, 1);
+    const pod = state.entities.get(ejected[0].entityId);
+    const key = pod.data.captainPodKey, memoryId = pod.data.survivorPodCausal.memoryId;
+    const before = jsonCopy(state.traffic.captainRoster.find(row => row.id === identity.id));
+    assert.equal(before.alive, false); assert.ok(key);
+    const podOwner = registry.get('survivorPod'), trafficOwner = registry.get('traffic');
+    const board = passenger => {
+      const hull = runtime.spawn(makeShipEntitySpec('ship_kestrel', {
+        team: 2, factionId: 'faction_mts', pos: { x: passenger.pos.x + 24, z: passenger.pos.z },
+      }));
+      Object.assign(hull.data, { trafficRole: 'rescue', role: 'rescue', worldRecordId: `captain-lifter:${hull.id}` });
+      const record = { id: hull.id, role: 'rescue', targetId: null, waitT: 0, carryingSurvivor: false };
+      state.traffic.freighters.push(record);
+      const currentPlayer = state.entities.get(state.playerId);
+      Object.assign(currentPlayer.pos, passenger.pos); Object.assign(currentPlayer.vel, { x: 0, z: 0 });
+      currentPlayer.flags.noInterp = true;
+      state.player.tether = { ...state.player.tether, active: true, targetId: passenger.id, attachmentId: null };
+      podOwner.update(0, state);
+      assert.equal(state.entities.has(passenger.id), false);
+      assert.equal(record.carryingSurvivor, true);
+      assert.equal(rescued.length, 0); assert.equal(grants.length, 0);
+      const custody = state.survivorPod.causal.receipts.find(row => row.id === memoryId);
+      assert.equal(custody.outcome, 'in_transit');
+      assert.equal(custody.survivor.captainPodKey, key);
+      return { hull, record };
+    };
+    const firstRide = board(pod), firstCarrierIdentity = firstRide.hull.data.worldRecordId;
+    // The real save envelope carries a passenger whose physical pod no longer exists.
+    const envelope = h.saves.serialize('captain-aboard-continue');
+    assert.equal(envelope.data.survivorPod.causalReceipts.find(row => row.id === memoryId).survivor.captainPodKey, key);
+    assert.equal(await h.load(envelope), true);
+    assert.deepEqual(await h.finalization(), { stale: false });
+    await nextHostTurn();
+    state.render.worldSubmittedFrames = (Number(state.render.worldSubmittedFrames) || 0) + 1;
+    assert.equal(state.render.releaseOpeningPresentationHold(), true);
+    assert.equal(state.entityList.some(entity => entity.alive !== false
+      && entity.data?.worldRecordId === firstCarrierIdentity), false,
+    'Continue does not invent the absent transient carrier');
+    const recovered = state.entityList.filter(entity => entity.alive !== false
+      && entity.data?.survivorPodCausal?.memoryId === memoryId);
+    assert.equal(recovered.length, 1, 'the passenger returns as exactly one real pod');
+    assert.equal(recovered[0].data.captainPodKey, key);
+    assert.equal(recovered[0].data.survivorPodCausal.captainPodKey, key);
+    assert.ok(registry.get('physics')._sg02.records.has(recovered[0].id), 'recovery pod enters native physics');
+    assert.equal(rescued.length, 0); assert.equal(grants.length, 0);
+    assert.deepEqual(state.traffic.captainRoster.find(row => row.id === identity.id), before);
+    const secondRide = board(recovered[0]);
+    const station = state.entities.get(secondRide.record.targetId);
+    assert.equal(station?.type, 'station');
+    // Focused station arrival, using real custody/delivery owners; no flown-route claim.
+    Object.assign(secondRide.hull.pos, station.pos);
+    assert.equal(trafficOwner._stepRescue(secondRide.hull, secondRide.record, trafficOwner._sectorStations(), state, 0), true);
+    assert.equal(rescued.length, 1); assert.equal(grants.length, 1);
+    assert.equal(rescued[0].id, memoryId); assert.equal(rescued[0].captainPodKey, key);
+    const row = state.traffic.captainRoster.find(item => item.id === identity.id);
+    assert.equal(row.alive, true); assert.equal(row.outcomes.rescued, 1);
+    const once = jsonCopy(row);
+    bus.emit('survivorPod:rescued', { ...rescued[0], receiptId: 'replayed-after-continue' });
+    assert.deepEqual(row, once);
+    assert.deepEqual(h.events.filter(event => event.name === 'save:error' || event.name === 'game:startFailed'), []);
+  } finally { h.close(); }
 });
