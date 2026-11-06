@@ -9122,14 +9122,20 @@ export function authoredCriticalVisualReadiness(state) {
         status: authoredAssetState(entity),
         hook: typeof (root && root.userData && root.userData.requestAuthoredUpgrade) === 'function',
         promised: !!(root && root.userData && root.userData.authoredUpgradePromise),
+        unbuildable: entity && entity._noMesh === true,
       };
     });
+  // A `_noMesh` stamp means the build queue gave up permanently — the row can
+  // never receive a hook or a promise, so counting it as pending reports a
+  // wait that can never end. It stays in openingAssets for diagnostics.
   const openingPending = openingAssets.filter((entry) => (
     !isFlightReadyStatus(entry.status)
     && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const openingPipelinePending = openingAssets.filter((entry) => (
     !authoredPipelineStaged(entry.status) && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const gateIds = new Set(
     entityList.filter((entity) => isOpeningFlightGateEntity(entity, state)).map((entity) => entity.id),

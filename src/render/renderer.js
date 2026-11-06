@@ -1031,6 +1031,7 @@ const _submitVisibilityOptions = {
   authoredPending: false,
   resolvingMarker: false,
   geometryPending: false,
+  standInResident: false,
   activityFrame: null,
   entityId: null,
   ledgerRow: false,
@@ -4555,6 +4556,36 @@ export function authoredPendingBoundarySubmitsStandIn(mesh) {
   if (userData.authoredPendingFallbackDrawn === true) return true;
   return userData.authoredGeologySkin === true;
 }
+
+/**
+ * True when a pending root is currently drawing an already-resident, already-linked proxy: its
+ * resolving marker / admission stand-in is visible, parented under the root, shares the cached
+ * flat materials, and every other visible drawable under the root already has uploaded buffers.
+ * Such a root must stay on the glass through its pipelinesPending / geometryPending latches (the
+ * latches describe the hidden authored body, not the proxy) so first arrival shows the proxy
+ * instead of nothing. Only evaluated for roots that carry a pending latch.
+ */
+export function rootDrawsResidentStandIn(mesh) {
+  const userData = mesh && mesh.userData;
+  if (!userData) return false;
+  const marker = userData.resolvingMarker;
+  if (!marker || marker.visible === false || marker.parent !== mesh) return false;
+  if (!isAuthoredPendingStatus(userData.authoredAssetState)) return false;
+  if (hasUnresidentGeometry(marker)) return false;
+  const stack = [mesh];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object || object.visible === false) continue;
+    if (object !== marker && object.geometry && object.geometry.userData
+        && object.geometry.userData.spacefaceGpuResident !== true
+        && (object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
+    if (object === marker) continue;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return true;
+}
+
 
 function markAuthoredGeologyFallbackAdmitted(subject) {
   const userData = subject && subject.userData;
@@ -28019,6 +28050,9 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
+          || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
+          && rootDrawsResidentStandIn(mesh);
         _submitVisibilityOptions.activityFrame = this._activityFrame;
         _submitVisibilityOptions.entityId = entityId;
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
@@ -28327,6 +28361,9 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
+          || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
+          && rootDrawsResidentStandIn(mesh);
         _submitVisibilityOptions.activityFrame = this._activityFrame;
         _submitVisibilityOptions.entityId = entityId;
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
