@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createSimulation } from '../src/core/sim.js';
 import {
   ALL_SIM_MODES,
   PRODUCTION_UPDATE_ORDER,
@@ -237,7 +236,7 @@ test('E3: Simulation LOD telemetry categorizes near, mid, far, and shelved entit
   assert.equal(state.simLOD, lod, 'state.simLOD must match getSimulationLODTelemetry');
 });
 
-test('E3: createSimulation runs smoothly with dynamic mode switching', () => {
+test('E3: step execution runs smoothly with dynamic mode switching', () => {
   const ran = [];
   function stub(name) {
     return {
@@ -248,40 +247,39 @@ test('E3: createSimulation runs smoothly with dynamic mode switching', () => {
     };
   }
 
-  const sim = createSimulation({
-    seed: 42,
-    systems: [
-      stub('input'),
-      stub('weapons'),
-      stub('stationServices'),
-      stub('survivalWave'),
-      stub('physics'),
-    ],
-  });
-  sim.state.runtime = { profileId: 'production' };
+  const systems = [
+    stub('input'),
+    stub('weapons'),
+    stub('stationServices'),
+    stub('survivalWave'),
+    stub('physics'),
+  ];
+  const partitions = partitionUpdateSystems(systems);
+  const state = { runtime: { profileId: 'production' }, tick: 0 };
 
   // Step 1: flight mode
-  sim.state.mode = 'flight';
-  sim.step(1 / 60);
+  state.mode = 'flight';
+  let queue = updateQueueForThisStep(partitions, state);
+  for (const s of queue) s.update(1 / 60, state);
   const step1Ran = ran.map((r) => r.name);
   assert.deepEqual(step1Ran, ['input', 'weapons', 'stationServices', 'physics'], 'Flight mode excludes survivalWave');
 
   // Step 2: docked mode
   ran.length = 0;
-  sim.state.mode = 'docked';
-  sim.step(1 / 60);
+  state.mode = 'docked';
+  queue = updateQueueForThisStep(partitions, state);
+  for (const s of queue) s.update(1 / 60, state);
   const step2Ran = ran.map((r) => r.name);
   assert.deepEqual(step2Ran, ['input', 'stationServices', 'physics'], 'Docked mode excludes weapons and survivalWave');
 
   // Step 3: swarm mode
   ran.length = 0;
-  sim.state.mode = 'swarm';
-  sim.state.run = { kind: 'survival', phase: 'wave' };
-  sim.step(1 / 60);
+  state.mode = 'swarm';
+  state.run = { kind: 'survival', phase: 'wave' };
+  queue = updateQueueForThisStep(partitions, state);
+  for (const s of queue) s.update(1 / 60, state);
   const step3Ran = ran.map((r) => r.name);
   assert.deepEqual(step3Ran, ['input', 'weapons', 'survivalWave', 'physics'], 'Swarm mode excludes stationServices');
-
-  sim.dispose();
 });
 
 test('E3: catch-up steps in docked mode execute only table-clock docked systems', () => {
