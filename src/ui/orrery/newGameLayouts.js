@@ -327,6 +327,42 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
 }
+/* short narrow one-column (≤700 × ≤600 — 651×461 / 700×461 / 320×568 desktop): the ≤700
+   page-scroll layout left hang unbounded under the sticky BACK/LAUNCH foot, so IRONMAN,
+   UNIVERSE SEED / NEW SEED and TEACH ME mashed the foot (TEACH ME ∩ BACK mashVis ~2000 at
+   320×568; Ironman/seed under foot at 651/700). Pin the plate to the frame, give hang the
+   remaining row as a scrollport, park stage + footnote (unreachable below the fold here),
+   and keep the foot in normal grid flow so the form clears BACK/LAUNCH. */
+@media (max-width:700px) and (max-height:600px) {
+  html:not([data-sf-mobile="1"]) body #screens:has(> .k-screen.orr-newgame.orr-newgame) {
+    overflow:hidden !important; }
+  ${NGD} { position:absolute !important; inset:0 !important; bottom:0 !important;
+    height:auto !important; min-height:0 !important; max-height:100% !important;
+    overflow:hidden !important;
+    grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "foot" !important;
+    row-gap:8px !important; }
+  ${NGD} > .sf-ng-body { overflow-x:hidden !important; overflow-y:auto !important;
+    height:auto !important; max-height:none !important; min-height:0 !important;
+    overscroll-behavior:contain; scrollbar-width:thin;
+    scrollbar-color:rgb(${BONE} / .4) transparent; }
+  /* display:none (not visibility/clip): caption titles set visibility:visible and would
+     otherwise paint through a hidden stage. The yard/turntable is a direct child of the
+     plate (not inside .k-stage), so it must be hidden too or HITCH/WASP ghost the title. */
+  ${NGD} > .k-stage,
+  ${NGD} > .k-fine,
+  ${NGD} > .orr-ng-pick,
+  ${NGD} > .orr-yard,
+  ${NGD} > .orr-turntable { display:none !important; }
+  ${NGD} > .sf-ng-footer { position:relative !important; bottom:auto !important; z-index:2 !important;
+    margin:0 !important; padding:10px 0 12px !important;
+    border-image:linear-gradient(180deg, rgb(${BONE} / .16) 0 1px, rgb(6 8 11) 1px) fill 0 / / 0 100vw !important; }
+  ${NGD} .orr-stopscale .k-word,
+  ${NGD} .orr-stoparc .k-word { padding-top:2px !important; padding-bottom:2px !important; }
+  ${NGD} > .sf-ng-header > p { margin-top:2px !important; }
+}
+
 /* at phone width the yard's rear ends sit ~130px apart, so the rear names (WASP, PELICAN) set tighter */
 @media (max-width:480px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:12px !important; letter-spacing:.04em !important; }
@@ -351,6 +387,13 @@ ${NG_PHONE} .orr-turntable > .orr-turntable__row > li { flex:1 1 auto !important
 ${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word {
   font-size:clamp(14px, 4.2vw, 17px) !important; letter-spacing:.08em !important; white-space:nowrap !important; }
 ${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word-sub { letter-spacing:.14em !important; }
+/* short phone (≤380 × ≤600, e.g. 320×568): FIRST FLIGHT (Teach me / I've flown) sat on the
+   sticky BACK/LAUNCH band. Add body foot-pad so the last verbs clear the foot, and tighten the
+   foot pad so more of the form stays on first paint. */
+@media (max-width:380px) and (max-height:600px) {
+  ${NG_PHONE} > .sf-ng-body { padding-bottom:72px !important; }
+  ${NG_PHONE} > .sf-ng-footer { padding-top:10px !important; padding-bottom:10px !important; }
+}
 `;
 
 export function injectNewGameLayouts(doc = globalThis.document) {
