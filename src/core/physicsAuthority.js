@@ -65,6 +65,20 @@ export const PHYSICS_BODY_RESPONSE_LIMITS = Object.freeze({ minScale: 0.25, maxS
 
 const COMMANDS = new WeakMap();
 const TELEMETRY = new WeakMap();
+// Gameplay readers opt in by entity lifetime without enabling diagnostic publication for the
+// entire world. Weak ownership keeps requests out of serialized entities and releases retired ones.
+const TELEMETRY_REQUESTS = new WeakMap();
+
+export function requestPhysicsTelemetry(entity) {
+  if (!entity || typeof entity !== 'object' || entity.alive === false) return false;
+  TELEMETRY_REQUESTS.set(entity, entity.occupantGeneration ?? null);
+  return true;
+}
+
+export function hasPhysicsTelemetryRequest(entity) {
+  return !!entity && typeof entity === 'object' && entity.alive !== false
+    && TELEMETRY_REQUESTS.get(entity) === (entity.occupantGeneration ?? null);
+}
 // Exceptional native construction failures are process-local, never save authority. Most
 // callers need no native-ready protocol; only a failed live replacement closes this gate.
 const NATIVE_BODY_FAILURES = new WeakMap();
@@ -326,6 +340,7 @@ export function clearPhysicsAuthority(entity) {
   BODY_RESPONSE_RECORDS.delete(entity);
   PROJECTILE_CONTINUATIONS.delete(entity);
   TELEMETRY.delete(entity);
+  TELEMETRY_REQUESTS.delete(entity);
   AUTHORITY_CACHE.delete(entity);
   NORMALIZED_BODY_CACHE.delete(entity);
   RESOLVED_BODY_CACHE.delete(entity);

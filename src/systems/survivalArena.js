@@ -63,7 +63,7 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { Masks } from '../core/entity.js';
-import { readPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { readPhysicsTelemetry, requestPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { terrainCrumpleDamage, readRecentImpulseProvenance } from '../combat/impulseKernel.js';
@@ -2106,6 +2106,9 @@ export const survivalArena = {
       if (entity && entity.id != null) {
         this._roomIds.push(entity.id);
         if (toy.id != null) this._roomSolids.set(String(toy.id), entity);
+        // E2: the jammed-shutter rule reads this body's measured post-solve state
+        // (`readPhysicsTelemetry`); declare the interest once, at admission.
+        if (dynamic) requestPhysicsTelemetry(entity);
       }
     }
   },
