@@ -278,6 +278,29 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
     background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)) !important; }
 }
 
+/* phone densify (≤700 × ≤900): EXIT Main Menu sat +20 past the fold at 390×844 (+58 at 360×800)
+   with Physics / Sandbox on the last rows. Tighten brief, group leads, resume band and column gap so
+   those verbs clear the first paint; the screen stays the one scroll owner for the foot keycaps. */
+@media (max-width:700px) and (max-height:900px) {
+  ${PH} { gap:10px !important; }
+  ${PH} .sf-pause-brief { margin:0 0 8px !important; padding-bottom:0 !important; }
+  ${PH} .sf-pause-brief .sf-slot-name { font-size:18px !important; line-height:1.15 !important; gap:3px !important; }
+  ${PH} .orr-brief__kind { margin:0 0 2px !important; line-height:14px !important; }
+  ${PH} .orr-brief__name { font-size:18px !important; line-height:1.1 !important; }
+  ${PH} .sf-pause-brief .dp-copy { font-size:13px !important; line-height:1.25 !important; margin-top:2px !important; }
+  ${PH} .sf-pause-brief .dp-copy--fine { margin-top:2px !important; padding:0 !important; }
+  ${PH} .orr-brief__read { margin-top:2px !important; gap:6px !important; }
+  ${PH} .orr-brief__ring { width:26px !important; height:26px !important; }
+  ${PH} .orr-brief__read b { font-size:18px !important; }
+  ${PH} .k-words__group { margin:7px 0 3px !important; line-height:12px !important; }
+  ${PH} .sf-pause-words .k-word { min-height:34px !important; }
+  ${PH} .sf-pause-words .k-word.k-word--primary,
+  ${PH} .sf-pause-words .k-word[data-action="pause-0"] { min-height:40px !important; }
+  ${PH} .k-words--row { gap:4px 14px !important; row-gap:2px !important; }
+  ${PH} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:8px !important; }
+  ${PH} > .sf-pause-foot .sf-pause-foot__keys { padding:4px 0 6px !important; }
+}
+
 /* narrow desktop window (≤760 wide, no touch): pause.js gives it the phone column, but the phone sheet's
    flow rules are keyed to data-sf-mobile, so the grid cut the verb list off under REFERENCE and long
    names ran off the right edge. The same flow here: one scroll owner (the screen), rows that wrap.
@@ -295,6 +318,27 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${PN} .sf-pause-brief { max-width:100% !important; }
   ${PN} .sf-pause-brief .sf-slot-name { font-size:20px !important; overflow-wrap:anywhere; }
   ${PN} .k-words--row { flex-wrap:wrap !important; gap:8px 18px !important; }
+}
+/* narrow column densify (same fold as the phone rule): EXIT Main Menu clears at 390×844 / 360×800.
+   PAUSE_COLUMN_QUERY already owns the scroll; this only shortens the stack. */
+@media (max-width:760px) and (max-height:900px) {
+  ${PN} { gap:10px !important; }
+  ${PN} .sf-pause-brief { margin:0 0 8px !important; padding-bottom:0 !important; }
+  ${PN} .sf-pause-brief .sf-slot-name { font-size:18px !important; line-height:1.15 !important; gap:3px !important; }
+  ${PN} .orr-brief__kind { margin:0 0 2px !important; line-height:14px !important; }
+  ${PN} .orr-brief__name { font-size:18px !important; line-height:1.1 !important; }
+  ${PN} .sf-pause-brief .dp-copy { font-size:13px !important; line-height:1.25 !important; margin-top:2px !important; }
+  ${PN} .sf-pause-brief .dp-copy--fine { margin-top:2px !important; padding:0 !important; }
+  ${PN} .orr-brief__read { margin-top:2px !important; gap:6px !important; }
+  ${PN} .orr-brief__ring { width:26px !important; height:26px !important; }
+  ${PN} .orr-brief__read b { font-size:18px !important; }
+  ${PN} .k-words__group { margin:7px 0 3px !important; line-height:12px !important; }
+  ${PN} .sf-pause-words .k-word { min-height:34px !important; }
+  ${PN} .sf-pause-words .k-word.k-word--primary,
+  ${PN} .sf-pause-words .k-word[data-action="pause-0"] { min-height:40px !important; }
+  ${PN} .k-words--row { flex-wrap:wrap !important; gap:4px 14px !important; row-gap:2px !important; }
+  ${PN} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:8px !important; }
+  ${PN} > .sf-pause-foot .sf-pause-foot__keys { padding:4px 0 6px !important; }
 }
 `;
 
