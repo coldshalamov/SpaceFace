@@ -24,6 +24,7 @@ reviewer agreement does not itself prove correctness, literal perfection or mark
 | [`STUDIO.md`](./STUDIO.md) | Controller, departments, asset processing, worker handoffs and current execution capacity |
 | [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
 | [`SMOOTH_PROGRAM_2026-11-05.md`](./SMOOTH_PROGRAM_2026-11-05.md) | **owner priority 2026-11-05: PLAYABLE FIRST** — why the 3D world froze while the HUD kept moving, the measurement kit, landed rounds, the ranked performance backlog, owner decisions and the smoothness finish line |
+| [`MASTER_PLAN.md`](./MASTER_PLAN.md) | **owner direction 2026-11-06: the master plan** — 29 campaigns (engine, ship, world, look, process) + how agents must work (diagnose first, no tunnel vision, 90%-wonky is a defect) + the launch prompt |
 | [`swarm/`](./swarm/README.md) | **owner priority 2026-11-05: SWARM** — the vision, configuration audit and plans S1–S16 for Crucible Swarm (look and feel; recommends holding queued Lane 2 Swarm breadth until these land) |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
