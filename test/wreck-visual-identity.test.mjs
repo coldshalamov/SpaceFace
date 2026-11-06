@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createVisualFactory } from '../src/render/visualFactory.js';
+import { createVisualFactory, wreckPackagedFile } from '../src/render/visualFactory.js';
+import { materializeBoundaryResolvingMarker } from '../src/render/visualOverrides.js';
 
 function build(data = {}) {
   return createVisualFactory().build({
@@ -52,6 +53,32 @@ test('ordinary wreck reads as named mechanical wreckage without a rock-like halo
     'wreck surfaces need deterministic panel, normal, and roughness response');
   assert.ok(new Set(result.materials.map((material) => `${material.roughness}:${material.metalness}`)).size >= 3,
     'structure, coating, and torn edges must not share one clay response');
+});
+
+test('a pending packaged wreck arms a resolving marker against the commit fit frame', () => {
+  const entity = { id: 'wreck-marker', type: 'wreck', alive: true, radius: 8,
+    pos: { x: 0, z: 0 }, data: { parentType: 'hull' } };
+  const root = createVisualFactory().build(entity);
+  const ud = root.userData;
+
+  // The hidden procedural substrate is authored-only while the packaged body is pending:
+  // the boundary must arm the shared marker or it sits invisible on the glass for the
+  // whole admission window (measured 3.4 s in the wild).
+  assert.equal(ud.wantsBoundaryResolvingMarker, true);
+  assert.equal(ud.boundaryResolvingMarkerEntity, entity);
+  assert.equal(ud.boundaryResolvingStandInFile, wreckPackagedFile(entity));
+  assert.equal(ud.boundaryResolvingStandInFit, 16,
+    'the marker previews the commit fit (2*radius on the max axis), not the collider');
+  assert.equal(ud.boundaryResolvingStandInRecenter, 'xyz',
+    'fitPackagedGroupSteps recenters on all three axes — the marker previews the same frame');
+  assert.equal(ud.authoredAssetState, 'awaiting-authored-admission');
+  assert.equal(ud.authoredPendingFallbackDrawn, false);
+
+  const marker = materializeBoundaryResolvingMarker(root);
+  assert.ok(marker && marker.isObject3D, 'the armed marker materializes a real drawable');
+  assert.equal(marker.parent, root);
+  assert.equal(ud.resolvingMarker, marker);
+  assert.equal(ud.authoredResolvingMarker, true);
 });
 
 test('unstable reactor wreck has a contained mechanical hazard core, not asteroid language', () => {

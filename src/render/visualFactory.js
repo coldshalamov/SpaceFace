@@ -34,6 +34,7 @@ import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { addWorkLamp, machinedBoxGeometry } from './arenaFinish.js';
 import { buildMorrowVisual } from './characters/morrowModel.js';
 import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
@@ -64,6 +65,7 @@ import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program —
 import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
 import { buildFoldAberrantVisual, buildFoldPayloadVisual } from './foldAberrantVisual.js';
+import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker } from './visualOverrides.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
@@ -2955,15 +2957,69 @@ function buildFoundryToy(e) {
       shape.radiusTop, shape.radiusBottom, shape.height, shape.radialSegments)), mat);
   } else if (kind === 'furnace') {
     const shape = furniture.body;
-    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
+    body = new THREE.Mesh(getGeometry('foundry:kiln', () => machinedBoxGeometry()), mat);
+    body.scale.set(shape.width, shape.height, shape.depth);
+    body.scale.multiplyScalar(furniture?.scale || R);
   } else {
     const shape = furniture?.body || { width: 1.5, height: 0.32, depth: 0.42 };
-    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(shape.width, shape.height, shape.depth)), mat);
+    body = new THREE.Mesh(getGeometry('foundry:block', () => machinedBoxGeometry()), mat);
+    body.scale.set(shape.width, shape.height, shape.depth);
+    body.scale.multiplyScalar(furniture?.scale || R);
   }
-  if (kind !== 'plate') body.scale.setScalar(furniture?.scale || R);
+  if (kind === 'gate') body.scale.setScalar(furniture?.scale || R);
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);
+  // X1 finish: one lit work point so the machine reads as powered at the chase camera.
+  // The plate gets an edge light bar; posts and blocks get a cap lamp.
+  if (kind === 'plate') {
+    const plateShape = foundryPlateShape(e);
+    // X1 §3: the slab is grounded, not floating. A dark foundation skirt and two hold-down
+    // clamps give the top face a manufactured silhouette and a contact read.
+    const iron = getMaterial('foundrytoy:iron', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0x2a3038, roughness: 0.78, metalness: 0.5,
+    }), SHARED_MATERIAL_ROLE.STATION));
+    const skirt = new THREE.Mesh(machinedBoxGeometry(), iron);
+    skirt.name = 'foundry_plate_skirt';
+    skirt.scale.set(plateShape.halfWidth * 1.86, 0.7, plateShape.halfDepth * 1.86);
+    skirt.position.y = -plateShape.halfHeight - 0.2;
+    g.add(skirt);
+    for (const side of [-1, 1]) {
+      const clamp = new THREE.Mesh(machinedBoxGeometry(), iron);
+      clamp.name = 'foundry_plate_clamp';
+      clamp.scale.set(3.6, 0.9, 5.4);
+      clamp.position.set(side * plateShape.halfWidth * 0.78, plateShape.halfHeight + 0.35, 0);
+      g.add(clamp);
+    }
+    const housing = new THREE.Mesh(machinedBoxGeometry(), iron);
+    housing.name = 'foundry_plate_lamp_housing';
+    housing.scale.set(5.2, 0.8, 2.2);
+    housing.position.set(0, plateShape.halfHeight + 0.4, plateShape.halfDepth * 0.68);
+    g.add(housing);
+    addWorkLamp(g, {
+      width: plateShape.halfWidth * 1.35,
+      height: 0.6,
+      depth: 1.6,
+      y: plateShape.halfHeight + 0.95,
+      z: plateShape.halfDepth * 0.68,
+    });
+  } else if (kind === 'gate') {
+    addWorkLamp(g, {
+      width: 2.4, height: 1.1, depth: 2.4,
+      y: (furniture?.body?.height || 1.5) * 0.5 * (furniture?.scale || R) + 1,
+    });
+  } else if (kind === 'furnace') {
+    addWorkLamp(g, {
+      width: 3.4, height: 1, depth: 1.2,
+      y: (furniture?.body?.height || 0.72) * 0.5 * (furniture?.scale || R) + 0.6,
+      z: (furniture?.body?.depth || 0.95) * 0.5 * (furniture?.scale || R) + 0.1,
+    });
+  } else {
+    addWorkLamp(g, {
+      width: 2, height: 0.8, depth: 1,
+      y: 1.2,
+    });
+  }
   if (kind === 'furnace') {
     const shape = furniture.mouth;
     const mouth = new THREE.Mesh(
@@ -5040,6 +5096,22 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
   // publishes the packaged body; until then this boundary has no drawable stand-in.
   hideProceduralChildren(root);
   root.userData.authoredPendingFallbackDrawn = false;
+  // The hidden substrate leaves an invisible seat for the whole admission window — the
+  // void the scenario-prop path already covers with installBoundaryResolvingMarker.
+  // Wreck/drone packaged bodies are authored-only while pending, so arm the same marker
+  // against the commit's own fit frame: no substitute identity, detaches at commit.
+  const markerFitRadius = fractureFragmentFitRadius(entity) || (entity && entity.radius);
+  installBoundaryResolvingMarker(root, entity, {
+    standInFile: relativeFile,
+    // Commit fits the packaged body's longest axis to 2*fitRadius via
+    // fitPackagedGroupSteps — arm the same max-axis basis so the marker previews
+    // the committed extent instead of the entity collider.
+    standInFitLength: Number.isFinite(markerFitRadius) && markerFitRadius > 0
+      ? markerFitRadius * 2 : undefined,
+    // fitPackagedGroupSteps recenters the measured box onto origin on all three axes —
+    // preview the same committed frame or the silhouette teleports at commit.
+    standInRecenter: 'xyz',
+  });
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
   root.userData.authoredVisualRoot = 'none-pending-admission';
@@ -5365,6 +5437,9 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
         detachedCommitGroup = null;
         return { status: 'stale-verdict-superseded' };
       }
+      // Same seam the scenario-prop twin detaches at: the mounted body reveals this
+      // frame, so the resolving marker's coverage ends here — no pending gap, no overlap.
+      detachBoundaryResolvingMarker(root);
       hideProceduralChildren(root);
       packaged.visible = true;
       carryAdmittedOnceStamp(packaged, root);
