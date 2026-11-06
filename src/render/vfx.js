@@ -172,6 +172,15 @@ import {
   WRECK_PING_WINDOW_S,
   WRECK_RESOLVE_PRIORITY,
 } from './vfx/wreckResolveRead.js';
+import {
+  isCrushMoment,
+  crushHue,
+  crushColorCss,
+  crushPlan,
+  CRUSH_PRIORITY,
+} from './vfx/crushRead.js';
+// The crush spark fan (radians off the closing bearing) — fixed, no per-event randomness.
+const CRUSH_SPARK_FAN = Object.freeze([-0.7, -0.25, 0.2, 0.65]);
 import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
@@ -3004,6 +3013,8 @@ export const vfx = {
     // inf-wreck-resolve-read: the first pulse that resolves a derelict lands at the hull —
     // a landing beat plus the quiet marker lamp that holds for the ping window.
     add('scan:wreckResolved', (p) => this._onWreckResolved(p));
+    // inf-crush-read: the crush verdict reads at the anvil — the room's signature death.
+    add('combat:crushed', (p) => this._onCrushed(p));
     // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
     // small surface read — the wave becomes a sequence of responses, nearest first.
     add('combat:shockwavePass', (p) => this._onShockwavePass(p));
@@ -10310,6 +10321,50 @@ export const vfx = {
       0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
     this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
       { color: plan.marker.color, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-crush-read: the crumple law's verdict plays at the anvil. The victim's own hit flash
+  // is the ordinary combat:damage beat; THIS is the crush — a flat steel pop along the closing
+  // bearing, sparks scattering off the contact, and (only when the receipt's target already
+  // died of it) the kill star, because a crush that empties a hull is the room's signature
+  // death. routeDamage precedes the emit, so a dead target IS the crush kill. The victim's
+  // entity survives as a record even when dead — its position is the receipt's truth.
+  _onCrushed(p) {
+    if (!isCrushMoment(p) || !this._scene) return;
+    const victim = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = victim && victim.pos && Number.isFinite(victim.pos.x) && Number.isFinite(victim.pos.z)
+      ? victim.pos
+      : null;
+    if (!pos) return;
+    const killed = victim.alive === false;
+    const vx = Number.isFinite(victim.vel?.x) ? victim.vel.x : 0;
+    const vz = Number.isFinite(victim.vel?.z) ? victim.vel.z : 0;
+    const moving = Math.hypot(vx, vz) > 1;
+    const along = moving ? Math.atan2(vz, vx) : null;
+    const reduced = this._isReduced();
+    const plan = crushPlan(p.speed, p.damage, killed, along, reduced);
+    const steel = crushColorCss(crushHue());
+    // A bearing flattens the pop along the closing axis; without one it stays round rather
+    // than lying about a direction it does not know.
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.pop.life, plan.pop.size0,
+      plan.pop.size1, plan.pop.op0, 0.0, plan.pop.color, 0, 0,
+      along == null ? 1 : 2.2, plan.pop.along, CRUSH_PRIORITY);
+    if (plan.sparks) {
+      for (let i = 0; i < CRUSH_SPARK_FAN.length; i++) {
+        const bearing = along + CRUSH_SPARK_FAN[i];
+        this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.sparks.life, plan.sparks.size0,
+          plan.sparks.size1, plan.sparks.op0, 0.0, steel,
+          Math.cos(bearing) * plan.sparks.drift,
+          Math.sin(bearing) * plan.sparks.drift,
+          1, null, CRUSH_PRIORITY);
+      }
+    }
+    if (plan.kill) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.kill.life, plan.kill.size0,
+        plan.kill.size1, plan.kill.op0, 0.0, plan.kill.color, 0, 0, 1, null, CRUSH_PRIORITY);
+    }
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: steel, peak: plan.light.peak, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
