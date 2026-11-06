@@ -647,6 +647,16 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .45) !important; }
 }
 
+/* Keyboard focus remains legible at either end of the responsive tab strip. Pointer users
+   retain the scroll-edge hint; keyboard users see the complete focused word and its outline. */
+${H} .orr-help__tabs { scroll-padding-inline:12px; }
+${H} > .k-hang:focus-within, ${H} .orr-help__tabs:focus-within {
+  -webkit-mask-image:none !important; mask-image:none !important;
+}
+${H} .orr-help__tabs .sf-tab:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important;
+}
+
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
 ${SCROLL_EXTENT_CSS}
 @media (forced-colors: active) {

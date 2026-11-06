@@ -596,7 +596,7 @@ export const helpScreen = {
     const hang = el('nav', 'k-hang orr-help__rail');
     hang.setAttribute('aria-label', 'Help sections');
     const tabs = words(TABS.map((t) => ({ action: t, label: t, current: t === this._activeTab })), {
-      ariaLabel: 'Help sections',
+      ariaLabel: 'Help sections', followLayout: true,
       onPick: (t) => { if (t === this._activeTab) return; this._activeTab = t; this._q = ''; this._render(ctx); },
     });
     tabs.classList.add('orr-help__tabs');
@@ -605,7 +605,9 @@ export const helpScreen = {
     this._tabBtns = {};
     for (const b of tabs.querySelectorAll('.k-word')) {
       b.classList.add('sf-tab');
+      b.id = `orr-help-tab-${b.dataset.action.toLowerCase()}`;
       b.setAttribute('role', 'tab');
+      b.parentElement?.setAttribute('role', 'presentation');
       b.setAttribute('aria-selected', String(b.dataset.action === this._activeTab));
       b.setAttribute('aria-controls', 'orr-help-stage');
       this._tabBtns[b.dataset.action] = b;
@@ -653,6 +655,7 @@ export const helpScreen = {
     if (this._nowEl) this._nowEl.textContent = schemeLine(ctx.state);
 
     if (this._tabBtns) {
+      this._body.setAttribute('aria-labelledby', this._tabBtns[this._activeTab].id);
       for (const t of TABS) {
         const b = this._tabBtns[t];
         if (!b) continue;
