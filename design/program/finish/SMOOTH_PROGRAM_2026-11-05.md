@@ -97,6 +97,27 @@ Left uncommitted in the tree (deliberate): the pre-existing `isStartupPackagedCo
 hunks in `renderer.js`/`partsLibrary.js` — they keep models loaded that tests say should be
 let go; they are not part of this program until that disagreement is resolved.
 
+Follow-up (same session): the `_threatCandidates` ship-lane scan now validates each indexed row
+against the entity map (`entities.get(id) === entity`) and only latches its cache when a real
+index version exists — raw `entities.delete()` removals can no longer strand a stale ship in the
+lane. The four resume-work regressions this caused are green again (60/60 focused batch).
+
+Fresh `?simLane=main` profile on the Round-2 build (30 s Adventure flight, quiet host) —
+what the remaining cost actually is:
+
+| Cost (self, /30 s) | Where | Verdict |
+|---|---|---|
+| ~1.2 s | Rapier/SG-02 fixed step | owner decision §6 (solver 12 → 6 + save migration) |
+| ~0.9 s | `readReceiptRect` layout reads | receipt flush read-write-read thrash; needs a write-deferral restructure, not a cache tweak |
+| ~0.6 s | `physics:impact` listener fan-out | already deduped/gated at each layer (admitPair, quiet latches); coalescing proven a dead end in the prior investigation |
+| ~0.5 s | `clearIneligibleAIFiringIntents` sweep | **not stridable**: guns fire directly off `intent.fire` in `weapons.js` — the fail-closed sweep is the authority, not hygiene |
+| ~0.3 s | `classifyWorld` activity classification | per-tick, already single-pass; staleness gates physics lanes — risky to stride |
+| ~0.57 s | footage `convertToBlob` | already inside the capture worker, not the main thread |
+
+Honest read: the cheap sim-side wins are landed. What remains is the solver decision,
+the ship-hull merge (largest draw-call lever), the HUD write-phase restructure, and reply-size
+work — all multi-hour, each itemized in §5.
+
 ## 5. The ranked backlog (what else to do, highest ROI first)
 
 Each row is a self-contained agent package: owned files, measured before-cost, target, focused tests.
