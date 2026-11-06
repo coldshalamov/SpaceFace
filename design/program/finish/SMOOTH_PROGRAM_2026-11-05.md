@@ -118,6 +118,25 @@ Honest read: the cheap sim-side wins are landed. What remains is the solver deci
 the ship-hull merge (largest draw-call lever), the HUD write-phase restructure, and reply-size
 work — all multi-hour, each itemized in §5.
 
+**2026-11-05 residency measurement (wave-15 swarm, `swarm-residency-probe.mjs` — samples each
+hostile's `userData.authoredAssetState` through the fight):**
+
+- p50 time-alive-until-authored **12.1 s**, p90 13.5 s, max 18.5 s; 12/32 spawned hostiles never
+  reached authored in 45 s (died or still pending as stand-ins).
+- Steady state mid-fight: ~5 of 20 hostiles pending — `compiling-pipelines` ~4–6, `loading` ~1–4.
+- Stage dwell: `loading → authored` avg 11.4 s; **`compiling-pipelines → authored` avg 7.2 s** —
+  the pipeline tail, not the decode, is the dominant late-load.
+- Root cause: every in-flight authored admission runs the serial paced lane —
+  `yieldBetweenGpuStages = (mode === 'flight')` unconditionally, ~8+ present-yields per entity plus
+  queue depth, with no resident-program fast path. Repeat-archetype enemies whose programs are
+  already linked pay the same tail as first-of-family.
+- Caveat: the probe's `jumpToWave` skips the armory dwells where `_warmSwarmDeferredRoster`
+  builds exemplars, so this run measured the cold path. Real wave play is warmer; the cold path
+  is still what reinforcements, boss wings, spawn-late traffic and adventure mid-sector spawns hit.
+- Census (ordinary flight): 756 visible drawables; `kind:ship` 326 + `kind:drone` 184 +
+  `kind:wreck` 103 = **81 %, zero instanced**. `rigidOpaqueBatch` (BatchedMesh) is proven but
+  scoped to the player + ashline cohort only.
+
 ## 5. The ranked backlog (what else to do, highest ROI first)
 
 Each row is a self-contained agent package: owned files, measured before-cost, target, focused tests.
@@ -126,24 +145,37 @@ Each row is a self-contained agent package: owned files, measured before-cost, t
    `authoritativeSimStep.js`, expose next to `probePerformance`) so every later package measures the
    worker directly; then physics (contact fan-out listeners on `physics:impact`, proxy-id
    dirty flag in `syncFromEntityLayers` — solver-iteration reduction landed in R2-D), AI, flight.
-2. **Draw calls under 300 in a Swarm fight.** Merged hulls (R2-A), instanced drones/pickups/debris,
-   far-ship impostors, fewer distinct materials (each is a program + uniform upload).
-3. **Zero first-use compiles in flight.** CI-style check: `renderer.info.programs` must not grow after
+2. **Crowd batching — the single biggest fps lever.** 613 of 756 drawables are
+   ship/drone/wreck leaves, zero instanced (census above). Widen `rigidOpaqueBatch` admission
+   (`selectSource`/`isTransformOnlySource`/`isRigidOpaqueBatchMotionSafe` in
+   `rigidOpaqueBatch.js`/`rigidOpaqueBatchPolicy.js`) beyond the player+ashline pilot to
+   repeated authored leaves sharing (geometry, material) — same-defId enemies, drones, wrecks.
+   Turret/animated nodes stay direct via the existing motion-safety gate. Target: crowd draw
+   calls 613 → <150.
+3. **Resident-program fast lane — the biggest load-latency lever.** The 7 s `compiling-pipelines`
+   dwell is mostly paced queue, not GPU work: `yieldBetweenGpuStages` paces every flight
+   admission unconditionally (`partsLibrary.js` ~7639/8257). Add a program-resident verdict
+   (canonical program registry / `programCanon` linked-key check across the boundary's material
+   set); when every program is already linked, run the prepare's stages back-to-back without
+   present-yields. Repeat-archetype enemies — the entire swarm crowd — go ~7 s → sub-second.
+4. **Zero first-use compiles in flight.** CI-style check: `renderer.info.programs` must not grow after
    the first 5 s of flight across boost, tether, each power, docking, weapons, explosions. Every
    offender goes into the precompile salvo / first-flight warm set.
-4. **Nothing pops in.** Stand-in proxy on glass (R2-G), sector-wide prefetch from spawn tables,
-   decode runway scaled by speed, wave hull keys warmed at round start.
-5. **HUD near zero.** One read phase and one write phase per frame across all HUD owners; signature
+5. **Warm coverage at spawn intent.** `run:wavePlanned` exemplar warm covers the natural dwell;
+   extend the same mount+compile warm (not just decode) to wave-jump/restore/reinforcement
+   paths (`_reinforceSwarm`, `capitalBoss` wings, adventure mid-sector spawn kicks) so no
+   archetype's first compile happens inside the fight.
+6. **HUD near zero.** One read phase and one write phase per frame across all HUD owners; signature
    skips; no `getBoundingClientRect` in steady state.
-6. **Presentation bookkeeping.** `syncEntityViews` skips unchanged off-glass roots; `matrixAutoUpdate`
+7. **Presentation bookkeeping.** `syncEntityViews` skips unchanged off-glass roots; `matrixAutoUpdate`
    off for static stations/props/background; maintained lists instead of scene traversals.
-7. **Adaptive quality that actually adapts.** Auto lowers render scale on iGPU when frames are slow
+8. **Adaptive quality that actually adapts.** Auto lowers render scale on iGPU when frames are slow
    (Round 1 halved its reaction time); add a "Smooth" preset that also trims particles and bloom.
-8. **Worker reply size.** Ship vitals only for changed fields; event replay coalescing; transform-only
+9. **Worker reply size.** Ship vitals only for changed fields; event replay coalescing; transform-only
    journal visits.
-9. **Load path.** One manifest-driven start set; landmarks/works/wreck places out of the first-sector
+10. **Load path.** One manifest-driven start set; landmarks/works/wreck places out of the first-sector
    bundle; re-encode the 20 release GLBs over 2 MB (`fin_wedge` release is larger than its source).
-10. **Delete over-built machinery** when a package proves it costs more than it gives (candidates:
+11. **Delete over-built machinery** when a package proves it costs more than it gives (candidates:
    duplicated legacy `worker-pump` clock path in `simLaneMain.js`, per-frame guards that re-prove
    settled programs, observer recorders at 60 Hz such as kill replay).
 
