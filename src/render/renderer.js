@@ -9224,6 +9224,11 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
           // The loading facade otherwise returns a skipped receipt and queues detached ambient
           // work. This finite default cohort must finish compile/residency/exact touch before seal.
           openingRequired: defaultCohort && loading,
+          // Batch compilation is on-glass deadline work: the cohort's sources draw individually
+          // every presented frame until this commits, so it rides the urgent lane ahead of queued
+          // ambient mounts rather than joining the FIFO it exists to drain. The paced-wallet
+          // ledger gate still bounds the burst when the frame is already spent.
+          urgent: state.mode === 'flight',
           debugBy: 'rigid-opaque-batch',
           onPreparationLeg: context.reportLeg,
           isActive,
