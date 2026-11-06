@@ -59,8 +59,10 @@ having been shown.
 ## Open / not done in this session
 
 1. **One in-frame shader link remains** (down from five). It is a single material whose first use
-   beat its admission inside a drawn frame; the fail-open/queue path covers the rest. Next step:
-   name it from the probe's link witness and route that producer through admission.
+   beat its admission inside a drawn frame; the queue/fail-open path covers the rest. A
+   material-version refusal was implemented and measured: it turned that one link into **123
+   fail-opens and visible blinks** on a busy host (admitting a version-changed material costs more
+   than the link), so it was reverted. The residual link stays and is named in the probe report.
 2. **Upload latency, not correctness:** a held drawable's p95 wait was 14.6 s of wall time on this
    contended host (the off-screen residency pass is sliced and shares the machine with other
    agents). On-glass holds now jump the queue, but a bound-but-off-screen root can still wait
