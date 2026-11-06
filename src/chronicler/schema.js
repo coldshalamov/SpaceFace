@@ -77,11 +77,16 @@ export const FACT_EVENTS = Object.freeze([
   // on the same event — normalize filters those echoes on `source` so only an emitter's own
   // line becomes a fact.
   'news:headline',
+  // The world's own war record (inf-war-digest): factions owns state.conflicts and emits a
+  // declaration when a front boils over and a flip when it resolves. Without these the archive
+  // remembers only deeds and missions — the galaxy's biggest story could never reach the
+  // weekly digest, the one line the dock cites as the week's biggest fresh fact.
+  'conflict:warDeclared', 'conflict:flip',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
   'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy', 'exhausted',
-  'spill', 'predation', 'survey', 'gate', 'delivery', 'story',
+  'spill', 'predation', 'survey', 'gate', 'delivery', 'story', 'war',
 ]);
 export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);
 export const COUNTERS = Object.freeze([

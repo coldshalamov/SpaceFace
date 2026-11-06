@@ -108,6 +108,12 @@ function factionLabel(id) {
   return String((meta && (meta.short || meta.name)) || id || 'unknown').toUpperCase();
 }
 
+/** Authored display name in its own case — the chronicler's war facts speak these verbatim. */
+function factionName(id) {
+  const meta = META_BY_ID[id];
+  return String((meta && (meta.short || meta.name)) || id || 'unknown');
+}
+
 function sectorLabel(id) {
   return String(SECTOR_NAME_BY_ID[id] || id || 'unknown sector').toUpperCase();
 }
@@ -835,7 +841,16 @@ export const factions = {
     c.state = c.tension >= WAR_THRESHOLD ? 'war' : (c.tension >= TENSE_THRESHOLD ? 'tense' : 'cold');
     if (c.state === 'war' && prev !== 'war' && this.bus) {
       const sides = key.split(':');
-      this.bus.emit('conflict:warDeclared', { pairKey: key, sides });
+      // inf-war-digest: the archive that cites the week's biggest fact hears the declaration
+      // with authored names and the contested ground — ids dedupe, names speak.
+      const sectorId = CONTESTED[key] || null;
+      this.bus.emit('conflict:warDeclared', {
+        pairKey: key,
+        sides,
+        sideNames: sides.map(factionName),
+        sectorId,
+        sectorName: sectorId ? (SECTOR_NAME_BY_ID[sectorId] || null) : null,
+      });
     }
   },
 
@@ -899,7 +914,12 @@ export const factions = {
         playerLeanMag: Math.abs(Number(c.playerLean) || 0) };
       state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
       if (this.bus) {
-        this.bus.emit('conflict:flip', { ...c.lastFlip });
+        this.bus.emit('conflict:flip', {
+          ...c.lastFlip,
+          winnerName: factionName(winner),
+          loserName: factionName(loser),
+          sectorName: SECTOR_NAME_BY_ID[sectorId] || null,
+        });
         this.bus.emit('toast', {
           text: `${sectorLabel(sectorId)} changes hands — ${factionLabel(winner)} takes it from ${factionLabel(loser)}`,
           kind: 'warn',

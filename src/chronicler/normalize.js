@@ -519,6 +519,50 @@ export function normalizeFact(event, p, state) {
       f.dedupe = `newsHeadline:${newsKind}:${citation}`;
       break;
     }
+    case 'conflict:warDeclared': {
+      // inf-war-digest — factions emits this once per front when tension crosses WAR_THRESHOLD.
+      // A declaration needs both houses and their pair key; display names ride the payload so
+      // the durable fact stays dependency-free (ids dedupe, names only speak). The contested
+      // sector rides the fact's own sectorId/sectorName columns, like every other fact.
+      const pairKey = id(p.pairKey);
+      const sides = Array.isArray(p.sides) ? p.sides.map(s => id(s)).filter(Boolean) : [];
+      if (pairKey === null || sides.length !== 2 || sides[0] === sides[1]) return null;
+      const names = Array.isArray(p.sideNames) ? p.sideNames : [];
+      const nameA = text(names[0], '', 48) || sides[0];
+      const nameB = text(names[1], '', 48) || sides[1];
+      const pairName = `${nameA} and ${nameB}`;
+      f.stage = 'war';
+      f.actor = { id: null, key: 'conflict', player: false, name: 'the fronts' };
+      f.subject = { id: pairKey, key: `front:${pairKey}`, player: false, name: pairName };
+      f.group = `front:${pairKey}`;
+      f.factionId = sides[0];
+      f.details = { kind: 'war_declared', pairKey, pairName };
+      f.dedupe = `warDeclared:${pairKey}:${t}`;
+      break;
+    }
+    case 'conflict:flip': {
+      // A front resolving: the contested sector changes hands. The flip id is factions' own
+      // unique receipt (`front:<pair>:<seq>`), so the dedupe never replays a resolved turn;
+      // the playerLeaned bit records whether the player's work pressed it, nothing more.
+      const pairKey = id(p.pairKey);
+      const flipId = id(p.flipId);
+      const winner = id(p.newOwner);
+      const loser = id(p.previousOwner);
+      if (pairKey === null || flipId === null || winner === null || loser === null
+        || winner === loser) return null;
+      f.stage = 'war';
+      f.actor = { id: null, key: 'conflict', player: false, name: 'the fronts' };
+      f.subject = { id: winner, key: `front:${pairKey}`, player: false,
+        name: text(p.winnerName, '', 48) || winner };
+      f.group = `front:${pairKey}`;
+      f.factionId = winner;
+      f.details = { kind: 'front_flip', pairKey, flipId, winner, loser,
+        winnerName: text(p.winnerName, '', 48) || winner,
+        loserName: text(p.loserName, '', 48) || loser,
+        playerLeaned: Number(p.playerLeanMag) > 0 };
+      f.dedupe = `flip:${flipId}`;
+      break;
+    }
     default: return null;
   }
   f.provides = f.provides.filter(Boolean);

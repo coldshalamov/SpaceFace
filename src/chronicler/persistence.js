@@ -21,7 +21,10 @@ const DETAILS = new Set(['cause', 'playerCaused', 'surface', 'victimClass', 'fac
   'defId', 'price', 'achievementId', 'category', 'via', 'retroactive', 'careerId',
   'trickId', 'episodeId', 'rarity', 'baseScore', 'collateralCount',
   // News-headline facts: the emitter's own kind of headline (with the shared `title`/`note`).
-  'newsKind']);
+  'newsKind',
+  // War facts (inf-war-digest): the front's pair key and authored house names, the flip's own
+  // receipt id, and the two scalars that say who took the lane and whether the player pressed.
+  'pairKey', 'pairName', 'flipId', 'winner', 'loser', 'winnerName', 'loserName', 'playerLeaned']);
 const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges', 'groups',
   'revision', 'signature', 'announcedRevision', 'newsRevision', 'newsAt', 'radioRevision'];
 const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
@@ -47,6 +50,8 @@ const EVENT_STAGES = Object.freeze({
   'career:ladder:completed': ['story'], 'stunt:trickDetected': ['story'],
   // The news record channel: normalize.js files an emitter's own headline on the 'story' stage.
   'news:headline': ['story'],
+  // The world's own war record (inf-war-digest): declaration and resolution share the war stage.
+  'conflict:warDeclared': ['war'], 'conflict:flip': ['war'],
 });
 function check(ok, message) { if (!ok) throw new TypeError(`Invalid Chronicler snapshot: ${message}`); }
 function object(value, keys, path) {

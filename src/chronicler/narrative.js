@@ -6,6 +6,8 @@ const victimName = f => f?.subject?.player ? 'your ship' : f?.subject?.name || '
 const pilotName = f => f?.actor?.player ? 'You' : f?.actor?.name || 'An unknown pilot';
 const sectorName = f => label(f?.zoneName || f?.sectorName || f?.sectorId);
 const stationName = f => label(f?.stationName || f?.stationId, 'a station');
+// A flip fact with no declaration before it still names the pair from its own pairKey.
+const declaredByName = f => label(String(f?.details?.pairKey || '').split(':').join(' and '), 'two houses');
 // Do not round a small, positive cargo receipt down to a fictitious zero.
 function quantity(n) { return String(n); }
 // Two kill shapes open with the victim's name; a retained identity like "your ship" or "an
@@ -56,6 +58,7 @@ export function buildStoryView(story) {
   const rescues = ns.filter(n => n.stage === 'rescue');
   const wanted = ns.filter(n => n.stage === 'wanted');
   const reactor = ns.filter(n => n.stage === 'reactor');
+  const wars = ns.filter(n => n.stage === 'war');
   const remedy = ns.find(n => n.stage === 'remedy' && n.parentStatus === 'resolved');
   const paths = pathsFrom(story).sort((a, b) => progressOf(b) - progressOf(a)
     || b.length - a.length || a[0].seq - b[0].seq);
@@ -146,6 +149,33 @@ export function buildStoryView(story) {
     const outcome = f.details.outcome === 'reactorVented' ? 'was vented'
       : f.details.outcome === 'reactorTowedClear' ? 'was towed clear' : 'burst';
     title = `A reactor ${outcome}`; summary = `A wreck reactor ${outcome} in ${sectorName(f)}.`;
+    radio = summary;
+  } else if (wars.length && !kill) {
+    // The world's own war (inf-war-digest). One front per story (group front:<pair>), so the
+    // arc reads declaration then turns; the contested lane is the same sector every turn by
+    // construction (one contested sector per pair). Names are the capture-time display names
+    // the factions owner sent — never re-derived, never invented here.
+    const f = wars[wars.length - 1];
+    const d = f.details || {};
+    const declared = wars.find(n => n.details && n.details.kind === 'war_declared');
+    const flips = wars.filter(n => n.details && n.details.kind === 'front_flip');
+    const pairName = declared ? declared.subject.name : declaredByName(f);
+    const lane = sectorName(f);
+    kind = 'war_record';
+    if (d.kind === 'war_declared') {
+      score = Math.max(score, 55);
+      title = `War: ${pairName}`;
+      summary = `${pairName} went to war${lane ? ` over ${lane}` : ''}.`;
+    } else {
+      score = Math.max(score, 62);
+      title = `The ${lane || 'contested'} front turned`;
+      summary = `${d.winnerName || f.subject.name} took ${lane || 'the contested lane'} from ${d.loserName || 'the other house'}.`;
+    }
+    if (declared && flips.length) {
+      const declaredLane = sectorName(declared);
+      summary = `${pairName} went to war${declaredLane ? ` over ${declaredLane}` : ''}.`
+        + ` The front has since turned ${flips.length} ${flips.length === 1 ? 'time' : 'times'} — ${summary}`;
+    }
     radio = summary;
   }
   if (!summary) {
