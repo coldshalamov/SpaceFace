@@ -46,18 +46,34 @@
   55/55 green.
 
 ## Next
-1. **Live AFTER re-record** with the corrected presented-pose metric (the first AFTER run,
-   `evidence/after-stall-trace.json`, measured the mirrored row — valid for BEFORE's
-   presentation where mesh ≈ newest pack, invalid after the buffer). Blocked only by machine
-   congestion: the shared dev server intermittently 404s and the worker's ~14 s boot loses
-   the lane's 5 s startup deadline while other agents compile. Retry when quiet.
-2. Before/after video of the same stall pattern (spec Verify).
-3. First-AFTER row-proxy observations (presented-pose fix landed mid-session): held streak
-   26 → 3–6 frames, jump-bound violations 78 → 2 (worst ratio 2.0 → 1.04) under reply gaps
-   p50 128 / p95 484 ms — consistent with the unit contract; the clean re-record replaces it.
+1. Done — see below. Remaining (optional hardening, not the Verify bar): smoothing the burst
+   case further by packing fence snapshots per consumed tick from journal TRANSFORM history
+   (today a catch-up burst lands as one pack spanning several ticks; the buffer interpolates
+   linearly across it — monotone and jump-free, just linearized). Lane 2's E2 profiler export
+   will feed E10's per-system columns.
+
+## Verify — met (2026-11-06, measured on this laptop, Browser pane visible)
+
+Stall pattern `?simStall=60,60,60,400` (one 400 ms stall every 4th tick) in every run.
+
+| Metric (spec bar) | BEFORE (`before-stall-trace.json`) | AFTER clean run (`after-stall-trace.json`) | AFTER video window (`after-video-window-trace.json`) |
+|---|---|---|---|
+| Max per-frame pose jump ≤ 2×speed×frameDt | 13.0 wu, **78 violations** (worst ratio 2.01) | 6.1 wu, **0 violations** | 22.0 wu, **0 violations** |
+| Held-pose frames while moving (≤ 2) | **26-frame streak** | **0** | **0** |
+| Conditions | worker lane, reply gaps p50 102 / p95 451 / max 5.9 s | worker lane, reply gaps p50 128 / p95 483 / max 3.4 s | extreme load (frame callback max 2.6 s, other agents compiling), lane fell back to in-process mid-window |
+
+- **Before/after video of the same stall pattern**: `evidence/before-playout-0-stalls.mp4` +
+  `evidence/after-playout-buffer-stalls.mp4` — same binary, same harness, same route
+  (new game → cruise 195 wu/s in open space); the before take uses the in-fence diagnostic
+  kill-switch `?playout=0` (legacy chase-the-newest clock), the after take is the playout
+  buffer. Before: 5 fps, pose repeating under load; after: 15 fps, continuous motion.
+  Frames verified (speed pinned at 195 U/S through both windows).
 
 ## Evidence
-- `evidence/before-stall-trace.json` (+ `.devshots/e1-playout/before-*.png`, local).
-- `evidence/after-stall-trace.json` (row-proxy metric; superseded by pending re-record).
-- Tests: 18/18 fence, 6/6 frame-truth, 34/34 transport (sim-worker-local-clock +
-  sim-lane-stall-confirmation + worker-reply-work-budget).
+- `evidence/before-stall-trace.json`, `evidence/after-stall-trace.json`,
+  `evidence/after-video-window-trace.json`, both videos.
+- Tests: 18/18 fence (incl. `snapshot-fence-playout-buffer.test.mjs`), 6/6 frame-truth,
+  34/34 transport. Full node suite re-run blocked transiently by concurrent agents'
+  in-flight data-graph edits (documented where hit); fence/transport/frame-truth cohorts green.
+- The kill-switch `?playout=0` is a permanent diagnostic seam (fence reads the URL once at
+  creation; production default unchanged).

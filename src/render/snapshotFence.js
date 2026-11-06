@@ -41,6 +41,21 @@ const PRESENTATION_RATE_MAX = 1.25;
 /** Max extrapolated travel (world units) per entity; larger means a teleport, not motion. */
 const EXTRAPOLATION_MAX_WU = 40;
 
+// E1 diagnostic kill-switch: `?playout=0` restores the pre-playout clock (chase the newest
+// pack, fixed 100 ms extrapolation cap, no delay, no rate modulation) so the SAME binary can
+// show the before/after of the stall pattern side by side. Diagnostic only; absent = playout on.
+function playoutDisabledByParam() {
+  try {
+    if (typeof globalThis.location === 'undefined') return false;
+    return new URLSearchParams(globalThis.location.search).get('playout') === '0';
+  } catch (_) {
+    return false;
+  }
+}
+const PLAYOUT_DISABLED = playoutDisabledByParam();
+const LEGACY_EXTRAPOLATION_S = 0.1;
+const LEGACY_CATCHUP_GAIN = 0.25;
+
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
   .reduce((total, spec) => total + spec.stride, 0) * 4;
@@ -419,6 +434,49 @@ export function createSnapshotFence(options = {}) {
       if (latest < 0) return fallbackAlpha;
       const current = buffers[latest].published;
       const elapsed = Number.isFinite(elapsedS) ? Math.max(0, Math.min(elapsedS, 0.25)) : 0;
+      if (PLAYOUT_DISABLED) {
+        // Legacy clock (the "before"): chase newest.simTime + accumulator − fixedDt with the
+        // per-frame catch-up gain and a fixed 100 ms extrapolation cap. Present for the
+        // diagnostic comparison only.
+        const prior = this.previousSnapshot();
+        const span = prior ? current.simTime - prior.simTime : 0;
+        const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
+        const target = span > 0 ? prior.simTime + span * raw : current.simTime;
+        const reset = presentedEpoch !== current.poseEpoch
+          || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
+        if (reset) {
+          presentedTime = target;
+          presentationRate = 1;
+          rateWallS = 0;
+          rateSimS = 0;
+        } else {
+          rateWallS += elapsed;
+          rateSimS += current.simTime - presentedSnapshotTime;
+          if (rateWallS >= PRESENTATION_RATE_WINDOW_S) {
+            const sample = rateSimS / rateWallS;
+            presentationRate += (Math.max(0, Math.min(PRESENTATION_RATE_MAX, sample))
+              - presentationRate) * 0.5;
+            rateWallS = 0;
+            rateSimS = 0;
+          }
+          const cap = current.simTime + LEGACY_EXTRAPOLATION_S;
+          let next = presentedTime + elapsed * presentationRate;
+          if (target > next) next += (target - next) * LEGACY_CATCHUP_GAIN;
+          if (next > cap) next = cap;
+          presentedTime = Math.max(presentedTime, next);
+        }
+        presentedSequence = current.sequence;
+        presentedEpoch = current.poseEpoch;
+        presentedSnapshotTime = current.simTime;
+        presentedValid = true;
+        if (!(span > 0)) {
+          presentedPair = { a: -1, b: latest, alpha: 1 };
+          return 1;
+        }
+        const alpha = (presentedTime - prior.simTime) / span;
+        presentedPair = { a: previous, b: latest, alpha: alpha < 0 ? 0 : alpha };
+        return alpha < 0 ? 0 : alpha;
+      }
       const reset = presentedEpoch !== current.poseEpoch
         || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
       if (reset) {
