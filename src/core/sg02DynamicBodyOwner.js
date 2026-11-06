@@ -45,6 +45,8 @@ const ORCHARD_OWNER_TAILS = new WeakMap();
 const ORCHARD_RECOVERY_FACTORIES = new WeakMap();
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
+import { getSimStepProfiler, nowNs } from './simStepProfiler.js';
+import { simCoreFlag } from './simCoreFlags.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
@@ -1696,6 +1698,10 @@ export class Sg02DynamicBodyOwner {
     // cache closed on that path, and close every record if any pre-solver work throws so an
     // out-of-phase public torque call cannot consume a stale pre-step sample.
     const preStepRecords = [];
+    // E2 sub-phase attribution (off unless the realm profiler is on).
+    const sph = getSimStepProfiler();
+    const sphOn = sph.active;
+    let sphT = sphOn ? nowNs() : 0;
     try {
       const tumbleFling = combatFlag('tumbleFling');
       this._refreshSleepPolicy();
@@ -1788,13 +1794,17 @@ export class Sg02DynamicBodyOwner {
       this._captureExpectedKinematics(rec);
     }
 
+    if (sphOn) { sph.record('sg02.preStep', nowNs() - sphT); sphT = nowNs(); }
     let stepReceipts = [];
     if(!permitOrchardNativeSolve(this,ORCHARD_OWNER_CAPABILITIES.get(this)))throw new Error('orchard_native_solve_refused');
     if (this._eventQueue) {
       this.world.step(this._eventQueue);
+      if (sphOn) { sph.record('sg02.worldStep', nowNs() - sphT); sphT = nowNs(); }
       stepReceipts = this._captureContactImpacts() || [];
+      if (sphOn) { sph.record('sg02.contacts', nowNs() - sphT); sphT = nowNs(); }
     } else {
       this.world.step();
+      if (sphOn) { sph.record('sg02.worldStep', nowNs() - sphT); sphT = nowNs(); }
     }
     this.tick++;
     // Bound solver contact spikes before publishing the authoritative motion snapshot. Each
@@ -1832,6 +1842,7 @@ export class Sg02DynamicBodyOwner {
     }
     this._stepContactReceipts = null;
 
+    if (sphOn) { sph.record('sg02.readback', nowNs() - sphT); sphT = nowNs(); }
     if (journalFor()) for (const receipt of stepReceipts) {
       const a = this.records.get(receipt.aId), b = this.records.get(receipt.bId);
       if (a && b) {
@@ -1875,6 +1886,7 @@ export class Sg02DynamicBodyOwner {
     }
     for (const rec of recoilRecords) this._syncEntityFromKinematics(rec, this._enforcePlane(rec));
     this._persistIslandSleep();
+    if (sphOn) { sph.record('sg02.publish', nowNs() - sphT); }
     } catch (error) {
       for (const rec of preStepRecords) {
         closePreStepAngular(rec);
@@ -3986,6 +3998,10 @@ export class Sg02DynamicBodyOwner {
   _publishTelemetry(rec) {
     if (!this.publishTelemetry) return;
     if (!rec.spec.dynamic) return;
+    // E2: only bodies a gameplay owner declared it inspects. Two readers exist (Crucible room
+    // shutters, Kilnback capital completion); publishing for every dynamic body was ~one frozen
+    // object + one thruster-authority read per body per tick that nothing read.
+    if (simCoreFlag('telemetryDemand') && rec.entity && rec.entity.physicsTelemetryRequested !== true) return;
     // Retained input record: writePhysicsTelemetry reads every field synchronously into its own
     // frozen publication, so the input literal does not need to be fresh per call.
     const input = this._telemetryInput || (this._telemetryInput = {

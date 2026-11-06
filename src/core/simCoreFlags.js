@@ -1,0 +1,74 @@
+// Switchboard for the Lane 2 (SIM CORE) hot-path package.
+//
+// Why a switchboard instead of just shipping the change: the owner's laptop is shared with other
+// agents, so two probe runs minutes apart are not a matched comparison. Every optimisation this
+// campaign lands can be turned off at boot through `globalThis.__SF_SIM_CORE_FLAGS__`, which lets
+// ONE probe process boot the legacy shape, measure it, dispose, boot the optimised shape and
+// measure again — same machine state, same scene, seconds apart.
+//
+// Defaults are the shipped behaviour: every flag ON. A flag is only read at a branch the step
+// already takes (a boolean per body at most), never in a way that changes results. The flags exist
+// for measurement and for a fail-open retreat if a platform misbehaves; they are not a feature
+// system and nothing in the game sets them.
+
+const DEFAULTS = Object.freeze({
+  /** Per-body physics telemetry only for bodies a gameplay owner inspects. */
+  telemetryDemand: true,
+  /**
+   * A due economy pass advances by a fixed quantum per tick instead of one 130 ms step.
+   * DEFAULT OFF: measured at 130–150 ms → ~3 ms/call, but the per-listing maths read
+   * `state.simTime` deep inside demand/conditions, so deferring a row by ticks changes the
+   * 47-A determinism reference (test/47a.telemetry.save-v23.expected.json). Landing it needs a
+   * versioned reference, which is a process decision, not a perf one. Kept implemented and
+   * measured so that decision is a switch, not a rewrite.
+   */
+  economySlicing: false,
+  /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
+  lazySg02Snapshot: true,
+});
+
+let overrides = null;
+
+function readOverrides() {
+  if (overrides) return overrides;
+  const raw = typeof globalThis !== 'undefined' ? globalThis.__SF_SIM_CORE_FLAGS__ : null;
+  if (raw && typeof raw === 'object') {
+    overrides = raw;
+    return overrides;
+  }
+  // Headless harnesses (probes, sim CLI, lab) switch a flag through the environment so one build
+  // can run the legacy shape for a matched comparison: SF_SIM_CORE='{"economySlicing":false}'.
+  const proc = typeof process !== 'undefined' ? process : null;
+  const envRaw = proc && proc.env ? proc.env.SF_SIM_CORE : null;
+  if (typeof envRaw === 'string' && envRaw.trim().startsWith('{')) {
+    try {
+      overrides = JSON.parse(envRaw);
+      return overrides;
+    } catch (_) { /* fall through to defaults */ }
+  }
+  overrides = Object.create(null);
+  return overrides;
+}
+
+/** Reset the memoised override read (a probe swaps the global between boots). */
+export function resetSimCoreFlags() {
+  overrides = null;
+}
+
+export function simCoreFlag(name) {
+  const o = readOverrides();
+  const v = o[name];
+  if (typeof v === 'boolean') return v;
+  return DEFAULTS[name] !== false;
+}
+
+export function simCoreFlagDefaults() {
+  return { ...DEFAULTS };
+}
+
+/** Apply a flag set for the current boot context (probe/test use only). */
+export function setSimCoreFlags(flags) {
+  if (typeof globalThis === 'undefined') return;
+  globalThis.__SF_SIM_CORE_FLAGS__ = flags && typeof flags === 'object' ? { ...flags } : {};
+  overrides = null;
+}

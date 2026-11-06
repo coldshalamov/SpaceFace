@@ -332,8 +332,7 @@ export function clearPhysicsAuthority(entity) {
 }
 
 /** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
-export function writePhysicsTelemetry(entity, telemetry = {}) {
-  if (!entity || typeof entity !== 'object') return null;
+export function writePhysicsTelemetry(entity, telemetry = {}) {  if (!entity || typeof entity !== 'object') return null;
   const previous = TELEMETRY.get(entity);
   const value = Object.freeze({
     schemaVersion: PHYSICS_TELEMETRY_SCHEMA_VERSION,
@@ -361,6 +360,27 @@ export function writePhysicsTelemetry(entity, telemetry = {}) {
 
 export function readPhysicsTelemetry(entity) {
   return entity && TELEMETRY.get(entity) || null;
+}
+
+/**
+ * Physics-only: declare that gameplay inspects this body's measured post-solve state.
+ *
+ * The per-body telemetry publication is a frozen object plus a thruster-authority read on every
+ * dynamic body every tick. Only two gameplay owners read it (the Crucible room's jammed-shutter
+ * logic and the Kilnback capital's closing-speed completion), so a body that nobody inspects must
+ * not pay for it. Callers opt in once, where they bind the body they inspect; `readPhysicsTelemetry`
+ * keeps its exact contract for opted-in bodies and returns null (as it always has for unmeasured
+ * bodies) for everything else.
+ */
+export function requestPhysicsTelemetry(entity) {
+  if (!entity || typeof entity !== 'object') return false;
+  if (entity.physicsTelemetryRequested === true) return false;
+  entity.physicsTelemetryRequested = true;
+  return true;
+}
+
+export function wantsPhysicsTelemetry(entity) {
+  return !!(entity && entity.physicsTelemetryRequested === true);
 }
 
 export function shouldSyncPhysicsBodyEntity(entity) {
