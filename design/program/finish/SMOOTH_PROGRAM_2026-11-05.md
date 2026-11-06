@@ -76,16 +76,26 @@ Twelve parallel packages, disjoint file ownership, focused tests only. Measured 
 - **Slow-host admission**: heavy work is "late" relative to the host's own smoothed cadence; forced
   after 3 skips; on-glass geometry batches of 16 (models stop waiting forever on slow machines).
 
-## 4. Round 2 — in flight (2026-11-05 evening)
+## 4. Round 2 — landed (commit `53e69d314d03`, measured 2026-11-05)
 
-| Package | Target |
+| Package | Result |
 |---|---|
-| R2-A Draw-call merge | ships draw ~14 leaves each (326 leaves in ordinary flight), drones 184, wrecks 103 — merge static same-material leaves / widen the retained rigid opaque batch path |
-| R2-B HUD/radar | per-placement rect/candidate caching and unchanged-signature skip; radar static layers to an offscreen canvas; readout layout reads cached |
-| R2-C In-flight loading | package loader / CPU detach / scene-pipeline touches / presented matrices / BVH builds that still run in steady flight → zero when unchanged, ≤8 ms slices otherwise |
-| R2-D Physics solver | Rapier `numSolverIterations` 12 (Rapier default 4) — forward-migrate the save runtime contract and reduce safely |
-| R2-E AI/flight at scale | tacticalAI / flightV3 / weapons hot loops; K-nearest targeting; wider cadence for non-engaged far NPCs |
-| R2-G Stand-ins + sector prewarm | on-glass roots draw a resident proxy instead of nothing; every ship family / asteroid variant a sector can spawn is decoded and compiled behind the loading screen |
+| R2-A Draw-call merge | Packaged hulk leaves merge per material (shared cached merged geometry); fallback drone body 3 meshes → 1. Ship-hull merge still open — the biggest leaf count |
+| R2-B HUD/radar | Selector walks + band solves memoized per flush; radar heat ring on an offscreen layer repainted only when it moves; line-strain readout dirty-gated, viewport cached |
+| R2-C In-flight loading | Quantized/normalized position bounds take the plain fast path exactly (was the ~0.5 s/30 s slow path on new ship models) |
+| R2-D Physics solver | **Not started** — needs the save-contract migration; owner decision, §6 |
+| R2-E AI/flight at scale | Far-from-player combat members refresh perception/doctrine at half rate; NPC job threat scans read the ship lane of the entity index (map-validated) instead of all entities |
+| R2-G Stand-ins + sector prewarm | Pending roots already drawing a resident proxy stay on glass; `_noMesh` rows stop holding the opening gate; every asteroid size class the range can spawn is warmed |
+
+Measured (quiet host): Swarm wave 15 at 23 hostiles — **43.1 sim steps/s** (was 37.9 after
+Round 1), longest presented freeze 190 ms; Adventure cruise 18–22 fps / 47–54 steps/s. The
+first noisy-machine re-run looked like a regression — it was host contention again; always
+re-measure on a quiet machine before judging. One 1.3 s first-run tether stall observed once
+(big journal flush of arrivals), not reproduced on the second run.
+
+Left uncommitted in the tree (deliberate): the pre-existing `isStartupPackagedContactEntity`
+hunks in `renderer.js`/`partsLibrary.js` — they keep models loaded that tests say should be
+let go; they are not part of this program until that disagreement is resolved.
 
 ## 5. The ranked backlog (what else to do, highest ROI first)
 
