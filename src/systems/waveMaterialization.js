@@ -15,6 +15,7 @@ import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
+import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
@@ -205,6 +206,39 @@ function clearOfRocks(state, pos) {
   return pos;
 }
 
+// S1 — apply the Swarm feel profile to one spawn spec. Three jobs, all stamped only when
+// swarmFeel(ctx.state) resolved non-null, so Adventure specs are byte-identical to before:
+//   1. data[SWARM_FEEL_STAMP] — the contact owner's per-entity gate for the bowling-pin and
+//      Swarm tumble rules; the stamp crosses the worker lane with the entity.
+//   2. physicsBody.contact — the profile's bouncy enemy material, merged through the
+//      per-entity override path so shared PHYSICS_MATERIALS never move.
+//   3. fodder rewrite — hull scaled, shield and armor zeroed for the fodder band (C1/C2).
+export function applySwarmFeelSpec(spec, enemyId, feel) {
+  spec.data = spec.data || {};
+  spec.data[SWARM_FEEL_STAMP] = true;
+  spec.physicsBody = {
+    ...(spec.physicsBody || {}),
+    contact: {
+      ...((spec.physicsBody && spec.physicsBody.contact) || {}),
+      restitution: feel.contact.enemyRestitution,
+      restitutionCombine: feel.contact.enemyCombine,
+    },
+  };
+  if (feel.fodder.ids.includes(enemyId)) {
+    const baseHull = Number.isFinite(spec.hull) && spec.hull > 0 ? spec.hull : 1;
+    const hull = Math.max(1, Math.round(baseHull * feel.fodder.hullMult));
+    spec.hull = hull;
+    spec.hullMax = hull;
+    spec.shield = feel.fodder.shield;
+    spec.shieldMax = feel.fodder.shield;
+    spec.shieldRegenRate = 0;
+    spec.armorHp = feel.fodder.armor;
+    spec.armorMax = feel.fodder.armor;
+    spec.armorFlat = 0;
+  }
+  return spec;
+}
+
 export function materializeWaveBatch(ctx, request) {
   const req = request || {};
   const requested = Number.isInteger(req.count) && req.count > 0 ? req.count : 0;
@@ -246,6 +280,7 @@ export function materializeWaveBatch(ctx, request) {
     Number.isInteger(req.batchIndex) ? req.batchIndex : 0,
   ));
 
+  const feel = swarmFeel(ctx && ctx.state);
   const spawnedIds = [];
   const reserved = [];
   let ingressPose = null;
@@ -283,6 +318,7 @@ export function materializeWaveBatch(ctx, request) {
       if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
       if (req.swarm === true) {
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
           { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,

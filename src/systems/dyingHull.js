@@ -53,6 +53,7 @@ import {
 } from '../combat/lifecycle.js';
 import { aftermathForSector } from './aftermathWrecks.js';
 import { spawnCollisionTearOff } from './hullFracture.js';
+import { swarmFeel } from '../data/swarmFeelProfile.js';
 
 /** Bounded forces of a failing hull (prototype values; tune through comparative motion review). */
 export const DYING_FORCE_LAW = Object.freeze({
@@ -302,6 +303,8 @@ export const dyingHull = {
       mass: marker.victimMass,
       radius: marker.victimRadius,
       overkill: kill && Number.isFinite(kill.overkill) ? kill.overkill : 0,
+      // S1: null outside a live Swarm run — the dying law is untouched in Adventure.
+      feel: swarmFeel(state),
     });
     // Keep the pool bounded: a massacre ruptures the oldest hull early instead of stacking records.
     if (rt.count >= RECORD_CAP) this._ruptureOldest(state);
