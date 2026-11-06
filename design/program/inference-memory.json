@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-berth-rumor",
-      "date": "2026-10-27",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A berth arrival does not repeat a pirate rumor from another sector.",
-      "fingerprint": "verb=hear,subject=rumor,sector=helios,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "8ccbb59fcef3e12b6bc00894925c64257aa3b3bf",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-relay-shelved",
-      "date": "2026-10-27",
-      "wf": "WF-06",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A launched relay hauler that is off the map is not paid as if it docked.",
-      "fingerprint": "verb=hold,subject=hauler,sector=helios,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "158c8604baeb3b3ca7bc1853ca1e26e9b6432d4e",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-drone-recall",
-      "date": "2026-10-27",
-      "wf": "WF-06",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Recalling a mining drone names the credits that recall paid.",
-      "fingerprint": "verb=recall,subject=drone,sector=helios,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "0c7a49433fc31a9c2e0e45445ce4300f0d2ac2e2",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-station-pa-market",
       "date": "2026-10-29",
       "wf": "WF-13",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "839685fee566",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-war-digest",
+      "date": "2026-11-06",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Docking after a week of war now cites the war itself: the weekly digest's fact pool hears a front boiling over and a front resolving, so the world's own biggest story reaches the dock line instead of only your deeds.",
+      "fingerprint": "verb=cites,subject=war front record,sector=dock digest line,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "8382f7643531",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-rescue-delivery-chime",
+      "date": "2026-11-06",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The moment a rescued pod crosses the ring, the receiving berth answers with its own authored chime - a struck bell with an answering fifth - instead of silence, so the delivery sounds like a place taking someone in and not like your hull bumping the dock.",
+      "fingerprint": "verb=chimes,subject=rescue delivery moment,sector=station ring audio,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "7c9327cf4744",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-peace-receipt",
+      "date": "2026-11-06",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A war that ends no longer vanishes into silence: for three sim days after the front resolves, docking at either house names the peace - who took the lane, from whom - straight off the conflict record's own flip stamp, instead of the war going quiet like it never happened.",
+      "fingerprint": "verb=names,subject=conflict peace terms,sector=station arrival desk,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "88def8f3e759",
       "verification": "focused_green"
     }
   ],
