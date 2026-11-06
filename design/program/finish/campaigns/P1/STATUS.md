@@ -55,6 +55,9 @@ Saucer     10 10 10 10 10 10 Generalist
 - `node scripts/ui-bench.mjs --shot=station-shipworks --walk` — the six stat rows are focusable
   controls and each one changes the meaning line (walk entries 13–15).
 - `node scripts/check-type-floor.mjs` — OK, 2421 sizes.
+- `node --test test/ship-stats.test.mjs` — 8/8 pass (re-run after the merge that landed this work).
+- Final bench shots after the merge: `station-shipworks` 11.1 s, `ship` 8.8 s, `new-game` 9.5 s, all
+  "no tangled, buried, cut-off or offscreen type".
 
 ## Not done / open
 
@@ -62,14 +65,13 @@ Saucer     10 10 10 10 10 10 Generalist
   `shipStatSheet({shipId:'ship_hornet',fittings:[…]})` vs `shipStatSheet({shipId:'ship_hawser',…})`;
   the expectation encoded in the model is Hornet wins the slug-fest (Firepower) and Hawser the tow
   job (Muscle), with Speed/Toughness deciding the drag race.
-- **`shipStatSheet` cannot be exercised in this checkout right now.** `src/systems/ships.js` throws
-  `Cannot access 'SHIP_BY_ID' before initialization` on import — a circular import through
-  `src/world/tallyThreeIdentity.js`, which calls `makeShipEntitySpec()` at module top level (landed
-  by another lane in `3e6223770f3c`). Every module that reaches `systems/ships.js` — including this
-  sheet and the game's own boot — throws. **This is not caused by the Ship Sheet** (it fails on
-  `import('./src/systems/ships.js')` alone, with nothing of mine in the chain), and it is not mine to
-  fix. The model passed its full suite earlier in the session while that file was whole; re-run
-  `node --test test/ship-stats.test.mjs` once the cycle is repaired.
+- **A foreign circular import makes `src/systems/ships.js` flaky to load.** `src/world/tallyThreeIdentity.js`
+  evaluates `makeShipEntitySpec()` at module top level; when that module is reached before `ships.js`
+  has finished initialising, the import throws `Cannot access 'SHIP_BY_ID' before initialization`.
+  It is not caused by the Ship Sheet (it reproduces with `import('./src/systems/ships.js')` alone)
+  and it is not mine to fix; it is recorded in `NOW.md`. The stat model's suite and the three bench
+  shots both pass while the cycle happens to resolve, and both fail when it does not — so treat a
+  red run of anything that imports `systems/ships.js` as this bug first.
 - **The flight-host side column still speaks engineering** (`0/1 fitted · 0 draw` per system). It is
   the systems/power instrument rather than the ship's stats; the `core · N draw` caption is now
   `power used · N of M`, but the per-row draw numbers are still raw. Follow-up.
