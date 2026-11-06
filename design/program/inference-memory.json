@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inference26-recovery-hazard-continue",
-      "date": "2026-10-26",
-      "wf": "WF-16",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Continue restores the physical recovery reactor with its original fuse and vent action",
-      "fingerprint": "verb=resume,subject=reactor-rescue,sector=ordinary-route,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "9ab73b680bc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-scan-survey-new-game",
-      "date": "2026-10-26",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A new career resets surveyed-loss receipts while repeated scans in that career still pay once",
-      "fingerprint": "verb=restart,subject=survey-career,sector=ordinary-route,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "7a4305816e7",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-recovery-method-retry",
-      "date": "2026-10-26",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Partial cargo extraction commits the selected outcome across hold-full retries and Continue; prompt explains the remaining action",
-      "fingerprint": "verb=extract,subject=stripped-wreck,sector=ordinary-route,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "00901d86942",
-      "verification": "focused_green"
-    },
-    {
       "id": "inference26-scan-hail-identity",
       "date": "2026-10-26",
       "wf": "WF-01",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "d82ae72db1f5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-bar-war-front",
+      "date": "2026-11-05",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Sitting at the bar of a house at war no longer lies that things are quiet: the conversation names the rival, the contested front, and your banked lean, on its tags and its rumors days",
+      "fingerprint": "verb=speak,subject=war front bar talk,sector=station bar,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "93deba67c6a5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-slot-standing",
+      "date": "2026-11-05",
+      "wf": "WF-14",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A returned save slot card now reads who you were: the strongest house and rung the run earned, and the war that was still burning when you filed it",
+      "fingerprint": "verb=read,subject=save slot standing,sector=save slot card,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "904080205f1d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-epilogue-war",
+      "date": "2026-11-05",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Filing your ending now names the war that never cooled - the houses, the front lane, and which way your own work banked it",
+      "fingerprint": "verb=remember,subject=ending war clause,sector=ending epilogue,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "c4b44ae548ba",
       "verification": "focused_green"
     }
   ],

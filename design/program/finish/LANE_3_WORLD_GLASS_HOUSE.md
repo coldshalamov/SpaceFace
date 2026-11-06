@@ -924,6 +924,23 @@ Inbox addition (wave 8): test/fb-hitchhiking-named.test.mjs "the flight HUD path
 layer" fails at HEAD — clean hud.js (9dec955de450) added onFlightTextGeometryChange to the
 stunt-callout mount and the test's regex expects the old call. Owner: HUD/geometry thread.
 
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the war family's second and third reads, per visit,
+per save, per ending):
+- inf-bar-war-front (WF-09): docking into a faction at war, the arrival desk names the rival —
+  but the bar you sit down in still answered "Things have been quiet lately. Too quiet." The
+  conversation now reads the same conflict record the desk and chart read, gated exactly like
+  the desk: cold and tense pairs stay quiet (93deba67c6a5).
+- inf-slot-standing (WF-09): the save slot card named everything the run did to its hull and
+  nothing about who the run was to the houses; a Standing line reads the saved faction bag
+  the envelope already carries (no new field, no migration) — "Drift — Foreman, Concord —
+  Suspect" — with a still-burning war riding the same line (904080205f1d).
+- inf-epilogue-war (WF-09): the final-disposition epilogue never said what the galaxy was
+  doing when you filed; a front at war reads back on its own THE WAR YOU LEFT section — which
+  houses, which contested lane, and when the banked playerLean is real, which side your work
+  left it leaning, with your name on the lean; the sandbox continuation card carries the
+  line too (c4b44ae548ba).
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
