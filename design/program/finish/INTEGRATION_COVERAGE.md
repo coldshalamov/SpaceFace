@@ -6,10 +6,60 @@ or release verdict. The [Finish Program](./README.md) and three lane boards own 
 
 ## Current integration status and next work
 
-The latest coherent candidate is `c4b88c85acd4`, runtime source `6794833bc886`. It passes all17 baseline
-groups in73.563s/90s with four jobs and no failures/timeouts; source stayed unchanged during the
-check. The later Lantern Ward working tree is a separate candidate. No new deployment or release
-acceptance follows from this source check.
+Published `c4b88c85acd4`, runtime source `6794833bc886`, passes all17 baseline groups in73.563s/90s
+with four jobs and no failures/timeouts; source stayed unchanged during the check. It is now served
+by the existing public demo through exact production `dpl_F3Nths6P1qh8Rewqnmhp61AA8aTV`. One ordinary
+staged Windows WebKit launch/Powers/Pause/Resume and one fresh public-root NewGame→visible advancing
+flight pass. Public launch took28.800s. Exact worker and sampled authored-resource bytes bind to
+the production receipt. The stock mobile probe still fails maxTouchPoints0; physical iPhone14 remains
+UNKNOWN. The later `8398e7c8d2b1` Ward/Ring/saved-course source is a separate unpublished batch.
+
+**Current experience work, November5:** `81f2427dce9b` makes S/Down real bounded reverse while0
+remains full stop; ordinary headed Intel input backs away from contact and stops. `013028b60cd9`
+and `244dd2bb28da` compose a heavy berth and a finite24t movable load; native bump/Line/residency
+checks pass, but ordinary entry and load discovery remain open. The tub is excluded from existing
+chart/target readers because it is a wreck; `4aa334d84edf` connects the original known load through
+those readers with rebound Line instructions and distinct entry/Mouth addresses. Default-worker
+reader/selection checks pass; ordinary hardware discovery and physical tow remain open.
+`96909c7092db` fixes environmental trap ownership, `2e44a1d2919a` removes unearned cover praise,
+and `33b57dc1ee19` keeps unrelated NPC bookkeeping out of personal flight feedback. Authored offer/
+wait context and exact offered-target identity now reach existing encounter cards in `6943d5268c97`;
+five integrated presentation/worker checks pass, with ordinary look still open.
+`df437c69ac0f` also ports PR825's new hull-specific New Game first-work preview from canonical
+ticket/fit data. Seven preview and eleven existing lifecycle checks pass; mounted look remains open.
+
+The current renderer reconstructs active-resolution content in `c6ee8b391651` and uses the reflected
+fill of `c269f3536866`. The earlier headless SwiftShader pictures do not qualify Intel appearance.
+The actual headed Intel paused comparison has matched completed corrected/old draws at1296×810
+content/1440×900 output, with subtle picture differences and successful cleanup. No timing or FPS
+gain is claimed. At the later2k-away observation, Mouth/rib/tub mirrors had no mapped render root;
+installed dimensions/contact identity remain unknown, not zero-sized or proven defective.
+
+**Performance priority, November5:** the owner authorizes barely noticeable quality sacrifices
+for worthwhile measured smoothness gains. All419current release assets/353families received a
+first-pass header/contract review; counts are coverage, not performance acceptance. Common packed
+ORM admission and real Line/Kilnback clone-hook preservation are committedbad06; focused shader/
+lifetime checks pass, while real KTX2 appearance and GPU benefit await the active strict-pin pilot.
+CPU texture payload leases now end before texture-free geometry58b4, with focused lifetime/error
+checks passing; live boot/RAM and physical-iPhone benefit remain unknown. Native fracture placement
+95464 removes a reproduced19.7u child overlap and unearned260.6 impulse without changing yield,
+RNG count or physical mass; it does not explain all crowd motion or frame cost. Pointer device input
+6a539 now crosses the real sampled first-action scoring boundary; the earlier complete9-kill/score0
+incident remains only partially explained.
+
+The behavior-identical AI NAV sharing experiment showed no useful time gain and was withdrawn;
+its original source bytes were restored. Do not repeat it unchanged. Active source work instead
+covers initial distant-ship LOD admission, safe shadow-off retained batching and a cheap NPC plume
+candidate, with a hot Dart/Rig package-merge prototype. A single short settled-combat main-thread
+profile will select further work. No current candidate has earned an FPS claim. Rare WreckCourt
+barge batching and tiny simplifications remain ignored experiments, not normal-fight wins.
+
+Metadata candidate `17efe44464ab` passed15/17 baseline groups but missed the90s wall budget at
+157.110s. Both simulation failures were isolated exactly to intentional metadata version22→23,
+with unchanged full canonical gameplay state, event counts and metrics otherwise. `d79f80309801`
+adds explicitly versioned v23 references and selects them; historical references are byte-identical,
+all gameplay criteria remain unchanged, and both five-repeat/reload commands pass. The separate
+whole-baseline wall-budget failure is unresolved; no broad unchanged rerun has been made.
 
 `442d7b79221e` repairs a reproduced live-command queue failure: a valid course-ready/key-release
 batch could wait behind an older reply while the worker kept advancing. Ordered advancing-flight
@@ -23,9 +73,10 @@ truthful earned-result comparisons. The combined handling/native/record checks p
 the integrated presentation checks pass9; independent coordinate/interface review found no material
 defect. These establish source behavior, not camera readability, feel or earned medals.
 
-`349d7fc20fbc` fixes compressed title save-card projection: the genuine Ring export retained six
-scars while Load incorrectly displayed Clean plates. Canonical gzip decoding now feeds the existing
-portrait on module/Blob worker and fallback lanes. `fcf34cd34d94` publishes restored meta.seed with
+`349d7fc20fbc` fixes canonical compressed save-card decoding on module/Blob worker and fallback lanes.
+`32c014e6d9b6` also connects the default facade's read-only peek/store generation to the mounted
+reader; its six focused cases and26 existing reconciliation/compression checks pass. This repair
+is landed and out of the critical path. `fcf34cd34d94` publishes restored meta.seed with
 the same save receipt; actual postMessage regression distinguishes the preserved4242 authority from
 the stale698239137 main footer. `1220bfd9925f` fixes Counterweight's generator/array autosave adapter
 mismatch: actual capture previously reached encoding with empty data. The normal110-reader plan now
@@ -35,15 +86,23 @@ focused capture/persistence checks pass. Existing user saves were not overwritte
 `6794833bc886` prevents a procedural root from rescaling already-fitted authored props. The real
 beacon wrapper measured1680WU instead of28WU under a60x root; three actual-wrapper checks now pass,
 including retained procedural world transforms/materials. The large surfaces in the ordinary
-Ring/Counterweight views are not yet attributed to that mesh. Ring's genuine approach reached414u
-from Cracker Run, retained eleven scars and its earned grudge, but remained obstructed and then did
-not visibly respond to short forward/reverse inputs on185355. Its latest public export is preserved
-for continuation on c4b88; no loop, phase crossing or changed-build obstruction acceptance is claimed.
+Ring/Counterweight views were not attributed to that mesh. On actualc4 the giant obstruction is
+absent and public W input visibly advances the ship. The genuine pilot reached11u from Cracker Run's
+outer entry buoy, then stopped with17 scars/Edda preserved in its latest public export680d77b4….
+That fix is139WU from the solid Mouth and is deliberately unscored; the previous HUD explained
+neither distinction. `8398e7c8d2b1` connects the current Mouth bearing/distance and unscored directions
+to the existing destination instrument, without moving bodies or adding a score/phase clock. It
+also preserves valid explicit local courses across Continue ahead of automatic tracked-mission
+guidance; the real default-worker import/Continue regression fails before and passes after.
+Actual new HUD readability and flying the ribs remain open.
 
 Shipping metadata at c4b88 matches6794833:1009 eager preloads remain current,16790 messages extract
-with zero unresolved, and official code indexes are regenerated. PR840's Lantern Ward is now being
-integrated separately with its optional schema23 migration; its62 component/async-save checks pass,
-while native service/custody and ordinary public arrival remain open. The generic scale/capture
+with zero unresolved, and official code indexes are regenerated. PR840's Lantern Ward is ported in
+8398e7c8d2b1 with optional schema23 migration. Native service installs the finite original and pays
+180CR exactly once; repair consumes a real purchased electronics unit. Native Massline alternative,
+commuter departures, theft/loss/no-remint, ignored work and actual cold Continue pass. Current facts
+and actionable household-seat instructions replace misleading Hail/Story words. Ordinary arrival,
+camera readability and new-batch generated metadata/baseline remain open. The generic scale/capture
 repairs above are already committed independently. Existing Electron executables are unsigned and
 stale/incomplete; a genuine signed old-to-new update is still unperformed, not a current-source bug.
 
@@ -76,9 +135,10 @@ in focused owner checks; the ordinary physical journeys remain open. Patrol/fine
 IDs, current-life hail and the real cold-Continue→re-arm→release brake lease, preserving foreign
 intents; the integrated22 focused checks pass. Current shipping metadata is recorded above; those
 counts establish generated freshness, not translated-language completeness.
-The public alias was last verified at `89ddfe4830e2` at https://spaceface-play-demo.vercel.app/;
-that is a recorded observation, not a fresh alias check. Source throughc4b88 is integrated with
-the named checks; publication is tracked separately in the controller's Git/checkpoint receipts.
+The public alias now resolves exactc4 production at https://spaceface-play-demo.vercel.app/;
+the dedicated alias API and anonymous public-origin bytes were checked after official promotion.
+Source throughc4b88 is integrated with the named checks; publication is tracked separately in
+the controller's Git/checkpoint receipts. The prior89dd target is retained as rollback history.
 Committed source, a Git push and deployed player acceptance remain separate claims. A separate a704
 immutable production deployment is READY at
 https://spaceface-play-demo-mvkhvu5y2-robin-gattis-projects.vercel.app/ with no aliases assigned. Its

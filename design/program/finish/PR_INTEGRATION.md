@@ -4,10 +4,22 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
-- **#840, Lantern Ward:** pinned at `e4363226c1c9`. The useful new Ward service/harbor-life code is
-  being adapted through31 current owner paths and17 tests; schema22→23 adds optional defaults,
-  without grants. Component/projection and real async-save checks pass62 cases; native work and
-  ordinary arrival remain open. Two independent existing defects are already ported and repaired:
+- **#825, Book4 worksites and current starter-work preview:** the prior port `5bd5919b5bf8`
+  connects Barn Raising to Frontier's finite six-module worksite and canonical payout, and Spine
+  Break to its original convoy, recoupling and station-custody owners. Native/worker checks pass;
+  ordinary Book4 journeys remain open. The current PR head `62adf5d93259` adds one new task after
+  the already-ported `d6fbe678a88e`: hull-specific first Helios work in the existing New Game rail.
+  `df437c69ac0f` ports that preview using actual starter-job/module data and stale-fit fallbacks;
+  seven preview and eleven existing lifecycle checks pass. Rendered preview acceptance is open.
+  November5 head checks also confirm #837's task already matches the current one-file owner and
+  #840 remains unchanged at the pin below; those completed integrations were not repeated.
+
+- **#840, Lantern Ward:** pinned at `e4363226c1c9`, ported in `8398e7c8d2b1` through current world,
+  NPC work, missions, physical attachments, law and presentation owners. Schema22→23 adds optional
+  defaults without grants. Actual native service installs the finite original and pays180CR once;
+  real repair purchase, Massline alternative, commuter trips, theft/loss and cold Continue checks pass.
+  Current facts outrank remembered theft/delay in Hail and Story. Ordinary arrival/camera acceptance
+  remains open. Two independent existing defects are already ported and repaired:
   `1220bfd9925f` preserves full Counterweight autosave capture, and `6794833bc886` prevents packaged
   beacon double scaling. Stronger local Import/Load/Continue and seed/scar fixes are retained.
   No broad old-branch replacement, reference-budget rebinding or binary asset port is involved.

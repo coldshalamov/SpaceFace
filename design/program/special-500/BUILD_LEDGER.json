@@ -5560,7 +5560,7 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5822,7 +5822,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5842,7 +5842,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5862,7 +5862,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5882,7 +5882,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5902,7 +5902,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5922,7 +5922,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5942,7 +5942,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5984,7 +5984,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6004,7 +6004,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6025,7 +6025,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6065,7 +6065,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6085,7 +6085,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6105,7 +6105,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 10,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""

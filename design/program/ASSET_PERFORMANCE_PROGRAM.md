@@ -1,14 +1,22 @@
 <!-- LIFETIME: DURABLE -->
 # The asset layer and performance: what it costs, what was wrong, what to do next
 
+**Current owner direction, 2026-11-05:** smoothness is the first priority. Small, barely noticeable
+quality costs are authorized when they buy worthwhile measured performance. Re-examine shipped
+assets, LODs, textures, materials, shadows and effects using current scenes and current costs;
+the October27 measurements below are history, not a rule against asset optimization. Preserve
+the authored identity and physical/gameplay contracts, judge the changed gameplay picture, and
+record the actual tradeoff and gain. Do not infer a present bottleneck or a win from old counts.
+
 **2026-10-27.** Written after a full sweep of the shipped asset tree, the render-package
 pipeline, and the live frame numbers on the owner's laptop (Intel Core Ultra 7 155U, Intel
 iGPU via ANGLE/D3D11, 1920x1080 at 125 %).
 
-Read this before starting any "the assets are slow" or "the models look cheap" job. The short
-version: **the asset layer was wasting a third of the retail payload and had no ceiling or
-census at all, and that is now fixed and gated. The asset layer is not where the frame time
-goes.** Both halves matter: fix the payload, then stop looking here for smoothness.
+The sections below retain the October27 diagnosis and its repairs. At that snapshot the main
+thread dominated, and asset payload fixes alone could not meet the frame budget. That finding
+does not prohibit current asset, LOD, material or geometry work. Choose work from present
+visible duty and measured cost; neither historical bottlenecks nor file/triangle counts alone
+establish a current smoothness gain.
 
 ## 1. What the shipped tree actually costs
 

@@ -108,13 +108,20 @@ testCommands, evidencePaths, risks, status)
   risks:
     - "sweep only true-normals for roomOwner plates → 2-line predicate extension required"
     - "visual rotation must track entity.rot; verify with visuals test not just math"
-  status: implemented
-  result: "reflector_fin shipped: oriented foundry:bank-plate proxy (48x16.9 slab, plate
-    surface), 4 socket-relative facings, facing-aware build command + read model + panel
-    picker + slab/bank-arrow preview + worker-bridge DTO fields + mirror-face visual kit.
-    Focused suite 8/8 green incl. real production sweep -> physics receipt -> resolveRicochet
-    with speed conservation and facing-dependent outgoing velocity. Full fortify block 62/62.
-    ui-bench crucible-fortify shot + walk clean. Awaiting adversarial review."
+  status: done
+  result: "reflector_fin shipped and committed c906dbb30a39: oriented foundry:bank-plate
+    proxy (48x16.9 slab, plate surface), 4 socket-relative facings, facing-aware build
+    command + read model + panel picker + slab/bank-arrow preview + worker-bridge DTO
+    fields + mirror-face visual kit. Focused suite 8/8 green incl. real production sweep
+    -> physics receipt -> resolveRicochet with speed conservation and facing-dependent
+    outgoing velocity. Full fortify block 62/62. ui-bench crucible-fortify shot + walk
+    clean; check:player-facing-labels, check:ui-a11y, check:ui:control-labels pass.
+    Adversarial review: no blockers; cant label chirality fixed (map is orientation-
+    flipping), focus restore added, visuals test extended. Logged not-fixed: fortify
+    exemplar missing from visualFactory prewarm (file foreign-dirty); legacy resolvePair
+    radial-normal fallback is inherited room-plate convention unreachable under sg02;
+    preview arrow models outbound player fire (enemy fire is untraited and never
+    reflects). Ordinary-route player-truth gate not run this session."
 ```
 
 ## Deferred / blocked tickets (recorded, not dropped)
