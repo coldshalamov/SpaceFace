@@ -6,6 +6,66 @@
 // Keep this projector deliberately explicit.  A generic key-drop rule would make it too easy for
 // a new reader to start depending on an authoritative field without updating the wire contract.
 
+import { LANTERN_WARD_ID } from '../../src/data/lanternWardLayout.js';
+import { isLanternWardHardwareEntity, LANTERN_WARD_RECORD_IDS } from '../../src/data/lanternWardHardware.js';
+
+// These scalars describe the work already performed in the simulation. They never carry a
+// clamp receipt, native body, cargo quantity, or job writer across the presentation boundary.
+export const LANTERN_WARD_VITAL_KEYS = Object.freeze([
+  'lanternWardLife', 'lanternWardRecordId', 'lanternWardPhase',
+  'lanternWardProgress01', 'lanternWardDamage01', 'lanternWardClamp01',
+  'lanternWardLit', 'lanternWardWorkerPresent', 'lanternWardRepaired', 'lanternWardYielding',
+  'lanternWardCarrying', 'lanternWardInstalledPartRecordId',
+  'lanternWardCustodyHolder', 'lanternWardCargoHolderId',
+]);
+const WARD_ACTORS = new Set(['tug', 'commuter', 'maintenance']);
+const WARD_PHASES = new Set(['waiting', 'approach', 'brace', 'connect', 'finish', 'retreat', 'damaged']);
+const WARD_HOLDERS = new Set(['ward', 'source', 'cradle', 'receiver', 'player', 'maintenance', 'service_face', 'loose']);
+const WARD_CARGO_HOLDERS = new Set([
+  ...WARD_HOLDERS, ...Object.values(LANTERN_WARD_RECORD_IDS), 'lantern-ward:maintenance-source',
+]);
+const WARD_HISTORY_FLAGS = Object.freeze([
+  'playerCleared', 'playerCarried', 'repaired', 'ignored', 'cradleStolen', 'lampStolen', 'damaged', 'recovered', 'borrowed',
+]);
+const wardUnit = value => Math.round(Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)) * 256) / 256;
+
+export function lanternWardPresentationLife(entity) {
+  const data = entity?.data, life = entity?.occupantGeneration;
+  if (!Number.isSafeInteger(life) || life < 1) return null;
+  const actor = data?.lanternWardActor;
+  return isLanternWardHardwareEntity(entity)
+    || (entity.type === 'ship' && data?.lanternWardId === LANTERN_WARD_ID
+      && WARD_ACTORS.has(actor) && data.worldRecordId === LANTERN_WARD_RECORD_IDS[actor]) ? life : null;
+}
+
+// Shared scalar normalization keeps the host's allocation-free shadow comparison identical to
+// its emitted row. Progress has 256 steps; unchanged work sends no repeated serialized payload.
+export function lanternWardVitalValue(entity, key, life) {
+  const data = entity.data;
+  if (key === 'lanternWardLife') return life;
+  if (key === 'lanternWardRecordId') return data.worldRecordId;
+  if (key === 'lanternWardPhase') return WARD_PHASES.has(data[key]) ? data[key] : 'waiting';
+  if (key === 'lanternWardProgress01' || key === 'lanternWardDamage01' || key === 'lanternWardClamp01') return wardUnit(data[key]);
+  if (key === 'lanternWardCarrying') return data[key] === LANTERN_WARD_RECORD_IDS.lamp
+    || data[key] === LANTERN_WARD_RECORD_IDS.maintenance_part ? data[key] : null;
+  if (key === 'lanternWardInstalledPartRecordId') return data[key] === LANTERN_WARD_RECORD_IDS.maintenance_part ? data[key] : null;
+  if (key === 'lanternWardCustodyHolder') return WARD_HOLDERS.has(data.lanternWardCustody?.holder) ? data.lanternWardCustody.holder : null;
+  if (key === 'lanternWardCargoHolderId') return WARD_CARGO_HOLDERS.has(data.cargoManifest?.custody?.holderId) ? data.cargoManifest.custody.holderId : null;
+  return data[key] === true;
+}
+
+/** The Hail reader needs causal facts, not the private work journal or completion receipt. */
+export function projectLanternWard(ward) {
+  if (!isObject(ward) || ward.version !== 1) return null;
+  const history = {};
+  for (const key of WARD_HISTORY_FLAGS) history[key] = ward.history?.[key] === true;
+  return { version: 1, phase: typeof ward.phase === 'string' && ward.phase.length < 32 ? ward.phase : null,
+    blocked: ward.blocked === true, lampMissing: ward.lampMissing === true || ward.objects?.lamp?.lost === true,
+    cradleAway: ward.cradleAway === true, history,
+    objects: { cradle: { lost: ward.objects?.cradle?.lost === true } },
+  };
+}
+
 const ENTRY_KEYS = Object.freeze([
   'kind', 'sectorId', 'worldRecordId', 'entityId',
 ]);

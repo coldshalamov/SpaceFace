@@ -249,7 +249,10 @@ export const swarmJuice = {
     if (this._deathLedger && !this._deathLedger.claim(victim)) return;
 
     const now = simTimeOf(st);
-    const killerId = payload.killerId ?? payload.provenance?.actorId;
+    // The kill credit reads the canonical field only: every `entity:killed` emitter carries
+    // `killerId` (combat/damage/kernel/careerCohorts/tallyho), and none ever set a
+    // `provenance` bag — the old `?? payload.provenance?.actorId` fallback was a dead read.
+    const killerId = payload.killerId;
     const playerKill = st.playerId != null && killerId === st.playerId;
     const killer = killerId != null && st.entities && typeof st.entities.get === 'function'
       ? st.entities.get(killerId)

@@ -65,6 +65,7 @@ import {
 import { occupantGenerationOf } from '../core/entity.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { hash32 } from '../core/rng.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FACTION_ID = 'faction_archive';
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
@@ -1898,7 +1899,7 @@ export const archiveRedaction = {
         && !state.entityList.some((e) => e && e.alive !== false
           && (e.data?.lineHeadId === ARCHIVE_INDEX_HEAD.id || e.data?.pageDrone || e.data?.archiveFieldCast === true
             || e.data?.redacted === true || e.data?.enginesDark === true || this._deskKind(e)))) return;
-    this._tickCensors(state);
+    if (strideDt(this, 'censors', dt, 3, state) > 0) this._tickCensors(state);
     this._tickPageDrones(state, dt);
     this._indexHead(state, dt);
     // The file's clock always runs — forgiveness and amnesty are the Archive's,
@@ -1907,10 +1908,13 @@ export const archiveRedaction = {
     // Sector-scale business only moves while the pilot is flying: an errand
     // must never lapse with zero agency because the pilot was docked.
     if (state.mode !== 'flight') return;
+    // Desk census / errands / couriers / field cast are proximity and clock work: 20 Hz.
+    const deskDt = strideDt(this, 'desks', dt, 3, state);
+    if (deskDt <= 0) return;
     const desks = this._scanDesks(state);
     this._tickDesk(state, desks);
     this._tickErrands(state, desks);
-    this._tickCouriers(state, dt, desks);
+    this._tickCouriers(state, deskDt, desks);
     this._tickFieldCast(state);
   },
 };

@@ -33,7 +33,9 @@ test('every VFX light kind resolves a bounded preset', () => {
       `${kind} peak out of bounds: ${preset.peak}`);
     assert.ok(Number.isFinite(preset.distance) && preset.distance >= 60 && preset.distance <= 220,
       `${kind} distance out of bounds: ${preset.distance}`);
-    assert.ok(Number.isFinite(preset.decay) && preset.decay >= 4 && preset.decay <= 12,
+    // Decay is the flash snap: the graze row (7fa13fbfe2d4) authored 13 deliberately — a
+    // grazed shot snaps off faster than any sustained read. Bound widened to match.
+    assert.ok(Number.isFinite(preset.decay) && preset.decay >= 4 && preset.decay <= 14,
       `${kind} decay out of bounds: ${preset.decay}`);
     assert.ok(/^#[0-9a-fA-F]{6}$/.test(preset.color), `${kind} color not hex: ${preset.color}`);
   }

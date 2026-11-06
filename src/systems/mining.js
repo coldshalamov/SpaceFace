@@ -1,4 +1,6 @@
 import { isHeliosClaimCutter } from './heliosClaimOpening.js';
+import { crackerRunLoadRecovery } from '../data/worldOneOffs.js';
+import { stableRecordId } from '../world/worldRecords.js';
 import { inheritWinnowSplit } from '../world/vestaWinnowRecovery.js';
 import { inheritCharonSupplySplit } from '../world/charonSalvageSupply.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
@@ -1553,6 +1555,7 @@ export const mining = {
       ...(opts?.npcMiningSource ? { flags: { persistent: true } } : {}),
       data: {
         kind: 'ore', commodityId, amount,
+        ...(opts?.worldLoadSource ? { worldLoadSource: { ...opts.worldLoadSource } } : {}),
         // A split world-site payload spills durable site goods, not ordinary scrap: keep the
         // site provenance (objective/persistence bookkeeping) and never time it out in-sector.
         ...(!(srcEnt.data && srcEnt.data.worldSiteId) ? { despawnAt: this.state.simTime + PICKUP_TTL } : {}),
@@ -1564,6 +1567,16 @@ export const mining = {
         ...(lotSource ? { richLotSource: lotSource } : {}),
       },
     });
+    if (opts?.worldLoadSource && (this.state.entities.get(srcEnt.id) !== srcEnt
+        || srcEnt.id !== opts.worldLoadSource.sourceId
+        || srcEnt.occupantGeneration !== opts.worldLoadSource.sourceGeneration
+        || srcEnt.data?.worldRecordId !== opts.worldLoadSource.recordId
+        || !crackerRunLoadRecovery(srcEnt) || srcEnt.data.physicalCustodyOnly === true
+        || srcEnt.alive === false)) {
+      // Admission cannot pay an occupant that changed during a spawn callback.
+      if (pickup && this.state.entities.get(pickup.id) === pickup) pickup.alive = false;
+      return 0;
+    }
     if (pickup && pickup.alive !== false) { inheritWinnowSplit(this.state, srcEnt, pickup); inheritCharonSupplySplit(this.state, srcEnt, pickup); }
     return pickup && pickup.alive !== false ? amount : 0;
   },
@@ -2082,6 +2095,8 @@ export const mining = {
   _drainWreck(player, wreck, dps, dt) {
     if (wreck?.data?.physicalCustodyOnly === true) return 0;
     if (isCeresWorkfleetHardware(wreck)) return 0;
+    const recovery = crackerRunLoadRecovery(wreck);
+    if (recovery) return this._recoverRingLoad(player, wreck, recovery, dps, dt);
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
     const salvageApi = sourceKey && this.helpers && this.helpers.salvage;
@@ -2200,6 +2215,46 @@ export const mining = {
       }
       this._stopBeam();
     }
+  },
+
+  _recoverRingLoad(player, wreck, recovery, dps, dt) {
+    const state = this.state, d = wreck.data, life = wreck.occupantGeneration;
+    const recordId = stableRecordId(state.meta?.seed || 1, d.homeSectorId, 'wreck', d.identityKey);
+    const record = state.world.records?.byId?.[recordId];
+    if (state.entities.get(wreck.id) !== wreck || !wreck.alive || d._salvaged
+        || !Number.isSafeInteger(life) || life <= 0 || d.worldRecordId !== recordId
+        || d.salvagePool?.[recovery.commodityId] !== recovery.amount
+        || (record && (record.recordId !== recordId || record.identityKey !== d.identityKey
+          || record.alive === false || record.outcome === 'destroyed' || record.outcome === 'defeated'))
+        || this._recoveringRingLoad === wreck) return 0;
+    // Reuse the existing wreck beam work. Nothing leaves the loaded mesh or its
+    // 24t native body until the final cut admits the entire ordinary pickup.
+    if (d.salvageTimeLeft == null) d.salvageTimeLeft = SALVAGE_TIME_DEFAULT;
+    if (d._total == null) d._total = recovery.amount;
+    if (d._carry == null) d._carry = 0;
+    d._carry += d._total * (dt * Math.max(1, dps) / 18) / SALVAGE_TIME_DEFAULT;
+    d.salvageTimeLeft = Math.max(0, d.salvageTimeLeft - dt);
+    if (d.salvageTimeLeft > 0 && d._carry < recovery.amount) return 0;
+    this._recoveringRingLoad = wreck;
+    try {
+      const spawned = this._spawnPickup(wreck, recovery.commodityId, recovery.amount, null, {
+        worldLoadSource: { recordId, sourceId: wreck.id, sourceGeneration: life }, tight: true,
+      });
+      if (spawned !== recovery.amount) return 0;
+      d.salvagePool = {};
+      d._salvaged = true;
+      wreck.alive = false;
+      const loot = { [recovery.commodityId]: spawned };
+      this.bus.emit('salvage:completed', { wreckId: wreck.id, sourceGeneration: life, worldRecordId: recordId,
+        markerId: null, loot, pos: { x: wreck.pos.x, z: wreck.pos.z }, radius: wreck.radius });
+      this._protestClaimJump(player, wreck, loot);
+      this.bus.emit('mining:yield', { commodityId: recovery.commodityId, qty: spawned,
+        pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player?.id ?? null });
+      this._beamSpentThisHold = true;
+      this._noteBeamRefusal('worked-out');
+      this._stopBeam();
+      return spawned;
+    } finally { this._recoveringRingLoad = null; }
   },
 
   // INF-U18 v2+v3: crack the sealed cache once, on the first biting drain.

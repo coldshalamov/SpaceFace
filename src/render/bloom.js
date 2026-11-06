@@ -10,9 +10,9 @@
 //   pass 1  bright+down rtScene   -> down[0] (½)   bright-pass + 5-tap 2D downsample
 //   pass 2  downsample  down[0]   -> down[1] (¼)   5-tap 2D downsample  [if levels>=2]
 //   pass 3  composite   rtScene + multi-scale bloom (down[0]+w*down[1]) -> default framebuffer
-//   pass 4  [below-res only] composite -> rtPost, then FidelityFX CAS sharpen -> default
-//           framebuffer. The canvas backing store is the low-res frame; the browser does the
-//           display upscale, so CasFilter runs sharpen-only on the presented bytes.
+//   pass 4  [below-res only] composite -> active rtPost viewport, then FidelityFX CAS -> default
+//           framebuffer. CAS reconstructs active content into the drawing buffer; equal sizes
+//           use sharpen-only. The browser owns any remaining buffer-to-display upscale.
 //
 // Structural note: the old additive upsample chain allocated a separate half-res RT and an extra
 // fullscreen pass per frame. Multi-scale composite sampling (same idea as SpaceRenderGraph) keeps
@@ -39,7 +39,7 @@ import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
 import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
-import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
+import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, casSupportsScaling, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
   createAtmosphereCompositeUniforms,
@@ -1286,6 +1286,7 @@ const COMPOSITE_FRAG = /* glsl */`
 
   uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
   uniform vec2 uUvOffset;
+  uniform vec2 uPresentationScale; // presentation pixels per composite pixel (CAS input can be smaller)
 
   void main() {
     // Stretch the active content sub-rect across the full presentation buffer. Vignette/grain
@@ -1314,7 +1315,7 @@ const COMPOSITE_FRAG = /* glsl */`
     if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
-      scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
+      scene, spill, vUv, gl_FragCoord.xy * uPresentationScale, uExposure, uAces,
       uGrade, uToe, uVignette, uGrain, uGrainFrame
     );
     // Opt-in sharpen for renderScale < 1 (integrated preset). Neighbour average unsharp —
@@ -2048,7 +2049,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
   // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
-  // Dyn-res scale changes use setContentScale (viewport sub-rects) and must not call setSize.
+  // Dyn-res scale changes use setContentScale (viewport sub-rects); setSize retains the max pool.
   // Default is HalfFloat + linear colorSpace so brights exceed 1.0; the opt-in packed experiment
   // swaps only the HDR color attachment format after a capability probe.
   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
@@ -2066,6 +2067,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let rtPost = null;
   // A below-display-resolution frame runs CasFilter; a full-res frame skips it entirely.
   let casActive = false;
+  let casScaling = false;
   // The display footprint the CAS gate compares against is owned by the caller (renderer
   // passes it to setSize). Cache it so internal re-entry (a bloomLevels cap change from
   // setOptions re-running setSize at the same buffer size) keeps the same gate inputs.
@@ -2372,6 +2374,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvScale: { value: new THREE.Vector2(1, 1) },
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
+    uPresentationScale: { value: new THREE.Vector2(1, 1) },
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
     tLookContrastLut: { value: null },
     ...createAtmosphereCompositeUniforms(),
@@ -2967,13 +2970,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     compositeMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
     compositeMat.uniforms.uUvOffset.value.set(0, 0);
-    // Below-res frame: composite presents into rtPost, then CasFilter sharpens it to screen.
-    // Full-res: composite writes the canvas directly — no extra target, no extra pass.
-    // Either way it is a full presentation-buffer blit — the content sub-rect is stretched
-    // via uUvScale inside the shader.
+    // Compose at the active resolution, preserving sRGB/tone-map ownership, then let CAS
+    // reconstruct those bytes instead of sharpening an already bilinearly enlarged image.
+    // Ratios beyond the vendor's 4x-area limit keep the legacy linear + sharpen handoff.
+    // Native/supersampled content presents directly, with no CAS draw.
     const sharpen = casActive && rtPost;
-    blit(compositeMat, sharpen ? rtPost : null);
-    if (tier1) tier1.countRenderPassPixels(W * H, 'bloom-composite');
+    const compositeW = sharpen && casScaling ? contentW : W;
+    const compositeH = sharpen && casScaling ? contentH : H;
+    compositeMat.uniforms.uPresentationScale.value.set(W / compositeW, H / compositeH);
+    blit(compositeMat, sharpen ? rtPost : null, compositeW, compositeH);
+    if (tier1) tier1.countRenderPassPixels(compositeW * compositeH, 'bloom-composite');
     if (sharpen) {
       casMat.uniforms.tSrc.value = rtPost.texture;
       blit(casMat, null);
@@ -3150,7 +3156,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     down = next.down;
     contentW = Math.max(1, Math.round(W * contentScale));
     contentH = Math.max(1, Math.round(H * contentScale));
-    if (casActive) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
+    // Preserve the reserved pool even when context loss lands during native-resolution bypass.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) rtPost = allocRenderTarget(W, H, postRtOpts, 'contextRestore');
     if (rtDistortion) {
       rtDistortion.dispose();
       rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'contextRestore');
@@ -3212,9 +3220,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     const nextH = Math.max(1, h | 0);
     if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
     if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
-    // The gate re-evaluates on every call — dynamic resolution can flip a frame below display
-    // res without the buffer size changing class, and a stale flag is a silent miss.
-    casActive = resolveCasSharpenActive(nextW, nextH, casDisplayW, casDisplayH);
     // A settings/profile change can alter pyramid depth without changing the buffer size.
     const newLevels = enabled === false ? 0 : levelCountForSize(nextW, nextH);
     if (nextW !== W || nextH !== H || down.length !== newLevels) {
@@ -3243,13 +3248,21 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       contentW = Math.max(1, Math.round(W * contentScale));
       contentH = Math.max(1, Math.round(H * contentScale));
     }
-    // Dyn-res scale changes must NOT call this with a smaller size; they use setContentScale.
-    // RTs are only created at init/resize/context-restore — rtPost joins that rule here,
-    // lazily on the first below-res sizing, never inside render().
-    if (casActive) {
+    // Reserve at the first known display size, including native-resolution opening frames.
+    // Auto's first reduction then changes only uniforms/viewports; prepareResources also admits
+    // the exact offscreen composite variant before flight. Keep this pool through recovery.
+    syncCasSetup();
+    if (casActive || (casDisplayW > 0 && casDisplayH > 0)) {
       if (!rtPost) rtPost = allocRenderTarget(W, H, postRtOpts, 'cas-sharpen');
-      applyCasSetup(casMat.uniforms, CAS_SHARPNESS, W, H, W, H);
     }
+  }
+
+  function syncCasSetup() {
+    casActive = resolveCasSharpenActive(contentW, contentH, casDisplayW, casDisplayH);
+    casScaling = casActive && (contentW !== W || contentH !== H)
+      && casSupportsScaling(contentW, contentH, W, H);
+    applyCasSetup(casMat.uniforms, CAS_SHARPNESS,
+      casScaling ? contentW : W, casScaling ? contentH : H, W, H);
   }
 
   // Dyn-res only: change the active content sub-rect without reallocating any render target.
@@ -3263,6 +3276,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     contentScale = nextScale;
     contentW = nextW;
     contentH = nextH;
+    syncCasSetup();
     if (atmosphere) atmosphere.invalidateHistory('content-scale');
   }
 
@@ -3393,6 +3407,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       targetPoolMaxWidth: W,
       targetPoolMaxHeight: H,
       casSharpenActive: casActive,
+      casReconstruction: !casActive ? 'bypass' : casScaling ? 'active-cas-upscale'
+        : (contentW !== W || contentH !== H) ? 'bilinear-sharpen-area-limit' : 'sharpen-only',
       casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
       packedHdrRequested: packedHdrRequestedMode,
       packedHdrMode,

@@ -552,12 +552,12 @@ export function createAdaptiveResolution(opts = {}) {
   const raiseIntervalS = Number(opts.raiseIntervalS) || 24;
   const slowHoldS = Number(opts.slowHoldS) || 1.5;
   const trialWindowS = Number(opts.trialWindowS) || 2.5;
-  const noBenefitCooldownS = Number(opts.noBenefitCooldownS) || 30;
+  const noBenefitCooldownS = Number(opts.noBenefitCooldownS) || 15;
   const outlierMs = Number(opts.outlierMs) || 100;
   const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
   const SMOOTH = 0.12;
   const RESIZE_COOLDOWN_S = 5.0;
-  const MIN_BENEFIT = clamp(Number(opts.minBenefit) || 0.06, 0.01, 0.3);
+  const MIN_BENEFIT = clamp(Number(opts.minBenefit) || 0.04, 0.01, 0.3);
 
   let enabled = true;
   let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
@@ -633,9 +633,12 @@ export function createAdaptiveResolution(opts = {}) {
       // the observed frame time improves; CPU/simulation bottlenecks restore the prior band.
       if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
         const previousScale = scale;
+        // Badly slow (>1.6x the frame budget): re-trial twice as often so Auto reaches the floor
+        // in ~12 s instead of ~25 s (first step stays 0.1; the controller test pins it).
+        const severe = emaMs > targetMs * 1.6;
         set(scale - step);
         trial = { previousScale, baselineMs: emaMs, elapsed: 0 };
-        lowerCooldown = RESIZE_COOLDOWN_S;
+        lowerCooldown = severe ? RESIZE_COOLDOWN_S * 0.5 : RESIZE_COOLDOWN_S;
         raiseTimer = 0;
         slowTimer = 0;
         return;

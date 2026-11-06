@@ -93,6 +93,7 @@ import {
   entityIndexVersion,
   entityIndexLaneVersion,
 } from '../world/livingWorldViews.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 export const LAW_SECURITY_VERSION = 2;
 
@@ -621,9 +622,11 @@ export const lawSecurity = {
     this._updateWantedImpound(_dt, state);
     this._updateHeatChallengeWatch(state);
     const own = ensureState(state);
-    this._enforceSanctuaryWithdrawals(state);
+    if (strideDt(this, 'sanctuary', _dt, 2, state) > 0) this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
-    this._updateCustomsScanCones(_dt, state);
+    // Cone dwell sums dt over seconds: 20 Hz with the accumulated step.
+    const coneDt = strideDt(this, 'cones', _dt, 3, state);
+    if (coneDt > 0) this._updateCustomsScanCones(coneDt, state);
     this._updateCustomsWeir(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;

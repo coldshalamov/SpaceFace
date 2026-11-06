@@ -384,7 +384,7 @@ export class ForceParticleFlow {
     // Quarks caps a step at .1s; subdivide so retirement still follows elapsed simulation time.
     let remaining = Math.min(dt, 3.1);
     while (remaining > 1e-8 && this.live) {
-      const step = Math.min(0.05, remaining);
+      const step = Math.min(0.1, remaining);
       this.renderer.update(step); remaining -= step;
     }
     this._publishShape();

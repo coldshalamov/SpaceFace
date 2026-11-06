@@ -1713,13 +1713,47 @@ export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
 });
 
 // INST-29. Berth work uses the dock voices already authored for that place.
+// INST-29. Berth work uses the dock voices already authored for that place. The family covers
+// the whole lifecycle: the yard takes the paid order (queued — the same clunk stamped deeper and
+// quieter than the welders arriving), work starts, a paid abort releases, and the finished hull
+// or tank is handed back.
 export const SERVICE_BERTH_CUES = Object.freeze({
+  queued: 'sfx_dock_clunk',
   started: 'sfx_dock_clunk',
   aborted: 'sfx_undock_release',
   // The work finished: the dock's own confirm chime, once, when the yard hands the hull or tank
   // back. Berth work only — see serviceCompletedCue for which receipts count.
   completed: 'sfx_ui_confirm',
 });
+// One recipe, registers — never a second recipe for one event (the plunge-voice law): 'queued'
+// is the stamp that takes the order; 'started' is the yard floor answering it.
+export const SERVICE_BERTH_REGISTERS = Object.freeze({
+  queued: Object.freeze({ gain: 0.26, rate: 0.82 }),
+  started: Object.freeze({ gain: 0.4, rate: 1 }),
+  aborted: Object.freeze({ gain: 0.35, rate: 1 }),
+});
+
+// The self-serve decant is the pilot's own pump: fuel moving cell by cell is a pressure
+// release, not a dock clunk — the same hiss idiom the thrusters use, held lower and slower.
+// A receipt that moved no cells stays silent (a pour that never happened must not sound).
+export const SERVICE_DECANT_CUE = Object.freeze({ id: 'sfx_rcs_hiss', gain: 0.3 });
+
+/** Pure. The decant pour for one `service:decanted` receipt, or null (silence). More cells
+ *  read as a longer, lower release; the register is the pour, not a second recipe. */
+export function serviceDecantCue(payload) {
+  const cells = Number(payload && payload.cells);
+  if (!Number.isFinite(cells) || cells <= 0) return null;
+  const rate = clamp(1.05 - cells * 0.04, 0.85, 1.0);
+  return Object.freeze({ id: SERVICE_DECANT_CUE.id, gain: SERVICE_DECANT_CUE.gain, rate });
+}
+
+/** Pure. The caption for one berth lifecycle receipt, or null. These moments have no toast of
+ *  their own — the caption names the sound the yard just made. */
+export function serviceMomentCaption(event) {
+  if (event === 'service:queued') return 'The yard takes your job.';
+  if (event === 'service:decanted') return 'Fuel cells decant into the tank.';
+  return null;
+}
 
 // service:completed is also the receipt for loans, notes, rights and policies. Those are
 // bookkeeping with their own success toast (a click); only physical berth work earns the chime.
@@ -1830,6 +1864,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // their physical counterparts; these cue names are not standalone recipe ids.
   sfx_station_dock: 'sfx_dock_clunk',
   sfx_capital_predetonation: CAPITAL_PREDET_RECIPE,
+  // A refused self-serve decant (sealed cells, or tank room a paid pump already owns) is a
+  // capacity refusal — it rides the capacity-refusal recipe, never a toast tone. The warn
+  // toast keeps the words with audio:false so the two never stack.
+  'service.decantRefused': MINE_CAP_REFUSAL_RECIPE,
   // Station hub / mission-log navigation cues (must not collapse to generic click).
   ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
   ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
@@ -3006,9 +3044,14 @@ export const audio = {
     // INST-27: a bastion's raid warning uses the wanted-alert voice quietly.
     // One play per event. It does not duck the bed — urgency without a menu beep.
     bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
+    bus.on('service:queued', () => {
+      this._onServiceBerthCue('queued');
+      this._emitNamedCaption(serviceMomentCaption('service:queued'));
+    });
     bus.on('service:started', () => this._onServiceBerthCue('started'));
     bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
     bus.on('service:completed', (p) => this._onServiceCompleted(p));
+    bus.on('service:decanted', (p) => this._onServiceDecanted(p));
     for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
       bus.on(eventName, () => this._onUniqueLootCue(eventName));
     }
@@ -6633,7 +6676,17 @@ export const audio = {
   _onServiceBerthCue(which) {
     const id = SERVICE_BERTH_CUES[which];
     if (!id) return;
-    this.play(id, { gain: which === 'started' ? 0.4 : 0.35 });
+    const register = SERVICE_BERTH_REGISTERS[which] || {};
+    this.play(id, { gain: register.gain != null ? register.gain : 0.35, rate: register.rate || 1 });
+  },
+
+  // The self-serve decant: the pilot's own pump moves fuel cell by cell (docked, so like the
+  // berth chime this is not gated on pause). An empty receipt is a receipt, not a pour.
+  _onServiceDecanted(payload) {
+    const cue = serviceDecantCue(payload);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain, rate: cue.rate });
+    this._emitNamedCaption(serviceMomentCaption('service:decanted'));
   },
 
   // The yard hands the hull or tank back. Not gated on pause: docking IS a pause (screenManager

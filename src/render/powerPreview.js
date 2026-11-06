@@ -33,6 +33,7 @@ const ROLE_OPACITY = Object.freeze({
 
 export function createPowerPreview({ THREE, scene }) {
   const group = new THREE.Group();
+  group.name = 'sf-power-preview-root';
   group.visible = false;
   scene.add(group);
 

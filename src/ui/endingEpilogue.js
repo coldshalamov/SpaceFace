@@ -7,6 +7,10 @@ import {
   isSandboxId,
 } from '../story/endings/endingDefs.js';
 import { confessionalReadback, CONFESSIONAL_RECORD_TEXT_MAX } from '../systems/special500Confessional.js';
+import { FACTION_META } from '../data/factions.js';
+import { SECTORS } from '../data/sectors.js';
+import { contestedSectorForPair } from '../data/conflictZones.js';
+import { localizeText } from '../localization/sourceText.js';
 
 const STYLE_ID = 'sf-ending-epilogue-style';
 const DEFER_MS = 240;
@@ -27,6 +31,38 @@ function clean(value) {
 function postEndingOf(state) {
   const rec = state && state.story && state.story.postEnding;
   return rec && typeof rec === 'object' ? rec : null;
+}
+
+// THE WAR YOU LEFT (inf-epilogue-war): the epilogue closes the captain's account — what the
+// disposition bought, what stays open — but never said what the galaxy was doing when you
+// filed it. A front at 'war' in the factions-owned conflict record at ending time reads back
+// on its own line: which houses, which contested lane, and — when the banked playerLean is
+// real — which way your work left it leaning. Pure read; factions stays the sole writer, and
+// a galaxy with no live war stays silent.
+const FACTION_NAME_BY_ID = new Map(FACTION_META.map((row) => [row.id, row.short || row.name]));
+const SECTOR_NAME_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
+
+function endingWarLine(state) {
+  const conflicts = state && state.conflicts;
+  if (!conflicts || typeof conflicts !== 'object') return null;
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+    const [aId, bId] = String(pairKey).split(':');
+    if (!aId || !bId) continue;
+    const name = (id) => FACTION_NAME_BY_ID.get(id) || String(id).replace(/^faction_/, '');
+    const frontSectorId = contestedSectorForPair(pairKey);
+    const front = (frontSectorId && SECTOR_NAME_BY_ID.get(frontSectorId)) || 'the contested lane';
+    const lean = Number(rec.playerLean) || 0;
+    const favoredId = lean > 0.05 ? bId : lean < -0.05 ? aId : null;
+    const base = localizeText('The {a} and {b} front at {front} never cooled. The war you left is still a war.', {
+      a: name(aId), b: name(bId), front,
+    });
+    return favoredId
+      ? `${base} ${localizeText('The ledger has it leaning {side}\'s way, and your name is on the lean.', { side: name(favoredId) })}`
+      : base;
+  }
+  return null;
 }
 
 export function buildEndingEpilogueModel({ event, payload = {}, state } = {}) {
@@ -60,6 +96,7 @@ export function buildEndingEpilogueModel({ event, payload = {}, state } = {}) {
     objectiveTitle: clean(rec && rec.title) || def.continuity.title,
     dismissLabel: 'CONTINUE OPERATIONS',
     filedRecordText: isEnding ? (readback?.text || null) : null,
+    warLine: endingWarLine(state),
   });
 }
 
@@ -214,6 +251,14 @@ export function createEndingEpilogue({ bus, state, root, isBlocked } = {}) {
     nextCopy.append(objectiveName, document.createTextNode ? document.createTextNode(model.objective) : element('span', '', model.objective));
     next.append(element('h2', 'sf-ending-epilogue__section-title', 'NEXT OBJECTIVE'), nextCopy);
     sections.append(consequence, next);
+    if (model.warLine) {
+      const war = element('section', 'sf-ending-epilogue__section sf-ending-epilogue__record');
+      war.append(
+        element('h2', 'sf-ending-epilogue__section-title', 'THE WAR YOU LEFT'),
+        element('p', 'sf-ending-epilogue__section-copy', model.warLine),
+      );
+      sections.append(war);
+    }
     appendFiledRecord(sections, model.filedRecordText);
 
     const button = element('button', 'sf-ending-epilogue__dismiss', model.dismissLabel);

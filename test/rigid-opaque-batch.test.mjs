@@ -1583,11 +1583,18 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
     try {
       const old = controller.sync(first.root);
       await Promise.resolve();
-      await controller.sync([first.root, second.root]);
+      const arrival = controller.sync([first.root, second.root]);
+      assert.equal(arrival, old, 'pure arrivals reuse the pending plan rather than restarting compilation');
+      assert.equal(attempts, 1);
+      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 1);
+      assert.equal(reportOldLeg('residency'), true, 'the original preparation remains live through arrivals');
+      const replacement = controller.sync(second.root);
+      assert.notEqual(replacement, old, 'removing the original root supersedes its pending preparation');
+      await replacement;
       const current = controller.getDiagnostics();
       const batches = scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch);
       assert.equal(current.status, 'active');
-      assert.equal(current.hiddenSources, 4);
+      assert.equal(current.hiddenSources, 2);
       assert.equal(reportOldLeg('exact-target'), false, 'retired preparation cannot publish a stale leg');
       settleOld();
       await old;
@@ -1597,9 +1604,10 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
       assert.equal(after.lastError, current.lastError);
       assert.equal(after.preparationLeg, null);
       assert.equal(after.activations, 1);
-      assert.equal(after.hiddenSources, 4);
+      assert.equal(after.hiddenSources, 2);
       assert.deepEqual(scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch), batches);
-      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 0);
+      for (const source of [first.a, first.b]) assert.equal(source.layers.mask, 1);
+      for (const source of [second.a, second.b]) assert.equal(source.layers.mask, 0);
     } finally {
       controller.dispose();
       for (const source of [first.a, first.b, second.a, second.b]) {
@@ -1734,4 +1742,48 @@ test('a shadow-lane flip during residency ejects only its owner before shared-ba
       source.material.dispose();
     }
   }
+});
+
+test('proven disabled depth ignores raw shadow churn, and transition restores direct sources synchronously', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot();
+  scene.add(root); scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]);
+    await Promise.resolve();
+    a.castShadow = true; b.receiveShadow = true;
+    finish({ ready: true });
+    assert.equal((await pending).instances, 2);
+    const batch = scene.children.find(x => x.isBatchedMesh);
+    assert.equal(batch.castShadow, false); assert.equal(batch.receiveShadow, false);
+    a.castShadow = false; b.receiveShadow = false;
+    assert.equal((await controller.sync([root])).instances, 2);
+    assert.equal(a.layers.mask, 0);
+    controller.setShadowDepthDisabled(false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some(x => x.isBatchedMesh), false);
+    a.castShadow = b.castShadow = true;
+    const next = controller.sync([root]); await Promise.resolve();
+    assert.equal(scene.children.find(x => x.isBatchedMesh)?.castShadow, true);
+    finish({ ready: true }); assert.equal((await next).instances, 2);
+  } finally {
+    controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); }
+  }
+});
+
+test('depth mode transition cancels pending normalized preparation', async () => {
+  const scene = new THREE.Scene(), {root,a,b} = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
+  let finish; const controller = createRetainedRigidOpaqueBatchController({scene,
+    prepare: () => new Promise(resolve => { finish = resolve; })});
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]); await Promise.resolve();
+    controller.setShadowDepthDisabled(false);
+    finish({ready:true}); await pending;
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+    assert.equal(controller.getDiagnostics().instances,0);
+  } finally { controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); } }
 });
