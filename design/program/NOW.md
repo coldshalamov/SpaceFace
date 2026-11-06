@@ -96,9 +96,9 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   sheet + Brood family surface rows (hue, silhouette, mass, protection layers, tell,
   debut wave). Lane S can render the bestiary/HUD identity straight off it; the S1
   fodder band and the sheet agree by test.
-- **S7 tasks 2–3 (in tree, uncommitted):** sheet stat overrides apply at materialization
+- **S7 tasks 2–4 published (c22c1aa3):** sheet stat overrides apply at materialization
   through `applySwarmFeelSpec` (`spec.data.swarmCharacter` + `spec.data.ai.swarmTellFloor`
-  stamps — Lane S reads both). Shared-file hunks claimed, all gated on the cohort flag:
+  stamps — Lane S reads both). All gated on the cohort flag:
   `src/ai/combatDoctrine.js` (`SWARM_TELL_FLOOR_TICKS=36`, `cueTicksFor(record)`,
   `record.swarmTellFloor`, floored cue-age checks — inert for unmarked hulls),
   `src/systems/aiPorts.js` (`swarmTellFloor` flatten next to `swarmLastStand`),
@@ -112,6 +112,20 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   legacy ai.js consumer is dead under sg06-tactical): the caller telegraphs
   `pack_call`, Wasps ride the ordinary stream through a lit gate with `data.calledBy`,
   and the caller's death scatters them through the authored `forceFlee` egress.
+- **S9 arenas friend-and-foe (in tree):** every room hazard now bites both ways in
+  Swarm runs only — `src/systems/survivalArena.js` (`_crushBody` drops the player
+  exemption under `isSwarmRuleset`; `_tickPlayerSlams` crumples the pilot on static
+  `roomDynamic===false` furniture — plate/pylon/relay/prop/shutter — via
+  `TERRAIN_CRUMBLE_LAW`, routed through `routeDamage` with impulse provenance and a
+  `combat:crushed` receipt), `src/systems/swarmBrood.js` (`stepPools` burns Brood
+  bodies on the pool DPS beat and routes cooldown-gated damage to standing ships —
+  pools no longer hurt only the pilot). Adventure behavior untouched; all verdicts
+  telegraphed >=1 s by the existing machinery. Lane S: the slam verdict emits the
+  same `combat:crushed` + `combat:damage` seams the crusher already uses — render
+  terrain kills off those, not a new event. UI: `src/ui/screens/crucible.js` arena
+  picker falls back to mode art + `ARENA_GLYPH` icons for untiled arenas
+  (`asteroid_mill`/`the_hive` no longer wear the Foundry's picture); authored tiles
+  are requested in `assets/ui/kit/prompts-p16.md`.
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)

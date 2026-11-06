@@ -55,6 +55,9 @@ Saucer     10 10 10 10 10 10 Generalist
 - `node scripts/ui-bench.mjs --shot=station-shipworks --walk` — the six stat rows are focusable
   controls and each one changes the meaning line (walk entries 13–15).
 - `node scripts/check-type-floor.mjs` — OK, 2421 sizes.
+- `node --test test/ship-stats.test.mjs` — 8/8 pass (re-run after the merge that landed this work).
+- Final bench shots after the merge: `station-shipworks` 11.1 s, `ship` 8.8 s, `new-game` 9.5 s, all
+  "no tangled, buried, cut-off or offscreen type".
 
 ## Not done / open
 
@@ -62,11 +65,12 @@ Saucer     10 10 10 10 10 10 Generalist
   `shipStatSheet({shipId:'ship_hornet',fittings:[…]})` vs `shipStatSheet({shipId:'ship_hawser',…})`;
   the expectation encoded in the model is Hornet wins the slug-fest (Firepower) and Hawser the tow
   job (Muscle), with Speed/Toughness deciding the drag race.
-- **`shipStatSheet` cannot be exercised in this checkout right now**: `src/data/missions.js` is
-  being rewritten by another agent and imports modules that do not exist yet
-  (`kesslerScaleWorksite.js`, `captainStandingOrders.js`). Every import that reaches it — including
-  `systems/ships.js` — throws. The model passed its full suite earlier in the session when that
-  file was whole; re-run `node --test test/ship-stats.test.mjs` when it is.
+- **Historical concurrent-checkout import blockers.** Earlier work reported a
+  `SHIP_BY_ID` initialization cycle through `tallyThreeIdentity.js`; another working checkout
+  temporarily lacked `kesslerScaleWorksite.js` and `captainStandingOrders.js` while mission code
+  was being rewritten. Preserve these reports as diagnostic history, not a blanket explanation
+  for a red run. Reproduce the failure on the exact committed source and run
+  `node --test test/ship-stats.test.mjs` before classifying current Ship Sheet behavior.
 - **The flight-host side column still speaks engineering** (`0/1 fitted · 0 draw` per system). It is
   the systems/power instrument rather than the ship's stats; the `core · N draw` caption is now
   `power used · N of M`, but the per-row draw numbers are still raw. Follow-up.
