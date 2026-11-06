@@ -133,6 +133,16 @@ const ACHIEVEMENTS = `
 ${A} > .con-medal-read { padding-bottom:clamp(20px, 5vh, 64px); }
 /* the count figure pairs its numeral with its "of" word on one baseline */
 ${A} .con-medal-read__figure { align-items:baseline; }
+
+/* Short densify 561–699: constellationCssSource only lifts the category row onto its own foot
+   line when height ≥520, so a short window in this band (600/640/651×461) keeps filters beside
+   Back and clips CAREER off the right edge (offR 76/36/25). Tighten gap, tracking and the hang's
+   left margin so all five words clear without the extra foot row that would crush the stage. */
+@media (min-width:561px) and (max-width:699px) and (max-height:519px) {
+  ${A} .k-hang.con-filters { margin-left:clamp(6px, 1vw, 14px) !important; min-width:0; }
+  ${A} .con-filters .k-words { gap:clamp(5px, .9vw, 10px) !important; padding:0 2px !important; }
+  ${A} .con-filters .k-word { font-size:12px !important; letter-spacing:.04em !important; font-stretch:100% !important; min-height:26px; }
+}
 `;
 
 const CSS = STATISTICS + ACHIEVEMENTS;
