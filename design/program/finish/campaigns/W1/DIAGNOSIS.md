@@ -18,8 +18,8 @@ simulation, quiet surface": designed things the player never meets.
 |---|---|---|
 | 10 sectors are "a name plus a hazard circle" | 10 sector defs (`sector_helios_prime` … `sector_veil_nebula`) | `src/data/sectors.js:53-…` |
 | "211 lived vignettes from one template" | drifted **up**: 176 files named `lived-*`, **225 encounter files** instantiate the same `compileVignette` template | `src/data/encounters/393…406-lived-*.js`, `src/systems/vignetteInterpreter.js` |
-| "12 of 15 contact counters never move" | 16 counter defs over 15 named contacts (`contact_maera_vols` … `contact_yune`) | `src/data/stationContacts.js` |
-| "439 voice lines unused" | **1,429 voice WAVs** on disk under `assets/*/voice*`; wiring inventory pending (agent C) | `assets/audio/`, `src/data/contactHail.js`, `borrowedVoice.js` |
+| "12 of 15 contact counters never move" | corrected during inventory: **15 of 16 counters have live writers** (system listeners + witness seam; sole writer `systems/stationContacts.js`); only `march.reconciliation` is frozen | `src/data/stationContacts.js:240-293` |
+| "439 voice lines unused" | corrected: **1,399 line WAVs are a QA acceptance corpus, deliberately excluded from the bundle; runtime voice is synthesized.** The claim does not reproduce under any counting method | `src/data/stationContacts.js`, `test/m6-packaging-parity.test.mjs`, inventory §2 |
 | "three heists, one door" | 1 authored heist type `heist_intercept` (PQ-019C Tethys capsule-run) + `heistFacilities.js` | `src/data/heistMission.js`, `heistFacilities.js` |
 | Encounters | **370 files** in `src/data/encounters/` | inventory pending |
 | Endings A–E exist | 11 modules in `src/story/endings/` (defs, eligibility, finale, world-after) | read directly below |
