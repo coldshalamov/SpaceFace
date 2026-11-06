@@ -142,10 +142,11 @@ test('worker-local clock forward progress under held ACKs, churn, pause/rearm', 
     clearInterval(churnTimer);
     churnTimer = null;
 
-    // M1 starvation shape: exactly one reply is outstanding; the worker coalesced
-    // every later tick into its retained reply instead of publishing again.
-    assert.equal(heldReplies.length, 1,
-      'one outstanding send per ACK window — no second reply may be published while it is held');
+    // M1 starvation shape, pipelined: at most LOCAL_MAX_UNACKED (4) replies may
+    // be outstanding; the worker coalesces every later tick into its retained
+    // reply once the publish window saturates, so the held count stays bounded.
+    assert.ok(heldReplies.length >= 1 && heldReplies.length <= 4,
+      `bounded publish window — at most 4 outstanding sends while ACKs are held (saw ${heldReplies.length})`);
     const held = heldReplies[0];
     assert.ok(Number.isSafeInteger(held.clockSequence));
     assert.ok(held.clockDiagnostics?.steps > 0, 'held reply carries real sim steps');
@@ -167,6 +168,15 @@ test('worker-local clock forward progress under held ACKs, churn, pause/rearm', 
         && clockTicks().at(-1).clockDiagnostics.steps > 0,
       15000,
       'fresh published ticks after the hold',
+    );
+    // With a bounded publish window the pipelined held replies drain first;
+    // the merged catch-up blob trails them until the ACK watermarks cover its
+    // journal range — wait for the window itself rather than the first reply.
+    await waitFor(
+      () => clockTicks().slice(preReleaseTickCount).some(
+        (r) => Number.isSafeInteger(r.stateTick) && r.stateTick > lastStateTickBeforeHold + 30),
+      15000,
+      'the retained blob surfacing the held window as accumulated steps',
     );
     await waitFor(
       () => lane.getDiagnostics().workerClockCommandInFlight === false,

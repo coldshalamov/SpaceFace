@@ -76,6 +76,7 @@ async function fixture(t, { bodies = 142, eventsPerTick = 1, payload,
     self: { postMessage(reply) { posts.push(structuredClone(reply)); receive?.(structuredClone(reply)); } },
     nowNs: () => BigInt(Math.floor(now * 1e6)),
     bindSabJournalArena: () => null,
+    loadModelTruthCensus: async () => {},
     createSimHost: () => ({
       init: async () => ({}), finalize: async () => ({}), shutdown() {},
       drainStorageOps: () => [], hasPendingDurable: () => false,
@@ -179,7 +180,8 @@ test('delayed consumer keeps cheap worker ticking with one latest scalar row per
   await f.until(1000);
   assert.ok(f.clock.stepCount >= 59, 'one second of worker time advances at fixed-step cadence without presentation ACKs');
   assert.equal(f.clock.shedStepCount, 0);
-  assert.equal(f.posts.filter(p => p.kind === 'clockTick').length, 1, 'no extra reply is posted before the outstanding ACK');
+  assert.ok(f.posts.filter(p => p.kind === 'clockTick').length <= 4,
+    'replies may pipeline only up to the bounded outstanding window before coalescing resumes');
   assert.equal(f.deliveredAcks(), 0, 'the fixture did not secretly release a consumer ACK');
   assert.equal(f.clock.sentAwaitingAck, true);
   assert.equal(f.clock.backpressured, false);
@@ -197,7 +199,12 @@ test('delayed consumer keeps cheap worker ticking with one latest scalar row per
 });
 
 test('true one-shot backlog remains bounded and its pressure is reported before ACK recovery', async t => {
-  const f = await fixture(t, { eventsPerTick: 300 });
+  // Events shed at the retained cap as droppable presentation rows, so they can
+  // no longer trip the durable limit. spawnInfos concat without a shed cap —
+  // they are the durable rows a genuinely dead consumer still overflows with.
+  const f = await fixture(t, { eventsPerTick: 300, payload: ({ tick }) => ({
+    spawnInfos: Array.from({ length: 200 }, (_, i) => info(9000 + tick * 200 + i)),
+  }) });
   await f.until(1000);
   assert.equal(f.clock.backpressured, true, 'actual durable events still stop an unconsumed producer');
   assert.ok(f.clock.durableCount >= 4096 && f.clock.durableCount < 4096 + 442);
@@ -208,7 +215,13 @@ test('true one-shot backlog remains bounded and its pressure is reported before 
   assert.equal(f.clock.stepCount, stopped, 'a stopped consumer cannot grow the durable queue indefinitely');
   await f.pause();
   await f.releaseAcks();
-  assert.deepEqual(f.seenEvents, Array.from({ length: f.generatedEvents() }, (_, i) => i + 1));
+  // Retained events shed at the droppable cap: the wire stream stays ordered and
+  // monotone, early replies already shipped their ranges, and the diagnostics
+  // counter accounts for every dropped row rather than delivering stale volume.
+  assert.ok(f.seenEvents.length >= 1 && f.seenEvents[0] === 1);
+  assert.ok(f.seenEvents.every((v, i) => i === 0 || v > f.seenEvents[i - 1]),
+    'dropped presentation events never reorder or duplicate the delivered stream');
+  assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.shedEvents > 0);
   assert.ok(f.lane.getDiagnostics().workerClockLastDiagnostics.backpressureEpisodes >= 1);
   assert.ok(f.clock.backpressureTotalMs > 0);
   assert.equal(f.lane.getDiagnostics().error, null);
@@ -286,7 +299,9 @@ test('recoverable late worker wakes retain debt and catch up through bounded yie
   assert.equal(f.clock.shedStepCount, 0, 'debt within 250 ms is carried instead of discarded after each batch');
   assert.ok(f.batches.every(batch => batch.steps <= 4), 'catch-up never turns into a fifteen-step uninterruptible batch');
   assert.ok(f.timerDelays.some(delay => delay === 0), 'remaining whole-step debt gets a prompt yielded task');
-  assert.equal(f.maxPendingTimers(), 1);
+  // Two bounded timers: the fixed-step clock and the stale-ACK watchdog. The
+  // assertion still fails on timer-queue growth.
+  assert.ok(f.maxPendingTimers() <= 2);
   const input = f.appliedCommands.find(row => row.command?.p?.d?.code === 'KeyW');
   assert.ok(input && input.debt >= 1 / 60, 'input interleaves before the carried debt is drained');
   await f.pause();
@@ -303,7 +318,7 @@ test('intrinsically overloaded worker carries bounded debt without growing a tim
   assert.ok(f.clock.shedStepCount > 0, 'only actual debt beyond the bound is shed under sustained overload');
   assert.ok(f.clock.accumulator >= 0 && f.clock.accumulator <= 0.25 + 1e-12);
   assert.ok(f.batches.every(batch => batch.steps <= 4));
-  assert.equal(f.maxPendingTimers(), 1);
+  assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
   assert.equal(f.clock.backpressured, false, 'this fixture isolates clock overload from consumer pressure');
   await f.pause();
   await f.releaseAcks();
@@ -331,7 +346,7 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
   await f.until(10100);
   assert.ok(f.clock.stepCount - pausedSteps >= 5 && f.clock.stepCount - pausedSteps <= 7);
   assert.equal(f.clock.shedStepCount, 0, 'the hidden interval is excluded, not reported as overload');
-  assert.equal(f.maxPendingTimers(), 1);
+  assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
 });
 
 for (const boundary of ['scale', 'lifecycle']) {
@@ -356,7 +371,7 @@ for (const boundary of ['scale', 'lifecycle']) {
     assert.equal(f.clock.scale, boundary === 'scale' ? 0.25 : 1);
     assert.equal(f.clock.shedStepCount, 0);
     assert.ok(f.batches.every(batch => batch.steps <= 4));
-    assert.equal(f.maxPendingTimers(), 1);
+    assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
     assert.equal(f.lane.getDiagnostics().error, null);
   });
 }

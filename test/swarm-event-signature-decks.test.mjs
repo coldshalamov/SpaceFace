@@ -150,11 +150,14 @@ test('every signature in both decks is drawable through the real seeded path', (
     }
     for (const eventId of SWARM_EVENT_TABLES[arenaId]) {
       assert.ok(counts[eventId] > 0, `${eventId} deals within the sweep`);
-      for (const shared of ['mine_drift', 'supply_drop']) {
-        assert.ok(counts[eventId] > counts[shared],
-          `${eventId} out-deals ${shared} — signatures stay the headline`);
-      }
     }
+    // The authored law is the 70/30 pool choice — signatures as a band headline, shared as
+    // the minority. Per-card ordering inside a uniform pool is seeded noise, not contract.
+    const sigTotal = SWARM_EVENT_TABLES[arenaId].reduce((s, id) => s + (counts[id] || 0), 0);
+    const sharedTotal = ['mine_drift', 'supply_drop'].reduce((s, id) => s + (counts[id] || 0), 0);
+    const share = sigTotal / (sigTotal + sharedTotal);
+    assert.ok(share > 0.6 && share < 0.8,
+      `signatures headline at ${(share * 100).toFixed(0)}% — the 70/30 pool law`);
   }
 });
 

@@ -573,6 +573,17 @@ ${W} .orr-lampkey:disabled::after { display:block !important; }
 ${SCROLL_EXTENT_CSS}
 /* a fitted column wears no fold: the fade only stands over a list that overflows */
 ${W} .sx-sw__side, ${W} .sx-sw__stats { -webkit-mask-image:none !important; mask-image:none !important; }
+/* The hull sheet column scrolls (≈590px of sheet in a ≈340px box at 900px tall) and said nothing about it: its
+   last lines were simply cut. It now fades at the foot while more is below, and the fade closes as the scroll
+   reaches the end, so the final line is never dimmed. Pure CSS (a scroll-driven animation of one length); a
+   column that fits has no scroll timeline and keeps a fold of 0, and engines without the feature keep the cut. */
+@property --sx-fold { syntax:"<length>"; inherits:false; initial-value:0px; }
+@keyframes sx-fold-foot { 0%, 85% { --sx-fold:36px; } 100% { --sx-fold:0px; } }
+@supports (animation-timeline: scroll()) {
+  ${W} .sx-sw__stats { animation:sx-fold-foot linear both; animation-timeline:scroll(self block);
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent) !important; }
+}
 ${W} .sx-sw__chooser[data-overflow="0"], ${W} .sx-sw__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
 /* For Sale: the price is the number; the stage's second title goes; the render sits on a contact shadow */
 ${W}.sx-sw--buying .sx-sw__stage > .sx-sw__nameplate { display:none !important; }

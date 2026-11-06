@@ -65,20 +65,23 @@ last300 review is end-only; final independent release approvals0/3, not started.
 
 <!-- zcode-inf20c released 2026-10-29: INFERENCE 20 complete — 20/20 units landed and pushed (2e5bf4c5633 … e5ac485619fd), each recorded via inference-record; see design/program/inference-memory.json and the sitting's final report. -->
 
-<!-- Lane 1 PIPELINE (master plan) — active claims, 2026-11-06 -->
+<!-- Lane 1 PIPELINE (master plan) — claims, 2026-11-06 -->
 ## Lane 1 PIPELINE — master-plan campaigns E10 → E1 → E5 → E9
 
-Lane 1 of `finish/MASTER_PLAN.md` is active. Diagnosis memos:
-`finish/campaigns/E10/DIAGNOSIS.md`, `finish/campaigns/E1/DIAGNOSIS.md`.
+Lane 1 of `finish/MASTER_PLAN.md` is active. Memos + evidence:
+`finish/campaigns/{E10,E1,E5,E9}/`.
 
-| Work | Owner | Exact write set | Note |
+| Work | Owner | State | Write set |
 |---|---|---|---|
-| E10 frame-truth dashboard | Lane 1 | NEW `src/core/frameTruth.js`, `test/frame-truth*.test.mjs`, `finish/campaigns/E10/*`; small wiring edits in `src/core/presentationRunner.js` | Consolidates existing probes; renderer internals untouched |
-| E1 playout buffer | Lane 1 | `src/render/snapshotFence.js` (history ring + delayed presented clock — the agreed pose-writer interface with Lane 3; renderer callers keep `latestSnapshot()/previousSnapshot()` unchanged), `src/core/wholeSimBrowserWorker.js` + `scripts/lib/simWorkerHost.mjs` (stall-injection seam only), `src/core/simLaneMain.js` (flag parse), `finish/campaigns/E1/*` | Renderer file NOT edited; Codex perf's in-flight files untouched |
-| E5 shared memory / Electron-first | Lane 1 | `vercel.json` (COOP/COEP headers), `electron/main.cjs` (session isolation + switch audit), `finish/campaigns/E5/*` | after E1 |
-| E9 load in seconds | Lane 1 | `scripts/build-bundle.mjs` + boot/loading entry files, `finish/campaigns/E9/*` | after E5 |
+| E10 frame-truth dashboard | Lane 1 | **DONE** — recorder + overlay (Ctrl+Alt+F, ?frameTruth=1) + JSON export (Ctrl+Alt+J) | `src/core/frameTruth.js`, ingest seams in `presentationRunner.js`/`simLaneMain.js`, fence registry |
+| E1 playout buffer | Lane 1 | **Verify MET** — 18-pack history, adaptive 33–100 ms delay, rate modulation, ≤150 ms extrapolation, damped re-seat; before/after traces + video committed | `src/render/snapshotFence.js` (pose-writer interface; renderer untouched), stall harness in `wholeSimBrowserWorker.js`/`simLaneMain.js` |
+| E5 shared memory / Electron-first | Lane 1 | **Landed** (vercel headers, trace probe, audits); Electron live probe + iGPU per-switch A/B + signing cert = flagged open | `vercel.json`, `campaigns/E5/*` |
+| E9 load in seconds | Lane 1 | **Diagnosed** (31.6 MB eager closure measured; road = mode-scoped module graphs with E3's manifest) — implementation next | `campaigns/E9/*` so far |
 
 Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf's in-flight files.
+Commit scope note (2026-11-06): Lane 1's staged E5 paths rode commit f8ca370aac75 (the S7
+cherry-pick's `--continue` swallowed the shared index); content is committed and correct —
+attribution is mixed in that one commit's message.
 
 <!-- Lane F (Crucible Swarm overhaul) — hand-offs for Lane S -->
 ## Crucible Swarm — Lane F notes for Lane S
@@ -126,6 +129,37 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   picker falls back to mode art + `ARENA_GLYPH` icons for untiled arenas
   (`asteroid_mill`/`the_hive` no longer wear the Foundry's picture); authored tiles
   are requested in `assets/ui/kit/prompts-p16.md`.
+- **S12 staples (in tree):** all five ride their existing owners —
+  `src/systems/swarmSupply.js` adds `SWARM_REPAIR_PER_ROUND_MAX = 2` (a round pays
+  one or two cells; `SWARM_REPAIR_MAX_LIVE` still caps the live pile; credited
+  kills only). `src/systems/swarmCallins.js` adds `SWARM_CALLIN_CALLOUT` and emits
+  `swarm:announce` one-word callouts (`BOMB!`/`LANCE!`/…) at bomb-fire and every
+  successful queued deploy; an empty queue stays dark. Perks: every effect site
+  emits `swarm:perkTrigger` (`src/systems/swarmElites.js` ×3,
+  `src/systems/survivalRewards.js`, `src/systems/survivalDraft.js`); the HUD
+  mounts the run's two picks as lit chips beside the ring and replays a pulse on
+  each trigger — `src/ui/orrery/flightCluster.js` (`d.perks`/`d.perkPulses`),
+  `src/ui/orrery/hudAdapter.js` (`SWARM_PERK_ICON`, `perkPulseCounts`, bus
+  subscription). Events/fortify already shipped their contracts; stale
+  fixtures re-pinned to the S14 boss cadence (majors live on even multiples of
+  five) in the three `swarm-event-*` tests. Lane S: perk chips + pulse are pure
+  model data — `model.perks = [{id,name,icon}]`, `model.perkPulses` counts.
+  `test/swarm-staples.test.mjs` covers the four proof points.
+- **S14 wave-5 boss (in tree):** `src/systems/capitalBossRuntime.js` wraps the
+  production encounters object (`withSwarmBossRites`, same mutate-in-place style
+  as `withLastArgument`). Each swarm score act carries an authored `callout`
+  (≤3 words, in `src/data/encounters/capital-boss/{iron-maw,foreman,regent}.js`);
+  `capitalBoss:actChanged` announces it through `swarm:announce` (`kind:'bossact'`).
+  Boss death on a `swarm:` fight spawns 4–6 persistent tetherable `throw_mass`
+  chunks where the hull fell (`record.swarmAmmoChunks` ledger; no re-mint) and,
+  for the run's first champion, stamps `run.telemetry.firstBossDown` and pushes
+  `crucibleResults` — the screen's milestone variant renders `<NAME> DOWN` with
+  the score's authored lesson and Keep going/Run it again/Main menu; mounting it
+  emits `swarm:bossMilestoneAck` which consumes the pending stamp. Boss card TTL
+  is 2.0 s and rotation `line`s are ≤6 words (`src/ui/swarmJuiceHud.js`,
+  `src/data/swarmMode.js`). Lane S: chunks carry
+  `data.tetherable`/`physicalRole:'throw_mass'`/`swarmBossChunk` — the ordinary
+  throw-mass outline treatment applies. `test/swarm-boss-rites.test.mjs` (4).
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)

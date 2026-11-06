@@ -44,6 +44,31 @@ export function resolveVfxAccessibilityProfile(settings) {
   return FULL;
 }
 
+// S8 global law (not Swarm-only): no flash sprite may cover more than 15% of the screen or
+// outlive 0.2 s. Sizes are world half-extents; `liveZoom` is the camera's visible world
+// half-height, so a sprite's screen-area fraction reads approximately (size / liveZoom)^2.
+export const FLASH_SCREEN_FRACTION_CAP = 0.15;
+export const FLASH_LIFE_CAP_S = 0.2;
+export const FLASH_LIVEZOOM_FALLBACK = 144;
+
+/** Largest flash half-extent the cap allows for a given camera live zoom. */
+export function flashScreenCapSize(liveZoom) {
+  const zoom = Number.isFinite(liveZoom) && liveZoom > 0 ? liveZoom : FLASH_LIVEZOOM_FALLBACK;
+  return zoom * Math.sqrt(FLASH_SCREEN_FRACTION_CAP);
+}
+
+/**
+ * Clamp a flash's authored sizes/life to the global screen-area and lifetime law. Returns the same
+ * object for convenient in-place use inside the pooled spawn path.
+ */
+export function clampFlashToScreenCap(authored, liveZoom) {
+  const cap = flashScreenCapSize(liveZoom);
+  authored.size0 = Math.min(authored.size0, cap);
+  authored.size1 = Math.min(authored.size1, cap);
+  authored.life = Math.min(authored.life, FLASH_LIFE_CAP_S);
+  return authored;
+}
+
 /**
  * Convert a brief additive flash to a lower-amplitude, longer readable cue. `out` allows the pooled
  * runtime to reuse one scratch record; tests and tooling can omit it for a plain value result.

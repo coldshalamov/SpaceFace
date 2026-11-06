@@ -576,7 +576,8 @@ test('worker event bursts coalesce callout layout reads to one pre-paint seat', 
 test('physics log callouts ignore room-wide impacts that do not involve the player', () => {
   const doc = fakeDocument();
   const bus = fakeBus();
-  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  // The LOG register is Adventure glass (swarm S2 silences it in a live Swarm round).
+  const owner = createStuntCallout({ state: calloutState(createComboState(), { run: { kind: 'adventure' } }), bus, doc });
   bus.emit('physics:impact', { aId: 21, bId: 22, playerInvolved: false, impulse: 90 });
   assert.equal(owner.update(0), false, 'an unrelated NPC collision does not wake the player feed');
   assert.equal(calloutTextFor(owner.root), '');
@@ -594,7 +595,7 @@ test('physics log callouts ignore room-wide impacts that do not involve the play
 
 
 test('physics register only narrates lien clamps and filings on the player ship', () => {
-  const doc=fakeDocument(),bus=fakeBus(),owner=createStuntCallout({state:calloutState(createComboState()),bus,doc});
+  const doc=fakeDocument(),bus=fakeBus(),owner=createStuntCallout({state:calloutState(createComboState(),{run:{kind:'adventure'}}),bus,doc});
   bus.emit('vael:lienClamped',{hostId:24,anchorId:30});
   bus.emit('helix:lienStuck',{shipId:25,droneId:31});
   assert.equal(owner.update(0),false);assert.equal(calloutTextFor(owner.root),'');

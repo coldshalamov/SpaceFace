@@ -298,12 +298,19 @@ function snapshotPhysicsRuntime(state) {
   if (!gameplay || gameplay.physicsBackend !== 'rapier-dynamic') return null;
   const runtime = state.physicsRuntime || {};
   const diag = runtime.diagnostics || {};
+  // E2: the physics owner publishes the per-body rows lazily (they are a verification view, not
+  // per-tick sim state). Ask the provider when the explicit copy is absent so this snapshot is
+  // byte-identical to the one the old per-tick publication produced.
+  let rows = Array.isArray(runtime.sg02Snapshot) ? runtime.sg02Snapshot : null;
+  if (!rows && typeof runtime.sg02SnapshotProvider === 'function') {
+    try { rows = runtime.sg02SnapshotProvider(); } catch (_) { rows = null; }
+  }
   return {
     schema: 'spaceface.physicsSnapshot.v1',
     backend: 'rapier-dynamic',
     ready: diag.sg02Ready === true,
-    bodies: Array.isArray(runtime.sg02Snapshot)
-      ? runtime.sg02Snapshot.map(snapshotSg02Body).sort((a, b) => a.id - b.id)
+    bodies: Array.isArray(rows)
+      ? rows.map(snapshotSg02Body).sort((a, b) => a.id - b.id)
       : [],
   };
 }

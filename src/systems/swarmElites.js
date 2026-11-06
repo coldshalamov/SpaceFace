@@ -700,6 +700,7 @@ export const swarmElites = {
     // Chain Reactor — a kill past the mark detonates the body it fell (§4.3).
     if (playerKill && runHasPerk(run, 'chain_reactor') && this._chain >= SWARM_CHAIN_REACTOR_MIN) {
       this._blast(victim, this.state.playerId, 'chain_reactor');
+      this._emit('swarm:perkTrigger', { perkId: 'chain_reactor', wave: run.wave });
     }
     // Scavenger — every Nth player kill drops a bonus chip through the run wallet's own mint.
     if (playerKill && runHasPerk(run, 'scavenger')) {
@@ -713,13 +714,18 @@ export const swarmElites = {
             reason: `swarm:perk:scavenger:${this._scavengerKills}`,
             wave: run.wave,
           });
+          this._emit('swarm:perkTrigger', { perkId: 'scavenger', wave: run.wave });
         }
       }
     }
     // Overclock — every player kill feeds the boost reserve (§4.3).
     if (playerKill && runHasPerk(run, 'overclock') && player && player.boost
       && Number.isFinite(player.boost.energy) && Number.isFinite(player.boost.max)) {
+      const before = player.boost.energy;
       player.boost.energy = Math.min(player.boost.max, player.boost.energy + SWARM_OVERCLOCK_ENERGY);
+      if (player.boost.energy > before) {
+        this._emit('swarm:perkTrigger', { perkId: 'overclock', wave: run.wave });
+      }
     }
 
     // A veteran pair fires both of its tricks — a volatile splitter still blasts AND bursts.
@@ -940,6 +946,7 @@ export const swarmElites = {
       packet,
       origin: { kind: 'ram_plate', id: playerId },
     });
+    this._emit('swarm:perkTrigger', { perkId: 'ram_plate', wave: run.wave });
   },
 
   // ---- continuous auras --------------------------------------------------------

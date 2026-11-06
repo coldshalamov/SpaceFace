@@ -37,10 +37,10 @@ test('the eyebrow names an awake glossed verb: "Verb · gloss" on hover and on f
   assert.match(mount, /refs\.status\.textContent = \(b\.textContent \|\| ''\)\.trim\(\) \+ ' · ' \+ gloss/);
 });
 
-test('every awake verb that can gloss resolves one of the five mode glosses', () => {
-  // The five verbs the catalog row names — Crucible is in the verb ladder, the other four in
-  // the aside — each land a button with data-action the writer can resolve.
-  for (const action of ['crucible', 'archive', 'circuits', 'sandbox', 'physics']) {
+test('every awake verb that can gloss resolves one of the six mode glosses', () => {
+  // The six verbs the catalog row names — Swarm and Crucible in the verb ladder, the other
+  // four in the aside — each land a button with data-action the writer can resolve.
+  for (const action of ['swarm', 'crucible', 'archive', 'circuits', 'sandbox', 'physics']) {
     assert.ok(MENU_MODE_GLOSSES[action], `gloss for ${action}`);
   }
   // data-action is what glossOf reads; the item builders stamp it (kit contract).

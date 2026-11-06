@@ -414,6 +414,28 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
   default: 0.6,
 });
 
+/**
+ * The worst effective raster scale Auto may present: dyn-res content scale multiplied by the
+ * automatic raster reliefs (integrated-GPU relief, hitch-governor rung 3). Those reliefs shrink
+ * the drawing buffer itself while dyn-res shrinks the content inside it — the same lever pulled
+ * twice — so the product, not each channel, is what must stay readable. The software emergency
+ * tier is exempt: a CPU rasterizer needs the depth more than the readability.
+ */
+export const COMBINED_READABILITY_FLOOR = 0.6;
+
+/**
+ * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
+ * drawing-buffer relief, the shallower the content scale must stay to hold the combined
+ * product at COMBINED_READABILITY_FLOOR. `rasterRelief` is the product of the automatic
+ * reliefs only (integrated cap 0.9, hitch relief 0.8) — the player's own renderScale choice
+ * belongs to Manual and is not rescued here.
+ */
+export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief) {
+  const relief = clamp(Number(rasterRelief) || 1, 0.2, 1);
+  const base = clamp(Number(tierFloor) || 0.6, 0.2, 1);
+  return clamp(Math.max(base, COMBINED_READABILITY_FLOOR / relief), 0.2, 1);
+}
+
 export function dynResFloorForTier(tier) {
   if (tier === 'software') return GPU_TIER_DYNRES_FLOOR.software;
   if (tier === 'integrated') return GPU_TIER_DYNRES_FLOOR.integrated;
@@ -544,7 +566,7 @@ export function createFrameCap({ vsync = true, displayHz = 60, apply } = {}) {
 // measured improvement check rejects CPU-bound cases where reducing pixels did not help. Recovery
 // probes upward slowly because rAF is capped by display refresh even when the GPU has headroom.
 export function createAdaptiveResolution(opts = {}) {
-  const floor = clamp(Number(opts.floor) || 0.6, 0.2, 1);
+  let floor = clamp(Number(opts.floor) || 0.6, 0.2, 1);
   const apply = typeof opts.apply === 'function' ? opts.apply : () => {};
   const step = clamp(Number(opts.step) || 0.1, 0.05, 0.25);
   const downRatio = clamp(Number(opts.downRatio) || 1.16, 1.05, 1.5);
@@ -558,6 +580,12 @@ export function createAdaptiveResolution(opts = {}) {
   const SMOOTH = 0.12;
   const RESIZE_COOLDOWN_S = 5.0;
   const MIN_BENEFIT = clamp(Number(opts.minBenefit) || 0.04, 0.01, 0.3);
+  // Depth gate: each deeper band demands a progressively worse sustained miss —
+  // gate(next) = downRatio + (1 − next)·1.2, so the step to 0.9 needs >1.28× the
+  // budget, 0.7 needs >1.52×, and the floor band needs ≈1.8–2×. A mild persistent
+  // load (the wider submit box at far zoom is the canonical case) parks at a
+  // nearly invisible shallow band instead of grinding to the floor over ~40 s.
+  const DEPTH_SEVERITY_SPAN = clamp(Number(opts.depthSeveritySpan) || 1.2, 0, 4);
 
   let enabled = true;
   let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
@@ -591,6 +619,13 @@ export function createAdaptiveResolution(opts = {}) {
     syncScale(value) {
       const next = Number(value);
       scale = clamp(Number.isFinite(next) ? next : 1, floor, 1);
+    },
+    /** Raises/lowers the floor the controller may descend to (see
+     * adaptiveFloorForCombinedScale). Raising past the live scale lifts it at once —
+     * that direction restores readability and never costs a frame budget. */
+    setFloor(nextFloor) {
+      floor = clamp(Number(nextFloor) || floor, 0.2, 1);
+      if (scale < floor) set(floor);
     },
     update(frameDt, sample = {}) {
       if (!enabled) return;
@@ -632,11 +667,19 @@ export function createAdaptiveResolution(opts = {}) {
       // A small sustained miss moves down one resolution band. The step is retained only when
       // the observed frame time improves; CPU/simulation bottlenecks restore the prior band.
       if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
+        const nextScale = Math.max(floor, scale - step);
+        // Depth gate: the deeper the candidate band, the worse the sustained miss must be.
+        // Without it a borderline load walked every band on the same mild miss and the
+        // picture spent long stretches at the readability floor for a ~20% overage.
+        if (emaMs <= targetMs * (downRatio + (1 - nextScale) * DEPTH_SEVERITY_SPAN)) {
+          slowTimer = 0;
+          return;
+        }
         const previousScale = scale;
         // Badly slow (>1.6x the frame budget): re-trial twice as often so Auto reaches the floor
         // in ~12 s instead of ~25 s (first step stays 0.1; the controller test pins it).
         const severe = emaMs > targetMs * 1.6;
-        set(scale - step);
+        set(nextScale);
         trial = { previousScale, baselineMs: emaMs, elapsed: 0 };
         lowerCooldown = severe ? RESIZE_COOLDOWN_S * 0.5 : RESIZE_COOLDOWN_S;
         raiseTimer = 0;

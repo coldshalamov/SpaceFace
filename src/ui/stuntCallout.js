@@ -35,6 +35,8 @@ import { injectOrrery } from './orrery/tokens.js';
 import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { isSwarmGlass } from './swarmGlass.js';
+import { isAdventureFlight, plainCallout } from './attentionGlass.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -884,6 +886,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const scope = calloutScope(st);
     // Runs only: the word stream is swarm-authored, and adventure has no swarm bus events.
     if (!scope || scope.adventure) return;
+    // Swarm glass (S2/S3): in a live Swarm round the juice lane already speaks each kill —
+    // the Adventure-side register never draws it.
+    if (isSwarmGlass(st)) return;
     if (!p) return;
     // Friendly fire already has its own announcer beat (COLLATERAL); the teaching lane is the
     // player's own physics kills. Excluded on the payload flag, never on a word.
@@ -894,7 +899,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const now = calloutNow();
     let rec = causeRuns.get(word);
     if (!rec || rec.until <= now) rec = { count: 0 };
-    rec.count += 1;
+    // S3 fair credit: the run counts credited BODIES, not receipts — a brood batch
+    // arrives as one receipt carrying its body count.
+    rec.count += Math.max(1, Math.trunc(Number(p.count) || 1));
     rec.until = now + CALLOUT_TTL_MS;
     causeRuns.set(word, rec);
     addLine('log:swarm:killPopup', `ARENA: ${word.toUpperCase()}`,
@@ -911,9 +918,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:styleBanked', (b) => onBank(b)));
     unsubs.push(bus.on('massline:selfSling', (payload) => {
-      if (!calloutScope(getState())) return;
+      const st = getState();
+      if (!calloutScope(st)) return;
       const whole = payload && payload.selfSlingBonusDv;
-      addLine('self-sling', selfSlingCalloutText(whole), '', calloutNow(), CALLOUT_TTL_MS, false);
+      const text = selfSlingCalloutText(whole);
+      // Swarm glass (S2): only a readable plain callout may draw. X3 carries the same check to
+      // Adventure flight, so a self-sling reads "SELF SLING", never a telemetry sentence.
+      if ((isSwarmGlass(st) || isAdventureFlight(st)) && !plainCallout(text)) return;
+      addLine('self-sling', text, '', calloutNow(), CALLOUT_TTL_MS, false);
     }));
     // FB-014 — the minted right, its claim, the completed line contract and the combo bridge
     // tick were emit-only. The callout column is their eye; the ship ledger (FB-014's projector)
@@ -925,6 +937,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     // Silent seams: the event itself had no subscriber that a pilot could see or hear.
     const speak = (line) => {
       if (!line) return;
+      // Swarm glass (S2 task 3) + X3 Adventure glass: a moment draws only when it reads as a
+      // plain ≤3-word callout — LOG registers, snag/ride/strain telemetry and mass figures never
+      // reach the lane in either mode.
+      if ((isSwarmGlass(state) || isAdventureFlight(state)) && !plainCallout(line.name)) return;
       addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
       spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
       sr.textContent = spoken;
@@ -1057,9 +1073,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     },
     announceStroke(stroke) {
       if (destroyed) return false;
-      if (!calloutScope(getState())) return false;
+      const st = getState();
+      if (!calloutScope(st)) return false;
       const line = strokeGradeLine(stroke);
       if (!line) return false;
+      // Swarm glass (S2): draw-stroke grades are Adventure telemetry — never in the round.
+      // X3: in Adventure flight only a plain-word grade survives; the jargon registers drop.
+      if ((isSwarmGlass(st) || isAdventureFlight(st)) && !plainCallout(line.name)) return false;
       const now = calloutNow();
       const seen = lineNodes.has(line.key);
       addLine(line.key, line.name, line.detail, now, CALLOUT_TTL_MS, false);

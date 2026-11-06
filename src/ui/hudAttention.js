@@ -6,6 +6,8 @@ import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
+import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
+import { attentionAdmits, isAdventureFlight, plainCallout } from './attentionGlass.js';
 
 export const RECEIPT_MAX = 2;
 export const VITAL_NUMERIC_LOW = 0.5;
@@ -62,6 +64,32 @@ export function admitReceipt({
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
+  // Swarm glass (design/program/finish/swarm S2): a live Swarm round admits only fight
+  // sources — chatter, news, codex, discovery, target cards and massline telemetry never
+  // draw. Errors stay admitted (actionable failures like a denied purchase); boss-channel
+  // receipts read as 'boss'; stunt receipts must also be a readable plain callout.
+  if (isSwarmGlass(state)) {
+    const k0 = String(kind || 'info');
+    const source = channel === 'capitalBoss' ? 'boss' : (channel || k0);
+    if (k0 === 'stunt') {
+      // Stunt receipts are a fight source gated by the callout's readability instead.
+      if (!swarmCalloutText(line)) return { admit: false, reason: 'swarm-glass' };
+    } else if (!swarmGlassAdmits(state, { source }) && k0 !== 'error') {
+      return { admit: false, reason: 'swarm-glass' };
+    }
+  }
+  // X3 Adventure glass: the same policy carried to ordinary flight. Prose sources stay off the
+  // flight glass, and a stunt/massline line has to be a plain ≤3-word callout. Station and map
+  // screens are untouched.
+  if (isAdventureFlight(state)) {
+    const k0 = String(kind || 'info');
+    const source = channel === 'capitalBoss' ? 'boss' : (channel || k0);
+    if (k0 === 'stunt' || source === 'stunt') {
+      if (!plainCallout(line)) return { admit: false, reason: 'adventure-glass' };
+    } else if (!attentionAdmits(state, { source, kind: k0, text: line })) {
+      return { admit: false, reason: 'adventure-glass' };
+    }
+  }
   if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
   if (channel === 'bark' || channel === 'chatter' || channel === 'news') {

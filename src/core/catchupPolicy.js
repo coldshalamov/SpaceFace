@@ -16,13 +16,48 @@ import {
   calendarCohortTickMod,
   getSystemCapability,
   getSystemClock,
+  SIM_MODE,
+  systemRunsInMode,
 } from '../runtime/authoritativeSystemManifest.js';
 
 export const CATCHUP_SKIP_CAPABILITIES = Object.freeze(['hud', 'voice']);
-export { CALENDAR_CLOCK_PERIOD_TICKS, SYSTEM_CLOCK };
+export { CALENDAR_CLOCK_PERIOD_TICKS, SYSTEM_CLOCK, SIM_MODE };
 
 export function isCatchupPresentationSkip(state) {
   return !!(state && (state.simCatchupIndex | 0) > 0);
+}
+
+/**
+ * Determine the active simulation execution mode from runtime state.
+ * Returns SIM_MODE.UNSCOPED for test rigs or uninitialized states.
+ */
+export function resolveActiveSimMode(state) {
+  if (!state || typeof state !== 'object') return SIM_MODE.UNSCOPED;
+  if (state.mode == null && state.run == null && state.ui?.docked == null && state.shipbreakingYard?.activeJobId == null && state.activeOccupation == null) {
+    return SIM_MODE.UNSCOPED;
+  }
+  if (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive') {
+    return SIM_MODE.SWARM;
+  }
+  if (state.mode === 'swarm') {
+    return SIM_MODE.SWARM;
+  }
+  if (state.ui && state.ui.docked === true) {
+    return SIM_MODE.DOCKED;
+  }
+  if (state.mode === 'docked') {
+    return SIM_MODE.DOCKED;
+  }
+  if (state.mode === 'shipbreakingYard' || state.activeOccupation === 'shipbreakingYard') {
+    return SIM_MODE.YARD;
+  }
+  if (state.mode === 'flight') {
+    if (state.shipbreakingYard && state.shipbreakingYard.activeJobId != null) {
+      return SIM_MODE.YARD;
+    }
+    return SIM_MODE.FLIGHT;
+  }
+  return SIM_MODE.UNSCOPED;
 }
 
 /**
@@ -43,6 +78,10 @@ export function isCalendarTick(state, systemName) {
 }
 
 export function shouldSkipSystemOnCatchup(systemName, state) {
+  const mode = resolveActiveSimMode(state);
+  if (mode !== SIM_MODE.UNSCOPED && !systemRunsInMode(systemName, mode)) {
+    return true;
+  }
   if (!isCatchupPresentationSkip(state)) return false;
   const clock = getSystemClock(systemName);
   if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state)) {
@@ -60,6 +99,10 @@ function isProductionClockState(state) {
 }
 
 export function shouldSkipSystemThisStep(systemName, state) {
+  const mode = resolveActiveSimMode(state);
+  if (mode !== SIM_MODE.UNSCOPED && !systemRunsInMode(systemName, mode)) {
+    return true;
+  }
   const clock = getSystemClock(systemName);
   if (isCatchupPresentationSkip(state)) {
     if (clock === SYSTEM_CLOCK.CALENDAR && isProductionClockState(state)) {
@@ -80,6 +123,8 @@ export function shouldSkipSystemThisStep(systemName, state) {
  * calendar owner keeps its position relative to the rest of the tick. `tableCalendar`
  * and `catchupTickQueues[m]` are the production catch-up counterparts built the same
  * way; boot ticks (<=1) and clockWake.calendar keep `all`.
+ *
+ * Pre-partitions mode-scoped queues for instant O(1) step dispatch with zero garbage.
  */
 export function partitionUpdateSystems(systems, { state = null, bus = null } = {}) {
   const all = [];
@@ -114,6 +159,33 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
       for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) tickQueues[m].push(system);
     }
   }
+
+  // Pre-filter partitioned queues per active simulation mode for zero-overhead dispatch during step()
+  const modePartitions = Object.create(null);
+  for (const mode of [SIM_MODE.FLIGHT, SIM_MODE.DOCKED, SIM_MODE.SWARM, SIM_MODE.YARD]) {
+    const filterFn = (s) => systemRunsInMode(s.name, mode);
+    const mAll = all.filter(filterFn);
+    const mTable = table.filter(filterFn);
+    const mCombat = combat.filter(filterFn);
+    const mCalendar = calendar.filter(filterFn);
+    const mTableCalendar = tableCalendar.filter(filterFn);
+    const mTickQueues = [];
+    const mCatchupTickQueues = [];
+    for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) {
+      mTickQueues.push(tickQueues[m].filter(filterFn));
+      mCatchupTickQueues.push(catchupTickQueues[m].filter(filterFn));
+    }
+    modePartitions[mode] = {
+      all: mAll,
+      table: mTable,
+      combat: mCombat,
+      calendar: mCalendar,
+      tableCalendar: mTableCalendar,
+      tickQueues: mTickQueues,
+      catchupTickQueues: mCatchupTickQueues,
+    };
+  }
+
   const freshRecord = (baseline) => ({ baseline, stamps: new Map(), seeded: true });
   // Calendar membership is fixed at partition time; updateDt is called for every queued
   // system every step, so the non-calendar early-out must not re-derive the clock from
@@ -171,6 +243,7 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     tableCalendar,
     tickQueues: calendar.length ? tickQueues : null,
     catchupTickQueues: calendar.length ? catchupTickQueues : null,
+    modePartitions,
     updateDt,
     dispose,
   };
@@ -178,21 +251,62 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
 
 export function updateQueueForThisStep(partitions, state) {
   if (!partitions) return [];
+  const mode = resolveActiveSimMode(state);
+  const target = (mode !== SIM_MODE.UNSCOPED && partitions.modePartitions && partitions.modePartitions[mode]) || partitions;
+
+  let queue;
   if (isCatchupPresentationSkip(state)) {
-    if (!isProductionClockState(state)) return partitions.table;
-    if (state && state.clockWake && state.clockWake.calendar === true) return partitions.tableCalendar;
+    if (!isProductionClockState(state)) queue = target.table;
+    else if (state && state.clockWake && state.clockWake.calendar === true) queue = target.tableCalendar;
+    else {
+      const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+      if (tick <= 1) queue = target.tableCalendar;
+      else {
+        const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS) % CALENDAR_CLOCK_PERIOD_TICKS;
+        queue = (target.catchupTickQueues && target.catchupTickQueues[mod]) || target.table;
+      }
+    }
+  } else if (!isProductionClockState(state)) {
+    queue = target.all;
+  } else if (state && state.clockWake && state.clockWake.calendar === true) {
+    queue = target.all;
+  } else {
     const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
-    if (tick <= 1) return partitions.tableCalendar;
-    const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS) % CALENDAR_CLOCK_PERIOD_TICKS;
-    return (partitions.catchupTickQueues && partitions.catchupTickQueues[mod]) || partitions.table;
+    if (tick <= 1) queue = target.all;
+    else {
+      const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
+        % CALENDAR_CLOCK_PERIOD_TICKS;
+      queue = (target.tickQueues && target.tickQueues[mod]) || target.combat;
+    }
   }
-  if (!isProductionClockState(state)) return partitions.all;
-  if (state && state.clockWake && state.clockWake.calendar === true) return partitions.all;
-  const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
-  if (tick <= 1) return partitions.all;
-  const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
-    % CALENDAR_CLOCK_PERIOD_TICKS;
-  return (partitions.tickQueues && partitions.tickQueues[mod]) || partitions.combat;
+
+  if (state && typeof state === 'object') {
+    const totalCount = partitions.all ? partitions.all.length : 0;
+    const smr = state.simModeRuntime || (state.simModeRuntime = {
+      mode: null,
+      activeCount: 0,
+      totalCount: 0,
+      skippedCount: 0,
+    });
+    smr.mode = mode;
+    smr.activeCount = queue.length;
+    smr.totalCount = totalCount;
+    smr.skippedCount = totalCount - queue.length;
+  }
+
+  return queue;
+}
+
+export function getStepExecutionStats(partitions, state) {
+  const mode = resolveActiveSimMode(state);
+  const queue = updateQueueForThisStep(partitions, state);
+  const total = partitions && partitions.all ? partitions.all.length : 0;
+  return {
+    mode,
+    activeCount: queue.length,
+    totalCount: total,
+    skippedCount: total - queue.length,
+  };
 }
 
 export function shouldRunSystemThisStep(systemName, state) {
