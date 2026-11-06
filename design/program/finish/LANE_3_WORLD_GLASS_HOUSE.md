@@ -693,6 +693,21 @@ Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VIS
   `offsetWidth` is event-driven (resize/ResizeObserver, cargo-buy animation), stale-flagged
   (`objectiveEdgeBoxes` re-measures only on invalidate), or explicitly bounded to one forced
   layout per frame. No per-frame layout reads found.
+- **G6 — One type voice + the worst screens (2026-11-06, owner: "fully professional and sleek").**
+  The UI sources carried 30+ letter-spacing values in 146 sheets (each screen its own poster-width
+  caps `LABEL`). `src/ui/orrery/typeGovernor.js` (installed by `consoleStandard.js`, pure rule fn
+  unit-tested in `test/ui-type-governor.test.mjs`) applies STATION_STANDARD §2 from measured style as
+  screens mount: label tracking ≤ .075em, normal width at label sizes, ≥7-word capitals as sentences;
+  it only narrows and skips `#screens`-external HUD, SVG, form fields and `data-type-ink="keep"`.
+  Fixed from the 1440×900 sweep: Crucible entry (all four setting rows now fit; TRAINING/QUICK PLAY
+  are keys), Armory (aligned cards, no `SC…` truncation, readable Esc hint, keys, hull schematic
+  not cropped), Research chips, Credits dial, New Game stat sheet (<1561px), Chart verbs, Save/Load
+  badge line. Verified with `ui-bench` at 1440×900 + 1920×1080, zero geometry findings on the touched set.
+  **Open (next sitting):** hull-ring "LINE / winch speed" reading sits on the right arc at 1440 in
+  New Game (label x is computed from an earlier box than the arc); `src/ui/ship/shipSheet.js` owns its
+  own stylesheet, so `check-ui-screen-imports` fails (another lane's new file — material belongs in
+  `deckplate/`); Shipworks left column scrolls with no edge fade; flight HUD files were mid-edit by
+  another agent so the HUD got no pass; Missions screen prints the objective three times.
 
 ### Wave W2 — an economy you can play and a long game that lasts
 - **Row 544 W-ECONOMY** — travel ≤ 50 % of time, a play-changing purchase every 15–25 minutes, pay by the tonne.

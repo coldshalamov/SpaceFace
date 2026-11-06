@@ -41,6 +41,12 @@ test('running text in capitals becomes sentence case in the reading face, at lea
   assert.equal(patch['letter-spacing'], '.005em');
 });
 
+test('a label chain joined by separators keeps its capitals, however long', () => {
+  const patch = governType(label({ words: 8, chars: 41, chain: true, letterSpacingPx: 12 * 0.2 }));
+  assert.equal(patch['text-transform'], undefined);
+  assert.equal(patch['letter-spacing'], `${TYPE_GOVERNOR.trackingSmall}em`);
+});
+
 test('a short label is never turned into a sentence', () => {
   const patch = governType(label({ words: 3, chars: 17, letterSpacingPx: 12 * 0.2 }));
   assert.equal(patch['text-transform'], undefined);

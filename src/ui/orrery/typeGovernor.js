@@ -16,8 +16,8 @@
 //   tracking   uppercase label <=17px  -> letter-spacing <= .075em
 //              uppercase 18-27px       -> <= .06em;   28px and up -> <= .04em
 //   width      uppercase <22px with a wide axis (wdth > 105) -> wdth 100, weight kept (<= 700)
-//   sentence   uppercase running text (>= 6 words or >= 40 chars, <= 17px) -> Instrument Sans,
-//              sentence case, 13px floor, normal tracking
+//   sentence   uppercase running text (>= 7 words or >= 44 chars, <= 17px, not a chain joined by
+//              separators such as "SECTOR · CONCORD") -> Instrument Sans, sentence case, 13px floor
 
 export const TYPE_GOVERNOR = Object.freeze({
   trackingSmall: 0.075,   // em, labels up to 17px
@@ -26,8 +26,8 @@ export const TYPE_GOVERNOR = Object.freeze({
   wideAxisCeiling: 105,   // wdth above this is "poster width" at label sizes
   labelCeilingPx: 22,     // below this the width rule applies
   sentenceMaxPx: 17,
-  sentenceWords: 6,
-  sentenceChars: 40,
+  sentenceWords: 7,
+  sentenceChars: 44,
   sentenceMinPx: 13,
   maxWeight: 700,
 });
@@ -40,12 +40,15 @@ const installed = new WeakSet();
 /**
  * Pure rule: given the measured style of one uppercase text element, return the declarations to
  * apply (property -> value) or null when it already meets the standard.
- * @param {{fontSize:number, letterSpacingPx:number, words:number, chars:number, wdth:number, weight:number, variation:string}} m
+ * @param {{fontSize:number, letterSpacingPx:number, words:number, chars:number, chain?:boolean, wdth:number, weight:number, variation:string}} m
  */
 export function governType(m, cfg = TYPE_GOVERNOR) {
   const fs = m.fontSize > 0 ? m.fontSize : 12;
   const out = {};
-  const isSentence = fs <= cfg.sentenceMaxPx && (m.words >= cfg.sentenceWords || m.chars >= cfg.sentenceChars);
+  // A chain joined by separators ("SECTOR · CONCORD · YOU ARE HERE") is a row of labels, not a sentence:
+  // it keeps its capitals and only has its tracking governed.
+  const isSentence = fs <= cfg.sentenceMaxPx && !m.chain
+    && (m.words >= cfg.sentenceWords || m.chars >= cfg.sentenceChars);
   if (isSentence) {
     out['text-transform'] = 'none';
     out['letter-spacing'] = '.005em';
@@ -78,8 +81,9 @@ function measure(el, win) {
   return {
     fontSize: parseFloat(s.fontSize) || 12,
     letterSpacingPx: parseFloat(s.letterSpacing) || 0,
-    words: own.split(/\s+/).length,
+    words: own.split(/\s+/).filter((token) => /[A-Za-z]/.test(token)).length,
     chars: own.length,
+    chain: /[·•|›»—]/.test(own),
     wdth: wdthMatch ? parseFloat(wdthMatch[1]) : (Number.isFinite(stretch) ? stretch : 100),
     weight: parseFloat(s.fontWeight) || 650,
     variation,

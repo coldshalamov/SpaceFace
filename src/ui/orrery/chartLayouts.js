@@ -208,6 +208,7 @@ ${C} .gm-frame-group .gm-frame-btn { padding:4px 12px !important; letter-spacing
   border-radius:2px !important; background-color:rgb(${BONE} / .05) !important; }
 ${C} .gm-frame-group .gm-frame-btn:not(:disabled):is(:hover, :focus-visible) { border-color:rgb(${BONE} / .75) !important; background-color:rgb(${BONE} / .12) !important; }
 ${C} .gm-frame-group .gm-frame-btn:disabled { border-color:rgb(${BONE} / .16) !important; }
+${C} .gm-frame-group { gap:6px 12px !important; }
 /* setting a course is a commit verb in bone at the reading's weight; the Hand lights where you reach it */
 ${C} :is(#gm-set-course-btn, .gm-plot-btn) { ${PLAIN} width:auto !important; min-height:0 !important; padding:6px 0 8px 12px !important; justify-content:flex-start !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;
