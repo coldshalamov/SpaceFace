@@ -65,20 +65,23 @@ last300 review is end-only; final independent release approvals0/3, not started.
 
 <!-- zcode-inf20c released 2026-10-29: INFERENCE 20 complete — 20/20 units landed and pushed (2e5bf4c5633 … e5ac485619fd), each recorded via inference-record; see design/program/inference-memory.json and the sitting's final report. -->
 
-<!-- Lane 1 PIPELINE (master plan) — active claims, 2026-11-06 -->
+<!-- Lane 1 PIPELINE (master plan) — claims, 2026-11-06 -->
 ## Lane 1 PIPELINE — master-plan campaigns E10 → E1 → E5 → E9
 
-Lane 1 of `finish/MASTER_PLAN.md` is active. Diagnosis memos:
-`finish/campaigns/E10/DIAGNOSIS.md`, `finish/campaigns/E1/DIAGNOSIS.md`.
+Lane 1 of `finish/MASTER_PLAN.md` is active. Memos + evidence:
+`finish/campaigns/{E10,E1,E5,E9}/`.
 
-| Work | Owner | Exact write set | Note |
+| Work | Owner | State | Write set |
 |---|---|---|---|
-| E10 frame-truth dashboard | Lane 1 | NEW `src/core/frameTruth.js`, `test/frame-truth*.test.mjs`, `finish/campaigns/E10/*`; small wiring edits in `src/core/presentationRunner.js` | Consolidates existing probes; renderer internals untouched |
-| E1 playout buffer | Lane 1 | `src/render/snapshotFence.js` (history ring + delayed presented clock — the agreed pose-writer interface with Lane 3; renderer callers keep `latestSnapshot()/previousSnapshot()` unchanged), `src/core/wholeSimBrowserWorker.js` + `scripts/lib/simWorkerHost.mjs` (stall-injection seam only), `src/core/simLaneMain.js` (flag parse), `finish/campaigns/E1/*` | Renderer file NOT edited; Codex perf's in-flight files untouched |
-| E5 shared memory / Electron-first | Lane 1 | `vercel.json` (COOP/COEP headers), `electron/main.cjs` (session isolation + switch audit), `finish/campaigns/E5/*` | after E1 |
-| E9 load in seconds | Lane 1 | `scripts/build-bundle.mjs` + boot/loading entry files, `finish/campaigns/E9/*` | after E5 |
+| E10 frame-truth dashboard | Lane 1 | **DONE** — recorder + overlay (Ctrl+Alt+F, ?frameTruth=1) + JSON export (Ctrl+Alt+J) | `src/core/frameTruth.js`, ingest seams in `presentationRunner.js`/`simLaneMain.js`, fence registry |
+| E1 playout buffer | Lane 1 | **Verify MET** — 18-pack history, adaptive 33–100 ms delay, rate modulation, ≤150 ms extrapolation, damped re-seat; before/after traces + video committed | `src/render/snapshotFence.js` (pose-writer interface; renderer untouched), stall harness in `wholeSimBrowserWorker.js`/`simLaneMain.js` |
+| E5 shared memory / Electron-first | Lane 1 | **Landed** (vercel headers, trace probe, audits); Electron live probe + iGPU per-switch A/B + signing cert = flagged open | `vercel.json`, `campaigns/E5/*` |
+| E9 load in seconds | Lane 1 | **Diagnosed** (31.6 MB eager closure measured; road = mode-scoped module graphs with E3's manifest) — implementation next | `campaigns/E9/*` so far |
 
 Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf's in-flight files.
+Commit scope note (2026-11-06): Lane 1's staged E5 paths rode commit f8ca370aac75 (the S7
+cherry-pick's `--continue` swallowed the shared index); content is committed and correct —
+attribution is mixed in that one commit's message.
 
 <!-- Lane F (Crucible Swarm overhaul) — hand-offs for Lane S -->
 ## Crucible Swarm — Lane F notes for Lane S
@@ -223,3 +226,33 @@ the refactor owner's call: either restore `src/data/missions.js` from HEAD and r
 Journey framing, or complete the intended merge. Until (b) is fixed, tests importing missions and
 the ordinary boot are down for everyone. Lane 5 holds `data/missions.js` untouched from here and
 waits to run its checks.
+
+<!-- Lane 4 SHIP (master plan) - active claims, 2026-11-06 -->
+## Lane 4 SHIP - master-plan campaigns P1, P2, P4, P3
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| P1 the Ship Sheet | Lane 4 | `src/ui/ship/shipStats.js`, `src/ui/ship/shipSheet.js`, `src/ui/station/screens/shipworks.js`, `src/ui/screens/newGame.js`, `src/ui/starterAirCard.js`, `test/ship-stats.test.mjs`, `finish/campaigns/P1/*` | Landed. Shipworks and THE SHIP are one shared stage, so both read the same sheet. |
+| P2 parts that explain themselves | Lane 4 | `src/ui/ship/partFacts.js`, `src/ui/station/screens/shipworks.js`, `finish/campaigns/P2/*` | Landed: role, sentence, Mk I/II/III, intent ordering. Preview clips and duplicate merging are the remaining work, named in P2/STATUS.md. |
+| P4 fits you can see | Lane 4 | `src/ui/ship/partVisuals.js`, `finish/campaigns/P4/*` | Part-to-mount table + socket resolver only. **Deliberately does not edit `src/render/partsLibrary.js`** (perf in flight). P4's lineup verify is NOT met. |
+| P3 one pilot, one progression | Lane 4 | `finish/campaigns/P3/*` | Doc phase only. `PILOT_TREE.md` is ready and **STOPPED for the owner's approval** before any `src/` edit. |
+
+**Published for SWARM lane S (do not edit `crucible.js` / `crucibleDraft.js`):** the one ship stat
+model is `src/ui/ship/shipStats.js` - `shipStatSheet({ shipId, fittings, player })` returns the six
+1-10 stats, `shipStatDelta(before, after)` the green/red tenth deltas, and the build identity. The
+Crucible Ship & Kit and the Swarm shop should read it instead of printing derived engineering
+numbers. Part facts for a shop card are `src/ui/ship/partFacts.js` (`partFacts(id)` → role, sentence,
+tier, intent, previewId). Mounts for those fits are `src/ui/ship/partVisuals.js`.
+
+**For Lane 3 (RENDERER):** `partVisualsForFittings({ shipId, fittings })` returns
+`{ mounts: [{ id, kind, socket, socketIndex, scale, tint, glow }], sheen }` reading the hull GLB's own
+socket names through `data/modelTruth.js`. One call site in the parts admission path mounts them.
+
+# P0 blocker reported by Lane 4 (not mine to fix)
+
+`src/systems/ships.js` cannot be imported: `Cannot access 'SHIP_BY_ID' before initialization`.
+Reproduce with `node -e "import('./src/systems/ships.js')"`. Cause: a circular import through
+`src/world/tallyThreeIdentity.js`, which evaluates `makeShipEntitySpec(T.assessorShipId)` at module
+top level (commit `3e6223770f3c`, another lane). Every consumer of `systems/ships.js` throws -
+including the Ship Sheet and, by the same chain, game boot and the UI bench. The owning lane needs
+to make that constant lazy (a getter, or a call inside the exported functions).
