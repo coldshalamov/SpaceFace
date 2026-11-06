@@ -5,6 +5,8 @@
 // This sheet gives the board its own document flow: a fit rail of labelled fields, three course
 // cards, then the paint / recognition panels side by side. Scoped to `#screens .k-screen.race-board`;
 // selectors/IDs unchanged, no data or launch logic touched.
+// ui-polish-379: short densify (max-height ≤500) seats the sticky Practice/START band fully above
+// the fold at scrollTop=0 on 651×461 / 700×461 — title + fit rail + blurb no longer clip the lamp.
 
 const STYLE_ID = 'sf-orrery-race-board-layouts';
 const R = 'html body #screens .k-screen.race-board';
@@ -140,6 +142,23 @@ ${R}:has(> .race-board-start) { scroll-padding-top:128px; }
 
 @media (max-height: 620px) {
   ${R} .race-board-course > .race-map { max-height:110px !important; margin:6px 0 !important; }
+}
+/* Short densify (ui-polish-379): seat START fully above the fold at scrollTop=0.
+   At ≤500 tall (651×461 / 700×461) the title + fit rail + blurb pushed the sticky
+   Practice/START band 12–32px past the viewport bottom so the lamp clipped. Tighten
+   the stack above START; sticky top tracks the reduced board padding. */
+@media (max-height: 500px) {
+  ${R} { padding:16px clamp(16px, 4vw, 56px) 20px !important; }
+  ${R} > .k-title { margin:0 0 8px !important; }
+  ${R} > .k-title > .k-display { font-size:clamp(22px, 3.2vw, 42px) !important; margin:0 0 4px !important; }
+  ${R} > .k-title > .k-sentence:last-child { font-size:12.5px !important; line-height:1.35 !important; }
+  ${R} > .race-board-tools { padding:8px 12px !important; gap:8px 10px !important; margin:0 0 6px !important; }
+  ${R} select.k-word { min-height:34px !important; padding:6px 28px 6px 10px !important; font-size:14px !important; }
+  ${R} .race-board-tools > button.k-word,
+  ${R} .race-board-result > button.k-word { min-height:34px !important; }
+  ${R} > p.k-sentence { font-size:12.5px !important; line-height:1.35 !important; margin:0 0 8px !important; }
+  ${R} > .race-board-start { top:-16px !important; padding:10px 14px !important; margin:0 0 10px !important; }
+  ${R}:has(> .race-board-start) { scroll-padding-top:100px; }
 }
 @media (max-width: 900px) {
   ${R} { grid-template-columns:minmax(0, 1fr) !important; }
