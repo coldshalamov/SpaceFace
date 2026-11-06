@@ -382,6 +382,12 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  /* ui-polish-341: Factions terms at 761-870 still float bare (Factions uses .orr-help-factions, not
+     .orr-help-list). Match the Ores hairline card in this band so the ledger reads as one sheet. */
+  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-factions .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
 /* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
    1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
