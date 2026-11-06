@@ -62,11 +62,14 @@ Saucer     10 10 10 10 10 10 Generalist
   `shipStatSheet({shipId:'ship_hornet',fittings:[…]})` vs `shipStatSheet({shipId:'ship_hawser',…})`;
   the expectation encoded in the model is Hornet wins the slug-fest (Firepower) and Hawser the tow
   job (Muscle), with Speed/Toughness deciding the drag race.
-- **`shipStatSheet` cannot be exercised in this checkout right now**: `src/data/missions.js` is
-  being rewritten by another agent and imports modules that do not exist yet
-  (`kesslerScaleWorksite.js`, `captainStandingOrders.js`). Every import that reaches it — including
-  `systems/ships.js` — throws. The model passed its full suite earlier in the session when that
-  file was whole; re-run `node --test test/ship-stats.test.mjs` when it is.
+- **`shipStatSheet` cannot be exercised in this checkout right now.** `src/systems/ships.js` throws
+  `Cannot access 'SHIP_BY_ID' before initialization` on import — a circular import through
+  `src/world/tallyThreeIdentity.js`, which calls `makeShipEntitySpec()` at module top level (landed
+  by another lane in `3e6223770f3c`). Every module that reaches `systems/ships.js` — including this
+  sheet and the game's own boot — throws. **This is not caused by the Ship Sheet** (it fails on
+  `import('./src/systems/ships.js')` alone, with nothing of mine in the chain), and it is not mine to
+  fix. The model passed its full suite earlier in the session while that file was whole; re-run
+  `node --test test/ship-stats.test.mjs` once the cycle is repaired.
 - **The flight-host side column still speaks engineering** (`0/1 fitted · 0 draw` per system). It is
   the systems/power instrument rather than the ship's stats; the `core · N draw` caption is now
   `power used · N of M`, but the per-row draw numbers are still raw. Follow-up.
