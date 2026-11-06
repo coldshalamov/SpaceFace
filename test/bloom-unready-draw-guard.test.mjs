@@ -206,7 +206,7 @@ test('guard skips a stamped never-compiled material during the pass and queues i
   await Promise.resolve();
 });
 
-test('guard admits each authored stamp flavour and leaves unstamped/compiled draws alone', async () => {
+test('guard admits each authored stamp flavour and queues cold unstamped draws too', async () => {
   const { renderer, draws, admissions, compile } = rendererHarness();
   const guard = createUnreadyDrawableGuard(renderer);
   const scene = { traverse() {} };
@@ -214,6 +214,10 @@ test('guard admits each authored stamp flavour and leaves unstamped/compiled dra
 
   const sharedStamped = { userData: { spacefaceSharedMaterialRole: 'ship-hull' } };
   const canonStamped = canonStampedMaterial();
+  // E6: an unstamped material with no linked program used to draw and link inside the
+  // presented frame (measured: plume, RCS and ribbon materials were the surviving
+  // in-frame links). VFX/tether/prop roots are exactly this class, so a cold unstamped
+  // draw now joins the admission lane like an authored one.
   const unstamped = { userData: {} };
   const compiledStamped = canonStampedMaterial();
   compile(compiledStamped);
@@ -222,14 +226,14 @@ test('guard admits each authored stamp flavour and leaves unstamped/compiled dra
   try {
     assert.equal(renderer.renderBufferDirect(null, scene, null, sharedStamped, mesh, null), undefined);
     assert.equal(renderer.renderBufferDirect(null, scene, null, canonStamped, mesh, null), undefined);
-    assert.equal(renderer.renderBufferDirect(null, scene, null, unstamped, mesh, null), 'drawn');
+    assert.equal(renderer.renderBufferDirect(null, scene, null, unstamped, mesh, null), undefined);
     assert.equal(renderer.renderBufferDirect(null, scene, null, compiledStamped, mesh, null), 'drawn');
   } finally {
     guard.restore();
   }
 
-  assert.equal(draws.length, 2);
-  assert.equal(admissions.length, 2);
+  assert.equal(draws.length, 1);
+  assert.equal(admissions.length, 3);
   assert.ok(admissions.every((subject) => subject === mesh));
   await Promise.resolve();
 });

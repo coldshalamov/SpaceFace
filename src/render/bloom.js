@@ -1513,6 +1513,14 @@ function installUnreadyDrawGuard(renderer) {
         }
       }
     }
+    // Only a presented pass is gated for readiness. Admission, residency-proxy and compile
+    // passes draw deliberately off-screen; gating them would stop the very work that makes a
+    // later presented draw safe (and the boot route depends on it). Upload *safety* below
+    // (detached payloads) still applies to every draw.
+    const presented = renderer.__sfPresentedPass === true;
+    const residency = renderer.__sfResidencyManager;
+    const gated = presented && !!residency && !renderer.__sfExactTargetTouch;
+    if (gated && residency.admitGeometry(object, geometry) === false) return undefined;
     // Recover available mip donors and check live upload safety in one allocation-free
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
@@ -1520,11 +1528,17 @@ function installUnreadyDrawGuard(renderer) {
       queuePresentedDetachRehydrate(renderer, { geometry, material });
       return undefined;
     }
-    if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
+    // The compiled check is deliberately NOT scoped to the armed scene scan. The scan is
+    // skipped at settle (M2) to stop paying for the walk, but a new material mounted on
+    // an existing object after settle changes neither the program count nor the scene
+    // child count before its first draw — that draw would link the driver program inside
+    // the presented frame (measured: 5 in-frame links in one flight). A linked program's
+    // isReady() is a cached boolean in three, so the settled cost is one properties read.
+    if (presented && !renderer.__sfExactTargetTouch && material) {
       const data = material.userData;
-      const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
       const props = renderer.properties;
-      // Unknown properties state and cold unstamped materials keep their existing behavior.
+      // No properties state (a bare test renderer) draws as today; a real renderer always
+      // answers, so a cold material is queued rather than linked in-frame.
       let compiled = true;
       try {
         if (props && typeof props.get === 'function') {
@@ -1540,7 +1554,11 @@ function installUnreadyDrawGuard(renderer) {
             if (compiled && typeof variant.isReady === 'function') {
               try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
             }
-          } else if (stamped) {
+          } else {
+            // No program at all: this draw would link it inside the presented frame.
+            // Stamped or not — VFX, tether and prop materials are the unstamped class
+            // that produced the measured in-frame links. Queue the root through pipeline
+            // admission and let the next presented frame draw the compiled result.
             compiled = false;
           }
         }
@@ -1559,7 +1577,11 @@ function installUnreadyDrawGuard(renderer) {
         return undefined;
       }
     }
-    return inner.call(this, camera, scene, geometry, material, object, group);
+    const result = inner.call(this, camera, scene, geometry, material, object, group);
+    // The draw just uploaded any missing buffers; record the residency proof so the next
+    // frame takes the cheap path and the held-drawable counters see the body as ready.
+    if (gated) residency.noteDrawn(object, geometry, material);
+    return result;
   }
   renderer.__sfUnreadyDrawGuardInner = inner;
   renderer.__sfUnreadyDrawGuardFn = unreadyDrawGuard;
@@ -1692,7 +1714,18 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
   }
 
   function hideUnreadySceneDrawables(scene) {
-    if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
+    if (renderer) {
+      renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
+      // Presented-pass marker for the draw wrapper. The scene walk may still be skipped at
+      // settle, but the per-draw readiness gate must run for every presented draw: a new
+      // material on an existing object changes neither the program count nor the scene child
+      // count before its first draw.
+      renderer.__sfPresentedPass = true;
+      renderer.__sfDrawGuardPassSettled = false;
+      // Arm for the pass. `restore` disarms again when the pass settled, so between frames
+      // the raw draw path is still the installed one (M2's measured win).
+      if (disarmOnSettle) rearmPresentedDrawGuard(renderer);
+    }
     unreadySceneCount = 0;
     // Aspect-flip hold: three uploads attributes inside projectObject, before the
     // draw guard can refuse. Force this walk even when the program set is steady,
@@ -1781,7 +1814,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     if (!orientationHold && detachGuardSettled && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
-      if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
+      if (renderer) renderer.__sfDrawGuardPassSettled = true;
       return;
     }
     unreadyProgramsPending = false;
@@ -1799,7 +1832,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     }
     if (!orientationHold && detachGuardSettled && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
-      if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
+      if (renderer) renderer.__sfDrawGuardPassSettled = true;
       return;
     }
     // Not settled this pass — the draw-time wrapper must be on before this frame's draws.
@@ -1957,7 +1990,17 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
   }
 
   function restoreUnreadySceneDrawables() {
-    if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+    if (renderer) {
+      renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+      if (renderer.__sfUnreadyDrawGuardDepth === 0) renderer.__sfPresentedPass = false;
+      // A settled pass hands the hot draw path back to three (M2); a pass with pending work
+      // or a live detach release keeps the wrapper installed for the next pass.
+      if (renderer.__sfUnreadyDrawGuardDepth === 0 && disarmOnSettle
+          && renderer.__sfDrawGuardPassSettled === true) {
+        disarmPresentedDrawGuard(renderer);
+      }
+      renderer.__sfDrawGuardPassSettled = false;
+    }
     // Keep the temporary visibility record only while the opt-in draw histogram will consume it.
     // Unarmed readiness passes must not retain drawable roots across frames.
     const recordHiddenDrawables = renderer?.__sfDrawHistogramArmed === true;

@@ -51,7 +51,7 @@ import {
   entityHasAuthoredPendingRoot,
   entityHasAuthoredResidentRoot,
   entityHomeSectorMismatch,
-  entityIsOnDeadlineGlassScan,
+  entityIsOnDeadlineGlassScan as entityIsOnDeadlineGlassScanImpl,
   entityIsExplicitRenderFocus,
   entityTimeToGlassSeconds,
   entityWithinPlayerRadius,
@@ -438,6 +438,7 @@ import { createCrucibleWarmPackageResidency } from './crucibleWarmPackageResiden
 import {
   ADMISSION_SLICE_TARGET_MS,
   shouldContinueAdmissionSlice,
+  shouldStartHeavyAdmission,
   shouldStartHeavyAdmissionEventually,
 } from './admissionSliceBudget.js';
 import {
@@ -596,6 +597,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import { createResidencyManager, RESIDENCY_LOOKAHEAD_S } from './residencyManager.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
@@ -4060,6 +4062,59 @@ function entityIsOnDeadlineGlass(entity, state) {
     0,
     entityVisualCullRadius(entity, entity.mesh),
   )) === TABLE_BAND.GLASS;
+}
+
+/**
+ * Predictive pre-admission (E6). A body that will be on the glass inside the 2 s horizon is
+ * admission-urgent even when its current position is still outside the glass rectangle:
+ * building it on arrival is the pop, and forcing it into a late frame is the brick. Uses the
+ * existing approach-aware time-to-glass query (relative velocity, ledger rows, camera lead) so
+ * there is one predictor, not two.
+ */
+function entityPredictedOnDeadlineGlass(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entityIsOnDeadlineGlass(entity, state)) return true;
+  let seconds = Infinity;
+  try {
+    seconds = entityTimeToGlassSeconds(
+      entity,
+      renderAdmissionEnv(state),
+      state,
+      RESIDENCY_LOOKAHEAD_S,
+    );
+  } catch (_) {
+    return false;
+  }
+  return Number.isFinite(seconds) && seconds <= RESIDENCY_LOOKAHEAD_S;
+}
+
+/**
+ * Deadline glass = on the glass now, or predicted to enter it inside the residency lookahead.
+ * Every caller of the original scan predicate wants admission urgency, so prediction belongs
+ * here rather than in a second lane.
+ */
+function entityIsOnDeadlineGlassScan(entity, state, scan) {
+  if (entityIsOnDeadlineGlassScanImpl(entity, state, scan)) return true;
+  return entityPredictedOnDeadlineGlass(entity, state);
+}
+
+/**
+ * Does the pending build queue hold anything the player is about to see? Bounded head scan —
+ * this answers the late-frame gate, so it must stay cheap even with a 70-row backlog.
+ */
+const MESH_BUILD_DEADLINE_SCAN_LIMIT = 64;
+function meshBuildQueueHasDeadlineWork(owner, state) {
+  const queue = owner && owner._meshBuildQueue;
+  if (!queue || !state) return false;
+  const start = owner._meshBuildQueueHead | 0;
+  const end = Math.min(queue.length, start + MESH_BUILD_DEADLINE_SCAN_LIMIT);
+  if (end <= start) return false;
+  const scan = makeHoldExemptScanContext(state);
+  for (let i = start; i < end; i++) {
+    const entity = resolveWorldPresentationEntity(state, queue[i]);
+    if (entityIsOnDeadlineGlassScan(entity, state, scan)) return true;
+  }
+  return false;
 }
 
 /**
@@ -12090,6 +12145,25 @@ export const render = {
           joinOutstanding: true,
         }) : Promise.resolve({ skipped: true })
       );
+      // E6: one residency manager owns "is this drawable's data on the GPU?" for every
+      // drawable. The draw guard consults it per draw (entity leaves, VFX roots, tethers,
+      // props); over-budget first uploads are held here and drained off-screen through the
+      // same residency pass the warm roots use mid-flight. Counters ride rendererData for
+      // the frame-solid probe and the E10 dashboard.
+      if (!rendererData.sfResidencyManager) {
+        const manager = createResidencyManager({
+          requestRoots: (roots) => prepareStartupGeometryResidency(this.renderer, roots, {
+            includeEmpty: false,
+            yieldToMain: yieldToBrowser,
+          }),
+          hasUnresidentGeometry,
+          onRequest: () => this._scheduleResidencyDrain(),
+          onError: (message, error) => laneWarn(this, 'residencyManager', `[render] ${message}`, error),
+        });
+        rendererData.sfResidencyManager = manager;
+        this.renderer.__sfResidencyManager = manager;
+        this._residencyManager = manager;
+      }
     }
     const pendingSubjectHolds = new Map();
     const markSubjectPipelinesPending = (subject, pending, debugBy = null) => {
@@ -25108,6 +25182,25 @@ export const render = {
     this._nemesisHullPresentations.delete(mesh);
   },
 
+  // E6: a held drawable's buffers are uploaded off-screen, never inside a presented frame.
+  // The queue drains on a bounded background task (the residency pass yields to the browser
+  // between proxy uploads), so this timer is a scheduler, not work.
+  _scheduleResidencyDrain() {
+    if (this._residencyDrainTimer != null) return;
+    const timer = setTimeout(() => {
+      this._residencyDrainTimer = null;
+      const manager = this._residencyManager;
+      if (!manager) return;
+      try { manager.drainUploads(); } catch (error) {
+        laneWarn(this, 'residencyDrain', '[render] residency drain failed', error);
+      }
+      if (manager.pendingCount() > 0) this._scheduleResidencyDrain();
+    }, 200);
+    // A background tab must not keep a timer alive after teardown.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    this._residencyDrainTimer = timer;
+  },
+
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
@@ -26840,15 +26933,24 @@ export const render = {
       }
     };
     if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
+      const lastPresentDt = this.state && this.state.render && this.state.render.lastPresentDtMs;
+      const presentBaseline = this.state && this.state.render && this.state.render.presentDtBaselineMs;
       const gate = shouldStartHeavyAdmissionEventually(
-        this.state && this.state.render && this.state.render.lastPresentDtMs,
+        lastPresentDt,
         this._meshBuildLateSkips,
-        { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
+        { baselineMs: presentBaseline },
       );
-      // The starvation floor still consults the forced wallet — a spent frame
+      // The skip-count release exists to keep work moving on a permanently-slow host, but it
+      // spends a whole heavy build inside a frame the player is watching. A build is only
+      // worth that spend when the body is about to be seen: the queue's deadline set now
+      // includes the 2 s prediction horizon, so off-screen backlog still waits.
+      const forcedBySkips = gate.start && !shouldStartHeavyAdmission(lastPresentDt, undefined, presentBaseline);
+      // The starvation floor still consults the forced wallet - a spent frame
       // defers the forced start (keeping the late streak armed) instead of
       // running the one build un-metered like every other forced lane.
-      const lateStartAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+      const lateStartAllowed = gate.start
+        && (!forcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
+        && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
       if (!gate.start || lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
       if (!lateStartAllowed) {
         if (!(yield* driveHoist(this))) return 0;
@@ -26961,12 +27063,19 @@ export const render = {
         // refusing ambient rows, and a resume under a now-late frame must stop
         // building them.
         if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
+          const resumedLastDt = this.state && this.state.render && this.state.render.lastPresentDtMs;
+          const resumedBaseline = this.state && this.state.render && this.state.render.presentDtBaselineMs;
           const resumedGate = shouldStartHeavyAdmissionEventually(
-            this.state && this.state.render && this.state.render.lastPresentDtMs,
+            resumedLastDt,
             this._meshBuildLateSkips,
-            { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
+            { baselineMs: resumedBaseline },
           );
+          // Same predictive rule as the prologue: a skip-count release is only allowed when
+          // the queue actually holds a body inside the lookahead horizon.
+          const resumedForcedBySkips = resumedGate.start
+            && !shouldStartHeavyAdmission(resumedLastDt, undefined, resumedBaseline);
           const resumedStartAllowed = resumedGate.start
+            && (!resumedForcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
           if (!resumedGate.start || resumedStartAllowed) {
             this._meshBuildLateSkips = resumedGate.skippedCount;
@@ -30039,6 +30148,17 @@ export const render = {
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
+    // E6 residency: reset the per-frame inline upload wallet. A drawable's first upload is
+    // either small enough to pay here or held for the off-screen residency lane.
+    if (this._residencyManager) {
+      this._residencyManager.beginFrame();
+      // Publish the counters at ~2 Hz for probes and the E10 dashboard. One small object per
+      // 30 frames, never per draw.
+      const frameSeq = (this._residencyPublishSeq = (this._residencyPublishSeq | 0) + 1);
+      if ((frameSeq % 30) === 0 && this.state && this.state.render) {
+        this.state.render.residency = this._residencyManager.snapshot();
+      }
+    }
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
     // World-anchored presentation integrates by the wall frame scaled by the live time-effects
     // scale — the same model _bgTime already uses below. Hit-stop and bullet-time slow it; a zero
