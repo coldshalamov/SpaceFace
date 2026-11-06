@@ -651,7 +651,30 @@ export function rootOnLiveGlass(bounds, frustum, position, radius) {
 export function cameraRoofAt(owner, x, z, pad = 0) {
   const structural = clearanceStructuralMeshes(owner);
   if (!structural) return -Infinity;
+  const frame = _roofFrame;
+  if (frame) {
+    // Inside a glide frame the mesh set is not edited between queries, so each record is
+    // validated once (the first query) and every later query walks the frozen list.
+    if (frame.owner === null) {
+      frame.owner = owner;
+      frame.meshes = structural.slice();
+      frame.recs = frame.meshes.map((mesh) => cameraClearanceBoxForMesh(mesh));
+    }
+    if (frame.owner === owner) {
+      return cameraClearanceFloorWalk(frame.meshes, x, z, -Infinity, pad, frame.recs);
+    }
+  }
   return cameraClearanceFloorWalk(structural, x, z, -Infinity, pad);
+}
+
+// Glide frame bracket. stepCameraGlide opens one around its queries; the snapshot is dropped on
+// close so no validated record outlives the frame that measured it.
+let _roofFrame = null;
+export function beginCameraRoofFrame() {
+  _roofFrame = { owner: null, meshes: null, recs: null };
+}
+export function endCameraRoofFrame() {
+  _roofFrame = null;
 }
 
 // Structural-only list rebuilt on the _meshes mutation version — the per-frame query walks a
@@ -761,12 +784,21 @@ export function cameraClearanceFloorAt(owner, camX, camZ, camY) {
 
 // The structural walk itself — neighborhood query for wide roots, coarse box otherwise.
 // Shared by the retain and always-walk paths so a bench-off frame matches a retained miss.
-function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
+function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0, frozenRecs = null) {
   let floor = -Infinity;
   for (let i = 0; i < structural.length; i++) {
-    const rec = cameraClearanceBoxForMesh(structural[i]);
+    const rec = frozenRecs ? frozenRecs[i] : cameraClearanceBoxForMesh(structural[i]);
     if (!rec) continue;
     if (rec.bvhQuery && rec.layout && rec.box) {
+      // Early reject, before any cell/Map/BVH work. The window query only reads a 3x3 of cells
+      // around the camera column, and every triangle it can paint lies inside rec.box, so a column
+      // more than two cells outside the box has no window content: the roof is -Infinity.
+      const b = rec.box;
+      const lay = rec.layout;
+      if (camX < b.minX - 2 * lay.cw || camX > b.maxX + 2 * lay.cw
+          || camZ < b.minZ - 2 * lay.cd || camZ > b.maxZ + 2 * lay.cd) {
+        continue;
+      }
       const sample = clearanceSampleCell(rec.layout, camX, camZ);
       const gx = sample.gx;
       const gz = sample.gz;
@@ -809,7 +841,7 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
             raw = hit.raw;
             rec.bvhCache = { gx, gz, raw: raw - roofOffsetY };
             const cells = rec.cellRoofs || (rec.cellRoofs = new Map());
-            if (cells.size >= 512) cells.clear();
+            if (cells.size >= 4096) cells.clear();
             cells.set(cellKey, raw - roofOffsetY);
           }
         } catch {

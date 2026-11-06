@@ -646,6 +646,25 @@ class HudElement {
     if (child.parentNode) child.parentNode.removeChild(child);
     child.parentNode = this; this.children.push(child); return child;
   }
+  insertBefore(child, reference) {
+    if (reference == null) return this.appendChild(child);
+    let index = this.children.indexOf(reference);
+    if (index < 0) throw new Error('Reference node is not a child of this parent');
+    if (child.nodeType === 11) {
+      for (const descendant of [...child.children]) this.insertBefore(descendant, reference);
+      return child;
+    }
+    if (child === reference) return child;
+    if (child.parentNode) {
+      const oldParent = child.parentNode;
+      const oldIndex = oldParent.children.indexOf(child);
+      oldParent.removeChild(child);
+      if (oldParent === this && oldIndex < index) index--;
+    }
+    child.parentNode = this;
+    this.children.splice(index, 0, child);
+    return child;
+  }
   replaceChildren(...children) {
     for (const child of this.children) child.parentNode = null;
     this.children.length = 0;

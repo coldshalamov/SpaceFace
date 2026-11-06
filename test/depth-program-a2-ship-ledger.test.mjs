@@ -104,7 +104,7 @@ function playedState() {
       },
       flags: {},
     },
-    story: {
+      story: {
       beatIndex: 6,
       endgameResolved: true,
       flags: { volsEchoUnlocked: true, endgame: true },
@@ -124,6 +124,18 @@ function playedState() {
           { shapeId: 'depth_h1_distress_from_inside', outcome: 'listen', at: 1500, tick: 90000 },
           { shapeId: 'depth_h5_corridor_massacre', outcome: 'published', at: 2700, tick: 162000 },
         ],
+      },
+    },
+    // inf-war-ledger-page — a front the player leaned on is a durable receipt like the rest:
+    // factions owns this record and stamps the flip-time lean; the ledger only reads it.
+    conflicts: {
+      'faction_reach:faction_scn': {
+        state: 'war', playerLean: 0.4, momentum: -20,
+        lastFlip: {
+          pairKey: 'faction_reach:faction_scn', sectorId: 'sector_helios_prime',
+          previousOwner: 'faction_scn', newOwner: 'faction_reach',
+          t: 3000, flipId: 'front:faction_reach:faction_scn:1', playerLeanMag: 0.4,
+        },
       },
     },
   };
@@ -207,10 +219,11 @@ test('A2 prose bank has at least four distinct variants for every ledger entry t
   const validation = validateShipLedgerTemplates();
   assert.deepEqual(validation, { ok: true, errors: [] });
   // Eight archive families, the three PQ-142.01 hull-history families (scar / patch / renown),
-  // FB-127's career record, and FB-014's salvage-rights receipt family.
+  // FB-127's career record, FB-014's salvage-rights receipt family, and the war page family
+  // (inf-war-ledger-page — a front the player leaned on files its turn).
   // design/VISION.md Part II: "The ship accumulates history — scars, repairs, odd fittings, a
   // reputation by hull — until it is my fucking ship."
-  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 14);
+  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 15);
   for (const type of SHIP_LEDGER_ENTRY_TYPES) {
     assert.ok(SHIP_LEDGER_TEMPLATES[type].length >= 4, `${type} must have four variants`);
     assert.equal(new Set(SHIP_LEDGER_TEMPLATES[type].map((entry) => entry.text)).size,
@@ -247,6 +260,9 @@ test('played state projects at least six source types deterministically without 
 test('duplicate live trade receipts remain distinct and speculative flags cannot invent story proof', () => {
   const state = playedState();
   state.player.tradeLedger.push({ ...state.player.tradeLedger[0] });
+  // This test pins economy-receipt identity, not page composition; the war page family is
+  // exercised by its own focused suite (inf-war-ledger-page).
+  state.conflicts = {};
   state.story.endgameResolved = false;
   state.story.endgameChoice = null;
   state.story.flags = {
@@ -315,12 +331,14 @@ test('archive is capped and paginated so a panel never receives an unbounded row
   state.player.tradeLedger = [];
   state.player.uniqueWrecks.bearings = {};
   // No hull in the berth, so the PQ-142.01 hull-history rows cannot pad the count either: this
-  // test is about the archive cap over ONE source, and every other source is silenced.
+  // test is about the archive cap over ONE source, and every other source is silenced
+  // (including the inf-war-ledger-page conflict receipt).
   state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
   state.story.facts = [];
   state.player.salvageRightsLog = [];
+  state.conflicts = {};
   state.story.titlesSeen = Array.from({ length: 600 }, (_, index) => ({
     id: `title-${index}`, title: `Passing Title ${index}`, seenAt: index * 10,
   }));
@@ -367,12 +385,14 @@ test('mounted panel renders one bounded page and keeps archive controls operable
   state.player.tradeLedger = [];
   state.player.uniqueWrecks.bearings = {};
   // No hull in the berth, so the PQ-142.01 hull-history rows cannot pad the count either: this
-  // test is about the archive cap over ONE source, and every other source is silenced.
+  // test is about the archive cap over ONE source, and every other source is silenced
+  // (including the inf-war-ledger-page conflict receipt).
   state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
   state.story.facts = [];
   state.player.salvageRightsLog = [];
+  state.conflicts = {};
   state.story.titlesSeen = Array.from({ length: 25 }, (_, index) => ({
     id: `mounted-title-${index}`, title: `Mounted Title ${index}`, seenAt: index * 10,
   }));

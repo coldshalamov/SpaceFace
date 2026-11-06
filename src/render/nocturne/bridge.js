@@ -3,6 +3,9 @@
 import { Color, Vector3 } from 'three';
 
 const owners = new WeakMap();
+// Fixed count of real GPU point lights NOCTURNE mounts; three bakes it into every program, so
+// the precompile light census (weaponLights.visiblePointLightBudget) must equal it.
+export const NOCTURNE_GPU_POINTS = 3;
 export function bindNocturneScene(scene, owner) { if (scene) owners.set(scene, owner); }
 export function unbindNocturneScene(scene, owner) { if (owners.get(scene) === owner) owners.delete(scene); }
 export function nocturneForScene(scene) { return scene ? owners.get(scene) || null : null; }

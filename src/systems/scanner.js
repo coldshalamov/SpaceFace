@@ -1,4 +1,5 @@
 import { ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, ANVIL_RETURN_GAS } from '../world/anvilSpillRecovery.js';
+import { LANTERN_WARD_REPAIR_ACTION, isLanternWardNessa } from '../data/lanternWardHail.js';
 // Scanner pulse system (GDD 2.0 §7.4).
 //
 // Consumes the locked input edge `state.input.actions.scanPulse` and annotates live entities with
@@ -1777,6 +1778,9 @@ export const scanner = {
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
     const choice = String(payload.choice || '').toLowerCase();
+    const lanternRepair = choice === LANTERN_WARD_REPAIR_ACTION && active.lanternWardHail
+      && active.actions?.some(action => action.id === choice) && isLanternWardNessa(state, target)
+      ? this.registry?.get?.('npcJobsRuntime')?.lanternWardRepair?.(target) : null;
     const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
       ? this._requestContactHeaveTo(target, availability, { wanted, ai })
       : null;
@@ -1797,6 +1801,7 @@ export const scanner = {
       roe: ai.roe || null,
       heaveTo,
       towAssist,
+      lanternRepair,
       anvilReturn,anvilRendezvous,
     });
     if (!response) return false;

@@ -109,6 +109,15 @@ export function readingOf(entry) {
       return { hero: '', unit: '', title: str(t.title), kicker: kick(type, cycle) };
     case 'name':
       return { hero: '', unit: '', title: str(t.name), kicker: kick(type, cycle) };
+    case 'war':
+      // inf-war-ledger-page — the reading names the ground and whose it is now; the row's
+      // WAR chip and the cycle carry the rest.
+      return {
+        hero: '', unit: '', title: str(t.sector),
+        kicker: kick(type, cycle, t.winner && t.loser
+          ? `${str(t.winner)} took it from ${str(t.loser)}`
+          : str(t.winner)),
+      };
     case 'salvage': {
       // FB-014 — a stunt-minted right: the chit count is the hero, the act that minted (or
       // redeemed) it is the title, and the kicker names the direction like trade does.

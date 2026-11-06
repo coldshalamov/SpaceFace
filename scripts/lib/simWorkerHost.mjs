@@ -94,6 +94,7 @@ import {
   applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
+import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
@@ -375,6 +376,10 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  const wardLife = lanternWardPresentationLife(e);
+  if (wardLife != null) {
+    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
@@ -517,6 +522,16 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const wardLife = lanternWardPresentationLife(e);
+  const wardShadow = shadow[i++];
+  if (wardLife == null) {
+    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+  } else {
+    if (!Array.isArray(wardShadow)) return false;
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+    }
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
@@ -579,6 +594,16 @@ function writeVitalShadow(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
   shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  const wardLife = lanternWardPresentationLife(e);
+  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
+  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
+  else {
+    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+    }
+    shadow[i++] = wardShadow;
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
@@ -1618,6 +1643,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
+      ['savePeekCardData', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.peekSaveCardData !== 'function') {
+          return { ok: false, reason: 'save-system-unavailable' };
+        }
+        return { ok: true, cardData: await s.peekSaveCardData(args?.raw) };
+      }],
       ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
@@ -2486,6 +2518,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let completedTick = null;
     let journalStart = host.committedJournalSequence;
     if (production) host.inputPublishes.length = 0;
+    // Work budget: the local-clock catch-up path (workBudgetMs set by the
+    // worker pump) may stop early once the reply has consumed its share of the
+    // frame — un-executed steps behave like shed debt so the world slows down
+    // instead of compounding one heavy step into a multi-hundred-ms reply.
+    // Explicit-step directives carry no budget and always run exactly.
+    const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0
+      ? msg.workBudgetMs * 1e6
+      : null;
+    let stepsExecuted = 0;
     for (let s = 0; s < steps; s++) {
       if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
@@ -2494,6 +2535,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         update47aScenarioActorIntents(state);
         sim.step(SIM_DT);
       }
+      stepsExecuted++;
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -2506,6 +2548,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           flightBackend: 'legacy',
         });
       }
+      if (workBudgetNs != null && s + 1 < steps
+          && (nowNs() - workStart) >= workBudgetNs) break;
     }
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
@@ -2601,12 +2645,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.lastInputSeq = lastPublish.inputSeq;
       host.lastInputWallMs = lastPublish.inputWallMs;
     }
-    if (steps > 0) {
+    if (stepsExecuted > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
-    host.tickCount += steps;
+    host.tickCount += stepsExecuted;
 
     const packStart = nowNs();
     let pack;
@@ -2734,6 +2778,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
+      stepsRequested: steps,
+      stepsExecuted,
       boundaryMs,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,

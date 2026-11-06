@@ -57,6 +57,7 @@ import { stationServiceLabel } from './station/stationHubModel.js';
 import { faunaPileFact, faunaSpeciesById, faunaTollFact } from '../data/alienFauna.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
+import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -174,8 +175,10 @@ function getGimmickLabel(gimmick) {
     || String(gimmick).replace(/_/g, ' ').toUpperCase();
 }
 
-export function targetDisplayName(e, { concealWreck = false } = {}) {
+export function targetDisplayName(e, { concealWreck = false, state = null } = {}) {
   if (!e) return '—';
+  const workLoad = crackerRunWorkLoadRead(state, e);
+  if (workLoad) return workLoad.name;
   if (isOrchardFrame(e)) return readableIdentity(e.data?.name, e) || 'Orchard frame';
   if (isOrchardPod(e)) {
     const commodity = COMMODITY_BY_ID.get(e.data?.commodityId);
@@ -207,7 +210,8 @@ export function targetDisplayName(e, { concealWreck = false } = {}) {
   return interactionDisplayName(e);
 }
 
-export function targetInteractionClass(e) {
+export function targetInteractionClass(e, state = null) {
+  if (isCrackerRunWorkLoad(state, e)) return 'Movable yard load';
   if (isOrchardFrame(e)) return 'Harvest facility';
   if (isOrchardPod(e)) return 'Orchard pod';
   if (isWorldSiteWorkTarget(e)) return e.data.worldSiteStructural ? 'Structural section' : 'Work site';
@@ -379,7 +383,7 @@ export function lawfulInspectionStatusText(target, state) {
 // rest of the build already uses, so the badge teaches nothing new -- it just says it sooner.
 const THREAT_TIER_WORD = ['', 'LIGHT', 'HEAVY', 'CAPITAL'];
 
-function entityClass(e) {
+function entityClass(e, state) {
   if (!e) return '';
   if (e.type === 'ship') {
     const d = e.data || {};
@@ -392,7 +396,7 @@ function entityClass(e) {
   if (e.type === 'station') {
     return e.data && e.data.isGate ? 'Gate' : 'Station';
   }
-  const interactionClass = targetInteractionClass(e);
+  const interactionClass = targetInteractionClass(e, state);
   if (interactionClass) return interactionClass;
   return typeof e.type === 'string' && e.type
     ? e.type.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -510,7 +514,7 @@ export function engagedContactReadout(state) {
   const subjectId = subjectIsEngaged ? gunId : selId;
   let text = '';
   if (subjectIsEngaged) text = '⌖ LINE TARGET · NO SELECTION';
-  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged)}`;
+  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged, { state })}`;
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
@@ -764,6 +768,8 @@ export function passengerLinerLastLegLine(entity) {
 }
 
 export function objectInfoLine(t, state, p, dist) {
+  const workLoad = crackerRunWorkLoadRead(state, t);
+  if (workLoad) return `${workLoad.classLine} · ${workLoad.note}`;
   if (isWorldSiteWorkTarget(t)) return worldSiteTargetInfoLine(t, state, p, dist);
   const pallasSeam = pallasSeamInfoLine(t, state);
   if (pallasSeam !== null) return pallasSeam;
@@ -1083,8 +1089,8 @@ export function createTargetPanel(ctx) {
       if (elEngaged.style.display !== show) elEngaged.style.display = show;
     }
 
-    const nextName = targetDisplayName(t);
-    const nextClass = entityClass(t);
+    const nextName = targetDisplayName(t, { state });
+    const nextClass = entityClass(t, state);
     const targetChanged = tid !== lastTargetId || nextName !== lastName || nextClass !== lastClass || t.factionId !== lastFactionId;
     if (targetChanged) {
       lastTargetId = tid;

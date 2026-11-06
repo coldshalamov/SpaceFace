@@ -132,9 +132,7 @@ export async function bootWorld(seed, { arriveAtStationId = null } = {}) {
   state.settings.gameplay.aiBackend = 'sg06-tactical';
   if (!state.input.actions) state.input.actions = { brake: false, autopursuit: false };
 
-  // Where the player materializes matters: since RC-27 (903b1b10b) the sector's first two ambient
-  // hulls anchor on the player's arrival point, not the station. A clause that stages at a station
-  // must ARRIVE there, or the hulls that would witness it are left behind at the origin.
+  // Arrival greeters anchor where the player enters, before any later witness staging.
   const arrival = arrivalPos(arriveAtStationId);
   const player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
     isPlayer: true, player: state.player, pos: arrival, fittings: [],
@@ -145,8 +143,6 @@ export async function bootWorld(seed, { arriveAtStationId = null } = {}) {
   if (!world || typeof world.enterSector !== 'function') {
     throw new Error('world.reaction_trio: the `world` system is not registered — this is not the real path');
   }
-  // An explicit arrival keeps its pose (the enter's own `placePlayer: false` path); otherwise the
-  // default boot placement puts the player on the sector's arrival point, as before.
   world.enterSector(SECTOR_ID, arriveAtStationId ? { placePlayer: false } : {});
 
   const physics = runtime.getSystem('physics');

@@ -10,6 +10,7 @@ import {
   isPointOnAttackLine,
 } from '../src/ai/combatDoctrine.js';
 import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
+import { committedLaneFireHeld } from '../src/systems/tacticalAI.js';
 
 // LW-03: the two committed-approach doctrines (brawler_commit, interceptor_flyby) telegraph a
 // firing lane, not a hull heading. At wind-up entry the run stamps a forecast fire bearing;
@@ -505,6 +506,57 @@ test('the ranged corridor is untouched by the run-corridor extension', () => {
     'the ranged corridor keeps its authored 0.1 rad correction band');
   assert.equal(cue.attackLine.heading, 0.5,
     'the ranged cue keeps its own drawn-line contract (scope boundary of this change)');
+});
+
+// --- Lying paint: the lane announce reads the same holds that gate the volley -------------
+
+test('an admitted corridor is not held; each volley gate names its own hold', () => {
+  const entity = { id: 2, type: 'ship', alive: true, data: { ai: {} } };
+  const state = { simTime: 4, tick: 240, entities: new Map([[2, entity]]) };
+  const decision = { entityId: 2 };
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), null,
+    'an armed corridor announces honestly');
+
+  // The wave shaper's ranked cap — the same field applyAIFiringIntent reads.
+  entity.data.ai.swarmFireHoldUntil = 5;
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'swarm_fire_hold',
+    'a shooter-cap hold must hold the painted lane too');
+  entity.data.ai.swarmFireHoldUntil = 4;
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), null,
+    'the cap releasing at the same instant re-arms the lane');
+  entity.data.ai.swarmFireHoldUntil = 0;
+  entity.data.ai.arrivalHoldUntil = 6;
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'arrival_hold');
+  delete entity.data.ai.arrivalHoldUntil;
+
+  // The enemy-mind veto the intent writer honours — denied, and expired permissions alike.
+  assert.equal(committedLaneFireHeld(entity,
+    { entityId: 2, enemyMind: { fireAllowed: false, validUntil: 99 } }, state, null),
+    'enemy_mind_hold');
+  assert.equal(committedLaneFireHeld(entity,
+    { entityId: 2, enemyMind: { fireAllowed: true, validUntil: 1 } }, state, null),
+    'enemy_mind_hold', 'a stale mind permission is still a hold');
+
+  // The squad token the token gate and the choreography window both read.
+  entity.data.ai.squadRecipe = 'interceptor_scissors';
+  const director = { planFor: (id) => (id === 2 ? { fireAuthorized: false } : null) };
+  assert.equal(committedLaneFireHeld(entity, decision, state,
+    { maneuver: { squadFrames: director } }), 'squad_token');
+  director.planFor = () => ({ fireAuthorized: true });
+  assert.equal(committedLaneFireHeld(entity, decision, state,
+    { maneuver: { squadFrames: director } }), null,
+    'a squad member holding the token announces');
+  delete entity.data.ai.squadRecipe;
+
+  // The panic and authored-score denials applied right after the emit.
+  entity.data.ai.shovePanic = { until: 9, startedAt: 6 };
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'shove_panic');
+  delete entity.data.ai.shovePanic;
+  state.capitalBossEncounters = { orders: { 'number:2': { suppressStockFire: true } } };
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'capital_score');
+  state.capitalBossEncounters = { orders: { 'number:2': { suppressStockFire: false } } };
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), null,
+    'a suppressed flag returning to false re-arms the lane');
 });
 
 test('run corridors are deterministic across identical seed and sensor frames', () => {

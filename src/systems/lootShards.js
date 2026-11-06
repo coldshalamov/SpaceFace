@@ -738,6 +738,9 @@ export const lootShards = {
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('loot:magnetCaptured', {
         schemaVersion: 1, podId: pod.id, playerId: state.playerId, tick: state.tick,
+        // Where the field took the pod, so the capture beat can hold the catch point even
+        // if the pod is consumed before the presentation pass reads it.
+        pos: { x: pod.pos.x, z: pod.pos.z },
       });
     }
   },

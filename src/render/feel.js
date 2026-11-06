@@ -781,7 +781,7 @@ export function speedLineDriveLegacy(speed, maxSpeed, boosting, motionReduce, ou
   // clamps the drawn result; this bounds the underlying value so it cannot grow without limit.
   const lenScale = clampTo((0.18 + 1.1 * speedRatio) * (boosting ? 1.15 : 1.0), SL_LEN_SCALE_MAX);
 
-  const count = Math.min(SL_STREAK_MAX, Math.round((boosting ? 46 : 28) * (0.50 + 0.50 * intensity)));
+  const count = Math.min(SL_STREAK_MAX, Math.round((boosting ? 28 : 16) * (0.50 + 0.50 * intensity)));
 
   // Closed-form envelope of the per-streak alpha composed in the draw loop: opacity × the brightest
   // roll, with every other factor (edge fade, centre bias, centre gate) bounded by 1.

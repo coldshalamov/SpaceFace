@@ -1,17 +1,23 @@
-// 1400 — THE CARGO WEIR AMBUSH (LW-02). A Reach salvage crew is stripping a seized cargo
-// hulk inside a customs weir while an SCN cordon cutter holds the impound line. A hostile
-// tether specialist sits masked outbound of the gate, waiting for a runner.
+// 1400 — THE CARGO WEIR AMBUSH (LW-02). A licensed MTS salvage crew is stripping a seized
+// cargo hulk at the impound yard inside the gate while an SCN cordon holds the impound
+// line past the customs weir's read reach. A Crimson Reach thief flight — a corsair lead
+// and a reaver wing — sits masked outbound of the gate, waiting to take the hulk off
+// whoever moves it.
 //
-// The hulk is a real tetherable body parked just inside the gate:
-//   * ASSIST: tow it inbound to a living cordon cutter and cut the line clean —
-//     lawful impound assist; customs pays the fee and remembers the hand.
-//   * THEFT: tow it out through the gap and settle it past the cordon —
-//     the crew pays a bigger cut, law sees it if a lawful eye is close enough.
-//   * REFUSE: decline the offer (or let the clock die) and the specialist earns its cut.
+// The hulk is a real tetherable body parked beyond the weir's read region:
+//   * ASSIST: tow it deeper in to a living cordon cutter and cut the line clean —
+//     lawful impound assist; the whole pull stays outside the beam, customs pays the
+//     fee and remembers the hand.
+//   * THEFT: tow it OUT through the gate — the tow crosses the weir's read, so the
+//     gate itself answers (an unread exit raises weir_bolt; a slow transit feeds the
+//     manifest read and a hold scan). The Reach fence pays a bigger runner's cut.
+//   * REFUSE: decline the offer (or let the clock die) and the flight takes its shot.
 //
-// Opening fire during the offer reads as refusal by trigger. The specialist also springs
-// mid-tow once the hulk has committed outbound — the whole point of the mask. The two
-// ballast pieces sheared off the hull are throwable counterplay against its attach.
+// Opening fire during the offer reads as refusal by trigger. The flight also springs
+// mid-tow once the hulk has committed outbound — the whole point of the mask — and its
+// spring seeds a short mine fence across the run corridor (mines.mineCorridorLayout,
+// 325's wake law). The two ballast pieces sheared off the hull are throwable
+// counterplay against the contested run.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 1400;
@@ -39,28 +45,38 @@ export default defineEncounter(trigger, {
   context: 'encounter',
   title: 'THE CARGO WEIR',
   motive: 'cargo_extortion',
-  primaryLine: 'SALVOR LEAD: Hauler — this hulk is a customs write-off and we\'re mid-strip. Tow it to the cordon and the badge tips you. Run it through the gap and we pay double. Or keep your nose clean.',
-  patrolLine: 'CORDON: Impound line is set. Anything crossing the gate outbound is seized or shot.',
-  springBark: 'SPECIALIST: Line\'s spooling. Nobody runs a weir on my watch.',
+  primaryLine: 'SALVOR LEAD: Hauler — seized hulk on the impound yard inside the gate and we hold the SCN strip ticket. Tow her to the cordon and the badge tips you. Or keep your nose clean.',
+  patrolLine: 'CORDON: Impound line holds past the read. Anything crossing the gate outbound answers to the manifest.',
+  fenceLine: 'REACH FENCE: Or run her out past the gate to us — double the badge\'s tip and no manifest ever happened.',
+  springBark: 'THIEF LEAD: Mask\'s off — the hulk leaves with us or it leaves with nobody.',
+  // An assist tow that runs outbound burns the ticket and becomes the run — said aloud.
+  pivotBark: 'SALVOR LEAD: That\'s OUTBOUND — you just ran a seized hull through the read. Our ticket\'s burned!',
+  pivotFenceBark: 'REACH FENCE: Then it\'s our run after all — drop her clear of the cutters and the cut still pays.',
+  // The run's progress read: the gate answers the crossing itself; the fence narrates
+  // its own checklist — read cleared, drop registered.
+  readClearBark: 'REACH FENCE: You\'re outside the manifest read — cut the line and let her settle.',
+  dropCountedBark: 'REACH FENCE: Lot\'s down and off your line — counted the moment the cordon can\'t reach her.',
   offerS: 30,
-  taskS: 240,
+  taskS: 320,
   timeoutChoice: 'refuse',
   choices: [
     { id: 'assist', label: 'Tow the hulk to the cordon' },
-    { id: 'theft', label: 'Run the hulk through the gap' },
+    { id: 'theft', label: 'Run the hulk out past the gate' },
     { id: 'refuse', label: 'Refuse the offer' },
   ],
   ackBarks: {
-    assist: 'SALVOR LEAD: Fine — hand it to the badge. We\'ll bill the impound either way.',
-    theft: 'SALVOR LEAD: Half is yours — run it past the gate and drop it clear of the cutters.',
-    refused: 'SALVOR LEAD: Your loss, hauler. Specialist — earn your cut.',
+    assist: 'SALVOR LEAD: Clean hands — set her beside the cutters and cut the line. Our ticket already billed the strip.',
+    theft: 'REACH FENCE: Run her out past the beam and drop her clear of the cutters — the cut is wired on delivery.',
+    refused: 'SALVOR LEAD: Your call, hauler — we bill the impound either way.',
   },
   squad: {
-    // Index 0 is the identity anchor — the masked tether specialist. The rest are the
-    // stripping crew; the script lays them out around the hulk at fire time.
-    anchorArchetype: 'tether_control_raider',
-    archetypes: ['mule_trader'],
-    size: [3, 3],
+    // The identity anchor leads the masked thief flight — a corsair and a reaver holding
+    // outbound of the gate. The licensed strip crew is scene dressing the script supplies
+    // itself (MTS mule_traders under the SCN ticket); the script lays out every hull at
+    // fire time.
+    anchorArchetype: 'corsair_raider',
+    archetypes: ['reaver_pirate'],
+    size: [2, 2],
     doctrine: 'scavenger',
   },
   escort: {
@@ -74,11 +90,12 @@ export default defineEncounter(trigger, {
   verbs: ['latch', 'tow', 'release', 'displace', 'fight'],
   deadlineS: 300,
   receipts: {
-    weir_lawful_assist: 'IN CUSTODY — the cordon took the hulk. Customs pays the impound fee and logs the assist.',
-    weir_theft: 'THROUGH THE GAP — the hulk cleared the weir under a lawful eye. The crew pays; SCN writes the incident.',
-    weir_refused: 'REFUSED — the specialist came off the mask. The weir keeps what it keeps.',
-    weir_stalled: 'STALLED — nobody moved the hulk in time. The crew packs up around the seizure.',
+    weir_lawful_assist: 'IN CUSTODY — the cordon took the hulk clear of the read. Customs pays the impound fee and logs the assist.',
+    weir_theft: 'THROUGH THE GATE — the hulk ran the weir under its own read. The fence wired the runner\'s cut; the gate remembers the hull.',
+    weir_refused: 'REFUSED — the masked flight came for the hulk anyway. The weir keeps what it keeps.',
+    weir_stalled: 'STALLED — nobody moved the hulk in time. The strip crew packs up around the seizure.',
+    weir_receiver_dead: 'NO RECEIVER — the cordon is gone and no lawful eye remains to take custody. The impound ticket closes empty.',
     weir_hulk_lost: 'THE HULK IS GONE — whatever was worth fighting over isn\'t there anymore.',
-    weir_abandoned: 'LEFT BEHIND — the cordon closes the opportunity. No fee or crew cut is owed.',
+    weir_abandoned: 'LEFT BEHIND — the cordon closes the impound. No fee or fence cut is owed.',
   },
 });

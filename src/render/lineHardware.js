@@ -4,6 +4,7 @@ import { getAssetResidency } from './assetResidency.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 import { readLineVisualProfile } from './lineVisualProfile.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 // Existing authored cable drum and bolted repair plates. No stand-in geometry or second ship builder.
 export const LINE_HARDWARE_PARTS = Object.freeze([
@@ -19,7 +20,7 @@ export function lineHardwarePart(record, name, materials) {
     if (/^LOD[1-9]/i.test(primitive.name || '')) continue;
     const source = Array.isArray(primitive.material) ? primitive.material : [primitive.material];
     const owned = source.map(material => {
-      const clone = material.clone(); materials.push(clone); return clone;
+      const clone = cloneMaterialPreservingShaderHooks(material); materials.push(clone); return clone;
     });
     const mesh = new THREE.Mesh(primitive.geometry, Array.isArray(primitive.material) ? owned : owned[0]);
     mesh.name = primitive.name || name;

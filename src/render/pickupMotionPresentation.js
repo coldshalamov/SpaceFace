@@ -20,6 +20,7 @@
 // class of matter entirely and is never collectible.
 
 import { presentationTableDrawWu } from './presentationSimClock.js';
+import { worthReadFor } from './pickupWorthRead.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -179,8 +180,11 @@ export function resolveFunnelMoteStream(seed, simTime, out = null) {
 // scenery at flight-camera range, where the 3.5% body ping and the tumble read as nothing.
 // Presentation-only: the ring owns no sim state and poses no body.
 
-/** Pose of a drop's beacon ring. Pure function of (simTime, phase, reducedMotion) — test-seam. */
-export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null) {
+/** Pose of a drop's beacon ring. Pure function of (simTime, phase, reducedMotion) — test-seam.
+ * `haloFloor`/`haloKick` are the worth read's contribution (pickupWorthRead.js): a rich lot
+ * rests brighter and kicks wider, a junk lot rests dimmer; the defaults are today's plain
+ * read, so callers that pass no tier are bit-identical to the old behavior. */
+export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null, haloFloor = 0.55, haloKick = 0.45) {
   const rec = out || { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
   const t = Number.isFinite(simTime) ? simTime : 0;
   const p = Number.isFinite(phase) ? phase : 0;
@@ -201,7 +205,9 @@ export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null)
   else if (cyc > 0.14 && cyc < 0.24) kick = Math.exp(-(cyc - 0.14) * 60) * 0.7;
   if (reducedMotion) kick *= 0.5;
   rec.kick = kick;
-  rec.glow = 0.55 + 0.18 * Math.sin(t * 2.2 + p) + kick * 0.45;
+  const floor = Number.isFinite(haloFloor) ? Math.min(1, Math.max(0, haloFloor)) : 0.55;
+  const gain = Number.isFinite(haloKick) ? Math.max(0, haloKick) : 0.45;
+  rec.glow = floor + 0.18 * Math.sin(t * 2.2 + p) + kick * gain;
   return rec;
 }
 
@@ -374,12 +380,16 @@ export function createPickupMotionTracker() {
 
     // Beacon ring: precesses with the drop's phase, flashes on the transponder beat, and rides
     // the same scaleRatio so it shrinks into the scoop with the body. Deterministic per drop.
+    // The worth read (pickupWorthRead.js) grades the ring's floor and kick off the lot's value,
+    // so a rich pod reads as worth the chase and a junk chunk stops competing for the eye.
+    const worthRead = worthReadFor(mesh.userData && mesh.userData.worthTier);
     const halo = mesh.userData && mesh.userData.pickupHalo;
     if (halo && unlitDrop) {
       const mat = halo.material;
       if (mat && 'opacity' in mat) mat.opacity = 0;
     } else if (halo) {
-      const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch);
+      const pose = resolvePickupHaloPose(simTime, rec.phase, reducedMotion, haloPoseScratch,
+        worthRead.haloFloor, worthRead.haloKick);
       halo.rotation.x = pose.spinX;
       halo.rotation.y = pose.spinY;
       const base = halo.userData && halo.userData.baseScale ? halo.userData.baseScale : 1;
@@ -388,6 +398,20 @@ export function createPickupMotionTracker() {
       }
       const mat = halo.material;
       if (mat && 'opacity' in mat) mat.opacity = Math.min(1, pose.glow);
+      // The rich tier's second inner band counter-precesses against the ring and shares its
+      // glow — one more read of "that one" at flight range, gone inside the scoop with the rest.
+      const band = mesh.userData && mesh.userData.worthBand;
+      if (band) {
+        band.rotation.x = -pose.spinX * 0.7;
+        band.rotation.y = pose.spinY * 1.3;
+        if (typeof band.scale.setScalar === 'function') {
+          band.scale.setScalar(base * rec.scaleRatio * (1 + pose.kick * 0.08));
+        }
+        const bandMat = band.material;
+        if (bandMat && 'opacity' in bandMat) {
+          bandMat.opacity = unlitDrop ? 0 : Math.min(1, pose.glow * 0.7);
+        }
+      }
     }
   }
 

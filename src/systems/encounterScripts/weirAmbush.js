@@ -1,29 +1,45 @@
 // src/systems/encounterScripts/weirAmbush.js — LW-02 "The Cargo Weir Ambush".
 //
-// A Reach salvage crew is stripping a seized cargo hulk inside a customs weir while an SCN
-// cordon cutter holds the impound line. A hostile tether specialist sits masked outbound of
-// the gate, waiting for a runner. The player can hand the hulk to law, tow it through the
-// gap for the crew's cut, or refuse and take the specialist head-on.
+// A licensed MTS salvage crew is stripping a seized cargo hulk at the impound yard inside
+// the gate while an SCN cordon holds the impound line past the customs weir's read reach.
+// A Crimson Reach thief flight sits masked outbound of the gate — it wants the hulk and
+// it will take it off whoever moves it. The player can tow the hulk deeper in to the
+// cordon (lawful), run it out through the gate's read to the Reach fence (theft), or
+// refuse and watch the flight take its shot anyway. An "assist" tow that runs outbound
+// physically becomes the run — the deal pivots law→theft under the same law ownership —
+// and a cordon with nothing left alive voids the assist outright (weir_receiver_dead).
+//
+// The weir is a detection region, not a wall: the lawful delivery point sits beyond its
+// reach, so the lawful tow never feeds the beam. The theft run crosses it — crossing
+// unread answers to lawSecurity's own weir_bolt (heat + gate-hot memory), and a slow
+// transit feeds the manifest read → economy.runScan on the hold instead. That machinery
+// is the SINGLE law-consequence owner for the theft; this script mints no second
+// incident or rep penalty for the same act.
 //
 // Phases: approach → offer → task (law | theft) → conflict → done.
 // Determinism: no Math.random, no wall clock — d.stream(live, label) and state.simTime only.
-// Hostility: the specialist is passive until it springs; patrol stays lawful+passive forever.
-// Consequences ride d.grant / d.rep / lawSecurity.reportIncident / d.resolve — never direct
-// writes to credits, rep, heat, or story.
+// Hostility: the thief flight is passive until it springs; patrol stays lawful+passive
+// forever. Consequences ride d.grant / d.rep / d.resolve — never direct writes to
+// credits, rep, heat, or story.
 
 import { occupantGenerationOf } from '../../core/entity.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../../ai/doctrine.js';
 import { customsWeirForSector } from '../../world/customsWeir.js';
 import { SECTOR_GLOBAL_ORIGINS } from '../../data/sectorCoordinates.js';
+import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from '../mines.js';
 
 // ── tuning ────────────────────────────────────────────────────────────────────────────────
 const APPROACH_S = 2;               // hail beat before the offer deck opens
 const OFFER_S = 30;                 // decision window before silence reads as a refusal
-const TASK_S = 240;                 // physical tow window once a branch is picked
+const TASK_S = 320;                 // physical tow window once a branch is picked
 const HULK_RADIUS = 11;
 const HULK_MASS = 90;               // tow-class for a starter line: it moves, grudgingly
 const BALLAST_RADIUS = 5;
-const BALLAST_MASS = 14;            // throwable counterplay for the specialist
+const BALLAST_MASS = 14;            // throwable counterplay against the flight's run
+const YARD_PAD_WU = 80;             // hulk parks this far INSIDE the gate, past the weir's reach
+const CORDON_PAD_WU = 280;          // cordon receiver sits this far inside — a real pull,
+                                    // and every settle point stays outside the read region
+const THIEF_PAD_WU = 110;           // the flight masks this far OUTBOUND of the gate
 const TASK_OUTBOUND_WU = 300;       // theft clears the weir past the anchor by this much
 const TASK_SPRING_WU = 60;          // outbound displacement that reads as a committed run
 const PATROL_HOLD_WU = 150;         // lawful delivery: hulk this close to a live patrol
@@ -31,18 +47,18 @@ const PATROL_CLEAR_WU = 160;        // theft fails while a live patrol is on top
 const SETTLE_SPEED = 3;             // the lot must actually be at rest for custody
 const ESCAPE_R = 2600;              // refusal fight ends when the player is this far out
 const LEAVE_PAD_WU = 1000;          // player beyond zoneRadius + this abandoned the scene
-const SPECIALIST_LEASH = 3400;
-const THEFT_PAY = 200;              // the crew's cut for running the gap
-const ASSIST_PAY = 150;             // customs impound-assist fee
-const ASSIST_REP = 8;
-const THEFT_REP = -10;
+const THIEF_LEASH = 3400;
+const MINE_FENCE_COUNT = 3;         // short corridor the flight seeds on spring (325's wake law)
+const THEFT_PAY = 260;              // the fence's runner cut — bigger cash, the gate's own answer
+const ASSIST_PAY = 160;             // customs impound-assist fee — smaller cash, lawful standing
+const ASSIST_REP = 10;
 
 // One finite scene, inside the existing story save bag. Physical state belongs to the normal
 // persistent-entity serializer; this row holds only stable cast slots and phase/clock state.
 const OWNER = 'weirAmbush';
 const CONTINUATION_FIELDS = [
-  'task', 'taskDeadlineAt', 'specialistSprung', 'sprungAt', 'conflictOutcome',
-  'salvorsFled', 'approachEndsAt',
+  'task', 'taskDeadlineAt', 'thiefSprung', 'sprungAt', 'conflictOutcome',
+  'salvorsFled', 'approachEndsAt', 'minesSeeded', 'readClearTold', 'dropCountedTold',
 ];
 function visitOf(state) { return state.story?.depthProgramEncounters?.weirAmbush || null; }
 function writeVisit(state, visit) {
@@ -94,6 +110,12 @@ function captureVisit(live, state) {
   const data = { weir: { inDir: { ...live.data.weir.inDir }, outDir: { ...live.data.weir.outDir },
     gapRange: live.data.weir.gapRange } };
   for (const key of CONTINUATION_FIELDS) if (live.data[key] !== undefined) data[key] = live.data[key];
+  // The task tick calls this every step: rewrite the story bag only when the continuation
+  // row actually changed — steady ticks snapshot to the same row and skip the write.
+  const sig = JSON.stringify([live.phase, live.deadlineAt, !!live.offerConsumed,
+    live.data.actorRefs, data]);
+  if (sig === live.data.visitSig) return;
+  live.data.visitSig = sig;
   writeVisit(state, { version: 1, status: 'active', encounterId: live.id,
     sectorId: live.sectorId, zoneId: live.zoneId, zoneName: live.zoneName,
     anchor: { ...live.anchor }, zoneRadius: live.zoneRadius, phase: live.phase,
@@ -129,7 +151,8 @@ function offsetOf(anchor, dir, wu) { return { x: anchor.x + dir.x * wu, z: ancho
  * Every border_checkpoint sits on the sector's gate edge, so "inbound" is the bearing from
  * the checkpoint anchor toward the sector origin — the same bearing the authored weir data
  * encodes (Tethys cone heading, Dione funnel axis, Helios corridor axis all agree). The
- * weir's own range only sizes how far past the gate the masked specialist sits.
+ * weir's own range sizes how deep inside the impound yard sits and how far past the gate
+ * the masked thief flight holds.
  */
 function weirAxes(live) {
   const weir = customsWeirForSector(live.sectorId) || null;
@@ -200,38 +223,84 @@ function recordGens(d, live, state) {
   }
 }
 
-/** The specialist comes off the mask. trigger ∈ explicit_refusal | ignored_demand | player_attack. */
-function springSpecialist(d, live, state, trigger) {
-  if (live.data.specialistSprung) return;
-  const spec = memberOf(d, live, state, 'specialist');
-  if (!spec || !spec.data || !spec.data.ai) return;
-  live.data.specialistSprung = trigger;
+/**
+ * A short mine fence between the flight's lead and the hulk it came to take — the wake
+ * law (SF-041 / mines.mineCorridorLayout): one hugged flank, one open readable lane, so
+ * threading, displacing, or throwing a body through are all real answers. Seeded on every
+ * spring — refuse, timeout, attack, or a committed outbound run — covering the corridor
+ * the flight intends to hold.
+ */
+function seedThiefFence(d, live, state, lead, hulk) {
+  if (!lead || !lead.pos || !hulk || !finitePos(hulk)) return;
+  const place = (opts) => {
+    const helpers = d.helpers || (state && state._helpers) || null;
+    if (helpers && typeof helpers.placeMine === 'function') return helpers.placeMine(opts);
+    if (minesSystem && minesSystem.state === state && typeof minesSystem.placeMine === 'function') {
+      return minesSystem.placeMine(opts);
+    }
+    if (typeof d.emit === 'function') d.emit('mines:placeRequest', opts);
+    return null;
+  };
+  live.data.minesSeeded = live.data.minesSeeded || [];
+  for (const pos of mineCorridorLayout(lead.pos, hulk.pos, MINE_FENCE_COUNT)) {
+    const mine = place({
+      ownerId: lead.id,
+      pos,
+      team: lead.team,
+      factionId: lead.factionId || null,
+      telegraph: live.data.minesSeeded.length === 0,
+    });
+    if (mine && mine.id != null) live.data.minesSeeded.push(mine.id);
+  }
+  if (typeof d.emit === 'function') {
+    d.emit('ai:telegraph', {
+      entityId: lead.id,
+      kind: MINE_TELEGRAPH_CUE,
+      cue: MINE_TELEGRAPH_CUE,
+      shapeId: live.shapeId,
+      count: (live.data.minesSeeded || []).length,
+    });
+  }
+}
+
+/** The flight comes off the mask. trigger ∈ explicit_refusal | ignored_demand | player_attack. */
+function springThiefFlight(d, live, state, trigger) {
+  if (live.data.thiefSprung) return;
+  const flight = membersOf(d, live, state, 'thief');
+  if (!flight.length) return;
+  live.data.thiefSprung = trigger;
   live.data.sprungAt = d.now();
-  // Flip the one member through the roster helper so its activity is rebuilt as a conflict
-  // spawn, then stamp the escalation fields the engagement authority requires.
-  d.setPassive(live, false, 'specialist');
-  const ai = spec.data.ai;
-  ai.motive = (live.shape && live.shape.motive) || 'cargo_extortion';
-  ai.engagementTrigger = trigger;
-  ai.motiveSatisfied = false;
-  ai.approachTelegraph = 'attach_spool';
-  ai.noFireResponseWindowS = 2;
+  // Flip the whole flight through the roster helper so each member's activity is rebuilt
+  // as a conflict spawn, then stamp the escalation fields the engagement authority requires
+  // (mirrors settleWakeMotive, scoped to the flight only — patrol and salvors keep their
+  // lawful+passive state forever).
+  d.setPassive(live, false, 'thief');
   const player = d.player();
-  const combat = spec.data.combat || (spec.data.combat = {});
-  if (player && player.id != null) combat.targetId = player.id;
-  setEntityDoctrine(spec, {
-    activity: {
-      kind: ActivityKind.ATTACK_RUN,
-      reason: `${live.shapeId}:conflict:specialist`,
-      anchor: live.anchor,
-      leashRadius: SPECIALIST_LEASH,
-      startedTick: state.tick | 0,
-      targetId: player && player.id != null ? player.id : null,
-      routeId: live.zoneId,
-      encounterId: live.id,
-    },
-    roe: RulesOfEngagement.WEAPONS_FREE,
-  });
+  for (const e of flight) {
+    const ai = e.data && e.data.ai;
+    if (!ai) continue;
+    ai.motive = (live.shape && live.shape.motive) || 'cargo_extortion';
+    ai.engagementTrigger = trigger;
+    ai.motiveSatisfied = false;
+    ai.approachTelegraph = 'engine_flare';
+    ai.noFireResponseWindowS = 2;
+    const combat = e.data.combat || (e.data.combat = {});
+    if (player && player.id != null) combat.targetId = player.id;
+    setEntityDoctrine(e, {
+      activity: {
+        kind: ActivityKind.ATTACK_RUN,
+        reason: `${live.shapeId}:conflict:thief`,
+        anchor: live.anchor,
+        leashRadius: THIEF_LEASH,
+        startedTick: state.tick | 0,
+        targetId: player && player.id != null ? player.id : null,
+        routeId: live.zoneId,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.WEAPONS_FREE,
+    });
+  }
+  seedThiefFence(d, live, state, flight[0], hulkOf(live, state));
   const line = (live.shape && live.shape.springBark) || null;
   if (line) d.say(live, 'alert', line, null, { literal: true });
 }
@@ -246,26 +315,6 @@ function fleeSalvors(d, live, afterS) {
     e.data.despawnAt = d.now() + afterS + i++ * 0.5;
     e.data.despawnBy = live.id;
   }
-}
-
-/** The witnessed cargo-theft report — the law owner's own intake; a denial is a valid outcome. */
-function reportTheftIncident(d, live, state, hulk) {
-  const law = d.registry && typeof d.registry.get === 'function' ? d.registry.get('lawSecurity') : null;
-  if (!law || typeof law.reportIncident !== 'function' || !hulk || !finitePos(hulk)) return null;
-  const patrol = memberOf(d, live, state, 'patrol');
-  const receipt = law.reportIncident({
-    reportId: `weir-hulk-theft:${live.id}`,
-    kind: 'payload_theft',
-    offenderStableId: 'player',
-    offenderEntityId: state.playerId,
-    payloadStableId: (hulk.data && hulk.data.stableId) || `weir-hulk:${live.id}`,
-    causalTick: Number.isInteger(state.tick) ? Math.max(0, state.tick) : 0,
-    pos: { x: hulk.pos.x, z: hulk.pos.z },
-    victimEntityId: patrol ? patrol.id : null,
-  });
-  live.data.theftIncidentId = receipt && receipt.incidentReceiptId || null;
-  live.data.theftIncidentDenied = receipt && receipt.accepted === false ? receipt.reason || 'denied' : null;
-  return receipt;
 }
 
 function lawfulDeliveryComplete(d, live, state, hulk) {
@@ -297,32 +346,46 @@ function settle(d, live, state, outcome) {
   if (prior?.status === 'terminal') return d.resolve(live, prior.outcome, { speak: false });
   live.data.settled = true;
   // Mark terminal before any owner intent can synchronously trigger a save. Restore never
-  // replays a grant, reputation change or theft report, even if saved inside a consequence.
+  // replays a grant, reputation change or gate consequence, even if saved inside one.
   writeVisit(state, { version: 1, status: 'terminal', encounterId: live.id,
     sectorId: live.sectorId, outcome, at: d.now() });
   const hulk = hulkOf(live, state);
+  // Whatever the outcome, the seizure's disposition is decided — a resolved scene never
+  // leaves the hulk towable for a free after-the-fact run through the read.
+  if (hulk && hulk.data) {
+    hulk.data.masslineTetherable = false;
+    hulk.data.tetherable = false;
+  }
   if (outcome === 'weir_lawful_assist') {
     // Consequences before resolve — intents ride the facade, never direct state writes.
     d.grant(ASSIST_PAY, 'weir:impound_fee');
     d.rep('faction_scn', ASSIST_REP, 'weir_impound_assist');
     if (hulk && hulk.data) {
       hulk.data.scanLabel = 'IMPOUNDED HULK — IN CUSTOMS CUSTODY';
-      hulk.data.masslineTetherable = false;
-      hulk.data.tetherable = false;
     }
     d.say(live, 'info',
-      'SALVOR LEAD: That was OUR cut, hauler. Customs doesn\'t pay what we do.',
+      'SALVOR LEAD: Ticket held — the badge pays what it pays. We still bill the strip.',
       null, { literal: true });
     fleeSalvors(d, live, 18);
   } else if (outcome === 'weir_theft') {
-    d.grant(THEFT_PAY, 'weir:salvage_cut');
-    d.rep('faction_scn', THEFT_REP, 'weir_impound_theft');
-    reportTheftIncident(d, live, state, hulk);
+    // The gate itself owns the law consequence of this act — a tow that crossed the read
+    // answered to it on the way out (unread exit → weir_bolt heat + gate-hot memory; a
+    // slow transit → the manifest read and a hold scan). The script mints no second
+    // incident: the fence pays the runner's cut and the impound row closes missing.
+    d.grant(THEFT_PAY, 'weir:fence_cut');
     if (hulk && hulk.data) hulk.data.scanLabel = 'SEIZED CARGO HULK — MISSING FROM IMPOUND';
     d.say(live, 'info',
-      'SALVOR LEAD: Clean through the gap — half is yours, as promised.',
+      'REACH FENCE: Clear of the read — the runner\'s cut is wired. Pity about the escort\'s teeth.',
       null, { literal: true });
     fleeSalvors(d, live, 24);
+  } else if (outcome === 'weir_receiver_dead') {
+    // Custody had no living receiver. Lawful-kill heat stays the law machinery's job —
+    // the script stamps nothing extra on the void ticket.
+    if (hulk && hulk.data) hulk.data.scanLabel = 'SEIZED CARGO HULK — IMPOUND VOID, NO RECEIVER';
+    d.say(live, 'info',
+      'SALVOR LEAD: The cutters are gone — no badge left to take her. The ticket just went worthless.',
+      null, { literal: true });
+    fleeSalvors(d, live, 16);
   } else if (outcome === 'weir_stalled') {
     fleeSalvors(d, live, 20);
   }
@@ -397,14 +460,19 @@ export const weirAmbush = {
     const rng = d.stream(live, 'weir_layout');
     const perp = { x: -axes.outDir.z, z: axes.outDir.x };
 
-    // Deterministic scene layout from the plan stream: the hulk sits just inside the gate,
-    // the patrol holds the cordon line inbound, the crew works the hull, and the specialist
-    // masks outbound past the gap.
-    const hulkPos = offsetOf(anchor, axes.outDir, 55 + rng() * 25);
-    const holdPos = offsetOf(anchor, axes.inDir, 150);
-    const specPos = offsetOf(anchor, axes.outDir, axes.gapRange + 100 + rng() * 70);
+    // Deterministic layout law: the seized hulk sits at the impound yard INSIDE the gate,
+    // beyond the weir's read reach — a detection region reads hulls transiting the gate,
+    // and a lawful custody handover must never park the tow inside the beam. The cordon's
+    // receiver line holds deeper still, so delivery is a real pull that stays clear of the
+    // read. The Reach thief flight masks OUTBOUND, owning the run corridor.
+    const hulkPos = offsetOf(anchor, axes.inDir, axes.gapRange + YARD_PAD_WU + rng() * 30);
+    const holdPos = offsetOf(anchor, axes.inDir, axes.gapRange + CORDON_PAD_WU);
+    const thiefBase = offsetOf(anchor, axes.outDir, axes.gapRange + THIEF_PAD_WU + rng() * 70);
     const posFor = {
-      specialist: [specPos],
+      thief: [
+        offsetOf(thiefBase, perp, -(46 + rng() * 20)),
+        offsetOf(thiefBase, perp, 46 + rng() * 20),
+      ],
       patrol: [
         offsetOf(holdPos, perp, -(48 + rng() * 18)),
         offsetOf(holdPos, perp, 48 + rng() * 18),
@@ -415,32 +483,44 @@ export const weirAmbush = {
         offsetOf(hulkPos, axes.outDir, 30 + rng() * 12),
       ],
     };
-    const take = { specialist: 0, patrol: 0, salvor: 0 };
+    const take = { thief: 0, patrol: 0, salvor: 0 };
     const specs = [];
-    const counts = { specialist: 0, patrol: 0, salvor: 0 };
-    // The authored roster comes from the plan; the script assigns the physical layout.
+    const counts = { thief: 0, patrol: 0, salvor: 0 };
+    // The plan composes the Reach thief flight (squad) and the SCN cordon (escort). The
+    // licensed strip crew is scene dressing the script supplies itself: three honest
+    // civilian hulls working a seized hulk under an SCN ticket — honest enough that the
+    // lawful tow is real work, not a favor from the crew that loses its fee.
     for (const sh of (live.plan && live.plan.ships) || []) {
-      const role = sh.compositionRole === 'identity_anchor' ? 'specialist'
-        : sh.role === 'escort' ? 'patrol' : 'salvor';
-      const pos = (posFor[role] && posFor[role][take[role]++ % posFor[role].length]) || anchor;
+      const role = sh.role === 'escort' ? 'patrol' : 'thief';
+      const pos = posFor[role][take[role]++ % posFor[role].length];
       counts[role]++;
       specs.push({
         ...sh,
         role,
         pos: { ...pos },
-        team: role === 'specialist' ? 1 : 2,
-        context: role === 'specialist' ? 'encounter' : role === 'patrol' ? 'patrol' : 'civilian',
+        team: role === 'thief' ? 1 : 2,
+        context: role === 'thief' ? 'encounter' : 'patrol',
         factionId: role === 'patrol' ? 'faction_scn' : 'faction_reach',
         passive: true,
-        scanLabel: role === 'specialist' ? 'UNKNOWN CONTACT — MASKED, HOLDING OUTBOUND'
-          : role === 'patrol' ? 'SCN CORDON CUTTER — IMPOUND LINE'
-          : 'REACH SALVOR — WORKING THE SEIZURE',
+        scanLabel: role === 'thief'
+          ? 'UNKNOWN PAIR — MASKED, HOLDING OUTBOUND'
+          : 'SCN CORDON CUTTER — IMPOUND LINE',
       });
     }
-    if (!counts.specialist || !counts.patrol || !counts.salvor) return d.abort(live, 'no_cast');
+    for (const pos of posFor.salvor) {
+      counts.salvor++;
+      specs.push({
+        archetype: 'mule_trader', level: 2,
+        role: 'salvor',
+        pos: { ...pos },
+        team: 2, context: 'civilian', factionId: 'faction_mts', passive: true,
+        scanLabel: 'MTS SALVOR — LICENSED STRIP, SCN TICKET',
+      });
+    }
+    if (!counts.thief || !counts.patrol || !counts.salvor) return d.abort(live, 'no_cast');
     const ids = d.spawnShips(live, specs);
     if (!ids.length) return d.abort(live, 'no_budget');
-    if (!d.aliveCount(live, 'specialist') || !d.aliveCount(live, 'patrol')) {
+    if (!d.aliveCount(live, 'thief') || !d.aliveCount(live, 'patrol')) {
       return d.abort(live, 'no_cast');
     }
 
@@ -484,12 +564,19 @@ export const weirAmbush = {
     for (const [index, id] of live.data.ballastIds.entries()) {
       ownActor(live, entOf(state, id), `ballast:${index}`);
     }
+    // The cordon is a lawful eye, not a combatant: ai.lawful makes killing a cutter a
+    // lawful_kill the impound answers through the ordinary protected-body law — the same
+    // idiom the last tow's guard and the witnessed receiver carry.
+    for (const p of membersOf(d, live, state, 'patrol')) {
+      if (p.data && p.data.ai) p.data.ai.lawful = true;
+    }
 
     live.data.task = null;
     live.data.taskDeadlineAt = 0;
-    live.data.specialistSprung = null;
+    live.data.thiefSprung = null;
     live.data.conflictOutcome = null;
     live.data.salvorsFled = false;
+    live.data.minesSeeded = [];
     live.data.approachEndsAt = d.now() + APPROACH_S;
     live.phase = 'approach';
     live.approach = { signal: 'cargo_weir', contacts: ids.length + 1, t: d.now() };
@@ -497,10 +584,13 @@ export const weirAmbush = {
 
     const shape = live.shape || {};
     d.say(live, 'bark', shape.primaryLine
-      || 'SALVOR LEAD: Hauler — this hulk is a customs write-off. Tow it to the cordon and the law tips you; run it through the gap and we pay double.',
+      || 'SALVOR LEAD: Hauler — seized hulk on the impound yard inside the gate and we hold the strip ticket. Tow her to the cordon and the badge tips you. Or keep your nose clean.',
       null, { primary: true, literal: true });
     d.say(live, 'alert', shape.patrolLine
-      || 'CORDON: Impound line is set. Anything crossing the gate outbound is seized or shot.',
+      || 'CORDON: Impound line holds past the read. Anything crossing the gate outbound answers to the manifest.',
+      null, { literal: true });
+    d.say(live, 'alert', shape.fenceLine
+      || 'REACH FENCE: Or run her out past the gate to us — double the badge\'s tip and no manifest ever happened.',
       null, { literal: true });
   },
 
@@ -531,12 +621,50 @@ export const weirAmbush = {
     }
 
     if (live.phase === 'task') {
-      // A committed outbound run is the specialist's cue — it was waiting for a runner.
-      if (b.task === 'theft' && !b.specialistSprung && outboundDisp(live, hulk) >= TASK_SPRING_WU) {
-        springSpecialist(d, live, state, 'ignored_demand');
+      const disp = outboundDisp(live, hulk);
+      const shape = live.shape || {};
+      // An "assist" tow that runs the seizure outbound has physically become the run —
+      // the weir's own machinery already answered the crossing. The law deal burns, the
+      // flight springs for its prize, and the fence's deal stands: the honest escalation,
+      // still under the gate's single law ownership. The pivot is told, not silent.
+      if (b.task === 'law' && disp >= TASK_SPRING_WU) {
+        b.task = 'theft';
+        if (!b.thiefSprung) springThiefFlight(d, live, state, 'ignored_demand');
+        d.say(live, 'alert', shape.pivotBark
+          || 'SALVOR LEAD: That\'s OUTBOUND — you just ran a seized hull through the read. Our ticket\'s burned!',
+          null, { literal: true });
+        d.say(live, 'bark', shape.pivotFenceBark
+          || 'REACH FENCE: Then it\'s our run after all — drop her clear of the cutters and the cut still pays.',
+          null, { literal: true });
+      }
+      // A committed outbound run is the flight's cue — the mask was always for the runner.
+      if (b.task === 'theft' && !b.thiefSprung && disp >= TASK_SPRING_WU) {
+        springThiefFlight(d, live, state, 'ignored_demand');
+      }
+      // A dead cordon takes no custody — settle the void honestly instead of letting the
+      // clock expire into a "nobody moved the hulk" lie. (Checked after the pivot: an
+      // outbound runner keeps a completable path even with no receiver left.)
+      if (b.task === 'law' && !membersOf(d, live, state, 'patrol').length) {
+        return settle(d, live, state, 'weir_receiver_dead');
       }
       if (b.task === 'law' && lawfulDeliveryComplete(d, live, state, hulk)) {
         return settle(d, live, state, 'weir_lawful_assist');
+      }
+      // The run's progress read: the gate answers the crossing itself, but the fence's
+      // checklist is invisible — say when the read is behind the tow and when a dropped
+      // lot registers, so the remaining conditions aren't a guessing game.
+      if (b.task === 'theft' && !b.readClearTold && disp >= TASK_OUTBOUND_WU) {
+        b.readClearTold = true;
+        d.say(live, 'bark', shape.readClearBark
+          || 'REACH FENCE: You\'re outside the manifest read — cut the line and let her settle.',
+          null, { literal: true });
+      }
+      if (b.task === 'theft' && !b.dropCountedTold && disp >= TASK_OUTBOUND_WU
+        && !playerTetheredTo(state, hulk.id) && speedOf(hulk) < SETTLE_SPEED) {
+        b.dropCountedTold = true;
+        d.say(live, 'bark', shape.dropCountedBark
+          || 'REACH FENCE: Lot\'s down and off your line — counted the moment the cordon can\'t reach her.',
+          null, { literal: true });
       }
       if (b.task === 'theft' && theftComplete(d, live, state, hulk)) {
         return settle(d, live, state, 'weir_theft');
@@ -547,9 +675,9 @@ export const weirAmbush = {
     }
 
     if (live.phase === 'conflict') {
-      const spec = memberOf(d, live, state, 'specialist');
-      if (!alive(spec)) return settle(d, live, state, b.conflictOutcome || 'weir_refused');
-      if (dist2(player.pos, spec.pos) >= ESCAPE_R * ESCAPE_R) {
+      const lead = memberOf(d, live, state, 'thief');
+      if (!alive(lead)) return settle(d, live, state, b.conflictOutcome || 'weir_refused');
+      if (dist2(player.pos, lead.pos) >= ESCAPE_R * ESCAPE_R) {
         return settle(d, live, state, b.conflictOutcome || 'weir_refused');
       }
     }
@@ -563,7 +691,7 @@ export const weirAmbush = {
     const now = d.now();
     if (choiceId === 'assist') {
       d.say(live, 'bark', ack.assist
-        || 'SALVOR LEAD: Fine — hand it to the badge. We\'ll take the impound fee either way.',
+        || 'SALVOR LEAD: Clean hands — set her beside the cutters and cut the line. Our ticket already billed the strip.',
         null, { literal: true });
       d.say(live, 'alert', 'CORDON: Smart. Put the hulk beside my line and cut the line clean.',
         null, { literal: true });
@@ -575,7 +703,9 @@ export const weirAmbush = {
     }
     if (choiceId === 'theft') {
       d.say(live, 'bark', ack.theft
-        || 'SALVOR LEAD: Half is yours — run it past the gate and drop it clear of the cutters.',
+        || 'REACH FENCE: Run her out past the beam and drop her clear of the cutters — the cut is wired on delivery.',
+        null, { literal: true });
+      d.say(live, 'alert', 'SALVOR LEAD: That hulk is a customs seizure — what are you doing?!',
         null, { literal: true });
       b.task = 'theft';
       b.taskDeadlineAt = now + (shape.taskS || TASK_S);
@@ -583,14 +713,14 @@ export const weirAmbush = {
       captureVisit(live, state);
       return;
     }
-    // refuse, or silence at the deadline: the offer collapses into the spring.
+    // refuse, or silence at the deadline: the parley collapses and the flight takes its shot.
     d.say(live, 'bark', ack.refused
-      || 'SALVOR LEAD: Your loss, hauler. Specialist — earn your cut.',
+      || 'SALVOR LEAD: Your call, hauler — we bill the impound either way.',
       null, { literal: true });
     const trigger = choiceId === 'timeout' ? 'ignored_demand' : 'explicit_refusal';
     b.conflictOutcome = 'weir_refused';
     live.phase = 'conflict';
-    springSpecialist(d, live, state, trigger);
+    springThiefFlight(d, live, state, trigger);
     fleeSalvors(d, live, 14);
     captureVisit(live, state);
   },
@@ -602,14 +732,14 @@ export const weirAmbush = {
       // stamped for what it was.
       live.data.conflictOutcome = 'weir_refused';
       live.phase = 'conflict';
-      springSpecialist(d, live, state, 'player_attack');
+      springThiefFlight(d, live, state, 'player_attack');
       fleeSalvors(d, live, 12);
       captureVisit(live, state);
       return;
     }
-    if (live.phase === 'task' && !live.data.specialistSprung) {
+    if (live.phase === 'task' && !live.data.thiefSprung) {
       // Under the tow it still springs — the work may continue under fire.
-      springSpecialist(d, live, state, 'player_attack');
+      springThiefFlight(d, live, state, 'player_attack');
       captureVisit(live, state);
     }
   },

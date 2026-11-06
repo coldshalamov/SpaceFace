@@ -518,6 +518,25 @@ test('nested failing TAP labels retain nonzero failure without claiming golden e
   assert.match(result.reason, /expected live body/);
 });
 
+test('mission-accept handoff leaf budgets the LONG class like station-tabs', () => {
+  // The leaf filename has no playwright/chromium/probe token, so without an override it would
+  // inherit the 180s DEFAULT and SIGKILL a healthy software-GL run after accept+track OK.
+  const matrix = ciReport.buildCommandMatrix(
+    'npm run check:mission-handoff',
+    {
+      'check:mission-handoff':
+        'node scripts/check-mission-accept-handoff-runtime.mjs && node --test test/post-ending-replay-preview-choice.test.mjs',
+    },
+  );
+  const handoff = matrix.find((entry) => entry.id === 'check-mission-accept-handoff-runtime');
+  assert.ok(handoff, 'mission-accept handoff leaf must be in the expanded matrix');
+  assert.equal(handoff.timeoutMs, 420000);
+  assert.equal(
+    handoff.command,
+    'node scripts/check-mission-accept-handoff-runtime.mjs',
+  );
+});
+
 test('optional Charon flag keeps matrix cold-open timeout at its existing180s class',()=>{
  const matrix=ciReport.buildCommandMatrix('npm run check:47a:live-cold-open',{
   'check:47a:live-cold-open':'node scripts/check-47a-live-cold-open.mjs --charon-camera-diagnostic',

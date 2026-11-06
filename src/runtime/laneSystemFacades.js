@@ -1,4 +1,5 @@
 import { laneRpc, laneDomEvent } from '../core/simLaneCommands.js';
+import { saveStoreSignature } from '../save/saveStoreGeneration.js';
 import { economyReadView } from '../systems/economy.js';
 import { claimsReadView } from '../systems/claimsReadModel.js';
 import { drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
@@ -112,6 +113,12 @@ export function createLaneSystemFacade(ctx) {
       case 'save':
         return {
           name: 'save',
+          saveStoreSignature,
+          peekSaveCardData: (raw) => laneRpc('savePeekCardData', { raw }).then(
+            (ack) => ack?.ok === true && ack.result?.ok === true
+              ? ack.result.cardData || null : null,
+            () => null,
+          ),
           save: (slot) => durableSaveCommand('saveWrite', { slot: slot === undefined ? null : slot }),
           drainSharedStoreWrites: () => durableSaveCommand('saveDrain'),
           prepareForQuit: () => durableSaveCommand('savePrepareQuit'),

@@ -11,7 +11,7 @@ import { combat } from '../src/systems/combat.js';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const TICK_RATE = 60;
 const MAX_SPEC_SECONDS = 6;
-const ENVELOPE_PATH = 'test/47a.telemetry.expected.json';
+const ENVELOPE_PATH = 'test/47a.telemetry.save-v23.expected.json';
 
 const envelope = readJson(ENVELOPE_PATH);
 const evidenceResult = validateEvidenceDocument(envelope, { file: ENVELOPE_PATH });

@@ -228,6 +228,7 @@ export const combatOutcome = {
     this._combatOutcomeQuiet = null;
     this._combatOutcomeWakeSeq = 0;
     this._choiceSig = '';
+    this._aftermathContextSig = '';
     this._unsubs = [];
     ensureState(this.state);
 
@@ -250,6 +251,15 @@ export const combatOutcome = {
     this._onAftermathChoose = (payload) => {
       if (liveSurvivalRun(this.state)) return;
       const id = payload && (payload.choiceId != null ? payload.choiceId : payload.id);
+      if (payload && Object.hasOwn(payload, 'targetIdentity')) this._publishAftermath('validate');
+      const offer = this.state?.combatOutcome?.aftermath;
+      if (payload && Object.hasOwn(payload, 'targetIdentity')) {
+        const current = this._aftermathIdentity?.[id];
+        if (!current || payload.targetIdentity !== current || !offer?.choices?.some(c => c.id === id)) {
+          this._publishAftermath('stale');
+          return;
+        }
+      }
       const chosen = applyAftermathChoice(this.state, id);
       if (!chosen) return;
       this._speakChoice(chosen);
@@ -571,11 +581,35 @@ export const combatOutcome = {
     own.aftermath = offer;
     const sig = `${sectorId}|${offer.choices.map((choice) => `${choice.id}:${choice.label}`).join(',')}`;
     const verbsChanged = sig !== this._choiceSig;
-    if ((verbsChanged || reason === 'sector:enter') && this.bus && typeof this.bus.emit === 'function') {
+    // Presentation follows the actual selected target, never the nearby observation anchor.
+    // A missing body or an unverified wreck marker retains a generic noun.
+    const identities = {};
+    const presented = offer.choices.map((choice) => {
+      const target = offer.targets[choice.id] ?? null;
+      const entity = target == null ? null : entityFor(state, target);
+      const record = target == null ? null : own.byEntity[target];
+      const matches = record && sameOccupant(record, entity);
+      const generation = entity ? occupantGenerationOf(entity) : null;
+      const identity = JSON.stringify([sectorId, choice.id, target, generation,
+        matches ? record.tick : null, matches ? record.occupantGeneration : null]);
+      identities[choice.id] = identity;
+      const name = matches && Number.isSafeInteger(generation) && generation > 0 && record.label
+        ? String(record.label).replace(/\s+/g, ' ').slice(0, 80) : null;
+      const noun = choice.id === 'salvage' ? 'Wreck' : choice.id === 'pursuit' ? 'Fled' : choice.id === 'rescue' ? 'Survivor' : null;
+      return { id: choice.id, label: choice.label, targetIdentity: identity,
+        context: noun && name ? `${noun}: ${name}` : null };
+    });
+    this._aftermathIdentity = identities;
+    const contextSig = JSON.stringify(presented);
+    const contextChanged = contextSig !== this._aftermathContextSig;
+    this._aftermathContextSig = contextSig;
+    if ((verbsChanged || contextChanged || reason === 'sector:enter' || reason === 'stale') && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('combat:aftermathChoices', {
         sectorId,
         paused: false,
-        choices: offer.choices.map((choice) => ({ id: choice.id, label: choice.label })),
+        refreshOnly: !verbsChanged && reason !== 'sector:enter',
+        stale: reason === 'stale',
+        choices: presented,
         ...(custody.length ? { custody } : {}),
       });
     }
