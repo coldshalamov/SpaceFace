@@ -265,6 +265,23 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__label { max-width:55%; white-space:normal !important; }
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
+  /* Industry input label: chainBeam seats is-left at width xIn−rIn−10 (~85–92px at 360–390),
+     so Iron Ore / 0⁄2 · short / SOURCE IN MARKET packs against the process ring (gap ~29–35px with
+     a tiny empty stock node in between). Pull the label in a little; drop the consoleStandard chip
+     chrome on the source verb so it densifies like other chain verbs. Leave the blocked-reason
+     is-left label alone (:has .orr-chain__name). */
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) {
+    width:min(78px, 22vw) !important; max-width:78px !important; }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__name {
+    font-size:12px !important; line-height:1.15 !important; }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__count {
+    letter-spacing:.06em !important; font-size:12px !important; line-height:1.2 !important; }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__source {
+    padding:0 !important; min-height:0 !important; height:auto !important;
+    border:0 !important; border-radius:0 !important; background:transparent !important;
+    background-image:none !important; font-size:12px !important; letter-spacing:.06em !important;
+    line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere !important;
+    color:rgb(236 230 216 / .78) !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
   /* Contract dossier: a phone-sized title and reward, and ACCEPT docks on a full-width opaque band so the
      dossier scrolls under it instead of through it. Over 800px tall only:
