@@ -114,8 +114,8 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
 }
 /* Short densify (960×540 / 801×461): the stake purse sat 7px under the stage fold (cutBy 7 at
    960×540) and pressure/yield painted through Training / Quick play; at ≤800 wide the four mode
-   faces wrapped to a second row and Foundry Block / Daily clipped mid-glyph. One denser band keeps
-   Mode on a single row and trims Stake to legend + purse so both clear the fold on first paint. */
+   faces wrapped to a second row and Foundry Block / Daily clipped mid-glyph. Compact the decoration,
+   keep complete decision facts, and let the existing stage scroll when those facts need more room. */
 @media (max-height:560px) {
   ${D} .orr-prep-settings.orr-prep-settings { gap:8px !important; }
   ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)) !important; }
@@ -123,12 +123,20 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
   ${D} .sf-crd-modes .fh-tile-art { height:22px !important; }
   ${D} .sf-crd-modes .fh-tile-art svg { width:22px !important; height:22px !important; }
   ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important; }
-  ${D} .sf-crd-mode-sub { display:none !important; }
-  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; padding:4px 2px 6px !important; }
+  ${D} > .k-stage { scroll-padding-block:12px; scrollbar-width:thin; }
+  ${D} .orr-tile { scroll-margin-block:12px; }
+  ${D} :is(.sf-crd-mode-sub, .sf-crd-stake-sub) {
+    display:block !important; overflow:visible !important; -webkit-line-clamp:unset !important;
+    white-space:normal !important; overflow-wrap:anywhere; margin-top:4px !important;
+  }
+  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; height:auto !important;
+    padding:6px 4px !important; gap:4px !important; }
   ${D} .orr-prep-stake-number { font-size:17px !important; line-height:1.05 !important; }
-  ${D} .orr-prep-stake-pressure, ${D} .orr-prep-stake-yield { display:none !important; }
-  ${D} .sf-crd-stake-sub { display:none !important; }
-  ${D} .orr-prep-daily { display:none !important; }
+  /* Purse, pressure and yield are the stake's tradeoff. They must remain readable before choosing. */
+  ${D} :is(.orr-prep-stake-pressure, .orr-prep-stake-yield) {
+    display:block !important; white-space:normal; overflow-wrap:anywhere; max-width:100%;
+    margin:0; font-size:12px !important; line-height:1.3 !important;
+  }
   ${D} .k-row > .k-row__name { margin-bottom:4px !important; font-size:12px !important; }
   ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:28px !important; padding:4px 0 6px !important; }
   ${D} .sf-crd-zone { margin:2px 0 0 !important; font-size:12px !important; }
@@ -137,10 +145,10 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
     font-variation-settings:'wdth' 92 !important; line-height:1.15 !important; }
 }
 @media (max-height:500px) {
-  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:40px !important; padding:2px 2px !important; }
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:44px !important; height:auto !important; padding:2px 2px !important; }
   ${D} .sf-crd-modes .fh-tile-art { height:18px !important; }
   ${D} .sf-crd-modes .fh-tile-art svg { width:18px !important; height:18px !important; }
-  ${D} .sf-crd-stakes .orr-tile { min-height:40px !important; padding:2px 2px 4px !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; height:auto !important; padding:4px !important; }
   ${D} .orr-prep-stake-number { font-size:16px !important; }
   ${D} .orr-prep-settings.orr-prep-settings { gap:6px !important; }
 }
