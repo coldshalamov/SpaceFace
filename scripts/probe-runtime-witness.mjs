@@ -3828,6 +3828,11 @@ try {
           tick: state?.tick, scale: state?.timeScale,
           timeEffects: state ? readTimeEffectsRequests(state) : null,
           active: tether?.active === true, targetId: tether?.targetId ?? null,
+          hitchRelief: state?.render ? {
+            level: state.render.hitchReliefLevel || 0,
+            scale: state.render.hitchReliefScale || 1,
+            dynRes: state.render.dynResScale || 1,
+          } : null,
           native,
           player: pose(player), target: pose(target),
           bodies: state?.entityList?.filter((entity) => entity.alive !== false && entity.collides !== false).length,

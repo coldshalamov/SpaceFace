@@ -24777,6 +24777,11 @@ export const render = {
       grain: norm.grain ?? 0,
       sceneSamples,
     };
+    // Hitch-governor rungs 1–2 ride the same live options channel: shallower bloom pyramid,
+    // then the grade/vignette/grain/toe composite out. Settings are untouched.
+    const hitchReliefLevel = (this._hitchRelief && this._hitchRelief.level) || 0;
+    if (hitchReliefLevel >= 1) postOpts.bloomLevels = Math.min(Number.isFinite(postOpts.bloomLevels) ? postOpts.bloomLevels : 2, 1);
+    if (hitchReliefLevel >= 2) postOpts.postFx = false;
     if (this.bloom) this.bloom.setOptions(postOpts);
     // Native presentation is reserved for a degraded post-processor fallback. Keep Three's exposure
     // and tone mapper aligned so that exceptional route still degrades predictably.
@@ -24820,6 +24825,7 @@ export const render = {
     noteHitchRing(this._hitchRing, present, Number(renderState.lastPresentDtMs));
     renderState.hitchRing = this._hitchRing;
     this._notePresentInputEdges(renderState, present);
+    this._updateHitchRelief(renderState, present);
   },
 
   _notePresentInputEdges(renderState, present) {
@@ -24839,6 +24845,63 @@ export const render = {
       if (consumePresentInputEdge(latch, action, down, present)) edges += 1;
     }
     renderState.presentInputEdges = edges;
+  },
+
+  // Presentation hitch governor. When the hitch ring shows sustained blocking the ladder sheds
+  // the cheapest GPU/post costs first (bloom mip depth → post-FX stack → raster scale), and
+  // restores one rung after a quiet window. Runtime-only — never writes settings.video — and
+  // gated to the Auto/dynamic-resolution quality policy plus active flight so explicit Manual
+  // choices and paused/menu surfaces keep the configured picture. Level lives on renderState
+  // so the witness probe can observe it.
+  _updateHitchRelief(renderState, present) {
+    const ring = this._hitchRing;
+    if (!ring || !renderState) return;
+    const rel = this._hitchRelief || (this._hitchRelief = { level: 0, lastChangeMs: -Infinity });
+    const gpu = renderState.gpu;
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const eligible = adaptiveResolutionEnabledForSettings(gpu, vd) === true
+      && adaptiveResolutionEligibleForState(this.state) !== false;
+    if (!eligible) {
+      if (rel.level !== 0) this._setHitchReliefLevel(renderState, 0, null);
+      return;
+    }
+    const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    let recent = 0;
+    let extended = 0;
+    for (const slot of ring.slots) {
+      if (!slot) continue;
+      if (slot.present >= present - HITCH_RELIEF_WINDOW + 1) recent += 1;
+      if (slot.present >= present - HITCH_RELIEF_UP_WINDOW + 1) extended += 1;
+    }
+    if (rel.level < HITCH_RELIEF_MAX_LEVEL && recent >= HITCH_RELIEF_DOWN_COUNT
+        && now - rel.lastChangeMs >= HITCH_RELIEF_DOWN_COOLDOWN_MS) {
+      this._setHitchReliefLevel(renderState, rel.level + 1, true);
+    } else if (rel.level > 0 && extended <= HITCH_RELIEF_UP_COUNT
+        && now - rel.lastChangeMs >= HITCH_RELIEF_UP_COOLDOWN_MS) {
+      this._setHitchReliefLevel(renderState, rel.level - 1, false);
+    }
+  },
+
+  _setHitchReliefLevel(renderState, level, eased) {
+    const rel = this._hitchRelief;
+    rel.level = level;
+    rel.lastChangeMs = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    renderState.hitchReliefLevel = level;
+    const prevScale = renderState.hitchReliefScale || 1;
+    renderState.hitchReliefScale = level >= 3 ? HITCH_RELIEF_SCALE : 1;
+    this._invalidatePostOptionsCache();
+    this._syncPostOptions();
+    if (prevScale !== renderState.hitchReliefScale) this._applySize();
+    if (eased === null) return;
+    try {
+      this.bus && this.bus.emit('toast', {
+        text: eased
+          ? 'Graphics eased automatically to keep the game responsive'
+          : 'Graphics restored to your settings',
+        kind: 'info',
+        ttl: 5,
+      });
+    } catch (_) { /* toast is best-effort */ }
   },
 
   _publishArrivalRoster(exactSectorId) {
@@ -33824,6 +33887,20 @@ function collectOrientationResizeResources(scene, camera, renderer, keyLight) {
   };
 }
 
+// Hitch-governor tuning. The ring holds the last 16 over-threshold presents; "recent" counts
+// hitches inside the latest 16 presents, "extended" inside the latest 48. Step down one rung
+// when ~2/3 of recent presents hitched, step up when the extended window is nearly clean. The
+// up-cooldown is deliberately longer than the down-cooldown so an oscillating scene settles at
+// the deeper rung instead of flapping.
+const HITCH_RELIEF_WINDOW = 16;
+const HITCH_RELIEF_DOWN_COUNT = 10;
+const HITCH_RELIEF_UP_WINDOW = 48;
+const HITCH_RELIEF_UP_COUNT = 2;
+const HITCH_RELIEF_DOWN_COOLDOWN_MS = 2500;
+const HITCH_RELIEF_UP_COOLDOWN_MS = 8000;
+const HITCH_RELIEF_SCALE = 0.8;
+const HITCH_RELIEF_MAX_LEVEL = 3;
+
 function aspectClassFromSize(size) {
   return size.x >= size.y ? 'land' : 'port';
 }
@@ -33852,7 +33929,12 @@ function applyRendererSize(renderer, state) {
     && state.render?.renderGraphUnavailable !== true
     && !renderGraphDynResBlocked(state);
   const configuredScale = finiteInRange(vd.renderScale, 0.5, 2, 1);
-  const scale = graphOwnsScale ? 1 : (relief ? Math.min(configuredScale, 0.9) : configuredScale);
+  // Governor rung 3: a raster FLOOR while the hitch ring reports sustained blocking — a cap,
+  // not a multiplier, so it never compounds the integrated relief below the readability floor
+  // (0.9 × 0.8 = 0.72 was player-rejected as too soft). Effective scale is min(configured,
+  // tier relief, hitch floor): integrated 0.9→0.8 under stress, discrete 1.0→0.8.
+  const hitchCap = finiteInRange(state.render && state.render.hitchReliefScale, 0.5, 1, 1);
+  const scale = graphOwnsScale ? 1 : Math.min(relief ? Math.min(configuredScale, 0.9) : configuredScale, hitchCap);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
   // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale
