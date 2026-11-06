@@ -1144,6 +1144,12 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     turretsLost: turretLossCount(runtime),
     ramAuthorized,
     woundedFallbackSpent: ai.woundedFallbackSpent === true,
+    // S10: the wave's last-three commit marker — the pursuit doctrine reads it to
+    // press the innermost ring and to never buy a wounded retreat.
+    swarmLastStand: ai.swarmLastStand === true,
+    // S7: the character sheet's 0.6 s tell floor — cohort hulls stretch every doctrine
+    // cue beat; unmarked hulls keep the adventure beat.
+    swarmTellFloor: ai.swarmTellFloor === true,
     ...bands,
   };
   // The id allocator recycles numbers. Copy the occupant token the spawn just
