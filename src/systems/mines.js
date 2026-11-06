@@ -255,7 +255,8 @@ export const mines = {
         continue;
       }
       // The proximity fuze senses hulls its IFF admits; the strike fuze answers mass the
-      // pilot hurled into the mine itself (inf-mine-strike).
+      // pilot hurled into a fence that is not on the pilot's side (inf-mine-strike).
+      if (mineFightsForPilot(state, mine, data)) continue;
       const strike = this._findStrikingMass(state, mine, stepS);
       if (strike) this._strikeMine(state, mine, data, strike);
     }
@@ -627,6 +628,23 @@ function compareStableIds(a, b) {
   const x = String(a);
   const y = String(b);
   return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/**
+ * A mine on the pilot's side is not a fence the pilot's throws answer: their own mine, a mine
+ * already in their custody (thrown or field-turned — their grenade now), or a fence flying the
+ * pilot's colors (the Crucible room salts its lane mouths on the player's team so the pack
+ * wading in pays). Spending one of those on a rock the pilot threw at the pack is a loss with
+ * no answer in it, so the strike fuze reads only fences that stand against the pilot.
+ */
+function mineFightsForPilot(state, mine, data) {
+  const playerId = state.playerId;
+  if (playerId == null) return true;
+  if (data.ownerId != null && data.ownerId === playerId) return true;
+  if (data.playerThrown === true || data.playerPushed === true) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(playerId) : null;
+  return !!(player && player.team != null && mine.team != null && mine.team === player.team);
 }
 
 /**

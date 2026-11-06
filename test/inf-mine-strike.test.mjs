@@ -247,6 +247,28 @@ test('a rock on the pilot\'s line whipped through a mine sets it off; cargo on t
   assert.equal(pod.alive, true);
 });
 
+test('a fence on the pilot\'s side is never spent on the pilot\'s own throw', t => {
+  const h = fixture(t);
+  // The Crucible room salts its lane mouth on the player's team (a string owner, so the
+  // per-owner cap applies): a rock thrown at the arriving pack must not burn the room's mines.
+  const room = place(h, { x: 0, z: 0 }, { ownerId: 'survival-arena', team: 0 });
+  const own = place(h, { x: 300, z: 0 }, { ownerId: h.player.id, team: 0 });
+  const turned = place(h, { x: 600, z: 0 });
+  turned.data.playerPushed = true;
+  turned.data.pushedAt = -10;          // long past the custody grace
+  const rocks = [room, own, turned].map((mine) => {
+    const rock = body(h, 'asteroid', mine.pos, { x: -6, z: 0 }, { x: 4, z: 0 });
+    throwIt(h, rock);
+    return rock;
+  });
+  h.sim.step(SIM_DT);
+  assert.equal(room.alive, true, 'the room\'s player-team mine waits for the pack');
+  assert.equal(own.alive, true, 'the pilot\'s own mine is not spent on the pilot\'s rock');
+  assert.equal(turned.alive, true, 'a mine already in the pilot\'s custody stays the pilot\'s grenade');
+  assert.equal(named(h, 'mines:struck').length, 0);
+  assert.ok(rocks.every((rock) => rock.alive));
+});
+
 test('the pilot\'s own hull never strike-fuzes, and the pilot\'s own mine still ignores the pilot', t => {
   const h = fixture(t);
   const mine = place(h, { x: 0, z: 0 }, { ownerId: h.player.id, team: 0 });
