@@ -214,3 +214,12 @@ tier, intent, previewId). Mounts for those fits are `src/ui/ship/partVisuals.js`
 **For Lane 3 (RENDERER):** `partVisualsForFittings({ shipId, fittings })` returns
 `{ mounts: [{ id, kind, socket, socketIndex, scale, tint, glow }], sheen }` reading the hull GLB's own
 socket names through `data/modelTruth.js`. One call site in the parts admission path mounts them.
+
+# P0 blocker reported by Lane 4 (not mine to fix)
+
+`src/systems/ships.js` cannot be imported: `Cannot access 'SHIP_BY_ID' before initialization`.
+Reproduce with `node -e "import('./src/systems/ships.js')"`. Cause: a circular import through
+`src/world/tallyThreeIdentity.js`, which evaluates `makeShipEntitySpec(T.assessorShipId)` at module
+top level (commit `3e6223770f3c`, another lane). Every consumer of `systems/ships.js` throws -
+including the Ship Sheet and, by the same chain, game boot and the UI bench. The owning lane needs
+to make that constant lazy (a getter, or a call inside the exported functions).
