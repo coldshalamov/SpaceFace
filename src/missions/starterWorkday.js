@@ -206,6 +206,21 @@ export function isOriginalStarterBuoyTow(state, entity) {
     &&ship?.defId==='ship_pelican'&&shipCarriesModule(ship,'mod_winch_hd'));
 }
 
+// Navigation and dock settlement use the same current physical custody. A saved
+// target ID is a direction, not evidence that a line still holds either occupant.
+export function playerHoldsStarterBuoy(state, buoy) {
+  const tether = state.player?.tether;
+  const attachment = tether?.attachmentId != null
+    ? state.combat?.attachments?.byId?.[String(tether.attachmentId)] : null;
+  const player = state.entities?.get(state.playerId);
+  const playerGeneration = occupantGenerationOf(player), buoyGeneration = occupantGenerationOf(buoy);
+  return !!(tether?.active === true && tether.targetId === buoy?.id
+    && attachment?.id === tether.attachmentId && attachment.state === 'active'
+    && attachment.ownerId === state.playerId && attachment.targetId === buoy.id
+    && player?.alive === true && playerGeneration != null && buoyGeneration != null
+    && attachment.ownerGeneration === playerGeneration && attachment.targetGeneration === buoyGeneration);
+}
+
 // Presentation only. Read the mission's admitted original, never a copied marker or
 // an old latchedTargetId saved in mission params. The tether owner clears its mirror
 // on release; the attachment record proves the current player still holds this body.
@@ -234,18 +249,10 @@ export function starterBuoyRouteFocus(m, state) {
     reason: `No live ${site.label} located. Keep this ticket tracked; a missing buoy is not a delivery.` };
   const ship = activeOwnedShip(state);
   const ready = ship?.defId === 'ship_pelican' && shipCarriesModule(ship, 'mod_winch_hd');
-  const tether = state.player?.tether;
-  const attachment = tether?.attachmentId != null
-    ? state.combat?.attachments?.byId?.[String(tether.attachmentId)] : null;
-  const player = state.entities?.get(state.playerId);
-  const held = tether?.active === true && tether.targetId === buoy.id
-    && attachment?.state === 'active' && attachment.ownerId === state.playerId
-    && attachment.targetId === buoy.id && attachment.targetGeneration === occupantGenerationOf(buoy)
-    && player?.alive === true && (attachment.ownerGeneration == null
-      || attachment.ownerGeneration === occupantGenerationOf(player));
+  const held = playerHoldsStarterBuoy(state, buoy);
   if (held) return { label: 'Helios — buoy receiving berth', stationId: 'station_helios',
     sectorId: m.destSectorId,
-    reason: `Bring ${site.label} into the Helios berth with the winch line attached.`
+    reason: `Dock at Helios with ${site.label} inside the berth and the winch line attached.`
       + (ready ? '' : ' This ticket requires a Pelican with Heavy-Duty Winch fitted.') };
   return { ...base, targetEntityId: buoy.id, pos: { x: buoy.pos.x, z: buoy.pos.z },
     reason: ready ? `Winch ${site.label}, then bring it back to Helios.`

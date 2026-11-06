@@ -1,6 +1,6 @@
 import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
-import { starterBuoySpec, starterMiningReceiptMatches } from '../missions/starterWorkday.js';
+import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
 import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js';
@@ -2324,6 +2324,8 @@ export const missionObjectiveOps = {
     const e = this.state.entities.get(targetId);
     if (!e || e.alive === false || physicalRoleOf(e) !== role) return null;
     if (!m.targetEntityIds || !m.targetEntityIds.includes(e.id)) return null;
+    if (m.params?.starterWorkdayVersion === 1 && m.params.starterJobId === 'starter_pelican'
+      && (!isOriginalStarterBuoyTow(this.state, e) || !playerHoldsStarterBuoy(this.state, e))) return null;
     return e;
   },
 
