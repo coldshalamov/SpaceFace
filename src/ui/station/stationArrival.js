@@ -56,10 +56,23 @@ export function titleGreetingLineFor(state) {
  * same record, nothing invented. Posture repeats per visit like every recognition band; a
  * cold or tense pair stays quiet at the desk, and a faction with no record stays wordless.
  * Pure read.
+ *
+ * The peace read (inf-peace-receipt): when a front resolves, factions drops the pair to tense
+ * and the war posture goes quiet — until now the war simply vanished into silence, even though
+ * the conflict record keeps the flip-time facts (who took the ground, from whom, when). For a
+ * bounded memory window after that stamp, the desk of EITHER house names the peace instead,
+ * from the same record, nothing invented; past the window the berth moves on. A live war on
+ * any of the house's fronts outranks peace news from another one.
  */
+const PEACE_MEMORY_S = 1800; // three sim days: fresh news, then history
+
 export function stationWarPostureLineFor(state, factionId) {
   const conflicts = state && state.conflicts;
   if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  const factionNameOf = (id) => {
+    const kit = FACTION_KITS.find((entry) => entry && entry.id === id);
+    return (kit && (kit.short || kit.name)) || String(id).replace(/^faction_/, '');
+  };
   for (const pairKey of Object.keys(conflicts)) {
     const rec = conflicts[pairKey];
     if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
@@ -67,9 +80,30 @@ export function stationWarPostureLineFor(state, factionId) {
     if (!pair.includes(factionId)) continue;
     const rival = pair.find((id) => id && id !== factionId);
     if (!rival) continue;
-    const kit = FACTION_KITS.find((entry) => entry && entry.id === rival);
-    const rivalName = (kit && (kit.short || kit.name)) || String(rival).replace(/^faction_/, '');
-    return localizeText('We are at war with {rival}. You will understand if the welcome is short.', { rival: rivalName });
+    return localizeText('We are at war with {rival}. You will understand if the welcome is short.',
+      { rival: factionNameOf(rival) });
+  }
+  const now = Number(state.simTime);
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() === 'war') continue;
+    const pair = String(pairKey).split(':');
+    if (!pair.includes(factionId)) continue;
+    const flip = rec.lastFlip;
+    if (!flip || typeof flip !== 'object') continue;
+    const at = Number(flip.t);
+    if (!Number.isFinite(now) || !Number.isFinite(at) || now - at < 0 || now - at > PEACE_MEMORY_S) continue;
+    const winner = typeof flip.newOwner === 'string' && flip.newOwner ? flip.newOwner : null;
+    const loser = typeof flip.previousOwner === 'string' && flip.previousOwner ? flip.previousOwner : null;
+    if (!winner || !loser || winner === loser) continue;
+    const sector = SECTORS.find((entry) => entry && entry.id === flip.sectorId);
+    const ground = (sector && sector.name)
+      || String(flip.sectorId || '').replace(/^sector_/, '').replace(/_/g, ' ').trim()
+      || 'the contested lane';
+    return localizeText(
+      'The war is over — {winner} took {ground} from {loser}. The guns have gone quiet, but the docks still watch their cargo.',
+      { winner: factionNameOf(winner), loser: factionNameOf(loser), ground },
+    );
   }
   return null;
 }
