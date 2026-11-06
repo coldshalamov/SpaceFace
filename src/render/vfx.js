@@ -132,7 +132,7 @@ import {
 } from './tabletopPolicy.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
-import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { applyFlashAccessibility, resolveVfxAccessibilityProfile, clampFlashToScreenCap } from './vfxAccessibility.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
 import { AMBIENT_FIXTURE_KEYS, makeAmbientFixtureReads, selectAmbientFixtures } from './ambientFixtures.js';
 import { nocturneForScene, eventPriorityClass } from './nocturne/bridge.js';
@@ -3255,6 +3255,20 @@ export const vfx = {
       size1 = authored.size1;
       op0 = authored.opacity0;
       op1 = authored.opacity1;
+    }
+    if (kind === SPR_FLASH && !this._spawnFlashAccessibilityBypass) {
+      // Global law: a flash never covers more than FLASH_SCREEN_FRACTION_CAP of the screen and
+      // never outlives FLASH_LIFE_CAP_S — the AUDIT full-screen bomb beat cannot return.
+      const zoom = this.state && this.state.camera && this.state.camera.liveZoom;
+      const authored = this._flashAccessibilityScratch
+        || (this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 });
+      authored.life = life;
+      authored.size0 = size0;
+      authored.size1 = size1;
+      clampFlashToScreenCap(authored, zoom);
+      life = authored.life;
+      size0 = authored.size0;
+      size1 = authored.size1;
     }
     const priority = normalizeVfxAdmissionPriority(
       admissionPriority,
