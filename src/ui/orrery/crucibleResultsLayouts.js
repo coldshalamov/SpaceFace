@@ -155,6 +155,42 @@ ${RESULTS_PLATE(R)}
   :is(${R}, ${RP}) > .sf-crres__dial .orr-deathdial__detail { display:none; }
 }
 
+/* ui-polish-383: stacked plate (≤700 wide / phone) parked Wave/Kills/Best/Purse under the sticky
+   opaque foot at scroll 0 (under≥1 @390×844; wholly below the fold @651/700×461). Dissolve the
+   stage wrapper so figures + THE TAKE can seat above the dial without shrinking the dial's
+   caption box (height clamps overflowed KILLED BY / LAST 5 HITS into the numbers). */
+@media (max-width:700px) {
+  :is(${R}, ${RP}) > .sf-crres__stage {
+    display:contents !important;
+    -webkit-mask-image:none !important; mask-image:none !important;
+  }
+  :is(${R}, ${RP}) .orr-crres-figures { order:2 !important; }
+  :is(${R}, ${RP}) > .sf-crres-celebrate { order:3 !important; }
+  :is(${R}, ${RP}) > .sf-crres__dial { order:4 !important; }
+  :is(${R}, ${RP}) .sf-crres__band[data-band="story"] { order:5 !important; }
+  :is(${R}, ${RP}) .sf-crres__band[data-band="build"] { order:6 !important; }
+  :is(${R}, ${RP}) .sf-crres__sheet { order:7 !important; }
+  :is(${R}, ${RP}) .sf-crres__ledger > .sf-crres__band:not([data-band]) { order:8 !important; }
+  :is(${R}, ${RP}) .sf-crres__share { order:9 !important; }
+  :is(${R}, ${RP}) .sf-crres__story > details.sf-crres__band { order:10 !important; }
+  :is(${R}, ${RP}) > .k-foot { order:11 !important; }
+}
+@media (max-width:700px) and (max-height:560px) {
+  :is(${R}, ${RP}) { gap:10px !important; padding:12px 16px 0 !important; }
+  :is(${R}, ${RP}) > .k-title .k-t-title { font-size:34px !important; }
+  :is(${R}, ${RP}) .orr-crres-figures { row-gap:8px !important; }
+  :is(${R}, ${RP}) .orr-crres-figure__n { font-size:28px !important; }
+  :is(${R}, ${RP}) .orr-crres-figure__w { font-size:12px !important; letter-spacing:.14em !important; margin-top:2px !important; }
+  :is(${R}, ${RP}) > .sf-crres-celebrate { margin:0 !important; }
+  :is(${R}, ${RP}) > .sf-crres__dial { margin-bottom:10px !important; }
+  :is(${R}, ${RP}) > .k-foot { padding:8px 16px 6px !important; margin-left:-16px !important; margin-right:-16px !important; }
+}
+@media (max-width:560px) and (min-height:701px) {
+  :is(${R}, ${RP}) { gap:12px !important; }
+  :is(${R}, ${RP}) .orr-crres-figures { row-gap:10px !important; }
+  :is(${R}, ${RP}) .orr-crres-figure__n { font-size:40px !important; }
+}
+
 /* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
    LAST 5 HITS strip and its legend) needs ~520px, which the full-width foot row would cut in
    half. So the ways-out stack under the left column, and the instrument takes the whole
