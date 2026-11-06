@@ -63,7 +63,9 @@ test('worker recovery retains the counterplay clock and rejects recycled actor l
   h.deliver();
   const fight = readIronKrakenMotionFrame(h.remoteBoss);
   assert.deepEqual(fight.recovery, h.fight.recovery);
-  const payload = { encounterId: h.profile.scoreId, fightId: h.fight.fightId, beatId: 'siphon_jet' };
+  const payload = { encounterId: h.profile.scoreId, fightId: h.fight.fightId, beatId: 'siphon_jet', startedAt: 180 };
+  assert.equal(resolveIronKrakenAudioCue(h.remote, 'capitalBoss:recovery', { ...payload, startedAt: 20 }), null,
+    'an old recovery cannot borrow the latest compact worker frame');
   assert.equal(resolveIronKrakenAudioCue(h.remote, 'capitalBoss:recovery', payload).recipeId, 'sfx_kraken_vent');
   h.remoteBoss.occupantGeneration++;
   assert.equal(readIronKrakenMotionFrame(h.remoteBoss), null);

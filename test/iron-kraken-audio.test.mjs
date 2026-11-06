@@ -43,7 +43,12 @@ for (const variant of ['heavy', 'colossus']) test(`native ${variant} score reach
       run.state.tick = tick; run.state.simTime = tick / 60; run.rt.ctx.currentTime = tick / 60;
       const events = stepCapitalBossFight(run.fight, { tick, simTime: tick / 60,
         boss: run.boss, target: run.target, active: true });
-      for (const event of events) run.bus.emit(`capitalBoss:${event.type}`, event);
+      for (const event of events) {
+        if (event.type === 'recovery' || event.type === 'countered') {
+          assert.equal(event.startedAt, run.fight.recovery.startedAt, 'producer identifies the committed recovery');
+        }
+        run.bus.emit(`capitalBoss:${event.type}`, event);
+      }
       if (new Set(run.calls.map(c => c.recipeId)).size === 5) break;
     }
     assert.deepEqual(new Set(run.calls.map(c => c.recipeId)), new Set(IRON_KRAKEN_AUDIO_RECIPES.map(r => r.id)));
@@ -70,7 +75,8 @@ test('tracking and lock repeat one tell; attack and recovery are separate, dedup
     assert.equal(run.dropped.length, 1, 'attack replaces the charging phrase');
     run.fight.phase = 'recovery'; run.fight.cast = null;
     run.fight.recovery = { beatId: 'arm_rake', startedAt: 170, durationTicks: 150, cancelled: false };
-    run.bus.emit('capitalBoss:recovery', payload); run.bus.emit('capitalBoss:recovery', payload);
+    const recovery = { ...payload, startedAt: 170 };
+    run.bus.emit('capitalBoss:recovery', recovery); run.bus.emit('capitalBoss:recovery', recovery);
     assert.equal(run.calls.length, 3); assert.equal(run.calls[2].recipeId, 'sfx_kraken_vent');
     assert.equal(run.rt.voices.length, 1);
   } finally { run.dispose(); }
@@ -92,9 +98,48 @@ test('cancellation stops only the matching creature and never voices its unfired
     run.fight.recovery = { beatId: 'siphon_jet', startedAt: 40, durationTicks: 150, cancelled: true };
     run.bus.emit('capitalBoss:attack', payload);
     assert.equal(run.calls.length, 1);
-    run.bus.emit('capitalBoss:countered', payload);
+    run.bus.emit('capitalBoss:countered', { ...payload, startedAt: 40 });
     assert.equal(run.calls[1].recipeId, 'sfx_kraken_vent');
     assert.ok(run.rt.voices.includes(unrelated));
+  } finally { run.dispose(); }
+});
+
+for (const cancelled of [false, true]) test(`stale ${cancelled ? 'countered' : 'completed'} receipts cannot claim a later same-beat recovery`, () => {
+  const run = fixture();
+  try {
+    const payload = run.tell('earlier-cast', 'siphon_jet');
+    const event = cancelled ? 'capitalBoss:countered' : 'capitalBoss:recovery';
+    run.fight.cast = null; run.fight.phase = 'recovery';
+    run.fight.recovery = { beatId: 'siphon_jet', startedAt: 900, durationTicks: 150, cancelled };
+    run.bus.emit(event, { ...payload, startedAt: 40 });
+    run.bus.emit(event, payload);
+    assert.equal(run.calls.length, 0, 'stale and generation-less receipts have no sound authority');
+    assert.equal(run.dropped.length, 0, 'rejected receipts cannot stop a live voice');
+    const current = { ...payload, startedAt: 900 };
+    run.bus.emit(event, current);
+    run.bus.emit(event, current);
+    assert.equal(run.calls.length, 1, 'the current recovery remains available and deduplicates normally');
+    assert.equal(run.calls[0].recipeId, 'sfx_kraken_vent');
+    assert.equal(run.calls[0].options.gain, cancelled ? .35 : .50);
+  } finally { run.dispose(); }
+});
+
+test('native cancellation receipt identifies its committed recovery', () => {
+  const run = fixture();
+  try {
+    let tick = 0;
+    while (!run.fight.cast && tick < 1000) {
+      stepCapitalBossFight(run.fight, { tick, simTime: tick / 60, boss: run.boss, target: run.target, active: true });
+      tick += 1;
+    }
+    assert.ok(run.fight.cast, 'the native score reaches a charge');
+    run.boss.disabled = ['subsystem_power'];
+    const events = stepCapitalBossFight(run.fight, { tick, simTime: tick / 60,
+      boss: run.boss, target: run.target, active: true });
+    const countered = events.find(event => event.type === 'countered');
+    assert.ok(countered);
+    assert.equal(countered.startedAt, run.fight.recovery.startedAt);
+    assert.equal(resolveIronKrakenAudioCue(run.state, 'capitalBoss:countered', countered).recipeId, 'sfx_kraken_vent');
   } finally { run.dispose(); }
 });
 

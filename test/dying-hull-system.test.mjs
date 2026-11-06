@@ -45,6 +45,8 @@ import {
   lifecycleOf,
   readDying,
 } from '../src/combat/lifecycle.js';
+import { swarmFeel } from '../src/data/swarmFeelProfile.js';
+import { survivalRoundWreckLatchLegal } from '../src/systems/tetherGameplay.js';
 
 const DT = 1 / 60;
 const ARENA = 'helios_core';
@@ -144,7 +146,9 @@ function events(h, name) {
   return h.emitted.filter((e) => e.event === name);
 }
 
-// The payload shape combat.kill() publishes (killerId = the player, a gunfire kill).
+// The payload shape combat.kill() publishes (killerId = the player, a gunfire kill). Production
+// then despawns the body and emits entity:destroyed, which is what releases its spawn-budget slot —
+// a fixture kill that stops at `killed` reserves the slot forever and starves the finite quota.
 function killByGunfire(h, entity) {
   const pos = { x: entity.pos.x, z: entity.pos.z };
   entity.alive = false;
@@ -157,6 +161,10 @@ function killByGunfire(h, entity) {
       targetVelocity: { x: entity.vel.x, z: entity.vel.z }, playerCaused: true,
     }),
   });
+  const idx = h.state.entityList.indexOf(entity);
+  if (idx !== -1) h.state.entityList.splice(idx, 1);
+  h.state.entities.delete(entity.id);
+  h.bus.emit('entity:destroyed', { id: entity.id, type: entity.type, reason: 'killed', pos });
 }
 
 function dyingWreckOf(h) {
@@ -168,7 +176,9 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   const victim = liveHostiles(h)[0];
   victim.vel = { x: 132, z: -47 };
   victim.rot = 0.9;
-  victim.mass = 16;
+  // S1 Swarm feel: light hulls (<=32 t) burst on the kill tick - a medium hull still owns a
+  // window, so the mechanism is exercised on the mass band that still has one.
+  victim.mass = 48;
   killByGunfire(h, victim);
   // Stamped inside the kill's own emit: audio / presenters that read the record while handling
   // `entity:killed` (whenever the presentation drain reaches it) find it with no tick of lag.
@@ -185,9 +195,9 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   const begin = begins[0].payload;
   assert.equal(begin.wreckId, wreck.id);
   assert.equal(begin.victimId, victim.id);
-  assert.equal(begin.tier, 'light');
-  assert.ok(begin.windowS > 0 && begin.windowS <= 1.2, `fodder window ${begin.windowS}s`);
-  assert.equal(begin.windowS, dyingWindowS({ mass: 16, radius: victim.radius }));
+  assert.equal(begin.tier, 'medium');
+  assert.ok(begin.windowS > 0 && begin.windowS <= 1.2, `medium window ${begin.windowS}s`);
+  assert.equal(begin.windowS, dyingWindowS({ mass: 48, radius: victim.radius, feel: swarmFeel(h.state) }));
   assert.ok(Math.hypot(wreck.vel.x - 132, wreck.vel.z + 47) < 1, 'the successor carries the real momentum, not a reset');
 
   // Exactly the two finite forces of a failing hull went through the physics membrane.
@@ -222,6 +232,7 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
 test('the dying window grants nothing: one kill, one reward event set, no replay at rupture', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   h.tick(1);
   const rewardNames = ['entity:killed', 'economy:grantCredits', 'loot:drop', 'combat:kill', 'xp:grant', 'mission:progress'];
@@ -244,6 +255,7 @@ test('the dying window grants nothing: one kill, one reward event set, no replay
 test('a same-tick duplicate kill receipt mints no second dying record', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   killByGunfire(h, victim);
   h.tick(2);
@@ -289,10 +301,17 @@ test('a heavier hull fails longer and sheds fragments through the fracture owner
   const piecesBefore = h.state.entityList.filter((e) => e.data && e.data.collisionTearOff).length;
   killByGunfire(h, a);
   killByGunfire(h, b);
+  // The production dying pass runs later in this same sim tick, after combat.
+  h.dyingSystem.update(DT, h.state);
+  const immediate = events(h, 'dyingHull:ruptured');
+  assert.equal(immediate.length, 1, 'only the light hull ruptures on the kill tick');
+  assert.equal(immediate[0].tick, h.state.tick);
+  assert.equal(immediate[0].payload.victimId, a.id);
   h.tick(1);
   const [lightBegin, heavyBegin] = events(h, 'dyingHull:begin').map((e) => e.payload);
   assert.equal(lightBegin.tier, 'light');
   assert.equal(heavyBegin.tier, 'heavy');
+  assert.equal(lightBegin.windowS, 0, 'S1: fodder bursts on the kill tick under the Swarm profile');
   assert.ok(heavyBegin.windowS > lightBegin.windowS, `${heavyBegin.windowS} > ${lightBegin.windowS}`);
   assert.ok(heavyBegin.windowS <= 3, 'large hull still capped');
   h.tick(300);
@@ -301,7 +320,8 @@ test('a heavier hull fails longer and sheds fragments through the fracture owner
   const light = ruptured.find((r) => r.wreckId === lightBegin.wreckId);
   const heavy = ruptured.find((r) => r.wreckId === heavyBegin.wreckId);
   assert.equal(light.pieceIds.length, 0, 'fodder sheds no fragments');
-  assert.ok(heavy.pieceIds.length >= 1 && heavy.pieceIds.length <= 2, `heavy sheds real pieces (${heavy.pieceIds.length})`);
+  // S8: under the Swarm profile a heavy break-up is a 3-6 chunk ammunition pile, not a pair.
+  assert.ok(heavy.pieceIds.length >= 3 && heavy.pieceIds.length <= 6, `heavy sheds real pieces (${heavy.pieceIds.length})`);
   for (const id of heavy.pieceIds) {
     const piece = h.state.entities.get(id);
     assert.ok(piece && piece.type === 'wreck' && piece.data.collisionTearOff === true, 'a physical tear-off body, not a particle');
@@ -333,6 +353,7 @@ test('with the hull-burst switch off (the frozen profile) nothing is staged and 
 test('pause: a hull dying through a pause neither ruptures nor stalls; on resume it ruptures once, late and quiet', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   h.tick(1);
   assert.equal(events(h, 'dyingHull:begin').length, 1);
@@ -352,7 +373,9 @@ test('pause: a hull dying through a pause neither ruptures nor stalls; on resume
 test('teardown boundaries leave no ghost: sector exit, save load and new game drop the record without a rupture', () => {
   for (const boundary of ['sector:exit', 'sector:enter', 'save:loaded', 'game:newGame']) {
     const h = boot();
-    killByGunfire(h, liveHostiles(h)[0]);
+    const victim = liveHostiles(h)[0];
+    victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+    killByGunfire(h, victim);
     h.tick(1);
     assert.equal(h.state.dyingHullRuntime.count, 1, `${boundary}: fixture dying`);
     const wreckId = dyingWreckOf(h).id;
@@ -369,7 +392,9 @@ test('teardown boundaries leave no ghost: sector exit, save load and new game dr
 
 test('early destruction and id reuse: a destroyed or replaced successor never ruptures and is never referenced', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   const id = wreck.id;
@@ -382,7 +407,9 @@ test('early destruction and id reuse: a destroyed or replaced successor never ru
   assert.equal(events(h, 'dyingHull:ruptured').length, 0);
 
   // A second hull dies; then its body is replaced by a stranger that reuses the id.
-  killByGunfire(h, liveHostiles(h)[0]);
+  const secondVictim = liveHostiles(h)[0];
+  secondVictim.mass = 48;
+  killByGunfire(h, secondVictim);
   h.tick(1);
   const second = dyingWreckOf(h);
   assert.ok(second);
@@ -400,7 +427,9 @@ test('early destruction and id reuse: a destroyed or replaced successor never ru
 
 test('a re-delivered aftermath spawn for an old wreck (sector re-entry) is simply a wreck', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -418,7 +447,9 @@ test('a re-delivered aftermath spawn for an old wreck (sector re-entry) is simpl
 
 test('floating-origin rebase mid-window: the rupture is reported at the hull\'s live (shifted) position', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -471,7 +502,9 @@ test('idle is free: no queued work means no rng draw, no event and no state chur
 
 test('the failing hull rolls and pitches through its window - presentation pose only, footprint untouched', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -493,11 +526,60 @@ test('the failing hull rolls and pitches through its window - presentation pose 
 test('reduced motion keeps the state cue but no tilt', () => {
   const h = boot();
   h.state.settings = { video: { motionReduce: true }, accessibility: {} };
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   const bank0 = wreck.bank || 0;
   h.tick(10);
   assert.equal(wreck.bank || 0, bank0);
   assert.equal(lifecycleOf(h.state, wreck), LIFECYCLE.DYING, 'the lifecycle read is unchanged');
+});
+
+test('S8: a heavy kill sheds 3-6 ropable ammunition chunks and a radial shockwave', () => {
+  const h = boot();
+  const victim = liveHostiles(h)[0];
+  victim.mass = 120; victim.radius = 24; // heavy band keeps its authored window
+  // A bystander in the shockwave ring — a real dynamic body standing 60 WU off the hull.
+  const bystander = {
+    id: 909001, occupantGeneration: 1, type: 'ship', alive: true,
+    pos: { x: victim.pos.x + 60, z: victim.pos.z },
+    vel: { x: 0, z: 0 }, rot: 0, angVel: 0, radius: 8, mass: 16,
+    data: {},
+    physicsBody: { schemaVersion: 1, radius: 8, mass: 16, inertiaY: 128, dynamic: true, material: 'ship' },
+  };
+  h.state.entities.set(bystander.id, bystander);
+  h.state.entityList.push(bystander);
+  killByGunfire(h, victim);
+  h.tick(600); // the authored heavy window, then the rupture tick
+  const ruptured = events(h, 'dyingHull:ruptured').map((e) => e.payload);
+  assert.equal(ruptured.length, 1, 'the heavy ruptures exactly once');
+  assert.equal(ruptured[0].shockwave, true, 'the rupture announces its shockwave');
+  const pieces = ruptured[0].pieceIds.map((id) => h.state.entities.get(id)).filter(Boolean);
+  assert.ok(pieces.length >= 3 && pieces.length <= 6, `3-6 chunks, got ${pieces.length}`);
+  for (const piece of pieces) {
+    assert.equal(piece.data.collisionTearOff, true, 'ordinary tear-off body');
+    assert.equal(piece.data.runCohort, 'survival', 'stamped into the round');
+    assert.equal(survivalRoundWreckLatchLegal(piece, h.state), true,
+      'the Line latch admits the chunk as ammunition');
+  }
+  const command = consumePhysicsCommand(bystander);
+  assert.ok(command && command.impulses.length === 1, 'the bystander took one queued impulse');
+  const [imp] = command.impulses;
+  // Away from the wreck: the impulse shares the bystander's offset direction (+x side).
+  assert.ok(imp.x > 0, `radial shove pushes +x, got (${imp.x}, ${imp.z})`);
+  assert.ok(Math.hypot(imp.x, imp.z) / 16 <= 70, 'the shove respects the dv cap');
+});
+
+test('S8: a light kill still just bursts - no chunks, no shockwave', () => {
+  const h = boot();
+  const victim = liveHostiles(h)[0];
+  victim.mass = 12; victim.radius = 10;
+  killByGunfire(h, victim);
+  h.tick(120);
+  const ruptured = events(h, 'dyingHull:ruptured').map((e) => e.payload);
+  assert.equal(ruptured.length, 1);
+  assert.equal(ruptured[0].shockwave, false);
+  assert.equal(ruptured[0].pieceIds.length, 0);
 });

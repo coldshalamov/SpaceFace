@@ -1237,7 +1237,7 @@ export const footprintScreen = {
     if (this._pendingFocusKey) {
       const target = this._nodeButtons.get(this._pendingFocusKey);
       if (target && typeof target.focus === 'function') {
-        try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+        try { target.focus({ preventScroll: false }); } catch (_) { target.focus(); }
       }
       this._pendingFocusKey = null;
     }
@@ -1612,7 +1612,7 @@ export const footprintScreen = {
     if (event.key === 'ArrowLeft') {
       // Back to the dial: the traced source's sector key.
       const dialKey = this._dial && this._tracedSourceId ? this._dial.keyFor(this._tracedSourceId) : null;
-      if (dialKey) { event.preventDefault(); try { dialKey.focus({ preventScroll: true }); } catch (_) { dialKey.focus(); } }
+      if (dialKey) { event.preventDefault(); try { dialKey.focus({ preventScroll: false }); } catch (_) { dialKey.focus(); } }
       return;
     }
     if (event.key === 'ArrowRight') {

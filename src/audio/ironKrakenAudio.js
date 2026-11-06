@@ -32,6 +32,9 @@ export function resolveIronKrakenAudioCue(state, event, payload) {
   } else if (event === 'capitalBoss:recovery' || event === 'capitalBoss:countered') {
     const recovery = fight.recovery;
     if (fight.phase !== 'recovery' || !recovery || recovery.beatId !== payload.beatId) return null;
+    // Repeated beats have distinct recovery generations. A delayed receipt cannot borrow
+    // the current recovery's dedupe key and consume its one audible vent.
+    if (!Number.isSafeInteger(payload.startedAt) || payload.startedAt !== recovery.startedAt) return null;
     if (event === 'capitalBoss:recovery' && recovery.cancelled) return null;
     if (event === 'capitalBoss:countered' && !recovery.cancelled) return null;
     stage = 'vent'; recipeId = 'sfx_kraken_vent'; gain = recovery.cancelled ? .35 : .50;

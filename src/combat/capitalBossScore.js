@@ -184,7 +184,7 @@ export function stepCapitalBossFight(r,o) {
     const reason=blockReason(beat);
     cancel(reason);r.phase='recovery';r.nextAt=r.clock+150;
     r.recovery={beatId:beat.id,startedAt:r.clock,durationTicks:150,heading:priorCast.heading,cancelled:true};
-    emit('countered',{reason,beatId:beat.id,title:beat.title,counter:beat.counter});order('recovery');
+    emit('countered',{reason,beatId:beat.id,startedAt:r.recovery.startedAt,title:beat.title,counter:beat.counter});order('recovery');
   }
   if(r.cast) {
     const c=r.cast,b=getBeat(s,c.beatId),age=r.clock-c.startedAt;
@@ -217,7 +217,7 @@ export function stepCapitalBossFight(r,o) {
       if(b.expose) emit('damage',{attackerId:boss.id,targetId:boss.id,
         packet:{channels:{},statuses:[{id:b.expose.status,stacks:1,durationTicks:b.expose.durationTicks}],flags:{}},
         origin:{kind:'capital_exposure',id:c.id}});
-      emit('recovery',{beatId:b.id,title:b.title,counter:b.counter,durationTicks:b.recoverTicks,exposure:b.expose});order('recovery');wingGate(true);
+      emit('recovery',{beatId:b.id,startedAt:r.recovery.startedAt,title:b.title,counter:b.counter,durationTicks:b.recoverTicks,exposure:b.expose});order('recovery');wingGate(true);
     }
   } else if(r.actIndex>=0 && r.clock>=r.nextAt) {
     const act=s.acts[r.actIndex];let selected=null;
