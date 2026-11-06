@@ -155,6 +155,11 @@ export default defineFlavorPack({
         { id: 'margin_67', eventKey: 'player.downed_hunter', text: 'A licensed hunter stopped answering mid-contract. The Tessera was the last thing on his scope. The office has already posted the next one.' },
         { id: 'margin_68', eventKey: 'player.downed_raider', text: 'Tessera dropped a raider off the claim lanes. The claim office filed it as routine clearance. We filed the name.' },
         { id: 'margin_69', eventKey: 'player.downed_raider', text: "Another wing went down under the Tessera's guns. The bounty desk paid half the posted rate. We are asking who kept the other half." },
+        // inf-band-rank: a finished career ladder is a deed the institutions print tickets for.
+        // The Margin reads the receipt once, in its own register — the stamp is real, the romance is not.
+        { id: 'margin_70', eventKey: 'player.rank_hauler', text: 'Tessera cleared the hauler board to the last rung. The union issued the ticket. Freight still weighs what it weighed.' },
+        { id: 'margin_71', eventKey: 'player.rank_hunter', text: "Tessera closed the hunter's ladder. The guild calls the bond earned. The ones that ran were never on it." },
+        { id: 'margin_72', eventKey: 'player.rank_prospector', text: "Tessera worked the prospector's circuit to the last stake. The charts kept the seam. The shares went where shares go." },
       ],
     },
     {
