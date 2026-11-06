@@ -38,6 +38,7 @@ import {
   frameSolidMetrics,
   installFrameSolidSampler,
   isInFrameLink,
+  readResidencyCounters,
   resolveFrameSolidLinks,
   summarizeFrameSolid,
 } from './lib/frameSolidSampler.mjs';
@@ -684,6 +685,8 @@ try {
     : null;
   // Prefer the sampler's own witness (every link, named by program); the perf ring is the fallback.
   const resolvedLinks = await page.evaluate(resolveFrameSolidLinks).catch(() => []);
+  // E6: the residency manager's own verdicts (held-before-present vs held-again).
+  const residency = await page.evaluate(readResidencyCounters).catch(() => null);
   const flightLinkEvents = resolvedLinks.length
     ? resolvedLinks
     : (shaderLinksAtFlight ? await readFlightLinkEvents(shaderLinksAtFlight.frame) : []);
@@ -832,6 +835,16 @@ try {
   }
   console.log(`  in-flight shader links: ${flightShaderLinks == null ? 'NOT MEASURED (perf seam absent or unarmed)' : flightShaderLinks}`
     + ` (inside a drawn frame: ${inFrameShaderLinks == null ? 'n/a' : inFrameShaderLinks})`);
+  if (residency && residency.manager) {
+    const r = residency.manager;
+    console.log(`  residency: draws=${r.draws} resident=${r.admittedResident} inline=${r.admittedInline}`
+      + ` heldDraws=${r.heldDraws} preAdmittedHolds=${r.preAdmittedHolds}`
+      + ` visibleUnready=${r.visibleUnready} released=${r.releasedRoots}`
+      + ` delayP95=${r.firstResidentDelayP95Ms}ms uploadMs=${r.uploadMsTotal}`
+      + ` pending=${r.pending} compileFailOpen=${residency.compileFailOpen}`);
+  } else {
+    console.log('  residency: NOT MEASURED (manager absent)');
+  }
   for (const e of flightLinkEvents.slice(0, 40)) {
     console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
       + ` nearest=${e.nearestProgram || '-'}`
@@ -846,6 +859,7 @@ try {
     head,
     headless: HEADLESS,
     route: ROUTE, seed: SEED, simLane: SIM_LANE, routeIdentity,
+    residency,
     programCanon: !NO_CANON,
     sourceOverlay: BASELINE_SOURCE_IDENTITY ? {
       manifest: path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/'),

@@ -23,6 +23,8 @@
 //
 // Tokens only: --dp-* from deckplate/tokens.js and orrery/tokens.js. No new token root.
 
+import { installTypeGovernor } from './typeGovernor.js';
+
 const STYLE_ID = 'sf-console-standard';
 
 export const CONSOLE_STANDARD_CSS = `
@@ -277,6 +279,11 @@ html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-
 #screens .k-rows .k-row[aria-selected="true"], #screens .k-rows .k-row.is-active {
   background:rgb(242 185 80 / .1); box-shadow:inset 2px 0 0 var(--dp-lamp, #f2b950); }
 
+/* Mission log: a row's summary is "objective · timer". The chosen mission's card beside the list states the
+   objective, so on the selected row only the timer remains (the objective used to print three times). */
+#screens .sf-mlog-row[aria-selected="true"] .sf-mlog-row-obj { display:none; }
+#screens .sf-mlog-row .sf-mlog-row-obj + .sf-mlog-row-clock::before { content:" · "; }
+
 @media (forced-colors:active) {
   .dp-mfd, .dp-glass, .dp-plate-hw, .sf-panel, .dp-dialog, #sf-commsfan {
     background:Canvas; box-shadow:none; forced-color-adjust:none; }
@@ -351,4 +358,7 @@ export function injectConsoleStandard(doc = globalThis.document) {
   style.id = STYLE_ID;
   style.textContent = CONSOLE_STANDARD_CSS;
   doc.head.appendChild(style);
+  // CSS cannot cap tracking on a computed text-transform, so the type standard (§2: labels <= .08em,
+  // running text in sentence case) is applied from measured style as screens mount.
+  installTypeGovernor(doc);
 }

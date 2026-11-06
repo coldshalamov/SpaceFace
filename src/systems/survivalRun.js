@@ -371,8 +371,14 @@ export const survivalRun = {
         const stamped = run.telemetry && run.telemetry.hangar;
         applyHangarToPlayer(this.state, stamped || loadCrucibleMeta().hangar);
       }
-      this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
-      return;
+      // S4 one-press Swarm: a quick-start run carries its no-armory contract on telemetry —
+      // the hangar stamp still applies and the purse still lands, but the opening stop is
+      // round 1 in flight instead of the draft. Later waves draft normally (every swarm wave
+      // does), so the armory is never more than one round away.
+      if (!(run.telemetry && run.telemetry.openArmoryBeforeRound1 === false)) {
+        this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
+        return;
+      }
     }
     this._requestTransition('loadout', 'arena_intro', REASON_READY);
     this._requestTransition('arena_intro', 'wave_intro', REASON_INTRO_DONE);

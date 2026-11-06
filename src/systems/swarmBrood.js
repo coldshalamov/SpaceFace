@@ -1662,8 +1662,11 @@ export function createBroodEngine(deps = {}) {
         // the face it planted on. It repins next tick regardless.
         if (def && def.rooted) break;
         if (rel2 >= slam * slam) {
-          kill(i, 'terrain', px[i], pz[i], !!rockCredited[r]
-            || creditUntil[i] > simTime || phase[i] === BROOD_PHASE_DASH);
+          // S3 fair credit: the dash is the body's own committed attack steer — a brood
+          // that suicides on the room's face is machinery the player did not trigger,
+          // an environmental death like any drifting body's slam. Only the player's own
+          // momentum (a shoved rock, a recent impulse window) earns the credit.
+          kill(i, 'terrain', px[i], pz[i], !!rockCredited[r] || creditUntil[i] > simTime);
           break;
         }
         // A body under its own steering meets the rock and slides along its face.
@@ -1966,6 +1969,58 @@ export function createBroodEngine(deps = {}) {
       }
     } else {
       acidTickAcc = 0;
+    }
+    // S9 — the pool is the splash's own law standing: the acid does not spare the swarm.
+    // Brood bodies burn down on the same DPS reading the player takes; ships in the field
+    // (escorts, call-ins) take it on a half-second stamp, so standing in acid is a choice
+    // with a price for everything alive in the room.
+    if (live > 0) {
+      const burn = BROOD_SPITTER_POOL_DPS * dt;
+      const pr2 = BROOD_SPITTER_POOL_RADIUS * BROOD_SPITTER_POOL_RADIUS;
+      for (let i = 0; i < CAP; i++) {
+        if (!alive[i]) continue;
+        let inPool = false;
+        for (let p = 0; p < BROOD_POOL_MAX; p++) {
+          if (poolAge[p] >= poolTtl[p]) continue;
+          const dx = px[i] - poolX[p];
+          const dz = pz[i] - poolZ[p];
+          if (dx * dx + dz * dz <= pr2) { inPool = true; break; }
+        }
+        if (!inPool) continue;
+        hp[i] -= burn;
+        if (hp[i] <= 0) kill(i, 'explosive', px[i], pz[i], creditUntil[i] > finite(state.simTime));
+      }
+      const tick = Number.isInteger(state.tick) ? state.tick : 0;
+      const bodies = state.entityIndex && Array.isArray(state.entityIndex.shipLike)
+        ? state.entityIndex.shipLike : (state.entityList || []);
+      for (const body of bodies) {
+        if (!body || body.alive === false || body.id === state.playerId || !body.pos) continue;
+        if (body.type && body.type !== 'ship' && body.type !== 'drone') continue;
+        let inPool = false;
+        for (let p = 0; p < BROOD_POOL_MAX; p++) {
+          if (poolAge[p] >= poolTtl[p]) continue;
+          const dx = body.pos.x - poolX[p];
+          const dz = body.pos.z - poolZ[p];
+          if (dx * dx + dz * dz <= pr2) { inPool = true; break; }
+        }
+        if (!inPool) continue;
+        const data = body.data || (body.data = {});
+        if (Number.isFinite(data.broodAcidAt) && tick - data.broodAcidAt < 30) continue;
+        data.broodAcidAt = tick;
+        if (routeDamage) {
+          routeDamage({
+            attackerId: null,
+            targetId: body.id,
+            packet: scalarHitToDamagePacket({
+              damage: BROOD_SPITTER_POOL_DPS * 0.5,
+              damageType: BROOD_PLASMA_TYPE,
+              pos: { x: body.pos.x, z: body.pos.z },
+              source: { kind: 'swarm_brood', id: 'brood_acid_pool' },
+            }),
+            origin: { kind: 'swarm_brood', id: 'brood_acid_pool' },
+          });
+        }
+      }
     }
     void state;
   }

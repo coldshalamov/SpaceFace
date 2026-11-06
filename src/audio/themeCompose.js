@@ -14,7 +14,7 @@ import {
 import { renderComposedSectorBedPcm } from './sectorScoreBeds.js';
 
 export const THEME_SAMPLE_RATE = 32000;
-export const THEME_STEM_SECONDS = 4;
+export const THEME_STEM_SECONDS = 16;
 export const THEME_BED_SECONDS = 2;
 
 const SEMITONES = Object.freeze({
@@ -144,19 +144,45 @@ function addPad(pcm, sr, hz, wave, amp) {
   }
 }
 
-/** Authored stem: motif lead plus a quiet pad so the phrase stays hummable. */
+/** Authored stem: the motif phrased across the loop, a quiet chord pad and a bar bass pulse. */
 export function renderThemeStemPcm(state, options = {}) {
   const motif = THEME_MOTIFS[state] || THEME_MOTIFS.travel;
   const sr = options.sampleRate || THEME_SAMPLE_RATE;
   const seconds = options.seconds == null ? THEME_STEM_SECONDS : options.seconds;
-  const lead = renderMotifLeadPcm(motif, { sampleRate: sr, peak: 0.58, wave: state === 'combat' ? 'sawtooth' : 'sine' });
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
-  const copy = Math.min(lead.length, n);
-  for (let i = 0; i < copy; i++) pcm[i] = lead[i];
-  const root = noteToHz(motif.notes[0], Math.max(2, (motif.octaves[0] || 4) - 1));
-  addPad(pcm, sr, root, 'triangle', 0.035);
-  addPad(pcm, sr, root * 2, 'sine', 0.02);
+  const lead = renderMotifLeadPcm(motif, {
+    sampleRate: sr,
+    peak: 0.58,
+    wave: state === 'combat' || state === 'boss' ? 'sawtooth' : 'sine',
+  });
+  // Phrase the motif across the whole loop. Alternates sit ~1.5 dB down, so a 16 s stem breathes
+  // instead of sounding like the same 3 s bar four times.
+  const period = Math.max(1, lead.length);
+  let repeat = 0;
+  for (let base = 0; base < n; base += period, repeat += 1) {
+    const gain = repeat % 2 === 0 ? 1 : 0.82;
+    const copy = Math.min(period, n - base);
+    for (let i = 0; i < copy; i++) pcm[base + i] += lead[i] * gain;
+  }
+  // Pad: the motif's own unique notes, low and slow. Quiet enough that the lead stays the
+  // hummable line (the stranger-hum test still reads the motif, not the pad).
+  const unique = [...new Set(motif.notes)];
+  const root = noteToHz(unique[0], Math.max(2, (motif.octaves[0] || 4) - 1));
+  const padGain = state === 'boss' ? 0.045 : 0.028;
+  addPad(pcm, sr, root, 'triangle', padGain);
+  if (unique[1]) addPad(pcm, sr, noteToHz(unique[1], 4), 'sine', padGain * 0.6);
+  if (unique[2]) addPad(pcm, sr, noteToHz(unique[2], 4), 'sine', padGain * 0.5);
+  // A root pulse at each bar: the body that makes the loop feel like a piece, not a lead line.
+  const barS = (60 / Math.max(40, Number(motif.bpm) || 80)) * 4;
+  for (let t0 = 0; t0 < seconds; t0 += barS) {
+    const i0 = Math.round(t0 * sr);
+    const len = Math.min(n - i0, Math.round(barS * 0.6 * sr));
+    for (let i = 0; i < len; i++) {
+      pcm[i0 + i] += 0.045 * Math.exp(-3 * (i / Math.max(1, len)))
+        * sampleOsc((i / sr) * root * 0.5, 'sine');
+    }
+  }
   return pcm;
 }
 
@@ -402,6 +428,7 @@ export const AUTHORED_STEM_SAMPLES = Object.freeze({
   combat: 'theme_combat',
   station: 'theme_station',
   wanted: 'theme_wanted',
+  boss: 'theme_boss',
 });
 
 export const THEME_ASSETS = Object.freeze([

@@ -28,6 +28,8 @@ import { resolveArsenalPresentation } from '../../data/arsenalPresentation.js';
 import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS, gamepadButtonNames, gamepadButtonLabels } from '../../systems/gamepad.js';
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
+import { isSwarmControls, SWARM_HELP_ROWS } from '../../data/swarmControls.js';
+import { contextHelpRows, inputContextFor } from '../../data/inputContexts.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -207,6 +209,10 @@ export function gamepadControlRows(map) {
 }
 
 export function controlSections(state) {
+  // S5: a live Swarm run's Help is the compact arcade set only — nothing Adventure on the card.
+  if (isSwarmControls(state)) {
+    return [['Controls', SWARM_HELP_ROWS.map(([keys, verb]) => [verb, null, keys])]];
+  }
   // The words for the powers, the fitted weapons and the combination come from the arsenal presentation
   // (one source: the same sentences the rail's tips read), never retyped on this sheet.
   const arsenal = resolveArsenalPresentation(state || {});
@@ -219,7 +225,7 @@ export function controlSections(state) {
     holdLine && `Hold + ${holdLine}: reel/pay out/orbit`,
     pump && `${pump} pump`,
   ].filter(Boolean).join('; ');
-  return [
+  const sections = [
     ['Flight', [
       ['Throttle forward', 'forward'],
       ['Reverse thrust', 'reverse'],
@@ -304,6 +310,14 @@ export function controlSections(state) {
       ['Pause / Help route', null, 'Pause button → Help / Controls'],
     ]],
   ];
+  // X5: the short card for where the player is, before the full reference. The long sheet stays
+  // below it, so discoverability is not lost.
+  const context = inputContextFor(state);
+  const contextTitle = context === 'combat' ? 'Combat now'
+    : context === 'station' ? 'Station now'
+      : context === 'map' ? 'Map now' : 'Flight now';
+  const contextCard = contextHelpRows(state).map(([keys, verb]) => [verb, null, keys]);
+  return [[contextTitle, contextCard], ...sections];
 }
 
 function keyLabel(state, action, def) {
@@ -648,9 +662,13 @@ export const helpScreen = {
     this._helpSigVal = this._helpSig(ctx);
     this._disposeView();
     this._body.innerHTML = '';
+    // S5: Help in a live Swarm run is the one arcade card — no section ladder, no ship rig.
+    const swarmHelp = isSwarmControls(ctx.state);
+    if (swarmHelp) this._activeTab = 'Controls';
+    if (this._regions && this._regions.hang) this._regions.hang.hidden = swarmHelp;
     this._body.dataset.tab = this._activeTab.toLowerCase();
     if (this._root) this._root.dataset.tab = this._activeTab.toLowerCase();
-    if (this._nowEl) this._nowEl.textContent = schemeLine(ctx.state);
+    if (this._nowEl) this._nowEl.textContent = swarmHelp ? 'Swarm' : schemeLine(ctx.state);
 
     if (this._tabBtns) {
       for (const t of TABS) {
@@ -693,13 +711,15 @@ export const helpScreen = {
   // ---------------------------------------------------------------- CONTROLS: the rig
   _renderControls(ctx) {
     const state = ctx.state;
+    const swarmHelp = isSwarmControls(state);
     const sections = controlSections(state);
     const wrap = el('div', 'orr-help-controls');
     const rigHost = el('div', 'orr-help-controls__rig');
     rigHost.setAttribute('role', 'group');
     rigHost.setAttribute('aria-label', 'Controls rig: press any key, mouse or pad button to see what it drives');
     const reg = el('div', 'orr-hreg');
-    wrap.append(rigHost, reg);
+    // S5: in a live Swarm run the rig and its Adventure stations stay off the card.
+    if (swarmHelp) wrap.append(reg); else wrap.append(rigHost, reg);
     this._body.appendChild(wrap);
 
     // the ladder of every key, beside the rig
