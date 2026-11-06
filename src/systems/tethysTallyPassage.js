@@ -2,14 +2,12 @@
 // world records own the original keg. Clearing a lane does not release impounded cargo.
 import { TETHYS_TALLY as C, tallyMarks, isTallyCourier, tallyPauseId } from '../data/tethysTallyPassage.js';
 import { PRIORITY_COURIER_SERVICE as SERVICE, isPriorityCourierItinerary } from '../data/laneContacts.js';
-import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
+import { tallyKegRecordId } from '../world/tethysTallyResidency.js';
+export { tallyKegRecordId } from '../world/tethysTallyResidency.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 const dist = (a,b) => a && b && [a.x,a.z,b.x,b.z].every(Number.isFinite) ? Math.hypot(a.x-b.x,a.z-b.z) : Infinity;
-export function tallyKegRecordId(state) {
-  return stableRecordId(state.meta?.seed || 1,C.sectorId,RECORD_KIND.WRECK,`worldOneOff:${C.oneOffId}`);
-}
 export function isTallyPassageJob(job) { return job?.payload?.priorityCourierService?.tallyPassage === C.id; }
 function pose(owner,e) {
   if(!e || e.alive === false || owner.state.entities?.get(e.id)!==e || !e.pos || !e.vel
@@ -41,7 +39,7 @@ export function tallyClearance(owner,entity){
  const state=owner.state,id=tallyKegRecordId(state),record=state.world?.records?.byId?.[id];
  const keg=indexedWorldRecordEntity(state,id);
  if(!keg && record && (record.alive===false || ['destroyed','defeated'].includes(record.outcome)))return {reason:'removed',clear:true};
- if(!keg || keg.data?.oneOffId!==C.oneOffId || keg.data.identityKey!==`worldOneOff:${C.oneOffId}`
+ if(!keg || keg.data?.worldRecordId!==id || keg.data.oneOffId!==C.oneOffId || keg.data.identityKey!==`worldOneOff:${C.oneOffId}`
    || keg.data.homeSectorId!==C.sectorId)return {reason:'unobserved',clear:false};
  const kp=pose(owner,keg);if(!kp)return {reason:'unobserved',clear:false};
  const marks=tallyMarks(),a=marks[1].pos,b=marks[2].pos;
