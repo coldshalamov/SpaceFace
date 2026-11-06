@@ -157,6 +157,14 @@ export function crucibleHullChoices() {
   })).sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
 }
 
+/** A fresh UI seed. Simulation determinism starts after this value is chosen. */
+export function freshSeed() {
+  const now = Date.now() >>> 0;
+  const seed = normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
+  // The generated zero is outside the launch contract; explicit input still validates unchanged.
+  return seed || CRUCIBLE_SEED_MIN;
+}
+
 export function normalizeSeed(seed) {
   if (typeof seed === 'string') {
     const trimmed = seed.trim();
