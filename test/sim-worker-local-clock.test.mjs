@@ -353,6 +353,56 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
   }
 });
 
+test('retained replies shed stale presentation events instead of marching to the durable limit', async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  try {
+    const worker = await import(`../src/core/wholeSimBrowserWorker.js?event-shed-${Date.now()}`);
+    const events = (from, to) => Array.from(
+      { length: to - from }, (_, i) => ({ t: 'physics:impact', p: { seq: from + i } }),
+    );
+    const reply = (clockSequence, from, to) => ({
+      kind: 'clockTick',
+      clockSequence,
+      journalStart: clockSequence * 10,
+      journalEnd: clockSequence * 10 + 2,
+      completedTick: {
+        sequence: clockSequence, tick: clockSequence,
+        journalStart: clockSequence * 10, journalEnd: clockSequence * 10 + 2,
+      },
+      events: events(from, to),
+    });
+    const first = reply(1, 0, 400);
+    first.commandAcks = [{ seq: 'a' }];
+    first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
+    const second = reply(2, 400, 700);
+    second.commandAcks = [{ seq: 'b' }];
+
+    const merged = worker.localMergeReply(first, second);
+    assert.equal(merged.events.length, 512, 'the retained event tail is capped at the shed limit');
+    assert.equal(merged.events[0].p.seq, 188, 'the oldest stale triggers are shed first');
+    assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
+    assert.equal(merged.commandAcks.length, 2, 'command receipts are correctness data and never shed');
+    assert.equal(merged.storageOps.length, 1, 'storage receipts are correctness data and never shed');
+
+    // Sustained retention under a stalled consumer stays bounded instead of
+    // accumulating event volume until the durable tripwire stops the clock.
+    const mergedAgain = worker.localMergeReply(merged, reply(3, 700, 1200));
+    assert.equal(mergedAgain.events.length, 512);
+    assert.equal(mergedAgain.events[0].p.seq, 688);
+    assert.equal(mergedAgain.events.at(-1).p.seq, 1199);
+
+    // Merges below the cap lose nothing — ordinary congestion keeps every trigger.
+    const small = worker.localMergeReply(reply(4, 0, 10), reply(5, 10, 25));
+    assert.equal(small.events.length, 25);
+    assert.equal(small.events[0].p.seq, 0);
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('public Bullet Time composes across the real worker clock, loading veil, hit-stop and pause', { timeout: 60000 }, async () => {
   const replies = [];
   const posts = [];
@@ -1503,6 +1553,91 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
   }
 });
 
+test('a lost presentation ACK self-heals through a full rebuild instead of freezing the lane', { timeout: 30000 }, async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  const workerReplies = [];
+  const workerSelf = {
+    postMessage(message) { workerReplies.push(message); },
+  };
+  globalThis.self = workerSelf;
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?stale-ack-${Date.now()}`);
+    const workerOnMessage = workerSelf.onmessage;
+    assert.equal(typeof workerOnMessage, 'function');
+    const scenarioContract = JSON.parse(readFileSync(
+      new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8',
+    ));
+    workerOnMessage({ data: {
+      kind: 'init',
+      seq: 'stale-ack-init',
+      profile: 'production',
+      clockMode: 'worker-local',
+      timeScale: 0,
+      seed: 4242,
+      settings: {},
+      domainMirroring: {},
+      bridgeAll: false,
+      tacticalAI: false,
+      viewport: { w: 800, h: 600 },
+      scenarioContract,
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
+      scenarioContractHash: 'stale-ack-fixture',
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'ready'), 30000);
+    workerOnMessage({ data: {
+      kind: 'clockControl',
+      seq: 'stale-ack-control',
+      active: true,
+      generation: 1,
+      lifecycleGeneration: 0,
+      timeScale: 1,
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.clockDiagnostics?.scale === 1), 10000);
+
+    // The first live publish now awaits an ACK that never comes — the wedged
+    // sentAwaitingAck state that previously froze presentation forever while
+    // the sim ran blind (or hard-stopped once the durable limit tripped).
+    const wedgedPublish = workerReplies.filter((reply) => reply.kind === 'clockTick').at(-1);
+    const wedgedSteps = wedgedPublish.clockDiagnostics?.steps || 0;
+    const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
+
+    // No ACK is ever sent. Within the stale-ack budget the worker must declare
+    // it lost, arm a journal rebuild, and publish again — self-healing instead
+    // of retaining indefinitely.
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 8000);
+
+    const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
+    assert.ok(
+      recovered.clockDiagnostics.steps > wedgedSteps,
+      'the authoritative clock kept stepping through the wedged publish instead of stopping',
+    );
+    assert.ok(
+      recovered.clockSequence > wedgedPublish.clockSequence,
+      'the recovery publishes on a fresh sequence so the late duplicate ACK is rejected',
+    );
+    // While the publish was wedged, ordinary ticks coalesced into the retained
+    // reply rather than posting — the single rebuild replaces that whole window.
+    assert.ok(
+      workerReplies.filter((reply) => reply.kind === 'clockTick').length
+        >= repliesBeforeWedge,
+      'recovery adds publishes on top of the wedged window rather than replaying it',
+    );
+  } finally {
+    try {
+      workerSelf.onmessage?.({ data: { kind: 'shutdown', seq: 'stale-ack-shutdown' } });
+    } catch (_) {}
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('active worker-local commands wait for the next timer tick', { timeout: 60000 }, async () => {
   // This is the bounded queue contract for the next worker-clock repair. An
   // active presentation command must join the next real fixed-step tick; it
@@ -1605,4 +1740,81 @@ test('active worker-local commands wait for the next timer tick', { timeout: 600
     if (hadSelf) globalThis.self = previousSelf;
     else delete globalThis.self;
   }
+});
+
+test('freeze recorder opens an episode when applied replies starve during advancing flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 1;
+  f.lane.runner.setClockActive(true);
+
+  f.receive({
+    kind: 'clockTick',
+    seq: 'freeze-baseline',
+    clockSequence: 1,
+    commandSequence: 0,
+    stateTick: 1,
+    simTime: 1 / 60,
+    clockAccumulator: 0,
+    journalStart: 0,
+    journalEnd: 0,
+    pack: emptyPack(),
+    clockDiagnostics: {
+      active: true,
+      awaitingAck: true,
+      steps: 9,
+      retainedRows: 3,
+      shedEvents: 2,
+      timerPending: true,
+    },
+  });
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0);
+
+  // Replies stop arriving while the clock should advance. The sampler crosses
+  // the 350 ms gap on its second tick and must name the last-seen worker state.
+  f.dispatch(700);
+  const diag = f.lane.getDiagnostics();
+  assert.equal(diag.freezeActive, true, 'starved applied watermark reads as an open freeze');
+  assert.equal(diag.freezeEpisodes.length, 1);
+  const episode = diag.freezeEpisodes[0];
+  assert.ok(episode.gapAtOpenMs >= 350);
+  assert.equal(episode.snapshot.awaitingAck, true, 'snapshot preserves the last-seen ack state');
+  assert.equal(episode.snapshot.workerSteps, 9);
+  assert.equal(episode.snapshot.shedEvents, 2);
+  assert.equal(episode.snapshot.retainedRows, 3);
+  assert.ok(diag.msSinceLastAppliedReply >= 350);
+
+  // A fresh applied reply closes the episode with a duration and the state at
+  // the moment it recovered.
+  sendClockTick(f, 2);
+  f.dispatch(300);
+  const after = f.lane.getDiagnostics();
+  assert.equal(after.freezeActive, false);
+  assert.equal(after.freezeEpisodes.length, 1, 'a closed freeze stays recorded once');
+  assert.ok(after.freezeEpisodes[0].durationMs > 0);
+  assert.ok(after.freezeEpisodes[0].closingSnapshot);
+});
+
+test('freeze recorder stays quiet while paused or outside flight', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.state.mode = 'flight';
+  f.state.timeScale = 0;
+  f.lane.runner.setClockActive(true);
+  sendClockTick(f, 1);
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'a paused timescale never counts as a freeze');
+
+  f.state.timeScale = 1;
+  f.state.mode = 'dock';
+  f.dispatch(2000);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 0,
+    'outside flight mode the recorder stays disarmed');
+
+  f.state.mode = 'flight';
+  sendClockTick(f, 2);
+  f.dispatch(700);
+  assert.equal(f.lane.getDiagnostics().freezeEpisodes.length, 1,
+    're-entering advancing flight re-arms the recorder');
+  assert.equal(f.lane.getDiagnostics().freezeActive, true);
 });

@@ -393,6 +393,12 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
   ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  /* ui-polish-341: Factions terms at 761-870 still float bare (Factions uses .orr-help-factions, not
+     .orr-help-list). Match the Ores hairline card in this band so the ledger reads as one sheet. */
+  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-factions .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
 /* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
    1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
@@ -403,6 +409,37 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
+/* ui-polish-338: Ores got the mid-band sheet in 335, but at 871-1200 the Ships, Commodities and Factions readings still
+   floated as bare label/value pairs between the boxed 1201+ band and the boxed Ores tab. They wear the same hairline sheet
+   (and Commodities' Legality line its frame), rows kept compact so the scrolling reading grows by only the frame.
+   The Ores rules above are more specific, so its 335 sheet is untouched. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:6px 16px 6px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ...and on a 461-540 tall screen the Ships reading already scrolls, so its rows close up the way Ores' did in 324 */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) and (max-height:540px) {
+  ${HD} .orr-help-terms dt { padding-block:4px; padding-right:12px; }
+  ${HD} .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
+/* ui-polish-339: at 871-959 the Ships/Commodities hero column is ~253-295px — under both dials'
+   300px width floor — so the price/hull dial sleeps and leaves an empty slot between the list and
+   the reading (960 already wakes at ~328px). The reading flexes down toward 170px and the gap
+   tightens so the hero holds ≥340px: the price dial paints, and the hull dial clears its tight
+   overrun check; Ores keeps its own stage columns. */
+@media (min-width:871px) and (max-width:959px) and (min-height:461px) {
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage {
+    grid-template-columns:minmax(0, 1fr) clamp(170px, 19vw, 200px); column-gap:18px; }
+  /* The dial has room, but a two-column ledger left only ~25px for its values.
+     Stack each term above its value so units and slot names remain whole. */
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:6px 0 2px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:0 0 6px; border-top:0; }
+}
+
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,

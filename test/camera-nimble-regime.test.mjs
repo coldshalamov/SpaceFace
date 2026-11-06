@@ -169,8 +169,8 @@ test('feel publisher at 2x and 3x Hitch cruise opens the frame for B3', () => {
   );
   assert.equal(
     PHYSICS_EARNED_SPEED_ZOOM_MAX,
-    3.5,
-    `${VISION_SENTENCE}: PHYSICS_EARNED_SPEED_ZOOM_MAX must be 3.5`,
+    2.5,
+    `${VISION_SENTENCE}: PHYSICS_EARNED_SPEED_ZOOM_MAX must be 2.5 (owner-approved Smooth Program tradeoff 2026-11-05 — was 3.5, capped to cut peak drawables ~2x at max boost)`,
   );
 
   const published2x = publishHitchFeel(2 * cap);
@@ -192,12 +192,12 @@ test('feel publisher at 2x and 3x Hitch cruise opens the frame for B3', () => {
   const growth3x = depth3x / depthCruise;
 
   assert.ok(
-    growth2x >= 1.5,
-    `${VISION_SENTENCE}: visible depth growth at 2x cruise must be >= 1.5x (got ${growth2x.toFixed(4)}x)`,
+    growth2x >= 1.4,
+    `${VISION_SENTENCE}: visible depth growth at 2x cruise must be >= 1.4x (got ${growth2x.toFixed(4)}x) — owner-approved cap tradeoff 2026-11-05`,
   );
   assert.ok(
-    growth3x >= 2.5,
-    `${VISION_SENTENCE}: visible depth growth at 3x cruise must be >= 2.5x (got ${growth3x.toFixed(4)}x)`,
+    growth3x >= 1.8,
+    `${VISION_SENTENCE}: visible depth growth at 3x cruise must be >= 1.8x (got ${growth3x.toFixed(4)}x) — owner-approved cap tradeoff 2026-11-05`,
   );
 
   const helper2x = screenDepthWuAtSpeed(2 * cap, { fovDeg: FOV_DEG, maxSpeedRef: cap, physicsEarned: true });
@@ -230,18 +230,18 @@ test('feel publisher at 2x and 3x Hitch cruise opens the frame for B3', () => {
   );
 });
 
-test('shipping chase camera opens 1.5x and 2.5x at 2x and 3x Hitch cruise', () => {
+test('shipping chase camera opens 1.4x and 1.8x at 2x and 3x Hitch cruise', () => {
   const cruiseDistance = settleChaseDistance(HITCH_GOVERNED_CRUISE);
   const distance2x = settleChaseDistance(2 * HITCH_GOVERNED_CRUISE);
   const distance3x = settleChaseDistance(3 * HITCH_GOVERNED_CRUISE);
   const growth2x = distance2x / cruiseDistance;
   const growth3x = distance3x / cruiseDistance;
   assert.ok(
-    growth2x >= 1.5,
-    `${VISION_SENTENCE}: live chase distance at 2x cruise must be >= 1.5x (got ${growth2x.toFixed(4)}x, ${distance2x.toFixed(2)} vs ${cruiseDistance.toFixed(2)} WU)`,
+    growth2x >= 1.4,
+    `${VISION_SENTENCE}: live chase distance at 2x cruise must be >= 1.4x (got ${growth2x.toFixed(4)}x, ${distance2x.toFixed(2)} vs ${cruiseDistance.toFixed(2)} WU) — owner-approved cap tradeoff 2026-11-05`,
   );
   assert.ok(
-    growth3x >= 2.5,
-    `${VISION_SENTENCE}: live chase distance at 3x cruise must be >= 2.5x (got ${growth3x.toFixed(4)}x, ${distance3x.toFixed(2)} vs ${cruiseDistance.toFixed(2)} WU)`,
+    growth3x >= 1.8,
+    `${VISION_SENTENCE}: live chase distance at 3x cruise must be >= 1.8x (got ${growth3x.toFixed(4)}x, ${distance3x.toFixed(2)} vs ${cruiseDistance.toFixed(2)} WU) — owner-approved cap tradeoff 2026-11-05`,
   );
 });

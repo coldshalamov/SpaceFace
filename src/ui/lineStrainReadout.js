@@ -46,6 +46,15 @@ export function createLineStrainReadout(host) {
   const profile = {}, query = { x: 0, y: 0, z: 0 };
   // Re-setting [hidden] on an already hidden root still invalidates style every frame.
   const hide = () => { if (!root.hidden) root.hidden = true; };
+  // DOM writes are dirty-gated: identical text/aria/style assignments still cost
+  // style/attribute processing every frame while a line stays hot.
+  let lastTitle = '', lastDetail = '', lastOver = '', lastNow = '', lastLabel = '';
+  let lastTx = -1, lastTy = -1, lastHeat = -1;
+  // Viewport size is a forced-layout read; cache it and refresh only when the window resizes.
+  let viewW = 0, viewH = 0;
+  const invalidateView = () => { viewW = 0; viewH = 0; };
+  const view = globalThis.window ?? globalThis;
+  view.addEventListener?.('resize', invalidateView);
   return {
     root,
     update(state, player, project) {
@@ -59,19 +68,33 @@ export function createLineStrainReadout(host) {
       query.x += Math.max(1, Number(player.radius) || 8);
       const edge = project(query);
       const clear = edge && Number.isFinite(edge.x) ? Math.max(30, Math.abs(edge.x - x)) + 18 : 50;
-      const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 960;
-      const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 540;
+      if (!viewW || !viewH) {
+        viewW = doc.documentElement?.clientWidth || globalThis.innerWidth || 960;
+        viewH = doc.documentElement?.clientHeight || globalThis.innerHeight || 540;
+      }
+      const w = viewW, h = viewH;
       const words = lineStrainWords(state, profile);
-      title.textContent = words.title; detail.textContent = words.detail;
-      root.dataset.over = String(profile.overClass);
-      root.setAttribute('aria-label', `${words.title}. ${words.detail}`);
-      root.setAttribute('aria-valuenow', String(Math.round(profile.heat * 100)));
-      root.style.transform = `translate3d(${Math.round(Math.max(16, Math.min(w - 236, x + clear)))}px,${Math.round(Math.max(16, Math.min(h - 70, y + 20)))}px,0)`;
-      fill.style.transform = `scaleX(${profile.heat})`;
-      root.hidden = false;
+      if (words.title !== lastTitle) { lastTitle = words.title; title.textContent = words.title; }
+      if (words.detail !== lastDetail) { lastDetail = words.detail; detail.textContent = words.detail; }
+      const over = String(profile.overClass);
+      if (over !== lastOver) { lastOver = over; root.dataset.over = over; }
+      const label = `${words.title}. ${words.detail}`;
+      if (label !== lastLabel) { lastLabel = label; root.setAttribute('aria-label', label); }
+      const now = String(Math.round(profile.heat * 100));
+      if (now !== lastNow) { lastNow = now; root.setAttribute('aria-valuenow', now); }
+      const tx = Math.round(Math.max(16, Math.min(w - 236, x + clear)));
+      const ty = Math.round(Math.max(16, Math.min(h - 70, y + 20)));
+      if (tx !== lastTx || ty !== lastTy) {
+        lastTx = tx; lastTy = ty;
+        root.style.transform = `translate3d(${tx}px,${ty}px,0)`;
+      }
+      const heat = profile.heat;
+      if (heat !== lastHeat) { lastHeat = heat; fill.style.transform = `scaleX(${heat})`; }
+      if (root.hidden) root.hidden = false;
     },
     hide,
     destroy() {
+      view.removeEventListener?.('resize', invalidateView);
       if (typeof root.remove === 'function') root.remove();
       else root.parentNode?.removeChild?.(root);
     },

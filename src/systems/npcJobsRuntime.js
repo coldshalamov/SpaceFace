@@ -5796,7 +5796,7 @@ export const npcJobsRuntime = {
       const hull = this.state.entities.get(entry.entityId);
       if (hull && hull.pos) {
         const radiusSq = RESUME_RADIUS * RESUME_RADIUS;
-        for (const candidate of this.state.entities.values()) {
+        for (const candidate of this._threatCandidates()) {
           if (!this._isJobThreat(candidate, hull) || !candidate.pos || candidate.id === hull.id) continue;
           const dx = candidate.pos.x - hull.pos.x;
           const dz = candidate.pos.z - hull.pos.z;
@@ -6914,6 +6914,40 @@ export const npcJobsRuntime = {
   },
 
   /**
+   * Live ship candidates for the threat scans, rebuilt at most once per tick per
+   * index version. `_isJobThreat` only ever returns true for ships, so walking
+   * the full `entities.values()` (rocks, wrecks, payloads) per call multiplied
+   * the resume/threat checks by an order of magnitude for nothing.
+   */
+  _threatCandidates() {
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const entities = state && state.entities;
+    const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+    const tick = Number.isSafeInteger(state && state.tick) ? state.tick : null;
+    const cache = this._threatCandidateCache;
+    if (cache && cache.tick === tick && cache.indexVersion === indexVersion) return cache.list;
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && (Array.isArray(index.ships) || Array.isArray(index.shipLike));
+    const source = indexed
+      ? (Array.isArray(index.ships) ? index.ships : index.shipLike)
+      : (entities && typeof entities.values === 'function' ? entities.values() : []);
+    const list = [];
+    for (const entity of source) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      // The index lanes track entityList, which a raw `entities.delete()` does not prune:
+      // the removed ship can linger here with `alive` still true where the old map scan
+      // could not see it. Membership must come from the map, not the lane row.
+      if (entities && typeof entities.get === 'function' && entities.get(entity.id) !== entity) continue;
+      list.push(entity);
+    }
+    // Without an index version there is no cheap membership signal — keep the
+    // legacy fresh-scan semantics rather than hide a mid-tick spawn or map delete.
+    if (indexed && indexVersion != null) this._threatCandidateCache = { tick, indexVersion, list };
+    return list;
+  },
+
+  /**
    * SF-082: the remembered threat is off the hull's resume ring — but is a hostile parked on
    * the stop this job would resume into? Any live job threat within the guard ring of the
    * pending stop closes the leg (not just the one that first interrupted — a second pirate on
@@ -6951,7 +6985,7 @@ export const npcJobsRuntime = {
     const len2 = lx * lx + lz * lz;
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
-    for (const entity of this.state.entities.values()) {
+    for (const entity of this._threatCandidates()) {
       if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const t = len2 > 1e-9
         ? Math.max(0, Math.min(1,
@@ -6972,7 +7006,7 @@ export const npcJobsRuntime = {
     if (!pos || !this.state.entities) return null;
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
-    for (const entity of this.state.entities.values()) {
+    for (const entity of this._threatCandidates()) {
       if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const dx = entity.pos.x - pos.x;
       const dz = entity.pos.z - pos.z;
