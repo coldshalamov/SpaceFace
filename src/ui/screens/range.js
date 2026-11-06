@@ -1,4 +1,5 @@
 import { dressLampKey } from '../orrery/lampKey.js';
+import { injectRangeLayouts } from '../orrery/rangeLayouts.js';
 import { awardRangeLicence, readRangeLicence, storeRangeLicence, rangeMedalLabel } from '../rangeLicence.js';
 import { SHIPS } from '../../data/ships.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
@@ -2757,6 +2758,7 @@ export const rangeScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
+    injectRangeLayouts();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-range';
