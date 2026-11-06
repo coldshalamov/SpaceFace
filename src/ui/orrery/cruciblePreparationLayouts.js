@@ -813,14 +813,21 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
   }
   ${RE} .sf-cru-cards {
     flex:1 1 auto !important; min-height:0 !important; max-height:100% !important;
-    height:auto !important; overflow:auto !important; align-items:stretch !important;
-    gap:10px !important; padding-bottom:6px !important;
+    height:auto !important; overflow:auto !important; align-items:flex-start !important;
+    gap:10px !important; padding:4px 4px 24px !important;
+    scroll-padding:4px 4px 24px; overscroll-behavior:contain; scrollbar-width:thin;
     -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
     mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
   }
+  /* One scroll owner, natural-height cards: the activation and replacement/slot are part of
+     the choice. A viewport-height cap on each button clipped those lines inside the scroller. */
   ${RE} .sf-cru-card.sf-cru-card {
-    min-height:0 !important; height:auto !important; max-height:100% !important;
-    padding:6px 6px 8px 10px !important; gap:3px !important; overflow:hidden !important;
+    min-height:0 !important; height:auto !important; max-height:none !important;
+    padding:6px 6px 8px 10px !important; gap:3px !important; overflow:visible !important;
+  }
+  ${RE} .sf-cru-card:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:2px; }
+  ${RE} .sf-cru-card :is(.sf-cru-name, .sf-cru-blurb, .sf-cru-activation, .sf-cru-slot) {
+    white-space:normal !important; overflow-wrap:anywhere;
   }
   ${RE} .sf-cru-card > .orr-equipment-glyph, ${RE} .sf-cru-card > svg.orr-equipment-glyph {
     width:36px !important; height:36px !important; flex:none !important;
@@ -830,8 +837,8 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
   ${RE} .sf-cru-card .sf-cru-name { font-size:15px !important; line-height:1.15 !important; }
   ${RE} .sf-cru-card .sf-cru-blurb {
     font-size:12px !important; line-height:1.3 !important;
-    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3;
-    overflow:hidden !important;
+    display:block !important; -webkit-line-clamp:unset; line-clamp:unset;
+    overflow:visible !important;
   }
   ${RE} .sf-cru-card .sf-cru-activation { font-size:12px !important; margin-block:2px !important; line-height:1.25 !important; }
   ${RE} > .k-foot {
@@ -854,7 +861,7 @@ ${RE} .k-foot .k-words { position:relative; z-index:1; }
 /* Narrow+short: foot verbs were wrapping to ~84px and stealing stage height; keep one compact row when possible. */
 @media (min-width:641px) and (max-width:820px) and (max-height:560px) {
   ${RE} .k-foot .k-words { gap:8px 12px !important; }
-  ${RE} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:nowrap !important; }
+  ${RE} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:normal !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
