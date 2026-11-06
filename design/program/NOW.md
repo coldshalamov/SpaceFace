@@ -126,6 +126,22 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   picker falls back to mode art + `ARENA_GLYPH` icons for untiled arenas
   (`asteroid_mill`/`the_hive` no longer wear the Foundry's picture); authored tiles
   are requested in `assets/ui/kit/prompts-p16.md`.
+- **S12 staples (in tree):** all five ride their existing owners —
+  `src/systems/swarmSupply.js` adds `SWARM_REPAIR_PER_ROUND_MAX = 2` (a round pays
+  one or two cells; `SWARM_REPAIR_MAX_LIVE` still caps the live pile; credited
+  kills only). `src/systems/swarmCallins.js` adds `SWARM_CALLIN_CALLOUT` and emits
+  `swarm:announce` one-word callouts (`BOMB!`/`LANCE!`/…) at bomb-fire and every
+  successful queued deploy; an empty queue stays dark. Perks: every effect site
+  emits `swarm:perkTrigger` (`src/systems/swarmElites.js` ×3,
+  `src/systems/survivalRewards.js`, `src/systems/survivalDraft.js`); the HUD
+  mounts the run's two picks as lit chips beside the ring and replays a pulse on
+  each trigger — `src/ui/orrery/flightCluster.js` (`d.perks`/`d.perkPulses`),
+  `src/ui/orrery/hudAdapter.js` (`SWARM_PERK_ICON`, `perkPulseCounts`, bus
+  subscription). Events/fortify already shipped their contracts; stale
+  fixtures re-pinned to the S14 boss cadence (majors live on even multiples of
+  five) in the three `swarm-event-*` tests. Lane S: perk chips + pulse are pure
+  model data — `model.perks = [{id,name,icon}]`, `model.perkPulses` counts.
+  `test/swarm-staples.test.mjs` covers the four proof points.
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)

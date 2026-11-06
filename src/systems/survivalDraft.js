@@ -1264,6 +1264,7 @@ export const survivalDraft = {
         return false;
       }
       this._gamblerUsed += 1;
+      this._emit('swarm:perkTrigger', { perkId: 'gambler', wave: this._wave });
     } else {
       if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
       run.telemetry.hangar = consumed.hangar;

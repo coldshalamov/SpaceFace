@@ -47,6 +47,8 @@ export const SWARM_REPAIR_FRACTION = 0.22;
 export const SWARM_REPAIR_TTL_S = 16;
 /** A room wipe opens a few risky pickups, rather than an unbounded medicine pile. */
 export const SWARM_REPAIR_MAX_LIVE = 3;
+/** Zombies pace: a round pays one or two cells, never a pharmacy. */
+export const SWARM_REPAIR_PER_ROUND_MAX = 2;
 /** Kills between cells at full health. */
 export const SWARM_REPAIR_INTERVAL_HEALTHY = 14;
 /** Kills between cells when the hull is nearly gone. */
@@ -142,6 +144,8 @@ export const swarmSupply = {
     this._dropIndex = 0;
     this._live = new Set();
     this._spent = new Set();
+    this._roundDrops = 0;
+    this._roundDropsWave = -1;
     this._deathLedger = createRewardDeathLedger();
   },
 
@@ -208,8 +212,11 @@ export const swarmSupply = {
       const cell = this.state.entities?.get(id);
       if (!cell || cell.alive === false) this._live.delete(id);
     }
-    const drops = Math.min(earned, Math.max(0, SWARM_REPAIR_MAX_LIVE - this._live.size));
+    if (run.wave !== this._roundDropsWave) { this._roundDropsWave = run.wave; this._roundDrops = 0; }
+    const budget = Math.max(0, SWARM_REPAIR_PER_ROUND_MAX - this._roundDrops);
+    const drops = Math.min(earned, budget, Math.max(0, SWARM_REPAIR_MAX_LIVE - this._live.size));
     for (let i = 0; i < drops; i++) this._drop(run, victim, payload);
+    this._roundDrops += drops;
   },
 
   _drop(run, victim, payload) {
