@@ -33,6 +33,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { SWARM_FEEL_PROFILE, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { isAnchoredPhysicalBody } from './physicalResponse.js';
 import { resolveCraftProportions } from './craftProportions.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
@@ -276,6 +277,22 @@ export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
   return closing > 0 ? closing : 0;
 }
 
+
+// S1 Swarm feel — a body stamped at wave materialization (entity.data.swarmFeel === true)
+// resolves the profile's contact block. Unstamped bodies keep the shared constants below,
+// so every Adventure path is bit-identical to before the profile existed.
+function swarmFeelContact(entity) {
+  const data = entity && entity.data;
+  return data && data[SWARM_FEEL_STAMP] === true ? SWARM_FEEL_PROFILE.contact : null;
+}
+function tumbleRestitutionFor(rec) {
+  const contact = swarmFeelContact(rec && rec.entity);
+  return contact ? contact.tumbleRestitution : TUMBLE_RESTITUTION;
+}
+function tumbleAngularDampingFor(rec) {
+  const contact = swarmFeelContact(rec && rec.entity);
+  return contact ? contact.tumbleAngularDamping : TUMBLE_ANGULAR_DAMPING;
+}
 
 export async function createSg02DynamicBodyOwner(options = {}) {
   const RAPIER = options.RAPIER || await loadRapierCompat();
@@ -2138,6 +2155,41 @@ export class Sg02DynamicBodyOwner {
     return post;
   }
 
+  // S1/P2 — does a contact partner qualify as a projectile under the profile? Tumbling, or
+  // carrying impulse provenance inside the thrown window (a queued impulse moved it recently).
+  _swarmProjectilePartner(other, contact) {
+    if (!other || !contact) return false;
+    if (other._tumbling === true) return true;
+    const stamp = other._impulseStampTick;
+    return Number.isFinite(stamp)
+      && (this.tick - stamp) <= Math.max(0, Math.round(contact.thrownProvenanceS * 60));
+  }
+
+  // S1/P2 — the dv bound one body's own-contact response may carry. Adventure keeps the
+  // tumble-or-40 law exactly. A stamped Swarm body keeps the full transfer bound when it is
+  // tumbling itself, or when a contact partner this tick is a projectile AND the pair's
+  // pre-solve closing is a real impact — the bowling-pin rule. Every other stamped contact
+  // keeps the 40 cap, so deep-overlap spawn separation stays a shove, not a cannon.
+  _victimDvBound(rec) {
+    const contact = swarmFeelContact(rec && rec.entity);
+    if (!contact) return rec && rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    if (rec._tumbling === true) return contact.impactTransferDv;
+    const receipts = this._stepContactReceipts;
+    if (receipts && receipts.length) {
+      const own = rec.entity && rec.entity.id;
+      for (let i = 0; i < receipts.length; i++) {
+        const receipt = receipts[i];
+        const otherId = receipt && (receipt.aId === own ? receipt.bId : (receipt.bId === own ? receipt.aId : null));
+        if (otherId == null) continue;
+        const other = this.records.get(otherId);
+        if (!this._swarmProjectilePartner(other, contact)) continue;
+        if (!(finite(receipt.preSolveClosingSpeed, 0) >= contact.impactMinClosing)) continue;
+        return contact.impactTransferDv;
+      }
+    }
+    return MAX_CONTACT_DV;
+  }
+
   _contactResponseDvBudget(rec) {
     const receipts = this._stepContactReceipts;
     if (!receipts || receipts.length === 0) return Infinity;
@@ -2160,7 +2212,7 @@ export class Sg02DynamicBodyOwner {
       slack += 2 * Math.hypot(finite(e && e.vx) - ovx, finite(e && e.vz) - ovz);
     }
     if (!involved) return Infinity;
-    return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
+    return this._victimDvBound(rec) + slack;
   }
 
   _playerContactClosingFraction(rec) {
@@ -2446,7 +2498,7 @@ export class Sg02DynamicBodyOwner {
     let contactDvBudget;
     if (preservesSolverResponse) {
       contactDvBudget = (!Number.isFinite(rawDv)
-          || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+          || rawDv > this._victimDvBound(rec))
         ? this._contactResponseDvBudget(rec)
         : Infinity;
     } else {
@@ -2459,7 +2511,7 @@ export class Sg02DynamicBodyOwner {
     // mixed contacts keep the budgeted post-solve pose path.
     const fixedWallPoseRewrite = usesNativeFixedAllowance
       && Number.isFinite(rawDv)
-      && rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV)
+      && rawDv > this._victimDvBound(rec)
       && Number.isFinite(residualDv)
       && residualDv <= eventBudget;
     const preservesSolverPose = preservesSolverResponse || fixedWallPoseRewrite;
@@ -2683,7 +2735,7 @@ export class Sg02DynamicBodyOwner {
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
     const contactDvBudget = (!Number.isFinite(rawDv)
-        || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
+        || rawDv > this._victimDvBound(rec))
       ? this._contactResponseDvBudget(rec)
       : Infinity;
     if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
@@ -2715,8 +2767,10 @@ export class Sg02DynamicBodyOwner {
     const dvz = vz - e.vz;
     const dv = Math.hypot(dvx, dvz);
     const closingDv = Math.hypot(e.vx, e.vz);
-    const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
-      ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
+    const baseLimit = swarmFeelContact(rec && rec.entity)
+      ? this._victimDvBound(rec)
+      : (rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
+        ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
     const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
@@ -2759,10 +2813,10 @@ export class Sg02DynamicBodyOwner {
         if (nx * (finite(at.x) - finite(from.x)) + nz * (finite(at.z) - finite(from.z)) < 0) { nx = -nx; nz = -nz; }
         const closing = -(finite(e.vx) * nx + finite(e.vz) * nz);
         if (!(closing > TUMBLE_RICOCHET_MIN_CLOSING)) continue;
-        const wanted = TUMBLE_RESTITUTION * closing;
+        const wanted = tumbleRestitutionFor(rec) * closing;
         const leaving = vx * nx + vz * nz;
         if (leaving < wanted) {
-          const add = Math.min(wanted - leaving, TUMBLE_MAX_CONTACT_DV);
+          const add = Math.min(wanted - leaving, this._victimDvBound(rec));
           vx += add * nx;
           vz += add * nz;
           touched = true;
@@ -2792,12 +2846,12 @@ export class Sg02DynamicBodyOwner {
     rec._tumbleMaterial = tumbling;
     if (!rules || !Array.isArray(rec.colliders)) return;
     const base = contactMaterialFor(rec.entity, rec.spec);
-    const restitution = tumbling ? TUMBLE_RESTITUTION : base.restitution;
+    const restitution = tumbling ? tumbleRestitutionFor(rec) : base.restitution;
     const rule = tumbling ? rules.Max : (base.restitutionCombine === 'min' ? rules.Min
       : base.restitutionCombine === 'max' ? rules.Max
       : rules.Average);
     if (rec.body && typeof rec.body.setAngularDamping === 'function') {
-      rec.body.setAngularDamping(tumbling ? TUMBLE_ANGULAR_DAMPING : base.angularDamping);
+      rec.body.setAngularDamping(tumbling ? tumbleAngularDampingFor(rec) : base.angularDamping);
     }
     for (const collider of rec.colliders) {
       if (typeof collider.setRestitution === 'function') collider.setRestitution(restitution);
@@ -3374,14 +3428,18 @@ export class Sg02DynamicBodyOwner {
       // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
       // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
       const tumbleContact = recA._tumbling === true || recB._tumbling === true;
+      // S1/P2: a stamped victim's cap also rises when the partner is impulse-thrown, so a
+      // thrown rock or break-up chunk knocks the pack as hard as a tumbling hull does.
+      const raisedA = tumbleContact || this._swarmProjectilePartner(recB, swarmFeelContact(recA.entity));
+      const raisedB = tumbleContact || this._swarmProjectilePartner(recA, swarmFeelContact(recB.entity));
       if (recA.spec.dynamic) {
         cap = Math.min(cap, effectiveMass(recA)
-          * (tumbleContact && !(recA.entity && recA.entity.isPlayer === true)
+          * (raisedA && !(recA.entity && recA.entity.isPlayer === true)
             ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
       }
       if (recB.spec.dynamic) {
         cap = Math.min(cap, effectiveMass(recB)
-          * (tumbleContact && !(recB.entity && recB.entity.isPlayer === true)
+          * (raisedB && !(recB.entity && recB.entity.isPlayer === true)
             ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV));
       }
       if (cap === Infinity) return;
@@ -3673,6 +3731,9 @@ export class Sg02DynamicBodyOwner {
     for (const impulse of command.impulses || []) {
       const before = journalFor() ? rec.body.linvel() : null;
       rec.body.applyImpulse(planeForceInto(impulse, _planeForceScratch), true);
+      // S1: impulse provenance — a queued impulse moved this body, so it reads as "thrown"
+      // for the bowling-pin rule inside the provenance window. Cost is one int per impulse.
+      rec._impulseStampTick = this.tick;
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
@@ -4797,7 +4858,7 @@ function craftKeepsHelmThroughContact(rec) {
 
 function contactAngularDamping(rec) {
   // The owner's own prediction of the spin the solver will damp; it must match the body's damping.
-  if (rec && rec._tumbling === true) return TUMBLE_ANGULAR_DAMPING;
+  if (rec && rec._tumbling === true) return tumbleAngularDampingFor(rec);
   const material = contactMaterialFor(rec && rec.entity, rec && rec.spec);
   return Math.max(0, finite(material.angularDamping));
 }

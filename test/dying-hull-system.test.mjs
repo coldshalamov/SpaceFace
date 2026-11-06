@@ -45,6 +45,7 @@ import {
   lifecycleOf,
   readDying,
 } from '../src/combat/lifecycle.js';
+import { swarmFeel } from '../src/data/swarmFeelProfile.js';
 
 const DT = 1 / 60;
 const ARENA = 'helios_core';
@@ -168,7 +169,9 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   const victim = liveHostiles(h)[0];
   victim.vel = { x: 132, z: -47 };
   victim.rot = 0.9;
-  victim.mass = 16;
+  // S1 Swarm feel: light hulls (<=32 t) burst on the kill tick - a medium hull still owns a
+  // window, so the mechanism is exercised on the mass band that still has one.
+  victim.mass = 48;
   killByGunfire(h, victim);
   // Stamped inside the kill's own emit: audio / presenters that read the record while handling
   // `entity:killed` (whenever the presentation drain reaches it) find it with no tick of lag.
@@ -185,9 +188,9 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
   const begin = begins[0].payload;
   assert.equal(begin.wreckId, wreck.id);
   assert.equal(begin.victimId, victim.id);
-  assert.equal(begin.tier, 'light');
-  assert.ok(begin.windowS > 0 && begin.windowS <= 1.2, `fodder window ${begin.windowS}s`);
-  assert.equal(begin.windowS, dyingWindowS({ mass: 16, radius: victim.radius }));
+  assert.equal(begin.tier, 'medium');
+  assert.ok(begin.windowS > 0 && begin.windowS <= 1.2, `medium window ${begin.windowS}s`);
+  assert.equal(begin.windowS, dyingWindowS({ mass: 48, radius: victim.radius, feel: swarmFeel(h.state) }));
   assert.ok(Math.hypot(wreck.vel.x - 132, wreck.vel.z + 47) < 1, 'the successor carries the real momentum, not a reset');
 
   // Exactly the two finite forces of a failing hull went through the physics membrane.
@@ -222,6 +225,7 @@ test('a gunfire kill leaves a dying successor with the victim momentum, then rup
 test('the dying window grants nothing: one kill, one reward event set, no replay at rupture', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   h.tick(1);
   const rewardNames = ['entity:killed', 'economy:grantCredits', 'loot:drop', 'combat:kill', 'xp:grant', 'mission:progress'];
@@ -244,6 +248,7 @@ test('the dying window grants nothing: one kill, one reward event set, no replay
 test('a same-tick duplicate kill receipt mints no second dying record', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   killByGunfire(h, victim);
   h.tick(2);
@@ -293,6 +298,7 @@ test('a heavier hull fails longer and sheds fragments through the fracture owner
   const [lightBegin, heavyBegin] = events(h, 'dyingHull:begin').map((e) => e.payload);
   assert.equal(lightBegin.tier, 'light');
   assert.equal(heavyBegin.tier, 'heavy');
+  assert.equal(lightBegin.windowS, 0, 'S1: fodder bursts on the kill tick under the Swarm profile');
   assert.ok(heavyBegin.windowS > lightBegin.windowS, `${heavyBegin.windowS} > ${lightBegin.windowS}`);
   assert.ok(heavyBegin.windowS <= 3, 'large hull still capped');
   h.tick(300);
@@ -333,6 +339,7 @@ test('with the hull-burst switch off (the frozen profile) nothing is staged and 
 test('pause: a hull dying through a pause neither ruptures nor stalls; on resume it ruptures once, late and quiet', () => {
   const h = boot();
   const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
   killByGunfire(h, victim);
   h.tick(1);
   assert.equal(events(h, 'dyingHull:begin').length, 1);
@@ -352,7 +359,9 @@ test('pause: a hull dying through a pause neither ruptures nor stalls; on resume
 test('teardown boundaries leave no ghost: sector exit, save load and new game drop the record without a rupture', () => {
   for (const boundary of ['sector:exit', 'sector:enter', 'save:loaded', 'game:newGame']) {
     const h = boot();
-    killByGunfire(h, liveHostiles(h)[0]);
+    const victim = liveHostiles(h)[0];
+    victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+    killByGunfire(h, victim);
     h.tick(1);
     assert.equal(h.state.dyingHullRuntime.count, 1, `${boundary}: fixture dying`);
     const wreckId = dyingWreckOf(h).id;
@@ -369,7 +378,9 @@ test('teardown boundaries leave no ghost: sector exit, save load and new game dr
 
 test('early destruction and id reuse: a destroyed or replaced successor never ruptures and is never referenced', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   const id = wreck.id;
@@ -382,7 +393,9 @@ test('early destruction and id reuse: a destroyed or replaced successor never ru
   assert.equal(events(h, 'dyingHull:ruptured').length, 0);
 
   // A second hull dies; then its body is replaced by a stranger that reuses the id.
-  killByGunfire(h, liveHostiles(h)[0]);
+  const secondVictim = liveHostiles(h)[0];
+  secondVictim.mass = 48;
+  killByGunfire(h, secondVictim);
   h.tick(1);
   const second = dyingWreckOf(h);
   assert.ok(second);
@@ -400,7 +413,9 @@ test('early destruction and id reuse: a destroyed or replaced successor never ru
 
 test('a re-delivered aftermath spawn for an old wreck (sector re-entry) is simply a wreck', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -418,7 +433,9 @@ test('a re-delivered aftermath spawn for an old wreck (sector re-entry) is simpl
 
 test('floating-origin rebase mid-window: the rupture is reported at the hull\'s live (shifted) position', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -471,7 +488,9 @@ test('idle is free: no queued work means no rng draw, no event and no state chur
 
 test('the failing hull rolls and pitches through its window - presentation pose only, footprint untouched', () => {
   const h = boot();
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   assert.ok(wreck);
@@ -493,7 +512,9 @@ test('the failing hull rolls and pitches through its window - presentation pose 
 test('reduced motion keeps the state cue but no tilt', () => {
   const h = boot();
   h.state.settings = { video: { motionReduce: true }, accessibility: {} };
-  killByGunfire(h, liveHostiles(h)[0]);
+  const victim = liveHostiles(h)[0];
+  victim.mass = 48; // S1: medium band still owns a dying window under the Swarm profile
+  killByGunfire(h, victim);
   h.tick(1);
   const wreck = dyingWreckOf(h);
   const bank0 = wreck.bank || 0;
