@@ -197,6 +197,17 @@ test('the armory screen shows dealt cards and keeps the shelf behind Browse all'
     assert.equal(dealtCards().length, 3, 'cards stay up');
     const shelfRows = findAll(screen._cards, (n) => n.classList && n.classList.contains('sf-cru-card'));
     assert.equal(shelfRows.length, 2, 'shelf rows, minus dealt');
+
+    // S15 — a synthesis row wears the room's only gold: the card that consumed the build's own
+    // parts must read as the super-card it is, dealt or shelved.
+    const golden = mkOffer('evo1', { kind: 'evolution', verb: 'Evolve' });
+    offers.push(golden);
+    repaint();
+    const evoRow = findAll(screen._cards, (n) => n.dataset && n.dataset.offerId === 'evo1')[0];
+    assert.ok(evoRow, 'the synthesis row renders on the shelf');
+    assert.equal(evoRow.classList.contains('sf-cru-card--evo'), true, 'and it is gold');
+    const plainRow = findAll(screen._cards, (n) => n.dataset && n.dataset.offerId === 's1')[0];
+    assert.equal(plainRow.classList.contains('sf-cru-card--evo'), false, 'a plain card is not');
   } finally {
     globalThis.document = savedDocument;
   }

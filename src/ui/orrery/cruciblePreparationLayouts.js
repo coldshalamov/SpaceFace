@@ -149,6 +149,11 @@ ${A} .sf-cru-dealt .sf-cru-slot, ${A} .sf-cru-dealt .sf-cru-afford, ${A} .sf-cru
 ${A} .sf-cru-dealt .sf-cru-slot { font:400 12px/1.4 var(--dp-face-label) !important; color:var(--dp-ink-dim) !important; }
 ${A} .sf-cru-dealt .sf-cru-card--dealt.is-unavail { opacity:.55 !important; }
 ${A} .sf-cru-dealt .sf-cru-card--dealt.is-fitted { border-color:var(--dp-line-faint) !important; opacity:.6 !important; }
+/* S15 — the synthesis is the room's golden row: a card that only exists because the build's own
+   parts combined. Gold hairline + warm wash on both the shelf row and a dealt card. */
+${A} .sf-cru-card.sf-cru-card--evo { border-color:var(--dp-hand) !important; background:linear-gradient(180deg, rgb(214 175 55 / .14), rgb(12 13 16 / .55) 55%) !important; box-shadow:0 0 0 1px rgb(214 175 55 / .22), 0 6px 22px -12px rgb(214 175 55 / .45) !important; }
+${A} .sf-cru-card.sf-cru-card--evo .sf-cru-name { color:var(--dp-hand) !important; }
+${A} .sf-cru-card.sf-cru-card--evo .sf-cru-verb::after { content:' synthesis'; }
 ${A} .sf-cru-stage > .sf-cru-cards[hidden] { display:none !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
 /* Doubled .orr-armory-reading.orr-armory-reading is a deliberate specificity bump so these !important reading rules win over earlier stage layout. */

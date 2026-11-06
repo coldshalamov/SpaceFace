@@ -1953,6 +1953,7 @@ export const crucibleDraftScreen = {
   _buildDealtCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
     const card = el('button', 'sf-cru-card sf-cru-card--dealt');
+    card.classList.toggle('sf-cru-card--evo', offer.kind === 'evolution');
     card.type = 'button';
     card.dataset.offerId = offer.id;
     const glyph = equipmentSvg(offer);
@@ -2006,6 +2007,8 @@ export const crucibleDraftScreen = {
   _buildCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
     const card = el('button', 'sf-cru-card');
+    // S15: a synthesis is the room's only golden row — it consumed your build to exist.
+    card.classList.toggle('sf-cru-card--evo', offer.kind === 'evolution');
     const visualShop = ctx.state?.run?.ruleset === 'swarm' && !!this._visualArmory;
     const glyph = equipmentSvg(offer);
     if (glyph) card.appendChild(glyph);
