@@ -179,8 +179,19 @@ import {
   crushPlan,
   CRUSH_PRIORITY,
 } from './vfx/crushRead.js';
+import {
+  isGhostRevealMoment,
+  isGhostEscapeMoment,
+  ghostResolvePlan,
+  ghostEscapePlan,
+  ghostColorCss,
+  ghostHues,
+  GHOST_RESOLVE_PRIORITY,
+} from './vfx/ghostResolveRead.js';
 // The crush spark fan (radians off the closing bearing) — fixed, no per-event randomness.
 const CRUSH_SPARK_FAN = Object.freeze([-0.7, -0.25, 0.2, 0.65]);
+// The ghost melt's fixed dissolve drift directions (radians) — no per-event randomness.
+const GHOST_MELT_FAN = Object.freeze([0.4, 1.9, 3.4, 4.9]);
 import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
@@ -3015,6 +3026,10 @@ export const vfx = {
     add('scan:wreckResolved', (p) => this._onWreckResolved(p));
     // inf-crush-read: the crush verdict reads at the anvil — the room's signature death.
     add('combat:crushed', (p) => this._onCrushed(p));
+    // inf-ghost-resolve-read: the deception loop's two ends both read — the contact your
+    // pulses harden snaps into a hull, and the one you failed to hold melts away.
+    add('scanner:ghostRevealed', (p) => this._onGhostResolved(p));
+    add('scanner:ghostEscaped', (p) => this._onGhostEscaped(p));
     // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
     // small surface read — the wave becomes a sequence of responses, nearest first.
     add('combat:shockwavePass', (p) => this._onShockwavePass(p));
@@ -10365,6 +10380,51 @@ export const vfx = {
     }
     this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
       { color: steel, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-ghost-resolve-read: the pulse that hardens a ghost contact into a real ship plays at
+  // the hull — a white-hot snap, a holo wisp settling, a cue light. The payloads carry only
+  // ids, so the contact's own record owns the position; without one the read honestly skips.
+  _onGhostResolved(p) {
+    if (!isGhostRevealMoment(p) || !this._scene) return;
+    const contact = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = contact && contact.pos && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z)
+      ? contact.pos
+      : null;
+    if (!pos) return;
+    const plan = ghostResolvePlan(this._isReduced());
+    const holo = ghostColorCss(ghostHues().holo);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.snap.life, plan.snap.size0,
+      plan.snap.size1, plan.snap.op0, 0.0, plan.snap.color, 0, 0, 1, null, GHOST_RESOLVE_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, plan.settle.life, plan.settle.size0,
+      plan.settle.size1, plan.settle.op0, 0.0, holo, plan.settle.drift, -plan.settle.drift,
+      1, null, GHOST_RESOLVE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: holo, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-ghost-resolve-read: the contact that held escape range dissolves at its last known
+  // position — the melt, dimmer than the snap in every channel. An escaped ghost is already
+  // dead; only its record's last position is the truth, and a recycled record gets no lie.
+  _onGhostEscaped(p) {
+    if (!isGhostEscapeMoment(p) || !this._scene) return;
+    const contact = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = contact && contact.pos && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z)
+      ? contact.pos
+      : null;
+    if (!pos) return;
+    const plan = ghostEscapePlan(this._isReduced());
+    const melt = ghostColorCss(ghostHues().melt);
+    for (let i = 0; i < GHOST_MELT_FAN.length; i++) {
+      const bearing = GHOST_MELT_FAN[i];
+      this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, plan.dissolve.life, plan.dissolve.size0,
+        plan.dissolve.size1, plan.dissolve.op0, 0.0, melt,
+        Math.cos(bearing) * plan.dissolve.drift,
+        Math.sin(bearing) * plan.dissolve.drift,
+        1, null, GHOST_RESOLVE_PRIORITY);
+    }
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: melt, peak: plan.light.peak, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
