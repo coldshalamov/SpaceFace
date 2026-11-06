@@ -32,7 +32,7 @@ export function createReplayWeaponStage(root) {
       pool.writeBolt(spec);
     },
     end() { pool.commit(); },
-    dispose() { pool.dispose(); },
+    dispose({ disposeGpu = true } = {}) { pool.dispose({ disposeGpu }); },
     pool,
   };
 }

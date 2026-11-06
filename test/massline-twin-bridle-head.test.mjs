@@ -252,20 +252,21 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   // its Forge Regent crown (PQ-133.07, Foundry wave thirty) are heavy on purpose: both fly the
   // Anchor's 420 kg Bastion body, their "mass and commitment are the fight"
   // (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and their waves ask for escorts thrown into them.
-  // SWARM-07 phase B adds two more Brood heavies: the 520 kg Brood Queen (heavier than the
-  // Anchor, so the Anchor-mass proof covers her by the same inverse-mass law) and the 300 kg
-  // Tendril, whose shrug is proven at its own live mass below.
+  // SWARM-07 phase B adds Brood heavies, and the Iron Kraken adds a 240 kg heavy plus a 900 kg
+  // colossus. The Anchor-mass proof covers heavier bodies by the same inverse-mass law; every
+  // sub-Anchor heavy is proven at its own live mass below.
   const heavies = ENEMY_TYPES.filter((row) => Number(row.mass) >= 150);
   assert.deepEqual(
     heavies.map((row) => row.id),
     ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
       'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
-      'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk', 'last_argument', 'kilnback'],
+      'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk', 'last_argument', 'kilnback',
+      'enemy_iron_kraken', 'enemy_iron_kraken_colossus'],
   );
-  assert.ok(heavies.every((row) => ['brood_tendril', 'casket_worm', 'kilnback'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
+  assert.ok(heavies.every((row) => ['brood_tendril', 'casket_worm', 'kilnback', 'enemy_iron_kraken'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
-  // Each sub-Anchor colossus must exercise its own live mass through the catch law.
-  for (const id of ['brood_tendril', 'casket_worm']) {
+  // Each sub-Anchor heavy and the new Kraken profiles exercise their own live mass through the catch law.
+  for (const id of ['brood_tendril', 'casket_worm', 'enemy_iron_kraken', 'enemy_iron_kraken_colossus']) {
     const heavyDef = ENEMY_TYPES.find((row) => row.id === id);
     const QUEEN = ENEMY_TYPES.find((row) => row.id === 'brood_queen');
     const previousImpulse = COMBAT_FLAGS.weaponImpulseConsequences;

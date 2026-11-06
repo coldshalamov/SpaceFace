@@ -79,7 +79,7 @@ test('NXI-103 a hold-limited second purchase still tells the truth', () => {
   assert.equal(result.leg2.limit, 'volume');
   assert.equal(result.limitingLeg, 2);
   assert.equal(result.limitingInput, 'volume');
-  assert.equal(limitFragment(formatFreightComparison(result)), 'leg 2 limited by volume');
+  assert.equal(limitFragment(formatFreightComparison(result)), 'leg 2 limited by hold space');
 });
 
 test('NXI-103 a second purchase whose quote is missing stays unknown, not capacity', () => {
@@ -95,6 +95,6 @@ test('NXI-103 a second purchase whose quote is missing stays unknown, not capaci
   assert.equal(result.leg2.limit, 'unknown');
   assert.equal(result.limitingInput, 'unknown');
   const fragment = limitFragment(formatFreightComparison(result));
-  assert.equal(fragment, 'leg 2 limited by unknown');
+  assert.equal(fragment, 'leg 2 limited by route price unavailable');
   assert.doesNotMatch(fragment, /volume|hold|capacity|space/i);
 });

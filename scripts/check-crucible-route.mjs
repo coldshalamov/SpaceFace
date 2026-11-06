@@ -34,6 +34,7 @@
 //
 //   node scripts/check-crucible-route.mjs
 //   node scripts/check-crucible-route.mjs --verbose
+//   node scripts/check-crucible-route.mjs --headed --starter=veil_step
 //   node scripts/check-crucible-route.mjs --headed   a real visible window on the native GPU —
 //                                                  distinguishes native-GPU evidence from
 //                                                  software-GL evidence when a headless run
@@ -53,6 +54,9 @@ const VERBOSE = process.argv.includes('--verbose');
 // diagnostic to separate a real stall from a slow render environment.
 const HEADED = process.argv.includes('--headed');
 const SEED = 4242;
+const STARTER_OVERRIDE = process.argv.find((arg) => arg.startsWith('--starter='))?.slice('--starter='.length) || null;
+const STARTER_ID = STARTER_OVERRIDE || 'ricochet_runner';
+const VEIL_STEP_ROUTE = STARTER_ID === 'veil_step';
 // --full walks to round 10 extraction in Swarm, or the complete 30-wave Gauntlet victory.
 const FULL = process.argv.includes('--full');
 // Which ruleset to walk. Swarm is the default because it is what the main-menu button plays.
@@ -113,6 +117,187 @@ async function clickButton(page, label) {
     b.click();
     return true;
   }, label);
+}
+
+/** Public-input Crucible exercise for the fitted Veil Step starter. */
+async function exerciseVeilStep(page) {
+  const canvas = page.locator('canvas').first();
+  const box = await canvas.boundingBox();
+  if (!box || box.width < 1 || box.height < 1) {
+    return { ok: false, detail: 'no visible authored world canvas for pointer aim' };
+  }
+  // Let the ordinary pointer preview establish a valid public aim before taking the baseline.
+  await page.mouse.move(box.x + box.width * 0.78, box.y + box.height * 0.48);
+  await page.waitForFunction(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const readiness = state?.render?.authoredVisualReadiness?.()
+      || window.SF?.authoredVisualReadiness?.();
+    const authoredPlayer = player?.mesh?.userData?.authoredAssetState;
+    const playerMeshAuthored = ['authored', 'authored-prepared', 'authored-with-cleanup-error']
+      .includes(authoredPlayer);
+    const hero = document.querySelector('.sf-crun__hero');
+    return state?.mode === 'flight' && state?.run?.phase === 'active'
+      && readiness?.ready === true && player?.mesh?.visible !== false && playerMeshAuthored
+      && Number(state?.render?.worldSubmittedFrames) > 0
+      && !!hero && !hero.hidden && hero.dataset.state === 'armed'
+      && /VEIL STEP/i.test(hero.textContent) && /ready/i.test(hero.textContent);
+  }, null, { timeout: 10000 });
+  const before = await page.evaluate(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const readiness = state?.render?.authoredVisualReadiness?.()
+      || window.SF?.authoredVisualReadiness?.();
+    let loop = null;
+    try { loop = window.SF?.loop?.getDiagnostics?.() || null; } catch (_) { /* diagnostic only */ }
+    const hero = document.querySelector('.sf-crun__hero');
+    const canvas = [...document.querySelectorAll('canvas')].find((node) => {
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && getComputedStyle(node).visibility !== 'hidden';
+    });
+    return {
+      playerId: state?.playerId ?? null,
+      mode: state?.mode ?? null,
+      runPhase: state?.run?.phase ?? null,
+      authoredReadiness: readiness?.ready === true,
+      playerAssetState: player?.mesh?.userData?.authoredAssetState || null,
+      playerMeshVisible: player?.mesh?.visible === true,
+      worldSubmittedFrames: Number(state?.render?.worldSubmittedFrames) || 0,
+      fitted: state?.player?.ownedShips?.[state?.player?.activeShipIndex || 0]?.fittings?.includes('mod_veil_step') === true,
+      pos: player?.pos ? { x: player.pos.x, z: player.pos.z } : null,
+      energy: Number.isFinite(player?.boost?.energy) ? player.boost.energy : null,
+      simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+      heroVisible: !!hero && !hero.hidden && getComputedStyle(hero).display !== 'none',
+      heroText: hero?.textContent?.trim() || '',
+      canvasVisible: !!canvas,
+      displayHz: Number(state?.render?.displayHz) || null,
+      renderFrameCap: Number.isFinite(state?.render?.frameCap) ? state.render.frameCap : null,
+      videoVsync: typeof state?.video?.vsync === 'boolean' ? state.video.vsync : null,
+      videoFrameCap: Number.isFinite(state?.video?.frameCap) ? state.video.frameCap : null,
+      frameCapSkips: Number.isFinite(loop?.frameCapSkips) ? loop.frameCapSkips : null,
+      liveWorldBodies: state?.entityList?.filter((entity) => entity.alive
+        && entity.data?.runCohort === 'survival'
+        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(entity.type)).length || 0,
+    };
+  });
+  if (before.mode !== 'flight' || before.runPhase !== 'active' || !before.authoredReadiness
+    || !before.playerMeshVisible || !before.playerAssetState?.startsWith('authored')
+    || before.worldSubmittedFrames < 1 || !before.fitted
+    || !before.pos || before.energy == null || before.simTime == null || !before.heroVisible
+    || !before.canvasVisible || before.liveWorldBodies < 1) {
+    return { ok: false, detail: `Veil Step public flight is not ready: ${JSON.stringify(before)}` };
+  }
+
+  let inputReleased = false;
+  const releaseShift = async () => {
+    await page.keyboard.up('Shift');
+    inputReleased = true;
+  };
+  let observerInstalled = false;
+  try {
+    // Pointer aim is the same public helm input used in flight; choose clear space to the right
+    // and wait above for the visible Veil cue to say that the preview has a valid landing.
+    await page.evaluate(() => {
+      const state = window.SF.state;
+      const proof = { playerId: state.playerId, receipt: null, off: null };
+      proof.off = window.SF.bus.on('ship:phaseBlink', (payload) => {
+        if (!payload || payload.shipId !== proof.playerId) return;
+        const player = window.SF.state.entities.get(proof.playerId);
+        proof.receipt = {
+          shipId: payload.shipId,
+          from: payload.from && { x: payload.from.x, z: payload.from.z },
+          to: payload.to && { x: payload.to.x, z: payload.to.z },
+          dist: payload.dist,
+          playerPos: player?.pos ? { x: player.pos.x, z: player.pos.z } : null,
+          energy: Number.isFinite(player?.boost?.energy) ? player.boost.energy : null,
+          simTime: Number.isFinite(window.SF.state.simTime) ? window.SF.state.simTime : null,
+        };
+      });
+      window.__sfVeilStepRouteProof = proof;
+    });
+    observerInstalled = true;
+    await page.keyboard.down('Shift');
+    try {
+      await page.waitForFunction(() => {
+        const hero = document.querySelector('.sf-crun__hero');
+        return !!hero && !hero.hidden && hero.dataset.state === 'armed'
+          && /VEIL STEP/i.test(hero.textContent) && /release to step/i.test(hero.textContent);
+      }, null, { timeout: 8000 });
+    } finally {
+      await releaseShift();
+    }
+    await page.waitForFunction(() => !!window.__sfVeilStepRouteProof?.receipt,
+      null, { timeout: 8000 });
+    const receipt = await page.evaluate(() => window.__sfVeilStepRouteProof.receipt);
+    const moved = receipt?.from && receipt?.to
+      ? Math.hypot(receipt.to.x - receipt.from.x, receipt.to.z - receipt.from.z) : 0;
+    const poseDelta = receipt?.playerPos && before.pos
+      ? Math.hypot(receipt.playerPos.x - before.pos.x, receipt.playerPos.z - before.pos.z) : 0;
+    const destinationError = receipt?.playerPos && receipt?.to
+      ? Math.hypot(receipt.playerPos.x - receipt.to.x, receipt.playerPos.z - receipt.to.z) : Infinity;
+    // The worker-delivered event can arrive after the next ordinary movement tick. Require the
+    // live player pose to have made the authored jump and remain within 1 WU of its destination;
+    // exact equality would mistake normal post-commit drift for a failed teleport.
+    const poseMatches = poseDelta >= 20 && destinationError <= 1;
+    const physicalCommit = receipt?.shipId === before.playerId && moved >= 20
+      && Number.isFinite(receipt.dist) && receipt.dist >= 20 && poseMatches
+      && Number.isFinite(receipt.energy) && receipt.energy < before.energy;
+    if (!physicalCommit || !Number.isFinite(receipt.simTime)) {
+      return { ok: false, detail: `Veil Step receipt did not match a physical commit: ${JSON.stringify({ before, receipt, moved, poseDelta, destinationError, poseMatches })}` };
+    }
+
+    await page.waitForFunction(() => {
+      const hero = document.querySelector('.sf-crun__hero');
+      return !!hero && !hero.hidden && hero.dataset.state === 'blocked'
+        && /phase recharging|cooling/i.test(hero.textContent);
+    }, null, { timeout: 8000 });
+    await page.waitForFunction(() => {
+      const hero = document.querySelector('.sf-crun__hero');
+      return !!hero && !hero.hidden && hero.dataset.state === 'armed'
+        && /ready/i.test(hero.textContent);
+    }, null, { timeout: 15000 });
+    const recovered = await page.evaluate((at) => {
+      const hero = document.querySelector('.sf-crun__hero');
+      const state = window.SF.state;
+      return {
+        simElapsed: state.simTime - at,
+        heroText: hero?.textContent?.trim() || '',
+        heroState: hero?.dataset.state || null,
+        mode: state.mode,
+        runPhase: state.run?.phase,
+        canvasVisible: [...document.querySelectorAll('canvas')].some((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && getComputedStyle(node).visibility !== 'hidden';
+        }),
+      };
+    }, receipt.simTime);
+    const ok = recovered.simElapsed >= 1.05 && recovered.heroState === 'armed'
+      && /ready/i.test(recovered.heroText) && recovered.mode === 'flight'
+      && recovered.runPhase === 'active' && recovered.canvasVisible;
+    const renderContext = JSON.stringify({
+      displayHz: before.displayHz,
+      renderFrameCap: before.renderFrameCap,
+      videoVsync: before.videoVsync,
+      videoFrameCap: before.videoFrameCap,
+      frameCapSkips: before.frameCapSkips,
+    });
+    return { ok, detail: `public Shift release moved ${moved.toFixed(1)} WU; capacitor ${before.energy.toFixed(1)}→${receipt.energy.toFixed(1)}; cooldown recovery ${recovered.simElapsed.toFixed(2)} sim s · ${recovered.heroText}; render context ${renderContext}` };
+  } catch (error) {
+    return { ok: false, detail: `public Veil Step input failed: ${error?.message || error}` };
+  } finally {
+    let keyReleaseError = null;
+    if (!inputReleased) {
+      // A failed first keyup is an actor failure, not evidence that the input was released.
+      // Retry once in cleanup and preserve a second failure as a route error.
+      try { await releaseShift(); } catch (error) { keyReleaseError = error; }
+    }
+    if (observerInstalled) await page.evaluate(() => {
+      const proof = window.__sfVeilStepRouteProof;
+      if (typeof proof?.off === 'function') proof.off();
+      delete window.__sfVeilStepRouteProof;
+    }).catch(() => {});
+    if (keyReleaseError) throw new Error(`Shift keyup failed during cleanup: ${keyReleaseError?.message || keyReleaseError}`);
+  }
 }
 
 // Cohort membership alone does not mean "killable": since e01a87854 a Crucible kill leaves the
@@ -235,6 +420,12 @@ async function launchArmoryRound(page, round) {
 }
 
 async function main() {
+  if (STARTER_OVERRIDE && STARTER_OVERRIDE !== 'veil_step') {
+    throw new Error(`unsupported --starter=${STARTER_OVERRIDE}; supported override: veil_step`);
+  }
+  if (VEIL_STEP_ROUTE && !HEADED) {
+    throw new Error('--starter=veil_step requires --headed so the public flight and aim are visible');
+  }
   server = await startServer();
   browser = await chromium.launch({
     headless: !HEADED,
@@ -311,13 +502,20 @@ async function main() {
   if (!(await clickButton(page, 'Choose ship & kit'))) {
     throw new Error('door continue control ("Choose ship & kit →") did not click');
   }
-  await page.evaluate((seed) => {
-    const hull = [...document.querySelectorAll('#screens .sf-crd-hull')]
-      .find((b) => b.textContent.includes('Ricochet Runner'))
-      || document.querySelector('#screens .sf-crd-hull');
+  await page.evaluate(({ seed, starterId }) => {
+    const wanted = starterId;
+    const hull = wanted
+      ? [...document.querySelectorAll('#screens .sf-crd-hull')]
+        .find((b) => b.dataset.starterId === wanted && !b.disabled)
+      : [...document.querySelectorAll('#screens .sf-crd-hull')]
+        .find((b) => b.textContent.includes('Ricochet Runner'))
+        || document.querySelector('#screens .sf-crd-hull');
+    if (!hull || hull.disabled || hull.getBoundingClientRect().width <= 0) {
+      throw new Error(`public starter card not selectable: ${wanted || 'ricochet_runner'}`);
+    }
     hull.click();
     document.querySelector('#screens .sf-crd-seed input').value = String(seed);
-  }, SEED);
+  }, { seed: SEED, starterId: STARTER_OVERRIDE });
   if (!(await clickButton(page, MODE_VERB))) throw new Error(`"${MODE_VERB}" did not click`);
 
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
@@ -349,7 +547,8 @@ async function main() {
       researched: (p.researchedNodes || []).length,
     };
   });
-  record('ARSENAL', arsenal.fitted.length >= 1,
+  record('ARSENAL', arsenal.fitted.length >= 1
+    && (!VEIL_STEP_ROUTE || arsenal.fitted.includes('mod_veil_step')),
     `${arsenal.hullId} carries ${arsenal.fitted.length} fitted: ${arsenal.fitted.join(', ') || '(nothing)'}`);
 
   // ── WAVE ────────────────────────────────────────────────────────────────────────────────────
@@ -366,12 +565,13 @@ async function main() {
       count: cohort.length,
       ids: [...new Set(cohort.map((e) => e.data.lootTableId))],
       hull: cohort[0] && cohort[0].hull,
-      budgetUsed: st.spawnBudget && st.spawnBudget.used,
-      budgetMax: st.spawnBudget && st.spawnBudget.max,
+      admitted: st.run && st.run.spawnedThreat,
+      planned: st.run && st.run.threatBudget,
     };
   });
-  record('WAVE', wave.count > 0 && wave.budgetUsed <= wave.budgetMax && wave.hull > 0,
-    `${wave.count} live hostiles (${wave.ids.join(', ')}), budget ${wave.budgetUsed}/${wave.budgetMax}`);
+  record('WAVE', wave.count > 0 && wave.hull > 0
+    && Number.isFinite(wave.admitted) && Number.isFinite(wave.planned) && wave.admitted <= wave.planned,
+    `${wave.count} live hostiles (${wave.ids.join(', ')}), admitted ${wave.admitted}/${wave.planned}`);
 
   // ── HUD ─────────────────────────────────────────────────────────────────────────────────────
   // Everything above can be true while the player still sees nothing. This asks what is on glass.
@@ -405,6 +605,23 @@ async function main() {
       ? `"${hud.label}" · ${hud.wave} · ${hud.phase} · figures ${hud.figs.join(' ')} · `
         + `smallest text ${hud.minFontPx}px · hosted in .${hud.host}`
       : 'no run readout on screen at all');
+
+  if (VEIL_STEP_ROUTE) {
+    const veil = await exerciseVeilStep(page);
+    record('VEIL', veil.ok, veil.detail);
+
+    // The optional Veil route ends at its public ability/cooldown check. The legacy Crucible
+    // smoke path below deliberately applies scripted lethal hits; they are useful fixture-level
+    // phase/reward coverage, but they are not part of a player-input ability route.
+    const errorTexts = pageIssues.errorIssues().map((issue) => issue.text);
+    const noisy = errorTexts.filter((t) => !(
+      /favicon|KHR_parallel_shader_compile|partsLibrary/i.test(t)
+      || /opening submission pre-submit gate failed closed/i.test(t)
+    ));
+    record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
+    if (VERBOSE && errorTexts.length) console.log('  page messages:', errorTexts.slice(0, 20));
+    return;
+  }
 
   // ── CLEAR ───────────────────────────────────────────────────────────────────────────────────
   const campaignCreditsBefore = await page.evaluate(() => window.SF.state.player.credits);
@@ -811,9 +1028,12 @@ try {
 const failed = results.filter((r) => !r.ok);
 console.log('');
 if (failed.length === 0) {
-  console.log(`Crucible route is playable — ${results.length}/${results.length} checks passed.`);
+  console.log(VEIL_STEP_ROUTE
+    ? `Veil Step public ability route passed — ${results.length}/${results.length} checks passed.`
+    : `Crucible route is playable — ${results.length}/${results.length} checks passed.`);
 } else {
-  console.log(`Crucible route FAILED — ${failed.length} of ${results.length} checks: ${failed.map((f) => f.label).join(', ')}`);
+  const routeName = VEIL_STEP_ROUTE ? 'Veil Step public ability route' : 'Crucible route';
+  console.log(`${routeName} FAILED — ${failed.length} of ${results.length} checks: ${failed.map((f) => f.label).join(', ')}`);
   exitCode = 1;
 }
 process.exit(exitCode);

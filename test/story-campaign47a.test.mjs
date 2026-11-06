@@ -347,7 +347,9 @@ check('B4 accepts live branch_intro payload and rejects non-live tags', () => {
 
   const good = recordBeatStep(state, 'mission:accepted', liveBranchIntroPayload('patrol'), 11);
   assert.equal(good.ok, true, good.reason);
-  assert.equal(good.stepsComplete, true);
+  // The intro accept is only the door — the door's operation still has to run,
+  // so the beat must not report complete here.
+  assert.equal(good.stepsComplete, false);
   assert.equal(good.branch, 'patrol');
   assert.ok(good.receipt && good.receipt.kind === 'branch_intro_accept');
   assert.equal(good.advancedCanonicalBeat, false);

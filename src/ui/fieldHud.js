@@ -147,7 +147,7 @@ export const fieldHud = {
         const seconds = Math.max(0, Math.ceil(environmental.remainingTicks / 60));
         const degrees = Math.round((Math.atan2(environmental.dir.z, environmental.dir.x) * 180 / Math.PI + 360) % 360);
         const bearing = `${String(degrees).padStart(3, '0')}°`;
-        const local = `${Math.round(environmental.localStrength)} WU/s²`;
+        const local = `${Math.round(environmental.localStrength)} u/s²`;
         const peak = `PEAK ${Math.round(ANVIL_ORCHARD_GUST_PROFILE.strength)}`;
         if (environmental.phase === 'gust') {
           return { text: `ANVIL ORCHARD — GUST ${seconds}s · ${bearing} · LOCAL ${local} · ${peak}`, cls: 'field-current-surge' };

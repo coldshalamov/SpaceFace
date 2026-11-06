@@ -5,13 +5,15 @@ import { createSimulation } from '../src/core/sim.js';
 import { ENCOUNTERS } from '../src/data/encounters/index.generated.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
+import { EIGHTH_BELL_RUNTIME } from '../src/systems/eighthBellRuntime.js';
+import { economy } from '../src/systems/economy.js';
 
 const SECTOR = 'sector_vesta_forge';
 const SHAPE = 'the_eighth_bell';
 const CATHEDRAL = Object.freeze({ x: -330, z: 1060 }); // sector-local POI pos, used as the test's world-space berth
 
 function boot(seed = 4242) {
-  const sim = createSimulation({ seed, systems: [encounterDirector] });
+  const sim = createSimulation({ seed, systems: [economy, encounterDirector] });
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
     radius: 8, mass: 100, hull: 100, hullMax: 100,
@@ -96,6 +98,8 @@ test('firing spawns the dead barge, two wardens, and a tetherable bell body', ()
   assert.equal(byRole.barge.data.defId, 'ship_atlas', 'the chapel-barge is the 200-mass hauler');
   assert.equal(byRole.barge.data.ai.passive, true);
   assert.equal(byRole.barge.data.ai.spawnContext, 'convoy_civilian');
+  assert.notEqual(byRole.barge.data.masslineTetherable, true,
+    'the independent barge cannot advertise a tow target that does not move the tracked bell');
   assert.equal(byRole.warden.data.defId, 'ship_wasp', 'wardens fly choir_zealot hulls');
   const bell = byRole.bell;
   assert.ok(bell, 'the bell must be a physical contact, not a line of text');
@@ -114,6 +118,13 @@ test('roping the bell starts the tow; a fast bell tolls and berthing resolves', 
   const id = force(t, 'tow');
   const rec = live(t, id);
   const bell = bellOf(t, id);
+
+  // The barge and bell are independent bodies. Only attaching to the objective body may start
+  // the tow; latching the nearby barge must not create a stranded, non-moving objective.
+  const barge = rec.ids.map((entityId) => t.state.entities.get(entityId))
+    .find((entity) => rec.roles[entity.id] === 'barge');
+  t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: barge.id });
+  assert.equal(live(t, id).phase, 'offer', 'the unrelated barge does not begin the bell tow');
 
   // The physical read beats the menu: attach the line before answering the hail.
   t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: bell.id });
@@ -156,6 +167,7 @@ test('paying the Forge charges the yard tug and ends the encounter gently', () =
   assert.equal(completion(t)?.outcome, 'hired');
   assert.equal(t.state.story.flags.eighthBellGone, 'hired');
   assert.ok(events.some((row) => row.name === 'economy:chargeCredits' && row.payload.amount === 260));
+  assert.equal(t.state.player.credits, 740, 'the sole economy owner settles the accepted tug');
   assert.ok(events.some((row) => row.name === 'faction:repDelta'
     && row.payload.factionId === 'faction_choir' && row.payload.delta === 3));
   // The bell is spoken for: a later forced request dies in fire, not in the planner.
@@ -164,6 +176,59 @@ test('paying the Forge charges the yard tug and ends the encounter gently', () =
     sectorId: SECTOR, anchor: { x: 0, z: 0 }, force: true,
   });
   assert.deepEqual(refire, { ok: false, reason: 'resolved_on_fire' });
+});
+
+test('an unaffordable tug offer does not spend credits or resolve the bell', () => {
+  const t = boot();
+  t.state.player.credits = 100;
+  const events = collect(t, ['economy:chargeCredits', 'faction:repDelta', 'encounter:resolved']);
+  const id = force(t, 'hire-short');
+  choose(t, id, 'hire');
+
+  const rec = live(t, id);
+  assert.ok(rec, 'the procession remains available after the wire refuses payment');
+  assert.equal(rec.phase, 'offer');
+  assert.equal(completion(t), null);
+  assert.equal(t.state.player.credits, 100, 'the exact charge rejects a short balance');
+  assert.equal(events.filter((row) => row.name === 'economy:chargeCredits').length, 1);
+  assert.equal(events.some((row) => row.name === 'faction:repDelta'), false,
+    'a refused tug cannot grant Choir standing');
+  assert.equal(events.some((row) => row.name === 'encounter:resolved'), false,
+    'a refused tug cannot settle as hired');
+
+  // The answer consumes the menu offer, but the physical line remains a valid alternative.
+  t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: bellOf(t, id).id });
+  assert.equal(live(t, id).phase, 'towing');
+});
+
+test('reentrant hire and tow choices cannot settle the same bell during its exact debit', () => {
+  const t = boot();
+  t.state.player.credits = 1000;
+  const receipts = collect(t, ['economy:chargeCredits', 'faction:repDelta', 'encounter:resolved']);
+  const id = force(t, 'hire-reentrant');
+  const rec = live(t, id);
+  let nested = false;
+  t.bus.on('economy:chargeCredits', (request) => {
+    if (request?.reason !== 'eighth_bell_yard_tug' || nested) return;
+    nested = true;
+    EIGHTH_BELL_RUNTIME.choose(t.director, rec, t.state, 'hire');
+    EIGHTH_BELL_RUNTIME.choose(t.director, rec, t.state, 'vow');
+    t.bus.emit('tether:attached', { actorId: t.state.playerId, targetId: rec.vars.bellId });
+  });
+
+  choose(t, id, 'hire');
+
+  assert.equal(nested, true, 'the wallet event exercised synchronous reentry');
+  assert.equal(receipts.filter((row) => row.name === 'economy:chargeCredits').length, 1,
+    'nested hire does not emit a second debit');
+  assert.equal(receipts.filter((row) => row.name === 'encounter:resolved').length, 1,
+    'the encounter resolves exactly once');
+  assert.equal(receipts.filter((row) => row.name === 'faction:repDelta').length, 1,
+    'Choir standing is applied once');
+  assert.equal(t.state.player.credits, 740);
+  assert.equal(completion(t)?.outcome, 'hired');
+  assert.equal(rec.phase, 'done');
+  assert.equal(rec.vars.hirePending, false);
 });
 
 test('passing leaves the bell patient, and the lane can ask again', () => {

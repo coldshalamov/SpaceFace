@@ -309,6 +309,20 @@ test('saturated sprite pool uses priority then age and keeps generic callers com
   assert.equal(generic.admissionPriority, DEFAULT_VFX_ADMISSION_PRIORITY);
 });
 
+test('directional flash sprites integrate their authored velocity', () => {
+  const { system } = makeVfxHarness();
+  const flash = system._spawnSprite(
+    0, 2, 0.2, 3, 1, 1, 2, 0.8, 0,
+    '#ffffff', 10, -5, 1, 0,
+  );
+
+  assert.ok(flash);
+  system._integrateSprites(0.1);
+
+  assert.equal(flash.x, 3);
+  assert.equal(flash.z, 2.5);
+});
+
 test('saturated structural streak pool evicts weakest-oldest, rejects weaker work, and drains metadata', () => {
   const { system } = makeVfxHarness();
   for (let i = 0; i < system._ts.length; i++) assert.ok(spawnStructuralStreak(system, 0.12));

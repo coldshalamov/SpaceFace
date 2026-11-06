@@ -81,8 +81,9 @@ export function mountPhysicsVenueHud({ root, state, bus, screens }) {
   let last = '';
   return { frame(st = state) {
     const view = st.physicsVenuePublic;
-    panel.hidden = st.mode !== 'flight' || !view?.active || screens?.isOpen?.();
-    if (panel.hidden) return;
+    const hide = st.mode !== 'flight' || !view?.active || !!screens?.isOpen?.();
+    if (panel.hidden !== hide) panel.hidden = hide; // a same-value write still invalidates style
+    if (hide) return;
     const signature = `${view.title}|${venueResultText(view)}|${view.instruction}`;
     if (signature === last) return; last = signature;
     title.textContent = view.title; result.textContent = venueResultText(view); hint.textContent = view.instruction;

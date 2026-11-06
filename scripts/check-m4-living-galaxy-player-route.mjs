@@ -4,7 +4,7 @@
 // Fail-closed matrix of independently owned public runs:
 //   1) Helios civic + lawful yard dock → F5 → Continue aftermath
 //   2) Public gate travel to Ceres industrial belt → ecology + mining POI
-//   3) Public gate travel to Tethys trade corridor → ecology + freight POI
+//   3) Public gate travel to the Dione trade corridor → ecology + freight POI
 //
 // Instrumentation observes state/events only. Forbidden: entity injection, teleports,
 // direct sector/jump/dock writes, bus.emit of gameplay verbs, query debug flags.

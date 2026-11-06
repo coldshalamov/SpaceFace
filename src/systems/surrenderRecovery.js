@@ -12,6 +12,9 @@ import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, in
 import { isHostileToPlayer } from './scanner.js';
 import { ensureMoralMemory, pendingMoralDebt, rememberMoralDebt, settleMoralDebt } from './moralMemory.js';
 import { promotedPilotIdentity, promotedPilotIdFor } from '../data/pilotCallsigns.js';
+import { isSurrenderedContact } from '../combat/contactClassifier.js';
+
+export { isSurrenderedContact };
 
 export const SURRENDER_SECURE_REEL_WU = 60;
 export const SURRENDER_ESCAPE_S = 45;
@@ -39,13 +42,6 @@ const RECOVERY_CIVILIAN_DISABLED = 'civilian_disabled';
 const RECOVERY_ENTITY_INSTANCE = Symbol('surrenderRecoveryEntityInstance');
 /** Re-adopt saved surrender/custody annotations; record timers still run every tick. */
 export const SURRENDER_READOPT_CADENCE_TICKS = 8;
-
-// The live AI order is authoritative. Recovery annotations may remain after escape or clearing.
-// HUD readers must not infer a current surrender from that historical custody record.
-export function isSurrenderedContact(entity) {
-  return !!entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone')
-    && entity.data?.ai?.fsm === 'surrender';
-}
 
 /** Read-only recovery consent bound to this exact live body, never a recycled annotation ID. */
 export function hasRecoveryTowConsent(state, entity) {

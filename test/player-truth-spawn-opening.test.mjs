@@ -70,10 +70,27 @@ test('a recycled occupant of an old terrain id is still a new moving spawn', () 
   assert.match(result.offenders[0].line, /37000427/);
 });
 
-test('new terrain seen only during preparation still grades its initial active motion', () => {
+test('new terrain observed during introduction still grades its initial motion', () => {
   const result = checkSpawnMotion(trace([
     sample(47.417, 13.4, { w: 2, ph: 'wave_intro' }), sample(47.483, 13.4),
   ]));
   assert.equal(result.status, 'FAIL');
   assert.equal(result.value, '1 bodies');
+});
+
+test('terrain born at rest in wave introduction is not respawned by later native collisions', () => {
+  const result = checkSpawnMotion(trace([
+    sample(47.1, 0.5, { w: 2, ph: 'wave_intro' }),
+    sample(47.417, 35, { w: 2, ph: 'wave_intro' }), sample(47.483, 44),
+  ]));
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.value, '0 bodies');
+});
+
+test('a new life arriving hot during introduction still fails even if it settles before active', () => {
+  const result = checkSpawnMotion(trace([
+    sample(47.1, 35, { w: 2, ph: 'wave_intro' }), sample(47.483, 0),
+  ]));
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.offenders[0].sim, 47.1);
 });

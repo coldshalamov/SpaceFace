@@ -23,6 +23,6 @@ export function starterAirCard(starter) {
     massT,
     thrust,
     lineWuPerS,
-    sentence: `${role}. ${massT} t, thrust ${thrust}, line ${lineWuPerS} WU/s.`,
+    sentence: `${role}. ${massT} t, thrust ${thrust}, line ${lineWuPerS} u/s.`,
   };
 }

@@ -228,13 +228,28 @@ export function createDeathDial({ host, hullId = null, direction = null, vitals 
     );
     layer.appendChild(rise(compass, 0));
     // the blow's own bearing is named in the caption, not on the ring its blade crosses
-    for (const [word, deg] of [['Bow', 0], ['Starboard', 90], ['Astern', 180], ['Port', 270]]) {
-      if (blowDeg === deg) continue;
+    const cards = [['Bow', 0], ['Starboard', 90], ['Astern', 180], ['Port', 270]].filter(([, deg]) => blowDeg !== deg);
+    for (const [word, deg] of cards) {
       layer.appendChild(rise(ringWord(Rc + 16, deg, word.toUpperCase(), 'orr-deathdial__card'), 80));
     }
+    // the engraving goes in the roomiest gap between two compass words, away from the blade, centred
+    // so it clears both; on a dial too small for it to clear either word it is left off (the run's
+    // wave is in the death line beside the dial). ~13px a letter at 12px with .3em tracking
     if (engraving) {
-      const at = ((blowDeg == null ? 0 : blowDeg + 180) + 40) % 360;
-      layer.appendChild(rise(ringWord(Rc + 18, at, engraving.toUpperCase(), 'orr-deathdial__engrave'), 120));
+      const halfDeg = (text, r) => ((String(text).length * 13) / 2 / r) * (180 / Math.PI);
+      const own = halfDeg(engraving, Rc + 18);
+      let best = null;
+      cards.forEach(([word, deg], i) => {
+        const [nextWord, nextDeg0] = cards[(i + 1) % cards.length];
+        const nextDeg = nextDeg0 <= deg ? nextDeg0 + 360 : nextDeg0;
+        if (blowDeg != null && ((blowDeg - deg + 360) % 360) < nextDeg - deg) return;
+        const from = deg + halfDeg(word, Rc + 16);
+        const to = nextDeg - halfDeg(nextWord, Rc + 16);
+        const room = (to - from) / 2 - own;
+        const at = ((from + to) / 2) % 360;
+        if (room >= 8 && (!best || room > best.room)) best = { at, room };
+      });
+      if (best) layer.appendChild(rise(ringWord(Rc + 18, best.at, engraving.toUpperCase(), 'orr-deathdial__engrave'), 120));
     }
 
     // what was left: three gauges, their gap turned to the blow, each engraved with its own name

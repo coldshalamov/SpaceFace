@@ -9,7 +9,7 @@
 // This file must never mutate state or draw RNG. It runs only for the local player's HUD (Tier A —
 // render/UI), so it needs no determinism guard. Sim call sites keep calling weapons._leadAngle; they
 // do not import this.
-import { solveLeadAngle } from '../systems/weapons.js';
+import { solveLeadAngle } from '../combat/leadAngle.js';
 import { WEAPONS } from '../data/weapons.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { isHostileToPlayer as defaultIsHostileToPlayer } from '../systems/scanner.js';

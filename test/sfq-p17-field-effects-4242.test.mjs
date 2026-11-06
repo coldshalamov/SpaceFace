@@ -8,7 +8,7 @@ import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { HEAT_TRIAL_NOTE } from '../src/data/heatProximityTrial.js';
 import { LURE_SHOWN } from '../src/data/heatLure.js';
 import {
-  tickAlienEcology, handleAlienEcologyEvent,
+  tickAlienEcology, handleAlienEcologyEvent, handleWarmHeatAction,
   serializeAlienEcologyState, deserializeAlienEcologyState,
 } from '../src/systems/alienEcology.js';
 
@@ -30,6 +30,11 @@ function field(siteId) {
     helpers: { hash32, mulberry32, spawnEntity() { return null; }, removeEntity() {} },
     bus: { emit: (type, payload) => events.push({ type, payload }) },
   };
+  const host = { pos: { ...site.center }, occupantGeneration: 1 };
+  world.registry = { get: name => name === 'aftermathWrecks' ? {
+    siteWreckBinding: id => id === 'warm_freighter' && siteId === id
+      ? { host, occupantGeneration: host.occupantGeneration, pose: { ...host.pos } } : null,
+  } : null };
   const ae = ensureAlienEcologyState(state);
   ae.revelation = 3;
   ae.sites[siteId] = { state: 'awake', relaySevered: false,
@@ -48,7 +53,9 @@ function field(siteId) {
   }
   return { site, state, player, world, ae, events, fauna,
     tick(dt = 0.1) { state.simTime += dt; tickAlienEcology(world, dt); },
-    scan() { handleAlienEcologyEvent(world, 'scan:completed', { sectorId: site.sectorId }); } };
+    scan() { handleAlienEcologyEvent(world, 'scan:completed', { sectorId: site.sectorId }); },
+    chooseHeat(verb) { const offer = events.findLast(e => e.type === 'siteEvidence:offer' && e.payload.interactionId === 'warm-freighter-standby')?.payload;
+      return handleWarmHeatAction(world, { siteId: site.siteId, interactionId: offer.interactionId, requestId: offer.requestId, expectedOnline: offer.expectedOnline, verb }); } };
 }
 
 function motion(speciesId, online) {
@@ -66,12 +73,16 @@ test('seed 4242: cutting standby slows cysts, frees eels, and leaves leeches unc
   assert.equal(motion('hull_leech', false), motion('hull_leech', true));
   const f = field('warm_freighter');
   f.scan();
+  assert.notEqual(f.ae.sites.warm_freighter.heatOnline, false);
+  assert.equal(f.chooseHeat('heat-off').ok, true);
   assert.equal(f.ae.sites.warm_freighter.heatOnline, false);
   const saved = serializeAlienEcologyState(f.state);
   const restored = field('warm_freighter');
   deserializeAlienEcologyState(restored.state, saved);
   assert.equal(restored.state.world.alienEcology.sites.warm_freighter.heatOnline, false);
   restored.scan();
+  assert.equal(restored.state.world.alienEcology.sites.warm_freighter.heatOnline, false);
+  assert.equal(restored.chooseHeat('heat-on').ok, true);
   assert.equal(restored.state.world.alienEcology.sites.warm_freighter.heatOnline, true);
 });
 

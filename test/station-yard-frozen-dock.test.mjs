@@ -9,6 +9,7 @@ import { createSimulation } from '../src/core/sim.js';
 import {
   shouldSkipFullTickSystems,
   HIDDEN_KEEPALIVE_SYSTEM_NAMES,
+  runHiddenKeepalive,
 } from '../src/core/presentationFreeze.js';
 import { economy } from '../src/systems/economy.js';
 import {
@@ -146,8 +147,22 @@ test('the frozen-dock delivery path is the real keepalive wiring, not a fixture 
   const runnerSrc = readFileSync(join(ROOT, 'src/core/presentationRunner.js'), 'utf8');
   // Production delivery runs through registry.keepalive's yard call fed by the runner's
   // wall-frame dt — sim.js's own frozen loop is a parallel harness path, not this one.
-  assert.match(registrySrc, /keepalive\(dt = 0, wallDt = dt\)[\s\S]*stationServices/,
-    'registry.keepalive must tick the yard');
+  // registry.keepalive hands its wall dt to the one shared frozen-service contract
+  // (presentationFreeze.runHiddenKeepalive) — the yard is a row in that contract, not a call
+  // spelled out in registry.js.
+  assert.match(registrySrc,
+    /keepalive\(dt = 0, wallDt = dt\)\s*\{[\s\S]*?runHiddenKeepalive\(\{[^}]*\bwallDt\b[^}]*getSystem/,
+    'registry.keepalive must tick the yard through the shared keepalive contract');
+  // ...and that contract really drives the yard on the wall clock while the world clock is 0.
+  const calls = [];
+  const yardDouble = { update: (elapsed, st) => calls.push({ elapsed, st }) };
+  const frozenState = { ui: { docked: true } };
+  runHiddenKeepalive({
+    state: frozenState, dt: 0, wallDt: 0.25,
+    getSystem: (name) => (name === 'stationServices' ? yardDouble : null),
+  });
+  assert.deepEqual(calls, [{ elapsed: 0.25, st: frozenState }],
+    'registry.keepalive must tick the yard with the wall-frame dt');
   assert.match(runnerSrc, /registry\.keepalive\(0, \w+\)/,
     'the frozen presentation frame must feed keepalive a wall-clock dt');
 });

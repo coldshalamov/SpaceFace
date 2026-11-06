@@ -513,6 +513,7 @@ export const travelLanes = {
     this._manufacturedRoutes = [];
     this._manufacturedCache = new Map();
     this._manufacturedEntityIds = new Map();
+    this._manufacturedEntityBindings = new Map();
     this._authoredFixScratch = {};
     this._collectManufactured = (infrastructure, body) => {
       let cached = this._manufacturedCache.get(infrastructure.id);
@@ -582,6 +583,7 @@ export const travelLanes = {
     this._manufacturedRoutes.length = 0;
     this._manufacturedCache.clear();
     this._manufacturedEntityIds.clear();
+    this._manufacturedEntityBindings.clear();
   },
 
   // Save/sector rematerialization may replace owned carrier objects. Re-resolve only
@@ -1446,7 +1448,9 @@ export const travelLanes = {
     const infrastructure = route.infrastructure;
     const existingId = this._manufacturedEntityIds.get(key);
     const existing = existingId != null ? entities.get(existingId) : null;
-    if (existing && existing.alive !== false) {
+    if (currentLaneEntity(this._manufacturedEntityBindings.get(key), existing)
+      && existing.data?.claimTravelInfrastructureId === infrastructure.id
+      && existing.data?.claimTravelPart === part) {
       const data = existing.data || (existing.data = {});
       if (data.claimTravelStage !== infrastructure.stage
         || data.claimTravelOperational !== (infrastructure.operational === true)) {
@@ -1457,7 +1461,10 @@ export const travelLanes = {
       }
       return spawned;
     }
-    if (existingId != null) this._manufacturedEntityIds.delete(key);
+    if (existingId != null) {
+      this._manufacturedEntityIds.delete(key);
+      this._manufacturedEntityBindings.delete(key);
+    }
     if (spawned) return spawned;
     const dx = finite(pos && pos.x) - finite(player.pos.x);
     const dz = finite(pos && pos.z) - finite(player.pos.z);
@@ -1493,6 +1500,7 @@ export const travelLanes = {
     });
     if (entity && entity.id != null) {
       this._manufacturedEntityIds.set(key, entity.id);
+      this._manufacturedEntityBindings.set(key, bindLaneEntity(entity));
       return true;
     }
     return spawned;

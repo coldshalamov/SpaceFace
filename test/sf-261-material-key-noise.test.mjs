@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 
-import { openingCompileIssueKey } from '../src/render/renderer.js';
+import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import {
   canonicalizeObjectSurfaceProgramKeys,
   canonicalizeInstalledSurfaceProgramKey,
@@ -79,5 +79,6 @@ test('uuid strings in owned renderer seams feed per-object dedupe, never program
       `uuid key "${expr}" dedupes geometry-bearing objects, not material contracts`);
   }
   // And the compile-issue key itself is the deliberate full-cpck seam, not a uuid.
-  assert.match(source, /key \+= `\|cpck:\$\{cpck\}`/, 'the honest full-string dedupe stays');
+  const planning = await readFile(new URL('../src/render/runtime/openingAdmissionPlanning.js', import.meta.url), 'utf8');
+  assert.match(planning, /key \+= `\|cpck:\$\{cpck\}`/, 'the honest full-string dedupe stays');
 });

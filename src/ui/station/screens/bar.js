@@ -1,4 +1,5 @@
 import { barFrameHtml } from '../../views/stationFrames.js';
+import { mountDataState } from '../../uiPrimitives.js';
 import { stationRegularRecognition } from '../stationArrival.js';
 // src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
 // Left: who is here tonight as a column of words, then the leads as rows (survey data and board
@@ -25,6 +26,7 @@ import {
   surveyOfferLabel,
   missionBoardSlots,
   barContactIntelTags,
+  barRegularStoryLine,
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
@@ -149,6 +151,11 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let visible = false;
+  let erisLocalVisitId = null;
+  let erisLeftVisitId = null;
+  let erisOpenAnnounced = false;
+  let erisServedVisitId = null;
+  let erisLastReply = null;
   let saidText = null;   // what the selected contact just said
   // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
   // spoken with a Waveform breathing under the name, the words resolving on arrival.
@@ -167,6 +174,7 @@ export function createBarScreen(ctx) {
   const offDockDeed = ctx && ctx.bus && typeof ctx.bus.on === 'function'
     ? ctx.bus.on('dock:docked', () => { deedSession = { stationId: null, opener: undefined, told: false }; })
     : null;
+  const offErisUndock = ctx?.bus?.on?.('dock:undocked', () => { erisLeftVisitId = erisLocalVisitId; });
 
   function dressShell() {
     const shell = (el.closest && el.closest('.sx-berth, .sx-app, .k-screen'))
@@ -230,12 +238,44 @@ export function createBarScreen(ctx) {
   }
 
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
+  const erisVisitId = () => {
+    const savedId = ctx.state?.story?.flags?.eris_choir_bar_service?.visitId;
+    return Number.isSafeInteger(savedId) ? Math.max(savedId, erisLocalVisitId || 0) : erisLocalVisitId;
+  };
+  function erisVisitCommand(choiceId, visitId = null) {
+    if (sid() !== 'station_eris_margin' || ctx.state?.story?.flags?.eris_choir_chair_claimed == null) return;
+    ctx.bus?.emit('ui:talkContact', { canonicalKey: 'eris_choir_chair', stationId: sid(), choiceId,
+      visitId, requestId: `eris:${visitId}:${choiceId}` });
+  }
+  function enterErisVisit() {
+    if (sid() !== 'station_eris_margin' || ctx.state?.story?.flags?.eris_choir_chair_claimed == null) return;
+    const service = ctx.state?.story?.flags?.eris_choir_bar_service;
+    const savedId = Number.isSafeInteger(service?.visitId) ? service.visitId : 0;
+    const id = Math.max(savedId, erisLocalVisitId || 0);
+    const left = erisLeftVisitId === id || (!erisLocalVisitId && !service?.active);
+    erisLocalVisitId = left ? id + 1 : id;
+    erisOpenAnnounced = true;
+    erisVisitCommand('bar_enter', erisLocalVisitId);
+  }
   function contacts(state) {
     try {
       if (deedSession.stationId !== sid()) deedSession = { stationId: sid(), opener: undefined, told: false };
       const generated = generateContacts(sid(), state, { deedSession }) || [];
+      const chair = generated.find((contact) => contact.canonicalKey === 'eris_choir_chair');
+      if (chair) {
+        const service = state?.story?.flags?.eris_choir_bar_service;
+        const visit = erisVisitId();
+        chair.erisChoirServed = (Number.isSafeInteger(visit) && erisServedVisitId === visit) ||
+          (service?.active === true && service.served === true && service.visitId === visit);
+      }
+      if (pinnedContact && pinnedContact.pinStationId && pinnedContact.pinStationId !== sid()) pinnedContact = null;
       if (pinnedContact && !generated.some((contact) => contact.id === pinnedContact.id)) {
         return [pinnedContact, ...generated];
+      }
+      // A sold story buyer keeps their closing word even if the sim's settle has not reached
+      // this frame yet (worker transport): the pin replaces the stale offer in place.
+      if (pinnedContact && pinnedContact.storyBuyer) {
+        return generated.map((contact) => (contact.id === pinnedContact.id ? pinnedContact : contact));
       }
       return generated;
     } catch (_) { return pinnedContact ? [pinnedContact] : []; }
@@ -364,7 +404,20 @@ export function createBarScreen(ctx) {
   function renderRail(state) {
     const list = contacts(state);
     if (!list.length) {
-      railEl.innerHTML = `<p class="k-caps">Here tonight</p><p class="k-empty sx-empty">Nobody here.</p>`;
+      // Empty tells a tiny story (the contracts board's shape): why it is quiet and a way out.
+      railEl.innerHTML = `<p class="k-caps">Here tonight</p>`;
+      const quiet = document.createElement('div');
+      railEl.appendChild(quiet);
+      mountDataState(quiet, 'empty', {
+        code: 'BAR_QUIET',
+        compact: true,
+        headline: 'Nobody in tonight.',
+        fills: 'The regulars arrive with the day shift. The ones worth talking to arrive after a job makes you worth the hello.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
       dressRail();
       return;
     }
@@ -390,13 +443,26 @@ export function createBarScreen(ctx) {
   function renderStage(state) {
     const c = selected(state);
     if (!c) {
-      stageEl.innerHTML = `<p class="k-empty sx-empty">The bar is empty. Try a larger station.</p>`;
+      mountDataState(stageEl, 'empty', {
+        code: 'BAR_EMPTY',
+        headline: 'The bar is empty tonight.',
+        fills: 'Everyone who drinks at a port this thin is out earning. Busier stations keep their regulars past second bell.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
       dressStage();
       return;
     }
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
-    try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
+    try {
+      // A regular you have met speaks their advanced line first — the visit ladder answers
+      // with what changed since last time; the flat memory sentence stays the fallback.
+      memLine = barRegularStoryLine(c, state, sid())
+        || stationContactMemoryLine(memory, c.line) || c.line || '';
+    } catch (_) { memLine = c.line || ''; }
     // A contact with something to say about the pilot says it first, even if you have met before.
     if (c.deedId || c.trackerId) memLine = c.line;
     memLine = `${stationRegularRecognition(state, c).reaction} ${memLine}`.trim();
@@ -417,7 +483,7 @@ export function createBarScreen(ctx) {
         `</p>` +
         `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
           (choices.length
-            ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
+            ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}"${ch.disabled ? ` disabled title="${escapeHtml(ch.reason || '')}"` : ''}>${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
         `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
@@ -432,7 +498,13 @@ export function createBarScreen(ctx) {
     }
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 1024, eager: true }); } catch (_) {} }
+    if (big) {
+      // The chair is a place, not a face: show the barkeep who serves it.
+      const portraitContact = c.canonicalKey === 'eris_choir_chair'
+        ? contacts(state).find((contact) => contact.role === 'barkeep' && contact.id !== c.id) || c
+        : c;
+      try { mountContactPortrait(big, portraitContact, { className: 'sx-portrait sx-portrait--lg', size: 1024, eager: true }); } catch (_) {}
+    }
     dressStage();
     composeStage(c);
   }
@@ -464,7 +536,10 @@ export function createBarScreen(ctx) {
         // the voice arc draws in the stage's own css px (its viewBox is clientWidth x clientHeight); at 1440p the
         // shell is zoomed and rects come back in zoomed px, so every rect offset is divided by the zoom
         const z = stageEl.offsetWidth > 0 ? sr.width / stageEl.offsetWidth : 1;
-        if (ar && ar.width > 120 * z && sr.width > 0) {
+        // On a phone this reserved-chair row has long copy over the barkeep portrait;
+        // its decorative arc otherwise paints across the words.
+        const chairArcFits = c.canonicalKey !== 'eris_choir_chair' || sr.width / z >= 500;
+        if (chairArcFits && ar && ar.width > 120 * z && sr.width > 0) {
           const compact = sr.width / z < 1000;
           const cx = (ar.left - sr.left + ar.width * 0.48) / z;
           const cy = (ar.top - sr.top + ar.height * 0.44) / z;
@@ -556,7 +631,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" class="k-word k-word--fine" data-play-manifest>Play Manifest</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest>${stationControlLabel('play-manifest')}</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();
@@ -637,7 +712,18 @@ export function createBarScreen(ctx) {
   // reply's own id and words; the dial leans her standing tick with it.
   const COLD_REPLY_RE = /(bye|farewell|safe flying|not interested|dismiss|clean\b|leave|never mind|no thanks|enough|threat|pay up|\blie\b)/i;
   const leanForChoice = (btn) => (COLD_REPLY_RE.test(`${btn.getAttribute('data-choice') || ''} ${(btn.textContent || '')}`) ? -1 : 1);
+  // A newly rendered choice can appear under a stationary pointer after the
+  // answer is revealed. Do not move focus back to it until the pointer moves.
+  let awaitingPointerMove = false;
+  stageEl.addEventListener('pointermove', (ev) => {
+    if (!awaitingPointerMove) return;
+    awaitingPointerMove = false;
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    const i = b ? choiceBtns().indexOf(b) : -1;
+    if (i >= 0) previewChoice(i);
+  });
   stageEl.addEventListener('pointerover', (ev) => {
+    if (awaitingPointerMove) return;
     const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
     if (!b) return;
     const i = choiceBtns().indexOf(b);
@@ -761,15 +847,20 @@ export function createBarScreen(ctx) {
       if (ctx.bus) ctx.bus.emit('ui:pushScreen', { id: 'missionLog', source: 'station-bar' });
       return;
     }
-    const b = ev.target.closest('[data-choice]'); if (!b) return;
+    const b = ev.target.closest('[data-choice]'); if (!b || b.disabled) return;
     const st = ctx.state || {};
     const c = selected(st); if (!c) return;
     const choiceId = b.getAttribute('data-choice');
+    if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
+    if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
       emitBarContactChoice(ctx.bus, {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
         role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
+        ...(c.canonicalKey === 'eris_choir_chair' ? {
+          visitId: erisVisitId(), requestId: `eris:${erisVisitId()}:${choiceId}`,
+        } : {}),
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
@@ -782,8 +873,14 @@ export function createBarScreen(ctx) {
         line: '47-A closed. 47-B pending.',
         choices: [{ id: 'closed', label: 'Safe flying.' }],
       };
+    } else if (result && result.pinContact) {
+      pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
+    if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
+      saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
+        : 'The barkeep cannot pour just now. Try again shortly.';
+    }
     if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
       id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
       sender: c.name || 'Contact', contactId: c.id, text: saidText,
@@ -792,8 +889,20 @@ export function createBarScreen(ctx) {
     pendingMissionOffer = result && result.missionOffer || null;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
+    awaitingPointerMove = true;
     renderStage(ctx.state || {});
     renderLeads(ctx.state || {});
+    // A short viewport may be scrolled down to the selected choice. The new
+    // answer is above it, so reveal and focus it only after an explicit choice,
+    // never during a passive refresh or when the cached screen is reopened.
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply) {
+      reply.setAttribute('tabindex', '-1');
+      if (typeof reply.focus === 'function') {
+        try { reply.focus({ preventScroll: true }); } catch (_) { reply.focus(); }
+      }
+      if (typeof reply.scrollIntoView === 'function') reply.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
   });
 
   leadsEl.addEventListener('click', (ev) => {
@@ -832,17 +941,48 @@ export function createBarScreen(ctx) {
     ctx.bus?.on(event, handler);
     return () => ctx.bus?.off(event, handler);
   });
+  const offErisReceipt = ctx.bus?.on?.('comms:log', (event) => {
+    if (sid() !== 'station_eris_margin' || event?.source !== 'eris_choir_chair'
+        || (event.outcome !== 'settled' && event.outcome !== 'refused') || event.visitId !== erisVisitId()) return;
+    erisLastReply = { visitId: event.visitId, outcome: event.outcome };
+    if (event.outcome === 'settled') erisServedVisitId = event.visitId;
+    if (!visible) return;
+    if (selectedId === 'contact_eris_choir_chair' || selected(ctx.state || {})?.canonicalKey === 'eris_choir_chair') {
+      saidText = event.outcome === 'settled' ? 'Your drink for this visit has been served.'
+        : 'The barkeep cannot pour just now. Try again shortly.';
+    }
+    renderAll(ctx.state || {});
+  });
 
   return {
     el,
-    onShow(c) { visible = true; renderAll((c || ctx).state || {}); },
-    onHide() { visible = false; },
+    onShow(c) {
+      if (!visible) enterErisVisit();
+      visible = true;
+      renderAll((c || ctx).state || {});
+    },
+    onHide() {
+      visible = false;
+      erisOpenAnnounced = false;
+      const leavingVisitId = erisVisitId();
+      // A station overlay hides the shell but leaves this tab mounted. Only a real tab
+      // departure removes it; defer until the station has swapped its panel.
+      queueMicrotask(() => {
+        if (!visible && !el.isConnected && Number.isSafeInteger(leavingVisitId)) {
+          erisLeftVisitId = leavingVisitId;
+          if (selectedId === 'contact_eris_choir_chair' || selected(ctx.state || {})?.canonicalKey === 'eris_choir_chair') saidText = null;
+          erisVisitCommand('bar_leave', leavingVisitId);
+        }
+      });
+    },
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       visible = false;
       offRecognition.forEach((off) => off());
+      if (typeof offErisReceipt === 'function') offErisReceipt();
       pinnedContact = null;
       if (typeof offDockDeed === 'function') offDockDeed();
+      if (typeof offErisUndock === 'function') offErisUndock();
       if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
       if (wave) { wave.dispose(); wave = null; }
       if (stopType) { stopType(); stopType = null; }

@@ -44,14 +44,15 @@ import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
-import { hullEnvelopeWu, proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
 import { createBroodEngine } from './swarmBrood.js';
+import { BANK_STONE_MIN_DISTANCE, BANK_STONE_MAX_DISTANCE } from './swarmBank.js';
 import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
-import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
+import { BROOD_EXPLOSION_EVENTS, BROOD_QUEEN_LOOT_ID, TENDRIL_HEAD_LOOT_ID } from '../data/swarmBrood.js';
 import {
   SWARM_BREATH_SECONDS,
   SWARM_BREATH_TICKS,
@@ -65,6 +66,7 @@ import {
   CRUCIBLE_SLALOM_WELL_COUNT,
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { gateBearing } from './waveMaterialization.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
@@ -104,6 +106,22 @@ import {
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
 /** Optic lattices are a rigid stamp, not debris. Census must not release them as leftover cover. */
 export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
+
+// ── The pilot's throw survives the buzzer ───────────────────────────────────
+// _settleRoom rests the room between rounds; a body the PILOT threw is the bounded exception
+// (see _settleRoom). These three numbers keep that exception rare, aimed and deterministic.
+
+/** Impulse tags whose motion the pilot aimed — the throw family, or their own hull pushing. */
+const THROW_CARRY_TAGS = new Set([
+  'massline_throw', 'massline', 'rope_throw', 'massline_whip',
+  'direct_contact', 'ram_plate', 'tow_flail',
+]);
+
+/** Provenance older than this reads stale at the boundary: 45 s of unclaimed flight. */
+const THROW_CARRY_PROVENANCE_TICKS = 2700;
+
+/** The carry stays rare: at most this many thrown bodies keep their speed into the next round. */
+export const SWARM_CARRY_MAX_BODIES = 3;
 
 const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
 
@@ -215,10 +233,10 @@ export const SWARM_DEBRIS_KEEP_RADIUS = 900;
 
 // A fresh rigid stamp must clear the bodies the native solver actually holds. A tiny gameplay
 // radius can describe a long offset wreck or compound hull; it is not their contact footprint.
-function opticPlacementFootprints(state, native) {
+function opticPlacementFootprints(state, native, excluded = null) {
   const footprints = [];
   for (const entity of state.entities?.values?.() || state.entityList || []) {
-    if (!entity || entity.alive === false || entity.collides === false || entity.physicsBody === false
+    if (!entity || entity === excluded || entity.alive === false || entity.collides === false || entity.physicsBody === false
       || !entity.pos || !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
     const spec = resolvePhysicsBodySpec(entity);
     if (!spec || spec.material === 'sensor' || spec.material === 'massline_sensor') continue;
@@ -226,18 +244,89 @@ function opticPlacementFootprints(state, native) {
     if (rec?.entity === entity && rec.body.isEnabled() !== false) {
       if (rec.colliders.every(collider => collider.isSensor() || !collider.isEnabled())) continue;
       const pos = rec.body.translation(), vel = rec.body.linvel();
-      footprints.push({ alive: true, radius: articulatedColliderRadius(rec),
+      let radius = articulatedColliderRadius(rec);
+      if (excluded) {
+        // Fracture is a new admission. Read current SDK geometry/offsets, not
+        // a collector's historical shape/radius cache, and include contact skin.
+        const colliders = rec.colliders.filter(c => c.isEnabled() && !c.isSensor());
+        radius = articulatedColliderRadius({ colliders: colliders.map(c => ({
+          shape: native.RAPIER.Shape.fromRaw(native.world.colliders.raw, c.handle),
+          translationWrtParent: () => c.translationWrtParent(),
+        })) }) + Math.max(0, ...colliders.map(c => c.contactSkin?.() || 0));
+      }
+      footprints.push({ alive: true, radius,
         pos: { x: pos.x + native._frameOrigin.x, z: pos.z + native._frameOrigin.z },
         vel: { x: vel.x, z: vel.z } });
     } else {
       const proxy = resolveCollisionProxyManifest(entity);
       // Conservative cold bounds include the same resolved compound as the next native sync.
-      const radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+      const radius = excluded ? fractureBodyRadius(entity) : Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
         spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
       footprints.push({ alive: true, radius, pos: entity.pos, vel: entity.vel });
     }
   }
   return footprints;
+}
+
+function fractureBodyRadius(entity) {
+  const spec = resolvePhysicsBodySpec(entity);
+  if (!spec) return Infinity;
+  const proxy = resolveCollisionProxyManifest(entity);
+  let radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+    spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
+  if (proxy) {
+    const scale = proxyScaleFor(entity, proxy);
+    for (const points of [proxy.compactHull, proxy.planarPolygon, ...(proxy.convexParts || []).map(p => p.points)]) {
+      for (const p of points || []) radius = Math.max(radius, Math.hypot(p.x, p.z) * scale);
+    }
+  }
+  return radius;
+}
+
+function fractureBirthPositions(state, native, parent, children) {
+  const gap = 0.25, reaches = children.map(fractureBodyRadius);
+  if (reaches.some(r => !Number.isFinite(r))) return null;
+  const peers = opticPlacementFootprints(state, native, parent);
+  const clear = positions => Math.hypot(positions[0].x - positions[1].x, positions[0].z - positions[1].z)
+    >= reaches[0] + reaches[1] + gap
+    && positions.every((pos, i) => !peers.some(peer => sweptDiscsOverlap(pos, reaches[i], peer, { clearance: gap })));
+  const original = children.map(child => child.pos);
+  if (clear(original)) return original;
+  // Preserve already-clear authored births. For a blocked pair, rotate an
+  // opposed pair locally; sample bounds are fixed and no existing body moves.
+  const angle = Math.atan2(original[0].z - parent.pos.z, original[0].x - parent.pos.x);
+  const distances = original.map(pos => Math.hypot(pos.x - parent.pos.x, pos.z - parent.pos.z));
+  for (let ring = 0; ring < 3; ring++) for (let turn = 0; turn < 16; turn++) {
+    const bearing = angle + turn * Math.PI / 8;
+    const positions = distances.map((distance, i) => {
+      const r = distance + ring * Math.max(...reaches) * 0.5, a = bearing + i * Math.PI;
+      return { x: parent.pos.x + Math.cos(a) * r, z: parent.pos.z + Math.sin(a) * r };
+    });
+    if (clear(positions)) return positions;
+  }
+  return null;
+}
+
+// Some optic recipes put large stone cells on the shared lattice. Their native circles can be
+// wider than one lattice step, so a recipe that is visually a neat grid can launch with cells
+// interpenetrating. Expand only the translated layout: the authored cell/material topology stays
+// intact, and the same expanded bodies are used for both native admission and spawning.
+function separateOpticLatticeBodies(bodies) {
+  const list = Array.isArray(bodies) ? bodies : [];
+  let scale = 1;
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    for (let j = i + 1; j < list.length; j++) {
+      const b = list[j];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      if (!(distance > 1e-6)) return null;
+      const required = Math.max(0, Number(a.radius) || 0)
+        + Math.max(0, Number(b.radius) || 0) + 8;
+      if (distance < required) scale = Math.max(scale, required / distance);
+    }
+  }
+  if (scale <= 1) return list;
+  return list.map(body => ({ ...body, x: body.x * scale, z: body.z * scale }));
 }
 
 function opticLatticeOrigin(state, layout, anchor, native) {
@@ -725,6 +814,11 @@ export const swarmArena = {
     for (const name of BROOD_EXPLOSION_EVENTS) {
       this._unsubs.push(this.bus.on(name, (p) => this._brood && this._brood.onExplosion(p)));
     }
+    // B-BLOOM aggression — the relay/hit seam: a hit on the brood's relay node (the Queen
+    // champion, or the Tendril's head) forwards to the engine, and the authored aggression
+    // cascade turns the linked brood on the hitter. The engine owns the law (which ids are
+    // relays, the reach, the window); this listener is only the arena's forwarding hand.
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onBroodRelayHit(p)));
   },
 
   destroy() {
@@ -762,6 +856,22 @@ export const swarmArena = {
     this._pressureAlive = null;
     this._pressureWave = 0;
     resetSwarmPressureState();
+  },
+
+  queryBroodProjectileHit(request, out) {
+    return this._brood?.queryProjectileHit?.(request, out) || null;
+  },
+
+  queryBroodTarget(request, out) {
+    return this._brood?.queryNearestDirectTarget?.(request, out) || null;
+  },
+
+  commitBroodProjectileHit(candidate, request) {
+    return this._brood?.commitProjectileHit?.(candidate, request) || { ok: false, reason: 'brood_unavailable' };
+  },
+
+  damageBroodSegment(request) {
+    return this._brood?.damageSegment?.(request) || { hits: 0, reason: 'brood_unavailable' };
   },
 
   /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
@@ -889,7 +999,10 @@ export const swarmArena = {
     if (this._lessonHoldS != null) {
       this._broodHeldUntil = now + this._lessonHoldS;
       this._lessonHoldS = null;
-    } else if (this._brood) this._brood.spawnWave(this.state);
+    } else if (this._brood) {
+      this._prepareBankStone(run, now);
+      this._brood.spawnWave(this.state);
+    }
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
     // hulls in its first second (player-truth m4-active, round 2). The opener is the exception:
@@ -898,6 +1011,41 @@ export const swarmArena = {
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  // If this wave can run the Bank but its existing rocks cannot make the first pass,
+  // put one ordinary, capped arena pebble in a clear pocket before Brood admission.
+  // A blocked or full room gets the unchanged ordinary wave instead.
+  _prepareBankStone(run, now) {
+    const state = this.state, brood = this._brood;
+    if (!state?.entities || !brood?.canPrepareBank(state) || brood.planBank(state)
+      || typeof this.helpers?.spawnEntity !== 'function') return null;
+    const player = state.entities.get(state.playerId);
+    if (!player?.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return null;
+    let existing = 0;
+    for (const entity of state.entities.values()) {
+      if (entity?.alive !== false && entity?.data?.[SWARM_DEBRIS_TAG]) existing++;
+    }
+    if (existing >= SWARM_DEBRIS_MAX) return null;
+    const radius = 6, nativeRadius = asteroidColliderRadius(TYPE_ID, radius);
+    const distance = (BANK_STONE_MIN_DISTANCE + BANK_STONE_MAX_DISTANCE) / 2;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    for (let i = 0; i < 16; i++) {
+      const angle = heading + i * Math.PI / 8;
+      const pos = { x: player.pos.x + Math.cos(angle) * distance, z: player.pos.z + Math.sin(angle) * distance };
+      if (!swarmPlacementIsClear(state, pos, nativeRadius, { clearance: 24 })) continue;
+      const candidate = { id: 'bank-preview', type: 'asteroid', alive: true, collides: true, pos, radius,
+        mass: radius * radius * 40, physicsBody: { radius: nativeRadius, dynamic: true },
+        data: { [SWARM_DEBRIS_TAG]: true } };
+      if (brood.planBank(state, candidate)?.rockId !== candidate.id) continue;
+      const rng = mulberry32(debrisStreamSeed(Number.isInteger(run.seed) ? run.seed : 1, run.wave) ^ 0x3fa1287d);
+      const id = this._spawnDebrisRock(pos.x, pos.z, radius, rng, now, { material: 'rock', bankOpportunity: true });
+      if (id == null) return null;
+      this._ids.push(id);
+      this._emit('swarmArena:debris', { wave: run.wave, added: 1, total: this._ids.length, layoutId: 'bank_opportunity' });
+      return id;
+    }
+    return null;
   },
 
   _installOpeningPocket(run) {
@@ -946,6 +1094,26 @@ export const swarmArena = {
     }
   },
 
+  // B-BLOOM aggression's forwarding hand: one hit receipt on a relay entity reaches the
+  // brood engine's relayHit seam. Cheap by construction — one Map lookup and one string
+  // read for every combat hit, and the engine re-validates the live run before arming.
+  _onBroodRelayHit(payload) {
+    const brood = this._brood;
+    if (!brood || typeof brood.relayHit !== 'function') return;
+    const targetId = payload && payload.targetId;
+    if (targetId == null) return;
+    const entity = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function' ? this.state.entities.get(targetId) : null;
+    if (!entity || entity.alive === false || !entity.data) return;
+    const relayLootId = entity.data.lootTableId;
+    if (relayLootId !== BROOD_QUEEN_LOOT_ID && relayLootId !== TENDRIL_HEAD_LOOT_ID) return;
+    brood.relayHit({
+      relayLootId,
+      x: entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : null,
+      z: entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : null,
+    });
+  },
+
   _onPressureHoldStart(payload) {
     const run = liveSwarmRun(this.state);
     const wave = this._pressureWave
@@ -986,6 +1154,14 @@ export const swarmArena = {
   // be flying through the next round's opening breath, before the pilot has touched anything.
   // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
   //
+  // THE EXCEPTION IS THE PILOT'S OWN THROW. The settle exists because ANONYMOUS leftover drift
+  // killed four hulls in a next round's first second (player-truth m4-active, round 2) — drift
+  // nobody aimed is unfair. A body the pilot personally threw is aimed: they spent the round
+  // winding it up through the well, they know where it is, and the buzzer erasing it throws
+  // away the one thing they earned. The newest impulse provenance on the body (the kernel's
+  // own record — read-only here) names the thrower; a bounded few of those keep their speed
+  // into the next round and become its terrain. Everything else still settles.
+  //
   // A latched foundry rock whose center has collapsed onto the pilot is not furniture to park.
   // Seed 4242 head gate: from sim 60 the same asteroid shared the player's position through
   // the round-3 probe, and 1.2 s of thrust from rest made 2.6 u/s. Centers inside
@@ -998,8 +1174,10 @@ export const swarmArena = {
     this._releaseEmbeddedDebris(entities);
     const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const carriedIds = this._pickCarriedThrows(entities, tick, SETTLE_SPEED);
     for (const e of entities.values()) {
       if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      if (carriedIds.has(e.id)) continue;
       if (typeof physics.settlePassiveBody === 'function') {
         // Field response can change solver mass without changing the authored spec. The native
         // owner samples that mass and velocity, then publishes its post-impulse mirror now:
@@ -1026,6 +1204,57 @@ export const swarmArena = {
         provenance: { actorId: null, tag: 'swarm_round_settle' },
       });
     }
+    if (carriedIds.size > 0) {
+      const run = liveSwarmRun(this.state);
+      const wave = this._pressureWave
+        || (run && Number.isInteger(run.wave) ? run.wave : 0);
+      this._emit('swarmArena:debrisCarried', {
+        count: carriedIds.size,
+        ids: [...carriedIds],
+        wave,
+        tick,
+      });
+      // One-voice floor, same arbiter as the pressure telegraph: the round opens with the
+      // room telling the pilot their throw is still live — the moment is named, not silent.
+      this._emit('alert', {
+        key: 'swarm-throw-carried',
+        sev: 'info',
+        text: 'YOUR THROW IS STILL IN HERE — it kept its speed',
+        ttl: 4,
+      });
+    }
+  },
+
+  /**
+   * Which thrown bodies keep their momentum across the round boundary.
+   *
+   * A body carries when its newest impulse provenance names the pilot with a throw-class tag
+   * (the massline throw family, or the pilot's own hull pushing it) and it is still moving
+   * faster than the settle floor. Bounded and deterministic: the fastest few wins, ties break
+   * on id — never insertion order, never a roll. Provenance older than one long round's worth
+   * of ticks reads stale: the room tidies what the pilot has not claimed in 45 s.
+   */
+  _pickCarriedThrows(entities, tick, settleSpeed) {
+    const playerId = this.state && this.state.playerId != null ? this.state.playerId : null;
+    const carried = new Set();
+    if (playerId == null) return carried;
+    const candidates = [];
+    for (const e of entities.values()) {
+      if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
+      const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
+      const speedSq = vx * vx + vz * vz;
+      if (speedSq < settleSpeed * settleSpeed) continue;
+      const record = readRecentImpulseProvenance(e, tick, THROW_CARRY_PROVENANCE_TICKS);
+      if (!record || record.actorId !== playerId) continue;
+      if (!THROW_CARRY_TAGS.has(record.tag)) continue;
+      candidates.push({ id: e.id, speedSq });
+    }
+    candidates.sort((a, b) => (b.speedSq - a.speedSq) || ((a.id < b.id) ? -1 : (a.id > b.id) ? 1 : 0));
+    for (let i = 0; i < candidates.length && carried.size < SWARM_CARRY_MAX_BODIES; i++) {
+      carried.add(candidates[i].id);
+    }
+    return carried;
   },
 
   // Centers this close are one body, not two hulls in contact. See _settleRoom.
@@ -1248,15 +1477,18 @@ export const swarmArena = {
     }
     let materialIndex = 0;
     for (const spot of spots.slice(0, want)) {
-      // The old terrain-only census missed hulls crossing the replenishment site.
-      // Recheck against the LIVE map (including this batch's accepted rocks) and swept hulls.
-      if (!swarmPlacementIsClear(state, spot, spot.radius, { clearance: 24 })) {
-        this._terrainRetry = true;
-        continue;
-      }
       const material = ballast
         ? 'debris'
         : spot.material || missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+      const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+      const colliderRadius = asteroidColliderRadius(typeId, spot.radius);
+      // The old terrain-only census missed hulls crossing the replenishment site.
+      // Recheck against the LIVE map (including this batch's accepted rocks) and their native
+      // physics footprints. Display radius can be smaller than the calibrated rock collider.
+      if (!swarmPlacementIsClear(state, spot, colliderRadius, { clearance: 24 })) {
+        this._terrainRetry = true;
+        continue;
+      }
       materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
         { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material,
@@ -1310,11 +1542,16 @@ export const swarmArena = {
       const hullBefore = Math.max(0, Number(rock.hull) || 0);
       const hullMax = Math.max(1, Number(rock.hullMax) || hullBefore || 1);
       const hullAfter = hullBefore - dp / SWARM_DEBRIS_WEAR_DIV;
+      const oreBefore = d.oreHP, wearBefore = d.miningWear;
       rock.hull = Math.max(0, hullAfter);
       // oreHP is the field the renderer's fracture-progress reads — keep it paired with hull.
       d.oreHP = Math.max(0, Math.round(hullAfter));
       d.miningWear = Math.min(1, Math.max(0, 1 - hullAfter / hullMax));
-      if (hullAfter <= 0) this._fractureDebris(rock);
+      if (hullAfter <= 0 && this._fractureDebris(rock) === false) {
+        rock.hull = hullBefore;
+        if (oreBefore === undefined) delete d.oreHP; else d.oreHP = oreBefore;
+        if (wearBefore === undefined) delete d.miningWear; else d.miningWear = wearBefore;
+      }
       return;
     }
   },
@@ -1335,12 +1572,13 @@ export const swarmArena = {
       && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
       const now = Number.isFinite(state.simTime) ? state.simTime : 0;
       const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      const children = [];
       for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
         const ang = rng() * Math.PI * 2;
         const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
         const dist = parentRadius * 0.55 + radius;
         const oreHP = Math.max(40, Math.round(parentRadius * 10));
-        const spawned = helpers.spawnEntity({
+        children.push({
           type: 'asteroid',
           pos: {
             x: rock.pos.x + Math.cos(ang) * dist,
@@ -1376,6 +1614,11 @@ export const swarmArena = {
             tetherPayload: true,
           }),
         });
+      }
+      const positions = fractureBirthPositions(state, this.registry?.get?.('physics')?._sg02, rock, children);
+      if (!positions) return false;
+      for (let i = 0; i < children.length; i++) {
+        const spawned = helpers.spawnEntity({ ...children[i], pos: positions[i] });
         const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
         if (id != null) {
           ids.push(id);
@@ -1387,6 +1630,8 @@ export const swarmArena = {
             massU: 0,
             bulkCore: false,
             commodityId: null,
+            count: SWARM_DEBRIS_REMNANTS,
+            pos: { x: Number(rock.pos?.x) || 0, z: Number(rock.pos?.z) || 0 },
           });
         }
       }
@@ -1407,6 +1652,7 @@ export const swarmArena = {
     // economy: the wave pays the player for breaking the seam, through the same collect
     // seam the supply pod uses.
     this._millShake(rock);
+    return true;
   },
 
   /**
@@ -1774,8 +2020,13 @@ export const swarmArena = {
     } else if (ids.length) {
       return;
     }
-    const layout = compileSwarmOptic(run && run.arenaId);
-    if (!layout || !layout.bodies || !layout.bodies.length) return;
+    const authored = compileSwarmOptic(run && run.arenaId);
+    if (!authored || !authored.bodies || !authored.bodies.length) return;
+    const bodies = separateOpticLatticeBodies(authored.bodies);
+    if (!bodies) return;
+    // Keep the compiler's authored recipe immutable. One cloned, safely spaced geometry drives
+    // both origin admission and body placement below.
+    const layout = bodies === authored.bodies ? authored : { ...authored, bodies };
     const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02);
     if (!origin) return; // Keep the prior coherent stamp and retry when the fight leaves room.
     const spawned = [];
@@ -1950,8 +2201,13 @@ export const swarmArena = {
       const entity = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(id) : null;
       if (!entity || entity.alive === false) {
-        // The burst: a sac does not die quietly — its pool stays where it fell.
-        if (brood) brood.hivePool(sac.x, sac.z, 6);
+        // The burst: a sac does not die quietly — its pool stays where it fell, and the
+        // brood it was feeding answer the Hive node's death through the authored grief
+        // loop (BROOD_CASCADE_EVENTS names this receipt a cascade seam).
+        if (brood) {
+          brood.hivePool(sac.x, sac.z, 6);
+          brood.hiveSacFell(sac.x, sac.z);
+        }
         this._emit('swarm:hiveSacKilled', { wave: hive.wave, sacId: id });
         hive.sacs.delete(id);
         continue;

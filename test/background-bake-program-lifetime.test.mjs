@@ -11,6 +11,44 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { SpaceBackground } from '../src/render/spaceBackground.js';
+import { PaintedPlanets, PAINTED_PLANET_DIAMETER } from '../src/render/paintedPlanets.js';
+
+test('planet sprite style declares quad UV and linked terminator uniforms in the real shader', () => {
+  const background = Object.create(SpaceBackground.prototype);
+  const texture = new THREE.Texture();
+  const material = background._getPlanetSpriteMaterial(texture);
+  const shader = {
+    vertexShader: THREE.ShaderLib.sprite.vertexShader,
+    fragmentShader: THREE.ShaderLib.sprite.fragmentShader,
+    uniforms: THREE.UniformsUtils.clone(THREE.ShaderLib.sprite.uniforms),
+  };
+  material.onBeforeCompile(shader);
+  assert.match(shader.vertexShader, /varying vec2 vSfPlanetUv;/);
+  assert.match(shader.vertexShader, /vSfPlanetUv = uv;/);
+  assert.match(shader.fragmentShader, /varying vec2 vSfPlanetUv;/);
+  assert.match(shader.fragmentShader, /uniform vec2 uPLightDir;/);
+  assert.match(shader.fragmentShader, /uniform float uPDiscR;/);
+  assert.match(shader.fragmentShader, /\(vSfPlanetUv - 0\.5\) \/ max\(uPDiscR, 0\.05\)/);
+  assert.equal(shader.uniforms.uPLightDir, material.userData.sfPlanetStyle.uPLightDir);
+  assert.equal(shader.uniforms.uPDiscR, material.userData.sfPlanetStyle.uPDiscR);
+  material.userData.sfPlanetStyle.uPDiscR.value = 0.31;
+  assert.equal(shader.uniforms.uPDiscR.value, 0.31);
+});
+
+test('planet terminator radius follows the body fraction of atlas and ringed textures', () => {
+  const library = new PaintedPlanets({ load() { return new THREE.Texture(); } });
+  const background = Object.create(SpaceBackground.prototype);
+  for (const texture of [library.views[0], library.ringTexture, library.ringTexture2]) {
+    const diameter = texture.userData.paintedPlanetDiameter;
+    const radius = background._getPlanetSpriteMaterial(texture).userData.sfPlanetStyle.uPDiscR.value;
+    assert.equal(radius, diameter / 2);
+    assert.ok(Math.abs(((0.5 + diameter / 2) - 0.5) / radius - 1) < 1e-12);
+    assert.ok(((0.5 + diameter * 0.6) - 0.5) / radius > 1.06,
+      'outside the body the terminator leaves ring art unchanged');
+  }
+  assert.equal(library.views[0].userData.paintedPlanetDiameter, PAINTED_PLANET_DIAMETER);
+  library.dispose();
+});
 
 function buildBackground() {
   const baked = [];

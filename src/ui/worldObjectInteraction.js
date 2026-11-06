@@ -2,7 +2,7 @@ import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
+import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargetingRead.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
@@ -11,7 +11,8 @@ import { DENIAL, denialText, intentDenial } from '../combat/contactClassifier.js
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
-import { laneInputWrite } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection, reconcileLaneComponentSelection } from '../core/simLaneCommands.js';
+import { formatDistance } from './units.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -52,7 +53,7 @@ export function applyWorldObjectSelection(state, entity, source) {
   if (!state || !entity || entity.id == null) return false;
   if (!state.player) state.player = {};
   const prevId = state.player.targetId;
-  if (prevId !== entity.id && state.ui) state.ui.componentSelection = null;
+  if (prevId !== entity.id) laneSetComponentSelection(state, null, null);
   laneInputWrite(state, 'player.targetId', entity.id);
   laneInputWrite(state, 'ui.objectSelection', {
     targetId: entity.id,
@@ -69,7 +70,7 @@ export function applyWorldObjectSelection(state, entity, source) {
 export function clearWorldObjectSelection(state) {
   if (!state || !state.player) return;
   laneInputWrite(state, 'player.targetId', null);
-  if (state.ui) state.ui.componentSelection = null;
+  laneSetComponentSelection(state, null, null);
   laneInputWrite(state, 'ui.objectSelection', null);
   laneInputWrite(state, 'input.targetAssistDisabled', true);
 }
@@ -204,6 +205,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function clearSelectionMeta() {
+    laneSetComponentSelection(state, null, null);
     const sel = state.ui && state.ui.objectSelection;
     if (sel && state.player && state.player.targetId === sel.targetId) {
       laneInputWrite(state, 'player.targetId', null);
@@ -281,7 +283,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function hidePreview() {
-    if (tag) tag.el.hidden = true;
+    // tick() calls this every idle frame; re-setting [hidden] would invalidate style each time.
+    if (tag && !tag.el.hidden) tag.el.hidden = true;
     previewTextKey = '';
   }
 
@@ -427,6 +430,11 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function sweepDeadSubjects() {
+    const component = state.ui?.componentSelection;
+    if (component) {
+      reconcileLaneComponentSelection(state);
+      if (!state.ui.componentSelection) laneSetComponentSelection(state, null, null);
+    }
     const sel = state.ui && state.ui.objectSelection;
     if (sel && sel.targetId != null) {
       const subject = presentableSubject(state, sel.targetId);
@@ -437,6 +445,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const recycled = !!(subject && sel.occupantGeneration != null && generation != null
         && generation !== sel.occupantGeneration);
       if (!subject || recycled) {
+        laneSetComponentSelection(state, null, null);
         laneInputWrite(state, 'ui.objectSelection', null);
         if (state.player && state.player.targetId === sel.targetId) laneInputWrite(state, 'player.targetId', null);
       }
@@ -499,7 +508,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     let rangeTxt = '';
     if (player && player.pos && entity.pos) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-      rangeTxt = ' · ' + Math.round(d) + ' wu';
+      rangeTxt = ' · ' + formatDistance(d);
     }
     const hint = beamHint(entity, player);
     const status = presentationStatusWord(entity);
@@ -563,7 +572,12 @@ export function createWorldObjectInteraction(ctx, screenManager) {
           || Math.abs(pt.y - lastRepickY) > 0.5;
         // Without a ResizeObserver the cached bounds can lie at any time; only the
         // observed path may sit out a repick.
-        if (moved || !viewportObserved || repickIdleS >= 0.125) {
+        // Raycasting the whole scene is the expensive part of this tick. Pointer drift
+        // repicks at ~7 Hz; a jump (> 48 px), layout change, or first pick is immediate.
+        const sweep = lastRepickX == null || viewportInvalidated
+          || Math.abs(pt.x - lastRepickX) > 48
+          || Math.abs(pt.y - lastRepickY) > 48;
+        if ((moved && (sweep || repickIdleS >= 0.14)) || !viewportObserved || repickIdleS >= 0.125) {
           repickIdleS = 0;
           const deliberateMove = viewportInvalidated || lastRepickX == null
             || Math.abs(pt.x - lastRepickX) > HOVER_SWEEP_MOVE_PX
@@ -584,6 +598,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    laneSetComponentSelection(state, null, null);
     cancelGesture('destroy');
     if (viewportObserver) {
       try { viewportObserver.disconnect(); } catch (_) {}

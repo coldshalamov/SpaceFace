@@ -32,6 +32,8 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
+import { createPhaseClock, raceStartupFailure, startupFailureFromConsole } from './lib/shaderCompileBoot.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VIEWPORT = Object.freeze({ width: 1280, height: 800 });
@@ -44,7 +46,12 @@ const EVIDENCE_PATH = fileURLToPath(new URL('../.devshots/shader-compile-evidenc
 const MIN_EXPECTED_PROGRAMS = 8;
 
 const pageErrors = [];
+const startupFailure = { reason: null };
+const phaseClock = createPhaseClock();
 const consoleShaderErrors = [];
+const consoleShaderEvents = [];
+const openingAdmissionRecoveries = [];
+const openingAdmissionErrors = [];
 
 let server = null;
 let browser = null;
@@ -61,15 +68,34 @@ try {
   context = await browser.newContext({ viewport: VIEWPORT, screen: VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  // Opt-in slow-runner reproduction: SF_SHADER_CPU_THROTTLE=4 slows the page's CPU 4x via CDP.
+  const throttle = Number(process.env.SF_SHADER_CPU_THROTTLE || 0);
+  if (throttle > 1) {
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttle });
+    console.log(`[shader-compile] CPU throttle ${throttle}x (SF_SHADER_CPU_THROTTLE)`);
+  }
+  await installFirstLightPromptHandler(page, () => {});
 
   // Both listeners are armed BEFORE navigation: a module that fails to parse does so during the
   // very first evaluation, and a listener attached after goto() would miss the only report of it.
   page.on('pageerror', (error) => { pageErrors.push(String(error && error.message ? error.message : error)); });
   page.on('console', (msg) => {
     const text = msg.text();
-    if (/shader|program|glsl|webgl/i.test(text) && /error|fail|invalid|could not|unable/i.test(text)) {
-      consoleShaderErrors.push(text);
+    const startupReason = startupFailureFromConsole(text);
+    if (startupReason && !startupFailure.reason) startupFailure.reason = startupReason;
+    if (!/shader|program|glsl|webgl/i.test(text)) return;
+    const event = { type: msg.type(), text };
+    consoleShaderEvents.push(event);
+    // The opening gate deliberately reports its first refused draw at info level while it
+    // re-admits the exact unbound live subject behind the shell. Preserve that receipt, but
+    // classify it by severity: the renderer escalates a persistent 120-refusal failure to error.
+    if (/\[render\] opening submission pre-submit gate failed closed\b/i.test(text)) {
+      if (msg.type() === 'error') openingAdmissionErrors.push(text);
+      else openingAdmissionRecoveries.push(event);
+      return;
     }
+    if (/error|fail|invalid|could not|unable/i.test(text)) consoleShaderErrors.push(text);
   });
 
   await page.addInitScript(() => {
@@ -202,6 +228,7 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await bootToFlight(page);
+  phaseClock.mark('launch-to-flight');
 
   // Let the renderer settle so lazily-compiled programs (post FX, background, VFX) are assembled.
   // Programs compile on first use, so sampling too early would under-count and weaken the gate.
@@ -219,7 +246,11 @@ try {
     broken: diagnostics.broken,
     pageErrors,
     consoleShaderErrors,
+    consoleShaderEvents,
+    openingAdmissionRecoveries,
+    openingAdmissionErrors,
     openingFailure,
+    phases: phaseClock.phases(),
   }, null, 2)}\n`, 'utf8');
 
   // --- Assertions, ordered so the most diagnostic failure reports first ---------------------
@@ -241,11 +272,19 @@ try {
   assert.deepEqual(consoleShaderErrors, [],
     `WebGL reported shader errors on the console:\n${consoleShaderErrors.join('\n')}`);
 
+  assert.deepEqual(openingAdmissionErrors, [],
+    `opening first-draw admission failed persistently:\n${openingAdmissionErrors.join('\n')}`);
+
   console.log(`[shader-compile] PASS — ${diagnostics.programs} GL programs compiled and linked, 0 broken, 0 page errors`);
+  console.log(`[shader-compile] phases: ${phaseClock.summary()}`);
   console.log(`[shader-compile] evidence: ${EVIDENCE_PATH.replace(ROOT, '')}`);
 } catch (error) {
   exitCode = 1;
   console.error(`[shader-compile] FAIL: ${error && error.message ? error.message : error}`);
+  console.error(`[shader-compile] phases before failure: ${phaseClock.summary() || '(none)'}`);
+  if (startupFailure.reason && error?.code !== 'SF_STARTUP_FAILED') {
+    console.error(`[shader-compile] game reported: ${startupFailure.reason}`);
+  }
   if (pageErrors.length) console.error(`[shader-compile] page errors:\n${pageErrors.join('\n')}`);
   if (consoleShaderErrors.length) console.error(`[shader-compile] shader console errors:\n${consoleShaderErrors.join('\n')}`);
 } finally {
@@ -260,21 +299,25 @@ async function bootToFlight(page) {
   await page.waitForFunction(() => !!(window.SF?.state && window.SF?.registry && window.SF?.bus), null, {
     timeout: 60_000,
   });
+  phaseClock.mark('boot');
   const splash = page.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) await page.keyboard.press('Space');
   await page.locator('[data-screen="mainMenu"]').waitFor({ state: 'visible', timeout: 60_000 });
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
   await page.locator('[data-screen="newGame"]').waitFor({ state: 'visible', timeout: 30_000 });
+  phaseClock.mark('menu-to-new-game');
   await page.getByRole('button', { name: 'Launch', exact: true }).click();
   // Gate on flight mode only. This check is about pipeline integrity, so it must NOT depend on
   // authored-asset readiness — see the D11 predicate correction in
   // scripts/lib/professionalTravelPublicRoute.mjs for why an asset-readiness condition does not
   // belong in a gate that is asking a different question.
-  await page.waitForFunction(() => {
+  // The game logs a failed startup and never enters flight; end the wait on that report instead of
+  // idling out the full timeout and surfacing it as a shader-compile hang.
+  await raceStartupFailure(page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     return state?.mode === 'flight' && player?.alive !== false && player?.hull > 0;
-  }, null, { timeout: 180_000 });
+  }, null, { timeout: 180_000 }), startupFailure);
   const begin = page.getByRole('button', { name: /begin/i }).first();
   if (await begin.isVisible().catch(() => false)) await begin.click();
 }

@@ -36,6 +36,7 @@ import { hasMachineProtocol } from '../data/alienEcology.js';
 import { tickProgram, assignTemplate, clearTemplate, assignReaction, clearReaction, resolveStationDisplayName, resolveProgram, validateProgram, hasProgram, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
+import { isMawWorksiteBody } from '../missions/mawWorksite.js';
 import {
   addToShipment,
   commitShipmentSale,
@@ -925,7 +926,8 @@ export const automation = {
     const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
     const rate = Math.max(0, (def.mineRate || 0.8) * Math.max(1, Number(g.count) || 1));
     const rock = targetRock || this._nearestAsteroid(g.originPos || this._playerPos(), def.deployRange || 400);
-    if (!rock || rock.alive === false || rock.data?.respawnAt != null || rate <= 0) return;
+    if (!rock || rock.alive === false || rock.data?.respawnAt != null
+      || isMawWorksiteBody(rock) || rate <= 0) return;
     const room = Math.max(0, cap - shipmentUsed(g) - (Number(g._programMineCarry) || 0));
     const fuelTime = Math.max(0, Number(g.fuel) || 0) / Math.max(0.001, Number(def.fuelRate) || 1);
     const workTime = Math.min(Math.max(0, Number(dt) || 0), fuelTime, room / rate);
@@ -1103,7 +1105,8 @@ export const automation = {
 
       // (re)acquire the nearest live asteroid within the deploy range of the drone itself.
       let ast = e.data && e.data.targetAstId != null ? getEnt(e.data.targetAstId) : null;
-      if (!ast || !ast.alive || ast.type !== 'asteroid' || (ast.data && ast.data.respawnAt != null)) {
+      if (!ast || !ast.alive || ast.type !== 'asteroid' || (ast.data && ast.data.respawnAt != null)
+        || isMawWorksiteBody(ast)) {
         ast = this._nearestAsteroid(e.pos, ((def && def.deployRange) || 400) * 1.6);
         e.data.targetAstId = ast ? ast.id : null;
       }
@@ -1193,6 +1196,7 @@ export const automation = {
   // Sim-affecting yield is the group's authored buffer accrual (kept in _updateDrones), so this only
   // depletes the field + drives VFX — it never double-credits ore. Deterministic (no RNG draw here).
   _chipAsteroid(ast, def, dt, miner = null) {
+    if (isMawWorksiteBody(ast)) return 0;
     const d = ast.data || (ast.data = {});
     const hpMax = d.oreHPMax || d.oreHP || ast.hullMax || 1;
     if (d.oreHPMax == null) d.oreHPMax = hpMax;
@@ -1238,7 +1242,7 @@ export const automation = {
     this._diag.asteroidCandidates += list.length;
     let best = null, bestD2 = (range || 1e9) * (range || 1e9);
     for (const e of list) {
-      if (!e.alive || e.type !== 'asteroid') continue;
+      if (!e.alive || e.type !== 'asteroid' || isMawWorksiteBody(e)) continue;
       if (e.data && e.data.respawnAt != null) continue; // mined-out
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
       const d2 = dx * dx + dz * dz;
@@ -2439,6 +2443,7 @@ export const automation = {
       case 'buildOutpost': return this.buildOutpost(p.targetRef);
       case 'decommission': return this.decommissionOutpost(p.shipId);
       case 'assignFleet': return this.assignFleet(p.targetRef);
+      case 'releaseFleet': return this.releaseFleet(p.shipId);
       case 'orderEscort': return this.setFleetOrder(p.shipId, 'escort', p.targetRef);
       case 'orderMine': return this.setFleetOrder(p.shipId, 'mine', p.targetRef);
       case 'orderRecall': return this.setFleetOrder(p.shipId, 'idle', p.targetRef);
@@ -2836,6 +2841,7 @@ export const automation = {
     // Enrich payload with stable defId so story/campaign sidecar can tag specialization.
     // automation remains sole outpost deployer — no second ownership system.
     this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id, defId: def.id || defId });
+    this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'built' });
     this.toast(`Outpost established in ${prettySector(o.sectorId)}`, 'success');
     return true;
   },
@@ -2846,6 +2852,7 @@ export const automation = {
     if (idx < 0) return false;
     this._releaseOutpostEntity(a.outposts[idx]);
     a.outposts.splice(idx, 1);
+    this.bus.emit('automation:outpostsChanged', { id, action: 'decommissioned' });
     this.toast('Outpost decommissioned', 'info');
     return true;
   },
@@ -2853,20 +2860,59 @@ export const automation = {
   // ---- FLEET ----
   assignFleet(ownedShipIndex) {
     const a = this.state.automation;
+    const reject = (reason) => {
+      this.bus.emit('automation:fleetChanged', { action: 'assignmentRejected', reason });
+      return false;
+    };
     const cap = this.fleetCap();
-    if (a.fleet.length >= cap) { this.toast('Fleet at capacity', 'error'); return false; }
-    const owned = (this.state.player && this.state.player.ownedShips) || [];
+    if (a.fleet.length >= cap) return reject('capacity');
     const i = Number(ownedShipIndex);
-    const ship = owned[i];
-    if (!ship) return false;
+    const ships = this._registry?.get('ships');
+    if (!ships || typeof ships.claimFleetHull !== 'function') return reject('unavailable');
+    const id = this._allocId();
+    const claim = ships.claimFleetHull(i, id);
+    if (!claim.ok) return reject(claim.reason);
+    const ship = claim.ship;
+    const hullPct = ships.fleetHullFraction(ship);
     const fs = {
-      id: this._allocId(), shipDefId: ship.defId, defId: ship.defId,
-      name: ship.customName || null, order: 'escort', targetRef: null,
+      id, shipDefId: ship.defId, defId: ship.defId,
+      name: ship.name || ship.customName || null, order: 'escort', targetRef: null,
       wingOrder: normalizeLiveWingOrder({ kind: WING_ORDER.SCREEN }),
-      redeployTimer: 0, hp: 1, hullPct: 1, status: 'escort',
+      redeployTimer: 0, hp: hullPct, hullPct, status: 'escort',
     };
     a.fleet.push(fs);
-    this.toast('Wingman assigned', 'success');
+    this.bus.emit('automation:fleetChanged', { id, action: 'assigned', name: fs.name,
+      ...(ship.vesselId ? { vesselId: ship.vesselId } : {}) });
+    return true;
+  },
+
+  releaseFleet(id) {
+    const fleet = this.state.automation.fleet;
+    const index = fleet.findIndex((row) => row && row.id === id);
+    const fs = fleet[index];
+    const ships = this._registry?.get('ships');
+    const candidate = fs?._liveId != null ? this.state.entities?.get(fs._liveId) : null;
+    const entity = candidate?.data?.isWingman && candidate.data.wingmanOf === id ? candidate : null;
+    if (entity && entity.id === this.state.playerId) {
+      this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected', reason: 'player_body' });
+      return false;
+    }
+    const owned = fs && ships?.fleetOwnedHull?.(id);
+    if (owned?.vesselId && !this._registry?.get('shipjack')?.returnFleetVessel?.(fs, entity)) {
+      this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected', reason: 'tracked_not_berthed' });
+      return false;
+    }
+    if (!fs || !ships?.releaseFleetHull?.(id, entity, fs)) {
+      this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected' });
+      return false;
+    }
+    // Use the wingmen owner's existing brace cleanup and normal lifetime sweep.
+    this._registry?.get('wingmen')?._clearBrace?.(fs, entity);
+    if (entity) entity.alive = false;
+    fs._liveId = null;
+    fleet.splice(index, 1);
+    this.bus.emit('automation:fleetChanged', { id, action: 'released', name: fs.name,
+      ...(owned?.vesselId ? { vesselId: owned.vesselId } : {}) });
     return true;
   },
 
@@ -2874,7 +2920,8 @@ export const automation = {
     const fs = this.state.automation.fleet.find((x) => x.id === id);
     if (!fs) return false;
     fs.order = order;
-    fs.targetRef = targetRef != null ? { kind: 'ref', refId: targetRef } : null;
+    fs.targetRef = order !== 'mine' && order !== 'idle' && targetRef != null
+      ? { kind: 'ref', refId: targetRef } : null;
     fs.redeployTimer = 2; // brief redeploy delay (spec)
     fs.status = order;
     if (order === 'attack' || order === 'guard' || order === 'escort' || order === 'idle') {
@@ -2883,6 +2930,7 @@ export const automation = {
         targetId: order === 'attack' && targetRef != null ? targetRef : null,
       }, this.state.world && this.state.world.currentSectorId, order);
     }
+    this.bus.emit('automation:fleetChanged', { id: fs.id, action: 'order' });
     return true;
   },
 
@@ -2922,7 +2970,18 @@ export const automation = {
       if (!fs) return;
       fs.hp = Math.max(0, (fs.hp || 1) - dmg / 100);
       fs.hullPct = fs.hp;
-      if (fs.hp <= 0) { const i = a.fleet.indexOf(fs); if (i >= 0) a.fleet.splice(i, 1); this._loseAsset('fleet', fs, 0, p.sectorId || (this.state.world && this.state.world.currentSectorId)); }
+      if (fs.hp <= 0) {
+        // The fleet job can be lost without silently healing the player's owned hull.
+        // Keep its fittings and hold on the owned record, at zero hull integrity.
+        const live = fs._liveId != null ? this.state.entities?.get(fs._liveId) : null;
+        const armor = live?.data?.wingmanOf === fs.id ? live : fs.parkedBody;
+        const destroyed = { hull: 0, armorHp: armor?.armorHp, armorMax: armor?.armorMax };
+        const returned = this._registry?.get('ships')?.releaseFleetHull?.(fs.id, destroyed, fs);
+        const i = a.fleet.indexOf(fs);
+        if (i >= 0) a.fleet.splice(i, 1);
+        this._loseAsset('fleet', fs, 0, p.sectorId || (this.state.world && this.state.world.currentSectorId));
+        if (returned) this.bus.emit('automation:fleetChanged', { id: fs.id, action: 'released', reason: 'destroyed' });
+      }
     }
   },
 
@@ -3528,8 +3587,10 @@ export const automation = {
     a.fleet = normalizeAutomationRecordList(a.fleet, 'fleet');
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
     for (const fs of a.fleet) {
+      const mining = fs.order === 'mine';
       fs.wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
-      fs.order = legacyFleetOrderFor(fs.wingOrder.kind);
+      fs.order = mining ? 'mine' : legacyFleetOrderFor(fs.wingOrder.kind);
+      if (mining) fs.status = 'mine';
       fs.targetRef = fs.wingOrder.kind === WING_ORDER.ATTACK && fs.wingOrder.targetId != null
         ? { kind: 'ref', refId: fs.wingOrder.targetId } : null;
     }
@@ -3608,9 +3669,13 @@ export const automation = {
     // entityIds so a reloaded save doesn't reference a dead/stale entity.
     const sectorId = this.state.world && this.state.world.currentSectorId || null;
     const fleet = a.fleet.map((fs) => {
-      const { _liveId, ...rest } = fs;
+      const { _liveId, _mineRockId, ...rest } = fs;
       const wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
-      return { ...rest, order: legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
+      const entity = _liveId != null ? this.state.entities?.get(_liveId) : null;
+      const ships = this._registry?.get('ships');
+      const parkedBody = ships?.fleetOwnedHull?.(fs.id) && entity?.data?.wingmanOf === fs.id
+        ? ships.fleetHullCondition(entity) : fs.parkedBody;
+      return { ...rest, ...(parkedBody ? { parkedBody } : {}), order: fs.order === 'mine' ? 'mine' : legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
     });
     return {
       drones, traders: a.traders, outposts, fleet,

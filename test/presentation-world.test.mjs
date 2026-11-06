@@ -79,6 +79,36 @@ test('PresentationWorld reuses dense slots without accepting stale handles', () 
   assert.equal(world.activeCount, 1);
 });
 
+test('stepped clear does not retire a same-id replacement minted while it is paused', () => {
+  const world = createPresentationWorld({ capacity: 16 });
+  world.allocateEntity(entity(1), 1);
+  world.allocateEntity(entity(2), 1);
+
+  const clear = world.clearSteps(1);
+  assert.equal(clear.next().done, false, 'the clear yields after retiring its first captured row');
+  assert.equal(world.getSlotForEntityId(1), -1);
+
+  assert.equal(world.retire(2, 1), true);
+  const replacement = entity(2, { x: 9, flags: { forceRender: true } });
+  const replacementHandle = world.allocateEntity(replacement, 2);
+  bind(world, replacement);
+  assert.equal(clear.next().done, false, 'the old second row is checked at the next slice');
+  assert.equal(clear.next().done, true);
+
+  assert.equal(world.isHandleValid(replacementHandle), true,
+    'a suspended clear must leave a newer same-id occupant intact');
+  assert.equal(world.getSlotForEntityId(2), replacementHandle.slot);
+  assert.equal(world.activeCount, 1);
+  assert.equal(world.boundCount, 1, 'the replacement keeps its live mesh binding');
+  assert.equal(world.getDiagnostics().bound, 1);
+  const candidates = [];
+  world.collectSpatialBounds(0, 20, 0, 20, candidates);
+  assert.deepEqual(candidates, [replacementHandle.slot], 'the replacement stays queryable in the grid');
+  const special = [];
+  world.collectSpecialSlots(special);
+  assert.deepEqual(special, [replacementHandle.slot], 'special-force membership stays intact');
+});
+
 test('PresentationWorld retains previous/current pose and settles interpolation from live state', () => {
   const world = createPresentationWorld({ capacity: 16 });
   const ship = entity(1, {
@@ -217,6 +247,31 @@ test('PresentationQueries return deterministic visible handles and exact transit
     returned.newlyVisibleSlots.map((slot) => world.entityIds[slot]),
     [20],
   );
+});
+
+test('PresentationQueries rechecks scalar inputs when a retired slot is reused by the same id', () => {
+  const world = createPresentationWorld({ capacity: 8, cellSize: 64 });
+  const first = entity(41, { x: 0 });
+  const firstHandle = world.allocateEntity(first, 1);
+  bind(world, first);
+  const queries = createPresentationQueries(world);
+  const options = {
+    bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
+    origin: { x: 0, z: 0 },
+    playerId: null,
+  };
+
+  assert.deepEqual(queries.query(options).visibleSlots, [firstHandle.slot]);
+  assert.equal(world.retire(first.id, 1), true);
+
+  const replacement = entity(41, { x: 500 });
+  const replacementHandle = world.allocateEntity(replacement, 1);
+  assert.equal(replacementHandle.slot, firstHandle.slot);
+  bind(world, replacement);
+
+  const afterReuse = queries.query(options);
+  assert.deepEqual(afterReuse.visibleSlots, []);
+  assert.equal(world.entityRefs[replacementHandle.slot], replacement);
 });
 
 test('PresentationWorld rebuild skips duplicate ids instead of freezing the canvas', () => {

@@ -10,8 +10,10 @@ function finiteXZ(v) {
 }
 
 /** Is this a log the drone will copy: a wreck body whose manifest a scanner has
- *  resolved (data.scanRevealed, or the law's wreck-provenance markerId), parked
- *  settled inside the read ring, and never before copied — the quillCopied stamp
+ *  resolved (data.scanRevealed — the only stamp a scanner writes), parked
+ *  settled inside the read ring, and never before copied. A markerId alone is
+ *  not a read: aftermath stamps one on every wreck at birth, so it can never
+ *  stand in for "a wreck your scanner has read". The quillCopied stamp
  *  rides the hull, so one wreck is one page no matter whose drone reads it or
  *  how many sectors it crosses between copies. QUILL's own machinery, dead
  *  bodies, and non-wreck types never count. */
@@ -20,8 +22,7 @@ export function quillCopyable(entity, post = QUILL.post, readRadius = QUILL.read
   if (entity.type !== 'wreck') return false;
   const d = entity.data || {};
   if (d.quill === true || d.quillCopied === true) return false;
-  const logged = d.scanRevealed || d.markerId || (d.provenance && d.provenance.markerId);
-  if (!logged) return false;
+  if (!d.scanRevealed) return false;
   if (!finiteXZ(entity.pos) || !finiteXZ(post)) return false;
   const speed = finiteXZ(entity.vel) ? Math.hypot(entity.vel.x, entity.vel.z) : 0;
   if (speed > QUILL.readSpeed) return false;

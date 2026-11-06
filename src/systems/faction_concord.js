@@ -38,11 +38,32 @@ function entityListOf(state) {
   return [];
 }
 
+const isPlainObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
 function ensureState(state) {
-  const s = state.concord || (state.concord = {});
-  if (!s.lockedFormations || typeof s.lockedFormations !== 'object') s.lockedFormations = {};
-  if (!s.clamps || typeof s.clamps !== 'object') s.clamps = {};
+  if (!isPlainObj(state.concord)) state.concord = {};
+  const s = state.concord;
+  if (!isPlainObj(s.lockedFormations)) s.lockedFormations = {};
+  if (!isPlainObj(s.clamps)) s.clamps = {};
+  // Squads that have flown under a living mast. Only a wing that HAD a commander can
+  // lose one — a commanderless squad is an ordinary Concord group, never a locked wing.
+  if (!isPlainObj(s.mastSeen)) s.mastSeen = {};
   return s;
+}
+
+// Lift the rigid lock from one member. `ai.passive` is cleared only when this system
+// was the one that set it — a hull made passive by another owner stays passive.
+function unlockMember(m) {
+  const d = m.data || (m.data = {});
+  d.formationLocked = false;
+  const ai = d.ai || (d.ai = {});
+  // A lock written before the ownership latch existed (an older save) has no
+  // `passiveByConcord`; its `lockedDrift` stamp is this system's alone, so it owns the latch.
+  const ours = ai.passiveByConcord === true
+    || (ai.passiveByConcord === undefined && ai.lockedDrift === true);
+  ai.lockedDrift = false;
+  if (ours) ai.passive = false;
+  delete ai.passiveByConcord;
 }
 
 function squadIdOf(e) {
@@ -93,6 +114,19 @@ export const factionConcord = {
     ensureState(this.state);
   },
 
+  // Save slot: the lock ledger, the mast-seen latch, and clamp records are plain JSON.
+  // Additive — an older save with no Concord bag restores to a fresh ledger.
+  serialize() {
+    if (!this.state) return {};
+    return JSON.parse(JSON.stringify(ensureState(this.state)));
+  },
+
+  deserialize(data) {
+    if (!this.state) return undefined;
+    this.state.concord = isPlainObj(data) ? JSON.parse(JSON.stringify(data)) : null;
+    return ensureState(this.state);
+  },
+
   update(dt, state) {
     const scn = ensureState(state);
     const now = Number(state.simTime) || 0;
@@ -116,9 +150,28 @@ export const factionConcord = {
       if (e.alive !== false) squad.members.push(e);
     }
 
+    // Squads that left the field drop their ledger rows; a wing that returns still
+    // carries its members' `formationLocked` stamps, which re-adopt the lock below.
+    for (const key of Object.keys(scn.lockedFormations)) if (!squads.has(key)) delete scn.lockedFormations[key];
+    for (const key of Object.keys(scn.mastSeen)) if (!squads.has(key)) delete scn.mastSeen[key];
+
     for (const [squadId, squad] of squads) {
       if (squad.members.length < 2) continue;
-      const alreadyLocked = scn.lockedFormations[squadId] === true;
+      const alreadyLocked = scn.lockedFormations[squadId] === true
+        || (scn.lockedFormations[squadId] !== false
+          && squad.members.some((m) => m.data && m.data.formationLocked === true));
+      if (squad.commanders.some((c) => c.alive !== false)) scn.mastSeen[squadId] = true;
+      // A squad that never had a mast has nothing to lose: no lock, no "Commander down".
+      // A lock on a squad with no mast on record (the pre-fix spawn lock, carried in an
+      // older save) is released rather than kept — it would otherwise never lift.
+      const hadMast = scn.mastSeen[squadId] === true || squad.commanders.length > 0;
+      if (!hadMast) {
+        if (alreadyLocked) {
+          delete scn.lockedFormations[squadId];
+          for (const m of squad.members) unlockMember(m);
+        }
+        continue;
+      }
 
       // Centroid of the wing (excluding commanders — the mast is the thing that leaves).
       let cx = 0, cz = 0, n = 0;
@@ -141,12 +194,15 @@ export const factionConcord = {
       }
 
       if (!commanderPresent) {
-        if (!alreadyLocked) {
+        if (alreadyLocked) scn.lockedFormations[squadId] = true;
+        else {
           scn.lockedFormations[squadId] = true;
           for (const m of squad.members) {
             const d = m.data || (m.data = {});
             d.formationLocked = true;
             const ai = d.ai || (d.ai = {});
+            // Remember the latch is ours, so a reform restores exactly what it took.
+            ai.passiveByConcord = ai.passive !== true;
             ai.passive = true;
             ai.lockedDrift = true;   // tacticalAI reads passive; this is the honest reason
           }
@@ -164,18 +220,10 @@ export const factionConcord = {
         }
       } else if (alreadyLocked) {
         // FF: a NEW commander inside the radius un-locks the wing — it re-forms around the
-        // mast. Members keep the rigid stamp in their history but maneuver again.
-        const hasLiveMast = squad.commanders.some((c) => c.alive !== false);
-        if (hasLiveMast) {
-          scn.lockedFormations[squadId] = false;
-          for (const m of squad.members) {
-            const d = m.data || {};
-            d.formationLocked = false;
-            const ai = d.ai || {};
-            ai.lockedDrift = false;
-          }
-          this.bus && this.bus.emit('concord:formationReformed', { squadId, t: now });
-        }
+        // mast and every member maneuvers again (the passive latch is lifted).
+        scn.lockedFormations[squadId] = false;
+        for (const m of squad.members) unlockMember(m);
+        this.bus && this.bus.emit('concord:formationReformed', { squadId, t: now });
       }
     }
 
@@ -216,7 +264,9 @@ export const factionConcord = {
           const bd = best.data || (best.data = {});
           bd.clampedBy = tender.id;
           td.clampTargetId = best.id;
-          scn.clamps[best.id] = { tenderId: tender.id, sinceS: now };
+          // Keep the real id on the row: object keys stringify, and numeric entity ids
+          // would miss in `state.entities.get(key)` at cleanup.
+          scn.clamps[best.id] = { tenderId: tender.id, bodyId: best.id, sinceS: now };
           this.bus && this.bus.emit('concord:clampAttached', {
             tenderId: tender.id, bodyId: best.id, massT: Math.round((Number(best.mass) || 0) * 10) / 10, t: now,
           });
@@ -242,8 +292,11 @@ export const factionConcord = {
     // Tenders that left the field drop their clamps — the bodies fall loose.
     for (const bodyId of Object.keys(scn.clamps)) {
       const rec = scn.clamps[bodyId];
+      if (!rec || typeof rec !== 'object') { delete scn.clamps[bodyId]; continue; }
       if (liveTenderIds.has(rec.tenderId)) continue;
-      const body = state.entities.get(bodyId);
+      const realId = rec.bodyId != null ? rec.bodyId
+        : (/^\d+$/.test(bodyId) ? Number(bodyId) : bodyId);
+      const body = state.entities.get(realId) || state.entities.get(bodyId);
       if (body && body.data && body.data.clampedBy === rec.tenderId) delete body.data.clampedBy;
       delete scn.clamps[bodyId];
     }

@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as hud from '../src/ui/hud.js';
+import { createToasts } from '../src/ui/toasts.js';
+import { ui as uiRoot } from '../src/ui/uiRoot.js';
 import { createBus } from '../src/core/eventBus.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { createRunState } from '../src/core/runState.js';
@@ -37,6 +39,26 @@ test('technical wing identities resolve names or stable unit codes without losin
   assert.match(wingLineFor(member, 1), /AREA DENIAL · TRACKING YOU$/);
   delete member.data.ai.squadId;
   assert.equal(wingLineFor(member, 1), null);
+});
+
+test('a selected physical work-site remains named and ranged during its active waypoint', () => {
+  const fx = mountHudFixture();
+  try {
+    const buoy = fx.add({ id: 'buoy44c', type: 'payload', alive: true, team: 2,
+      pos: { x: 135, z: 0 }, vel: { x: 0, z: 0 }, radius: 10,
+      data: { name: '44-C loose lane buoy', scanLabel: '44-C LOOSE LANE BUOY', worldSiteTargetable: true } });
+    fx.state.nav.waypoint = { label: '44-C loose lane buoy', targetEntityId: buoy.id, pos: { ...buoy.pos } };
+    fx.state.player.targetId = buoy.id;
+    fx.step(60);
+    const panel = fx.document.querySelector('.sf-target');
+    assert.notEqual(panel.style.display, 'none');
+    assert.match(panel.querySelector('.sf-target__name').textContent, /44-C LOOSE LANE BUOY/i);
+    assert.equal(panel.querySelector('.sf-target__dist').textContent, '135');
+
+    buoy.data.worldSiteTargetable = false;
+    fx.step(60);
+    assert.equal(panel.style.display, 'none', 'unrelated neutral payloads keep the quiet route policy');
+  } finally { fx.hud.destroy(); fx.restore(); }
 });
 
 test('readable contact facts preserve authored names, quantities, legality and unresolved wreck privacy', () => {
@@ -85,7 +107,7 @@ test('readable contact facts preserve authored names, quantities, legality and u
     fx.state.player.targetId = 'threat-1';
     panel.update({ slow: true });
     assert.doesNotMatch(panel.el.textContent, /internal_role_429/);
-    assert.equal(panel.el.querySelector('.sf-target__triangle').style.display, 'grid');
+      assert.equal(panel.el.querySelector('.sf-target__triangle').style.display, 'flex');
   } finally { fx.hud.destroy(); fx.restore(); }
 });
 
@@ -112,13 +134,17 @@ test('compact tape moves only on parent changes and retains actions, visibility 
     assert.equal(moves, 0, 'unchanged frames never move the tape');
     assert.equal(root.querySelectorAll('#race-tape').length, 1);
     const buttons = panel.querySelectorAll('button');
+    const options = buttons.find((button) => button.textContent === 'View & circuits');
     const board = buttons.find((button) => button.textContent === 'Circuits');
+    const view = buttons.find((button) => button.title === 'Toggle chase / overhead camera');
+    assert.ok(options && board && view, 'the compact controls expose their named actions');
+    options.click(0);assert.equal(options.getAttribute('aria-expanded'), 'true');
     board.focus(); board.click(0);
     assert.ok(fx.document.activeElement === board, 'keyboard activation retains focus');
-    board.click(1);
+    options.click(0);board.click(1);
     assert.ok(board.blurred, 'pointer activation blurs');
     assert.deepEqual(pushed, ['raceBoard', 'raceBoard']);
-    const view = buttons[0]; view.click();
+    options.click(0);view.click();
     assert.equal(fx.state.settings.gameplay.steeringView, 'racing');
     fx.state.missions.active = [{ id: 'race429', type: 'race', status: 'active', params: { racingContractId: '429' } }];
     tape.frame(fx.state); // Same simTime: ownership must reconcile ahead of telemetry throttle.
@@ -175,25 +201,24 @@ for (const [width, height] of [[1280, 720], [1920, 1080]]) {
       assert.ok(fx.overview.querySelectorAll('.sf-overview-row').length >= 3, 'populated roster within viewport cap');
       assert.equal(fx.state.simTime, at, 'presentation does not tick simulation');
       const css = fx.document.getElementById('sf-hud-style').textContent;
-      const stack = rule(css, '#hud .sf-rightdock');
-      for (const property of ['max-height:calc(100vh - 96px)', 'max-height:calc(100dvh - 96px)', 'overflow-y:auto', 'overflow-x:hidden', 'min-height:0']) assert.ok(stack.includes(property));
-      assert.ok(stack.indexOf('100vh') < stack.indexOf('100dvh'));
-      assert.match(rule(css, '#hud .sf-rightdock > *'), /flex:0 0 auto/);
-      const compact = rule(css, '#hud .sf-rightdock > #race-tape[data-compact="true"]');
-      for (const property of ['position:relative', 'top:auto', 'right:auto', 'left:auto', 'bottom:auto', 'transform:none', 'width:100%', 'min-width:0', 'grid-template-columns:minmax(0,1fr)']) assert.ok(compact.includes(property));
-      assert.match(rule(css, '#hud .sf-rightdock > #race-tape[data-compact="true"] .race-tape-actions'), /flex-wrap:wrap/);
-      for (const cls of ['sf-target__name', 'sf-target__identity', 'sf-target__intent', 'sf-target__object', 'sf-overview-footer']) assert.match(rule(css, `#hud .sf-rightdock .${cls}`), /overflow-wrap:anywhere/);
+      // One-owner layout (mobileFlightLayouts.js owns mobile placement; the compact tape grid
+      // moved to systems/mobile/styles.js) — the dock's anchor is DOM-asserted above, and the
+      // readability contracts this subtest guards live in the panel's own rules.
+      // The target-panel concision overrides (owner 2026-10-27: the readout was a wall of text)
+      // live in styles/hud.css so the injected base keeps its single writer.
+      const hudCss = readFileSync(new URL('../styles/hud.css', import.meta.url), 'utf8');
+      for (const cls of ['sf-target__name', 'sf-target__idbits', 'sf-target__intent', 'sf-target__object', 'sf-overview-footer']) {
+        assert.match(rule(hudCss, `.sf-hudpanel .${cls}`), /overflow-wrap:\s*anywhere/);
+      }
       const html = targetFrameHtml();
-      assert.match(html, />Weapon effect</);
-      for (const [family, cls, row] of [['Energy', 'e', 2], ['Kinetic', 'k', 3], ['Explosive', 'x', 4]]) {
-        assert.match(html, new RegExp(`>${family}</span>`));
+      assert.match(html, /aria-label="Weapon effect"/);
+      for (const [family, cls, letter] of [['Energy', 'e', 'E'], ['Kinetic', 'k', 'K'], ['Explosive', 'x', 'X']]) {
         assert.match(html, new RegExp(`sf-tri--${cls}" tabindex="0" role="img" aria-label="[^"]+" data-why="${family}"`));
-        assert.match(rule(css, `#hud .sf-rightdock .sf-tri--${cls}`), new RegExp(`grid-row:${row}`));
+        assert.match(html, new RegExp(`sf-tri--${cls}"[^>]*><span class="sf-tri__k">${letter}</span>`));
       }
       assert.match(html, /sf-tri__fill/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-target__tri-label'), /grid-row:1/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-target__tri-layer'), /grid-row:1/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-tri'), /grid-template-columns:minmax\(0,1fr\) 52px/);
+      assert.match(rule(css, '.sf-target__triangle'), /display:flex/);
+      assert.match(rule(hudCss, '.sf-hudpanel .sf-target__triangle'), /flex-wrap:\s*nowrap/);
       assert.doesNotMatch(rule(css, '.sf-tri__k'), /width:8px/);
     } finally { tape?.dispose(); fx.hud.destroy(); fx.restore(); }
   });
@@ -648,3 +673,103 @@ function canvasContext() {
     set(obj, key, value) { obj[key] = value; return true; },
   });
 }
+
+
+test('mobile objective details retain long urgent text and remain actionable with Ctrl held', () => {
+  const fx = mountHudFixture(390, 664);
+  try {
+    const instruction = 'Recover the marked cargo and keep the pressure seal intact '.repeat(24).trim();
+    fx.state.ui.trackedMissionId = 'long-objective';
+    fx.state.missions.active = [{ id: 'long-objective', status: 'active', deadline_s: 90 }];
+    fx.state.nav.waypoint = { kind: 'mission', missionId: 'long-objective', reason: instruction,
+      label: 'Recovery site', pos: { x: 630, z: 0 } };
+    fx.step(20);
+    const tracker = fx.document.querySelector('.sf-mission-tracker');
+    const trigger = tracker.querySelector('.sf-mt-details-button');
+    const panel = tracker.querySelector('.sf-mt-details');
+    const text = panel.querySelector('.sf-mt-details-text');
+    const close = panel.querySelector('.sf-mt-details-close');
+    assert.ok(text.textContent.includes(instruction), 'the complete long action reaches the details copy');
+    assert.match(text.textContent, /1m 29s|1m 30s/, 'the urgent deadline remains in the full copy');
+    assert.equal(panel.hidden, true);
+    assert.equal(panel.children[0], close, 'Close precedes the scrollable copy');
+    assert.equal(text.getAttribute('tabindex'), '0', 'keyboard users can scroll the full copy');
+    const ctrlPress = (target) => {
+      const ev = { button: 0, ctrlKey: true, clientX: 20, clientY: 20, pointerId: 3,
+        stopped: false, stopPropagation() { this.stopped = true; }, preventDefault() {} };
+      for (const fn of target._listeners.get('pointerdown') || []) fn(ev);
+      if (!ev.stopped) for (const fn of tracker._listeners.get('pointerdown') || []) fn(ev);
+      return ev;
+    };
+    assert.equal(ctrlPress(trigger).stopped, true);
+    assert.equal(fx.state.settings.ui?.hudLayout?.objective, undefined);
+    trigger.click(0);
+    assert.equal(panel.hidden, false);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(fx.document.activeElement, close);
+    assert.equal(ctrlPress(panel).stopped, true, 'modified presses in the scroll surface cannot start a tracker drag');
+    let prevented = false;
+    for (const fn of panel._listeners.get('keydown') || []) fn({ key:'Escape',
+      preventDefault() { prevented = true; }, stopPropagation() {} });
+    assert.equal(prevented, true);
+    assert.equal(panel.hidden, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(fx.document.activeElement, trigger);
+    trigger.click(0); close.click(0);
+    assert.equal(panel.hidden, true);
+    assert.equal(fx.document.activeElement, trigger);
+  } finally { fx.hud.destroy(); fx.restore(); }
+});
+
+
+test('real HUD coalesces accepted receipt bursts into one paint and ignores refused toasts', () => {
+  const fx=mountHudFixture(1460,900), previousRaf=globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame=()=>1;
+  const lane=fx.document.createElement('div');lane.id='toasts';
+  const live=fx.document.createElement('div');live.id='toast-live';lane.appendChild(live);
+  fx.document.getElementById('hud').appendChild(lane);
+  const toasts=createToasts({state:fx.state,bus:fx.bus});
+  let queries=0;
+  const active=()=>lane.children.filter(el=>el.classList?.contains('sf-toast') && !el.classList.contains('sf-toast--out'));
+  lane.querySelector=(selector)=>{ if(selector==='.sf-toast:not(.sf-toast--out)'){queries++;return active()[0]||null;}return null; };
+  lane.querySelectorAll=(selector)=>{ if(selector==='.sf-toast:not(.sf-toast--out)'){queries++;return active();}return []; };
+  try {
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();queries=0;
+    for(let i=0;i<50;i++) fx.bus.emit('toast',{text:'Radio chatter',_fromVoice:true});
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();
+    assert.equal(queries,0,'refused toasts never request a geometry walk');
+    fx.document.body.dataset.sfHudJob='cruise';
+    for(let i=0;i<8;i++) fx.bus.emit('toast',{text:'Cargo transferred',kind:'success',ttl:5});
+    assert.equal(queries,0,'accepted burst performs no synchronous HUD measurement');
+    assert.equal(active().length,1,'normal grouping is unchanged');
+    assert.match(active()[0].getAttribute('aria-label'),/×8/);
+    assert.match(live.textContent,/×8/);
+    fx.hud.frame(1/60,true);
+    assert.equal(queries,0,'the UI root may finish its other owners before placement');
+    fx.hud.flushReceiptLane();
+    const firstPaintQueries=queries;
+    assert.ok(firstPaintQueries>0,'the first paint measures the actual accepted receipt');
+    assert.ok(Number.isFinite(Number.parseFloat(lane.style.top)),'the accepted card gets a real lane position');
+    assert.ok(fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'),'other overlays get the new receipt geometry');
+    fx.hud.flushReceiptLane();assert.equal(queries,firstPaintQueries,'one flush places the whole burst only once');
+    active()[0].click();
+    assert.equal(active().length,0,'the original dismiss control still works');
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();
+    assert.ok(!fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'),'dismiss removes the obstacle on the same paint');
+    // The real UI root ticks other presentation owners after HUD.frame. A receipt emitted
+    // by one of them still gets placed in that very paint, with no second rAF.
+    queries=0;let lateEvents=0;
+    const owner={state:fx.state,hud:fx.hud,toasts,_hudVisibleLast:true,
+      screenManager:{isOpen:()=>false,isLiveOverlay:()=>false},
+      discoveryPlate:{tick(){lateEvents++;fx.bus.emit('toast',{text:'Late cargo receipt',kind:'success'});}}};
+    uiRoot.frame.call(owner,1/60,fx.state);
+    assert.equal(lateEvents,1);assert.ok(queries>0,'the root flushes late owner mutations before returning');
+    assert.ok(fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'));
+    const beforeDestroy=queries;fx.hud.destroy();
+    fx.bus.emit('toast',{text:'Another receipt',kind:'success'});
+    assert.equal(queries,beforeDestroy,'a destroyed HUD retains no placement listener');
+  } finally {
+    toasts.destroy();fx.hud.destroy();fx.restore();
+    if(previousRaf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=previousRaf;
+  }
+});

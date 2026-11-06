@@ -7,10 +7,14 @@ export function entityNeedsExactAudio(entity, options = {}) {
   if (!entity || entity.alive === false) return false;
   if (options.forceExact === true) return true;
   if (entity.isPlayer === true || entity.id === options.playerId) return true;
+  // Activity classification pins entities whose sound is immediately relevant to the player
+  // (target, aggro, recent damage, tether, escort, or security response), even beyond the
+  // presentation residency set. Preserve those exact voices before consulting that set.
+  if (entity.activity && entity.activity.pinnedExact === true) return true;
   if (options.combatId != null && entity.id === options.combatId) return true;
   if (options.uiVoiceId != null && entity.id === options.uiVoiceId) return true;
   if (options.activeSet && typeof options.activeSet.has === 'function') {
-    return options.activeSet.has(entity.id);
+    if (options.activeSet.has(entity.id)) return true;
   }
   const tier = entity.activity && entity.activity.presentationTier;
   return tier === PRESENTATION_TIER.R0_GLASS || tier === PRESENTATION_TIER.R1_RUNWAY;

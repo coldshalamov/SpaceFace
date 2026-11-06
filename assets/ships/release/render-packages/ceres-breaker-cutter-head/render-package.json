@@ -391,7 +391,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "716bbda34e021490e418bc5f3d415159f4c1379963f625c16dbf0ec65a7e88d3",
+  "contentHash": "75b6529f0ac5a8bbb7b86399f5f9827b86e265d9d35133dc067ce32abfa75dc2",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
@@ -4338,14 +4338,14 @@
       "uri": "place_ceres_breaker_cutter_head.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 407956,
-    "sha256": "09ef014c7c1698eeba413ffcf8678736f2e6849aaa520479d8cfbb6da645ec0a",
+    "bytes": 408280,
+    "sha256": "bd13469a8678e9120532d4710732030c0b8eb130455205a192f0a5d33826aed8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4398,7 +4398,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
-        "planIndex": 45,
+        "planIndex": 63,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4470,7 +4470,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
-        "planIndex": 46,
+        "planIndex": 64,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4542,7 +4542,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
-        "planIndex": 47,
+        "planIndex": 65,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4614,7 +4614,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
-        "planIndex": 48,
+        "planIndex": 66,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4686,7 +4686,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_LATERAL_PORT",
-        "planIndex": 49,
+        "planIndex": 67,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4758,7 +4758,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
-        "planIndex": 50,
+        "planIndex": 68,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4830,7 +4830,7 @@
           1
         ],
         "name": "SOCKET_Cut",
-        "planIndex": 51,
+        "planIndex": 69,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4882,7 +4882,7 @@
           1
         ],
         "name": "SOCKET_Mount",
-        "planIndex": 52,
+        "planIndex": 70,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4955,17 +4955,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 9,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
         "role": "drive"
       },
       {
@@ -4975,118 +4965,78 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 13,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 15,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "warning"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "drive"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 31,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
@@ -5095,17 +5045,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 36,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 37,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
         "role": "drive"
       },
       {
@@ -5116,17 +5056,17 @@
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 41,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 42,
+        "planIndex": 41,
         "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -5136,10 +5076,70 @@
       {
         "allowTextures": true,
         "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 53,
+    "nodeCount": 71,
     "primitives": [
       {
         "canopy": false,
@@ -5242,8 +5242,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
-        "planIndex": 8,
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive_1",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5269,8 +5269,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
-        "planIndex": 9,
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive_1",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5296,8 +5296,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
-        "planIndex": 10,
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5323,8 +5323,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
-        "planIndex": 11,
+        "name": "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive_1",
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5350,8 +5350,8 @@
           -2.587499976158142,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
-        "planIndex": 12,
+        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive_1",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5377,8 +5377,8 @@
           2.587499976158142,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
-        "planIndex": 13,
+        "name": "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5405,7 +5405,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 14,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5432,7 +5432,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 15,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5459,7 +5459,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 16,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5486,7 +5486,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 17,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5513,7 +5513,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 18,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -5540,7 +5540,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 19,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5567,7 +5567,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 20,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5594,7 +5594,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal",
-        "planIndex": 21,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5620,8 +5620,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
-        "planIndex": 22,
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive_1",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5647,8 +5647,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
-        "planIndex": 23,
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5674,8 +5674,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
-        "planIndex": 24,
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive_1",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5701,8 +5701,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
-        "planIndex": 25,
+        "name": "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive_1",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5728,8 +5728,8 @@
           -2.587499976158142,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
-        "planIndex": 26,
+        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive_1",
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5755,8 +5755,8 @@
           2.587499976158142,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
-        "planIndex": 27,
+        "name": "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive_1",
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5783,7 +5783,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 28,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5810,7 +5810,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 29,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5837,7 +5837,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 30,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5864,7 +5864,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 31,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -5891,7 +5891,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 32,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5918,7 +5918,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 33,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5945,7 +5945,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 34,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5971,8 +5971,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
-        "planIndex": 35,
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive_1",
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -5998,8 +5998,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
-        "planIndex": 36,
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive_1",
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6025,8 +6025,8 @@
           -2.299999952316284,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
-        "planIndex": 37,
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive_1",
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6052,8 +6052,8 @@
           2.299999952316284,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
-        "planIndex": 38,
+        "name": "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive_1",
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6079,8 +6079,8 @@
           -2.587499976158142,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
-        "planIndex": 39,
+        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive_1",
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6106,8 +6106,8 @@
           2.587499976158142,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
-        "planIndex": 40,
+        "name": "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive_1",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6134,7 +6134,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 41,
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6161,7 +6161,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 42,
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6188,7 +6188,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 43,
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6215,7 +6215,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 44,
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -6226,7 +6226,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
   },
-  "runtimeHash": "3b5291636391a763ea933fb4a7dd9d954ec8d444f7ff701e4c88cb71d05093c8",
+  "runtimeHash": "c0166694f7b94ea09a54195ff21e2d7886bda677ff834ac0cbc38b7420603a61",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

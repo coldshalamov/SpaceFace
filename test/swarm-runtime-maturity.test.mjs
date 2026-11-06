@@ -8,7 +8,8 @@ import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { WAVE_CLEARED_SEAM } from '../src/systems/survivalRun.js';
-import { swarmArena, quietWellCenter, SWARM_DEBRIS_TAG, SWARM_DEBRIS_TARGET } from '../src/systems/swarmArena.js';
+import { swarmArena, quietWellCenter, SWARM_DEBRIS_TAG, SWARM_DEBRIS_TARGET,
+  SWARM_OPTIC_TAG } from '../src/systems/swarmArena.js';
 import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 import { findSwarmArrival, swarmPlacementIsClear, sweptDiscsOverlap } from '../src/systems/swarmSafety.js';
 import { resetSwarmPressureState, createSwarmPressureState, noteSwarmPressureKills,
@@ -82,6 +83,59 @@ test('swept clearance catches a crossing asteroid, not only endpoint overlap', (
   const body = { pos: { x: 100, z: -100 }, vel: { x: 0, z: 400 }, radius: 15 };
   assert.equal(sweptDiscsOverlap({ x: 100, z: 0 }, 12, body), true);
   assert.equal(sweptDiscsOverlap({ x: 100, z: 0 }, 12, body, { horizon: 0 }), false);
+});
+test('Swarm placement uses a rock native collider larger than its display radius', () => {
+  const h = room();
+  const rock = obstacle(h, 'asteroid', 0, 0, 30);
+  rock.physicsBody = { schemaVersion: 1, dynamic: true, radius: 60 };
+  const proposal = { x: 85, z: 0 };
+  assert.ok(Math.hypot(proposal.x - rock.pos.x, proposal.z - rock.pos.z) > 30 + 20 + 8,
+    'display discs plus spawn clearance look separate');
+  assert.equal(sweptDiscsOverlap(proposal, 20, rock), true,
+    'the live solver footprint still reaches the proposed arrival');
+  assert.equal(swarmPlacementIsClear(h.state, proposal, 20), false,
+    'native overlap keeps the physical spawn slot unavailable');
+  const arrival = findSwarmArrival(h.state, proposal, 20);
+  assert.ok(arrival);
+  assert.equal(swarmPlacementIsClear(h.state, arrival, 20), true);
+});
+test('wave-one terrain skips a slot inside an existing rock native footprint', () => {
+  const h = room();
+  h.state.run.arenaId = 'helios_core';
+  h.state.rockCore = { ratingT: 0 };
+  const blocker = obstacle(h, 'asteroid', 150, -230, 80);
+  blocker.data.typeId = 'ast_crystalline';
+  blocker.physicsBody = { schemaVersion: 1, dynamic: true, radius: 120 };
+  const spawned = [];
+  const sys = Object.create(swarmArena); Object.assign(sys, h, { _ids: [] });
+  sys._syncOpticLattice = () => {};
+  sys._spawnDebrisRock = (x, z, radius) => { spawned.push({ x, z, radius }); return spawned.length + 1000; };
+  // Authored first slot is (150,-100): its display discs leave a 24 wu gap, while
+  // the existing crystal's native collider overlaps the new common-rock collider.
+  assert.ok(Math.hypot(150 - blocker.pos.x, -100 - blocker.pos.z) > 6.75 + blocker.radius + 24);
+  sys._topUp(h.state.run, 1);
+  assert.ok(spawned.length > 0, 'other open authored slots still materialize');
+  assert.equal(spawned.some(p => Math.hypot(p.x - 150, p.z + 100) < 1), false,
+    'native footprint rejects only the unsafe slot');
+});
+test('compiled Helios optic cells are separated by their native radii before materialization', () => {
+  const h = room();
+  h.state.run.arenaId = 'helios_core';
+  const sys = Object.create(swarmArena);
+  Object.assign(sys, h, { _ids: [], _opticIds: [], _opticAnchor: null, registry: null });
+
+  sys._syncOpticLattice(h.state.run);
+  const cells = [...h.state.entities.values()].filter(e => e?.data?.[SWARM_OPTIC_TAG] === true);
+  assert.ok(cells.length > 1, 'the authored optic lattice still materializes');
+  for (let i = 0; i < cells.length; i++) {
+    for (let j = i + 1; j < cells.length; j++) {
+      const a = cells[i]; const b = cells[j];
+      const distance = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+      const nativeRadii = a.physicsBody.radius + b.physicsBody.radius;
+      assert.ok(distance >= nativeRadii + 8 - 1e-6,
+        `optic cells ${a.data.opticCell} and ${b.data.opticCell} clear native bounds: ${distance} vs ${nativeRadii}`);
+    }
+  }
 });
 test('the pilot trajectory is protected too; disabled collision decorations are not obstacles', () => {
   const h = room(); h.player.vel.x = 400;

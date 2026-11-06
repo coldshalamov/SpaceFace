@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { installAuthoredPackedOrmOnPrimitives } from './packedOrmShader.js';
 import { prepareHullLayoutGeometry } from './illustratedHullLayout.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import {
@@ -739,9 +740,8 @@ export async function loadAuthoredPart(url, options = {}) {
 
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf, undefined, task, () => {
-      // Parse-drain liveness — same consumer consult the compile tail runs one
-      // stage later; no registered consumers yet means the creator is the only
-      // consumer, and ownerless creators default live (aborts still read dead).
+      // Parse-drain liveness — every consumer is registered before the queued
+      // task factory starts, so canceled joiners cannot hide a live creator.
       const consumers = taskConsumerPredicates.get(task);
       return consumers && consumers.length > 0
         ? consumers.some((isLive) => isLive())
@@ -766,12 +766,6 @@ export async function loadAuthoredPart(url, options = {}) {
         const compileClass = options.admissionVisible === true
           ? 'visible'
           : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
-        // Always register a creator predicate: an ownerless warm holds zero joiner
-        // predicates, and without one a compile tail resolves null the moment its last
-        // joiner dies — evicting the shared decode the warm exists to pre-stage. The
-        // composed check keeps real owners exact and defaults ownerless creators live
-        // (aborted signals still read dead).
-        consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
         return scheduleGltfCompile(() => {
           // Owner departed while the tail queued: compile is the expensive stage — skip it
           // and let the settled-null path cancel the request below. Joiners deduped onto
@@ -805,9 +799,10 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  if (joinedPendingTask === task) {
-    // A consumer joining an in-flight task shares its settle — register its liveness so
-    // the compile tail keeps running when the creator's owner departs but a joiner waits.
+  // The creator and pending joiners must register before the admission factory's
+  // microtask can enqueue parsing. Settled cache hits need no liveness predicate;
+  // retaining their options closures would grow the task's consumer list forever.
+  if (runtime.pendingAssetTasks && runtime.pendingAssetTasks.has(task)) {
     consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
   }
   if (deadlineJoin) {
@@ -1385,6 +1380,16 @@ export function assembleRenderPackageRecord(renderPackage, url, assetLabel = nul
   });
 }
 
+// A package outlives the load request, and its stale listener can therefore outlive the creator's
+// residency predicate/warm object. Keep this closure at module scope so its context contains only
+// the cache owner tuple, rather than sharing `loadAuthoredRenderPackagePilot`'s request scope.
+function subscribeExactPackageTaskToStaleness(renderPackage, runtime, cacheKey, task) {
+  if (!renderPackage || typeof renderPackage.onStale !== 'function') return;
+  renderPackage.onStale(() => {
+    if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+  });
+}
+
 export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const slot = options.slot || null;
   const optional = options.optional === true;
@@ -1434,11 +1439,7 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // the moment the package stops being mountable; the next request re-admits through the
       // loader, which reacquires a still-cached entry or decodes a fresh generation. The exact-
       // task guard keeps a stale listener from erasing a newer re-admission task.
-      if (renderPackage && typeof renderPackage.onStale === 'function') {
-        renderPackage.onStale(() => {
-          if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
-        });
-      }
+      subscribeExactPackageTaskToStaleness(renderPackage, runtime, cacheKey, task);
       // Owner departed mid-load (the tail's inactive-owner settle): a null is classified by
       // the caller's isResidencyOwnerActive predicate — it must not stamp a load failure.
       if (!renderPackage) return null;
@@ -1467,33 +1468,66 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
     consumers.push(packageConsumer);
   }
 
-  const record = await waitForAuthoredConsumer(task, options).catch((error) => {
-    if (!optional && !runtime.retiring && authoredConsumerIsActive(options)) {
-      warnOnce(cacheKey, `[assetLoader] production render package admission ended for ${url}`, error);
-    }
-    return null;
-  });
-  if (!record) return null;
-  if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
-    // `renderPackageLoader` evicts by content hash, while this outer cache is keyed by source URL.
-    // Every caller that observes the fulfilled stale task must retry; only its exact cache owner may
-    // erase it, so a late observer cannot remove a newer re-admission task.
-    if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
-    if (!authoredConsumerIsActive(options)) return null;
-    return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
-  }
-  if (!authoredConsumerIsActive(options)) return null;
-  const owner = options.residencyOwner || runtime.defaultResidencyOwner;
-  const ownerlessWarm = !options.residencyOwner
-    && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
-  if (owner) {
-    record.renderPackage.retain(owner, {
-      role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
-      sectorId: options.sectorId || null,
-      ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
+  // A settled source-task hit bypasses the package loader's commit-time consumer claim.
+  // Protect a live boundary's async handoff before a sibling warm hit can soft-evict it.
+  // The canonical request ends with this call; speculative owners never gain a hard pin.
+  const cachedRecord = task.sfSettledRecord;
+  const cachedPackage = cachedRecord && cachedRecord.renderPackage;
+  const scopedLive = options.residencyOwner && options.renderer
+    && !WARM_PURPOSE_RESIDENCY_ROLE.test(packageConsumer.residencyRole)
+    && !/^(runtime-cache|decode-cache|render-package-cache)$/i.test(packageConsumer.residencyRole);
+  const handoffResidency = scopedLive && cachedPackage && !cachedPackage.evicted && !cachedPackage.released
+    && !runtime.retiring && authoredConsumerIsActive(options) ? getAssetResidency(options.renderer) : null;
+  const handoff = handoffResidency && !handoffResidency.isOwnerReleased(options.residencyOwner)
+    ? handoffResidency.beginRequest(cachedRecord.residency.key, options.residencyOwner, {
+      role: packageConsumer.residencyRole, sectorId: options.sectorId || null,
+    }) : null;
+  let claimed = false;
+  let delivered = false;
+  try {
+    const record = await waitForAuthoredConsumer(task, options).catch((error) => {
+      if (!optional && !runtime.retiring && authoredConsumerIsActive(options)) {
+        warnOnce(cacheKey, `[assetLoader] production render package admission ended for ${url}`, error);
+      }
+      return null;
     });
+    if (!record || runtime.retiring || !authoredConsumerIsActive(options)) return null;
+    if (handoffResidency && handoffResidency.isOwnerReleased(options.residencyOwner)) return null;
+    if (handoff && !handoff.shouldDecode()) return null;
+    if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
+      // Only this exact source task may be retired; a later generation owns its own request.
+      if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+      if (handoff) handoff.cancel('stale-cache-hit');
+      return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
+    }
+    if (handoff && record.renderPackage !== cachedPackage) return null;
+    const owner = options.residencyOwner || runtime.defaultResidencyOwner;
+    const ownerlessWarm = !options.residencyOwner
+      && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
+    if (owner) {
+      claimed = record.renderPackage.retain(owner, {
+        role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+        sectorId: options.sectorId || null,
+        ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
+      });
+    }
+    if (handoff) {
+      if (runtime.retiring || !authoredConsumerIsActive(options) || cachedPackage.evicted || cachedPackage.released
+          || !handoff.shouldDecode() || !handoff.commit()) return null;
+      if (runtime.retiring || !authoredConsumerIsActive(options) || cachedPackage.evicted || cachedPackage.released) return null;
+    }
+    delivered = true;
+    return record;
+  } finally {
+    if (handoff) {
+      handoff.cancel('cache-consumer-handoff-ended');
+      // Roll back only a claim this call added, never another request's prior boundary retain
+      // or a replacement generation created after this package was evicted.
+      if (claimed && !delivered && !cachedPackage.evicted) {
+        handoffResidency.release(cachedRecord.residency.key, options.residencyOwner, 'cache-consumer-cancelled');
+      }
+    }
   }
-  return record;
 }
 
 async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoders) {
@@ -1682,6 +1716,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
     slot: expectedSlot || metadata.slot || null,
   });
+  installAuthoredPackedOrmOnPrimitives(primitives);
   canonicalizeObjectSurfaceProgramKeys(scene);
 
   const ktx2Textures = new Set();
@@ -1907,6 +1942,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
     }
   }
+  installAuthoredPackedOrmOnPrimitives(primitives);
   canonicalizeObjectSurfaceProgramKeys(scene);
   const materialProfile = { materials: profiled.size, roles: profiledRoles };
 

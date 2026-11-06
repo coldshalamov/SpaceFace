@@ -62,6 +62,9 @@ ${R} .race-board-result > button.k-word { display:inline-flex !important; align-
 ${R} .race-board-tools > button.k-word:hover,
 ${R} .race-board-result > button.k-word:hover { border-color:rgb(${BONE} / .45) !important; }
 ${R} .race-board-tools > button.k-word[aria-pressed="true"] { color:var(--dp-lamp-hot, #ffd98c) !important; border-color:rgb(242 185 80 / .55) !important; }
+/* The Practice verb carries its bound key as the deckplate key chip — the help lives on the
+   control that fires it, in the fit rail, not floating over the cards. */
+${R} .race-board-tools > button.k-word > .dp-kbd { margin-left:9px; flex:none; }
 ${R} .race-board-tools > button.k-word:last-child { margin-left:auto !important; border-color:transparent !important; background:none !important;
   color:var(--dp-ink-mute, #b0aea6) !important; padding:0 6px !important; }
 ${R} .race-board-tools > button.k-word:last-child::before { content:"\\2039" / ""; margin-right:8px; font-size:18px; line-height:0; }

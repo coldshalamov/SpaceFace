@@ -2,7 +2,8 @@
 // `integrated` tier (pixel-ratio cap, background tier, dynamic-resolution floor all key on it),
 // leave dedicated cards `discrete` — including the ones that share a family word with an
 // integrated part (Radeon RX Vega 64, Radeon Pro 5500M, Arc A770) — and report a browser that
-// hides the GPU name as `unknown`, not `discrete`.
+// hides the GPU name as `unknown`, not `discrete`. Every detected tier supports the opt-out
+// automatic-resolution controller; tier only sets its safe floor.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -147,11 +148,11 @@ test('every ANGLE string classifies the same with the vendor field blank', () =>
   }
 });
 
-test('dynamic resolution may run on software, integrated, and unknown tiers only', () => {
+test('automatic resolution is available on every detected GPU tier', () => {
   assert.equal(dynamicResolutionAllowedForTier('software'), true);
   assert.equal(dynamicResolutionAllowedForTier('integrated'), true);
   assert.equal(dynamicResolutionAllowedForTier('unknown'), true);
-  assert.equal(dynamicResolutionAllowedForTier('discrete'), false);
+  assert.equal(dynamicResolutionAllowedForTier('discrete'), true);
   assert.equal(dynamicResolutionAllowedForTier(undefined), false);
   assert.equal(dynamicResolutionAllowedForTier('mid'), false);
 });

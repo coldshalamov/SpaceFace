@@ -59,6 +59,7 @@ export function craftingMaterialBlockerText(bp, materials = []) {
 
 export function buildDuration(bp) {
   if (!bp) return 0;
+  if (bp.instant === true) return 0;
   if (bp.timeS && bp.timeS > 0) return bp.timeS;
   return DEFAULT_TIME_S[bp.category] || 0;
 }

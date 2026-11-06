@@ -46,6 +46,19 @@ const FRAME_MAX_ACCEL = 64;
 const FRAME_MAX_YAW = 1.18;
 const KICK_MIN_DELTA_SPEED = 30;
 const KICK_AUTHORITY_MARGIN = 2.5;
+// A pinned COMMANDER (alive, helm torn loose) is not a leader: the formation sags around the
+// hole — wider spacing, integrity reads leaderless — and after this window command passes to
+// the first unpinned socket. Recovery hands the old commander back their wing spot.
+const LEADER_PINNED_SUCCESSION_TICKS = 120;
+const LEADER_PINNED_SPACING_MULT = 1.25;
+// A socket nobody could refill is the wing's dead. The pose folds toward its spine — each
+// vacancy narrows the surviving members' lateral amplitude (writeSlots) — so a three-ship
+// wing reads as a tightened wedge instead of a full-width one flying a phantom slot. Forward
+// stagger and hull-clearance spacing stay authored; the fold narrows the pose, never stacks
+// hulls (separateSlots still enforces clearance). A pinned-commander sag widens AROUND a live
+// hole; this closes OVER a dead one.
+const CASUALTY_FOLD_PER_SLOT = 0.18;
+const CASUALTY_FOLD_MIN = 0.35;
 const SOCKET_ORDER = Object.freeze([
   SQUAD_SOCKET.LEAD,
   SQUAD_SOCKET.LEFT,
@@ -136,13 +149,13 @@ export class SquadFrameDirector {
     if (rec) rec.alive = false;
   }
 
-  stepAll(tick, dt, squads, targetLookup) {
+  stepAll(tick, dt, squads, targetLookup, pinnedOf = null) {
     this.lastTick = tick | 0;
     const live = new Set();
     for (const squad of squads) {
       if (!squad || squad.id == null) continue;
       live.add(squad.id);
-      this._stepSquad(tick | 0, dt, squad, targetLookup);
+      this._stepSquad(tick | 0, dt, squad, targetLookup, pinnedOf);
     }
     for (const squadId of [...this.frames.keys()]) {
       if (live.has(squadId)) continue;
@@ -157,7 +170,7 @@ export class SquadFrameDirector {
     this.frames.delete(squadId);
   }
 
-  _stepSquad(tick, dt, squad, targetLookup) {
+  _stepSquad(tick, dt, squad, targetLookup, pinnedOf = null) {
     const recipeId = squad.recipeId || SQUAD_RECIPE_INTERCEPTOR_SCISSORS;
     const recipe = getSquadRecipe(recipeId);
     if (!recipe) return;
@@ -167,7 +180,7 @@ export class SquadFrameDirector {
       frame = seedFrame(squad.id, recipeId, recipe, members, tick, this.seed);
       this.frames.set(squad.id, frame);
     }
-    syncMembers(frame, members, recipe, tick);
+    syncMembers(frame, members, recipe, tick, pinnedOf);
     const target = resolveTarget(squad, members, targetLookup, frame);
     stepFrame(frame, recipe, target, tick, dt, mutationSpec());
     publishPlans(this, frame, recipe, tick);
@@ -207,6 +220,9 @@ function seedFrame(id, recipeId, recipe, members, tick, seed) {
     successorPolicy: 'priority_alive',
     commandId: null,
     leaderLostTick: null,
+    leaderPinnedTick: null,
+    hasPinnedMember: false,
+    casualties: 0,
     railDirX: Math.cos(heading),
     railDirZ: Math.sin(heading),
     railLocked: false,
@@ -228,7 +244,7 @@ function seedFrame(id, recipeId, recipe, members, tick, seed) {
   };
 }
 
-function syncMembers(frame, members, recipe, tick) {
+function syncMembers(frame, members, recipe, tick, pinnedOf = null) {
   const seen = new Set();
   const ordered = members.slice().sort((a, b) => compareId(a && a.id, b && b.id));
   const claimed = new Set();
@@ -244,7 +260,7 @@ function syncMembers(frame, members, recipe, tick) {
       frame.members.set(entity.id, rec);
       if (!frame.sockets[socket]) frame.sockets[socket] = entity.id;
     }
-    copyLive(rec, entity);
+    copyLive(rec, entity, pinnedOf);
   }
   for (const [id, rec] of frame.members) {
     if (seen.has(id)) continue;
@@ -262,6 +278,19 @@ function syncMembers(frame, members, recipe, tick) {
       claimed.add(socket);
     }
   }
+  // The wing's dead, counted where the refill already ran: a member whose spot nobody flies.
+  // A socket that was never filled (a three-ship wing's empty rear) is the authored wing
+  // size, not a casualty; a socket vacated by death and left unfilled folds the pose
+  // (writeSlots) until a fresh hull claims it.
+  const casualtySockets = new Set();
+  for (const rec of frame.members.values()) {
+    if (rec.alive) continue;
+    const occupant = rec.socket != null ? frame.sockets[rec.socket] : null;
+    if (occupant == null && rec.socket != null) casualtySockets.add(rec.socket);
+  }
+  // A socket can have more than one dead occupant over a long encounter. Count the vacant
+  // formation position once, not once per body that used to fly it.
+  frame.casualties = casualtySockets.size;
   if (frame.commandId == null || !memberAlive(frame, frame.commandId)) {
     const previous = frame.commandId;
     if (previous != null && frame.leaderLostTick == null) frame.leaderLostTick = tick;
@@ -269,6 +298,24 @@ function syncMembers(frame, members, recipe, tick) {
   } else {
     frame.leaderLostTick = null;
   }
+  // A pinned COMMANDER is not a leader (F3): the wing sags around the hole and, if the pin
+  // holds past the grace window, command passes to the first unpinned socket. Recovery clears
+  // the window; the relieved commander keeps their socket and rejoins as a wing. A pinned
+  // WING member (after succession, the old commander) keeps the frame's sag on.
+  const commander = frame.commandId != null ? frame.members.get(frame.commandId) : null;
+  if (commander && commander.alive && commander.pinned) {
+    if (frame.leaderPinnedTick == null) frame.leaderPinnedTick = tick;
+    else if (tick - frame.leaderPinnedTick >= LEADER_PINNED_SUCCESSION_TICKS) {
+      const relief = chooseCommand(frame, true);
+      if (relief != null && relief !== frame.commandId) {
+        frame.commandId = relief;
+        frame.leaderPinnedTick = tick;
+      }
+    }
+  } else {
+    frame.leaderPinnedTick = null;
+  }
+  frame.hasPinnedMember = [...frame.members.values()].some((rec) => rec.alive && rec.pinned);
 }
 
 function pickSocket(entity, index, claimed, sockets) {
@@ -300,6 +347,7 @@ function makeMember(id, socket, recipe) {
     laneId: null,
     laneSide: 0,
     alive: true,
+    pinned: false,
     pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,
@@ -329,13 +377,14 @@ function makeMember(id, socket, recipe) {
   };
 }
 
-function copyLive(rec, entity) {
+function copyLive(rec, entity, pinnedOf = null) {
   const pos = entity.pos || { x: 0, z: 0 };
   const vel = entity.vel || { x: 0, z: 0 };
   rec.alive = entity.alive !== false && !(entity.flags && entity.flags.disabled) && rec.hullFraction > 0;
   if (entity.alive === false || (entity.flags && entity.flags.disabled) || (entity.hull != null && entity.hull <= 0)) {
     rec.alive = false;
   }
+  rec.pinned = rec.alive && !!pinnedOf && pinnedOf(entity) === true;
   rec.pos.x = finite(pos.x);
   rec.pos.z = finite(pos.z);
   rec.vel.x = finite(vel.x);
@@ -379,7 +428,15 @@ function firstFreeMember(frame, claimedSockets) {
   return null;
 }
 
-function chooseCommand(frame) {
+function chooseCommand(frame, preferUnpinned = false) {
+  // Succession during a pin wants a commander who can actually steer; the ordinary pick keeps
+  // socket priority (a freshly pinned lead still holds command through the grace window).
+  if (preferUnpinned) {
+    for (const socket of SOCKET_ORDER) {
+      const id = frame.sockets[socket];
+      if (memberAlive(frame, id) && !memberPinned(frame, id)) return id;
+    }
+  }
   for (const socket of SOCKET_ORDER) {
     const id = frame.sockets[socket];
     if (memberAlive(frame, id)) return id;
@@ -393,6 +450,11 @@ function chooseCommand(frame) {
 function memberAlive(frame, id) {
   const rec = id != null ? frame.members.get(id) : null;
   return !!(rec && rec.alive);
+}
+
+function memberPinned(frame, id) {
+  const rec = id != null ? frame.members.get(id) : null;
+  return !!(rec && rec.alive && rec.pinned);
 }
 
 function resolveTarget(squad, members, targetLookup, frame) {
@@ -444,7 +506,9 @@ function updateIntegrity(frame) {
   }
   const liveFrac = total ? live / total : 0;
   const disruptFrac = live ? disrupted / live : 0;
-  const commandOk = memberAlive(frame, frame.commandId) ? 1 : 0.62;
+  const commandOk = memberAlive(frame, frame.commandId)
+    ? (memberPinned(frame, frame.commandId) ? 0.62 : 1)
+    : 0.62;
   const integrity = saturate(liveFrac * (1 - 0.28 * disruptFrac) * commandOk);
   frame.integrity = integrity;
   if (integrity < frame.integrityMin) frame.integrityMin = integrity;
@@ -458,6 +522,16 @@ function detectDisruption(frame, recipe, tick, dt) {
       rec.disrupted = true;
       rec.coast = false;
       rec.breakFormation = true;
+      continue;
+    }
+    // A pinned hull has no helm: it reads as disrupted for the whole pin, and the wing's
+    // slots widen around the hole (currentSpacing carries the pinned factor).
+    if (rec.pinned) {
+      rec.disrupted = true;
+      rec.coast = false;
+      rec.breakFormation = true;
+      rec.previousVx = rec.vel.x;
+      rec.previousVz = rec.vel.z;
       continue;
     }
     if (!rec.slotReady) continue;
@@ -900,7 +974,10 @@ function currentSpacing(frame) {
   for (const rec of frame.members.values()) {
     if (rec.alive) radii.push(rec.radius);
   }
-  return hullClearanceSpacing(radii, frame.spacingScale);
+  const scale = frame.hasPinnedMember === true
+    ? frame.spacingScale * LEADER_PINNED_SPACING_MULT
+    : frame.spacingScale;
+  return hullClearanceSpacing(radii, scale);
 }
 
 function writeSlots(frame, recipe, target, tick) {
@@ -922,6 +999,11 @@ function writeSlots(frame, recipe, target, tick) {
   const strikeHold = frame.phase === PHASE.STRIKE && recipe.strikeMode === 'hold' && target;
   const volleyTokens = Array.isArray(recipe.volleyTokens) && recipe.volleyTokens.length
     ? recipe.volleyTokens : null;
+  // Casualty fold (see CASUALTY_FOLD_PER_SLOT): a wing with unrefilled dead sockets narrows
+  // its lateral amplitude. Zero casualties keeps the math bit-identical to the unfolded pose.
+  const foldScale = frame.casualties > 0
+    ? Math.max(CASUALTY_FOLD_MIN, 1 - frame.casualties * CASUALTY_FOLD_PER_SLOT)
+    : 1;
 
   for (const rec of frame.members.values()) {
     const local = blendedLocal(shapeA, shapeB, rec.socket, u);
@@ -960,6 +1042,7 @@ function writeSlots(frame, recipe, target, tick) {
       right = 0;
       forward = -2.15;
     }
+    if (foldScale !== 1) right *= foldScale;
     const ox = fwdX * (forward * spacing) + rightX * (right * spacing);
     const oz = fwdZ * (forward * spacing) + rightZ * (right * spacing);
     rec.slot.x = frame.position.x + ox;
@@ -971,7 +1054,7 @@ function writeSlots(frame, recipe, target, tick) {
       const dU = 1 / Math.max(dur, 0.05);
       const a = (shapeA.slots && shapeA.slots[rec.socket]) || { right: 0, forward: 0 };
       const b = (shapeB.slots && shapeB.slots[rec.socket]) || a;
-      const dRight = (b.right - a.right) * dU * spacing;
+      const dRight = (b.right - a.right) * dU * spacing * foldScale;
       const dForward = (b.forward - a.forward) * dU * spacing;
       const scaleRate = frame.phase === PHASE.TELEGRAPH ? 0.85 * dU : 0;
       const base = spacing / Math.max(frame.spacingScale, 0.05);
@@ -981,7 +1064,7 @@ function writeSlots(frame, recipe, target, tick) {
     } else if (attacking && rec.token === SQUAD_TOKEN.CLOSE_ATTACK && rec.laneSide !== 0) {
       const passRate = frame.velocity.x * frame.railDirX + frame.velocity.z * frame.railDirZ;
       const dCross = (1 / 240) * passRate;
-      const dRight = (-rec.laneSide * 1.18 - rec.laneSide * 1.22) * dCross * spacing;
+      const dRight = (-rec.laneSide * 1.18 - rec.laneSide * 1.22) * dCross * spacing * foldScale;
       morphVx = rightX * dRight;
       morphVz = rightZ * dRight;
     }
@@ -1151,6 +1234,8 @@ function snapshotFrame(frame) {
     cycle: frame.cycle,
     committedPeak: frame.committedPeak,
     commandId: frame.commandId,
+    leaderPinned: frame.hasPinnedMember === true,
+    casualties: frame.casualties || 0,
     heading: frame.heading,
     shapeId: frame.shapeId,
     members,

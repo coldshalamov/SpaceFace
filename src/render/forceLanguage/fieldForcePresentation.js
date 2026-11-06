@@ -617,5 +617,5 @@ export class FieldForcePresentation {
     this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);
     for(const body of this.batch.material.uniforms.uBodies.value)if(body.w>0){body.x+=dx;body.y+=dz;}
   } // Also safe when the next simulation dt is zero.
-  dispose(){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.particles.dispose();this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
+  dispose({disposeGpu=true}={}){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.particles.dispose({disposeGpu});this.batch.dispose({disposeGpu});for(const s of this.slots){s.ownerId=null;s.id=null;s.seedId=null;s.kind=null;s.release=-1;s.environment=null;}}
 }

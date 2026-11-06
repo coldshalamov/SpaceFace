@@ -63,6 +63,7 @@ function installDom() {
       this._listeners.set(type, list);
     }
     blur() { this._blurred = true; }
+    focus() { document.activeElement = this; }
     click(ev = { detail: 1 }) {
       for (const fn of this._listeners.get('click') || []) fn(ev);
     }
@@ -221,6 +222,112 @@ function busStub() {
   };
 }
 
+test('temporary result waits for the matching terminal mission projection before pausing on the board', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div'), state = flightState(), bus = busStub();
+    const pushed = [];
+    const mission = { id: 'm_2', type: 'race', status: 'active', params: { racingContractId: 'circuit-a' } };
+    state.missions = { active: [mission] };
+    hud = mountRacingHud({ root, state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('mission:completed', { missionId: 'm_2', racingContractId: 'circuit-a', raceMode: 'time-trial', raceElapsedS: 42 });
+    await Promise.resolve();
+    assert.deepEqual(pushed, [], 'forwarded completion cannot pause the stale active projection');
+    bus.emit('mission:updated', { missionId: 'm_2' });
+    await Promise.resolve();
+    assert.deepEqual(pushed, [], 'an update without terminal state is not enough');
+    state.missions.active = [];
+    bus.emit('mission:updated', { missionId: null });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'the landed projection releases the result board');
+    bus.emit('mission:updated', {});
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'the result opens only once');
+  } finally { hud?.dispose(); dom.restore(); }
+});
+
+test('a pending DNF result is canceled by a new run before its terminal projection', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const state = flightState(), bus = busStub(), pushed = [];
+    state.missions = { active: [{ id: 'm_2', type: 'race', status: 'active', params: { racingContractId: 'circuit-a' } }] };
+    hud = mountRacingHud({ root: document.createElement('div'), state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('race:ended', { racingContractId: 'circuit-a', status: 'dnf' });
+    await Promise.resolve();
+    assert.deepEqual(pushed, []);
+    bus.emit('game:new', {});
+    state.missions.active = [];
+    bus.emit('mission:updated', {});
+    await Promise.resolve();
+    assert.deepEqual(pushed, []);
+  } finally { hud?.dispose(); dom.restore(); }
+});
+
+test('temporary Circuits result auto-opens from the public launch marker without worker WeakMap state', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div');
+    const state = flightState();
+    const bus = busStub();
+    const pushed = [];
+    hud = mountRacingHud({ root, state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+
+    // The worker has registered its corridor in another realm. The main HUD receives only the
+    // public launch event and the forwarded completion payload.
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 38.77,
+      raceLapTimesS: [38.77],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'temporary Circuits completion opens its visible result');
+
+    // A campaign race completion still leaves the player in flight; stale launch state must not
+    // turn its receipt into an interrupting board push.
+    bus.emit('game:new', { seed: 42 });
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 39.25,
+      raceLapTimesS: [39.25],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard']);
+
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('save:restoring', {});
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 40.5,
+      raceLapTimesS: [40.5],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'restore clears any stale temporary-run marker');
+
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('game:exitToMenu', {});
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 41.5,
+      raceLapTimesS: [41.5],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'menu exit clears any stale temporary-run marker');
+  } finally {
+    hud?.dispose();
+    dom.restore();
+  }
+});
+
 function actionRow(panel) {
   return panel.children.find((c) => c.className === 'race-tape-actions');
 }
@@ -376,4 +483,54 @@ test('adventure combat: weapons hot takes the HUD row out of the click path', ()
   } finally {
     dom.restore();
   }
+});
+
+
+test('mobile flight options preserve view and Circuits actions, focus and combat lock', () => {
+  const dom = installDom();
+  let hud;
+  try {
+    document.documentElement = { dataset: { sfMobile: '1', sfMobileFlight: '1' } };
+    const root = document.createElement('div'), state = flightState(), bus = busStub(), opened = [];
+    hud = mountRacingHud({ root, state, bus, screens: { isOpen: () => false, pushScreen: id => opened.push(id) } });
+    hud.frame(state);
+    const panel = root.children.find(node => node.id === 'race-tape');
+    const trigger = panel.children.find(node => node.className.includes('race-tape-options-trigger'));
+    const row = actionRow(panel), view = row.children[0], circuits = row.children.find(node => node.textContent === 'Circuits');
+    const close = row.children.find(node => node.textContent === 'Close');
+    assert.equal(trigger.getAttribute('aria-controls'), row.id);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(view.textContent, 'View: Overhead');
+    trigger.click();
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(document.activeElement, view);
+    let prevented = false;
+    for (const fn of panel._listeners.get('keydown')) fn({ key:'Escape', preventDefault() { prevented = true; }, stopPropagation() {} });
+    assert.equal(prevented, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.activeElement, trigger);
+    trigger.click(); view.click({ detail: 0 });
+    assert.equal(state.settings.gameplay.steeringView, 'racing');
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.activeElement, trigger);
+    state.simTime += 1; hud.frame(state);
+    assert.equal(view.textContent, 'View: Chase');
+    trigger.click(); close.click({ detail: 0 });
+    assert.equal(document.activeElement, trigger);
+    trigger.click(); circuits.click({ detail: 0 });
+    assert.deepEqual(opened, ['raceBoard']);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    trigger.click(); bus.emit('combat:fire', { ownerId: state.playerId }); hud.frame(state);
+    assert.equal(trigger.disabled, true);
+    assert.equal(row.inert, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    state.simTime += 5; hud.frame(state);
+    assert.equal(trigger.disabled, false);
+    state.missions.active = [{ id:'locked', type:'delivery', status:'active', params:{ steerLock:'racing' } }];
+    state.simTime += 1; bus.emit('mission:updated'); hud.frame(state);
+    assert.equal(view.disabled, true);
+    assert.match(view.textContent, /mission locked/);
+    trigger.click();
+    assert.equal(document.activeElement, close, 'a locked camera focuses the available Close action');
+  } finally { hud?.dispose(); dom.restore(); }
 });

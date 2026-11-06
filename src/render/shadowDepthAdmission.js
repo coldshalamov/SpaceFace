@@ -2,6 +2,98 @@
 // variants. Admission must run the exact casters through the real shadow pass or the first
 // bloomScene draw still links a depth program (~460 ms on Intel/ANGLE without parallel compile).
 import { revealSubjectForCompile } from './compilePresentSlice.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
+import {
+  assertPackageTextureRefillReady,
+  assertPackageGeometryRefillReady,
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  rehydrateDetachedTextures,
+  rehydrateDetachedGeometries,
+  retainPackageGeometryCpu,
+  retainPresentedTextureLeases,
+} from './packageCpuDetach.js';
+
+/**
+ * Prepare package payloads used by a paced shadow admission. The staged draw can
+ * yield between caster slices, so another owner must not detach textures or geometry
+ * between the preflight and their eventual bind.
+ */
+export async function prepareShadowDepthTextureLease(options = {}) {
+  const renderer = options.renderer;
+  const textures = Array.isArray(options.textures) ? options.textures : [];
+  const geometries = Array.isArray(options.geometries) ? options.geometries : [];
+  const state = options.state;
+  const contextRecovery = state && state.render && state.render.contextRecovery;
+  const startingGeneration = Number.isFinite(options.expectedGeneration)
+    ? options.expectedGeneration
+    : Number.isFinite(contextRecovery && contextRecovery.generation)
+      ? contextRecovery.generation : null;
+  const isCurrent = () => {
+    try {
+      if (typeof options.isActive === 'function' && options.isActive() !== true) return false;
+      const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+      if (startingGeneration !== null) {
+        const currentGeneration = state && state.render && state.render.contextRecovery
+          && state.render.contextRecovery.generation;
+        if (currentGeneration !== startingGeneration) return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+  const stale = (reason) => ({ ready: false, reason, release() {} });
+  if (!renderer || !isCurrent()) return stale('shadow-depth-context-inactive');
+  const release = retainPresentedTextureLeases(textures);
+  const releaseGeometry = retainPackageGeometryCpu(geometries);
+  let released = false;
+  const releaseOnce = () => {
+    if (released) return;
+    released = true;
+    release();
+    releaseGeometry();
+  };
+  try {
+    const pendingGeometries = geometries.filter(geometry => detachedGeometryUploadPending(geometry, renderer));
+    if (pendingGeometries.length) {
+      const receipt = await rehydrateDetachedGeometries(pendingGeometries, {
+        yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : undefined,
+      });
+      if (!isCurrent()) {
+        releaseOnce();
+        return stale('shadow-depth-context-changed-during-geometry-refill');
+      }
+      assertPackageGeometryRefillReady(pendingGeometries, receipt);
+    }
+    const pending = textures.filter((texture) => detachedTextureUploadPending(
+      texture, renderer.properties));
+    if (pending.length > 0) {
+      const receipt = await rehydrateDetachedTextures(pending, {
+        yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : undefined,
+      });
+      if (!isCurrent()) {
+        releaseOnce();
+        return stale('shadow-depth-context-changed-during-texture-refill');
+      }
+      assertPackageTextureRefillReady(pending, receipt);
+    }
+    if (!isCurrent()) {
+      releaseOnce();
+      return stale('shadow-depth-context-changed-before-drive');
+    }
+  } catch (error) {
+    releaseOnce();
+    if (!isCurrent()) return stale('shadow-depth-context-changed-during-texture-refill');
+    throw error;
+  }
+  return {
+    ready: true,
+    isCurrent,
+    release: releaseOnce,
+  };
+}
 
 // Scratch color target for staged depth admission: the real renderer.render needs somewhere
 // valid to present the trivial staging scene; 8x8 keeps the color pass near-free while the
@@ -118,6 +210,121 @@ function admissionKeyLight(renderer, source, THREE) {
   syncAdmissionShadow(staged.shadow, source.shadow);
   if (staged.target && source.target) syncAdmissionTransform(staged.target, source.target);
   return staged;
+}
+
+// A stepped shadow admission keeps caster references while yielding between
+// sub-batches. Entity teardown can dispose a BatchedMesh during that gap; the
+// object may still be in the captured array even though Three.js has nulled
+// its backing textures. Its next bounds/shadow query calls getMatrixAt() and
+// dereferences the disposed texture's image. Retire only that unusable batch;
+// ordinary detached/hidden casters remain eligible for staging.
+function usableShadowSubject(object) {
+  if (!object || object.isBatchedMesh !== true) return !!object;
+  return !!(object.geometry && object._matricesTexture?.image?.data
+    && object._indirectTexture?.image?.data);
+}
+
+const SHADOW_DEPTH_TEXTURE_SLOTS = ['map', 'alphaMap', 'displacementMap'];
+const SHADOW_DEPTH_DIAG_LIMIT = 8;
+
+function boundedIdentity(value, limit = 120) {
+  if (typeof value !== 'string' || !value) return null;
+  return value.length > limit ? value.slice(0, limit) : value;
+}
+
+function invalidCompressedSamplerRows(renderer, material, drawn) {
+  const rows = [];
+  const seen = new Set();
+  const candidates = [
+    { role: 'depth-material', material },
+    { role: 'caster-material', material: drawn && drawn.material },
+  ];
+  for (const candidate of candidates) {
+    const materials = Array.isArray(candidate.material) ? candidate.material : [candidate.material];
+    for (let materialIndex = 0; materialIndex < materials.length; materialIndex += 1) {
+      const current = materials[materialIndex];
+      if (!current) continue;
+      for (const slot of SHADOW_DEPTH_TEXTURE_SLOTS) {
+        const texture = current[slot];
+        if (!texture || texture.isCompressedTexture !== true || seen.has(texture)) continue;
+        const mipmaps = Array.isArray(texture.mipmaps) ? texture.mipmaps : null;
+        const first = mipmaps && mipmaps[0];
+        if (first && Number.isFinite(Number(first.width)) && Number(first.width) > 0
+            && Number.isFinite(Number(first.height)) && Number(first.height) > 0) continue;
+        seen.add(texture);
+        const userData = texture.userData || {};
+        const detach = userData.spacefaceCpuDetach;
+        let rendererSourceVersion = null;
+        try {
+          const source = texture.source;
+          const props = source && renderer.properties && typeof renderer.properties.get === 'function'
+            ? renderer.properties.get(source) : null;
+          if (Number.isFinite(props && props.__version)) rendererSourceVersion = props.__version;
+        } catch (_) { /* diagnostics must not replace the draw's original failure */ }
+        rows.push({
+          role: candidate.role,
+          materialIndex,
+          sampler: slot,
+          texture: {
+            uuid: boundedIdentity(texture.uuid),
+            name: boundedIdentity(texture.name),
+            type: boundedIdentity(texture.type),
+            sourceKey: boundedIdentity(userData.spacefaceSharedImageSourceKey
+              || userData.spacefaceSourceKey),
+            sourceUuid: boundedIdentity(texture.source && texture.source.uuid),
+            asset: (() => {
+              const asset = userData.spacefaceAsset;
+              if (!asset || typeof asset !== 'object') return null;
+              return {
+                assetId: boundedIdentity(asset.assetId),
+                slot: boundedIdentity(asset.slot),
+                contractVersion: Number.isFinite(asset.contractVersion) ? asset.contractVersion : null,
+              };
+            })(),
+            cpuDetach: detach && typeof detach === 'object' ? {
+              manifestId: boundedIdentity(detach.manifestId),
+              contentHash: boundedIdentity(detach.contentHash),
+              ordinal: Number.isFinite(detach.ordinal) ? detach.ordinal : null,
+            } : null,
+            compressed: true,
+            mipCount: mipmaps ? mipmaps.length : -1,
+            firstMip: first ? {
+              width: Number.isFinite(Number(first.width)) ? Number(first.width) : null,
+              height: Number.isFinite(Number(first.height)) ? Number(first.height) : null,
+            } : null,
+            textureVersion: Number.isFinite(texture.version) ? texture.version : null,
+            sourceVersion: Number.isFinite(texture.source && texture.source.version)
+              ? texture.source.version : null,
+            rendererSourceVersion,
+          },
+        });
+        if (rows.length >= SHADOW_DEPTH_DIAG_LIMIT) return rows;
+      }
+    }
+  }
+  return rows;
+}
+
+function preserveShadowDrawFailure(error, renderer, material, drawn) {
+  if (!error || (typeof error !== 'object' && typeof error !== 'function')) return;
+  try {
+    const samplers = invalidCompressedSamplerRows(renderer, material, drawn);
+    if (samplers.length === 0) return;
+    const detail = {
+      caster: drawn ? {
+        uuid: boundedIdentity(drawn.uuid),
+        name: boundedIdentity(drawn.name),
+        type: boundedIdentity(drawn.type),
+      } : null,
+      samplers,
+    };
+    error.shadowDepthAdmission = detail;
+    // laneWarn reports the original Error stack. Append the bounded primitive
+    // record there so the existing warning preserves the failing draw identity.
+    if (typeof error.stack === 'string' && !error.stack.includes('[shadow-depth-texture]')) {
+      error.stack += `\n[shadow-depth-texture] ${JSON.stringify(detail)}`;
+    }
+  } catch (_) { /* the original GPU draw error remains authoritative */ }
 }
 
 export function disposeAdmissionShadowResources(renderer, options = {}) {
@@ -968,7 +1175,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   }
   return {
     skipped: false,
-    subjects: casting.length,
+    subjects: sliced.subjects ?? casting.length,
     programCacheKeys: sliced.programCacheKeys || [],
     programBindingFailures: sliced.programBindingFailures || [],
     // Diagnostic: which named instanced families actually drew in the staged pass — a NOVEL
@@ -1115,6 +1322,11 @@ export function createShadowDepthStagingSession(options = {}) {
       if (!Array.isArray(casting) || casting.length === 0) {
         return { skipped: false, subjects: 0 };
       }
+      // The casting list can outlive a prior yield. BatchedMesh.dispose() nulls
+      // the data textures while its Object3D can remain referenced by that
+      // snapshot, so revalidate immediately before reparenting/rendering.
+      casting = casting.filter(usableShadowSubject);
+      if (casting.length === 0) return { skipped: false, subjects: 0, drawn: [] };
       // Without forceEnable the render runs under the live shadowMap.enabled —
       // disabled draws nothing, so zero marks land: the drive must not turn an
       // un-run leg into an undrawable verdict.
@@ -1142,10 +1354,17 @@ export function createShadowDepthStagingSession(options = {}) {
         : null;
       if (originalRenderBufferDirect) {
         renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
-          const result = originalRenderBufferDirect.apply(this, args);
+          const drawn = args[4];
+          const material = args[3];
+          let result;
+          try {
+            result = originalRenderBufferDirect.apply(this, args);
+          } catch (error) {
+            preserveShadowDrawFailure(error, renderer, material, drawn);
+            throw error;
+          }
           renderedMaterials += 1;
           sliceRendered += 1;
-          const drawn = args[4];
           const depthDraw = args[1] == null;
           if (depthDraw && drawn) {
             sliceDrawn.add(drawn);
@@ -1156,7 +1375,6 @@ export function createShadowDepthStagingSession(options = {}) {
               sliceNames.add(drawn.name);
             }
           }
-          const material = args[3];
           let program = null;
           try {
             program = renderer.properties && typeof renderer.properties.get === 'function'
@@ -1230,7 +1448,11 @@ export function createShadowDepthStagingSession(options = {}) {
         }
         for (const object of castShadowRestore) object.castShadow = false;
         for (const restore of restoreCasters) restore();
-        for (const home of homes) restoreObjectHome(home);
+        for (const home of homes) {
+          // A canonical owner can retire the batch during the render callback. Its old home
+          // is no longer valid; restoring it would reattach a mesh whose data textures are gone.
+          if (!isRetiredRigidOpaqueBatch(home?.object)) restoreObjectHome(home);
+        }
       }
   };
   return {

@@ -7,12 +7,7 @@ import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
 
-export function injectHudCss() {
-  if (document.getElementById(HUD_STYLE_ID)) return;
-  injectDeckplate();
-  const s = document.createElement('style');
-  s.id = HUD_STYLE_ID;
-  s.textContent = `
+export const HUD_CSS = `
   /* ===== SpaceFace flight HUD ===== */
   #hud { font-size:calc(var(--k-fs-data) * var(--ui-scale, 1)); }
   #hud > * { pointer-events:none; }
@@ -218,6 +213,36 @@ export function injectHudCss() {
   .sf-target__identity { margin-top:3px; font-size:var(--k-fs-data); color:var(--hud-muted);
     opacity:.88; }
   .sf-target__weak { margin-top:4px; font-size:var(--k-fs-data); color:var(--hud-amber); }
+
+  /* Compact target card (owner note: "that box gets in the way... a wall of text"). The card
+     defaults to the three facts a fight actually asks for — who/what class, one intent line,
+     range band + distance + closing — and the deeper readout (damage triangle, weak point,
+     component chip, delivered condition, object facts, bounty, gimmick tag, id bits) waits
+     behind the card's own disclosure. targetPanel.js owns the sf-target--detail class (click /
+     Enter / Space pins it, hovering peeks it, a deep scan reveal opens it); these rules only
+     hide the rows while compact — the !important wins over the per-row inline display the
+     update loop writes, and when the class arrives the row's own data-driven display takes over
+     untouched. */
+  .sf-target:not(.sf-target--detail) .sf-target__triangle,
+  .sf-target:not(.sf-target--detail) .sf-target__weak,
+  .sf-target:not(.sf-target--detail) .sf-target__component,
+  .sf-target:not(.sf-target--detail) .sf-target__condition,
+  .sf-target:not(.sf-target--detail) .sf-target__object,
+  .sf-target:not(.sf-target--detail) .sf-target__bounty,
+  .sf-target:not(.sf-target--detail) .sf-target__gimmick,
+  .sf-target:not(.sf-target--detail) .sf-target__idbits { display:none !important; }
+  /* The intent sentence keeps one line while compact: the first clause (HOSTILE · ROBBERY) is
+     the read; work/wing clauses still print in full when the card opens. */
+  .sf-target:not(.sf-target--detail) .sf-target__intent { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* The card is its own disclosure control (role=button in targetPanel.js). */
+  .sf-target { cursor:pointer; user-select:none; }
+  .sf-target:focus-visible { outline:2px solid var(--hud-cyan); outline-offset:3px; }
+  .sf-target__more { display:flex; align-items:center; justify-content:flex-end; gap:5px;
+    margin-top:1px; font-size:var(--k-fs-data); color:var(--hud-muted); letter-spacing:.08em; }
+  .sf-target__more-caret { display:inline-block; transition:transform .12s ease; }
+  .sf-target--detail .sf-target__more-caret { transform:rotate(90deg); }
+  @media (prefers-reduced-motion:reduce) { .sf-target__more-caret { transition:none; } }
+  html.sf-reduce-motion .sf-target__more-caret { transition:none; }
 
   /* ===== objective tracker — chromeless lines, relocated into the bottom-left column (§3) ===== */
   .sf-objectives { position:relative; display:flex; flex-direction:column; gap:6px; align-items:flex-start; max-width:272px;
@@ -539,6 +564,15 @@ export function injectHudCss() {
   .sf-momentum-sink__axis::after { right:0; border-right:1px solid var(--hud-amber); transform:rotate(45deg); }
   .sf-momentum-sink__label { position:absolute; left:50%; top:60px; transform:translateX(-50%);
     color:var(--hud-amber); font-size:var(--k-fs-data); white-space:nowrap; }
+  /* A sink a hostile frame wrote onto the pilot's hull (the Kraken's wake trawl) keeps the same
+     bracket grammar in the hostile slot — shape unchanged, tone names the hauler. */
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket { border-right-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__bracket::after { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis { background:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::before,
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__axis::after { border-color:var(--sf-hostile); }
+  .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
 
   /* Lead pip (BP-02 combat ceiling) — world-space marker showing where to aim so a shot fired NOW
      intercepts the moving target. A hollow reticle-ring the player walks their crosshair onto. Tints
@@ -597,6 +631,21 @@ export function injectHudCss() {
   .sf-cmark[data-variant="down"] .sf-cmark__shape { stroke-dasharray:2 2; fill-opacity:.07; }
   .sf-cmark__core { display:none; fill:currentColor; stroke:none; }
   .sf-cmark[data-variant="on-you"] .sf-cmark__core { display:inline; r:2.6px; }
+  /* Backed, not bare (owner note: the contact marks read "totally monochrome and cheap, like
+     8-bit" over a lit scene). The same IFF shape stroked wider in dark ink underneath is the
+     decal the mark prints on — the lit stroke becomes the face of a backed mark instead of a
+     lone line over the render. A soft same-hue drop shadow seats it, and the hostile mark alone
+     carries the acquisition ring: a registered hostile is a different claim than a registered
+     neutral, so shape-plus-frame says it before colour does. Filter cost is eight 17px marks
+     at most — no per-frame JS. */
+  .sf-cmark__back { fill:var(--dp-void, #07090d); fill-opacity:.6; stroke:var(--dp-void, #07090d);
+    stroke-width:3.6; stroke-linejoin:round; opacity:.78; }
+  .sf-cmark[data-relation="hostile"] svg { filter:drop-shadow(0 0 2.4px var(--sf-hostile)); }
+  .sf-cmark[data-relation="friendly"] svg { filter:drop-shadow(0 0 2.2px var(--sf-friendly)); }
+  .sf-cmark[data-relation="hostile"] .sf-cmark__shape { fill-opacity:.3; }
+  .sf-cmark[data-relation="hostile"]::after { content:''; position:absolute; inset:-1px;
+    border:1px solid var(--sf-hostile); border-radius:50%; opacity:.34; }
+  .sf-cmark[data-variant="down"]::after { border-style:dashed; opacity:.22; }
 
   /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
      reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
@@ -774,6 +823,9 @@ export function injectHudCss() {
     .sf-aimtag { color:CanvasText; text-shadow:none; forced-color-adjust:none; }
     .sf-leadpip__deny { stroke:CanvasText; }
     .sf-cmark { color:CanvasText; forced-color-adjust:none; }
+    /* The decal backing and ring are scene-seating effects; forced colours keeps the IFF shape. */
+    .sf-cmark svg { filter:none; }
+    .sf-cmark__back, .sf-cmark::after { display:none; }
     .sf-threat-halo__slot--arc .sf-threat-halo__arc {
       border-color:CanvasText; forced-color-adjust:none;
     }
@@ -825,6 +877,14 @@ export function injectHudCss() {
 
     #hud { --sf-dock-w:150px; --sf-radar-size:132px; }
     .sf-rightdock { right:calc(8px + var(--sf-safe-inset-x, 0px)); bottom:96px; gap:5px; }
+    /* ORRERY phone band: the dock rides the same reserved lane above the cluster as
+       the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
+       keep the whole bottom-right strip instead of printing through the radar. */
+    #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
+    /* D261: power-rail sockets print "Pull · Draws in, key 1" — at phone width the
+       verb word truncates to an unreadable stub ("PU… 1"). Keep icon + key cap; the
+       full sentence stays on the socket's accessible name and tip. */
+    #hud .sf-pslot__name { display:none; }
     .sf-target__name { font-size:var(--k-fs-data); }
     .sf-target__meta { font-size:var(--k-fs-data); }
     .sf-radar-wrap { gap:4px; }
@@ -941,6 +1001,7 @@ export function injectHudCss() {
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
   .sf-mission-tracker { position:relative; width:290px; max-width:calc(100vw - 32px);
     padding:10px 12px; border-left:1px solid var(--k-hair); pointer-events:none; contain:layout paint style; }
+  .sf-mt-compact, .sf-mt-details-button, .sf-mt-details { display:none; }
   .sf-mt-title { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-amber);
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sf-mt-obj { font-family:var(--hud-data); font-size:var(--k-fs-data); line-height:1.35; color:var(--hud-paper); margin-bottom:5px; }
@@ -1247,10 +1308,11 @@ export function injectHudCss() {
     color:var(--hud-paper);
   }
   .sf-commtape .sf-contact-hail__button[disabled] { color:var(--hud-muted); }
-  /* The hail panel is a popover off the button; keep it anchored to the tape, not the old corner.
-     It must also paint ABOVE the adopted comms feed: #sf-comms carries z-index:1050 inside #hud's
-     stacking context, which beats every z:auto popover — the deck opened under live feed lines. */
-  .sf-commtape .sf-contact-hail__panel { left:0 !important; top:30px !important; z-index:1055; }
+  /* The hail panel is a popover off the button — since it hangs outside the clipped column it is
+     a position:fixed overlay on #ui-root (contactHailPrompt.js anchors it to the live button
+     rect); left/top pins here would override that anchoring. It must still paint ABOVE the
+     adopted comms feed: #sf-comms carries z-index:1050 inside #hud's stacking context. */
+  .sf-commtape .sf-contact-hail__panel { z-index:1055; }
   /* The tracker used a 2px amber top border to say "this is the mission". De-boxed, that job goes
      to a single amber rule under the title — one stroke, still the loudest thing in the column. */
   .sf-mission-tracker { padding:8px 10px 9px; }
@@ -2177,6 +2239,14 @@ export function injectHudCss() {
      top:13% — 140 px down a 1080 picture, floating in open sky with nothing to belong to. The frame
      runs the same sentence as a header line hard against the top edge. */
   #alerts { top:22px; }
+  /* D261: that header line is a wide-screen placement. At phone widths the centred lane at 22px
+     prints over the top-left waypoint card (the dock cue's lamp and [E] landed on its ETA), and this
+     unscoped rule, being later, silently cancelled the narrow block's top:84px. Re-seat the lane
+     below the card at <=760px. Phone flight keeps its own offset: systems/mobile/styles.js
+     translates the lane 124px down from the 22px line, so it is excluded here. */
+  @media (max-width: 760px) {
+    :root:not([data-sf-mobile-flight="1"]) #alerts { top:calc(84px + var(--sf-safe-inset-top, 0px)); }
+  }
   @media (forced-colors: active) {
     .sf-kit-bar {
       border:1px solid CanvasText; border-image:none; background:Canvas;
@@ -2702,6 +2772,7 @@ export function injectHudCss() {
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
   #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
+  #hud .sf-momentum-sink[data-relation="hostile"] .sf-momentum-sink__label { color:var(--sf-hostile); }
   #hud .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--hud-paper); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 
@@ -3243,5 +3314,12 @@ export function injectHudCss() {
   }
   ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
+
+export function injectHudCss() {
+  if (document.getElementById(HUD_STYLE_ID)) return;
+  injectDeckplate();
+  const s = document.createElement('style');
+  s.id = HUD_STYLE_ID;
+  s.textContent = HUD_CSS;
   document.head.appendChild(s);
 }

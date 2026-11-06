@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { runSession } from '../src/systems/runSession.js';
+import { combat } from '../src/systems/combat.js';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import {
   deathSentence,
@@ -165,6 +167,33 @@ test('the player dying ends the run and publishes a causal summary', () => {
   assert.equal(result.damageTrail.length, 1);
   assert.equal(result.damageTrail[0].weaponId, 'wpn_autocannon_m');
   assert.match(result.headline, /Reaver Corsair killed you on wave 4/);
+});
+
+test('a real scarred-hull defeat produces a bounded results wakeup for the worker UI', () => {
+  const h = boot();
+  beginActive(h);
+  h.player.vel = { x: 0, z: 0 };
+  h.player.data = { defId: 'ship_kestrel', fittings: [], livingHull: {
+    schema: 'spaceface.livingHull.v1', scars: [{ id: 'weapon:1:bow', cause: 'weapon',
+      surface: 'weapon', band: 'hard', facing: 'bow', atT: 1, tick: 1 }],
+  } };
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.state.player.ownedShips = [{ ...h.player.data }];
+  combat.init(h.ctx);
+  combat.kill(h.player, null, {});
+  assert.equal(h.state.run.phase, 'ended');
+  const result = survivalResults.lastResult();
+  assert.equal(result.outcome, 'defeat');
+  assert.ok(result.wreck.livingHull.scars.length);
+  assert.equal(projectBridgeEvent('unadapted-results', result).dropped, true,
+    'the real deep wreck reproduces the generic bridge rejection');
+  const projected = projectBridgeEvent('run:resultsReady', named(h.emitted, 'run:resultsReady')[0].payload);
+  assert.equal(projected.dropped, false);
+  assert.equal(projected.flat.outcome, 'defeat');
+  assert.equal(projected.flat.stopReason, 'player_death');
+  assert.equal(projected.flat.seed, result.seed);
+  assert.equal('wreck' in projected.flat, false);
+  assert.ok(result.wreck.livingHull.scars.length, 'full result remains available to the UI snapshot');
 });
 
 test('brood kill receipts count into the run total and the wave that earned them', () => {

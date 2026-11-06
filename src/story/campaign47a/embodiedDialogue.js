@@ -8,7 +8,7 @@ export const EMBODIED_DIALOGUE_ID = 'campaign47a.embodiedDialogue.v2';
 export const EMBODIED_DIALOGUE_SCHEMA_VERSION = 2;
 export const MAX_COMMS_WORDS = 12;
 export const MAX_CONTACT_BLURB_WORDS = 12;
-export const DIALOGUE_VARIANTS = Object.freeze(['primary', 'failure_recovery']);
+export const DIALOGUE_VARIANTS = Object.freeze(['primary', 'failure_recovery', 'step_handoff']);
 export const CAREER_CROSSOVER_IDS = Object.freeze(['hauler', 'hunter', 'prospector']);
 
 const card = (id, name, roleLabel, stationHint, blurb, namedCaptainId = null, options = {}) => Object.freeze({
@@ -52,6 +52,10 @@ export const DEPTH_PROGRAM_CONTACTS = Object.freeze([
   depthCard('G13', 'contact_wraith_kell', '“Wraith” Kell', 'Deep-Cover Operative', ['station_customs'], 'I file manifests by day, copy them by night. Burn?', 'kell.cover', 'split-clerk', { role: 'smuggler', factionId: 'faction_quiet', gate: { minBeat: 5 } }),
   depthCard('G14', 'contact_halev_doss', 'Prof. Halev Doss', 'University Archivist', ['station_helios'], 'The sector has a paper trail. I walk it daily.', 'doss.sources', 'precise-warm', { role: 'merchant', factionId: 'faction_scn', gate: { minBeat: 1 } }),
   depthCard('G15', 'contact_maera_vols', 'Captain Maera Vols', 'Hull Ghost', ['station_helios'], 'I left the engines warm. You fly her further than I did.', 'vols.business', 'tired-fragment', { role: 'pilot', factionId: 'faction_dmc', poiHint: 'poi_helios_yard' }),
+  // W3 — the starter sector's return visit: a yard clerk who only exists once the pilot has
+  // history. Beat 6 and three walked wrecks is "hour ten"; the reconciliation desk is the reason
+  // the first berth still matters then.
+  depthCard('G16', 'contact_ledger_march', 'Provost March', 'Yard Reconciliation Clerk', ['station_helios'], 'Every hull you dragged home is filed here. I square the sums.', 'march.reconciliation', 'dry-ledger', { role: 'merchant', factionId: 'faction_scn', gate: { minBeat: 6, minUniqueWrecks: 3 } }),
 ]);
 
 export const CONTACT_CARDS = Object.freeze([
@@ -80,6 +84,7 @@ export const BEAT_COMMS = Object.freeze([
   line('comms.47a.b0.recovery', 0, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Manifest remains open. Sample again, then dock.'),
   line('comms.47a.b1.primary', 1, 'primary', 'contact_kessler', 'KESSLER', 'The book posts the alloy run. Scale 4 and the furnace follow.'),
   line('comms.47a.b1.recovery', 1, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Honest work holds. The book re-posts the next job.'),
+  line('comms.47a.b1.scale4_handoff', 1, 'step_handoff', 'contact_kessler', 'KESSLER DESK', 'Variance filed. Next: Ceres furnace detail. Feed ore intact; losses stay recorded.'),
   line('comms.47a.b2.primary', 2, 'primary', 'contact_rook', 'ROOK', 'Cinder board first. Compost, the Nest, the register after.'),
   line('comms.47a.b2.recovery', 2, 'failure_recovery', 'contact_rook', 'ROOK', 'The board still holds. The book re-posts the next job.'),
   line('comms.47a.b3.primary', 3, 'primary', 'contact_slate', 'SLATE', 'Variance Adjustment posts first. Maw and Foreman follow.'),

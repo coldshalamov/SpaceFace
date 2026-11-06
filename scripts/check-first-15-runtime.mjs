@@ -47,7 +47,7 @@ try {
   });
 
   // Canonical player root only — no alternate probe routes / debug game paths.
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: START_TIMEOUT_MS });
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
@@ -64,12 +64,11 @@ try {
   // A first-ever profile is asked once (deliberately, on ui:loadingHidden) whether it wants the
   // calmer first-light bundle. A player answers before they can reach New Game — 'Play' keeps
   // the default cut and dismisses the shared confirm.
-  const firstLight = await page.$('#sf-confirm-root:not([hidden])');
+  const firstLight = await page.$('#sf-confirm-root .sf-confirm');
   if (firstLight) {
     const played = await clickButton(page, 'Play');
     assert.equal(played, true, 'first-light offer should expose Play');
-    await page.waitForFunction(() => !document.getElementById('sf-confirm-root')
-      || document.getElementById('sf-confirm-root').hidden === true, null, { timeout: 5000 });
+    await page.waitForFunction(() => !document.querySelector('#sf-confirm-root .sf-confirm'), null, { timeout: 5000 });
   }
 
   await waitForMenuAction(page, 'newGame');

@@ -12,8 +12,11 @@ const catalogAnchorByStation = new Map();
 const anchorByCarrier = new WeakMap();
 for (const sector of SECTORS) for (const station of sector.stations || []) {
   // An ambiguous catalog key grants no adoption authority.
-  sectorByStation.set(station.id, sectorByStation.has(station.id) ? null : sector.id);
-  if (Number.isFinite(station.pos?.x) && Number.isFinite(station.pos?.z)) {
+  const duplicate = sectorByStation.has(station.id);
+  sectorByStation.set(station.id, duplicate ? null : sector.id);
+  // An ambiguous key has no single authored rest either: never keep the last duplicate's.
+  if (duplicate) catalogAnchorByStation.delete(station.id);
+  else if (Number.isFinite(station.pos?.x) && Number.isFinite(station.pos?.z)) {
     catalogAnchorByStation.set(station.id, sectorLocalToGlobalForSector(station.pos, sector.id));
   }
 }
@@ -39,6 +42,8 @@ function hasAliasEvidenceCollision(data, aliases) {
   const seen = new Set();
   const referenced = new Set();
   const note = value => {
+    // A null/undefined/blank reference is the absence of a link, not the identity "null".
+    if (value == null || value === '') return;
     const id = typeof value === 'string' && value.startsWith('entity:') ? value.slice(7) : String(value);
     if (aliases.has(id)) referenced.add(id);
   };
@@ -68,7 +73,9 @@ export function createCatalogStationRestore(savedList, data = null) {
     const existing = entries.get(key);
     // A leaked identical alias is recoverable. Conflicting snapshots cannot be silently
     // discarded: refuse before clearing the outgoing run and leave the source save intact.
-    if (existing) existing.aliases.add(String(saved.id));
+    // A row without an id carries no alias identity: stringifying it would mint the
+    // phantom alias "undefined"/"null" that unrelated null references then collide with.
+    if (existing && saved.id != null) existing.aliases.add(String(saved.id));
     if (existing && (existing.signature !== signature || hasAliasEvidenceCollision(data, existing.aliases))) {
       throw new Error('ambiguous_catalog_station:' + key);
     }
@@ -77,7 +84,7 @@ export function createCatalogStationRestore(savedList, data = null) {
       // It still needs an undisplaced rest anchor before physics consumes its recoil row.
       const rest = catalogAnchorByStation.get(key) || saved.physicsBody?.anchorRecoil?.rest;
       const anchor = Number.isFinite(rest?.x) && Number.isFinite(rest?.z) ? { x: rest.x, z: rest.z } : null;
-      entries.set(key, { saved, signature, aliases: new Set([String(saved.id)]), entity: null, generation: null, anchor });
+      entries.set(key, { saved, signature, aliases: new Set(saved.id != null ? [String(saved.id)] : []), entity: null, generation: null, anchor });
     }
   }
   return entries;
@@ -142,7 +149,8 @@ export function spawnRestoredCatalogStation(state, helpers, stationId, sectorId,
   if (activity && typeof activity === 'object') Object.defineProperty(entity, 'activity', {
     value: activity, writable: true, configurable: true, enumerable: false,
   });
-  entry.anchor = { x: anchor.x, z: anchor.z };
+  // A caller without a finite slot keeps the entry's authored/saved rest instead of throwing.
+  if (Number.isFinite(anchor?.x) && Number.isFinite(anchor?.z)) entry.anchor = { x: anchor.x, z: anchor.z };
   bindRestoredCatalogStation(state, entry.saved, entity);
   if (entry.saved.id != null) state.sessionEntityIdRemap?.set(String(entry.saved.id), entity.id);
   return entity;

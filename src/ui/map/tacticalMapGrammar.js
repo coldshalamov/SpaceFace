@@ -268,7 +268,21 @@ export function planUnresolvedObjectiveCue({
 
 export function sanitizeMapLabel(value, max = 22) {
   const text = String(value || 'OBJECTIVE').replace(/\s+/g, ' ').trim().toUpperCase();
-  return (text || 'OBJECTIVE').slice(0, Math.max(4, max | 0));
+  if (!text) return 'OBJECTIVE';
+  const limit = Math.max(4, max | 0);
+  if (text.length <= limit) return text;
+  // Never slice mid-word (e.g. "TALA ROOK · RECEIVIN"): if a compound separator (' · ' or ' — ')
+  // precedes the overflow, keep the primary name; otherwise break at the last word boundary.
+  const sepIdx = text.indexOf(' · ');
+  if (sepIdx >= 4 && sepIdx <= limit) {
+    const rest = text.slice(0, limit);
+    const lastSpace = rest.lastIndexOf(' ');
+    if (lastSpace > sepIdx + 2) return rest.slice(0, lastSpace).replace(/[\s·—-]+$/, '');
+    return text.slice(0, sepIdx);
+  }
+  const clipped = text.slice(0, limit);
+  const wordBreak = clipped.lastIndexOf(' ');
+  return (wordBreak >= 4 ? clipped.slice(0, wordBreak) : clipped).replace(/[\s·—-]+$/, '');
 }
 
 export function formatRadarDistance(worldUnits) {
@@ -276,9 +290,9 @@ export function formatRadarDistance(worldUnits) {
   if (!Number.isFinite(d) || d < 0) return 'ROUTE PENDING';
   if (d >= 1000) {
     const digits = d >= 10000 ? 0 : 1;
-    return `${(d / 1000).toFixed(digits)}k WU`;
+    return `${(d / 1000).toFixed(digits)}k u`;
   }
-  return `${Math.round(d)} WU`;
+  return `${Math.round(d)} u`;
 }
 
 export function relativeLuminance(hex) {

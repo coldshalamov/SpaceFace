@@ -11,7 +11,9 @@ export function goalCrossing(previous, current, radius = C.ballRadius, dt = 1 / 
   if (Math.hypot(current.x - previous.x, current.z - previous.z) > C.maxBallSpeed * dt * 1.25 + 1) return null;
   const t = (plane - previous.z) / (current.z - previous.z);
   const x = previous.x + (current.x - previous.x) * t;
-  return Math.abs(x) + radius <= C.aperture ? { x, t } : null;
+  // The posts are the goal the player aims at: a ball that clears both inner faces scores.
+  const mouth = Number.isFinite(C.postX) && Number.isFinite(C.postRadius) ? C.postX - C.postRadius : C.aperture;
+  return Math.abs(x) + radius <= mouth ? { x, t } : null;
 }
 export function predictKeeperTarget(ball, tier = 0) {
   if (!finiteXZ(ball?.pos) || !finiteXZ(ball?.vel) || ball.vel.z >= -C.minShotSpeed) return null;

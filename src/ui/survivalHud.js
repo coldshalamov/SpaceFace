@@ -24,6 +24,7 @@ import {
 import { runXpForLevel } from '../core/runState.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
 import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
+import { resolveActionLabel } from '../systems/input.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -133,6 +134,65 @@ export function threatCensus(run) {
   return { alive, total, remaining, resolved };
 }
 
+/** The Swarm quota tracks the full-ship cohort; Brood bodies are supplemental pressure. */
+export function threatPopulationLabel(ruleset, objective) {
+  if (!isSwarmRuleset(ruleset)) return 'THREAT';
+  return !objective || objective.population === 'ships' ? 'HOSTILE SHIPS' : 'HOSTILES';
+}
+
+/** The fitted Hero ability's live cue, using only the worker-owned HUD projection. */
+export function heroManeuverHudCue(state) {
+  if (state?.run?.kind !== 'survival' || state.mode !== 'flight') return null;
+  const player = state.player;
+  const index = Number(player?.activeShipIndex) || 0;
+  const fitted = player?.ownedShips?.[index]?.fittings
+    || state.entities?.get?.(state.playerId)?.data?.fittings || [];
+  const pinball = fitted.includes('mod_pinball_rush');
+  const boomerang = fitted.includes('mod_boomerang_run');
+  const veil = fitted.includes('mod_veil_step');
+  if (!pinball && !boomerang && !veil) return null;
+
+  const model = state.heroManeuverReadModel;
+  const mode = pinball ? 'pinball' : boomerang ? 'boomerang' : 'veil_step';
+  if (!model || model.mode !== mode) {
+    const label = pinball ? 'PINBALL RUSH' : boomerang ? 'BOOMERANG RUN' : 'VEIL STEP';
+    return { mode, status: 'blocked', text: `${label} · syncing readiness` };
+  }
+  const name = model.targetName || 'hostile lock';
+  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'unbound' });
+  const veilModel = veil ? model.veil : null;
+  const veilCue = veilModel
+    ? veilModel.phase === 'aiming'
+      ? `VEIL STEP · ${veilModel.text}`
+      : `VEIL STEP · ${boost} hold / release · ${veilModel.text}`
+    : null;
+  if (mode === 'pinball') {
+    const readiness = model.text || (model.reason
+      ? String(model.reason).replaceAll('_', ' ') : 'status unavailable');
+    const stage = model.phase === 'pinball_charge' ? `charging ${Math.round((model.charge || 0) * 1000)} ms`
+      : model.phase === 'pinball_pending' ? 'dash committing'
+        : model.phase === 'pinball_dash' ? `${model.contactCount || 0}/5 physical contacts` : null;
+    return { mode, status: model.status,
+      text: [stage ? `PINBALL RUSH · ${name} · ${stage}`
+        : `PINBALL RUSH · ${boost} hold / release · ${readiness}`, veilCue]
+        .filter(Boolean).join(' · ') };
+  }
+  if (mode === 'boomerang') {
+    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'unbound' });
+    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} cap budget` : '';
+    const stage = model.phase === 'bank' ? `physical bank · ${model.attackCommitted ? 'bomb away' : 'bomb reserved'}`
+      : model.phase === 'return' ? `phase return · ${model.attackCommitted ? 'bomb away' : 'no bomb released'}` : null;
+    const terminal = ['complete', 'attack_region_missed', 'target_lost', 'interrupted',
+      'return_blocked', 'ordnance_refused'].includes(model.phase) ? model.text : null;
+    return { mode, status: model.status,
+      text: [stage ? `BOOMERANG RUN · ${name} · ${stage}${budget}`
+        : terminal ? `BOOMERANG RUN · ${name} · ${terminal}${budget}`
+          : `BOOMERANG RUN · ${action} start · ${model.text || model.reason || 'status unavailable'}`, veilCue]
+        .filter(Boolean).join(' · ') };
+  }
+  return { mode, status: model.status, text: veilCue || `VEIL STEP · ${boost} hold / release · ${model.text || model.reason || 'status unavailable'}` };
+}
+
 /**
  * Player-facing clock from `run:waveProgress.remainingTicks`. The HUD never ticks this itself.
  * Format is `0:SS` so a sixty-second wave reads 0:60 … 0:00.
@@ -231,6 +291,7 @@ export const survivalHud = {
     this._objective = null;
     this._objectiveKind = null;
     this._plan = null;
+    this._planWave = null;
     this._chain = 0;
     this._chainBest = 0;
     this._chainCause = null;
@@ -245,6 +306,10 @@ export const survivalHud = {
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:started', () => {
       this._clearEarn();
+      this._plan = null;
+      this._planWave = null;
+      this._objective = null;
+      this._objectiveKind = null;
       this._waveProgress = null;
       this._death = null;
       this._lastTells = [];
@@ -304,9 +369,12 @@ export const survivalHud = {
 
     const census = threatCensus(run);
     const swarm = isSwarmRuleset(run.ruleset);
+    const planForWave = this._planWave === run.wave ? this._plan : null;
+    const objectiveKind = planForWave ? this._objectiveKind : null;
+    const objective = objectiveWord(objectiveKind);
     // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
     const fighting = run.phase === 'active' || run.phase === 'wave_intro';
-    const phase = (fighting && this._objective) ? this._objective : phaseWord(run.phase);
+    const phase = (fighting && objective) ? objective : phaseWord(run.phase);
     this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
       ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
@@ -324,13 +392,21 @@ export const survivalHud = {
       : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
-    this._setClass(dom.phase, 'sf-crun__phase' + (fighting && this._objective ? ' sf-crun__phase--hot' : ''));
+    this._setClass(dom.phase, 'sf-crun__phase' + (fighting && objective ? ' sf-crun__phase--hot' : ''));
+
+    const heroCue = heroManeuverHudCue(st);
+    this._setHidden(dom.hero, !heroCue);
+    if (heroCue) {
+      this._setText(dom.hero, heroCue.text);
+      this._setAttr(dom.hero, 'data-state', heroCue.status || 'blocked');
+      this._setAttr(dom.hero, 'aria-label', `Hero maneuver, ${heroCue.text}`);
+    }
 
     // FB-025 — the wave intro is a real window: the opening line sits on the glass for the
     // whole of it, then clears with the phase. Same pure function the announce voice speaks,
     // so the readout and the voice can never disagree about what is coming.
-    const intro = run.phase === 'wave_intro' && this._plan
-      ? waveOpeningLine(run.wave, this._plan)
+    const intro = run.phase === 'wave_intro' && planForWave
+      ? waveOpeningLine(run.wave, planForWave)
       : null;
     this._setHidden(dom.intro, !intro);
     if (intro) this._setText(dom.intro, intro);
@@ -338,11 +414,14 @@ export const survivalHud = {
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
     const showThreat = run.phase === 'active' || run.phase === 'cleanup';
-    if (showThreat && swarm && !this._roundBased) {
+    const waveProgress = this._waveProgress?.wave === run.wave ? this._waveProgress : null;
+    const cohortBased = !!planForWave?.swarm?.killTarget || waveProgress?.completionKind === 'cohort'
+      || (!planForWave && !waveProgress && Number.isFinite(run.threatBudget) && run.threatBudget > 0);
+    if (showThreat && swarm && !cohortBased) {
       // A swarm wave ends on the sixty-second clock published by survivalWave. The HUD renders
       // that payload and never counts down on its own. Kills are the score, not the finish line,
       // so they sit as a figure with no slash and no fill.
-      const progress = this._waveProgress;
+      const progress = waveProgress;
       const cores = progress && progress.completionKind === 'collect' && Number.isInteger(progress.total);
       const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
       this._setHidden(dom.threat, !(ready || cores));
@@ -357,17 +436,17 @@ export const survivalHud = {
         const remainingSeconds = Math.max(0, Math.ceil(remainingTicks / 60));
         const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
         // A survive round's clock is the objective itself: the wait IS the win.
-        const surviving = this._objectiveKind === 'survive';
-        const zoned = this._objectiveKind === 'hold' || this._objectiveKind === 'reach';
-        const planned = this._plan && this._plan.swarm && this._plan.swarm.circuit;
+        const surviving = objectiveKind === 'survive';
+        const zoned = objectiveKind === 'hold' || objectiveKind === 'reach';
+        const planned = planForWave && planForWave.swarm && planForWave.swarm.circuit;
         const mark = zoned
-          ? (this._objectiveKind === 'hold'
+          ? (objectiveKind === 'hold'
             ? (planned && planned.zone) || (circuitRound && circuitRound.zone)
             : (planned && planned.gate) || (circuitRound && circuitRound.gate))
           : null;
         const player = st.entities && st.entities.get && st.entities.get(st.playerId);
         const glyph = circuitMarkGlyph(player, mark);
-        const word = zoned ? objectiveWord(this._objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
         this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
         this._setText(dom.threatFig, clock);
         this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
@@ -386,11 +465,12 @@ export const survivalHud = {
       this._setHidden(dom.threat, false);
       if (dom.killWord) this._setHidden(dom.killWord, true);
       if (dom.killFig) this._setHidden(dom.killFig, true);
-      this._setText(dom.threatWord, swarm ? 'HOSTILES' : 'THREAT');
+      const populationLabel = threatPopulationLabel(run.ruleset, planForWave?.objective);
+      this._setText(dom.threatWord, populationLabel);
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
       this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
-      this._setAttr(dom.threat, 'aria-label', 'Hostiles remaining');
+      this._setAttr(dom.threat, 'aria-label', `${populationLabel.toLowerCase()} remaining`);
       this._setAttr(dom.threat, 'aria-valuenow', String(census.remaining));
       this._setAttr(dom.threat, 'aria-valuemax', String(Math.max(census.total, census.remaining)));
     } else {
@@ -563,7 +643,8 @@ export const survivalHud = {
     // The plan is cached so the intro window can render its own opening line — the same pure
     // function the voice speaks — for exactly as long as wave_intro lasts.
     this._plan = plan || null;
-    this._roundBased = !!plan?.swarm?.killTarget;
+    this._planWave = Number.isInteger(payload?.wave) ? payload.wave
+      : (Number.isInteger(plan?.swarm?.wave) ? plan.swarm.wave : null);
     const kind = plan && plan.objective && plan.objective.kind;
     this._objectiveKind = kind || null;
     this._objective = objectiveWord(kind);
@@ -575,7 +656,8 @@ export const survivalHud = {
     const durationTicks = Number.isInteger(payload.durationTicks) && payload.durationTicks > 0
       ? payload.durationTicks
       : 0;
-    const counted = payload.completionKind === 'collect' || payload.completionKind === 'nodes'
+    const cohort = payload.completionKind === 'cohort';
+    const counted = cohort || payload.completionKind === 'collect' || payload.completionKind === 'nodes'
       || payload.completionKind === 'commander';
     if (durationTicks <= 0 && !counted) return;
     const remainingTicks = Number.isInteger(payload.remainingTicks) ? Math.max(0, payload.remainingTicks) : 0;
@@ -584,6 +666,7 @@ export const survivalHud = {
       remainingTicks,
       durationTicks,
       completionKind: payload.completionKind || null,
+      remaining: Number.isInteger(payload.remaining) ? Math.max(0, payload.remaining) : 0,
       found: Number.isInteger(payload.found) ? payload.found : 0,
       total: Number.isInteger(payload.total) ? payload.total : 0,
       killWord: typeof payload.killWord === 'string' ? payload.killWord : null,
@@ -765,6 +848,11 @@ export const survivalHud = {
     const waveN = make('span', 'sf-crun__wave', waveRow);
     const phase = make('span', 'sf-crun__phase', waveRow);
 
+    const hero = make('div', 'sf-crun__hero', root);
+    hero.hidden = true;
+    hero.setAttribute('aria-live', 'off');
+    hero.setAttribute('role', 'group');
+
     // FB-025: the intro window's line — the wave's own words, on the glass only while
     // wave_intro lasts, then cleared.
     const intro = make('div', 'sf-crun__intro', root);
@@ -854,7 +942,7 @@ export const survivalHud = {
 
     host.appendChild(root);
     this._dom = {
-      root, label, waveN, phase, intro, threat, threatWord, threatFill, threatFig,
+      root, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
@@ -880,6 +968,9 @@ export const survivalHud = {
     font-weight:700; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
   .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
+  .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    color:var(--dp-phos, var(--sf-paper)); line-height:1.35; }
+  .sf-crun__hero[data-state="blocked"], .sf-crun__hero[data-state="hidden"] { color:var(--dp-ink-mute, var(--sf-calm)); }
   .sf-crun__row--figs { flex-wrap:wrap; gap:4px 10px; }
   /* The round figure is a READING — the world's count — so it reads phos, not lamp: the amber
      leader in this panel is the chain (the one figure watched while flying), never two. */

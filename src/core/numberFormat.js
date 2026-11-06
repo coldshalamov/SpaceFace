@@ -19,7 +19,7 @@
 // Every Intl call is guarded: a malformed or unsupported tag throws a RangeError in some engines,
 // and a number readout must never be the thing that breaks a frame.
 
-import { currentGameLocale } from '../localization/gameLocalization.js';
+import { currentGameLocale } from '../localization/sourceText.js';
 
 export const FALLBACK_NUMBER_LOCALE = 'en-US';
 

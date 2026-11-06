@@ -21,17 +21,25 @@ function render(initial) {
   let current = initial;
   const dispatch = [];
   const portraits = [];
-  const railEl = { innerHTML: '' };
+  // The quiet-night branches build an empty-state node through the DOM and mount the shared
+  // empty-state view into it; the fixture captures the headline copy instead of the DOM.
+  const railEl = { innerHTML: '', appendChild: () => {} };
   const avatar = {};
   const stageEl = { innerHTML: '', querySelector: (s) => s === '[data-bigpic]' ? avatar : null };
   const noop = () => {};
   const context = {
+    document: { createElement: () => ({ set innerHTML(v) { railEl.innerHTML += v; } }) },
+    mountDataState: (node, kind, copy) => {
+      if (copy && copy.headline) node.innerHTML = `<p class="sf-empty-headline">${copy.headline}</p>`;
+    },
     railEl, stageEl, escapeHtml, selectedId: null, saidText: null,
     contacts: () => current ? [current] : [], selected: () => current,
     stationControlAttrs: (kind) => 'data-control="' + kind + '"',
     stationRegularRecognition: () => ({ label: 'Known regular', reaction: 'Welcome back.' }),
     stationContactMemoryFor: () => ({ talkCount: 2 }),
     stationContactMemoryLine: (_, line) => line,
+    barRegularStoryLine: () => null,
+    openGalaxyMap: noop,
     getChoices: (role, contact) => { dispatch.push({role, contact}); return contact.choices || [{id:'ask',label:'Ask about work.'}]; },
     mountContactPortrait: (_, contact) => portraits.push(contact),
     dressRail: noop, railKeysHint: noop, dressStage: noop, composeStage: noop,
@@ -109,6 +117,6 @@ test('repeat render, contact switch, and empty rail/stage do not leave a stale p
   r.draw(b); expectLabels(r, 'Bounty Broker');
   assert.ok(!r.stageEl.innerHTML.includes('Cargo Registrar'));
   r.draw(null);
-  assert.ok(r.railEl.innerHTML.includes('Nobody here.'));
-  assert.ok(r.stageEl.innerHTML.includes('The bar is empty.'));
+  assert.ok(r.railEl.innerHTML.includes('Nobody in tonight.'), 'the quiet rail tells its story');
+  assert.ok(r.stageEl.innerHTML.includes('The bar is empty tonight.'), 'the quiet stage tells its story');
 });

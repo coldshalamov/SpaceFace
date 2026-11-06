@@ -194,6 +194,79 @@ test('the same runner restarts a full service stay at the existing reach boundar
   assert.equal(f.spawnedEntities.length, 1);
 });
 
+test('fractional persisted runner ordinals normalize to a live ordinal instead of wedging the bed', () => {
+  const f = admittedRunner();
+  f.wrecks.choirRelief = normalizeChoirRelief({
+    ...relief(f),
+    runnersSent: 1.9,
+    runnersDeparted: 0.5,
+    runnersLostMask: 0.5,
+    runnerBedOrdinal: 1.5,
+  });
+  assert.equal(relief(f).runnersSent, 1);
+  assert.equal(relief(f).runnersDeparted, 0);
+  assert.equal(relief(f).runnersLostMask, 0);
+  assert.equal(relief(f).runnerBedOrdinal, 1);
+  tickAt(f, f.admittedAt + SERVICE_S);
+  assert.equal(relief(f).runnerBedOrdinal, 0);
+  assert.equal(relief(f).runnersDeparted, 1);
+  assert.equal(f.runner.data.choirReliefLeg, 'outbound');
+});
+
+test('a corrupt lost-runner mask cannot leave a dead identity holding the bed or fabricate service', () => {
+  const f = admittedRunner();
+  f.wrecks.choirRelief = normalizeChoirRelief({
+    ...relief(f),
+    runnersLostMask: 1.5,
+    runnerBedOrdinal: 1.5,
+  });
+  assert.equal(relief(f).runnersLostMask, 1);
+  assert.equal(relief(f).runnerBedOrdinal, 0);
+  assert.equal(relief(f).runnerAdmittedAtS, null);
+  tickAt(f, f.admittedAt + SERVICE_S);
+  assert.equal(relief(f).runnersDeparted, 0);
+  assert.equal(relief(f).runnerBedOrdinal, 0);
+  assert.notEqual(f.runner.data.choirReliefLeg, 'outbound');
+  assert.equal(f.spawnedEntities.length, 1);
+});
+
+test('out-of-range lost-runner bits are discarded without shifting losses onto sent runners', () => {
+  for (const [rawMask, expectedMask] of [[4, 0], [5, 1]]) {
+    const restored = normalizeChoirRelief({
+      runnersSent: 2,
+      runnersDeparted: 0,
+      runnersLostMask: rawMask,
+      runnerBedOrdinal: 2,
+      runnerAdmittedAtS: 12.5,
+    });
+    assert.equal(restored.runnersLostMask, expectedMask);
+    assert.equal(restored.runnerBedOrdinal, 2, `runner 2 remains live for raw mask ${rawMask}`);
+    assert.equal(restored.runnerAdmittedAtS, 12.5);
+  }
+});
+
+test('ordinal 99 with two runners clears the phantom bed instead of servicing nonexistent runner 2', () => {
+  const f = admittedRunner();
+  f.runner.alive = false;
+  f.wrecks.choirRelief = normalizeChoirRelief({
+    ...relief(f),
+    runnersSent: 2,
+    runnersDeparted: 1,
+    runnersLostMask: 1,
+    runnerBedOrdinal: 99,
+    runnerAdmittedAtS: f.admittedAt - SERVICE_S,
+  });
+  assert.equal(relief(f).runnerBedOrdinal, 0);
+  assert.equal(relief(f).runnerAdmittedAtS, null);
+
+  tickAt(f, f.admittedAt + SERVICE_S + 1);
+  assert.equal(relief(f).runnerBedOrdinal, 0);
+  assert.equal(relief(f).runnerAdmittedAtS, null);
+  assert.equal(relief(f).runnersDeparted, 1);
+  assert.equal(f.spawnedEntities.length, 1, 'recovery does not invent a runner to satisfy the saved ordinal');
+  assert.equal(runnerSpecs(f).some((spec) => spec.data.choirReliefRunner === 2), false);
+});
+
 test('just outside the admission boundary interrupts even on the departure deadline', () => {
   const f = admittedRunner();
   f.runner.pos = { x: f.home.pos.x + f.home.radius + 240 + 0.001, z: f.home.pos.z };

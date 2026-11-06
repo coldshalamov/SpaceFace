@@ -1,3 +1,4 @@
+import { currentSolidDressingRows, physicalObstacleRadius } from '../core/physicalObstacleQuery.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mothlightGunCadence } from '../data/mothlight.js';
 import {
@@ -67,6 +68,7 @@ const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_
 const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
 const ATTACHMENT_DEF_BY_ID = new Map(ATTACHMENT_DEFS.map((row) => [row.id, row]));
 const SOLID_TAGS = Object.freeze(['solid']);
+const COLD_DRESSING_TAGS = Object.freeze(['cold_dressing', 'solid']);
 const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
 const CAPABILITY_DEPENDENCIES = Object.freeze({
   drive: Object.freeze(['drive']),
@@ -451,6 +453,7 @@ export const aiPorts = {
     );
     for (const contact of tetherContacts) contacts.push(contact);
     appendWellObstacles(state, entity, range, contacts, freeze);
+    appendDressingObstacles(state, entity, range, contacts, attachmentIndex, freeze);
     if (freeze !== identity) contacts.sort(contactSort);
     if (live) {
       const frame = options.frameScratch || this._liveSensorFrameScratch;
@@ -1433,6 +1436,7 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   out.exposed = base.exposed;
   out.ownedBySelf = base.ownedBySelf;
   out.objectiveValue = base.objectiveValue;
+  out.fortifyTarget = base.fortifyTarget === true;
   out.massClass = base.massClass;
   out.operationalMassBand = base.operationalMassBand;
   out.mobilityBand = base.mobilityBand;
@@ -1579,11 +1583,14 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   const assignedTargetId = authoritativeAssignmentTargetId(selfAi.activity);
   const assigned = assignedTargetId != null && assignedTargetId !== self.id
     ? getEntity(state, assignedTargetId) : null;
-  if (assigned && assigned.alive && contactKindFor(assigned) === ContactKind.SHIP
+  const assignedKind = assigned ? contactKindFor(assigned) : null;
+  const fortifyObjective = assignedKind === ContactKind.OBJECTIVE
+    && assigned?.data?.swarmFortify?.schemaVersion === 1;
+  if (assigned && assigned.alive && (assignedKind === ContactKind.SHIP || fortifyObjective)
     && !out.some(c => c.id === assigned.id) && !cloakHidesPlayerFrom(state, self, assigned)) {
     const hostile = isHostileForAI(state, self, assigned);
     const base = buildContactBase(state, assigned, combatRuntimeFor(state, assigned.id),
-      attachmentIndex, 'ship', freeze, cacheOwner);
+      attachmentIndex, assignedKind, freeze, cacheOwner);
     const threat = threatFor(state, self, assigned, hostile);
     if (records) {
       const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
@@ -1644,6 +1651,23 @@ function appendWellObstacles(state, observer, range, contacts, freeze) {
   }
 }
 
+// Cold fixed dressing is not a combat target or entity-index member. Add only its
+// physical footprint to navigation, keeping threat, cloak and target selection unchanged.
+function appendDressingObstacles(state, observer, range, contacts, attachmentIndex, freeze) {
+  for (const row of currentSolidDressingRows(state)) {
+    if (!row || row.id === observer.id) continue;
+    const radius = physicalObstacleRadius(row);
+    if (!(radius > 0)) continue;
+    const dx = row.pos.x - observer.pos.x, dz = row.pos.z - observer.pos.z;
+    if (dx * dx + dz * dz > (range + radius) ** 2) continue;
+    // Range gate first: the duplicate scan only runs for the few rows actually in reach.
+    if (contacts.some(contact => contact.id === row.id)) continue;
+    const base = buildContactBase(state, row, null, attachmentIndex, ContactKind.HAZARD, freeze, null);
+    contacts.push({ ...base, radius, planarRadius: radius, team: null, targetId: null,
+      objectiveValue: 0, fortifyTarget: false, tags: COLD_DRESSING_TAGS, confidence: 1, threat: 0, hostile: false });
+  }
+}
+
 function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, cacheOwner) {
   const tethered = attachmentsFor(attachmentIndex, other.id).length > 0;
   const disabled = isDisabled(runtime, other);
@@ -1670,6 +1694,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     exposed: false,
     ownedBySelf: false,
     objectiveValue: objectiveValueFor(other),
+    fortifyTarget: other.data?.swarmFortify?.schemaVersion === 1,
     massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
     ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
     tags,
@@ -2107,6 +2132,7 @@ function subsystemFraction(runtime, id) {
 function contactKindFor(entity) {
   if (entity.type === 'ship' || entity.type === 'drone') return ContactKind.SHIP;
   if (entity.type === 'projectile') return ContactKind.PROJECTILE;
+  if (entity.data?.swarmFortify?.schemaVersion === 1) return ContactKind.OBJECTIVE;
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
       || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
   // Deliberately jettisoned freight uses a payload body; it remains a sensed cargo objective.

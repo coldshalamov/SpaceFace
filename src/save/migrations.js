@@ -419,6 +419,24 @@ export const MIGRATIONS = [
     to: 22,
     fn: migrateSurveyCustody,
   },
+  {
+    from: 22,
+    to: 23,
+    // The ward has no pre-v23 history. Existing finite records are never replaced
+    // here; the work owner normalizes any supplied current-version state.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      if (!data.npcJobs || typeof data.npcJobs !== 'object' || Array.isArray(data.npcJobs)) {
+        data.npcJobs = { byId: {}, lanternWard: null };
+      } else if (!Object.hasOwn(data.npcJobs, 'lanternWard')) {
+        data.npcJobs.lanternWard = null;
+      }
+      if (data.missions && typeof data.missions === 'object' && !Array.isArray(data.missions)
+          && !Object.hasOwn(data.missions, 'lanternWardReward')) {
+        data.missions.lanternWardReward = null;
+      }
+    },
+  },
 ];
 
 /**

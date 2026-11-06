@@ -74,6 +74,9 @@ async function escape({ incomingSpeed = 0 } = {}) {
     const finalSeparation = Math.hypot(ship.pos.x - threat.pos.x, ship.pos.z - threat.pos.z);
     assert.ok(finalSeparation > initialSeparation + 600, 'the pilot still opens useful escape distance');
     assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
+    // Current threat hysteresis retains flee while a live attacker is in the resume ring.
+    // Model danger clearing before requesting the suspended work leg back.
+    threat.alive = false;
     assert.equal(jobs.resumeJob(h.jobId), true);
     assert.deepEqual({ phase: entry.job.phase, progress: entry.job.progress, sequence: entry.job.sequence }, h.prior,
       'escape does not reset the suspended work leg or its progress');

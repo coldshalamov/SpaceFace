@@ -12,12 +12,18 @@ const hudMetaSource = readFileSync(new URL('../src/ui/hudMeta.js', import.meta.u
 const stationModelSource = readFileSync(new URL('../src/ui/station/stationHubModel.js', import.meta.url), 'utf8');
 const missionLogSource = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 const drillSource = readFileSync(new URL('../src/ui/screens/drill.js', import.meta.url), 'utf8');
+const commodityNamesSource = readFileSync(new URL('../src/ui/commodityNames.js', import.meta.url), 'utf8');
 
 assert.equal(storyBeatDisplayName('honest_work'), 'Honest Work');
 assert.equal(storyIntroducesDisplayName('chaining+passive_preview'), 'Chaining + Passive Preview');
 
-assert.match(hudMetaSource, /COMMODITY_BY_ID/, 'manifest ghost should resolve normal cargo from authored commodity names');
-assert.match(hudMetaSource, /PERSISTENT_CARGO_BY_ID/, 'manifest ghost should resolve persistent story cargo from narrative names');
+// The manifest ghost resolves cargo through the ONE shared helper (commodityNames.js): authored
+// market names, persistent story cargo, mission-spawned ids, then a humanised fallback — never a
+// raw id. Pin both ends of that contract.
+assert.match(hudMetaSource, /commodityDisplayName/, 'manifest ghost should resolve cargo through the shared authored-name helper');
+assert.match(commodityNamesSource, /COMMODITIES/, 'the shared helper should resolve normal cargo from authored commodity names');
+assert.match(commodityNamesSource, /PERSISTENT_CARGO/, 'the shared helper should resolve persistent story cargo from narrative names');
+assert.match(commodityNamesSource, /MISSION_CARGO_NAMES/, 'the shared helper should resolve mission-spawned cargo ids');
 assert.doesNotMatch(
   hudMetaSource,
   /function labelOf\(id\) \{\s*return String\(id\)\.replace/,

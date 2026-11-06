@@ -27,6 +27,7 @@ export const CONTACT_COUNTER_DEFS = Object.freeze({
   'kell.cover': counter('contact_wraith_kell', 0, 6, 'Kell cover integrity'),
   'doss.sources': counter('contact_halev_doss', 0, 20, 'Primary sources archived'),
   'vols.business': counter('contact_maera_vols', 0, 3, 'Vols unfinished business'),
+  'march.reconciliation': counter('contact_ledger_march', 0, 5, 'Yard sums reconciled'),
 });
 
 const STANDING_LABELS = Object.freeze(['New', 'Recognized', 'Established', 'Trusted']);

@@ -4,6 +4,8 @@
 // Run: node --test --test-timeout=120000 test/story-spine-route.test.mjs
 
 import assert from 'node:assert/strict';
+import { admitMarkedSampleYield } from './helpers/pr825-sample-admission.mjs';
+import { installBook4Owners, completeBook4Spine, completeBook4Barn } from './helpers/pr825-book4-physical.mjs';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -47,6 +49,15 @@ import { readLifeLedger } from '../src/story/endings/lifeLedger.js';
 
 const SEED = 4242;
 
+// The campaign fixture emits the observed impact for a live supplied Ceres pod;
+// it does not claim to exercise the player's physical throw.
+function hitSuppliedMawPod(h, mission, maw) {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  h.bus.emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating: 'solid' });
+}
+
 function cloneSystem(proto) {
   return Object.assign({}, proto);
 }
@@ -88,7 +99,7 @@ function makeHarness() {
     voice: { say: () => true },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
-      const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
+      const entity = { id, alive: true, occupantGeneration: id, vel: { x: 0, z: 0 }, ...spec, data: structuredClone(spec.data || {}) };
       state.entities.set(id, entity);
       state.entityList = state.entityList || [];
       state.entityList.push(entity);
@@ -116,6 +127,7 @@ function makeHarness() {
   const registry = { get: (name) => systems[name] || null };
   const ctx = { state, bus, helpers, registry };
   missions.init(ctx);
+  installBook4Owners({ state, bus, helpers, registry, systems });
   story.init(ctx);
   heat.init(ctx);
   aftermath.init(ctx);
@@ -422,7 +434,7 @@ function playBookBeat3(h) {
     .find((e) => e && e.data && e.data.furnaceMaw === true);
   assert.ok(mawBody, 'the maw materializes as a furnace-marked body');
   for (let i = 0; i < (maw.params.mawStunsNeeded || 3); i++) {
-    h.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+    hitSuppliedMawPod(h, maw, mawBody);
   }
   completeSpineSetPiece(h, maw);
   assert.equal(maw.status, 'completed', 'three slag stuns and the maw tows off the lane');
@@ -446,7 +458,7 @@ test('Cold Start ignores freight and a kill, then remembers the sample and R-07'
   assert.equal(h.state.story.beatIndex, 0, 'a sale or a kill is not the Cold Start sample');
   assert.equal(barLine(h.state, 'contact_maera_vols'), 'R-07 has your hull. The engines stayed warm.');
 
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   assert.equal(h.state.story.beatIndex, 0);
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
@@ -458,7 +470,7 @@ test('Cold Start ignores freight and a kill, then remembers the sample and R-07'
 
 test('a missed job stays beat 1, the book re-posts, and both contacts remember the furnace', () => {
   const h = makeHarness();
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 
@@ -496,13 +508,13 @@ test('a missed job stays beat 1, the book re-posts, and both contacts remember t
   assert.equal(solved.stepId, 'infested');
   assert.equal(readSpine(h.state).situation, null);
   assert.equal(readSpine(h.state).closed.at(-1).askId, ask.askId);
-  assert.equal(barLine(h.state, 'contact_maera_vols'), 'You fed the hauler to the furnace.');
-  assert.equal(barLine(h.state, 'contact_halev_doss'), 'Filed: a miss, then the furnace.');
+  assert.equal(barLine(h.state, 'contact_maera_vols'), 'Four mites cleared. All three ore pods fed to CR-FEED.');
+  assert.equal(barLine(h.state, 'contact_halev_doss'), 'Filed after a miss: all three pods fed to CR-FEED.');
 });
 
-test('the played road survives save and Continue and is cited at the ending', () => {
+test('the played road survives save and Continue and is cited at the ending', async () => {
   const h = makeHarness();
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   playBookBeat1(h);
   assert.equal(h.state.story.beatIndex, 2, 'the book list closes Honest Work');
@@ -523,7 +535,7 @@ test('the played road survives save and Continue and is cited at the ending', ()
   // W-BOOKS-3-4: the intro settles the door; the door's own operation closes the book.
   assert.equal(h.state.story.beatIndex, 4, 'the door operation still owes');
   const doorOp = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b4:operation');
-  completePhysicalMission(h, doorOp);
+  await completeBook4Spine(h, doorOp);
   assert.equal(h.state.story.beatIndex, 5);
   assert.deepEqual(readSpine(h.state).refused.slice().sort(), ['free', 'patrol']);
 
@@ -571,13 +583,14 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.equal(readSpine(continued.state).solved['6'].stepId, 'asset_deploy');
   assert.equal(continued.state.story.flags.deep_reach_variant, 'ashfall_siege');
   assert.equal(barLine(continued.state, 'contact_maera_vols'), 'You finished the siege. I watched it leave.');
-  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the furnace. The scale still lies.');
+  // The taken door is the later fact — it files ahead of the persistent furnace row.
+  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the grain door. Patrol and free refused.');
 
   const facts = readLifeLedger(continued.state);
   assert.match(facts.spineRoad.cite, /the grain door taken/);
   assert.match(facts.spineRoad.cite, /2 doors refused/);
   assert.match(facts.spineRoad.cite, /the variance sample docked/);
-  assert.match(facts.spineRoad.cite, /the hauler fed to the furnace/);
+  assert.match(facts.spineRoad.cite, /all three ore pods fed to CR-FEED/);
   assert.match(facts.spineRoad.cite, /the register answered/);
   assert.match(facts.spineRoad.cite, /the yard feud settled/);
   assert.match(facts.spineRoad.cite, /the cargo spine held/);

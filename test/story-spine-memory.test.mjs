@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { freshMorrowMemory } from '../src/data/morrow.js';
+import { prepareFurnaceSettlement, retireFurnaceWorksite } from '../src/missions/furnaceWorksiteRuntime.js';
+import { furnaceSettlementFromMission } from '../src/story/campaign47a/campaignReceipts.js';
 import {
   BEAT_STATUS,
   BRANCH_CHAIN,
@@ -147,8 +149,8 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   state.story.beatIndex = 2;
   const elroy = driveBook2(state, 8);
   assert.equal(elroy.stepsComplete, true);
-  // The register's custody/kill token is not one of the beat's two physical solutions.
-  assert.equal(readSpine(state).solved['2'].method, null);
+  // The live register's reel is one of the beat's two physical solutions now.
+  assert.equal(readSpine(state).solved['2'].method, 'custody_reel');
   assert.equal(readSpine(state).solved['2'].verb, 'hunt');
 
   state.story.beatIndex = 3;
@@ -175,7 +177,8 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   assert.equal(fakeIntro.reason, 'not_live_branch_intro');
   const intro = recordBeatStep(state, 'mission:accepted', liveBranchIntroPayload('traders'), 10);
   assert.equal(intro.ok, true);
-  assert.equal(intro.stepsComplete, true);
+  // The intro is only the door; the door's operation still has to run.
+  assert.equal(intro.stepsComplete, false);
   assert.equal(intro.branch, 'traders');
   assert.equal(readSpine(state).door, 'traders');
   assert.deepEqual(readSpine(state).refused.slice().sort(), ['free', 'patrol']);
@@ -223,6 +226,72 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   assert.equal(state.player.credits, before.credits);
   assert.equal(state.player.heat, before.heat);
   assert.equal(state.factions.faction_scn.rep, before.scnRep);
+});
+
+test('the actual Ceres settlement survives cleanup, Save/Continue, and duplicate completion', () => {
+  const mission = {
+    id: 'ceres-furnace-continue',
+    status: 'active',
+    storyTag: 'campaign47a:b1:infested',
+    destSectorId: 'sector_ceres_belt',
+    reward_cr: 480,
+    objectiveProgress: 4,
+    params: {
+      furnaceWorksiteVersion: 1,
+      furnaceFeedsNeeded: 3,
+      furnaceRewardBase: 480,
+      furnaceLots: Array.from({ length: 3 }, (_, slot) => ({
+        slot, received: slot < 2, lost: slot === 2,
+      })),
+    },
+  };
+  const lifecycle = { state: { entities: new Map(), missions: { active: [mission] } }, bus: { emit() {} } };
+  prepareFurnaceSettlement(lifecycle, mission);
+  assert.equal(mission.params.furnaceOutcome, 'partial_disposal');
+  assert.equal(mission.reward_cr, 320);
+  mission.status = 'completed';
+  retireFurnaceWorksite(lifecycle, mission);
+  assert.equal(mission.targetEntityIds.length, 0);
+  assert.equal(mission.params.furnaceLots.length, 3);
+  const settlement = furnaceSettlementFromMission(mission);
+  assert.deepEqual(settlement, {
+    furnaceMissionId: 'ceres-furnace-continue',
+    furnaceStoryTag: 'campaign47a:b1:infested',
+    furnaceFeeds: 2,
+    furnaceLosses: 1,
+    furnaceOutcome: 'partial_disposal',
+  });
+
+  const state = fresh(1);
+  recordBeatStep(state, 'mission:completed', {
+    missionId: 'sealed-alloy-accepted', storyTag: 'campaign47a:b1:alloy_run',
+  }, 10);
+  recordBeatStep(state, 'kesslerPod:weighed', { variance: true }, 20);
+  const payload = {
+    missionId: mission.id,
+    storyTag: mission.storyTag,
+    physicalVerb: 'burn',
+    ...settlement,
+  };
+  const completion = recordBeatStep(state, 'mission:completed', payload, 30);
+  assert.equal(completion.ok, true);
+  assert.equal(completion.receipt.furnaceFeeds, 2);
+  assert.equal(completion.receipt.furnaceLosses, 1);
+  assert.equal(spineGreeting('contact_maera_vols', state), 'Four mites cleared. Two ore pods fed to CR-FEED; one lost.');
+  const line = leftoverLedgerLine(state);
+  assert.match(line, /fed two ore pods to CR-FEED; one was lost/);
+
+  const saveBlob = serializeCampaign47aState(ensureCampaign47aState(state));
+  const continued = fresh(1);
+  applyCampaign47aSaveBlob(continued, saveBlob);
+  assert.equal(readSpine(continued).solved['1'].furnaceFeeds, 2);
+  assert.equal(spineGreeting('contact_maera_vols', continued), 'Four mites cleared. Two ore pods fed to CR-FEED; one lost.');
+  assert.equal(leftoverLedgerLine(continued), line);
+  const count = ensureCampaign47aState(continued).receipts.length;
+  const duplicate = recordBeatStep(continued, 'mission:completed', payload, 30);
+  assert.equal(duplicate.reason, 'already_complete');
+  assert.equal(ensureCampaign47aState(continued).receipts.length, count);
+  assert.equal(mission.reward_cr, 320, 'the readers and Continue never alter settlement payment');
 });
 
 test('a miss replaces the ask, a second miss does not restore it, and the cursor stays', () => {
@@ -390,7 +459,7 @@ test('a Deep Reach method is cited as the climax, not as the tower', () => {
     physicalVerb: 'knock_down', completionMethod: 'wrecking_ball',
   }, 9);
   const cite = spineRoadFrom(state).cite;
-  assert.match(cite, /the hauler fed to the furnace/);
+  assert.match(cite, /the refinery detail closed/);
   assert.match(cite, /the climax thrown/);
   assert.doesNotMatch(cite, /the tower thrown/);
   assert.doesNotMatch(cite, /the tower knocked/);
@@ -467,8 +536,8 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   recordBeatStep(missed, 'dock:docked', { stationId: 'station_helios' }, 10 + FAIL_RECOVERY_COOLDOWN_S);
   driveBook1(missed, 30);
   assert.equal(JSON.stringify(missed.morrow), morrowJson);
-  assert.equal(spineGreeting('contact_maera_vols', missed), 'You fed the hauler to the furnace.');
-  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, then the furnace.');
+  assert.equal(spineGreeting('contact_maera_vols', missed), 'The refinery detail closed.');
+  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, then the refinery detail closed; cargo result unknown.');
   assert.ok(words(spineGreeting('contact_maera_vols', missed)) <= 12);
   assert.ok(words(spineGreeting('contact_halev_doss', missed)) <= 12);
 
@@ -476,8 +545,9 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   recordBeatStep(missed, 'mission:accepted', liveBranchIntroPayload('traders'), 40);
   const maera = contact(missed, 'station_helios', 'contact_maera_vols');
   const halev = contact(missed, 'station_helios', 'contact_halev_doss');
-  assert.equal(maera.blurb, 'You fed the hauler to the furnace.');
-  assert.equal(halev.blurb, 'Filed: a miss, then the furnace.');
+  // The taken door is the later fact — it speaks ahead of the persistent furnace row.
+  assert.equal(maera.blurb, 'You took the grain door. I kept the others.');
+  assert.equal(halev.blurb, 'Filed: the grain door. Patrol and free refused.');
   assert.notEqual(maera.blurb, maeraAuthored);
   assert.notEqual(halev.blurb, DEPTH_PROGRAM_CONTACTS.find((row) => row.id === 'contact_halev_doss').blurb);
 
@@ -499,8 +569,9 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   assert.notEqual(spineGreeting('contact_maera_vols', pods), spineGreeting('contact_halev_doss', pods));
 
   missed.story.endgameChoice = 'E';
-  assert.equal(spineGreeting('contact_maera_vols', missed), 'You fed the furnace. I watched you file and leave.');
-  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, the furnace, then the disposition.');
+  // At the filed ending the taken door leads the furnace row it used to be shadowed by.
+  assert.equal(spineGreeting('contact_maera_vols', missed), 'You took the grain door. I watched you file and leave.');
+  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: the grain door, then the disposition.');
 
   // Compat: the retired demolition route still files through the legacy fill, so the
   // method the receipt carried is still the one contacts name.
@@ -642,6 +713,10 @@ test('a headline verb is not spoken as one of the two solutions', () => {
   }, 2);
   assert.equal(spineGreeting('contact_coldburn_rey', core), 'You brought the core in. I saw the hull.');
   assert.doesNotMatch(spineGreeting('contact_coldburn_rey', core), /line/);
+  const road = spineRoadFrom(core);
+  assert.ok(road);
+  assert.match(road.cite, /the Ceres yard took the core/);
+  assert.doesNotMatch(road.cite, /Hawser/);
 });
 
 test('the finale cites the retained road and does not change which ending is offered', () => {

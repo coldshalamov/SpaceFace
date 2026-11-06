@@ -15,10 +15,10 @@ import { FACTION_LABELS } from '../../../data/encounters.js';
 import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
 import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
-import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
@@ -33,7 +33,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { lastMoveCause, marketQuoteValue, presentMarketDrivers, reputationFromQuotes } from '../../marketDriverPresenter.js';
 import { latestTradeReceipt } from '../../sim/tradeTruth.js';
-import { TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
+import { clearTradeExpectation, TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
@@ -55,9 +55,23 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
-import { laneCommandSink, laneRpc } from '../../../core/simLaneCommands.js';
+import { laneCommandSink, laneRpc, nextLaneToken } from '../../../core/simLaneCommands.js';
+// DUST P5: the register's category glyphs (one distinct silhouette per catalogue category)
+// graft into the presentation layer's row HTML — the row's author stays marketPresentation.js.
+import { applyCommodityGlyph } from '../../icons/index.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+function marketIntentSessionToken() {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') return cryptoApi.randomUUID();
+  if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
+    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+  }
+  // Legacy runtime fallback; include independent entropy as well as the lane token's clock/seq.
+  return `${Math.random().toString(36).slice(2)}:${nextLaneToken('marketSession')}`;
+}
+const MARKET_INTENT_SESSION = marketIntentSessionToken();
 const STATION_NAME = new Map();
 const STATION_TYPE = new Map();
 for (const sec of SECTORS) {
@@ -72,6 +86,23 @@ for (const sec of SECTORS) {
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
 export { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
+
+// Reveal the selected commodity without scrolling the station's outer body or header.
+export function revealMarketRowInRail(rail, row) {
+  if (!rail || !row || typeof rail.getBoundingClientRect !== 'function'
+    || typeof row.getBoundingClientRect !== 'function') return;
+  const box = rail.getBoundingClientRect();
+  const selected = row.getBoundingClientRect();
+  const scale = rail.offsetHeight > 0 ? box.height / rail.offsetHeight : 1;
+  if (!(scale > 0) || !(rail.clientHeight > 0)) return;
+  const top = box.top + (rail.clientTop || 0) * scale;
+  const bottom = top + rail.clientHeight * scale;
+  const delta = selected.top < top ? selected.top - top
+    : selected.bottom > bottom ? selected.bottom - bottom : 0;
+  if (!delta) return;
+  const max = Math.max(0, rail.scrollHeight - rail.clientHeight);
+  rail.scrollTop = Math.max(0, Math.min(max, rail.scrollTop + delta / scale));
+}
 /**
  * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
  * total when the stashed render quote covers exactly the confirmed quantity, else
@@ -870,8 +901,13 @@ export function createMarketScreen(ctx) {
   const routesEl = el.querySelector('.sx-mkt__routes');
   const decisionEl = el.querySelector('.sx-mkt__decision');
   const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
-  quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
+  // The market frame always parents the quote; a detached frame keeps the papers desk unmounted
+  // rather than failing the whole Market (same guard as the tape anchor below).
+  if (quoteEl && quoteEl.parentNode) quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
   let tradeBusy = false;
+  let tradeCooldownUntil = 0;
+  let tradeCooldownTimer = null;
+  let pendingTrade = null;
   let visible = true;
   let disposed = false;
   let historyRefreshTimer = null;
@@ -892,6 +928,296 @@ export function createMarketScreen(ctx) {
   function cancelHistoryRefresh(timer) {
     if (timer != null && typeof clearTimeout === 'function') clearTimeout(timer);
     if (historyRefreshTimer === timer) historyRefreshTimer = null;
+  }
+
+  function setTradeExpectation(state, pending) {
+    if (!state || !pending) return;
+    if (!state.ui) state.ui = {};
+    const current = state.ui[TRADE_EXPECTATION_KEY];
+    if (current && current.intentId === pending.intentId) {
+      current.status = pending.recoveryAttempt ? 'recovering' : pending.status;
+      current.transport = pending.transport;
+      return;
+    }
+    const lastReceipt = latestTradeReceipt(state);
+    state.ui[TRADE_EXPECTATION_KEY] = {
+      intentId: pending.intentId,
+      commodityId: pending.commodityId,
+      side: pending.side,
+      qty: pending.qty,
+      total: pending.expectedTotal,
+      stationId: pending.stationId,
+      afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
+      atSimTime: Number(state.simTime) || 0,
+      status: pending.recoveryAttempt ? 'recovering' : pending.status,
+      transport: pending.transport,
+    };
+  }
+
+  function newTradeIntentId(state) {
+    const committed = state && state.economy && state.economy.committedIntents;
+    for (let attempt = 0; attempt < 32; attempt += 1) {
+      const candidate = `market:${MARKET_INTENT_SESSION}:${nextLaneToken('intent')}:${Math.random().toString(36).slice(2)}`;
+      if (!committed || !Object.prototype.hasOwnProperty.call(committed, candidate)) return candidate;
+    }
+    return null;
+  }
+
+  function clearPendingTradeTimer(pending = pendingTrade) {
+    if (pending && pending.ackTimer != null) {
+      clearTimeout(pending.ackTimer);
+      pending.ackTimer = null;
+    }
+  }
+
+  function beginTradeCooldown() {
+    tradeCooldownUntil = Date.now() + 80;
+    if (tradeCooldownTimer != null) clearTimeout(tradeCooldownTimer);
+    tradeBusy = true;
+    const until = tradeCooldownUntil;
+    tradeCooldownTimer = setTimeout(() => {
+      if (tradeCooldownUntil !== until) return;
+      tradeCooldownTimer = null;
+      if (pendingTrade) {
+        tradeBusy = pendingTrade.status === 'pending';
+        return;
+      }
+      tradeBusy = false;
+      if (visible && !disposed) renderAll(ctx.state || {});
+    }, Math.max(0, until - Date.now()));
+  }
+
+  function syncTradeBusyAfterIntent() {
+    tradeBusy = !!(pendingTrade && pendingTrade.status === 'pending')
+      || (!pendingTrade && Date.now() < tradeCooldownUntil);
+  }
+
+  function finishTradeIntent(intentId) {
+    if (!pendingTrade || pendingTrade.intentId !== intentId) return false;
+    const finished = pendingTrade;
+    clearPendingTradeTimer(finished);
+    clearTradeExpectation(ctx.state || {}, { intentId });
+    pendingTrade = null;
+    // A terminal result clears pending intent state but never shortens the 80 ms click guard.
+    // For slow replies the guard has already elapsed; this immediately releases the control.
+    syncTradeBusyAfterIntent();
+    if (visible && !disposed) renderAll(ctx.state || {});
+    return true;
+  }
+
+  function markTradeUnknown(intentId) {
+    if (!pendingTrade || pendingTrade.intentId !== intentId) return false;
+    clearPendingTradeTimer(pendingTrade);
+    pendingTrade.status = 'unknown';
+    selectedId = pendingTrade.commodityId;
+    mode = pendingTrade.side;
+    qty = pendingTrade.qty;
+    marketFilter = mode === 'sell' ? 'hold' : 'all';
+    marketQuery = '';
+    listRenderSignature = '';
+    tradeBusy = false;
+    const state = ctx.state || {};
+    const expectation = state.ui && state.ui[TRADE_EXPECTATION_KEY];
+    if (expectation && expectation.intentId === intentId) expectation.status = 'unknown';
+    if (visible && !disposed) renderAll(state);
+    return true;
+  }
+
+  function retirePendingTrade() {
+    if (!pendingTrade) return;
+    const oldId = pendingTrade.intentId;
+    clearPendingTradeTimer(pendingTrade);
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('station:marketTradeIntentRetired', { intentId: oldId });
+    }
+    clearTradeExpectation(ctx.state || {}, { intentId: oldId });
+    pendingTrade = null;
+    tradeBusy = false;
+  }
+
+  function hydratePendingTrade(state) {
+    const expectation = state && state.ui && state.ui[TRADE_EXPECTATION_KEY];
+    if (!expectation || typeof expectation.intentId !== 'string' || !expectation.intentId) {
+      pendingTrade = null;
+      tradeBusy = false;
+      return;
+    }
+    if (pendingTrade && pendingTrade.intentId === expectation.intentId) return;
+    pendingTrade = {
+      intentId: expectation.intentId,
+      commodityId: expectation.commodityId,
+      side: expectation.side,
+      qty: expectation.qty,
+      expectedTotal: expectation.total,
+      stationId: expectation.stationId,
+      transport: expectation.transport === 'worker' ? 'worker' : 'main',
+      // A new screen instance cannot inherit the old RPC promise. Re-enter as UNKNOWN
+      // and let the same ID's idempotent transport recover its committed result.
+      status: 'unknown',
+      payload: {
+        intentId: expectation.intentId,
+        commodityId: expectation.commodityId,
+        side: expectation.side,
+        qty: expectation.qty,
+        expectedTotal: expectation.total,
+        stationId: expectation.stationId,
+        sourceStationId: expectation.stationId,
+      },
+      ackTimer: null,
+    };
+    selectedId = pendingTrade.commodityId;
+    mode = pendingTrade.side;
+    qty = pendingTrade.qty;
+    tradeBusy = pendingTrade.status === 'pending';
+  }
+
+  function authoritativeTradeReply(ack) {
+    if (!ack || ack.ok !== true) return null;
+    let result = ack.result;
+    for (let depth = 0; depth < 4 && result && typeof result === 'object'; depth++) {
+      if (result.result && typeof result.result === 'object') {
+        result = result.result;
+        continue;
+      }
+      if (typeof result.ok === 'boolean') return result;
+      return null;
+    }
+    return null;
+  }
+
+  function committedTradeResult(state, pending) {
+    const committed = state && state.economy && state.economy.committedIntents;
+    const record = committed && committed[pending.intentId];
+    const receipt = record && record.receipt;
+    if (!receipt || receipt.stationId !== pending.stationId
+      || receipt.good !== pending.commodityId || receipt.side !== pending.side
+      || receipt.requestedQty !== pending.qty) return null;
+    return record.result && record.result.ok === true ? record.result : null;
+  }
+
+  function finishFromTradeReply(pending, result) {
+    if (!pendingTrade || pendingTrade.intentId !== pending.intentId) return;
+    if (result && result.ok === true) {
+      // This is a presentation-only bridge for an authoritative RPC/journal result.
+      // Never impersonate economy:tradeCompleted: the owner event also drives mission
+      // history and other simulation listeners.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('station:marketTradeReceiptRecovered', {
+          presentationOnly: 'market-rpc-recovery',
+          intentId: pending.intentId,
+          stationId: pending.stationId,
+          commodityId: pending.commodityId,
+          side: pending.side,
+          qty: result.qty,
+          total: result.total,
+          shortagePremium: result.shortagePremium === true,
+        });
+      }
+    }
+    if (result && result.ok === false && result.reason === 'price_changed') {
+      const retained = marketPriceChangedQuote({
+        ...result,
+        stationId: pending.stationId,
+        commodityId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+      }, {
+        stationId: pending.stationId,
+        selectedId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+      });
+      if (retained) authoritativeTradeQuote = retained;
+    }
+    finishTradeIntent(pending.intentId);
+  }
+
+  function submitPendingTrade(pending) {
+    const wasUnknown = pending.status === 'unknown';
+    beginTradeCooldown();
+    if (wasUnknown && pending.transport === 'main') {
+      const prior = committedTradeResult(ctx.state || {}, pending);
+      if (prior) {
+        finishFromTradeReply(pending, prior);
+        return;
+      }
+    }
+    pending.status = 'pending';
+    pending.recoveryAttempt = wasUnknown;
+    tradeBusy = true;
+    setTradeExpectation(ctx.state || {}, pending);
+    pending.ackTimer = setTimeout(() => markTradeUnknown(pending.intentId), 5000);
+    if (pending.transport === 'worker') {
+      // A disconnected worker must remain an unknown same-ID intent. Never fall back
+      // to ui:buy/ui:sell, which would be a second execution transport.
+      if (!laneCommandSink()) {
+        markTradeUnknown(pending.intentId);
+        return;
+      }
+      let rpc;
+      try {
+        rpc = laneRpc('economyTrade', {
+          commodityId: pending.commodityId,
+          side: pending.side,
+          qty: pending.qty,
+          expectedTotal: pending.expectedTotal,
+          sourceStationId: pending.stationId,
+          intentId: pending.intentId,
+        });
+      } catch (_) {
+        markTradeUnknown(pending.intentId);
+        return;
+      }
+      Promise.resolve(rpc).then((ack) => {
+        if (!pendingTrade || pendingTrade.intentId !== pending.intentId) return;
+        const result = authoritativeTradeReply(ack);
+        if (!result) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        if (result.ok === false && ['intent_pending', 'trade_pending'].includes(result.reason)) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        // A contextual no-dock/other-station refusal cannot resolve the original result:
+        // handleTrade/execute reject that retry before consulting the committed-ID journal.
+        if (result.ok === false && pending.recoveryAttempt
+          && ['not_docked', 'station_changed'].includes(result.reason)) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        // In the normal worker flow, the authoritative terminal event is replayed before its
+        // RPC ACK and owns the player-facing receipt. An ACK-only success is used to recover
+        // an unknown/replayed intent, never to race that ordinary receipt path.
+        if (result.ok === true && result.duplicate !== true && !pending.recoveryAttempt
+          && pending.status === 'pending') return;
+        finishFromTradeReply(pending, result);
+      }, () => markTradeUnknown(pending.intentId));
+      return;
+    }
+    if (!ctx.bus || typeof ctx.bus.emit !== 'function') {
+      markTradeUnknown(pending.intentId);
+      return;
+    }
+    try {
+      ctx.bus.emit(pending.side === 'buy' ? 'ui:buy' : 'ui:sell', {
+        commodityId: pending.commodityId,
+        qty: pending.qty,
+        expectedTotal: pending.expectedTotal,
+        sourceStationId: pending.stationId,
+        intentId: pending.intentId,
+      });
+      // The main lane is synchronous. If its bus swallowed a throw or no terminal
+      // event arrived, inspect the existing durable journal before exposing a same-ID
+      // retry; never mint a fresh ID for an unknown outcome.
+      if (pendingTrade && pendingTrade.intentId === pending.intentId) {
+        const prior = committedTradeResult(ctx.state || {}, pending);
+        if (prior) finishFromTradeReply(pending, prior);
+        else markTradeUnknown(pending.intentId);
+      }
+    } catch (_) {
+      markTradeUnknown(pending.intentId);
+    }
   }
 
   let selectedId = null;
@@ -1141,6 +1467,7 @@ export function createMarketScreen(ctx) {
   // arc must describe no sale of it, including after Fewer or More. NXB-025:
   // the pin binds the sealed count — units free of the reservation still dial.
   function pinSealedSellQuantity(state, id = selectedId) {
+    if (pendingTrade) return;
     if (mode === 'sell' && id && reservedCargoQuantity(state, id) > 0) {
       qty = Math.min(qty, sellableCargoQuantity(state, id));
     }
@@ -1151,6 +1478,7 @@ export function createMarketScreen(ctx) {
   }
 
   function openTradeMode(nextMode, state, options = {}) {
+    if (pendingTrade) return;
     authoritativeTradeQuote = null;
     mode = nextMode === 'sell' ? 'sell' : 'buy';
     // Sell is a cargo operation, so its selector always begins with things actually in the hold.
@@ -1238,13 +1566,16 @@ export function createMarketScreen(ctx) {
     const demand = demandLevel(r.entry);
     const drivers = presentMarketDrivers({ state, stationId: sid, commodity: r.def, entry: r.entry });
     const held = heldQty(state, r.id);
-    return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
+    // DUST P5: swap the presentation layer's generic per-category pictogram for the DUST
+    // glyph set (distinct silhouette per category + a rare-grade keel bar). Class and
+    // data-commodity-glyph are preserved, so the row's CSS contract is unchanged.
+    return applyCommodityGlyph(marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
       ...marketStockStatus(state, sid, r.id),
       profitPct: heldProfitPct(state, r.id, sell, r.def),
       driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
       order,
-      presentation: commodityPresentationFor(r.def) });
+      presentation: commodityPresentationFor(r.def) }), r.def);
   }
 
   function emptyFilterLabel() {
@@ -1283,7 +1614,7 @@ export function createMarketScreen(ctx) {
   // Selection follows focus and the pointer alike: restyle the two rows whose state moved, then
   // redraw the two panels that read `selectedId`.
   function selectCommodity(id, { focus = false } = {}) {
-    if (!id || !tbodyEl) return;
+    if (!id || !tbodyEl || pendingTrade) return;
     const changed = id !== selectedId;
     selectedId = id;
     if (changed) authoritativeTradeQuote = null;
@@ -1447,6 +1778,8 @@ export function createMarketScreen(ctx) {
         }
       }
     }
+    // The extent cursor and overflow fold follow the inner rail that actually scrolls the rows.
+    syncScrollExtent(listEl.querySelector('.sx-mkt-browser__rail'));
   }
 
   function renderStage(state) {
@@ -1466,8 +1799,8 @@ export function createMarketScreen(ctx) {
         fills: lotGone
           ? 'The confirmation still names the lot you had. Choose a listed lot before anything else is traded.'
           : (mode === 'sell'
-            ? 'Buy cargo here or bring material back from mining before opening Sell.'
-            : 'This station has no tradable stock. Another berth may still quote.'),
+            ? 'An empty hold is an opinion the market already priced. Buy cargo here, or come back with something worth weighing.'
+            : 'Nothing here trades — no stock, no buyers, no board. Another berth still quotes.'),
         verb: lotGone
           ? {
             label: 'Show ' + next.def.name,
@@ -1809,8 +2142,10 @@ export function createMarketScreen(ctx) {
       num.className = 'orr-mkt-totalnum';
       el.appendChild(num);
     }
-    rollTo(num, m[1]);
-    // The rolling columns spell every digit for layout; the strong keeps the true value as read.
+    // A live trade total must match the executable quote while Buy/Sell are enabled. Rolling
+    // these digits through intermediate amounts made the visible price disagree with the action.
+    num.classList.remove('orr-counter');
+    num.textContent = m[1];
     el.setAttribute('aria-label', `${m[1]}${m[2] || ''}`.trim());
     const sufText = m[2] || '';
     const suf = has('orr-mkt-totalsuf');
@@ -1853,6 +2188,11 @@ export function createMarketScreen(ctx) {
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
+    if (pendingTrade) {
+      selectedId = pendingTrade.commodityId;
+      mode = pendingTrade.side;
+      qty = pendingTrade.qty;
+    }
     if (authoritativeTradeQuote
       && (authoritativeTradeQuote.commodityId !== selectedId
         || authoritativeTradeQuote.side !== mode
@@ -1882,7 +2222,7 @@ export function createMarketScreen(ctx) {
     const free = holdFree(state);
     const maxQty = tradeQuantityLimit(state, r);
     pinSealedSellQuantity(state, r.id);
-    if (!receiptOnly) qty = marketQuantityAfterRefresh(qty, maxQty);
+    if (!receiptOnly && !pendingTrade) qty = marketQuantityAfterRefresh(qty, maxQty);
     // This one selected-quantity quote drives both the receipt the pilot sees and the presenter.
     // execute() reuses the same economy integral, including the bulk price impact, on confirm.
     const quote = selectedTradeQuote(state, r);
@@ -1891,7 +2231,16 @@ export function createMarketScreen(ctx) {
     const total = quoteReady ? quote.total : unit * qty;
     const quoteUnit = quoteReady ? quote.unitAvg : unit;
     const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
-    const canAct = quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const pendingMatchesSelection = !!(pendingTrade
+      && pendingTrade.commodityId === r.id
+      && pendingTrade.side === mode
+      && pendingTrade.qty === qty
+      && pendingTrade.stationId === stationId(state));
+    const retryPending = pendingMatchesSelection && pendingTrade.status === 'unknown';
+    const pendingAtOriginalStation = !pendingTrade || pendingTrade.stationId === stationId(state);
+    const canAct = pendingTrade
+      ? retryPending
+      : !tradeBusy && quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
     const intelRows = selectedMarketIntel(state, r, quote);
     const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
       rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
@@ -1907,7 +2256,11 @@ export function createMarketScreen(ctx) {
     const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
     const sealedUnits = mode === 'sell' ? reservedCargoQuantity(state, r.id) : 0;
     const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
-    const note = sealedHold ? 'Sealed contract cargo cannot be sold'
+    const note = pendingTrade && pendingTrade.status === 'pending' ? 'Trade sent. Waiting for the station to confirm what settled.'
+      : retryPending ? 'The result is unknown. Retry the original confirmed order with the same terms and ID. If it already committed, the station returns its saved result without another charge.'
+      : pendingTrade && !pendingAtOriginalStation ? 'The original order is still unresolved. Return to the original station to retry these same confirmed terms; do not place a fresh order.'
+      : pendingTrade ? 'A trade result is still unknown. Its original lot and quantity stay selected so you can safely retry the same order.'
+      : sealedHold ? 'Sealed contract cargo cannot be sold'
       : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
@@ -1915,7 +2268,9 @@ export function createMarketScreen(ctx) {
       : !quoteReady ? (quote && quote.partial ? 'The board cannot fill this quantity. Lower it before confirming.' : 'Live quote unavailable.')
       : mode === 'buy' && quote && quote.total > cr ? 'Not enough credits for this quantity.'
       : '';
-    const goLabel = (side) => `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
+    const goLabel = (side) => retryPending ? 'Retry order'
+      : pendingTrade ? (pendingTrade.status === 'pending' ? 'Waiting for result' : 'Return to original station')
+        : `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       // A sealed lot has no quantity to type: put the field back to zero.
@@ -1947,6 +2302,13 @@ export function createMarketScreen(ctx) {
     const goBtn = tradeEl.querySelector('[data-go]');
     if (goBtn && goBtn.ownerDocument) {
       dressLampKey(goBtn);
+      // marketTradeHtml renders the ordinary Buy/Sell verb. Keep the Lamp Key's
+      // visible and accessible label in sync with the recovery action on full renders too.
+      const goWord = goBtn.querySelector('.orr-lampkey__word');
+      const actionLabel = goLabel(mode);
+      if (goWord) goWord.textContent = actionLabel;
+      else goBtn.textContent = actionLabel;
+      goBtn.setAttribute('aria-label', actionLabel);
       if (mode !== lastVerbMode) {
         const word = goBtn.querySelector('.orr-lampkey__word');
         if (word) word.classList.add('orr-mkt-morph');
@@ -1988,7 +2350,7 @@ export function createMarketScreen(ctx) {
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
             `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span>` +
-            `<button type="button" class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">Review load</button></span>` +
+            `<button type="button" ${stationControlAttrs('review-load')} class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">${stationControlLabel('review-load')}</button></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
@@ -2016,23 +2378,33 @@ export function createMarketScreen(ctx) {
   // This keeps the strict economy expectedTotal guard intact while preventing a
   // retry loop that resends the same stale terms.
   const onTradeFailed = (failure = {}) => {
-    if (disposed || !visible || failure.reason !== 'price_changed') return;
-    const retained = marketPriceChangedQuote(failure, {
-      stationId: stationId(ctx.state || {}),
-      selectedId,
-      side: mode,
-      qty,
-    });
-    if (!retained) return;
-    authoritativeTradeQuote = retained;
-    // The normal post-click deferred refresh handles synchronous main-lane
-    // refusals. A worker reply may arrive after that timer, so repaint once the
-    // busy guard has settled; this also updates lastQuotedTerms from the retained
-    // authority value through selectedTradeQuote above.
-    if (!tradeBusy) renderAll(ctx.state || {});
+    if (disposed || (!pendingTrade && failure.intentId != null)
+      || (pendingTrade && failure.intentId !== pendingTrade.intentId)) return;
+    if (pendingTrade && ['intent_pending', 'trade_pending'].includes(failure.reason)) {
+      markTradeUnknown(failure.intentId);
+      return;
+    }
+    if (pendingTrade && pendingTrade.recoveryAttempt
+      && ['not_docked', 'station_changed'].includes(failure.reason)) {
+      markTradeUnknown(failure.intentId);
+      return;
+    }
+    if (failure.reason === 'price_changed' && (!pendingTrade || pendingTrade.intentId === failure.intentId)) {
+      const retained = marketPriceChangedQuote(failure, {
+        stationId: pendingTrade ? pendingTrade.stationId : stationId(ctx.state || {}),
+        selectedId: pendingTrade ? pendingTrade.commodityId : selectedId,
+        side: pendingTrade ? pendingTrade.side : mode,
+        qty: pendingTrade ? pendingTrade.qty : qty,
+      });
+      if (retained) authoritativeTradeQuote = retained;
+    }
+    if (pendingTrade) finishTradeIntent(failure.intentId);
+    else if (visible && !disposed) renderAll(ctx.state || {});
   };
-  const onTradeCompleted = () => {
+  const onTradeCompleted = (receipt = {}) => {
+    if (disposed || !pendingTrade || receipt.intentId !== pendingTrade.intentId) return;
     authoritativeTradeQuote = null;
+    finishTradeIntent(receipt.intentId);
   };
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     ctx.bus.on('economy:tradeFailed', onTradeFailed);
@@ -2042,6 +2414,9 @@ export function createMarketScreen(ctx) {
   const historyResetOffs = [];
   const onHistoryWorldReset = () => {
     historyBackfill.reset();
+    authoritativeTradeQuote = null;
+    retirePendingTrade();
+    if (visible && !disposed) renderAll(ctx.state || {});
   };
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     for (const event of historyResetEvents) {
@@ -2054,12 +2429,12 @@ export function createMarketScreen(ctx) {
   function cancelDeferred() {
     for (const timer of deferred) clearTimeout(timer);
     deferred.clear();
-    tradeBusy = false;
+    tradeBusy = !!(pendingTrade && pendingTrade.status === 'pending')
+      || (!pendingTrade && Date.now() < tradeCooldownUntil);
   }
-  function deferRefresh(delay, settleTrade = false, restoreHand = false) {
+  function deferRefresh(delay, restoreHand = false) {
     const timer = setTimeout(() => {
       deferred.delete(timer);
-      if (settleTrade) tradeBusy = false;
       if (visible && !disposed) {
         renderAll(ctx.state || {});
         if (restoreHand) placeTradeHand();
@@ -2164,7 +2539,7 @@ export function createMarketScreen(ctx) {
     }
     const review = ev.target.closest('[data-review-load]');
     if (review) {
-      if (tradeBusy) return;
+      if (tradeBusy || pendingTrade) return;
       const state = ctx.state || {};
       const id = review.getAttribute('data-review-load');
       const plan = quotedRoutes(state, stationId(state)).find((row) => row.cmdtyId === id);
@@ -2189,6 +2564,19 @@ export function createMarketScreen(ctx) {
     const go = ev.target.closest('[data-go]');
     if (go) {
       if (go.disabled) return;
+      if (pendingTrade) {
+        const sameTerms = pendingTrade.commodityId === selectedId
+          && pendingTrade.side === mode
+          && pendingTrade.qty === Math.max(0, Math.floor(Number(qty) || 0))
+          && pendingTrade.stationId === stationId(ctx.state || {});
+        if (pendingTrade.status !== 'unknown' || !sameTerms) return;
+        // Reuse the exact intent ID and payload. The worker's existing committed-intent
+        // journal returns the old result for duplicates without another economy mutation.
+        submitPendingTrade(pendingTrade);
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        renderAll(ctx.state || {});
+        return;
+      }
       if (tradeBusy) return;
       let tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
@@ -2217,42 +2605,45 @@ export function createMarketScreen(ctx) {
         placeTradeHand();
         return;
       }
+      const intentId = newTradeIntentId(tradeState);
+      if (!intentId) {
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Unable to prepare a unique trade receipt. Nothing was sent; try confirming again.', kind: 'error', ttl: 4 });
+        return;
+      }
       tradeBusy = true;
       go.disabled = true;
-      if (ctx.bus) {
-        // INF-084: bind the trade to the stated terms so a stale quote cannot settle
-        // silently at a worse price. tradeBusy already stops a repeated confirmation
-        // from emitting twice in-screen.
-        // SF-241: stamp the confirmed terms into the UI-owned scratch tree first, so the
-        // TRADE CLEARED receipt can compare what settled against what was confirmed — a
-        // partial fill says "6 of the 10 confirmed", never silently reprints a new total.
-        if (tradeState.ui) {
-          const lastReceipt = latestTradeReceipt(tradeState);
-          tradeState.ui[TRADE_EXPECTATION_KEY] = {
-            commodityId: decision.payload.commodityId,
-            side: mode,
-            qty: decision.payload.qty,
-            total: decision.payload.expectedTotal != null ? decision.payload.expectedTotal : null,
-            stationId: stationId(tradeState) || null,
-            afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
-            atSimTime: Number(tradeState.simTime) || 0,
-          };
-        }
-        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', decision.payload);
-        // The trade chain is synchronous: a still-set stamp means the emit produced neither a
-        // settle nor a refusal (the bus swallows a listener's throw). simTime is frozen while
-        // docked so the TTL cannot age it out — drop it here or the next same-lot settle would
-        // borrow a confirmation it never made.
-        if (tradeState.ui && tradeState.ui[TRADE_EXPECTATION_KEY]) {
-          tradeState.ui[TRADE_EXPECTATION_KEY] = null;
-        }
-        ctx.bus.emit('audio:cue', { id: 'ui_click' });
-      }
-      deferRefresh(80, true, true);
+      const pending = {
+        intentId,
+        commodityId: decision.payload.commodityId,
+        side: mode,
+        qty: decision.payload.qty,
+        expectedTotal: decision.payload.expectedTotal,
+        stationId: stationId(tradeState) || null,
+        transport: laneCommandSink() ? 'worker' : 'main',
+        status: 'pending',
+        payload: null,
+        ackTimer: null,
+      };
+      pending.payload = {
+        intentId,
+        commodityId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+        expectedTotal: pending.expectedTotal,
+        sourceStationId: pending.stationId,
+      };
+      pendingTrade = pending;
+      // One transport only: in worker mode the economy RPC returns an authoritative result;
+      // in main mode the existing ui:buy/ui:sell bus path remains synchronous.
+      submitPendingTrade(pending);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      renderAll(tradeState);
+      deferRefresh(80, true);
       return;
     }
     const seg = ev.target.closest('[data-mode]');
     if (seg) {
+      if (pendingTrade) return;
       const nextMode = seg.getAttribute('data-mode');
       if (nextMode === mode) return;
       openTradeMode(nextMode, ctx.state || {}, { cargoOnly: nextMode === 'sell' });
@@ -2265,6 +2656,7 @@ export function createMarketScreen(ctx) {
     }
     const q = ev.target.closest('[data-q]');
     if (q) {
+      if (pendingTrade) return;
       const v = q.getAttribute('data-q');
       const state = ctx.state || {};
       const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
@@ -2374,6 +2766,7 @@ export function createMarketScreen(ctx) {
   // arrow keys, which are the keyboard channel for the same control.
   let scrub = null;
   function scrubLimit() {
+    if (pendingTrade) return 0;
     const state = ctx.state || {};
     const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
     return r ? tradeQuantityLimit(state, { id: selectedId, entry: r.entry, def: r.def }) : 0;
@@ -2470,6 +2863,7 @@ export function createMarketScreen(ctx) {
   consoleEl.addEventListener('pointerup', endScrub);
   consoleEl.addEventListener('pointercancel', endScrub);
   consoleEl.addEventListener('keydown', (ev) => {
+    if (pendingTrade) return;
     if (!ev.target.classList || !ev.target.classList.contains('sx-qty__in')) return;
     if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
     ev.preventDefault();
@@ -2481,6 +2875,7 @@ export function createMarketScreen(ctx) {
   });
 
   consoleEl.addEventListener('input', (ev) => {
+    if (pendingTrade) return;
     if (!ev.target.classList.contains('sx-qty__in')) return;
     const n = parseInt(ev.target.value, 10);
     qty = Number.isFinite(n) ? Math.max(0, n) : 0;
@@ -2496,6 +2891,7 @@ export function createMarketScreen(ctx) {
       authoritativeTradeQuote = null;
       const open = c || ctx;
       const st = open.state || {};
+      hydratePendingTrade(st);
       // Screen instances are cached by the station app. Every show is a new dock session,
       // including a same-station reopen, so the prior generation cannot satisfy this one.
       historyBackfill.reset(stationId(st), historyContextKey(st));
@@ -2525,14 +2921,20 @@ export function createMarketScreen(ctx) {
           qty = resume.qty;
         }
       }
+      if (pendingTrade) {
+        selectedId = pendingTrade.commodityId;
+        mode = pendingTrade.side;
+        qty = pendingTrade.qty;
+        marketFilter = mode === 'sell' ? 'hold' : 'all';
+        marketQuery = '';
+        listRenderSignature = '';
+      }
       pinSealedSellQuantity(st, selectedId);
       renderAll(st);
       const active = tbodyEl && tbodyEl.querySelector('.is-active');
       // A phone's market shares the berth's page scroll. Opening the tab must preserve the
       // station header; only the desktop's independent commodity rail scrolls to its selection.
-      if (!isPhoneLayout() && active && typeof active.scrollIntoView === 'function') {
-        try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {}
-      }
+      if (!isPhoneLayout() && active) revealMarketRowInRail(listEl.querySelector('.sx-mkt-browser__rail'), active);
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
     onHide() {
@@ -2546,7 +2948,12 @@ export function createMarketScreen(ctx) {
       disposed = true;
       visible = false;
       historyBackfill.reset();
+      if (pendingTrade && pendingTrade.status === 'pending') markTradeUnknown(pendingTrade.intentId);
       cancelDeferred();
+      if (tradeCooldownTimer != null) clearTimeout(tradeCooldownTimer);
+      tradeCooldownTimer = null;
+      tradeCooldownUntil = 0;
+      tradeBusy = false;
       for (const timer of arriveTimers.values()) clearTimeout(timer);
       arriveTimers.clear();
       if (ctx.bus && typeof ctx.bus.off === 'function') {

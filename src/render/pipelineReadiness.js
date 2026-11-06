@@ -84,14 +84,27 @@ export function createOpeningLoadingAdmission({ entities = [], isRequired = () =
   return {
     owns(entity) { return isActive() && required.has(entity); },
     entities() { return [...required]; },
-    track(promise) {
+    track(promise, owner = null) {
       assertActive();
       const completion = Promise.resolve(promise);
-      work.add(completion);
-      completion.then(() => work.delete(completion), (error) => {
-        work.delete(completion);
-        if (isActive() && !failure) failure = error;
+      const tracked = completion.then((value) => value, (error) => {
+        if (!isActive() || failure) throw error;
+        // A typed cancellation only stops blocking this launch when its captured entity no
+        // longer owns a required opening slot. A live required subject, and every real error,
+        // still fail closed. This matters when a queued pool upload retires with its old owner
+        // while the current world continues to own the loading cohort.
+        if (error?.name === 'AbortError'
+            && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+            && typeof owner?.isStillRequired === 'function') {
+          let stillRequired = true;
+          try { stillRequired = owner.isStillRequired() === true; } catch { /* fail closed */ }
+          if (!stillRequired) return { skipped: true, reason: 'retired-opening-owner' };
+        }
+        failure = error;
+        throw error;
       });
+      work.add(tracked);
+      tracked.then(() => work.delete(tracked), () => work.delete(tracked));
       return completion;
     },
     async drain() {
@@ -142,6 +155,16 @@ export function openingFirstPictureIsReady(state) {
     && owner.serial === state.world?.enterSerial && owner.sector === state.world?.currentSectorId
     && owner.renderer === render.renderer && owner.context === state.contextRestoreSeq
     && !gpuContextIsLost(state);
+}
+
+/** Decide how a loading-mode notification affects the currently live opening owner. */
+export function openingLoadingModeResetAction(state, admission, player) {
+  if (state?.mode !== 'loading') return 'ignore';
+  if (admission?.owns(player) === true) {
+    if (openingFirstPictureIsReady(state) || state.render?.openingFirstPictureReady !== true) return 'preserve';
+    return 'clear-receipt';
+  }
+  return 'retire-cohort';
 }
 
 /** The main time-effects owner holds the spawn state until an actual world submit has painted. */
@@ -335,6 +358,32 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
     && render.admissionRunGeneration === generation && world?.enterSerial === serial && world?.currentSectorId === sector
     && render.renderer === nativeRenderer && state.contextRestoreSeq === context
     && (typeof options.isActive !== 'function' || options.isActive());
+  // If a residency await rejects as superseded while the launch transition token still appears
+  // current, preserve the exact owner predicate that changed. This is read only on the rejected
+  // path by the renderer's failure receipt; it does not alter cancellation or admission behavior.
+  isActive.ownerSnapshot = () => {
+    let transitionActive = true;
+    if (typeof options.isActive === 'function') {
+      try { transitionActive = options.isActive() === true; } catch (_) { transitionActive = false; }
+    }
+    return {
+      localActive: active,
+      expectedMode: 'loading',
+      currentMode: state.mode,
+      renderMatches: state.render === render,
+      worldMatches: state.world === world,
+      expectedEnterSerial: serial ?? null,
+      currentEnterSerial: world?.enterSerial ?? null,
+      expectedSector: sector ?? null,
+      currentSector: world?.currentSectorId ?? null,
+      expectedAdmissionGeneration: generation ?? null,
+      currentAdmissionGeneration: render.admissionRunGeneration ?? null,
+      rendererMatches: render.renderer === nativeRenderer,
+      expectedContextRestoreSeq: context ?? null,
+      currentContextRestoreSeq: state.contextRestoreSeq ?? null,
+      transitionActive,
+    };
+  };
   const assertActive = () => {
     if (!isActive()) {
       const error = new Error('opening first-picture admission was superseded');
@@ -345,6 +394,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
   };
   let phase = null;
   let phaseBudgetMs = timeoutMs;
+  let ownedSectorCook = null;
   const finishPhase = (outcome) => {
     if (!phase || phase.outcome !== 'pending' || !isActive() || render.openingFirstPicturePhase !== phase) return;
     phase.outcome = outcome;
@@ -358,11 +408,15 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
     render.openingFirstPicturePhase = phase;
   };
   const bounded = async (work, budgetMs) => {
-    const settled = await settleWithin(work, budgetMs);
+    const deadlineRemaining = Number.isFinite(options.deadlineAt)
+      ? Math.max(0, Number(options.deadlineAt) - openingClockNow(options))
+      : budgetMs;
+    const effectiveBudgetMs = Math.min(budgetMs, deadlineRemaining);
+    const settled = await settleWithin(work, effectiveBudgetMs);
     if (settled.ok) return settled.value;
     if (settled.error) throw settled.error;
     const error = new Error(`opening first-picture admission timed out at ${phase?.stage || 'unknown'} `
-      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${budgetMs}ms)`);
+      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${effectiveBudgetMs}ms)`);
     error.stage = phase?.stage;
     error.timeout = true;
     finishPhase('timeout');
@@ -386,6 +440,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       startPhase('current-sector');
       const sectorCook = render.openingLiveSectorReady || observePipelineAdmission(Promise.resolve()
         .then(() => render.prepareLiveSectorBeforeFlight({ isActive })));
+      ownedSectorCook = sectorCook;
       render.openingLiveSectorReady = sectorCook;
       const cooked = await bounded(sectorCook, phaseBudgetMs);
       assertActive();
@@ -393,7 +448,23 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
           || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
           || cooked?.cook?.reason === 'sector-superseded'
           || cooked?.opening?.settled === false) {
-        throw new Error('opening current-sector preparation did not complete');
+        const opening = cooked && cooked.opening;
+        const diagnostic = {
+          reason: cooked?.reason || cooked?.cook?.reason || opening?.reason || null,
+          pending: Number.isFinite(opening?.pending) ? opening.pending : null,
+          ids: Array.isArray(opening?.ids) ? opening.ids.slice(0, 6).map(String) : [],
+          statuses: Array.isArray(opening?.statuses) ? opening.statuses.slice(0, 6).map(String) : [],
+        };
+        render.openingCurrentSectorFailure = diagnostic;
+        const details = [
+          diagnostic.reason && `reason=${diagnostic.reason}`,
+          diagnostic.pending !== null && `pending=${diagnostic.pending}`,
+          diagnostic.ids.length && `ids=${diagnostic.ids.join('/')}`,
+          diagnostic.statuses.length && `statuses=${diagnostic.statuses.join('/')}`,
+        ].filter(Boolean).join(' ');
+        const error = new Error(`opening current-sector preparation did not complete${details ? ` (${details})` : ''}`);
+        error.diagnostic = diagnostic;
+        throw error;
       }
     } else if (state.run?.kind === 'survival') {
       phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
@@ -410,6 +481,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       }
       assertActive();
       startPhase('capture');
+      render.openingFirstPicturePlanFailure = null;
       let plan;
       if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
         const steps = render.captureOpeningSubmissionPlanSteps();
@@ -424,6 +496,9 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       } else plan = render.captureOpeningSubmissionPlan();
       assertActive();
       if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        render.openingFirstPicturePlanFailure = render.openingPlanCaptureFailure || {
+          reason: plan ? 'incomplete-plan-no-capture-detail' : 'null-plan-no-capture-detail',
+        };
         throw new Error('opening submission plan is incomplete');
       }
       startPhase('submission');
@@ -461,11 +536,55 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
   work.catch(() => {});
   const promise = work.catch((error) => {
     finishPhase(error?.timeout ? 'timeout' : 'error');
+    if (error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && ownedSectorCook && render.openingLiveSectorReady === ownedSectorCook) {
+      render.openingLiveSectorReady = null;
+    }
+    if (openingFirstPictureRuns.get(render)?.promise === promise) {
+      openingFirstPictureRuns.delete(render);
+    }
     active = false;
     throw error;
   });
   openingFirstPictureRuns.set(render, { world, generation, serial, sector, renderer: nativeRenderer, context, promise });
   return promise;
+}
+
+/** Retry one superseded opening owner without restarting New Game or extending its total budget. */
+export async function waitForOpeningFirstPictureWithSingleOwnerRetry(state, timeoutMs, options = {}) {
+  const baseTimeoutMs = Math.max(1, Number(timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
+  const startedAt = openingClockNow(options);
+  const totalBudgetMs = openingPresentBudgetMs(state, baseTimeoutMs, options) + baseTimeoutMs;
+  const deadlineAt = startedAt + totalBudgetMs;
+  let attempt = 0;
+  for (;;) {
+    const remainingMs = Math.max(0, deadlineAt - openingClockNow(options));
+    const attemptTimeoutMs = attempt === 0 ? baseTimeoutMs : Math.min(baseTimeoutMs, remainingMs);
+    const presentBudgetMs = attempt === 0
+      ? options.presentBudgetMs
+      : Math.min(openingPresentBudgetMs(state, baseTimeoutMs, options), remainingMs);
+    try {
+      return await waitForOpeningFirstPicture(state, attemptTimeoutMs, {
+        ...options,
+        deadlineAt,
+        ...(presentBudgetMs === undefined ? {} : { presentBudgetMs }),
+      });
+    } catch (error) {
+      const remainingAfterFailureMs = Math.max(0, deadlineAt - openingClockNow(options));
+      let transitionCurrent = false;
+      if (typeof options.isTransitionCurrent === 'function') {
+        try { transitionCurrent = options.isTransitionCurrent() === true; } catch (_) { transitionCurrent = false; }
+      }
+      const canRetry = attempt === 0
+        && error?.name === 'AbortError'
+        && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && state?.mode === 'loading'
+        && transitionCurrent
+        && remainingAfterFailureMs > 0;
+      if (!canRetry) throw error;
+      attempt += 1;
+    }
+  }
 }
 
 /**
@@ -477,6 +596,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
+  let progressMark = 0;
   const isActive = () => active
     && (typeof options.isActive !== 'function' || options.isActive());
   const assertActive = () => {
@@ -484,11 +604,13 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
       throw new Error('mobile opening admission superseded');
     }
   };
+  const startedAt = ledgerNow();
   const work = (async () => {
     assertActive();
     if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
       throw new Error('mobile opening first-picture preparation failed');
     }
+    progressMark += 1;
     assertActive();
     let plan;
     if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
@@ -498,6 +620,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
           assertActive();
           const step = steps.next();
           if (step.done) { plan = step.value; break; }
+          progressMark += 1;
           await yieldToMain();
         }
       } finally {
@@ -508,7 +631,9 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
       throw new Error('mobile opening submission plan is incomplete');
     }
+    progressMark += 1;
     const submission = await render.drainOpeningSubmissionPlan(plan);
+    progressMark += 1;
     assertActive();
     assertMobileOpeningGraphicsHealthy(render);
     if (submission === false || submission?.ok === false) {
@@ -527,12 +652,113 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     }
     return { plan, submission, resources };
   })();
-  const settled = await settleWithin(work, timeoutMs);
+  const settled = await settleWhileProgressing(work, timeoutMs, {
+    startedAt,
+    progress: () => progressMark + linkedProgramCount(render),
+    windowMs: options.progressWindowMs,
+    extensionCapMs: options.slowGlExtensionCapMs,
+  });
   active = false;
   if (!settled.ok) {
-    throw settled.error || new Error('mobile opening first-picture admission timed out');
+    throw settled.error || new Error(`mobile opening first-picture admission timed out after ${Math.round(settled.elapsedMs)}ms `
+      + `(budget ${timeoutMs}ms, slow-GL extension ${Math.round(settled.extendedMs)}ms)`);
   }
   return settled.value;
+}
+
+// Renderer-owned work counters: linked programs plus uploaded textures/geometries. Any change
+// between two checks is evidence the GL work is advancing rather than wedged.
+function linkedProgramCount(render) {
+  const info = render?.renderer?.info;
+  const programs = Array.isArray(info?.programs) ? info.programs.length : 0;
+  const memory = info?.memory || {};
+  return programs * 1e6 + (Number(memory.textures) || 0) * 1e3 + (Number(memory.geometries) || 0);
+}
+
+// Slow-GL tolerance for the exact first picture (shard-4 timeouts on the 1.5-1.7x slower CI image
+// ubuntu-24.04 20261025.353.1; software GL on slow handsets). The base budget is unchanged, so a
+// normal-speed host settles exactly as before. When the base expires while the admission is still
+// measurably advancing (a pipeline stage finished, a capture step yielded, or the renderer linked
+// another program within the last window), the deadline slides forward one window at a time, up to
+// a cap of one more base budget. A wedged admission makes no progress and still fails within one
+// window of its base deadline.
+export const FIRST_PICTURE_PROGRESS_WINDOW_MS = 5000;
+
+export async function settleWhileProgressing(promise, baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? Math.max(baseMs, DEFAULT_OPENING_BUDGET_MS)) || 0);
+  const startedAt = Number.isFinite(options.startedAt) ? options.startedAt : now();
+  const baseDeadline = startedAt + baseMs;
+  const hardDeadline = baseDeadline + capMs;
+  let deadline = baseDeadline;
+  let extendedMs = 0;
+  let mark = progress();
+  const timeout = () => ({ ok: false, timeout: true, elapsedMs: now() - startedAt, extendedMs });
+  const outcome = Promise.resolve(promise).then(
+    (value) => ({ ok: true, value }),
+    (error) => ({ ok: false, error }),
+  );
+  for (;;) {
+    const settled = await raceDeadline(outcome, Math.max(0, deadline - now()), null);
+    const checkedAt = now();
+    // Preserve a typed admission failure even when its delivery was delayed. Successful work
+    // still has to fit the granted absolute deadline; a late timer cannot buy more wall time.
+    if (settled?.ok === false) return settled;
+    if (settled && checkedAt <= deadline && checkedAt <= hardDeadline) return settled;
+    if (checkedAt >= hardDeadline) return timeout();
+    const next = progress();
+    const advanced = next !== mark;
+    mark = next;
+    const nextDeadline = Math.min(hardDeadline, checkedAt + windowMs);
+    if (!advanced || nextDeadline <= deadline) return timeout();
+    deadline = nextDeadline;
+    extendedMs = deadline - baseDeadline;
+    if (settled) return settled;
+  }
+}
+
+// Sliding deadline for multi-step admissions that cannot be wrapped in one promise (the
+// first-flight actor admission checks its deadline between sub-steps and from a timer). Same
+// policy as settleWhileProgressing: the base deadline is unchanged, so normal-speed hosts behave
+// exactly as before; once it passes, each check that sees new progress (a linked program, an
+// uploaded texture/geometry, or a finished sub-step) slides the deadline one window forward, up
+// to one more base budget. No progress within a window still fails at the base deadline (or
+// within one window of it).
+export function createProgressDeadline(baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const startedAt = Number.isFinite(options.startedAt) ? options.startedAt : now();
+  const base = Math.max(1, Number(baseMs) || 1);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? base) || 0);
+  const baseDeadline = startedAt + base;
+  const hardDeadline = baseDeadline + capMs;
+  let deadline = baseDeadline;
+  let mark = progress();
+  return {
+    get deadline() { return deadline; },
+    get extendedMs() { return deadline - baseDeadline; },
+    remainingMs() { return deadline - now(); },
+    /** True when the admission may continue; false once it has expired without progress. */
+    check() {
+      const t = now();
+      if (t < deadline) return true;
+      if (t >= hardDeadline) return false;
+      const next = progress();
+      const advanced = next !== mark;
+      mark = next;
+      const nextDeadline = Math.min(hardDeadline, t + windowMs);
+      if (!advanced || nextDeadline <= deadline) return false;
+      deadline = nextDeadline;
+      return true;
+    },
+  };
+}
+
+export function renderWorkProgressMark(render) {
+  return linkedProgramCount(render);
 }
 
 // The link reporter already records driver failures. Read that result rather than issuing
@@ -718,20 +944,17 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const urgentRuns = new Map();
   let quietTimer = null;
   let maxTimer = null;
-  // Compile batches stay strictly serial — render-target selection is global renderer
-  // state. The tail is a pull-queue rather than an eager .then chain: link specs wait
-  // in linkSpecs until the in-flight link settles, so an urgent spec splices ahead of
-  // still-queued ambient links (behind earlier urgents) instead of chaining behind
-  // every link that happened to be queued first. tailSettle shadows the old
-  // compileTail for callers that only want "everything started so far" drained.
+  // GL issue is serialized because target selection and temporary scene ownership are global.
+  // Opted-in owners release the issue slot after restoring both, while their bounded link waits
+  // remain independently outstanding. Urgent specs keep FIFO ahead of queued ambient work.
   const linkSpecs = [];
   let linkActive = false;
+  let settlingLinks = 0;
+  const maxSettlingLinks = Math.max(1, Math.min(4, Math.floor(Number(options.maxSettlingLinks) || 1)));
   let tailSettle = Promise.resolve();
-  // Every bound in the admission system sits on a waiter — the link run itself had
-  // none: a compile/link that never settles would keep linkActive forever and wedge
-  // every later spec (ambient AND urgent). Race each run against a bound well above
-  // the 20s KHR drain; on timeout the entries resolve with a tagged outcome and the
-  // pump advances — refused subjects re-admit through the normal lanes.
+  // Bound each caller's wait without treating its timeout as cancellation of the
+  // underlying owner. Only actual settlement or an explicit issue acknowledgement
+  // can release renderer state for the next spec.
   const LINK_RUN_TAIL_TIMEOUT_MS = 50000;
   const LINK_TAIL_TIMEOUT_RESULT = Object.freeze({ tailTimeout: true });
   let nextAdmissionId = 0;
@@ -853,19 +1076,33 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   }
 
   function pumpLinks() {
-    if (linkActive) return;
+    if (linkActive || settlingLinks >= maxSettlingLinks) return;
     const spec = linkSpecs.shift();
     if (!spec) return;
     linkActive = true;
+    settlingLinks += 1;
+    let issued = false;
+    const releaseIssue = () => {
+      if (issued) return;
+      issued = true;
+      linkActive = false;
+      pumpLinks();
+    };
+    const compileOptions = maxSettlingLinks > 1
+      ? { ...(spec.compileOptions || {}), onIssueComplete: releaseIssue }
+      : spec.compileOptions;
     const run = Promise.resolve().then(() => invokeCompileBatch(
-      spec.subjects, spec.path, spec.compileOptions,
+      spec.subjects, spec.path, compileOptions,
     ));
     observePipelineAdmission(run, onRejected);
     const bounded = raceDeadline(run, LINK_RUN_TAIL_TIMEOUT_MS, LINK_TAIL_TIMEOUT_RESULT);
     spec.resolveRun(bounded);
     tailSettle = tailSettle.then(() => bounded.catch(() => null));
-    const next = () => { linkActive = false; pumpLinks(); };
-    bounded.then(next, next);
+    const next = () => { settlingLinks -= 1; releaseIssue(); pumpLinks(); };
+    // A timeout settles the caller but does not retire an issuing/linked owner.
+    // Actual work alone releases its outstanding-settlement cap; the issue slot
+    // is also released by its explicit post-restoration acknowledgement.
+    run.then(next, next);
   }
 
   function flushQueuedThrough(
@@ -1282,6 +1519,8 @@ export function createGpuResidencyAdmissionTracker(prepare) {
       const entry = {
         id: ++nextAdmissionId,
         subject,
+        ownerKey: options.ownerKey ?? options.isActive?.ownerKey ?? options.isActive ?? null,
+        isActive: typeof options.isActive === 'function' ? options.isActive : null,
         completion: null,
       };
       entry.completion = preparation.finally(() => {
@@ -1307,10 +1546,23 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     waitForPending,
     // Outstanding upload for a subject, if one is queued or running. Callers that
     // would queue a second walk for the same root join the existing entry instead.
-    pendingFor(subject) {
+    pendingFor(subject, ownerKey = undefined) {
       const entries = pendingBySubject.get(subject);
       if (!entries || entries.size === 0) return null;
-      return Promise.all([...entries].map((entry) => entry.completion));
+      const compatible = [...entries].filter((entry) => {
+        if (ownerKey === undefined) return true;
+        // Ownerless residency is shared resource work. Owner-bound work can be joined only by
+        // the same captured owner; a replacement owner must submit its own live admission rather
+        // than inherit a queued promise that may be retired before its upload.
+        if (entry.ownerKey !== null && entry.ownerKey !== ownerKey) return false;
+        if (entry.isActive) {
+          try { if (entry.isActive() !== true) return false; } catch { return false; }
+        }
+        return true;
+      });
+      return compatible.length > 0
+        ? Promise.all(compatible.map((entry) => entry.completion))
+        : null;
     },
     get pendingCount() { return pending.size; },
   };

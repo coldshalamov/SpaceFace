@@ -28,11 +28,11 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
-  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'killcamRecorder',
-  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'chainKills', 'killcamRecorder',
+  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmFortify', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'spectrum', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
-  'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
+  'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'heroManeuvers', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
   'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
@@ -60,10 +60,14 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // §34 faction-signature rows: mass/heat sensor model (513), Concord formation lock (515),
   // Meridian cargo spines (516), Helix false-flag packs + lien drones (526), Drift claim pylons (530).
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
-  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
+  // w-501: the §7.1 behavior heads' sim owner — event-only (tether:whipImpact subscription),
+  // no update slot, no clock, same posture as customsPrompt.
+  'lineHeads',
+  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'cinderglassJob', 'cinderglassJobPrompt', 'counterweightCircuit', 'counterweightCircuitPrompt', 'breakwaterSpur', 'breakwaterSpurPrompt', 'borrowedSun', 'borrowedSunPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
+  'varianceAdjustmentBerth',
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'longBerth', 'crew', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
@@ -89,6 +93,39 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // simTime-bucketed consequence pass (pressure escalation, offer expiry, witness
   // souring). Calendar clock beside its moralTrapSystem neighbor — see below.
   'moralMemory',
+  // special500: the 500-entry special catalog runtime. init subscribes the receipt events;
+  // update is the 0.5 s self-throttled trigger sweep (calendar clock, matches CHECK_S).
+  'special500',
+  // special500Spectacle: the spectacle leg owner (Phase 2). init subscribes
+  // 'special500:spectacle' (parked, drained per update — the director's receipt pattern);
+  // update plays each firing's authored registry steps off state.simTime through the
+  // existing owner seams (presentation:vfxCue / news:publish). Presentation dispatch only.
+  'special500Spectacle',
+  // special500 Phase 2 choice/vendor legs, each keyed off the director's fired flags (never
+  // re-evaluating the trigger): special500Question runs SP2-012's reply-listen interpreter
+  // (bus listeners + a simTime window); special500Invoice runs SP2-044's pay-or-refuse invoice
+  // (simTime deadline, economy/factions intents); special500PortraitBuoys rebuilds SP1-193's
+  // corridor buoy line from authored data + the deed record and settles the story-priced
+  // commission; special500Sommelier settles SP2-065's pour through the economy, cargo and
+  // factions intents. All four are bus/state readers with plain-named flags — node-safe.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
+  // special500 Phase 2 batch 18 counter legs: event-only readers of receipts other owners
+  // already emit (dock:docked, combat:damage, player:death) — like historyWear/deedRecord,
+  // init-only subscriptions with plain-named flag writes, deliberately absent from
+  // PRODUCTION_UPDATE_ORDER; special500CollectiveHours carries the one accrual clock and
+  // joins the update order from there.
+  'special500DockLedger',
+  'special500HullLog',
+  'special500ReadEverything',
+  'special500CollectiveHours',
+  // Incoming event-only legs: canonical dock/death receipts and an explicit public choice.
+  // No update slot or additional polling clock.
+  'special500Confessional',
+  'special500DeathBell',
+  'special500ForgeKaraoke',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -117,17 +154,21 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // re-runs inside tacticalAI on both full-decision and cached ticks, so a score-owned capital
   // can never double-fire through stock intent.
   'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'kilnback', 'mothlight', 'palletJack', 'secondRinse', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
-  'beacons', 'travelLanes', 'orbitalGallery', 'kineticLeague', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
+  'beacons', 'travelLanes', 'orbitalGallery', 'kineticLeague', 'heroManeuvers', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
   // Bombs and emergent primitives read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'survivalArena', 'swarmFortify', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
+  // lineHeads: §7.1 behavior heads move or join live bodies on the same settled tick
+  // (train chaining, barb drag, sympathy momentum, staple channels) — the massline
+  // physics row's contract, before physics read the pose it already consumed.
+  'lineHeads',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
   'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'automation', 'asteroidSites',
@@ -147,7 +188,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // registration would silently never run their update().
   'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
   'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
-  'sectorSim', 'towlineTable', 'shipbreakingYard', 'rigWorkshop', 'borrowedVoice', 'salvageOutfits', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
+  'sectorSim', 'towlineTable', 'shipbreakingYard', 'rigWorkshop', 'counterweightCircuit', 'breakwaterSpur', 'borrowedVoice', 'borrowedSun', 'salvageOutfits', 'npcJobsRuntime', 'cinderglassJob', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
@@ -191,6 +232,26 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // posture as moralTrapSystem above: verbs are bus events, the clocked pass is the
   // expiry lane. Before voiceArbiter so a same-tick escalated collect lands together.
   'moralMemory',
+  // special500: sweeps the catalog after the story/deed/salvage owners have settled this
+  // tick, so receipts and flags they produced are visible; comms lines it emits are
+  // collected by voiceArbiter below on the same tick.
+  'special500',
+  // special500Spectacle: plays the spectacle legs the director fired THIS tick, same tick,
+  // so a beat authored atS:0 lands with the noticing line. Emits presentation/news only;
+  // before voiceArbiter like the director, and after it in init (the subscription exists
+  // before the sweep that emits the event).
+  'special500Spectacle',
+  // special500 Phase 2 legs: read the flags the director wrote THIS tick (fresh-window reads
+  // tolerate a cohort of latency), resolve their simTime windows, and emit comms/deck offers
+  // that voiceArbiter and the UI collect on the same tick.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
+  // special500 Phase 2 batch 18: SP1-173's logged-labor accrual — dt sums only while the
+  // Ceres Belt sector is held and flight runs; a 2 Hz pass is generous for a seconds-scale
+  // tally. The batch's other counter legs are event-only (init-only, above).
+  'special500CollectiveHours',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -220,6 +281,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   mothlightPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   palletJackPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   // The prompt deck lives on main; the authoritative offer already crosses the event bridge.
+  borrowedSunPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   borrowedVoicePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   core: Object.freeze({ nodeSafe: true, phase: 'core', capability: 'core' }),
   aiSlot: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'ai', slot: true }),
@@ -235,6 +297,11 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   shipbreakingYardBrowser: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
   // Event-only prompt owners — glass, no update slot, no clock declaration.
   salvageTenderPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  cinderglassJobPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  counterweightCircuit: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'occupation' }),
+  counterweightCircuitPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  breakwaterSpur: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'occupation' }),
+  breakwaterSpurPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   salvageOutfitsPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   masslineHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
@@ -402,6 +469,23 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // per 30 s simTime bucket — the 2 Hz declaration only schedules that check. Appended
   // last so every existing cohort index stays put.
   'moralMemory',
+  // special500: the catalog sweep self-throttles to 0.5 s of simTime (CHECK_S), which is
+  // exactly this clock's period. Appended last so every cohort index stays put.
+  'special500',
+  // special500Spectacle: plays authored beats off state.simTime; the 2 Hz pass is finer
+  // than every authored atS gap and matches its director's cadence. Appended last so
+  // every existing cohort index stays put.
+  'special500Spectacle',
+  // special500 Phase 2 legs: window/expiry resolution and world reads at the director's own
+  // cadence (0.5 s simTime), appended last so every existing cohort index stays put.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
+  // special500 Phase 2 batch 18: SP1-173's logged-labor accrual — dt sums only while the
+  // Ceres Belt sector is held and flight runs; a 2 Hz pass is generous for a seconds-scale
+  // tally. Appended last so every existing cohort index stays put.
+  'special500CollectiveHours',
 ]);
 
 /**
@@ -473,7 +557,7 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // aiPorts flushes (and replays) the AI's maneuvers, planetRuntime queues planet drag/heat/harvest.
   'aiPorts', 'planetRuntime',
   // Flight + physics authorities: single writers of position/velocity.
-  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
+  'heroManeuvers', 'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
   'nemesis', 'nemesisEncounter',
   // Capital score publishes orders the tactical slot reads the same tick.
@@ -490,20 +574,21 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
-  'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
+  // lineHeads rides the same row: §7.1 head behaviors are per-step body work.
+  'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow', 'lineHeads',
   // Debris/damage owners with live bodies or timed expiry.
   'lootShards', 'mining', 'fieldDepletion', 'fragileCargo',
   // NXB-008 volatile cargo exposure: table clock; the system's own tick%15 gate limits the pass.
   'volatileExposure',
   // Survival/Crucible phase machines and per-tick recorders.
-  'survivalArena', 'swarmArena', 'survivalWave', 'survivalRun', 'swarmChain',
+  'survivalArena', 'swarmArena', 'swarmFortify', 'survivalWave', 'survivalRun', 'swarmChain',
   'killReplay', 'killcamRecorder',
   // swarmJuice: hit-stop lease decay and boss-bar polling want the 60 Hz step.
   'swarmJuice',
   // swarmElites: affix stamps and live perk effects read the wave the same tick it materializes.
   'swarmElites',
   // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
-  'wingmen', 'world', 'heat',
+  'wingmen', 'world', 'borrowedSun', 'heat',
   // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet
   // latch already covers the idle pole). Docked-yard job progression is real per-tick
   // service work, so the yard stays on the table.
@@ -512,6 +597,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // industrialDisasters queues tether impulses immediately before physics; the yard and
   // workshop observe the settled tick and run their own body work on the 60 Hz step.
   'shipbreakingYard', 'rigWorkshop', 'salvageTender', 'industrialDisasters',
+  // Counterweight Circuit observes the settled post-physics tick like the yard
+  // and workshop — attempt legs read committed positions and impact receipts.
+  'counterweightCircuit', 'breakwaterSpur', 'cinderglassJob',
   // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
   // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',

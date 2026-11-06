@@ -7,7 +7,6 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const RECOVERED_ZIP_SHA256 = '6D3FE3CFC805A6454459E220D24225BE2989C4B3DE3E572BD74EAA4456E474AF';
 
 const REQUIRED_FULL_HANDOFF = Object.freeze([
-  'docs/handoffs/SG-02_PHYSICS_HANDOFF.md',
   'third_party/reference-ledger-sg02.yml',
   'scripts/check-sg02-authority.mjs',
   'scripts/check-sg02-tether.mjs',
@@ -41,11 +40,8 @@ if (hasMembrane) {
   assert(scripts['check:sg02'] && scripts['check:sg02'].includes('check:physics-authority'),
     'package.json check:sg02 must include the physics-authority membrane gate');
 
-  const intake = read('docs/handoffs/SG-02_RECOVERED_SOURCE_INTAKE.md');
-  assert(intake.includes(RECOVERED_ZIP_SHA256), 'SG-02 intake doc must record the recovered zip hash');
-  assert(intake.includes('not a merge-ready SG-02 handoff'), 'SG-02 intake doc must reject full acceptance of the partial recovery');
-  assert(intake.includes('Accepted now') && intake.includes('Not accepted yet'),
-    'SG-02 intake doc must separate accepted membrane work from rejected dynamic runtime work');
+  const provenance = read('third_party/reference-ledger-sg02.yml');
+  assert(provenance.includes(RECOVERED_ZIP_SHA256), 'SG-02 source ledger must retain the recovered source identity');
 }
 
 if (hasDynamicLab) {
@@ -55,8 +51,8 @@ if (hasDynamicLab) {
   assert(scripts['check:sg02'] && scripts['check:sg02'].includes('check:sg02:dynamic-lab'),
     'package.json check:sg02 must include the dynamic-owner lab gate');
 
-  const intake = read('docs/handoffs/SG-02_RECOVERED_SOURCE_INTAKE.md');
-  assert(intake.includes('dynamic-owner lab'), 'SG-02 intake doc must record the accepted dynamic-owner lab boundary');
+  // Runtime and focused contracts below establish the live owner; a historical
+  // handoff's acceptance prose is not an implementation dependency.
 }
 
 if (dynamicMarkers.length || hasFullHandoff) {

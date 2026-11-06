@@ -17,6 +17,25 @@ import {
 
 const RENDERER_SOURCE = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 
+test('readiness ignores retired fallback layers and includes swappable quality geometry', () => {
+  const root = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  hull.geometry.userData.spacefaceGpuResident = true;
+  const fallback = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  fallback.visible = false;
+  fallback.userData.authoredReadableFallbackLayer = true;
+  root.add(hull, fallback);
+  assert.equal(hasUnresidentGeometry(root), false, 'a retired fallback cannot hide the resident hull');
+  assert.deepEqual(collectStartupGeometryDrawables([root]), [hull]);
+
+  const alternate = new THREE.BoxGeometry();
+  hull.userData.spacefaceQualityTierGeometries = [hull.geometry, alternate];
+  assert.equal(hasUnresidentGeometry(root), true, 'a future quality swap still needs admission');
+  assert.equal(collectStartupGeometryDrawables([root]).length, 2);
+  alternate.userData.spacefaceGpuResident = true;
+  assert.equal(hasUnresidentGeometry(root), false);
+});
+
 test('first-visible admission identity names late roots, leaves, materials, and program families', () => {
   const scene = new THREE.Scene();
   const planned = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
@@ -146,7 +165,9 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
   const end = RENDERER_SOURCE.indexOf('// Collision/socket/landing debug toggle', start);
   assert.ok(start >= 0 && end > start, 'the opening GPU resource boundary must remain present');
   const openingAdmission = RENDERER_SOURCE.slice(start, end);
-  assert.match(openingAdmission, /prepareStartupGpuResidency\(renderer, plan\.residencySubjects/);
+  assert.match(openingAdmission, /openingAdmissionSubjects\([\s\S]*?plan\.pooledResourceSubjects[\s\S]*?collectOpeningResidencySubjects\(/,
+    'the required residency pass includes the opening-owned zero-count pools under the authored policy');
+  assert.match(openingAdmission, /prepareStartupGpuResidency\(renderer, openingResidencySubjects/);
   assert.doesNotMatch(openingAdmission, /includeGeometry:\s*false/,
     'OPENING cannot opt out of the buffer-class contract used by Continue');
   assert.doesNotMatch(openingAdmission, /result\.geometries\s*=\s*await admitOpeningUnitsAcrossSlices/,
@@ -358,9 +379,20 @@ test('late admission uploads count-0 instanced pool buffers before activation', 
   assert.equal(submitted[0].geometry, poolGeometry);
   assert.equal(submitted[0].instanceMatrix, dormantPool.instanceMatrix,
     'the proxy submits the production capacity-sized instance buffer, not a throwaway');
-  assert.equal(submitted[0].count, 0, 'the dormant pool stays dormant in the proxy pass');
+  assert.equal(submitted[0].count, 1, 'the scratch proxy reaches Three’s actual upload branch');
+  assert.equal(dormantPool.count, 0, 'the live pool stays dormant');
   assert.equal(poolGeometry.userData.spacefaceGpuResident, true,
     'the dormant pool geometry is stamped so first activation is not a first upload');
+});
+
+test('zero-capacity instanced geometry is not falsely sealed as uploaded', async () => {
+  const geometry = new THREE.BoxGeometry();
+  const pool = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), 0);
+  const harness = createRendererHarness();
+  await prepareStartupGeometryResidency(harness.renderer, pool, {
+    includeEmpty: true, yieldToMain: async () => {}, paceQueue: async () => {},
+  });
+  assert.notEqual(geometry.userData.spacefaceGpuResident, true);
 });
 
 test('every residency admission lane admits dormant instanced pools', () => {
@@ -611,19 +643,23 @@ test('flight GPU residency admission slices yields instead of yielding per item'
     'the slice window stays at the admission slice target; the on-glass burst yields on ledger spend, not a per-item present');
 });
 
-// The end-of-cook seal walks the whole scene — hundreds of textures plus geometry batches —
-// behind the shell. A raw yield donated a full scheduling round-trip per item (~500 hops on a
-// contended host, most of the 7-11 s live.firstFramePoolCensus step); the sliced cadence shares
-// one frame gap across several uploads, matching the warm-roots stamp beside it.
-test('the first-frame census seals on a sliced yield, not one hop per item', () => {
+// Exact plan leaves and declared first-flight pools seal the first picture. Other authored roots
+// and later-use pools stay with their own admission owners instead of blocking this census.
+test('the first-frame census seals plan-owned resources on a sliced yield', () => {
   const censusCall = RENDERER_SOURCE.indexOf(
-    'firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {');
-  assert.ok(censusCall >= 0, 'the end-of-cook scene seal must exist');
+    'firstFrameResidency = await prepareStartupGpuResidency(renderer, firstPictureResidencySubjects, {');
+  assert.ok(censusCall >= 0, 'the end-of-cook plan-owned seal must exist');
   const block = RENDERER_SOURCE.slice(censusCall, censusCall + 700);
   assert.match(block, /yieldToMain:\s*createSlicedYield\(yieldToBrowser/,
     'the seal must share a frame gap across items instead of yielding per item');
+  assert.match(RENDERER_SOURCE.slice(censusCall - 500, censusCall),
+    /collectOpeningResidencySubjects\(firstPicturePlan\)/,
+    'the seal must use the exact first-picture and declared pool refs');
+  assert.match(RENDERER_SOURCE.slice(censusCall, censusCall + 1800),
+    /exact opening admission and first-flight cook own residency/,
+    'a not-yet-captured plan must leave work with the later required owners');
   const planCall = RENDERER_SOURCE.indexOf(
-    'prepareStartupGpuResidency(renderer, plan.residencySubjects');
+    'prepareStartupGpuResidency(renderer, openingResidencySubjects');
   assert.ok(planCall >= 0, 'the opening-plan residency pass must exist');
   const planBlock = RENDERER_SOURCE.slice(planCall, planCall + 700);
   assert.match(planBlock, /yieldToMain:\s*createSlicedYield\(yieldToBrowser/,
@@ -803,5 +839,5 @@ test('opening policy preserves geometry batches and the composition settle on ev
   assert.match(preflight, /const residencyPolicy = \(\) => openingLoadPolicy\(/);
   assert.match(preflight, /timeoutMs: Math\.min\(loadPolicy\.compositionSettleMs, remainingMs\(\)\)/);
   assert.match(preflight, /warmResidency = await prepareStartupGeometryResidency\(renderer, warmRoots, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,/);
-  assert.match(preflight, /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,/);
+  assert.match(preflight, /const firstPicturePlan = state\.render\.openingSubmissionPlan;[\s\S]*?collectOpeningResidencySubjects\(firstPicturePlan\)[\s\S]*?firstFrameResidency = await prepareStartupGpuResidency\(renderer, firstPictureResidencySubjects, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,/);
 });

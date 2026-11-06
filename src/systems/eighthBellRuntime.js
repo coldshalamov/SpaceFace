@@ -77,6 +77,7 @@ function stampLureSignature(state, live, value) {
 }
 
 function finish(d, live, state, outcome, flags = {}) {
+  if (live.vars) live.vars.hirePending = false;
   const story = state.story || (state.story = { flags: {} });
   if (!story.flags || typeof story.flags !== 'object') story.flags = {};
   if (!story.depthProgramEncounters || typeof story.depthProgramEncounters !== 'object') {
@@ -101,7 +102,7 @@ function finish(d, live, state, outcome, flags = {}) {
 }
 
 function enterTow(d, live, state, via) {
-  if (live.phase !== 'offer') return;
+  if (live.phase !== 'offer' || live.vars?.hirePending === true) return;
   live.phase = 'towing';
   live.vars.towingSince = d.now();
   live.vars.towVia = via;
@@ -210,7 +211,9 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
     if (!barge) { d.abort(live, 'spawn_failed'); return; }
     live.vars.bargeId = barge.id;
     barge.data = barge.data || {};
-    barge.data.masslineTetherable = true;   // the whole chapel can be dragged, heroically
+    // Only the bell is the mission payload. The barge is independently simulated and does not
+    // share a rigid-body tow joint with it, so presenting the barge as a tow target would start
+    // an objective whose tracked bell never moves with the line.
 
     const bell = d.spawnProp(live, {
       type: 'beacon',
@@ -237,6 +240,7 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
   },
 
   tick(d, live, state, now) {
+    if (live.vars?.hirePending === true) return;
     if (live.phase === 'offer') {
       if (live.deadlineAt > 0 && now >= live.deadlineAt && live.shape.timeoutChoice) {
         EIGHTH_BELL_RUNTIME.choose(d, live, state, live.shape.timeoutChoice);
@@ -277,10 +281,38 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
   },
 
   choose(d, live, state, choiceId) {
+    if (live.vars?.hirePending === true) return;
     if (choiceId === 'vow') {
       enterTow(d, live, state, 'vow');
     } else if (choiceId === 'hire') {
-      d.charge(live.vars.amount, 'eighth_bell_yard_tug');
+      if (live.phase !== 'offer' || state.encounterDirector?.live?.[live.id] !== live) return;
+      const amount = live.vars.amount;
+      const credits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
+      live.vars.hirePending = true;
+      const charge = {
+        amount,
+        reason: 'eighth_bell_yard_tug',
+        requireFull: true,
+        expectedCredits: credits,
+        commit: () => live.phase === 'offer'
+          && live.vars?.hirePending === true
+          && live.vars.amount === amount
+          && state.encounterDirector?.live?.[live.id] === live,
+        result: false,
+      };
+      try {
+        d.emit('economy:chargeCredits', charge);
+      } catch (_) {
+        // A later synchronous observer may throw after the sole wallet writer settled the
+        // exact request. Continue from its receipt; otherwise release the in-progress latch.
+      }
+      if (charge.result !== true) {
+        live.vars.hirePending = false;
+        d.say(live, 'alert',
+          'FORGE YARD: The wire comes back short. The Choir keeps her passage open for a line.',
+          null, { literal: true });
+        return;
+      }
       d.say(live, 'info',
         'FORGE YARD: Tug Sixteen answers the Saint\u2019s coin. She rides company iron from here.',
         null, { literal: true });
@@ -298,10 +330,11 @@ export const EIGHTH_BELL_RUNTIME = Object.freeze({
   },
 
   event(d, live, state, name, payload) {
+    if (live.vars?.hirePending === true) return;
     if (name === 'tetherAttached') {
       if (!payload || payload.actorId !== state.playerId) return;
       const targetId = payload.targetId;
-      if (targetId !== live.vars.bellId && targetId !== live.vars.bargeId) return;
+      if (targetId !== live.vars.bellId) return;
       enterTow(d, live, state, 'rope');
       return;
     }

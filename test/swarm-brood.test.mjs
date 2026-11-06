@@ -105,11 +105,12 @@ test('engine census: the cap holds and spawn honours it', () => {
   // The wave's authored population is a lifetime budget, not the opening spawn: wave 40's
   // plan fields splitters and a brood mother, and prepareWave holds part of the SAME mite
   // share back — two mites per splitter for the split, the mother's birthBudget for her
-  // tide (16 + 12 here; seed-sw-36/37 pin both reserves and their release). Arrivals plus
-  // held reserves plus still-deferred placements equal the population law's count exactly:
+  // tide (16 + 12 here; seed-sw-36/37 pin both reserves and their release), and now the
+  // Machine's rebuild reserve for its welders (15 here). Arrivals plus held reserves plus
+  // still-deferred placements equal the population law's count exactly:
   // nothing is silently dropped or invented.
   const held = engine._splitter().reserve + engine._mother().reserve
-    + engine._hive().sacBudget + engine.view.pendingCount;
+    + engine._hive().sacBudget + engine.view.pendingCount + engine._machine().reserve;
   assert.equal(spawned + held, swarmBroodPopulation(40));
   assert.ok(engine.census().alive <= SWARM_BROOD_MAX);
   assert.ok(engine.census().alive >= SWARM_BROOD_MIN);

@@ -3,18 +3,22 @@ import assert from 'node:assert/strict';
 import { drainPlayerTruth, observeEdgeMarkers } from '../scripts/player-truth/driver.mjs';
 import { checkOffscreenMarker } from '../scripts/player-truth/checks.mjs';
 
-async function observeDrainFixture({ rawId = '7', placement = 'valid', tick = 12, shooter = null, entityRows = [[1000007]] } = {}) {
+async function observeDrainFixture({ rawId = '7', placement = 'valid', tick = 12, shooter = null,
+  entityRows = [[1000007]], telegraphKind = null, player = null } = {}) {
   const prior = Object.fromEntries(['window', 'document', 'getComputedStyle'].map(key => [key, globalThis[key]]));
   const at = performance.now();
   const producer = placement === 'valid' ? { version: 1, id: 7, generation: 17, tick,
     at, expiresAt: at + 250, frame: 1, checkedAt: at, x: 480, y: 600, onScreen: false, behind: false } : placement;
   const sample = { f: 1, tick: 12, sim: 1, mode: 'flight', vw: 960, vh: 540, e: entityRows };
+  const entities = new Map(shooter ? [[7, shooter]] : []);
+  if (player) entities.set(1, player);
   globalThis.window = { innerWidth: 960, innerHeight: 540,
     __playerTruth: { drain: () => ({ samples: [sample], events: [], keys: [] }), identityFor: () => 1000007 },
-    SF: { state: { tick: 12, entities: new Map(shooter ? [[7, shooter]] : []) } } };
+    SF: { state: { tick: 12, playerId: 1, entities } } };
   globalThis.document = { querySelectorAll: () => [{
     getAttribute: key => key === 'data-entity-id' ? rawId
-      : key === 'data-placement-read' ? JSON.stringify(producer) : 'bottom',
+      : key === 'data-placement-read' ? JSON.stringify(producer)
+        : key === 'data-telegraph-kind' ? telegraphKind : 'bottom',
     getBoundingClientRect: () => ({ left: 470, top: 518, width: 20, height: 20 }),
     parentNode: { getAttribute: () => '1' },
   }] };
@@ -138,6 +142,27 @@ test('drain failures retain malformed and missing identities and reject same-tic
     assert.equal(markers[0].shooter, null, `${scenario.name} cannot earn a live-shooter binding`);
     assert.equal(checkOffscreenMarker({ meta: { rounds: false, playStartSim: 0 }, samples: result.samples }).status, 'FAIL', scenario.name);
   }
+});
+
+test('edge marker observer accepts only the producer-authorized detonator fuse and danger band', async () => {
+  const player = { id: 1, type: 'player', alive: true, pos: { x: 0, z: 0 } };
+  const detonator = eligibleShooter({ pos: { x: 400, z: 0 }, data: {
+    unarmed: true, detonator: { triggerRange: 56, blastRadius: 96 },
+  } });
+  const announced = await observeDrainFixture({ shooter: detonator, telegraphKind: 'detonator_fuse', player });
+  assert.equal(announced.samples[0].edgeMarkers[0].shooter.id, 7,
+    'a lit fuse is a threat even though the hull has no guns and is outside the blast band');
+
+  detonator.pos.x = 152;
+  const inBand = await observeDrainFixture({ shooter: detonator, player });
+  assert.equal(inBand.samples[0].edgeMarkers[0].shooter.id, 7,
+    'an unannounced fused hull is a threat at triggerRange plus blastRadius');
+
+  detonator.pos.x = 152.01;
+  const outsideBand = await observeDrainFixture({ shooter: detonator, player });
+  assert.equal(outsideBand.samples[0].edgeMarkers[0].shooter, null,
+    'an unannounced fused hull outside the danger band cannot earn an edge marker');
+  assert.equal(outsideBand.samples[0].edgeMarkers[0].placementFailure.reason, 'ineligible shooter');
 });
 
 test('producer placement cannot excuse a stale, dead, disarmed, recycled or wrong-side chip', () => {

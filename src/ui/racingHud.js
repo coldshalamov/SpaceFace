@@ -7,7 +7,6 @@ import { readRacingCoach } from './racingCoach.js';
 import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
 import { createRacingMap, formatRaceTime } from './racingMap.js';
 import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '../systems/racingCareer.js';
-import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
 import { createHudCombatLock } from './hudCombatLock.js';
@@ -34,6 +33,31 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const goal = make('div','race-tape-goal');
   const mapHost = make('div','race-tape-map');
   const row = make('div','race-tape-actions');
+  row.id = 'race-tape-options';
+  const options = make('button', 'race-tape-options-trigger k-word', 'View & circuits');
+  options.type = 'button'; options.style.display = 'none';
+  options.setAttribute('aria-controls', row.id);
+  options.setAttribute('aria-expanded', 'false');
+  let optionsOpen = false;
+  const setOptionsOpen = (open, returnFocus = false) => {
+    const changed = optionsOpen !== !!open;
+    optionsOpen = !!open;
+    panel.dataset.optionsOpen = String(optionsOpen);
+    options.setAttribute('aria-expanded', String(optionsOpen));
+    if (returnFocus) options.focus?.();
+    if (changed) bus?.emit?.('hud:layoutChanged', { key: 'flight-options' });
+  };
+  setOptionsOpen(false);
+  options.addEventListener('click', () => {
+    if (rowLocked) return;
+    setOptionsOpen(!optionsOpen);
+    if (optionsOpen) (view.disabled ? closeOptions : view).focus?.();
+  });
+  panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && optionsOpen) {
+      event.preventDefault(); event.stopPropagation(); setOptionsOpen(false, true);
+    }
+  });
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
   const button = (text, action) => {
     const b = make('button','k-word',text); b.type='button';
@@ -42,12 +66,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
     b.addEventListener('click', (ev) => { action(ev); if (ev?.detail > 0) { try { b.blur(); } catch {} } });
     row.appendChild(b); return b;
   };
-  const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
+  const view = button(`View ${BINDINGS.steeringView.label}`,()=>{ toggleSteeringView(state,bus); if (optionsOpen) setOptionsOpen(false, true); });
   const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
   // AL-HF-04: instant restart is a time-trial-only verb; the missions owner still decides
   // eligibility (tether, mode refusal toasts) — the button just exposes the key's reach.
   const restart = button('Restart',()=>bus?.emit?.('race:restart',{source:'hud'}));
-  const board = button('Circuits',()=>screens?.pushScreen?.('raceBoard'));
+  const board = button('Circuits',()=>{ if (optionsOpen) setOptionsOpen(false); screens?.pushScreen?.('raceBoard'); });
   board.title = 'Routes, local best times and last result';
   const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
   let selection = null;
@@ -56,7 +80,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
       applyWorldObjectSelection(state, selection, 'race-instrument');
   });
   select.hidden = true;
-  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
+  const closeOptions = button('Close', () => setOptionsOpen(false, true));
+  closeOptions.className += ' race-tape-options-close'; closeOptions.style.display = 'none';
+  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,options,row,live); root.appendChild(panel);
   const syncParent = (authored) => {
     // HUD reconstruction can replace the entire dock, so ownership is re-derived each frame —
     // but a tape already inside a live .sf-rightdock under root is correctly placed, and only
@@ -75,6 +101,11 @@ export function mountRacingHud({ root, bus, state, screens }) {
     else parent.insertBefore(panel, parent.firstChild);
   };
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  // The simulation registers temporary corridor sessions in a realm-local WeakMap. In the
+  // worker lane that registry is not visible to this main-thread HUD, so retain the public
+  // launch option for the result-screen presentation decision.
+  let temporaryCircuitRun = false;
+  let pendingResult = null;
   const offs = [];
   const combatLock = createHudCombatLock({ bus, state });
   let rowLocked = false;
@@ -85,9 +116,16 @@ export function mountRacingHud({ root, bus, state, screens }) {
     // canvas and fire) and the tab order, so Circuits cannot open the race board mid-fight.
     panel.dataset.combatLock = locked ? 'true' : 'false';
     row.inert = locked;
+    options.disabled = locked;
+    options.title = locked ? 'Unavailable during combat.' : 'View and circuit options';
+    if (locked && optionsOpen) setOptionsOpen(false);
     if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
   };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
+  listen('game:new', (opts) => { pendingResult = null; temporaryCircuitRun = opts?.racingSession === true; });
+  for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
+    listen(event, () => { pendingResult = null; temporaryCircuitRun = false; });
+  }
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
   listen('mission:gateCleared',p=>{
@@ -97,7 +135,32 @@ export function mountRacingHud({ root, bus, state, screens }) {
     pulse = `${p.lapCompleted ? 'LAP' : 'GATE'} ${p.gateIndex+1} CLEAR${split}`;
     pulseUntil = (state.simTime||0)+1.6; live.textContent=pulse;
   });
-  const showResult=()=>{if(isRacingCorridorSession(state))queueMicrotask(()=>{if(state.mode==='flight')screens?.pushScreen?.('raceBoard');});};
+  const tryShowResult = () => {
+    const pending = pendingResult;
+    if (!pending || pending.queued || state.mode !== 'flight') return;
+    const active = state.missions?.active;
+    if (Array.isArray(active) && active.some((mission) => mission?.status === 'active'
+      && (pending.missionId != null ? mission.id === pending.missionId
+        : mission.params?.racingContractId === pending.contractId))) return;
+    pending.queued = true;
+    queueMicrotask(() => {
+      if (pendingResult !== pending) return;
+      pending.queued = false;
+      const rows = state.missions?.active;
+      if (state.mode !== 'flight' || (Array.isArray(rows) && rows.some((mission) => mission?.status === 'active'
+        && (pending.missionId != null ? mission.id === pending.missionId
+          : mission.params?.racingContractId === pending.contractId)))) return;
+      pendingResult = null;
+      screens?.pushScreen?.('raceBoard');
+    });
+  };
+  const showResult = (payload) => {
+    if (!temporaryCircuitRun) return;
+    const active = activeAuthoredRace(state);
+    pendingResult = { missionId: payload?.missionId ?? (active?.params?.racingContractId === payload?.racingContractId ? active.id : null),
+      contractId: payload?.racingContractId, queued: false };
+    tryShowResult();
+  };
   listen('mission:completed',p=>{ if(p?.racingContractId) {
     rememberRacingResult(p);
     let storage=null;try{storage=globalThis.localStorage;}catch{}
@@ -108,12 +171,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
         bus?.emit?.('toast',{text:'Race finished. This browser could not store the rival result.',kind:'info',ttl:4});
     }
     live.textContent=`Circuit complete in ${formatRaceTime(p.raceElapsedS)}`;
-    showResult();
+    showResult(p);
   } });
-  listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult();});
+  listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult(p);});
   listen('race:launchFailed',()=>releaseRacingCupHeat());
   listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
-  listen('mission:updated',()=>{lastTick=-Infinity;});
+  listen('mission:updated',()=>{lastTick=-Infinity;tryShowResult();});
   // A player-attributed takedown is a fact/result — the shared receipt floor voices it.
   listen('race:takedown',p=>{
     const raceId = missionId ?? activeAuthoredRace(state)?.id;
@@ -126,6 +189,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
 
   return {
     frame(liveState) {
+      tryShowResult();
       const st = liveState || state;
       const authored = activeAuthoredRace(st);
       syncParent(authored);
@@ -137,6 +201,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
       const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
       setProperty(panel, 'hidden', !inFlight || st.physicsVenuePublic?.active === true || crucibleLive);
+      if (!inFlight || crucibleLive || authored) { if (optionsOpen) setOptionsOpen(false); }
       if (!inFlight || crucibleLive) return;
       setRowLocked(combatLock.hot(st));
       const now=st.simTime||0;
@@ -144,7 +209,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
       lastTick=now;
       const race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
-      setProperty(view, 'textContent', lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
+      const mobileCompact = !authored && document.documentElement?.dataset?.sfMobile === '1' && document.documentElement?.dataset?.sfMobileFlight === '1';
+      setProperty(view, 'textContent', mobileCompact
+        ? `View: ${viewMode === 'racing' ? 'Chase' : 'Overhead'}${lock ? ' (mission locked)' : ''}`
+        : lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`);
       setProperty(view, 'disabled', !!lock);
       const pressed=String(viewMode==='racing');
       if(view.getAttribute('aria-pressed')!==pressed)view.setAttribute('aria-pressed',pressed);
@@ -176,7 +244,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(cue)courseCue.textContent=cue.kind==='sectorHazard'
         ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
         :cue.kind==='anchor'?`${cueName} · optional Massline swing`
-        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} u`
         :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
@@ -201,8 +269,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(phase==='approach'){
         line.textContent=`${name} · APPROACH`;
         const distance=grid&&player?.pos?Math.hypot(grid.x-player.pos.x,grid.z-player.pos.z):0;
-        sub.textContent=`GRID ${Math.round(distance)} wu · ${Math.round(tape.speed)} wu/s`;
-        hints.textContent='Stop within 70 wu of the marker, below 8 wu/s. Face gate 1; release the Massline.';
+        sub.textContent=`GRID ${Math.round(distance)} u · ${Math.round(tape.speed)} u/s`;
+        hints.textContent='Stop within 70 u of the marker, below 8 u/s. Face gate 1; release the Massline.';
         return;
       }
       if(phase==='handoff'){
@@ -222,7 +290,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
         lastHolding=true;return;
       }
       if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
-      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} wu/s · GATE ${tape.nextGate}/${tape.gateCount}`;
+      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} u/s · GATE ${tape.nextGate}/${tape.gateCount}`;
       pack.textContent=(race.params.raceStandings||[]).map(row=>`${row.position} ${row.name}${row.status==='finished'?' ✓':row.status==='dnf'?' DNF':''}`).join(' · ');
       const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
       const draft=race.params.raceDraft;
@@ -236,9 +304,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const precision=race.params.precisionChain>1?` · PRECISION ×${race.params.precisionChain}`:'';
       const personal=Number.isFinite(race.params.lastGhostDeltaS)?` · ${race.params.lastGhostDeltaS>=0?'+':''}${race.params.lastGhostDeltaS.toFixed(2)}s personal best`:'';
       hints.textContent=(warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
-        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
+        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} u`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
-    dispose(){ for(const off of offs)off();combatLock.dispose();panel.remove(); },
+    dispose(){ pendingResult=null;for(const off of offs)off();combatLock.dispose();panel.remove(); },
   };
 }

@@ -18,8 +18,7 @@
    straight through the deck's and the wing fan's translucent fills (craft critic 2026-10-26 —
    "× FLYBY / Break the beam" legible right of ROUTE, "eam" through the SCREEN wedge). While
    either radial is open the tell layer is suppressed outright; nothing may read through. */
-body:has(#sf-commsfan.is-open) .sf-tells,
-body:has(.sf-wradial--in) .sf-tells { visibility: hidden; }
+body.sf-radial-owns-frame .sf-tells { visibility: hidden; }
 
 /* Stacked list: the hub sits directly above the power rail, contact actions
    stack above it. Nothing is absolutely positioned inside, so longer labels

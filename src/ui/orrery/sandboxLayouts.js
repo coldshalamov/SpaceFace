@@ -458,6 +458,21 @@ const SANDBOX_LAYOUTS_CSS = `
   .sf-sandbox-lab-form { grid-template-columns: 1fr; }
   .sf-sandbox-tile { min-height: 0 !important; height: auto !important; padding: 14px 8px 10px 0; }
   .sf-sandbox-dial { display: none; }
+  /* The crest's reading line and the ladder's QUICK SETUPS tick were ~70px apart, stacked air from
+     the crest foot, the frame's row gap and the ladder's own lead-in. One 8px gap each keeps the
+     break a section break, not a hole, and gives the ladder that height back. */
+  .screen.sf-sandbox.dp-frame--screen { row-gap: 8px; }
+  .sf-sandbox .sf-crest { padding-bottom: 4px; }
+  .sf-sandbox-tiles { margin-top: 8px; }
+}
+/* Match the other desktop plates' readable scale while retaining the dial and rail proportions. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  html:root:not([data-sf-mobile="1"]) .screen.sf-sandbox { zoom: 1.14; }
+  /* At 1.14 the 160px ladder floor left COMBAT LAB's STARTER LOADOUT row half under the stage
+     fade, a ghost strip above Launch; the ladder gives back the fade and one row. */
+  html:root:not([data-sf-mobile="1"]) .sf-sandbox-tiles {
+    max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade) - 40px));
+  }
 }
 /* Touch / phone deck (data-sf-mobile, any width): the global 44px touch floor crushed each
    title+desc tile and stacked them, so the tiles opt out of it and keep their own height. */
@@ -474,9 +489,15 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
    below 500px of stage height the ladder drops its own bound — the stage alone scrolls. */
 @media (max-height: 640px) {
   .screen.sf-sandbox.dp-frame--screen { padding-top: 16px; row-gap: 8px; }
-  .sf-sandbox .sf-crest { padding-top: 8px; }
+  .sf-sandbox .sf-crest { padding-top: 8px; padding-bottom: 4px; }
+  .sf-sandbox-tiles { margin-top: 8px; }
   .sf-sandbox-dial { width: 84px; height: 84px; }
   .sf-sandbox .sf-sandbox-name { font-size: calc(var(--dp-fs-title) * .6); }
+}
+/* Leave the first Combat Lab row above the stage fade in short desktop windows. */
+@media (max-height: 640px) and (min-height: 501px) {
+  .sf-sandbox-tiles { max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade))); }
+  .sf-sandbox .sf-section-h { margin-top: calc(var(--dp-u) * 3); }
 }
 @media (max-height: 500px) {
   .sf-sandbox-tiles {

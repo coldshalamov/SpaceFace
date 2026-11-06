@@ -12,6 +12,7 @@ import {
   FAIL_RECOVERY_COOLDOWN_S,
   recoverEncounter,
 } from '../src/story/campaign47a/index.js';
+import { plantFirstPlayerGrowth, plantNestOutcome } from './story-campaign47a-fixtures.mjs';
 
 const cloneSystem = (proto) => Object.assign({}, proto);
 
@@ -94,8 +95,10 @@ function toB3(h) {
   completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
   assert.equal(h.state.story.beatIndex, 2);
   completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:cinder'));
-  h.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_save', fedMass: 10 });
-  h.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  // The reconcilers verify the owners' persisted receipts, so plant the real
+  // first-growth row and terminal Nest outcome before emitting the live signals.
+  h.bus.emit('understory:playerGrowth', plantFirstPlayerGrowth(h.state));
+  h.bus.emit('encounter:resolved', plantNestOutcome(h.state));
   const writ = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
   assert.equal(writ.type, 'bounty_hunt', 'the register contract is the book’s last post');
   completeMission(h, writ);

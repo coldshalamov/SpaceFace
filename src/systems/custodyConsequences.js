@@ -472,6 +472,9 @@ export function openImpoundBill(state, payload) {
     if (payload.yardId != null) existing.yardId = payload.yardId;
     if (payload.lockId != null) existing.lockId = payload.lockId;
     if (payload.clerkId != null) existing.clerkId = payload.clerkId;
+    // A repost names its sector — a cross-sector repost must not keep the bill's stale
+    // sectorId or the yard reads as sector-local to a place it isn't.
+    if (payload.sectorId) existing.sectorId = payload.sectorId;
     ledger.impound = existing;
     return existing;
   }

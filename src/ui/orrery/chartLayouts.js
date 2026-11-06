@@ -50,9 +50,9 @@ ${C} { pointer-events:none; }
 ${C} .gm-viewport, ${C} .gm-viewport canvas { pointer-events:auto; }
 /* ============================ THE HEADER ============================================ */
 ${C} .gm-title { text-shadow:0 2px 28px rgb(5 7 10 / .7); }
-${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 /* CONTROLS and CLOSE are words; CLOSE keeps its ESC key glyph */
-${C} :is(.gm-hint-btn, .gm-close) { ${PLAIN} ${LABEL} min-height:32px !important; padding:4px 2px 4px 12px !important; font-size:12px !important; letter-spacing:.2em !important;
+${C} :is(.gm-hint-btn, .gm-close) { ${PLAIN} ${LABEL} min-height:32px !important; padding:4px 2px 4px 12px !important; font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .86) !important; text-shadow:none !important; cursor:pointer; }
 ${C} :is(.gm-hint-btn, .gm-close)::before { ${RESET_PSEUDO} }
 ${C} .gm-hint-btn::after { ${RESET_PSEUDO} }
@@ -79,7 +79,7 @@ ${C} :is(.gm-rail-track, .gm-rail-marker) { display:none !important; }
 /* the level reading is the lever's own word row now; its text stays for the checks and the reader */
 ${C} .gm-level { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; }
 ${C} .gm-scale-buttons.k-words { position:relative !important; gap:0 30px !important; background:none !important; padding:0 0 16px !important; isolation:isolate; }
-${C} .gm-scale-btn.k-word { ${PLAIN} ${LABEL} position:relative; z-index:1; min-height:28px !important; padding:0 2px 0 8px !important; font-size:12px !important; letter-spacing:.2em !important;
+${C} .gm-scale-btn.k-word { ${PLAIN} ${LABEL} position:relative; z-index:1; min-height:28px !important; padding:0 2px 0 8px !important; font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .66) !important; text-shadow:0 1px 8px rgb(5 7 10 / .9) !important; }
 ${C} .gm-scale-btn.k-word:is(:hover) { color:rgb(${BONE} / .95) !important; }
 ${C} .gm-scale-btn.k-word:focus-visible { outline:none !important; color:rgb(248 244 234) !important; ${SEG()} }
@@ -296,7 +296,7 @@ ${C} .gm-navfoot .gm-nav-row:not([data-tone="muted"])::before { background:rgb(2
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { width:12px; height:12px; left:-1px; top:-21px; background:rgb(255 250 238); box-shadow:0 0 0 4px rgb(255 240 214 / .18), 0 0 16px 4px rgb(255 240 214 / .5); }
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { content:""; position:absolute; top:-17px; height:3px; left:calc(-100% - var(--k-gap, 32px)); width:calc(100% + var(--k-gap, 32px));
   background:linear-gradient(90deg, rgb(248 244 234 / .2), rgb(248 244 234 / .95)); box-shadow:0 0 10px 1px rgb(255 240 214 / .3); pointer-events:none; }
-${C} .gm-navfoot .gm-nav-row-k { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${C} .gm-navfoot .gm-nav-row-k { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 ${C} .gm-navfoot .gm-nav-row-v { color:rgb(248 244 234) !important; }
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"] .gm-nav-row-v { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .gm-navfoot .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color:rgb(${BONE} / .66) !important; }
@@ -355,6 +355,11 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
 }
 /* the foot keeps the stage's width on an ultrawide, like the header and the stage above it */
 ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
+/* The deck must fit its allocated foot track; end alignment otherwise lets six rows grow
+   upward across the inspector. The table keeps every route in its own scroll region. */
+${C} .gm-apron .gm-deck { align-self:stretch; max-height:100%; overflow:hidden; }
+${C} .gm-deck-table { flex:1 1 auto; overscroll-behavior:contain; }
+${C} .gm-apron:has(.gm-deck:not([hidden])) { height:var(--gm-apron-h); }
 /* the dock: one spine of icon beads; the words open over the map on pointer or focus */
 @media (min-height: 1px) {
   ${C}[data-layout="wide"] { --gm-rail-w:52px; }
@@ -422,9 +427,28 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-frame-group { flex-wrap:nowrap !important; gap:0 18px !important; }
   ${C} .gm-frame-group .gm-frame-btn { min-height:26px !important; }
   ${C} .gm-inspector-actions { gap:2px !important; }
+  ${C} .gm-inspector-actions > * { flex-shrink:0; }
   ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
+  ${C} :is(#gm-set-course-btn, .gm-plot-btn) { min-height:calc(1.4em + 6px) !important; }
   ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
   ${C} .gm-place-actions { gap:0 14px !important; }
+}
+
+/* A populated deck needs a real row below the short desktop chart, not a floating table.
+   Keep the stage usable and let the frame scroll instead of compressing its action words. */
+@media (max-height:819px) and (min-width:761px) and (max-width:1179px) {
+  html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="compact"]:has(.gm-deck:not([hidden])) {
+    grid-template-rows:max-content minmax(320px, 1fr) max-content !important;
+    overflow-y:auto !important;
+  }
+  ${C}[data-layout="compact"] .gm-deck-row {
+    grid-template-columns:minmax(0, 1fr) auto !important; row-gap:3px; padding-block:6px;
+  }
+  ${C}[data-layout="compact"] .gm-deck-commodity { grid-column:1; grid-row:1; }
+  ${C}[data-layout="compact"] .gm-deck-risk { grid-column:2; grid-row:1; }
+  ${C}[data-layout="compact"] :is(.gm-deck-lane, .gm-deck-metric) {
+    display:block !important; grid-column:1 / -1; white-space:normal; overflow-wrap:anywhere;
+  }
 }
 
 /* a short wide window (1280x540): the collapsed dock's ten beads ran 374 px and the last lens
@@ -467,6 +491,13 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
 
 @media (forced-colors:active) {
   ${C} .gm-left-rail, ${C} .gm-navfoot { background:none !important; }
+  /* Icon-only controls sit over authored canvas pixels, which the system palette cannot recolor. */
+  ${C} :is(.gm-layer-btn.k-word, .gmh-tool) {
+    color:CanvasText !important; background:Canvas !important; border:1px solid CanvasText !important;
+  }
+  ${C} .gm-layer-btn.k-word:is([aria-pressed="true"], .active) { color:HighlightText !important; background:Highlight !important; }
+  ${C} .gm-layer-ico { color:inherit !important; filter:none !important; }
+  ${C} :is(.gm-layer-btn.k-word, .gmh-tool):focus-visible { outline:2px solid Highlight !important; outline-offset:2px !important; }
   ${C} .gm-layer-state, ${C} .gm-navfoot .gm-nav-row::before { background:Highlight !important; box-shadow:none !important; }
   ${C} .orr-chart-lever, ${C} .orr-chart-tabscale { display:none; }
 }

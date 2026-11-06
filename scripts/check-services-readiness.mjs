@@ -9,6 +9,7 @@ const stationAppSource = readFileSync(new URL('../src/ui/station/stationApp.js',
 function baseState(overrides = {}) {
   return {
     fuel: { current: 40, max: 100 },
+    ui: { docked: true, dockedStationId: 'station_helios' },
     player: {
       credits: 500,
       cargo: { usedVolume: 0, capVolume: 40, items: {} },

@@ -70,6 +70,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null, revealStageTimer = null;
   let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
   let startupFailure = null, failurePane = null;
+  let newGamePending = false;
   const lockup = overlay.querySelector?.('.boot-lockup') || null;
   const priorLockupDisplay = lockup?.style?.display || '';
   let session = 0;
@@ -563,6 +564,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   const unsubs = [
     bus.on('game:loadingProgress', (stage) => {
+      // Progress owns the loading shell only until the committed flight handoff. A queued or
+      // generation-less receipt landing afterward must not re-show the veil and cancel the
+      // bounded first-flight reveal (which also owns the worker sim hold).
+      if (state?.mode === 'flight') return;
       if (!startupFailure && eventMatchesCurrentGeneration(stage)) show(stage);
     }),
     bus.on('mode:changed', ({ mode } = {}) => {
@@ -572,10 +577,12 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         show(activeStage || DEFAULT_STAGE);
       }
       else if (mode === 'flight') {
+        newGamePending = false;
         if (startupFailure && state?.mode === 'flight') clearStartupFailure();
         if (!startupFailure) { activeStage = null; hideAfterFirstFlightFrame(); }
       }
       else if (mode === 'menu') {
+        newGamePending = false;
         if (startupFailure) return;
         if (activeStage?.id?.startsWith('boot-')) return; // initial menu is revealed by main after init
         activeStage = null; hide({ completed: false });
@@ -587,6 +594,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     bus.on('game:new', resetForNewSession),
     bus.on('game:load', resetForNewSession),
     bus.on('game:exitToMenu', () => {
+      newGamePending = false;
       if (clearStartupFailure()) hide({ completed: false });
       resetDestination();
     }),
@@ -606,13 +614,16 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         bus.emit('game:startFailed', failure);
         return;
       }
+      // An unrelated save receipt does not own an in-progress New Game admission. Hiding here
+      // exposes the menu while the launch continues and can release its presentation hold.
+      if (newGamePending && loadingRoute) return;
       hide({ completed: false });
     }),
     // Row 473 — the destination slate. These are its own door: `resetForNewSession` above is a
     // no-op on the normal path (it only clears a startup failure), so the slate needs its own
     // listeners. `destroy` drains this same array.
-    bus.on('game:new', (opts = {}) => { beginNewGame(opts && typeof opts === 'object' ? opts : {}); }),
-    bus.on('game:load', (payload = {}) => { beginRestore(payload && typeof payload === 'object' ? payload : {}); }),
+    bus.on('game:new', (opts = {}) => { newGamePending = true; beginNewGame(opts && typeof opts === 'object' ? opts : {}); }),
+    bus.on('game:load', (payload = {}) => { newGamePending = false; beginRestore(payload && typeof payload === 'object' ? payload : {}); }),
     bus.on('save:envelopePrepared', (payload = {}) => { nameRestore(payload && typeof payload === 'object' ? payload : {}); }),
     // A restore that never rode game:load — an envelope import, an in-flight rollback, a lane
     // sync — emits no envelopePrepared, so without these two the slate kept whatever a previous

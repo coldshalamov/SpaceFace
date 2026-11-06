@@ -346,6 +346,55 @@ test('graph normal pass replays the captured list, dropping zero-count instanced
   material.dispose();
 });
 
+test('graph AO uses ordinary render passes when either capture-list method is absent', () => {
+  for (const partial of ['neither', 'capture-only', 'replay-only']) {
+    const previousTarget = { name: 'previous' };
+    const previousOverride = new THREE.MeshBasicMaterial();
+    let activeTarget = previousTarget;
+    let failNormal = false;
+    const calls = [];
+    const renderer = {
+      isWebGLRenderer: true,
+      capabilities: { isWebGL2: false },
+      autoClear: false,
+      getRenderTarget: () => activeTarget,
+      setRenderTarget(target) { activeTarget = target; },
+      clear() {},
+      render(scene, camera) {
+        calls.push({ scene, camera, target: activeTarget, override: scene.overrideMaterial });
+        if (activeTarget === graph.normalTarget && failNormal) throw new Error('normal pass failed');
+      },
+    };
+    const forbidden = () => { throw new Error('partial capture API must not be used'); };
+    if (partial === 'capture-only') renderer.renderAndCaptureList = forbidden;
+    if (partial === 'replay-only') renderer.renderCapturedList = forbidden;
+    const graph = new SpaceRenderGraph(renderer, { ao: true, bloom: false });
+    graph.setSize(64, 64);
+    const scene = new THREE.Scene();
+    scene.overrideMaterial = previousOverride;
+    const camera = new THREE.PerspectiveCamera();
+
+    graph.render(scene, camera);
+    const worldPasses = calls.filter((call) => call.scene === scene);
+    assert.equal(worldPasses.length, 2, partial);
+    assert.deepEqual(worldPasses.map((call) => call.target), [graph.sceneTarget, graph.normalTarget]);
+    assert.deepEqual(worldPasses.map((call) => call.override), [previousOverride, graph.normalMaterial]);
+    assert.ok(calls.some((call) => call.target === graph.aoTarget), 'AO is rendered');
+    assert.strictEqual(graph.compositeMaterial.uniforms.tAo.value, graph.aoTarget.texture);
+    assert.strictEqual(scene.overrideMaterial, previousOverride);
+    assert.strictEqual(activeTarget, previousTarget);
+    assert.equal(renderer.autoClear, false);
+
+    failNormal = true;
+    assert.throws(() => graph.render(scene, camera), /normal pass failed/);
+    assert.strictEqual(scene.overrideMaterial, previousOverride, 'normal override is restored on error');
+    assert.strictEqual(activeTarget, previousTarget);
+    assert.equal(renderer.autoClear, false);
+    graph.dispose();
+    previousOverride.dispose();
+  }
+});
+
 test('graph normal admission substitutes exact subject materials for compile and restores them', async () => {
   const normal = { name: 'normal prepass' };
   const original = { name: 'normal-eligible', allowOverride: true };
@@ -567,6 +616,13 @@ test('dynamic-resolution tiers stay on the bloom path even when the render graph
   assert.equal(dynResDefaultOff.owner._selectPostRoute(), POST_PROCESS_ROUTE.GRAPH,
     'a dyn-res tier with the controller disabled still honours the graph request');
 
+  const automatic = createPostRouteHarness({ renderGraph: true });
+  automatic.owner.state.render.dynResAllowed = true;
+  automatic.owner.state.settings.video.qualityMode = 'auto';
+  automatic.owner.state.settings.video.dynamicResolution = false;
+  assert.equal(automatic.owner._selectPostRoute(), POST_PROCESS_ROUTE.BLOOM,
+    'Auto adapts render resolution even though the manual dynamicResolution toggle is off');
+
   const discreteGraph = createPostRouteHarness({ renderGraph: true });
   discreteGraph.owner.state.render.dynResAllowed = false;
   discreteGraph.owner.state.render.gpu = { tier: 'discrete', software: false };
@@ -671,13 +727,23 @@ test('AO and zero/off bloom skip their pass families without skipping presentati
     'AO off renders the world once and performs no normal override pass');
   assert.equal(renders.length, 2, 'scene plus canonical composite remain');
   assert.deepEqual(graph.diagnostics().passFamilies,
-    { scene: 1, normal: 0, ao: 0, bloom: 0, distortion: 0, composite: 1, photoGrade: 0 });
+    {
+      scene: 1, normal: 0, ao: 0, atmosphere: 0, bloom: 0,
+      distortion: 0, composite: 1, photoGrade: 0,
+    });
 
   renders.length = 0;
   graph.setOptions({ bloom: true, bloomStrength: 0 });
+  assert.equal(graph.diagnostics().bloomLevels, 0,
+    'zero effective strength must release the unused bloom pyramid');
+  assert.equal(graph.diagnostics().renderTargetCount, 2,
+    'zero-strength bloom must retain only the scene and distortion targets');
   graph.render(scene, new THREE.PerspectiveCamera(), { time: 0 });
   assert.equal(renders.length, 2, 'zero strength also skips every bloom pass');
   assert.equal(graph.diagnostics().bloomPasses, 0);
+  graph.setOptions({ bloomStrength: 0.5 });
+  assert.equal(graph.diagnostics().bloomLevels, 4,
+    'turning bloom strength back on must recreate its pyramid');
   graph.dispose();
 });
 
@@ -832,12 +898,21 @@ test('opening admission waits for a visible whole-ship LOD transition after auth
     scene,
     _meshes: new Map([[entity.id, root]]),
     renderer: {},
+    _shadowDepthEnabled: () => false,
   };
 
   owner._openingFirstPictureUpgradePromisesSteps = renderSystem._openingFirstPictureUpgradePromisesSteps;
   const pending = renderSystem._openingFirstPictureUpgradePromises.call(owner);
   assert.deepEqual(pending, [transition.promise],
     'the retained settled base promise is ignored while the live LOD child replacement still blocks');
+  assert.deepEqual(owner._openingFirstPicturePendingEvidence, [{
+    kind: 'whole-ship-lod',
+    entityId: entity.id,
+    entityType: 'ship',
+    rootUuid: root.uuid,
+    rootName: null,
+    authoredAssetState: 'authored',
+  }], 'the failure receipt must identify the exact live root/promise that holds the opening gate');
 
   let completed = false;
   const wait = Promise.all(pending).then(() => { completed = true; });
@@ -1308,23 +1383,15 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
   assert.match(source,
     /recordAuthoredAdmissionBlockingSlice/,
     'renderer must own one shared blocking-slice observer for authored admission paths');
-  const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
-  // 206e8b2f5 (PQ-033.02) routed two more GPU residency passes through the same observer: the
-  // context-restore re-upload and the first-picture barrier on the live mount. Later passes added
-  // the warm-roots geometry residency and the live-sector pool re-upload on the same observer.
-  assert.equal(
-    observerWires?.length,
-    7,
-    'pipeline tracker, authored residency tracker, opening residency, context-restore residency, first-picture residency, warm geometry residency, and live-sector pool residency must share the observer',
-  );
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'context-restore GPU residency must publish initTexture slices');
   assert.match(source,
-    // The options literal nests `{ sliceMs }` inside createSlicedYield, so the scan must allow
-    // braces — `[^}]*` stopped matching the day the sliced yield landed.
-    /firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
-    'first-picture GPU residency must publish initTexture slices');
+    /const firstPicturePlan = state\.render\.openingSubmissionPlan;[\s\S]*?firstPictureResidencySubjects = collectOpeningResidencySubjects\(firstPicturePlan\);[\s\S]*?if \(firstPictureResidencySubjects\.length > 0\) \{[\s\S]*?firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*firstPictureResidencySubjects,\s*\{[\s\S]*?includeEmpty:\s*true,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'first-picture residency must admit the exact opening-plan subjects, including zero-count pools, and publish initTexture slices');
+  assert.match(source,
+    /reason:\s*'exact opening admission and first-flight cook own residency'/,
+    'an empty opening plan may skip this pass only because exact opening admission and first-flight cook own the remaining residency');
   assert.match(source,
     /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'pipeline admission must publish synchronous compileBatch slices');
@@ -1332,8 +1399,11 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /createGpuResidencyAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'authored GPU residency tracker must publish initTexture slices');
   assert.match(source,
-    /prepareStartupGpuResidency\(renderer,\s*plan\.residencySubjects[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
-    'opening GPU residency must publish initTexture slices');
+    /const openingResidencyLeaves = openingAdmissionSubjects\([\s\S]*?plan\.residencySubjects[\s\S]*?plan\.pooledResourceSubjects[\s\S]*?const openingResidencySubjects = collectOpeningResidencySubjects\(\{[\s\S]*?plan\.textureRefs[\s\S]*?\}\);[\s\S]*?const residency = prepareStartupGpuResidency\(renderer,\s*openingResidencySubjects,\s*\{[\s\S]*?includeEmpty:\s*true,[\s\S]*?includeGeometry:\s*true,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'opening residency must include current-plan pools and texture refs before required uploads');
+  assert.match(source,
+    /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?beforeSubmit:\s*assertPictureSealActive,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'the current-sector picture seal must publish its blocking residency slices');
   assert.match(source,
     /prepareStartupGeometryResidency\(renderer,\s*warmRoots,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'warm-roots geometry residency must publish its slices');

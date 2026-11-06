@@ -50,6 +50,7 @@ test('source overlay replaces only explicitly pinned runtime files and publishes
   await mkdir(path.join(root, 'assets'), { recursive: true });
   await writeFile(path.join(root, 'index.html'), 'current-index');
   await writeFile(path.join(root, 'src', 'pinned.js'), 'current-runtime');
+  await writeFile(path.join(root, 'src', 'unPinned.js'), 'current-unpinned-runtime');
   await writeFile(path.join(root, 'assets', 'live.bin'), 'current-asset');
   t.after(() => rm(root, { recursive: true, force: true }));
 
@@ -69,6 +70,9 @@ test('source overlay replaces only explicitly pinned runtime files and publishes
 
   const runtime = await fetch(`${baseUrl}/src/pinned.js`);
   assert.equal(await runtime.text(), 'frozen-runtime');
+  const partialFallback = await fetch(`${baseUrl}/src/unPinned.js`);
+  assert.equal(partialFallback.status, 200);
+  assert.equal(await partialFallback.text(), 'current-unpinned-runtime');
   const asset = await fetch(`${baseUrl}/assets/live.bin`);
   assert.equal(await asset.text(), 'current-asset');
 
@@ -82,6 +86,81 @@ test('source overlay replaces only explicitly pinned runtime files and publishes
     totalBytes: 'frozen-indexfrozen-runtime'.length,
     files: pinned.files.map(({ path: filePath, bytes, sha256 }) => ({ path: filePath, bytes, sha256 })),
   });
+});
+
+test('all-runtime source overlays reject unpinned runtime files but preserve current assets', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-overlay-all-runtime-'));
+  await mkdir(path.join(root, 'src'), { recursive: true });
+  await mkdir(path.join(root, 'assets'), { recursive: true });
+  await writeFile(path.join(root, 'index.html'), 'current-index');
+  await writeFile(path.join(root, 'src', 'pinned.js'), 'current-runtime');
+  await writeFile(path.join(root, 'src', 'unPinned.js'), 'current-unpinned-runtime');
+  await writeFile(path.join(root, 'src', 'unPinned.json'), '{"current":true}');
+  await writeFile(path.join(root, 'assets', 'live.bin'), 'current-asset');
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const pinned = manifest([
+    ['index.html', 'frozen-index'],
+    ['src/pinned.js', 'frozen-runtime'],
+  ]);
+  pinned.captureScope = 'all-runtime';
+  pinned.runtimePathPolicy = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+  const baseUrl = await listen(t, root, pinned);
+
+  const identity = await fetch(`${baseUrl}/__source_overlay_identity`);
+  assert.equal((await identity.json()).strictRuntimeIsolation, true);
+
+  const runtime = await fetch(`${baseUrl}/src/pinned.js`);
+  assert.equal(runtime.status, 200);
+  assert.equal(await runtime.text(), 'frozen-runtime');
+  const unpinnedRuntime = await fetch(`${baseUrl}/src/unPinned.js`);
+  assert.equal(unpinnedRuntime.status, 404);
+  assert.equal(await unpinnedRuntime.text(), 'Not Found');
+  const unpinnedData = await fetch(`${baseUrl}/src/unPinned.json`);
+  assert.equal(unpinnedData.status, 404);
+  assert.equal(await unpinnedData.text(), 'Not Found');
+  const asset = await fetch(`${baseUrl}/assets/live.bin`);
+  assert.equal(asset.status, 200);
+  assert.equal(await asset.text(), 'current-asset');
+});
+
+test('strict overlay release receipts identify the served map and use an overlay-specific cache key', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-overlay-receipt-'));
+  await writeFile(path.join(root, 'index.html'), 'current-index');
+  await mkdir(path.join(root, 'build', 'web'), { recursive: true });
+  await writeFile(path.join(root, 'build', 'web', 'spaceface-release-build.json'),
+    JSON.stringify({ schema: 'spaceface.releaseBuild.v2', output: { digest: 'd'.repeat(40) } }));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const makeStrictManifest = (contents, sourceCommit) => {
+    const value = manifest([['index.html', contents]]);
+    value.sourceCommit = sourceCommit;
+    value.captureScope = 'all-runtime';
+    value.runtimePathPolicy = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+    return value;
+  };
+  const firstManifest = makeStrictManifest('frozen-one', 'a'.repeat(40));
+  const secondManifest = makeStrictManifest('frozen-two', 'c'.repeat(40));
+  const previousBuildHash = process.env.SPACEFACE_BUILD_HASH;
+  process.env.SPACEFACE_BUILD_HASH = 'f'.repeat(40);
+  try {
+    const firstUrl = await listen(t, root, firstManifest);
+    const firstReceipt = await (await fetch(`${firstUrl}/spaceface-release-build.json`)).json();
+    assert.equal(firstReceipt.schema, 'spaceface.releaseBuild.dev.v1');
+    assert.equal(firstReceipt.output.digest, firstManifest.sourceOverlayDigest,
+      'strict source identity supersedes unrelated environment and worktree hashes');
+    assert.equal(firstReceipt.output.sourceCommit, firstManifest.sourceCommit);
+
+    const secondUrl = await listen(t, root, secondManifest);
+    const secondReceipt = await (await fetch(`${secondUrl}/spaceface-release-build.json`)).json();
+    assert.equal(secondReceipt.output.digest, secondManifest.sourceOverlayDigest);
+    assert.equal(secondReceipt.output.sourceCommit, secondManifest.sourceCommit);
+    assert.notEqual(secondReceipt.output.digest, firstReceipt.output.digest,
+      'a different overlay identity for the same root cannot reuse a cached receipt');
+  } finally {
+    if (previousBuildHash === undefined) delete process.env.SPACEFACE_BUILD_HASH;
+    else process.env.SPACEFACE_BUILD_HASH = previousBuildHash;
+  }
 });
 
 test('source overlay fails closed on a tampered entry', () => {
@@ -187,6 +266,18 @@ test('ordinary server launches remain canonical and expose no overlay identity',
   assert.equal(await page.text(), 'current-index');
   const identity = await fetch(`${baseUrl}/__source_overlay_identity`);
   assert.equal(identity.status, 404);
+
+  const previousBuildHash = process.env.SPACEFACE_BUILD_HASH;
+  const ordinaryBuildHash = 'e'.repeat(40);
+  process.env.SPACEFACE_BUILD_HASH = ordinaryBuildHash;
+  try {
+    const receipt = await (await fetch(`${baseUrl}/spaceface-release-build.json`)).json();
+    assert.equal(receipt.output.digest, ordinaryBuildHash,
+      'ordinary no-overlay development keeps the existing environment-hash precedence');
+  } finally {
+    if (previousBuildHash === undefined) delete process.env.SPACEFACE_BUILD_HASH;
+    else process.env.SPACEFACE_BUILD_HASH = previousBuildHash;
+  }
 });
 
 test('creator captures exact frozen git bytes into an ignored manifest', async (t) => {

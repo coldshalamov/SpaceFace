@@ -45,6 +45,7 @@
 import { faction as HELIX } from '../data/factions/helix.js';
 import { hash32 } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FLAG = (HELIX.custom && HELIX.custom.falseFlag) || {};
 const LIEN = (HELIX.custom && HELIX.custom.lienDrone) || {};
@@ -69,6 +70,37 @@ function entityListOf(state) {
   if (Array.isArray(state.entityList)) return state.entityList;
   if (state.entities && typeof state.entities.values === 'function') return [...state.entities.values()];
   return [];
+}
+
+function survivalRunActive(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+}
+
+function resumeDocketClocks(hx, now) {
+  const pausedAt = Number(hx && hx._campaignPausedAt);
+  if (!Number.isFinite(pausedAt)) return;
+  const elapsed = Math.max(0, Number(now) - pausedAt);
+  if (elapsed > 0) {
+    const shiftFuture = (row, key) => {
+      if (row && Number.isFinite(row[key]) && row[key] > pausedAt) row[key] += elapsed;
+    };
+    shiftFuture(hx, 'nextDeskAt');
+    shiftFuture(hx.manifest, 'expiresAt');
+    for (const row of Object.values(hx.desks || {})) {
+      shiftFuture(row, 'nextNoticeAt'); shiftFuture(row, 'nextAuditAt');
+    }
+    for (const row of hx.notices || []) {
+      if (row.state === 'open') shiftFuture(row, 'expiresAt');
+    }
+    for (const row of hx.fines || []) {
+      if (row.status === 'open') shiftFuture(row, 'dueAt');
+    }
+    for (const row of hx.warrants || []) {
+      if (row.state === 'open') { shiftFuture(row, 'expiresAt'); shiftFuture(row, 'nextWritAt'); }
+    }
+  }
+  delete hx._campaignPausedAt;
 }
 
 /** Live entity by id — Map fast path, list fallback. Callers check gen + tag. */
@@ -114,7 +146,7 @@ const NOTICE_LINES = Object.freeze({
   pack: Object.freeze([
     'VARIANCE {id}: unregistered tonnage flying in formation. Unmask it for the record.',
     'VARIANCE {id}: a convoy holds perfect geometry. Perfection wants assessment.',
-    'VARIANCE {id}: the registry shows four hulls and no papers. Drop their flag.' ]),
+    'VARIANCE {id}: the registry shows a formation and no papers. Drop their flag.' ]),
   collect: Object.freeze([
     'VARIANCE {id}: a hull rides unpaid liens. The Bureau posts the collection.',
     'VARIANCE {id}: filed liens outstanding on a live hull. Service pays a share.',
@@ -477,6 +509,9 @@ export const factionHelix = {
       // precedents become the next pilot's file. Reassert the empty docket on
       // every spelling of the boundary: the canonical game:new → game:started
       // transition and the legacy game:newGame alias the boot emits mid-route.
+      // The desk's counter: the prompt-deck adapter answers the service-ring offer with
+      // this intent. The verbs below re-check reach, the instrument, and credits.
+      this._subs.push(this.bus.on('helix:docketChoice', (p) => this._onDocketChoice(p)));
       const reset = () => this.newGame();
       this._subs.push(this.bus.on('game:new', reset));
       this._subs.push(this.bus.on('game:newGame', reset));
@@ -539,7 +574,11 @@ export const factionHelix = {
 
   _pickLine(lines, id, salt = 0) {
     if (!Array.isArray(lines) || !lines.length) return '';
-    return lines[hash32('helix-bark', id, salt) % lines.length].replace('{id}', id || '—');
+    // The pick still hashes the ledger id; the player reads only its serial ("No. 7"), never
+    // the internal 'ntc:7' key.
+    const serial = typeof id === 'string' ? /(\d+)$/.exec(id) : null;
+    return lines[hash32('helix-bark', id, salt) % lines.length]
+      .replace('{id}', serial ? `No. ${serial[1]}` : '—');
   },
 
   /** Once-only stamp for money/rep side-effects keyed by a content id. */
@@ -1311,6 +1350,11 @@ export const factionHelix = {
       ? Math.round(n.owedCr * HELIX_NOTICES.payCr.collect)
       : HELIX_NOTICES.payCr[n.kind];
     const pay = Math.round(base * this._tierMult(hx) * (filed ? HELIX_NOTICES.filedPayMult : 1));
+    // A manifest notice answered at the ring IS a declaration: write the same record the
+    // desk's file verb writes, so the next audit reads the hold as declared.
+    if (n.kind === 'manifest' && how === 'manifest_filed' && !filed) {
+      hx.manifest = { filedAt: num(state.simTime), expiresAt: num(state.simTime) + HELIX_FINES.manifestValidS };
+    }
     this._grant(state, pay, `helix_notice:${n.id}`);
     this._rep(state, HELIX_NOTICES.verifyRep, 'helix_notice_verified');
     this.bus && this.bus.emit('helix:noticeVerified', {
@@ -1381,6 +1425,7 @@ export const factionHelix = {
 
   /** Settle an instrument at a service point. Returns the paid amount or null. */
   payFine(state, fineId) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const f = hx.fines.find((x) => x.id === fineId);
     if (!f || f.status !== 'open') return null;
@@ -1406,6 +1451,7 @@ export const factionHelix = {
 
   /** Contest an instrument before the desk's clerk — each fine is heard once. */
   contestFine(state, fineId) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const f = hx.fines.find((x) => x.id === fineId);
     if (!f || f.status !== 'open' || f.contested) return null;
@@ -1443,9 +1489,18 @@ export const factionHelix = {
 
   /** File the manifest: audits find you in order while the window holds. */
   fileManifest(state) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const svc = this._svc(state, hx, 'NO DESK IN REACH — manifests file at the ring');
     if (!svc) return null;
+    // One declaration per window: a manifest still on file is not re-sold, so the deed and
+    // the rep it carries cannot be bought again at the fee per press.
+    if (hx.manifest && num(state.simTime) < num(hx.manifest.expiresAt)) {
+      this.bus && this.bus.emit('toast', {
+        text: 'MANIFEST ALREADY ON FILE — the window still holds', kind: 'info', ttl: 3,
+      });
+      return null;
+    }
     const fee = HELIX_FINES.manifestFeeCr;
     if (this._credits(state) < fee) {
       this.bus && this.bus.emit('toast', { text: 'INSUFFICIENT FUNDS', kind: 'warn', ttl: 3 });
@@ -1671,7 +1726,7 @@ export const factionHelix = {
         helixWrit: true, helixWritId: w.id,
         name: 'WRIT CUTTER', shipRole: 'writ_cutter',
         scannable: true,
-        scanLabel: `HELIX WRIT CUTTER — serving ${w.id} — remit or run`,
+        scanLabel: 'HELIX WRIT CUTTER — serving a Bureau warrant — remit or run',
         ai: { archetype: 'writ_cutter', passive: true, fsm: 'pursue' },
       },
     });
@@ -1792,7 +1847,7 @@ export const factionHelix = {
   // ── 8. the kill wire — one handler reads every death for the docket ─────────────
   _onKilled(p) {
     const state = this.state;
-    if (!state || !p || p.id == null) return;
+    if (!state || survivalRunActive(state) || !p || p.id == null) return;
     const hx = ensureHelixState(state);
     const victim = ent(state, p.id);
     const vd = victim && victim.data;
@@ -1927,18 +1982,82 @@ export const factionHelix = {
 
   // ── the tick ────────────────────────────────────────────────────────────────────
   update(dt, state) {
-    const hx = ensureHelixState(state);
     const now = num(state.simTime);
+    if (survivalRunActive(state)) {
+      if (isObj(state.helix) && !Number.isFinite(state.helix._campaignPausedAt)) {
+        state.helix._campaignPausedAt = now;
+      }
+      return;
+    }
+    if (isObj(state.helix)) resumeDocketClocks(state.helix, now);
+    const hx = ensureHelixState(state);
     const step = Math.max(0, num(dt, 1 / 60));
     const entities = entityListOf(state);
-    this._tickPacks(state, hx, entities, now);
+    if (strideDt(this, 'packs', step, 3, state) > 0) this._tickPacks(state, hx, entities, now);
     this._tickLienDrones(state, hx, entities, now);
-    this._tickDesks(state, hx, entities, now, step);
+    const deskStep = strideDt(this, 'desks', step, 3, state);
+    if (deskStep > 0) this._tickDesks(state, hx, entities, now, deskStep);
     this._tickNotices(state, hx, entities, now, step);
     this._tickFines(state, hx, now);
     this._tickAudits(state, hx, entities, now, step);
     this._tickWarrants(state, hx, entities, now, step);
+    this._tickServiceOffer(state, hx);
     if (hx.variance > 0) hx.variance = Math.max(0, hx.variance - HELIX_VARIANCE.decayPerS * step);
+  },
+
+  // ── the desk's counter: what the ring offers, and the answer coming back ─────────
+  /** The docket the service point can act on right now — plain numbers, no ledger ids
+   *  on any player line. `null` when the pilot is outside every ring. */
+  serviceOfferFor(state) {
+    const hx = ensureHelixState(state);
+    const player = ent(state, state.playerId);
+    if (!player || player.alive === false || !player.pos || state.mode !== 'flight') return null;
+    const svc = this._servicePointNear(state, hx, player.pos);
+    if (!svc) return null;
+    const now = num(state.simTime);
+    const fines = hx.fines.filter((f) => f.status === 'open').map((f) => ({
+      fineId: f.id, amount: f.amount, cause: f.cause, contested: f.contested === true,
+      overdue: now >= num(f.dueAt),
+    }));
+    const w = this._openWarrant(hx);
+    const manifestValid = !!(hx.manifest && now < num(hx.manifest.expiresAt));
+    return {
+      serviceKind: svc.kind,
+      clerkName: clerkById(svc.clerkId).name,
+      fines,
+      manifestValid,
+      manifestFeeCr: HELIX_FINES.manifestFeeCr,
+      warrant: w ? {
+        heat: Math.round(num(w.heat)),
+        costCr: Math.round(HELIX_WARRANT.settleBaseCr + w.heat * HELIX_WARRANT.settlePerHeatCr),
+      } : null,
+    };
+  },
+
+  /** Edge-emits `helix:serviceOffer` — on entering a ring, whenever what it offers
+   *  changes, and `{ clear: true }` on leaving. Transient; never saved. */
+  _tickServiceOffer(state) {
+    if (!this.bus) return;
+    const offer = this.serviceOfferFor(state);
+    const sig = offer ? JSON.stringify(offer) : null;
+    if (sig === (this._svcSig ?? null)) return;
+    this._svcSig = sig;
+    this.bus.emit('helix:serviceOffer', offer ? { open: true, ...offer } : { clear: true });
+  },
+
+  _onDocketChoice(p) {
+    const state = this.state;
+    if (!state || !p || typeof p.verb !== 'string') return null;
+    let out = null;
+    if (p.verb === 'pay') out = this.payFine(state, p.fineId);
+    else if (p.verb === 'contest') out = this.contestFine(state, p.fineId);
+    else if (p.verb === 'manifest') out = this.fileManifest(state);
+    else if (p.verb === 'remit') out = this.settleWarrant(state);
+    // Always re-announce what the ring offers now — a settled docket shows what is left,
+    // and a refused answer (short purse, no reach) puts the same card back.
+    this._svcSig = null;
+    if (isObj(state.helix)) this._tickServiceOffer(state, state.helix);
+    return out;
   },
 };
 

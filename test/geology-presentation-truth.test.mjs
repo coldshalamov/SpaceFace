@@ -16,11 +16,14 @@ const ROCK_PLACE_IDS = new Set([
   'place_asteroid_rock_c',
   'place_asteroid_graffiti',
 ]);
+// Row 495: the promoted asteroid wears the 24-body rock family — its authored body is picked
+// by the deterministic substance roll (seed 94721 / field id / slot 0 below) and its radius
+// class, falling back to the legacy authoredPlaceId only when the substance has no family body.
 const EXPECTED_AUTHORED_PLACE_BY_TYPE = Object.freeze({
-  ast_common_rock: 'place_asteroid_seamed',
-  ast_metallic: 'place_asteroid_rock_a',
-  ast_icy: 'place_asteroid_rock_b',
-  ast_crystalline: 'place_asteroid_rock_c',
+  ast_common_rock: 'place_rock_metallic_ore_pebble',
+  ast_metallic: 'place_rock_crystal_boulder',
+  ast_icy: 'place_rock_crystal_boulder',
+  ast_crystalline: 'place_rock_silicate_pebble',
 });
 
 function bootWorld(seed = 94721) {
@@ -116,6 +119,14 @@ test('each material-matched field promotes one real asteroid while unmatched typ
     assert.equal(authored[0].data.typeId, field.type);
     assert.equal(authored[0].data.placeId, EXPECTED_AUTHORED_PLACE_BY_TYPE[field.type],
       `${field.type} must bind to the matching authored material identity`);
+    // Row 495's own law: the authored body and the stamped substance physics must never
+    // disagree — the body's place id names the substance it rolled.
+    if (authored[0].data.placeId.startsWith('place_rock_')) {
+      assert.ok(
+        authored[0].data.placeId.includes(`_${authored[0].data.substance}_`),
+        `${field.type} authored body must name its stamped substance (${authored[0].data.substance})`,
+      );
+    }
     assert.equal(authored[0].data.fieldId, field.id);
     assert.equal(authored[0].data.placeTargetRadius, authored[0].radius);
     assert.equal(authored[0].presentationAdmission, 'pending');

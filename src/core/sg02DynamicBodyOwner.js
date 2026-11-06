@@ -34,8 +34,7 @@ import {
 } from '../data/collisionProxyManifests.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { isAnchoredPhysicalBody } from './physicalResponse.js';
-import { SHIPS } from '../data/ships.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
+import { resolveCraftProportions } from './craftProportions.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { occupantGenerationOf } from './entity.js';
 import { loadRapierCompatRuntime, orchardRapierBaseline } from './rapierCompatRuntime.js';
@@ -1711,9 +1710,11 @@ export class Sg02DynamicBodyOwner {
       if (continuation) this._applyProjectileContinuation(rec, continuation);
     }
 
-    if (tumbleFling) {
-      for (const rec of this.dynamicRecords) {
-        if (rec._tumbling !== rec._tumbleMaterial) this._syncTumbleMaterial(rec, rec._tumbling === true);
+    for (const rec of this.dynamicRecords) {
+      // Switching the feature off must retire an already-installed tumble profile too.
+      // Fresh legacy bodies retain their untouched base-material path.
+      if (rec._tumbling !== rec._tumbleMaterial && (tumbleFling || rec._tumbleMaterial === true)) {
+        this._syncTumbleMaterial(rec, rec._tumbling === true);
       }
     }
 
@@ -2160,7 +2161,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   // Penetration correction is position work, not an engine. Bound contact-sourced motion
-  // by the kinetic energy entering each connected DYNAMIC contact island. Pair-only bounds
+  // by the kinetic energy entering each connected NPC-only dynamic contact island. Pair-only bounds
   // erase genuine A -> B -> C transfers: BC may have zero pre-solve closure, and AB may
   // already be separating when the same solve transmits resistance from C back to A.
   // The island centre-of-mass frame keeps common coasting speed out of the budget; a fixed
@@ -2190,7 +2191,10 @@ export class Sg02DynamicBodyOwner {
         rec._contactMotionParent = rec;
         rec._contactMotionRank = 0;
         rec._contactMotionAnchored = false;
-        rec._contactMotionUnmeasured = jointEndpoints.has(rec)
+        // Player structural give owns its complete response. Projecting only its neighbours
+        // would break equal-and-opposite contact work; exempt the whole connected island,
+        // including indirect partners, until player policy can participate in one shared solve.
+        rec._contactMotionUnmeasured = rec.entity?.isPlayer === true || jointEndpoints.has(rec)
           || !Number.isFinite(rec.expected?.vx) || !Number.isFinite(rec.expected?.vz)
           || !Number.isFinite(rec.expected?.wy);
         rec._contactMotionMass = effectiveMass(rec);
@@ -2289,7 +2293,6 @@ export class Sg02DynamicBodyOwner {
         root._contactMotionEnergyTick = this.tick;
         root._contactMotionCross = 0;
         root._contactMotionDeltaEnergy = 0;
-        root._contactMotionPlayerLoss = 0;
       }
       const post = rec.postStep;
       const v = post && !post.vDirty ? post.v : rec.body.linvel();
@@ -2303,22 +2306,16 @@ export class Sg02DynamicBodyOwner {
       const cross = mass * ((e.vx - root._contactMotionComX) * dx + (e.vz - root._contactMotionComZ) * dz)
         + inertia * e.wy * dw;
       const deltaEnergy = mass * (dx * dx + dz * dz) + inertia * dw * dw;
-      if (rec.entity?.isPlayer === true) {
-        // The player's existing slide/helm policy owns that body. Its genuine loss of energy
-        // can fund the other bodies' response, without a second player-motion writer here.
-        root._contactMotionPlayerLoss += Math.min(0, 2 * cross + deltaEnergy);
-      } else {
-        root._contactMotionCross += cross;
-        root._contactMotionDeltaEnergy += deltaEnergy;
-      }
+      root._contactMotionCross += cross;
+      root._contactMotionDeltaEnergy += deltaEnergy;
     }
     for (const rec of nodes) {
       const root = contactMotionRoot(rec);
       if (root._contactMotionUnmeasured || rec._postStepSleepSkip || rec.entity?.isPlayer === true) continue;
-      const a = root._contactMotionDeltaEnergy, b = root._contactMotionCross, c = root._contactMotionPlayerLoss;
+      const a = root._contactMotionDeltaEnergy, b = root._contactMotionCross;
       const tolerance = Math.max(1e-8, root._contactMotionTwiceEnergy * 1e-6);
-      if (!(a + 2 * b + c > tolerance) || !(a > 0)) continue;
-      const scale = clamp((-b + Math.sqrt(Math.max(0, b * b - a * c))) / a, 0, 1);
+      if (!(a + 2 * b > tolerance) || !(a > 0)) continue;
+      const scale = clamp(-2 * b / a, 0, 1);
       const e = rec.expected;
       _vecWriteScratch.x = e.vx + rec._contactMotionDeltaX * scale;
       _vecWriteScratch.y = 0;
@@ -2492,9 +2489,19 @@ export class Sg02DynamicBodyOwner {
   // threshold; a light grind or a scrape distributed over compound colliders does contact
   // work without ever earning one. Pairs between the record's own colliders (a compound
   // hull's primitives pack tightly enough to neighbour each other) are self-contact, not
-  // contact work. Only consulted on unexplained, receiptless delta-V, so the ordinary
-  // no-contact tick costs nothing.
-  _playerInLiveContact(rec) {
+  // contact work. Consulted on unexplained delta-V, either to admit a dynamic
+  // partner's solver response or classify receiptless contact work.
+  _playerInLiveContact(rec, dynamicOnly = false) {
+    // Force receipts retain contacts that separated during the solve; the live
+    // narrow phase below also covers light dynamic contact with no force receipt.
+    if (dynamicOnly) {
+      const own = rec.entity && rec.entity.id;
+      for (const receipt of this._stepContactReceipts || []) {
+        const otherId = receipt.aId === own ? receipt.bId : receipt.bId === own ? receipt.aId : null;
+        const other = otherId == null ? null : this.records.get(otherId);
+        if (other && other !== rec && other.spec.dynamic === true && other.body.isDynamic()) return true;
+      }
+    }
     const colliders = rec && rec.colliders;
     const world = this.world;
     if (!Array.isArray(colliders) || colliders.length === 0
@@ -2505,6 +2512,8 @@ export class Sg02DynamicBodyOwner {
         world.contactPairsWith(colliders[i], (other) => {
           if (touching) return;
           const owned = this._colliderOwners.get(other.handle);
+          if (dynamicOnly && (!owned || owned.rec.spec.dynamic !== true
+            || !owned.rec.body.isDynamic() || other.isSensor())) return;
           if (!owned || owned.rec !== rec) touching = true;
         });
       } catch (_) {
@@ -2557,6 +2566,7 @@ export class Sg02DynamicBodyOwner {
 
     const closingFraction = this._playerContactClosingFraction(rec);
     const unexplained = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const hasDynamicContact = unexplained && this._playerInLiveContact(rec, true);
     // A contact-force receipt only exists for collider pairs that crossed the gameplay
     // threshold (SG02_CONTACT_FORCE_EVENT_THRESHOLD_N): a sustained light grind, or a
     // scrape spread across the primitives of compound colliders, stays receiptless while
@@ -2564,7 +2574,7 @@ export class Sg02DynamicBodyOwner {
     // work, island noise — leaves no receipt AND no live contact pair; only that carries
     // solver momentum the give pass must not rewrite.
     const receiptlessContact = closingFraction == null && unexplained
-      && this._playerInLiveContact(rec);
+      && (hasDynamicContact || this._playerInLiveContact(rec));
     const isActive = unexplained && (closingFraction != null || receiptlessContact);
     const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     if (isActive) {
@@ -2579,6 +2589,9 @@ export class Sg02DynamicBodyOwner {
     const cumulative = rec._playerContactCumulativeDeltaV || 0;
     const preservesSolverResponse = rec._tumbling === true
       || this._sleepHeld.has(rec)
+      // A dynamic partner keeps the opposite solver impulse. Restoring just the
+      // player's graze velocity would create momentum/energy on every contact.
+      || hasDynamicContact
       || closingFraction > 0.55
       || (closingFraction == null && !receiptlessContact);
     let eventBudget = 5;
@@ -3852,6 +3865,11 @@ export class Sg02DynamicBodyOwner {
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
+      // A hull already loose in the previous native solve received the contact's angular
+      // impulse there, through its actual shape and inertia. The legacy hitstun entry
+      // spin is a control consequence, not a second physical hit. Keep it for a newly
+      // disabled helm; deliberate weapon/throw torque remains unmarked and passes through.
+      if (impulse.kind === 'contact_tumble_entry' && rec._tumbleMaterial === true) continue;
       applyYawTorqueImpulse(rec, impulse, impulse);
     }
   }
@@ -5233,138 +5251,10 @@ function ghostProjectilePoolKey(spec) {
   return [spec.shape || 'ball', spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
 }
 
-export const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
-  drone_swarm: Object.freeze({ length: 1.72, halfWidth: 0.36, height: 0.26 }),
-  sniper_lance: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  detonator_dart: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  bruiser_armor: Object.freeze({ length: 1.72, halfWidth: 0.43, height: 0.31 }),
-  trader_haul: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  pirate_swoop: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.27 }),
-  corsair_blade: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.24 }),
-  patrol_interdict: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  dreadnought_enemy: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-});
-
-export const TRAFFIC_ROLE_PROPORTIONS = Object.freeze({
-  arclight: Object.freeze({ length: 1.72, halfWidth: 0.32, height: 0.48 }),
-  courier: Object.freeze({ length: 1.72, halfWidth: 0.39, height: 0.28 }),
-  customs: Object.freeze({ length: 1.72, halfWidth: 0.21, height: 0.49 }),
-  express: Object.freeze({ length: 1.72, halfWidth: 0.40, height: 0.56 }),
-  hauler: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  miner: Object.freeze({ length: 1.72, halfWidth: 0.34, height: 0.51 }),
-  ore_carrier: Object.freeze({ length: 1.72, halfWidth: 0.19, height: 0.35 }),
-  pirate: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  prospector: Object.freeze({ length: 1.72, halfWidth: 0.24, height: 0.30 }),
-  rescue: Object.freeze({ length: 1.72, halfWidth: 0.23, height: 0.31 }),
-  salvor: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.39 }),
-  shuttle: Object.freeze({ length: 1.72, halfWidth: 0.25, height: 0.33 }),
-  smuggler: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  surveyor: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.42 }),
-  sweeper: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.38 }),
-  tanker: Object.freeze({ length: 1.72, halfWidth: 0.16, height: 0.33 }),
-  tender: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.33 }),
-  tug: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-});
-
-export const FACTION_HULL_PROPORTIONS = Object.freeze({
-  'span:faction_dmc': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'span:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'span:faction_reach': Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.30 }),
-  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-});
-
-export const CRAFT_COLLISION_PROPORTIONS = Object.freeze({
-  dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  ship_dart: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.43 }),
-  ship_hornet: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.54 }),
-  ship_wasp: Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  ship_drifter: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.35 }),
-  ship_kestrel: Object.freeze({ length: 1.72, halfWidth: 0.33, height: 0.31 }),
-  ship_pelican: Object.freeze({ length: 1.72, halfWidth: 0.77, height: 0.25 }),
-  ship_mule: Object.freeze({ length: 1.72, halfWidth: 0.29, height: 0.33 }),
-  ship_hawser: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.38 }),
-  ship_bastion: Object.freeze({ length: 1.72, halfWidth: 0.35, height: 0.41 }),
-  ship_ironback: Object.freeze({ length: 1.72, halfWidth: 0.28, height: 0.33 }),
-  ship_ranger: Object.freeze({ length: 1.72, halfWidth: 0.37, height: 0.33 }),
-  ship_warden: Object.freeze({ length: 1.72, halfWidth: 0.26, height: 0.45 }),
-  ship_colossus: Object.freeze({ length: 1.72, halfWidth: 0.42, height: 0.39 }),
-  ship_leviathan: Object.freeze({ length: 1.72, halfWidth: 0.47, height: 0.49 }),
-  'wasp:faction_free': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_mts': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-  'wasp:faction_scn': Object.freeze({ length: 1.72, halfWidth: 0.64, height: 0.21 }),
-});
-
-const CRAFT_PROPORTIONS_CACHE = new Map();
-for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(sil, prop);
-}
-for (const [role, prop] of Object.entries(TRAFFIC_ROLE_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(role, prop);
-  CRAFT_PROPORTIONS_CACHE.set(`traffic:${role}`, prop);
-}
-for (const [key, prop] of Object.entries(FACTION_HULL_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(key, prop);
-}
-for (const [key, prop] of Object.entries(CRAFT_COLLISION_PROPORTIONS)) {
-  CRAFT_PROPORTIONS_CACHE.set(key, prop);
-}
-for (const ship of SHIPS || []) {
-  if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
-    if (!CRAFT_PROPORTIONS_CACHE.has(ship.id)) {
-      CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
-    }
-  }
-}
-for (const enemy of ENEMY_TYPES || []) {
-  if (enemy && enemy.id) {
-    const silProp = enemy.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[enemy.silhouette];
-    const shipProp = enemy.shipId && CRAFT_PROPORTIONS_CACHE.get(enemy.shipId);
-    const prop = silProp || shipProp;
-    if (prop) CRAFT_PROPORTIONS_CACHE.set(enemy.id, prop);
-  }
-}
-
-export function resolveCraftProportions(entity, spec = null) {
-  const data = (entity && entity.data) || {};
-  if (data.proportions && Number.isFinite(data.proportions.length) && Number.isFinite(data.proportions.halfWidth)) {
-    return data.proportions;
-  }
-  if (data.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette]) {
-    return ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette];
-  }
-  for (const key of [
-    data.defId,
-    data.shipId,
-    data.typeId,
-    data.chassisId,
-    data.trafficRole,
-    data.trafficRole ? `traffic:${data.trafficRole}` : null,
-    entity && entity.id,
-  ]) {
-    if (typeof key === 'string' && CRAFT_PROPORTIONS_CACHE.has(key)) {
-      return CRAFT_PROPORTIONS_CACHE.get(key);
-    }
-  }
-  if (entity && entity.type === 'drone') {
-    return { length: 1.0, halfWidth: 0.45, height: 0.30 };
-  }
-  return { length: 1.35, halfWidth: 0.42, height: 0.30 };
-}
+export {
+  ENEMY_SILHOUETTE_PROPORTIONS, TRAFFIC_ROLE_PROPORTIONS, FACTION_HULL_PROPORTIONS,
+  CRAFT_COLLISION_PROPORTIONS, resolveCraftProportions,
+} from './craftProportions.js';
 
 const COLLISION_GROUP_SOLID   = 0x0001; // stations, rocks
 const COLLISION_GROUP_CRAFT   = 0x0002; // ships, drones, pods

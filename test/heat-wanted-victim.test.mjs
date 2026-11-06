@@ -90,3 +90,42 @@ test('WANTED heat still rises for an unprovoked hit on a civilian ship', () => {
   });
   assert.ok(state.player.heat > 0, 'civilian hit must accrue WANTED heat');
 });
+
+test('the real damage channel label does not hide a civilian ship victim', () => {
+  const { state, bus } = boot();
+  bus.emit('combat:damage', {
+    attackerId: 1,
+    targetId: 2,
+    amount: 6,
+    type: 'kinetic',
+    targetHostileToPlayer: false,
+  });
+  assert.ok(state.player.heat > 0,
+    'combat:damage.type is the damage channel; the live ship record supplies victim kind');
+});
+
+test('lawful retaliation does not make the rest of the player assault free', () => {
+  const { state, bus } = boot();
+  bus.emit('combat:damage', {
+    attackerId: 1,
+    targetId: 2,
+    amount: 6,
+    type: 'kinetic',
+    factionLawful: true,
+    targetHostileToPlayer: true,
+  });
+  const firstHitHeat = state.player.heat;
+  assert.ok(firstHitHeat > 0, 'the first hit on the lawful ship raises suspicion');
+
+  state.simTime += 1;
+  bus.emit('combat:damage', {
+    attackerId: 1,
+    targetId: 2,
+    amount: 6,
+    type: 'kinetic',
+    factionLawful: true,
+    targetHostileToPlayer: true,
+  });
+  assert.ok(state.player.heat > firstHitHeat,
+    'a provoked hostile flag cannot erase the lawful victim status on later hits');
+});

@@ -75,7 +75,7 @@ ${S} .sxb-next__t { color:rgb(248 244 234) !important; }
 ${S} .sxb-next__w { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-event__badge { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
 ${S} :is(.sxb-event__badge, .sxb-event__title, .sxb-next__t) { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
-  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.2em !important; text-transform:uppercase; }
+  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.06em !important; text-transform:uppercase; }
 ${S} .sxb-next { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-next:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; }
 ${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; color:rgb(${BONE} / .85) !important; box-shadow:none !important; }
@@ -331,8 +331,15 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 280px) minmax(0, 1fr) !important; }
   ${S} .sxb-berth .sxb-crown { width:auto !important; justify-self:stretch !important; left:0 !important; right:auto !important; }
   ${S} .sxb-crown .sxb-vitals { max-width:none !important; gap:6px !important; justify-content:space-between !important; }
+  /* a blocked verb ("REPAIR  NO YARD", ~14px wider than a price) left the row 5px too wide for the 6px
+     gaps, so MUNITIONS wrapped down over the bay screen; with one on the row the dials close up instead */
+  ${S} .sxb-crown .sxb-vitals:has(> .sxb-vital [data-vital-act][aria-disabled="true"]) { column-gap:2px !important; }
   ${S} .sxb-vital { min-width:max-content !important; width:auto !important; }
   ${S} .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts { position:static !important; width:auto !important; }
+  /* LEDGER's word reading (CREDIT LINE OPEN) ran ~70px past its cell over MUNITIONS' numerals: it sets on two
+     short lines inside its own cell, as it does at 651–699 */
+  ${S} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:normal !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${S} .sxb-crown .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; line-height:1.25 !important; letter-spacing:.12em !important; }
   ${S} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; }
   ${S} .sxb-tape .sxb-event { width:auto !important; max-width:100% !important; min-width:0 !important; }
   /* the next-step card: its title on one line with its count, the sentence under it */
@@ -353,8 +360,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* a short narrow desktop (800×600-class): station.css stacks the head one item per row under 900 and
    caps the vitals at two gauges' width, so the five dials wrapped into three rows and the head ran
    ~500px down over every tab's body. Here the head is three bands: the name with the purse at its
-   right, the five dials on one row across the full width, then the mechanic's note and the next step. */
-@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+   right, the five dials on one row across the full width, then the mechanic's note and the next step.
+   Taller narrow windows (760×900, 768×1024) take it too: their dials stacked into a ~500px tower that
+   pushed every tab's body below the foot (ui-polish-185). */
+@media (min-width:651px) and (max-width:900px) {
   ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) auto !important;
     grid-template-areas:"title trigger" "crown crown" "tape tape" "handoff handoff" !important; grid-template-rows:auto auto auto auto !important;
     max-height:none !important; }
@@ -372,7 +381,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and the two station signs (bay screen, station wire) stacked as full-width rows under the next
    step, ~144px of an 800×600 head, so the tab body kept ~66px: the Missions list showed one cut
    row and the dossier only its title. Above 460 tall they stand side by side on one band. */
-@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) {
   ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-column:1 / -1 !important; display:flex !important; gap:0 24px !important; align-items:flex-start !important; min-width:0 !important; }
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
   ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
@@ -402,6 +411,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
   ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
 }
+/* At 960×540 with a live contract and full station copy, a 44vh head left the Market register
+   only 22px of scrollport, so the last good remained clipped even after scrolling. Give the
+   scrollable head 32vh and reserve 200px for the tab body so the register keeps a useful viewport. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${D} { grid-template-rows:minmax(0, 32vh) minmax(200px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:32vh !important; overflow-y:auto !important; overflow-x:hidden !important; }
+}
 /* …and at 1101–1280 the crown column was the strip's 326px cap, so the five dials wrapped 2·2·1 into a
    ~330px tower: CREDIT LINE OPEN ran off the right edge and, at 540 tall, LEDGER's DRAW and the
    Munitions dial printed over the station wire. The note column takes what the strip leaves and the
@@ -422,8 +438,9 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,
-   so every word stands on the rail inside the foot's old height. */
-@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+   so every word stands on the rail inside the foot's old height. Taller windows (760×900, 768×1024,
+   860×1000) get the same foot: there the rail ran under COMMS, HELP and UNDOCK (ui-polish-185). */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px), (min-width:801px) and (max-width:900px) and (min-height:801px) {
   ${D} .sxb-ops { display:grid !important; grid-template-columns:minmax(0, 1fr) max-content !important;
     grid-template-areas:"rail launch" "rail comms" !important; column-gap:12px !important; row-gap:0 !important; align-items:start !important; }
   ${D} .sxb-ops > .of-facility-rail { grid-area:rail !important; max-width:none !important; min-width:0 !important; }
@@ -448,11 +465,11 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-launch > .so-icon { display:none !important; }
   ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
 }
-@media (min-width:780px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:780px) and (max-width:800px) and (min-height:461px) {
   ${D} .sxb-ops .sx-tile__label { letter-spacing:.04em !important; font-size:12px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 8px !important; }
 }
-@media (min-width:651px) and (max-width:699px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:699px) and (min-height:461px) {
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
   ${D} .sxb-ops > .sx-comms { gap:4px !important; }
@@ -464,7 +481,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* a very short desktop window (844×390-class): the head alone ran ~196px of a 390px window in the
    live game (~260px with the bench's longer fixture) and left every tab a sliver — Shipworks showed
    no hull at all. Head heights below are .dp-frame__head measured live (?dev=screen:station). */
-@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   /* the berth scrolls: each tab keeps a 230px cell (960×540 has ~210) and the destination rail
      stays pinned to the bottom edge */
   ${D} { grid-template-rows:max-content minmax(230px, 1fr) max-content !important; overflow-x:hidden !important; overflow-y:auto !important;
@@ -580,7 +597,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and at 651-800 wide, where a four-band head leaves no working tab, the crown shares the right
    column with the title, tape and handoff. The existing 12px readings stay intact; the body is allowed
    to take the remaining height and its station-specific scroll hosts keep every tab reachable. */
-@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:800px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D} .sxb-berth.dp-frame__head { position:relative; grid-template-columns:minmax(0, 212px) minmax(0, 1fr) !important;
     grid-template-areas:"title crown" "tape crown" "handoff crown" !important; grid-template-rows:auto auto 1fr !important;
@@ -648,7 +665,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 }
 /* …below 700 wide, down to 651: the rail words and UNDOCK close up once more so LEDGER stays on, and
    CREDIT LINE OPEN wraps to two short lines instead of running into the HOLD dial */
-@media (min-width:651px) and (max-width:699px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:699px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 3px !important; }
   ${D} .sxb-ops .sx-tile__label { font-size:12px !important; }
@@ -662,7 +679,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* 700x460, 760x420 and 844x390: the full berth head left BUY/SELL and the quantity
    steps underneath the pinned foot. Keep its services in a scrollable head and give the
    Market the remaining height; the destination words and UNDOCK retain their own row. */
-@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D}:has(.sx-mkt.orr-market) { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
 }
@@ -673,7 +690,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
    stage also needs a real floor — seven one-line callout cards under the nameplate want
    ~150px that a 420px window cannot show at once — so its cell keeps 200px and the berth
    scrolls to the verb row below the fold, as the 651-1100 band above does at 230px. */
-@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:800px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   /* the capped head fades out over its last 16px, so the dials' verbs read as scrolling on
      rather than sliced through by the tab's top edge */
@@ -681,6 +698,82 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important;
     mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
   ${D}:has(.sx-sw) { grid-template-rows:max-content minmax(200px,1fr) max-content !important; }
+}
+/* …and a narrow, short desktop window (≤650 × ≤600, e.g. 580×540 or 568×320) takes that short head too: with no block of
+   its own the head kept its full desktop grid in a 500px frame, the tab body got a 70px column and the rail glosses stood
+   as seven columns of text. Five dials share ~290px here, so the labels close up and the credit line breaks between words. */
+@media (max-width:650px) and (max-height:600px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 184px) minmax(0, 1fr) !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:22px !important; }
+  ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; overflow-wrap:normal !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { letter-spacing:.04em !important; overflow-wrap:normal !important; }
+}
+/* …and a phone-landscape window (≤650 × ≤400, e.g. 568×320 or 640×360): the ≤600 head above still drew 100px and the
+   foot 130px (rail, its rule, then COMMS and a two-line UNDOCK), so a 320px window left the tab a 78px strip and the dials'
+   verbs sat under the mechanic's note. The name and credits share one line, the five dials take the full width with their
+   verbs on one line (Draw and Rearm put the price under the verb), the notes and the ad boards scroll under them,
+   and the foot is two short rows: the tab gets 122px at 568×320 and 162px at 640×360. */
+@media (max-width:650px) and (max-height:400px) {
+  ${D} { padding-top:8px !important; }
+  ${D} .sxb-berth.dp-frame__head, ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head {
+    grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-areas:"title purse" "vitals vitals" "tape tape" "handoff handoff" "signs signs" "trig trig" !important;
+    grid-template-rows:auto auto auto auto auto auto !important;
+    max-height:136px !important; row-gap:4px !important; column-gap:12px !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${D} .sxb-crown > .sxb-purse { grid-area:purse !important; align-self:end !important; margin:0 !important; }
+  ${D} .sxb-crown > .sxb-vitals { grid-area:vitals !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:1 / -1 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:1 / -1 !important; }
+  /* the Bay screen and the Station wire stay in the head's scroll, under the handoff, as two short signs side by side */
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:1 / -1 !important; display:flex !important; gap:0 20px !important;
+    align-items:flex-start !important; min-width:0 !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:2px 0 0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden !important; line-height:16px !important; }
+  ${D} .sxb-signs .sx-adboard > * { display:inline !important; margin:0 !important; }
+  ${D} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; opacity:.74; }
+  ${D} .sxb-signs .sx-adboard__sponsor { font-weight:600 !important; }
+  ${D} .sxb-signs .sx-adboard__sponsor::after { content:"."; }
+  ${D} .sxb-signs .sx-adboard__text::before { content:" "; }
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:trig !important; position:static !important; justify-self:end !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:20px !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__rule { display:none !important; }
+  ${D} .sxb-crown .sxb-purse__value { font-size:20px !important; }
+  ${D} .sxb-vital [data-vital-act] { flex-wrap:nowrap !important; white-space:nowrap !important; justify-content:center !important; gap:0 6px !important; letter-spacing:.02em !important; }
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${D} .sxb-vital [data-vital-act] > :is(.orr-act__verb, .orr-act__cost) { flex-shrink:0 !important; }
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  /* every priced verb puts its price under the word (max-content ran DRAW 21px into the munitions box, and the hull's REPAIR and
+     INSURE shrank to 16px-tall text lines stacked under the gauge). The hull's two verbs sit side by side at Draw's 30px height,
+     in a column widened by the dials that carry no verb (fuel, hold). */
+  ${D} .sxb-vital [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { width:auto !important; max-width:100% !important; min-height:24px !important; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { flex-wrap:wrap !important; row-gap:0 !important; width:auto !important; min-width:0 !important; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) .sxb-vital__acts { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; justify-items:center !important; width:100% !important; gap:0 8px !important; }
+  ${D} .sxb-vitals > .sxb-vital:not(:has([data-vital-act])) { flex:.85 1 0 !important; }
+  ${D} .sxb-vitals > .sxb-vital:has([data-vital-act]):not(.sxb-vital--note, .sxb-vital--muni) { flex:1.3 1 0 !important; }
+  ${D} .sxb-vital [data-vital-act] :is(.orr-act__verb, .orr-act__cost) { letter-spacing:.02em !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { font-size:12px !important; line-height:1.15 !important; letter-spacing:.04em !important; }
+  /* the foot closes to two short rows: the destination words (their rule and indicator step aside), then COMMS,
+     the open destination's line and UNDOCK · READY on one line */
+  ${D} .sxb-ops.dp-frame__foot { padding:2px 32px 6px !important; row-gap:0 !important; align-items:center !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding:0 0 0 2px !important; min-height:0 !important; height:auto !important; }
+  ${D} .sxb-ops :is(.sxb-ops__dock, .sx-dock) { min-height:0 !important; height:auto !important; padding-bottom:0 !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile)), ${D} .sxb-ops .so-dock-indicator, ${D} .sxb-ops .orr-stationrow__rule { display:none !important; }
+  ${D} .sxb-ops .sx-tile { min-height:0 !important; padding:4px 1px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { display:block; position:absolute !important; top:calc(100% + 4px) !important; bottom:auto !important; left:76px !important; right:104px !important;
+    width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:center !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:18px !important; }
+  ${D} .sxb-ops .sx-comms { flex-direction:row !important; align-self:center !important; gap:0 10px !important; }
+  /* The narrow station sheet hides Help's label while ORRERY hides its icon, leaving an
+     empty, unclickable button. Restore the word and keep both foot controls at their width. */
+  ${D} .sxb-ops .sxb-help span { display:inline !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { flex:0 0 auto !important; }
+  ${D} .sxb-ops > .sxb-launch-seat { align-self:center !important; }
+  ${D} .sxb-launch { min-height:0 !important; padding-block:2px !important; }
+  ${D} .sxb-launch__copy { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; }
 }
 /* A narrow, tall desktop window (≤650 wide, 801+ tall, e.g. 600×844): the head stacked five dials one under another
    with both ad boards below them, 607px of a 844px frame, so the tab body got 0px and the Missions dossier's ACCEPT
@@ -748,6 +841,17 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     flex-wrap:wrap !important; white-space:normal !important; gap:2px 10px !important; }
   ${D} .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) > * { min-width:0; overflow-wrap:anywhere; }
 }
+/* …and 481–650 wide but only 601–800 tall (e.g. 640×700) that stacked head still took 385px, leaving the Market's table
+   ~130px: the palette key sits beside the station name, and the credits rise into the name's row on the right */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:title !important; align-self:start !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:-44px !important; pointer-events:none; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown > * { pointer-events:auto; }
+}
+/* at 720 tall or less the two ad boards step aside too, as they do in the other short heads */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+}
 /* …and under 481 wide the five dials' verbs wrap to two lines each, so the head scrolls its services past 40% of the frame
    and the next step keeps its title, not its sentence, leaving the tab a real body */
 @media (max-width:480px) and (min-height:601px) {
@@ -756,6 +860,24 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   /* five dials share ~68px each: MUNITIONS and CREDIT LINE OPEN keep inside their dial instead of running off the frame */
   ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; }
   ${D} .sxb-vital .orr-vnum.is-word { letter-spacing:.04em !important; }
+  /* the hull stacks two priced verbs (Repair, Insure) at 45px each, so the crown ran 35px past the 40% head at 420x700 and
+     INSURE sat half under the job board: each verb sits flush over its price, and the dials close up under the credits */
+  ${D} .sxb-crown .sxb-vital__acts { margin-top:2px !important; gap:2px !important; }
+  ${D} .sxb-crown .sxb-vital__acts .k-word { min-height:0 !important; padding:1px 0 !important; gap:0 !important; line-height:14px !important; }
+  ${D} .sxb-crown .sxb-vital__acts .k-word > :is(.orr-act__verb, .orr-act__cost) { line-height:14px !important; margin:0 !important; }
+  ${D} .sxb-crown .sxb-vitals { margin-top:-4px !important; }
+  /* the services under the crown scroll inside the head: their last visible line fades out instead of being sliced
+     by the job board, and the head's end can scroll clear of the fade */
+  ${D} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important; padding-bottom:22px !important; }
+  /* the credits took a row of their own above the dials, so the mechanic's note scrolled under the fade: as on the phone, the
+     purse stacks its label over a smaller figure at the name's right end, and the name wraps short of it */
+  ${D} .so-station-title > .sxb-berth__name { padding-right:104px !important; box-sizing:border-box; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:-46px !important; pointer-events:none; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown > * { pointer-events:auto; }
+  ${D} .sxb-crown .sxb-purse { flex-direction:column !important; align-items:flex-end !important; gap:2px !important; margin:0 !important; text-align:right; }
+  ${D} .sxb-crown .sxb-purse__label { line-height:14px !important; margin:0 !important; }
+  ${D} .sxb-crown .sxb-purse__value { font-size:28px !important; line-height:1.05 !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {

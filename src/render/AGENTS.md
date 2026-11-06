@@ -1,8 +1,9 @@
 # src/render/ — Agent Notes
 
 Presentation / GPU layer. Never writes sim state. Root `AGENTS.md` §6 first. Asset pipeline:
-`assets/AGENTS.md`. Player-visible VFX, compositor, lighting, or camera changes also read
-`docs/visual-assets/README.md` and `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`.
+`assets/AGENTS.md`. For player-visible VFX, compositor, lighting, or camera changes use
+`docs/visual-assets/README.md` as the visual-work front door and follow the relevant subsystem
+standard for the affected behavior.
 
 ## Silent-fallback trap
 

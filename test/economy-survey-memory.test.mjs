@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { SECTORS, surveyDataPrice } from '../src/data/sectors.js';
+import { stationTradeMults } from '../src/economy/stationConditions.js';
 import { economy } from '../src/systems/economy.js';
 import { world } from '../src/systems/world.js';
 
@@ -47,12 +48,15 @@ test('buying survey data seeds only that sector as one-time survey-grade market 
     for (const stationId of targetStationIds) {
       const memory = state.player.marketMemory[stationId];
       const market = state.economy.markets[stationId];
+      const trade = stationTradeMults(state, stationId);
       assert.ok(memory && market, `${stationId} should have one retained survey snapshot`);
       assert.deepEqual(Object.keys(memory).sort(), Object.keys(market).sort());
       assert.equal(memory[IRON].source, 'survey');
       assert.equal(memory[IRON].seenAt, 123);
-      assert.equal(memory[IRON].buy, market[IRON].lastBuy);
-      assert.equal(memory[IRON].sell, market[IRON].lastSell);
+      assert.equal(memory[IRON].buy, Math.round(market[IRON].lastBuy * trade.buy),
+        'survey memory reflects the actual conditioned buy quote');
+      assert.equal(memory[IRON].sell, Math.round(market[IRON].lastSell * trade.sell),
+        'survey memory reflects the actual conditioned sell quote');
     }
   } finally {
     sim.dispose();

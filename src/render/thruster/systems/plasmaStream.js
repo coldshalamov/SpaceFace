@@ -30,6 +30,8 @@ import {
 } from '../ribbon/driveEnvelope.js';
 import { createPlumeSlug, resetPlumeSlug, stepPlumeSlug } from '../ribbon/plumeSlug.js';
 import { PLAYER_PLASMA_STREAM_RECIPE } from '../recipes/plasmaStreamRecipe.js';
+import { resolveDyingDrive } from './dyingDrive.js';
+import { entityPhaseOffset } from './continuousPlume.js';
 
 // Nozzle-interior glow: the hot throat INSIDE the bell (reference: engine cores are lit from
 // within). One camera-facing disc per socket, depth-tested so the hull occludes it from the bow;
@@ -379,7 +381,7 @@ export class PlasmaStreamSystem {
     this.group = null;
   }
 
-  update(dt, sockets, driveInfo, a11y = null, owner = null) {
+  update(dt, sockets, driveInfo, a11y = null, owner = null, simTime = 0) {
     if (this._disposed || !this.group) return { live: 0, pathPoints: 0, continuous: true };
     const drive = Math.max(0, driveInfo && driveInfo.drive || 0);
     const throttle = Math.max(0, driveInfo && driveInfo.throttle || 0);
@@ -498,6 +500,8 @@ export class PlasmaStreamSystem {
     const driveCfg = this.recipe.drive || {};
     const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
     const motionScroll = a11y && a11y.reducedMotion ? 0.12 : 1;
+    const hullFrac = owner?.hullMax > 0 && Number.isFinite(owner.hull) ? owner.hull / owner.hullMax : 1;
+    const dying = resolveDyingDrive(hullFrac, simTime, entityPhaseOffset(owner?.id), a11y);
 
     // Boost is LENGTH and HEAT, not width. Width barely moves, so a boost reads as the plume
     // spearing out and going white rather than the whole cone inflating in place.
@@ -575,14 +579,14 @@ export class PlasmaStreamSystem {
     pShape.jetLength = Math.max(jetLen, 1e-3);
     pShape.throatRadius = rShape.throatRadius;
     pShape.spread = rShape.spread;
-    pShape.radiance = slug.radiance * flareMul;
+    pShape.radiance = slug.radiance * flareMul * dying.dim;
     pShape.opacity = rShape.opacity;
     // The shock-cell diamonds are standing waves AT THE LIP; a detached slug has left the lip.
     this._shock.amplitude = this._shockBaseAmp
       * (1 - Math.max(0, Math.min(1, slug.rootOffset / 3)));
     // The recorded burn shares the live engine's fury at the moment it is written: boost and the
     // ignition flare sear a hotter hole, which then cools on its own age clock like any sample.
-    this._ribbonShape.trailRadiance = 2.1 * (1 + boostSm * 0.35 + ignition * 0.5) * flashScale;
+    this._ribbonShape.trailRadiance = 2.1 * (1 + boostSm * 0.35 + ignition * 0.5) * flashScale * dying.dim;
     this._ribbonShape.trailOpacity = 0.10;
 
     // Tumble corkscrew only. Passing raw angVel here made every arrow-key turn shove the
@@ -675,7 +679,7 @@ export class PlasmaStreamSystem {
     // Ramp: the hull light fades in/out with the chamber heat (vfx scales its intensity by this),
     // instead of snapping on/off at about a quarter of its brightness.
     ls.ramp = Math.max(0, Math.min(1, this._throatGlow / 0.35));
-    ls.ramp = ls.ramp * ls.ramp * (3 - 2 * ls.ramp);
+    ls.ramp = ls.ramp * ls.ramp * (3 - 2 * ls.ramp) * dying.dim;
     ls.x = nx;
     ls.y = ny;
     ls.z = nz;
@@ -689,7 +693,7 @@ export class PlasmaStreamSystem {
       * (0.82 + activeDrive * 0.14 + boostSm * 0.08 + ignition * 0.12);
     const throatOpacity = (throatCfg.opacity != null ? throatCfg.opacity : 0.9) * flashScale;
     const throatRadiance = (throatCfg.radiance != null ? throatCfg.radiance : 2.4)
-      * (1 + boostSm * 0.35 + ignition * 0.55) * flashScale;
+      * (1 + boostSm * 0.35 + ignition * 0.55) * flashScale * dying.dim;
     for (let ti = 0; ti < this._throats.length; ti++) {
       const throat = this._throats[ti];
       const sock = throatLive && list && ti < nSock ? list[ti] : null;

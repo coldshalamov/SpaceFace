@@ -197,6 +197,9 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentPrimitive: 'mass',
   }),
   gun({
+    // Retired to the Shove power (row 550's "merge → Shove or cut" — an inverted
+    // field is a shove; no §7.1 head claims it).
+    retiredInto: 'shove',
     id: 'tool_polarity_inverter',
     name: 'Polarity Inverter',
     price: 34000,
@@ -224,6 +227,10 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentPrimitive: 'viscosity',
   }),
   gun({
+    // Retired to its §7.1 home (owner table row 550): the Weld head makes a held
+    // object stick where it touches — the prism's cover/cousin behaviour. Kept
+    // copies still fire; the draft pool is the swarm seam's to align.
+    retiredInto: 'mod_line_head_weld',
     id: 'tool_hardlight_prism',
     name: 'Hardlight Prism',
     price: 38000,
@@ -238,6 +245,9 @@ export const EMERGENT_WEAPON_DEFS = [
     lineageGenerationMax: EMERGENT_LIMITS.generationMax,
   }),
   gun({
+    // Retired to its §7.1 home (row 550): the Override head fires a held ship's
+    // thrusters — the same outcome as a rogue thruster driving its host.
+    retiredInto: 'mod_line_head_override',
     id: 'tool_thruster_hijacker',
     name: 'Thruster Hijacker',
     price: 33000,
@@ -250,6 +260,9 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentPrimitive: 'hijack',
   }),
   gun({
+    // Retired to its §7.1 home (row 550): the Bell head rings on a slam — a struck
+    // body pulsing the room, the same resonance.
+    retiredInto: 'mod_line_head_bell',
     id: 'tool_seismic_gong',
     name: 'Seismic Gong',
     price: 31000,
@@ -262,6 +275,9 @@ export const EMERGENT_WEAPON_DEFS = [
     emergentPrimitive: 'gong',
   }),
   gun({
+    // Retired to its §7.1 home (row 550): the Relic Sympathy head is exactly this
+    // tool — linked bodies share momentum — as the authored rule-breaker.
+    retiredInto: 'mod_line_head_sympathy',
     id: 'tool_quantum_sympathy',
     name: 'Quantum Sympathy',
     price: 42000,

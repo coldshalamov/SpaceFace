@@ -122,10 +122,10 @@ export const TETHER_TONE_RELEASE_S = 1 / 60;   // silence returns within a tick 
 export const TETHER_TONE_TAUT_PHASES = Object.freeze(['capture', 'loaded', 'overload']);
 
 /**
- * The published line read both hum backends share: playing while the line is taut, load =
+ * The published line read both hum backends share: playing while attached, load =
  * the strain-folded mirror value lifted by the tow's own mass (FB-079) so a heavy tow
- * creaks even before strain climbs. The lift only applies while playing — a slack line
- * stays silent — and a missing or non-finite mass is exactly the bare-line read. One
+ * creaks even before strain climbs. An attached slack line may whisper, but cannot carry
+ * the tow's mass until taut. A missing or non-finite mass is exactly the bare-line read. One
  * writer so the legacy hum and the Elementary rope voice cannot drift apart.
  */
 export function resolveTetherLineLoad(tether, towMass) {
@@ -136,7 +136,8 @@ export function resolveTetherLineLoad(tether, towMass) {
     : 0;
   const tow = Number.isFinite(towMass) ? towMass
     : Number(tether && (tether.towMass != null ? tether.towMass : tether.towedMass));
-  const towLift = playing && Number.isFinite(tow) && tow > 0 ? clamp(tow / 200, 0.2, 1) : 0;
+  const taut = playing && TETHER_TONE_TAUT_PHASES.includes(phase);
+  const towLift = taut && Number.isFinite(tow) && tow > 0 ? clamp(tow / 200, 0.2, 1) : 0;
   return { playing, load: Math.max(clamp(raw, 0, 1.25), towLift) };
 }
 

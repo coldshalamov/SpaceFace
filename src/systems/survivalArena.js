@@ -63,7 +63,13 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { Masks } from '../core/entity.js';
-import { readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
+import { readPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { terrainCrumpleDamage, readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { CRYO_LOCK_DURATION_TICKS, CRYO_LOCK_STATUS_ID } from '../combat/cryoLock.js';
+import { BURNING_STATUS_ID } from '../combat/thermalShock.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
@@ -92,6 +98,7 @@ import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/surviva
 import { gateBearing } from './waveMaterialization.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
+import { foundryFurnitureProxy } from '../data/foundryFurniture.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
@@ -99,16 +106,31 @@ import {
   CRYO_PROP_VENT_TICKS,
   applyCryoDrift,
   createCryoRoomLineage,
+  cryoZoneAt,
   planCryoInstall,
 } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
 import {
   STORM_ARENA_ID,
+  STORM_DISCHARGE_DAMAGE,
+  STORM_DISCHARGE_FIRST_S,
+  STORM_DISCHARGE_MAX_EXTRAS,
+  STORM_DISCHARGE_PERIOD_S,
+  STORM_DISCHARGE_PLAYER_WIRE_S,
+  STORM_DISCHARGE_RADIUS,
+  STORM_DISCHARGE_WARNING_S,
+  STORM_ISLAND_RADIUS,
   STORM_RELAY_COUNT,
   STORM_RELAY_ORBIT,
   STORM_RELAY_PERIOD,
+  conductAlongGraph,
+  buildConductivityGraph,
+  createStormLineage,
+  dischargeBiteTargets,
   placeStormRelays,
   planStormInstall,
+  selectDischargeOrigin,
+  stormGraphNodes,
   stormRelayGuide,
 } from './stormLatticeArena.js';
 import { MILL_ARENA_ID, planMillInstall } from './asteroidMillArena.js';
@@ -118,6 +140,16 @@ import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarm
 import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
 import { createSwarmCallinsDirector } from './swarmCallins.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
+
+const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
+const BURNING_STATUS_DURATION_TICKS = 120;
+// One crush receipt per body per half second: the jaws GRIND a hull held at crumple speed,
+// they do not stack a full contact receipt every tick. Matches the tumble-rake receipt cadence.
+const CRUSH_RECEIPT_COOLDOWN_TICKS = 30;
+
+function finiteOf(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
 
 export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
@@ -1235,6 +1267,10 @@ export const survivalArena = {
     // Mines report themselves as they land; this is the only way to know WHICH entities are ours.
     // `mines.releaseAll` would also take the player's own mines, so it is never called from here.
     this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
+    this._unsubs.push(this.bus.on('tether:attached', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:broken', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:rebound', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('survivalArena:stormPresented', (p) => this._onStormPresented(p)));
     // fields._clearAll (sector change / new game / save load) empties the kernel under us. Drop the
     // bookkeeping so teardown never reports releasing something the kernel no longer holds.
     const forget = () => {
@@ -1244,6 +1280,8 @@ export const survivalArena = {
     this._unsubs.push(this.bus.on('sector:enter', forget));
     this._unsubs.push(this.bus.on('sector:exit', forget));
     this._unsubs.push(this.bus.on('save:loaded', forget));
+    this._unsubs.push(this.bus.on('save:restoring', () => this._resetStormDischarge()));
+    this._unsubs.push(this.bus.on('save:loaded', () => this._resetStormDischarge()));
   },
 
   destroy() {
@@ -1301,7 +1339,10 @@ export const survivalArena = {
     // it must still run once to release its field and drop its pending shoves.
     if (this._legendaries) this._legendaries.update(_dt, st);
     if (this._callins) this._callins.update(_dt, st);
-    if (!liveSurvivalRun(st)) return;
+    if (!liveSurvivalRun(st)) {
+      if (this._dischargePending) this._resetStormDischarge();
+      return;
+    }
     if (this._cycleMachinery) {
       const system = this._fieldsSystem();
       if (system && typeof system.updateExternal === 'function') {
@@ -1403,7 +1444,9 @@ export const survivalArena = {
     this._stormAt = run.arenaId === STORM_ARENA_ID
       ? { x: install.at ? install.at.x : playerAnchor(state).x, z: install.at ? install.at.z : playerAnchor(state).z }
       : null;
+    if (this._stormAt) this._stormRoomGeneration = (this._stormRoomGeneration || 0) + 1;
     this._relayLive = new Map();
+    this._resetStormDischarge();
     this._cryoShocked = new Set();
     if (this._cycleMachinery) {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
@@ -1442,6 +1485,7 @@ export const survivalArena = {
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
+      stormRoomGeneration: this._stormAt ? this._stormRoomGeneration : null,
       lawId: this._lawId,
       arenaPhase: install.phase,
       note: install.note,
@@ -1711,28 +1755,95 @@ export const survivalArena = {
 
   _tickCryo(state) {
     const room = this._cryoRoom;
-    if (!room) return;
+    const ctx = this.ctx;
+    if (!room || !ctx || !ctx.state || ctx.state !== state) return;
     this._syncCryoProps(state);
     const bodies = liveArenaBodies(state);
     const lineage = createCryoRoomLineage(Number.isInteger(state && state.tick) ? state.tick : 0);
+    const kernel = getCombatKernel(ctx);
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
     for (let i = 0; i < bodies.length; i++) {
       const entity = bodies[i];
-      const before = bodySnapshot(entity);
-      const result = applyCryoDrift(before, room, { lineage });
-      if (result.zone === 'outside' || result.zone === 'insulated') {
+      const zone = cryoZoneAt(room, entity.pos);
+      if (zone === 'outside' || zone === 'insulated') {
         if (this._cryoShocked) this._cryoShocked.delete(entity.id);
         continue;
       }
-      entity.controlScale = result.controlScale;
-      entity.statuses = result.statuses;
-      if (result.shock && result.shock.ok) {
-        if (!this._cryoShocked.has(entity.id)) {
-          this._cryoShocked.add(entity.id);
-          writeVel(entity, result.vx, result.vz);
-        }
-      } else if (this._cryoShocked) {
-        this._cryoShocked.delete(entity.id);
+      // A resolved shock consumes its source statuses once for this stay in the overlap.
+      // Re-applying both every tick would turn a single thermal reaction into an impulse loop.
+      const alreadyShockedThisExposure = !!(this._cryoShocked && this._cryoShocked.has(entity.id));
+      if (zone === 'shock' && alreadyShockedThisExposure) continue;
+
+      const runtime = ensureCombatant(state, entity, kernel.catalog);
+      if (!runtime) continue;
+      const cryo = runtime.statuses && runtime.statuses[CRYO_LOCK_STATUS_ID];
+      const burning = runtime.statuses && runtime.statuses[BURNING_STATUS_ID];
+      const hasPending = (id) => Array.isArray(runtime.pendingStatuses)
+        && runtime.pendingStatuses.some((status) => status && status.id === id);
+      const wantsCold = zone === 'cold' || zone === 'shock';
+      const wantsHot = zone === 'hot' || zone === 'shock';
+      if (wantsCold && !hasPending(CRYO_LOCK_STATUS_ID)
+        && (!cryo || cryo.expiresTick <= tick + CRYO_LOCK_REFRESH_LEAD_TICKS)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: CRYO_LOCK_STATUS_ID,
+          stacks: 1,
+          durationTicks: CRYO_LOCK_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
       }
+      // Burning stacks are gameplay damage. Refresh only after expiry so standing in one hot
+      // pocket cannot build three stacks just by ticking the arena system.
+      if (wantsHot && !burning && !hasPending(BURNING_STATUS_ID)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: 1,
+          durationTicks: BURNING_STATUS_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
+      }
+
+      const statusIds = [];
+      if (cryo && cryo.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(cryo.stacks || 1)); stack++) statusIds.push(CRYO_LOCK_STATUS_ID);
+      }
+      if (burning && burning.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(burning.stacks || 1)); stack++) statusIds.push(BURNING_STATUS_ID);
+      }
+      const result = applyCryoDrift({ ...bodySnapshot(entity), statuses: statusIds }, room, { lineage });
+      const hasCanonicalCryo = !!(cryo && cryo.expiresTick > tick);
+      const hasCanonicalBurning = !!(burning && burning.expiresTick > tick);
+      if (alreadyShockedThisExposure || !hasCanonicalCryo || !hasCanonicalBurning
+        || !result.shock || !result.shock.ok) continue;
+
+      // Status ownership remains in the combat kernel. Thermal Shock consumes one burn stack;
+      // rebuild only its remainder through the same service, preserving its remaining lifetime.
+      const remainingBurnStacks = Math.max(0, Math.trunc(burning && burning.stacks || 0) - 1);
+      const burnRemainingTicks = Math.max(1, Math.trunc((burning && burning.expiresTick || tick + 1) - tick));
+      kernel.statuses.clear(entity, runtime, CRYO_LOCK_STATUS_ID, 'thermal_shock');
+      kernel.statuses.clear(entity, runtime, BURNING_STATUS_ID, 'thermal_shock');
+      if (remainingBurnStacks > 0) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: remainingBurnStacks,
+          durationTicks: burnRemainingTicks,
+        }, { attackerId: burning.attackerId, actionId: burning.actionId });
+      }
+
+      const bodySpec = resolvePhysicsBodySpec(entity);
+      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass : 1;
+      const impulse = result.shock.impulse;
+      if (impulse) {
+        queuePhysicsImpulse(entity, { x: impulse.x * mass, y: 0, z: impulse.z * mass }, {
+          tick,
+          kind: 'cryo_thermal_shock',
+          actorId: CRYO_ARENA_ID,
+        });
+      }
+      const subsystemPulse = result.shock.subsystemPulse;
+      if (subsystemPulse) {
+        kernel.pulseSubsystem(entity.id, subsystemPulse.id, subsystemPulse.pulse, {
+          attackerId: CRYO_ARENA_ID,
+        });
+      }
+      if (this._cryoShocked) this._cryoShocked.add(entity.id);
     }
   },
 
@@ -1766,6 +1877,10 @@ export const survivalArena = {
           const entity = bodies[b];
           const next = stepCrusher(toy, toyBodyOf(entity), elapsed, step);
           writeVel(entity, next.vel.x, next.vel.z);
+          // The verdict the room used to throw away: surge-phase jaws meeting a body at
+          // crumple speed. The bite is the terrain-crumple law's own reading, credited to
+          // whoever set the body moving — the hazard is a weapon the physics aims.
+          if (next.crushed) this._crushBody(entity, toy, next, state);
         }
       } else if (toy.kind === 'current' && !coneFieldBacksCurrent(fields, toy)) {
         for (let b = 0; b < bodies.length; b++) {
@@ -1803,6 +1918,70 @@ export const survivalArena = {
       // whose bank acceptance lives in the combat kernel (resolveLiveAttackHit -> resolveRicochet
       // over a physics-issued receipt); the room neither reflects shots nor emits bank feedback.
     }
+  },
+
+  /**
+   * The crusher's bite. `crush` is stepCrusher's verdict: surge phase, inside the anvil's
+   * reach, closing at crumple speed. The damage is terrainCrumpleDamage — the SAME reading
+   * the collision law gives a hull meeting terrain at that speed — routed through the combat
+   * kernel with the last shover's impulse provenance as the attacker, so a hull the pilot
+   * threw into the jaws is the pilot's kill, and one the room itself closed is nobody's
+   * bounty. The player is exempt, exactly as collisionConsequences exempts the player from
+   * the terrain-crumple path: the jaws still shove the pilot around, they never crumple them.
+   */
+  _crushBody(entity, toy, crush, state) {
+    if (!entity || entity.alive === false || entity.id === state.playerId) return;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    const tick = state.tick | 0;
+    const data = entity.data || (entity.data = {});
+    const last = Number(data.crusherCrushAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const bodySpec = resolvePhysicsBodySpec(entity);
+    const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+      : (Number.isFinite(entity.mass) ? entity.mass : 1);
+    const damage = terrainCrumpleDamage(crush.speed, mass);
+    if (!(damage > 0)) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    data.crusherCrushAt = tick;
+    // Kill credit follows the shove: the freshest impulse record on the body IS the law's
+    // "who set this hull moving" answer (the same provenance the collision path reads).
+    const provenance = readRecentImpulseProvenance(entity, tick);
+    const attackerId = provenance && provenance.actorId != null ? provenance.actorId
+      : (state.run && state.run.arenaId) || 'survival_arena';
+    const anvilX = finiteOf(toy && toy.anvil && toy.anvil.x, 0);
+    const anvilZ = finiteOf(toy && toy.anvil && toy.anvil.z, 0);
+    const dx = anvilX - finiteOf(entity.pos && entity.pos.x, 0);
+    const dz = anvilZ - finiteOf(entity.pos && entity.pos.z, 0);
+    const len = Math.hypot(dx, dz);
+    const approach = len > 1e-6
+      ? { x: dx / len, z: dz / len }
+      : { x: finiteOf(crush.vel && crush.vel.x, 1), z: finiteOf(crush.vel && crush.vel.z, 0) };
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'kinetic',
+      pos: { x: finiteOf(entity.pos && entity.pos.x, 0), z: finiteOf(entity.pos && entity.pos.z, 0) },
+      approach,
+      source: { kind: 'crusher_jaws', hullId: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    routeDamage({
+      attackerId,
+      targetId: entity.id,
+      packet,
+      origin: { kind: 'crusher_jaws', id: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    this._emit('combat:crushed', {
+      entityId: entity.id,
+      toyId: toy && toy.id != null ? toy.id : null,
+      damage,
+      speed: crush.speed,
+      attackerId,
+      t: simTimeOf(state),
+      tick,
+    });
   },
 
   /**
@@ -1876,6 +2055,7 @@ export const survivalArena = {
       const dynamic = toy.dynamic === true;
       const plate = toy.kind === 'plate' ? foundryPlateShape(toy) : null;
       const radius = plate ? plate.radius : Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const furnitureProxy = plate ? null : foundryFurnitureProxy({ kind: toy.kind, radius });
       const lawRadius = plate ? plate.referenceRadius : radius;
       // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
       const mass = dynamic
@@ -1907,6 +2087,7 @@ export const survivalArena = {
           material: 'station',
           revision: 0,
           ...(plate ? { collisionProxyManifest: foundryPlateProxy(plate) } : {}),
+          ...(furnitureProxy ? { collisionProxyManifest: furnitureProxy } : {}),
         },
         data: {
           roomOwner: ARENA_ROOM_OWNER,
@@ -2017,8 +2198,274 @@ export const survivalArena = {
         });
       }
     }
+    this._tickStormDischarge(state, at);
   },
 
+  /** Reset transient discharge state on a new room, restore, or teardown. */
+  _resetStormDischarge() {
+    if (this._dischargePending) this._emit('survivalArena:stormCancel', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: this._dischargePending.serial,
+    });
+    this._relayWiredAt = new Map();
+    this._dischargeElapsed = 0;
+    this._dischargeLastAt = null;
+    this._dischargeNextAt = STORM_DISCHARGE_FIRST_S;
+    this._dischargePending = null;
+    if (!Number.isSafeInteger(this._dischargeSerial)) this._dischargeSerial = 0;
+  },
+
+  _onStormPresented(payload) {
+    const pending = this._dischargePending;
+    const now = simTimeOf(this.state);
+    if (!pending || payload?.wave !== this._wave
+      || payload.roomGeneration !== this._stormRoomGeneration || payload.serial !== pending.serial) return;
+    if (payload.available === false) {
+      this._dischargePending = null;
+      this._dischargeNextAt = this._dischargeElapsed + STORM_DISCHARGE_PERIOD_S;
+      this._emit('survivalArena:stormCancel', { wave: this._wave,
+        roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    if (pending.presentedAt != null
+      || this.state?.mode !== 'flight' || !['active', 'cleanup'].includes(this.state.run?.phase)
+      || now + STORM_DISCHARGE_WARNING_S > pending.expiresAtSim) return;
+    pending.presentedAt = now;
+    if (this._dischargeLastAt === now) pending.fireAt = this._dischargeElapsed + STORM_DISCHARGE_WARNING_S;
+  },
+
+  // The accepted attachment owner, endpoint lives and controller are the only source of
+  // player wiring credit. A HUD held-id and another actor's cable are not possession.
+  _rememberStormLine(state, attachment, broken = false) {
+    if (!attachment || !['tether_standard', 'attachment_massline'].includes(attachment.defId)) return;
+    if (broken ? attachment.state !== 'broken' : attachment.state !== 'active') return;
+    const player = state.entities?.get(state.playerId);
+    const target = state.entities?.get(attachment.targetId);
+    if (!player || player.alive === false || !target || target.alive === false
+      || !Number.isSafeInteger(player.occupantGeneration) || !Number.isSafeInteger(target.occupantGeneration)) return;
+    const playerOwns = attachment.ownerId === player.id && attachment.ownerGeneration === player.occupantGeneration
+      && (attachment.controllerId == null || (attachment.controllerId === player.id
+        && attachment.controllerGeneration === player.occupantGeneration));
+    const playerControls = attachment.controllerId === player.id
+      && attachment.controllerGeneration === player.occupantGeneration;
+    if (attachment.targetGeneration !== target.occupantGeneration) return;
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || relay !== target) continue;
+      if (!playerOwns && !playerControls) {
+        // A new accepted hand on the same relay supersedes an earlier player's release.
+        this._relayWiredAt.delete(id);
+        break;
+      }
+      this._relayWiredAt.set(id, { at: simTimeOf(state), playerId: player.id,
+        playerLife: player.occupantGeneration, relayId: relay.id, relayLife: relay.occupantGeneration });
+      break;
+    }
+  },
+
+  _observeStormLine(payload) {
+    const state = this.state;
+    if (!this._stormAt || this._phase !== 'furnace_active' || state?.mode !== 'flight'
+      || !['active', 'cleanup'].includes(state.run?.phase) || !payload?.attachmentId) return;
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    const attachment = attachments?.get(payload.attachmentId);
+    if (!attachment) return;
+    if (attachment.state === 'active' && !attachments.physicsContract(attachment.id)) return;
+    this._rememberStormLine(state, attachment, attachment.state === 'broken');
+  },
+
+  _stormPlayerWiring(state) {
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    if (!attachments || state.playerId == null) return;
+    const owned = attachments.listForEntity(state.playerId, true);
+    const controlled = attachments.listControlledBy(state.playerId, true);
+    for (const attachment of owned.concat(controlled)) {
+      if (attachments.physicsContract(attachment.id)) this._rememberStormLine(state, attachment);
+    }
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || !relay || state.entities?.get(relay.id) !== relay) continue;
+      for (const attachment of attachments.listForEntity(relay.id, true)) {
+        if (attachment.targetId !== relay.id || !attachments.physicsContract(attachment.id)) continue;
+        const player = state.entities?.get(state.playerId);
+        const controls = attachment.controllerId != null ? attachment.controllerId === player?.id
+          && attachment.controllerGeneration === player?.occupantGeneration
+          : attachment.ownerId === player?.id && attachment.ownerGeneration === player?.occupantGeneration;
+        if (!controls) this._relayWiredAt.delete(id);
+      }
+    }
+  },
+
+  _stormRelayCredited(state, id, now) {
+    const record = this._relayWiredAt.get(id);
+    const player = state.entities?.get(state.playerId);
+    const relay = this._roomSolids?.get(id);
+    return !!(record && player && player.alive !== false && relay && relay.alive !== false
+      && state.entities?.get(relay.id) === relay && record.playerId === player.id
+      && record.playerLife === player.occupantGeneration && record.relayId === relay.id
+      && record.relayLife === relay.occupantGeneration && now >= record.at
+      && now - record.at <= STORM_DISCHARGE_PLAYER_WIRE_S);
+  },
+
+  // Only actual current relay bodies and current hull lives enter the graph. A dead,
+  // removed or replaced relay is insulating; never substitute its old orbital pose.
+  _stormDischargeGraph(state, at, extras) {
+    const relays = new Map();
+    let live = 0;
+    for (let i = 0; i < STORM_RELAY_COUNT; i++) {
+      const id = `relay_${i}`;
+      const body = this._roomSolids?.get(id);
+      const valid = body && body.alive !== false && state.entities?.get(body.id) === body
+        && Number.isSafeInteger(body.occupantGeneration) && body.occupantGeneration > 0
+        && Number.isFinite(body.pos?.x) && Number.isFinite(body.pos?.z);
+      if (valid) live++;
+      relays.set(id, valid ? { pos: body.pos, conductive: true }
+        : { pos: at, conductive: false });
+    }
+    if (!live) return null;
+    const hulls = [];
+    for (const entry of extras) {
+      const e = entry.entity;
+      if (!e || e.alive === false || state.entities?.get(e.id) !== e
+        || e.occupantGeneration !== entry.life || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)) continue;
+      hulls.push({ id: e.id, kind: 'hull', conductive: true, score: 4,
+        pos: { x: e.pos.x, z: e.pos.z } });
+    }
+    return buildConductivityGraph(stormGraphNodes(at, simTimeOf(state), hulls, relays), { at, discharge: true });
+  },
+
+  /** Warn a bounded, committed graph before damage; no elapsed fight time while paused. */
+  _tickStormDischarge(state, at) {
+    const run = state.run;
+    if (this._phase !== 'furnace_active' || run?.arenaId !== STORM_ARENA_ID || run.wave !== this._wave
+      || !['active', 'cleanup'].includes(run.phase)) {
+      if (this._dischargePending || this._dischargeElapsed) this._resetStormDischarge();
+      return;
+    }
+    if (state.mode !== 'flight') { this._dischargeLastAt = null; return; }
+    const now = simTimeOf(state);
+    if (this._dischargeLastAt != null && now >= this._dischargeLastAt) {
+      this._dischargeElapsed += now - this._dischargeLastAt;
+    }
+    this._dischargeLastAt = now;
+    const elapsed = this._dischargeElapsed;
+    if (this._dischargePending) {
+      if (now >= this._dischargePending.expiresAtSim) {
+        const pending = this._dischargePending;
+        this._dischargePending = null;
+        this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+        this._emit('survivalArena:stormCancel', { wave: this._wave,
+          roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+        return;
+      }
+      if (this._dischargePending.fireAt == null) {
+        if (this._dischargePending.presentedAt == null) return;
+        this._dischargePending.fireAt = elapsed + STORM_DISCHARGE_WARNING_S;
+      }
+      if (elapsed < this._dischargePending.fireAt) return;
+      const pending = this._dischargePending;
+      this._dischargePending = null;
+      this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+      this._resolveStormDischarge(state, at, pending);
+      return;
+    }
+    if (elapsed < this._dischargeNextAt - STORM_DISCHARGE_WARNING_S) return;
+    this._stormPlayerWiring(state);
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isSafeInteger(e.occupantGeneration) && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    candidates.sort((a, b) => {
+      const da = (a.pos.x - at.x) ** 2 + (a.pos.z - at.z) ** 2;
+      const db = (b.pos.x - at.x) ** 2 + (b.pos.z - at.z) ** 2;
+      return da - db || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0);
+    });
+    const extras = candidates.slice(0, STORM_DISCHARGE_MAX_EXTRAS)
+      .map(entity => ({ entity, life: entity.occupantGeneration }));
+    const graph = this._stormDischargeGraph(state, at, extras);
+    const origin = selectDischargeOrigin(graph);
+    if (!origin) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const tick = state.tick | 0;
+    const walk = conductAlongGraph(graph, origin.id, createStormLineage({ lineageProcBudget: 16, tick }), { tick });
+    if (!walk.hops.length) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const points = new Map();
+    for (const hop of walk.hops) for (const id of [hop.fromId, hop.toId]) {
+      const node = graph.nodesById.get(id);
+      if (node?.pos) points.set(id, { x: node.pos.x, z: node.pos.z });
+    }
+    const serial = ++this._dischargeSerial;
+    const relayLives = new Map();
+    for (const [id, entity] of this._roomSolids) if (String(id).startsWith('relay_') && entity) {
+      relayLives.set(id, { entity, life: entity.occupantGeneration });
+    }
+    this._dischargePending = { serial, fireAt: null, expiresAtSim: now + 4, extras,
+      originId: origin.id, hops: walk.hops, points, relayLives };
+    this._emit('survivalArena:stormWarning', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial,
+      atSim: now, expiresAtSim: now + 4, warningS: STORM_DISCHARGE_WARNING_S,
+      segments: walk.hops.map(hop => {
+        const a = points.get(hop.fromId), b = points.get(hop.toId);
+        return { ax: a.x, az: a.z, bx: b.x, bz: b.z };
+      }),
+      nodes: [origin.id, ...walk.hops.map(hop => hop.toId)]
+        .map(id => ({ ...points.get(id), radius: STORM_DISCHARGE_RADIUS })),
+    });
+    this._emit('audio:cue', { id: 'sfx_doctrine_ranged_charge', position: { x: at.x, z: at.z }, gain: 0.5 });
+  },
+
+  _resolveStormDischarge(state, at, pending) {
+    this._stormPlayerWiring(state);
+    const graph = this._stormDischargeGraph(state, at, pending.extras);
+    const now = simTimeOf(state);
+    const wave = this._wave, roomGeneration = this._stormRoomGeneration, run = state.run;
+    const kernel = this.ctx && getCombatKernel(this.ctx);
+    if (!graph || !kernel?.routeDamage) {
+      this._emit('survivalArena:stormCancel', { wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    const bitten = new Set();
+    let bites = 0, playerBites = 0, hops = 0, playerWire = false;
+    const segments = [], nodes = [];
+    for (const hop of [{ fromId: pending.originId, toId: pending.originId }, ...pending.hops]) {
+      if (state.run !== run || this._wave !== wave || this._stormRoomGeneration !== roomGeneration
+        || this._phase !== 'furnace_active' || !['active', 'cleanup'].includes(run.phase)) break;
+      let staleRelay = false;
+      for (const id of [hop.fromId, hop.toId]) {
+        if (!String(id).startsWith('relay_')) continue;
+        const saved = pending.relayLives.get(id), current = this._roomSolids.get(id);
+        if (!saved || saved.entity !== current || saved.life !== current?.occupantGeneration) staleRelay = true;
+      }
+      if (staleRelay) break;
+      const from = graph.nodesById.get(hop.fromId), node = graph.nodesById.get(hop.toId);
+      const warnedFrom = pending.points.get(hop.fromId), warned = pending.points.get(hop.toId);
+      if (!from || !node || !warnedFrom || !warned || from.conductive === false || node.conductive === false
+        || (hop.fromId !== hop.toId && !graph.neighbors.get(hop.fromId)?.includes(hop.toId))
+        || Math.hypot(from.pos.x - warnedFrom.x, from.pos.z - warnedFrom.z) > STORM_DISCHARGE_RADIUS
+        || Math.hypot(node.pos.x - warned.x, node.pos.z - warned.z) > STORM_DISCHARGE_RADIUS) break;
+      if (this._stormRelayCredited(state, hop.fromId, now) || this._stormRelayCredited(state, hop.toId, now)) playerWire = true;
+      nodes.push({ x: node.pos.x, z: node.pos.z, radius: STORM_DISCHARGE_RADIUS });
+      if (hop.fromId !== hop.toId) {
+        hops++;
+        segments.push({ ax: from.pos.x, az: from.pos.z, bx: node.pos.x, bz: node.pos.z });
+      }
+      const targets = dischargeBiteTargets(warned, candidates, { excludeIds: bitten });
+      for (const body of targets) {
+        if (state.run !== run || this._wave !== wave || this._phase !== 'furnace_active') break;
+        if (Math.hypot(body.pos.x - node.pos.x, body.pos.z - node.pos.z) > STORM_DISCHARGE_RADIUS) continue;
+        bitten.add(body.id);
+        const attackerId = playerWire && body.id !== state.playerId ? state.playerId : STORM_ARENA_ID;
+        const packet = scalarHitToDamagePacket({ damage: STORM_DISCHARGE_DAMAGE, damageType: 'kinetic',
+          pos: { x: node.pos.x, z: node.pos.z }, source: { kind: 'storm_discharge', nodeId: hop.toId } });
+        const result = kernel.routeDamage({ attackerId, targetId: body.id, packet,
+          origin: { kind: 'storm_discharge', id: hop.toId } });
+        if (result?.totalApplied > 0) { bites++; if (attackerId === state.playerId) playerBites++; }
+      }
+    }
+    this._emit('survivalArena:stormResolve', { wave, roomGeneration,
+      serial: pending.serial, hops, atSim: now, segments, nodes });
+    this._emit('swarm:stormDischarge', { hops, bites, playerBites, at: { x: at.x, z: at.z }, t: now, tick: state.tick | 0 });
+  },
   /** Entity ids currently held by an active Massline attachment (attachment targetIds). */
   _heldBodyIds(state) {
     const byId = state && state.combat && state.combat.attachments
@@ -2045,6 +2492,7 @@ export const survivalArena = {
   },
 
   _reset() {
+    this._resetStormDischarge();
     this._fieldIds = [];
     this._deferredFields = null;
     this._deferredUntil = null;

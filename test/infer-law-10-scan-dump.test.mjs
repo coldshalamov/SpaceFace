@@ -7,7 +7,7 @@
 // one bark) and forges no second verdict — no re-scan, no fine, no standing move,
 // no heat write. The jettisoned pod keeps its contraband stamp, so the later
 // cone/weir read still prices heat through heat.js (dumping is never heat-free).
-// The customs deck surfaces the abort as a toast and dismisses the panel.
+// The result adapter surfaces the abort as a toast; a scan fact is not a pending offer.
 //
 // Path B (finish): the same scan with no dump completes; the engine's
 // `contraband:scanned` stands verbatim as the full finding — no abort, no downgrade.
@@ -19,7 +19,6 @@ import assert from 'node:assert/strict';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { cargo } from '../src/systems/cargo.js';
 import { customsPrompt } from '../src/ui/customsPrompt.js';
-import { setPromptDeck } from '../src/ui/promptDeck.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
 const SEED = 4242;
@@ -242,37 +241,14 @@ test('LAW-10: an unrelated legal dump mid-scan does not abort the watch', () => 
   assert.equal(law._scanDumpWatch.phase, 'completed_full');
 });
 
-test('LAW-10: the customs deck surfaces the abort and drops the panel', () => {
+test('LAW-10: the abort receipt stays visible without a stale decision panel', () => {
   const bus = makeBus();
   const state = makeState({});
-  const offers = [];
-  setPromptDeck({
-    offerDecision(o) { offers.push(o); return true; },
-    updateDecision() { return true; },
-    resolveDecision() { return true; },
-  });
   const prompt = Object.create(customsPrompt);
   try {
-    prompt.init({
-      state,
-      bus,
-      helpers: { voice: { say() { return true; } } },
-      registry: {
-        get() {
-          return {
-            illicitCargo() {
-              return [{
-                commodityId: CONTRABAND_ID, qty: 4,
-                def: { name: 'Narcotics', basePrice: 576, legality: 'contraband', fineMult: 1.2 },
-              }];
-            },
-            scanningFaction() { return 'faction_scn'; },
-          };
-        },
-      },
-    });
+    prompt.init({ state, bus });
     scanSignal(bus);
-    assert.ok(state.ui.customsPrompt, 'the decision panel is up for the dirty scan');
+    assert.equal(state.ui.customsPrompt, undefined, 'the scan fact is not a pending offer');
 
     bus.emit('customs:scanAborted', {
       reason: 'dumped_mid_scan', factionId: 'faction_scn', patrolId: 'patrol-1',
@@ -284,10 +260,8 @@ test('LAW-10: the customs deck surfaces the abort and drops the panel', () => {
     assert.match(toasts[0].payload.text, /Narcotics/);
     assert.match(toasts[0].payload.text, /suspicion noted/);
     assert.equal(toasts[0].payload.kind, 'warn');
-    assert.equal(state.ui.customsPrompt, undefined, 'the offered decision is dismissed with the scan');
   } finally {
     prompt.destroy();
-    setPromptDeck(null);
   }
 });
 

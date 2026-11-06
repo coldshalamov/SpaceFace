@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 
 const AGENT_RUN = new URL('../scripts/agent-run.mjs', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1');
@@ -49,4 +49,44 @@ test('--stdin pipes the file into the child', () => {
     process.execPath, '-e', 'process.stdin.pipe(process.stdout)']);
   assert.equal(r.status, 0);
   assert.match(readFileSync(log, 'utf8'), /pipe-marker-42/);
+});
+
+test('an npm shim with a missing adjacent node.exe runs its existing JS entrypoint', { skip: process.platform !== 'win32' }, () => {
+  const appData = join(dir, 'npm-home');
+  const npm = join(appData, 'npm');
+  const entry = join(npm, 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
+  mkdirSync(dirname(entry), { recursive: true });
+  writeFileSync(entry, 'console.log(`shim-child:${process.argv.slice(2).join("|")}`);\n');
+  // Match the published Codex shim's IF EXIST node.exe / ELSE node selection and JS payload.
+  writeFileSync(join(npm, 'codex.cmd'), [
+    '@ECHO off',
+    'IF EXIST "%dp0%\\node.exe" (',
+    '  SET "_prog=%dp0%\\node.exe"',
+    ') ELSE (',
+    '  SET "_prog=node"',
+    ')',
+    'endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%" "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*',
+    '',
+  ].join('\r\n'));
+  const log = join(dir, 'npm-js-shim.log');
+  const r = run(['--log', log, '--', 'codex', 'arg with space', 'tail'], {
+    env: { ...process.env, APPDATA: appData },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(readFileSync(log, 'utf8'), /shim-child:arg with space\|tail/);
+});
+
+test('an npm shim with an existing direct executable keeps executable resolution', { skip: process.platform !== 'win32' }, () => {
+  const appData = join(dir, 'exe-shim-home');
+  const npm = join(appData, 'npm');
+  mkdirSync(npm, { recursive: true });
+  const cmdExe = process.env.ComSpec || join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'cmd.exe');
+  const relativeExe = relative(npm, cmdExe);
+  writeFileSync(join(npm, 'direct.cmd'), `@"%~dp0\\${relativeExe}" %*\r\n`);
+  const log = join(dir, 'direct-exe-shim.log');
+  const r = run(['--log', log, '--', 'direct.cmd', '/d', '/s', '/c', 'echo direct-exe-shim-ok'], {
+    env: { ...process.env, APPDATA: appData },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(readFileSync(log, 'utf8'), /direct-exe-shim-ok/);
 });

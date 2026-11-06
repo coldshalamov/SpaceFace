@@ -31,6 +31,7 @@ import { createTimeEffects } from '../src/core/timeEffects.js';
 import { laneSetMode } from '../src/core/simLaneCommands.js';
 import { mountStartupFailurePresenter } from './helpers/startup-failure-presenter.mjs';
 import { textLines } from './helpers/fake-dom.mjs';
+import { __setStartupBudgetScaleForTests, openingGateBudgetMs } from '../src/render/startupPacing.js';
 
 const MAIN_PATH = new URL('../src/main.js', import.meta.url);
 const SOAK_PROBE_PATH = new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url);
@@ -180,8 +181,15 @@ test('every await in finalizeLoadedGame is a bounded wait', () => {
       `finalizeLoadedGame awaits "${callee}" with no declared bound — every load-finalizer wait`
       + ' must carry its own deadline so a never-settling promise cannot freeze mode:loading (D35)');
   }
-  assert.match(body, /const physicsReady = await Promise\.race\([\s\S]*?setTimeout\(\(\) => resolve\(false\), 20000\)/,
-    'the explicit Promise.race must retain the physics failure deadline');
+  assert.match(body, /const physicsReady = await Promise\.race\([\s\S]*?setTimeout\(\(\) => resolve\(false\), openingGateBudgetMs\(\)\)/,
+    'the explicit Promise.race must use the shared finite physics failure budget');
+  __setStartupBudgetScaleForTests(1);
+  try {
+    assert.equal(openingGateBudgetMs(), 20000,
+      'the physics owner resolves its documented 20-second base through the shared bounded budget');
+  } finally {
+    __setStartupBudgetScaleForTests(null);
+  }
 });
 
 test('frame waits carry a timer fallback so starved rAF cannot hang the load chain', async (t) => {
@@ -301,18 +309,24 @@ test('a failure listener starting a replacement route prevents stale recovery na
   assert.deepEqual(pushes, [], 'stale failure cannot open a menu over the replacement route');
 });
 
-test('the soak checker waits for the failed-restore landing before retrying F9', () => {
+test('the soak checker waits for the failed-restore landing before failing terminally', () => {
   const probe = readFileSync(SOAK_PROBE_PATH, 'utf8');
-  assert.match(probe, /waitForLoadFlight = \(\)/,
+  assert.match(probe, /waitForSoakLoadLanding/,
     'the load leg must keep its flight wait');
   // After the first wait fails the probe must watch the session land — late flight or the
-  // retryable start-failed menu — instead of sampling once and misreading a bounded failure
-  // as a permanent mode:loading freeze.
+  // start-failed menu — instead of sampling once and misreading a bounded failure as a
+  // permanent mode:loading freeze.
   const catchIdx = probe.indexOf('catch (loadWaitError)');
   assert(catchIdx > 0, 'the load wait must have a failure path');
   const tail = probe.slice(catchIdx, catchIdx + 3000);
-  assert.match(tail, /waitForFunction\(\(\) =>[\s\S]{0,400}runtime:start-failed[\s\S]{0,400}polling/,
+  assert.match(tail, /waitForFunction\(readSoakLoadLanding[\s\S]{0,200}polling/,
     'the failure path must poll for the recoverable landing signature, not sample once');
-  assert.match(tail, /load-retry-start-failed[\s\S]{0,200}press\('F9'\)/,
-    'a start-failed landing must still trigger the D31 F9 retry');
+  assert.match(probe, /readSoakLoadLanding[\s\S]{0,600}runtime:start-failed/,
+    'the landing signature must still recognize the start-failed menu');
+  // A start-failed landing is terminal evidence, not a recursive F9 input: the probe throws
+  // SOAK_LOAD_START_FAILED and the cycle retry deliberately excludes it.
+  assert.match(tail, /SOAK_LOAD_START_FAILED/,
+    'a start-failed landing must surface as a named terminal failure');
+  assert.match(probe, /code !== 'SOAK_LOAD_START_FAILED'/,
+    'the cycle retry must not recursively re-press F9 on a failed restore');
 });

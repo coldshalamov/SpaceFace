@@ -364,6 +364,7 @@ function spillCrackedCargo(state, options, payload, items, simTime, tick) {
     const kick = 6 + deltaV * 0.4;
     const pod = spawnEntity({
       type: 'pickup',
+      ownerId: player.id,
       pos: {
         x: player.pos.x + Math.cos(ang) * ((player.radius || 8) + 4),
         z: player.pos.z + Math.sin(ang) * ((player.radius || 8) + 4),
@@ -372,6 +373,7 @@ function spillCrackedCargo(state, options, payload, items, simTime, tick) {
       radius: 3, mass: 0.1, collides: true,
       data: {
         kind: 'cargo', commodityId: item.commodityId, amount: spillQty,
+        ownerId: player.id,
         despawnAt: simTime + FRAGILE_CARGO_SPILL_TTL_S,
         fragileSpill: true,
       },

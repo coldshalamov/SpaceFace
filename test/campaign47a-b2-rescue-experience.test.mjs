@@ -203,6 +203,7 @@ test('B2 actor losses survive Continue without respawn and a failed cast can be 
   // W-BOOKS-0-2: a failed in-flight set piece is not re-posted — the book hands the
   // player its next pending job instead (the cinder board opens Book 2).
   h.state.world.currentSectorId = 'sector_tethys_junction';
+  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
   h.bus.emit('dock:undocked', {});
   const retry = h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b2:cinder');
   assert.ok(retry, 'the departure rail re-posts the book’s pending job after a failed legacy cast');

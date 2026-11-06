@@ -32,10 +32,11 @@ const EXPECTED = Object.freeze([
   ['G13', 'contact_wraith_kell', '“Wraith” Kell', 'I file manifests by day, copy them by night. Burn?', ['station_customs'], 'kell.cover'],
   ['G14', 'contact_halev_doss', 'Prof. Halev Doss', 'The sector has a paper trail. I walk it daily.', ['station_helios'], 'doss.sources'],
   ['G15', 'contact_maera_vols', 'Captain Maera Vols', 'I left the engines warm. You fly her further than I did.', ['station_helios'], 'vols.business'],
+  ['G16', 'contact_ledger_march', 'Provost March', 'Every hull you dragged home is filed here. I square the sums.', ['station_helios'], 'march.reconciliation'],
 ]);
 
-test('the fifteen canon contact cards are exact, placed, gated, and trackable', () => {
-  assert.equal(DEPTH_PROGRAM_CONTACTS.length, 15);
+test('the sixteen canon contact cards are exact, placed, gated, and trackable', () => {
+  assert.equal(DEPTH_PROGRAM_CONTACTS.length, 16);
   const stationIds = new Set(SECTORS.flatMap((sector) => sector.stations || []).map((station) => station.id));
   for (const [programId, id, name, blurb, stationHints, trackerId] of EXPECTED) {
     const card = DEPTH_PROGRAM_CONTACTS.find((entry) => entry.id === id);

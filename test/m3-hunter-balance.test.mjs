@@ -131,7 +131,9 @@ test('cohort Hunter 30/60/90 clear the healthy band with costs and a mid progres
     assert.equal(band.lo, HUNTER_HEALTHY_CR_PER_MIN);
     // Both the insurance-taxed cohort and denser public-route adapter retain the existing ceiling.
     assert.ok(band.hi <= HUNTER_HEALTHY_UPPER_CR_PER_MIN);
-    assert.equal(HUNTER_HEALTHY_UPPER_CR_PER_MIN, 400);
+    // Post-raise ceiling: Oct-17 same-sector chains + field poster parity lifted honest wages
+    // to ~386-544/min; 600 sits above honest and below a ~2x settlement exploit (~1100).
+    assert.equal(HUNTER_HEALTHY_UPPER_CR_PER_MIN, 600);
 
     // D69: death is forced at 60/90m, where a 500-deductible loss plus downtime and
     // the abandon cascade can absorb and still measure a band. A 30m window cannot host

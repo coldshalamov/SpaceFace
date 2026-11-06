@@ -218,6 +218,7 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     scanPulse: true,
     cruise: true,
     deployBeacon: true,
+    deployShieldPylon: true,
     pin: true,
     pull: true,
     rig: true,

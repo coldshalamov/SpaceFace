@@ -179,16 +179,15 @@ Two distinct quantities that specs conflated:
 - Screen shake moves only the 3D camera; the DOM HUD is immune and stays readable (relied upon by UI spec).
 
 ### 1.3 Boot sequence (`src/main.js`)
-1. Parse importmap, import `THREE`.
-2. Create `WebGLRenderer`, scene, the bloom render targets (VFX), append `#gl-canvas`.
-3. Construct the empty `GameState` (`src/core/gameState.js → createGameState()`), seeded with `meta.seed` (from `Date.now()` or a loaded save's seed).
-4. Build the **event bus** (`src/core/eventBus.js`).
-5. Build the **system registry** (`src/core/registry.js`): instantiate every system module, call `system.init(ctx)` in registration order (`ctx = { state, bus, three, registry, helpers }`).
-6. UI mounts `#ui-root`, shows **Main Menu** (`state.mode='menu'`). No sim runs yet.
-7. On **New Game**: `SaveSystem.newGame(seed)` calls each system's `newGame()` → populates GameState → emits `game:started` → `world:requestJump`/`sector:enter` for the home sector → `state.mode='flight'`.
-   On **Continue/Load**: `SaveSystem.load(slot)` (see §4.5) → rebuild scene → `state.mode='flight'`.
-8. Start the **single `requestAnimationFrame` loop** (`src/core/loop.js`). The fixed-timestep accumulator drives sim; render runs every frame.
-9. AudioContext is created lazily on the first user gesture (autoplay policy); a one-time `pointerdown`/`keydown` listener calls `ctx.resume()`.
+1. The browser resolves the import map and loads `src/main.js`. Boot starts the model-truth census and localization, which must finish before state creation; the scenario-contract load overlaps that setup and is awaited before registry initialization.
+2. `boot()` creates the seeded `GameState`, applies persisted graphics settings, then creates the event bus, time effects, presenters, and shared startup helpers. The default state is `mode: 'menu'`.
+3. Boot resolves the simulation lane and creates its registry. In worker mode, the presentation registry is created on the main thread and boot waits for worker readiness before initializing the presentation owners; an unavailable worker falls back to the full browser registry on the main thread.
+4. `registry.initAsync()` initializes the selected registry owners in manifest order. The render owner creates the `WebGLRenderer`, scene, and canvas; VFX, audio, and UI initialize through that presentation lifecycle. In worker mode, simulation and save owners are already initialized in the worker.
+5. The UI owner mounts `#ui-root` and shows the Main Menu. Boot installs New Game, load, and menu-transition handlers while the initial menu time effect keeps gameplay paused.
+6. `main.js` starts the single `requestAnimationFrame` loop after registry initialization and transition wiring. It presents the menu immediately while the boot menu time effect holds simulation time at zero.
+7. On **New Game**, the `game:new` handler calls `startNewGame()` in `src/main.js`. It runs the new-game simulation bootstrap locally or through the worker lane, completes the authored-visual and physics readiness gates, then releases player control in flight. `SaveSystem` does not own `newGame()`.
+8. On **Continue/Load**, the UI emits `game:load` and the save owner restores the selected slot. The main simulation lane finalizes inside the restore flow; the worker lane finalizes from the bridged `save:loaded` event. Both wait for the authored-visual, opening-picture, and physics gates before releasing player control in flight (see §4.5).
+9. The audio owner initializes with the registry but creates its `AudioContext` lazily on the first unmuted `pointerdown` or `keydown`, when it can resume audio under the browser autoplay policy.
 
 ---
 
@@ -581,19 +580,23 @@ export default {
   mountUI(uiRoot) {}, refreshUI(data) {},
 }
 ```
-- `init` order == registry order. `update` order == the §2.3 spine (a separate explicit list in `registry.js`, NOT registration order, so AI runs before flight etc.).
+- Init and simulation update use their separate orders in `src/runtime/authoritativeSystemManifest.js`; presentation owners initialize in their corresponding manifest order.
 - Systems **never** mutate another system's owned state directly (§0.6). They call exposed helpers or emit intent events.
 - `ctx.helpers` exposes the cross-cutting core helpers (§4.3).
 
-### 4.2 Registry & wiring (`src/core/registry.js`)
+### 4.2 Registry & wiring
 **Source of truth for system IDs and order:** `src/runtime/authoritativeSystemManifest.js`
-(currently ~132 init / ~100 update). `registry.js` materializes that manifest; do not
-duplicate the roster in this doc.
+The full browser registry materializes the simulation orders for main mode. The default worker
+uses its authoritative runtime plus `src/runtime/presentationRegistry.js` on the main thread.
+Direct browser-registry worker callers delegate to that same presentation factory.
 
 - `registry.init()` → init each registered system from the manifest order.
 - `registry.step(dt)` → run the manifest update order, then `core.lifetimeSweep(dt)`.
 - `registry.get(name)` → system lookup (for direct helper calls where an event is overkill).
 - Render/vfx/ui/audio update in `renderFrame`, not the sim step.
+- Worker-owned systems expose mirrored reads and existing intents/RPC through
+  `laneSystemFacades.js`. Shared lifecycle and state binding live in `registryLifecycle.js`
+  and `bindRuntimeToState.js`; presentation imports do not load the Node system factories.
 
 ### 4.3 Core helpers (`ctx.helpers`, provided by core)
 ```
@@ -814,7 +817,8 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 |---|---|---|---|
 | `src/core/gameState.js` | `createGameState()` — the schema (§3), all defaults | `createGameState` | data/saveVersion |
 | `src/core/eventBus.js` | `emit`/`on`/`off`, deferred-event queue, flush | `createBus`/`EventBus` | — |
-| `src/core/registry.js` | system list, init order, UPDATE_ORDER, `step(dt)` | `Registry` | all systems |
+| `src/core/registry.js` | full browser manifest materialization and `step(dt)`; delegates worker callers to presentation | `createRegistry` | browser simulation systems |
+| `src/runtime/presentationRegistry.js` | main-thread presentation lifecycle, facades and render phase for worker mode | `createPresentationRegistry` | presentation owners and read seams |
 | `src/core/loop.js` | rAF loop, fixed-timestep accumulator, render interp alpha | `startLoop` | registry, render |
 | `src/core/timeEffects.js` | per-state transient pause/slow-time arbiter; minimum named request; sole `state.timeScale` writer | `createTimeEffects` | — |
 | `src/core/runTransitionGuard.js` | monotonic async New Game/load ownership; private issued-token identity rejects clones/forgeries; stale readiness completions become no-ops | `createRunTransitionGuard` | — |

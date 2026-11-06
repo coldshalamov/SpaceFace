@@ -126,3 +126,31 @@ export function isPlayerTitleHolder(record) {
 export function isPlayerHeldTitleRecord(record) {
   return !!record && typeof record === 'object' && record.status === 'held' && isPlayerTitleHolder(record);
 }
+
+/**
+ * The newest player-held sighting the station voices have not greeted yet (inf-title-greeting).
+ * Reads only the durable titlesSeen receipts — an earn the player holds (player-shaped key or a
+ * stunt trickId), newest first, deterministic id tie-break. `greetedAt` is the one station-voice
+ * acknowledgment stamp; absent (legacy saves) reads as never greeted. Pure read — the titles
+ * system stays the sole writer of the titlesSeen bag.
+ */
+export function newestUngreetedPlayerTitleSeen(state) {
+  const seen = state && state.story && Array.isArray(state.story.titlesSeen) ? state.story.titlesSeen : [];
+  let best = null;
+  for (const record of seen) {
+    if (!record || typeof record !== 'object') continue;
+    if (!isPlayerTitleHolder(record)) continue;
+    if (record.greetedAt != null && Number.isFinite(Number(record.greetedAt))) continue;
+    const at = Number.isFinite(Number(record.seenAt)) ? Number(record.seenAt) : 0;
+    const id = String(record.id || '');
+    if (!id) continue;
+    if (!best
+      || at > best._at
+      || (at === best._at && id.localeCompare(String(best.id || '')) < 0)) {
+      best = { ...record, _at: at };
+    }
+  }
+  if (!best) return null;
+  const { _at, ...record } = best;
+  return record;
+}

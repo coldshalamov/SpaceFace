@@ -49,7 +49,7 @@ function batch(g) {
     let geometry = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
     geometry.applyMatrix4(mesh.matrix);
     if (!buckets.has(mesh.material)) buckets.set(mesh.material, []);
-    buckets.get(mesh.material).push(geometry); mesh.geometry.dispose(); g.remove(mesh);
+    buckets.get(mesh.material).push(geometry); mesh.castShadow = false; mesh.geometry.dispose(); g.remove(mesh);
   }
   for (const [material, geos] of buckets) {
     const geometry = mergeGeometries(geos, false);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
@@ -31,6 +32,7 @@ import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { compileScenePipelinesForRenderTarget } from './bloom.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
+import { beginRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -597,8 +599,8 @@ export async function settleOpeningCompositionTail(state, options = {}) {
         };
       }
     } catch { /* a refused request leaves the live trigger armed */ }
-    // The cook's finally armed firstFlightHandoffHold. During loading nothing presents, so lift
-    // it for the drain and re-arm it below: held non-opening leftovers stay deferred, while the
+    // During loading nothing presents, so lift the hold for the drain and restore the restricted
+    // loading lane below: held non-opening leftovers stay deferred, while the
     // opening composition's own jobs may finish their decode/compile/upload behind the shell
     // instead of at the in-flight latch inside the first 20 s of flight.
     resumeAuthoredUpgradeQueueAfterOpening(scene);
@@ -621,7 +623,7 @@ export async function settleOpeningCompositionTail(state, options = {}) {
       ]);
     } catch { /* best effort */ }
   }
-  if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene);
+  if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: true });
   const residency = residencyPending();
   return {
     skipped: false,
@@ -951,7 +953,7 @@ function beginDirectionalShadowWarm(renderer, scene) {
   };
 }
 
-async function prepareDirectionalShadowPipelineVariant(
+export async function prepareDirectionalShadowPipelineVariant(
   renderer, scene, subject, preparePipelines, beforePrepare = null,
 ) {
   const shadowMap = renderer && renderer.shadowMap;
@@ -971,10 +973,14 @@ async function prepareDirectionalShadowPipelineVariant(
     if (!addedPipelineOwners) {
       return { skipped: true, reason: 'directional shadow variant already active' };
     }
-    subject.updateMatrixWorld(true);
-    await preparePipelines(subject);
-    return { skipped: false, reason: 'new pipeline owners admitted under active directional shadows' };
+    const endRigidBatchShadowWarm = beginRigidBatchShadowWarm(renderer);
+    try {
+      subject.updateMatrixWorld(true);
+      await preparePipelines(subject);
+      return { skipped: false, reason: 'new pipeline owners admitted under active directional shadows' };
+    } finally { endRigidBatchShadowWarm(); }
   }
+  const endRigidBatchShadowWarm = beginRigidBatchShadowWarm(renderer);
   try {
     shadowMap.enabled = true;
     keyLight.castShadow = true;
@@ -983,9 +989,11 @@ async function prepareDirectionalShadowPipelineVariant(
     await preparePipelines(subject);
     return { skipped: false };
   } finally {
-    shadowMap.enabled = previousEnabled;
-    keyLight.castShadow = previousCastShadow;
-    noteShadowCensusLightMutation();
+    try {
+      shadowMap.enabled = previousEnabled;
+      keyLight.castShadow = previousCastShadow;
+      noteShadowCensusLightMutation();
+    } finally { endRigidBatchShadowWarm(); }
   }
 }
 
@@ -1434,6 +1442,8 @@ function retainPipelineWarmup(renderer, root) {
 function disposeObject(root) {
   root.traverse((object) => {
     if (object.userData?.precompileBorrowedResources) return;
+    try { object.userData?.releaseAuthoredAssetResidency?.('precompile-disposed'); } catch { /* continue teardown */ }
+    releaseStaticBatchGeometryForObject(object);
     if (object.geometry && typeof object.geometry.dispose === 'function'
       && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
       object.geometry.dispose();

@@ -138,6 +138,38 @@ test('multiple acceleration segments, exactly one of them disrupted', () => {
   assert.equal(dead.length, 1, 'exactly one damaged segment (acceptance item 4)');
 });
 
+test('manufactured route structures do not claim a recycled entity id', () => {
+  const state = makeState({ x: 0, z: 0 });
+  const { sys, spawned } = makeHost(state);
+  const route = {
+    infrastructure: { id: 'route-test', stage: 'built', operational: false },
+    geometry: { axis: { x: 1, z: 0 } },
+  };
+  const body = { id: 'body-test', sectorId: 'sector_helios_prime' };
+  const pos = { x: 120, z: 0 };
+  const args = [state, state.entities.get(1), sys.helpers.spawnEntity, state.entities,
+    route, body, 'route-test:ring', 'ring', pos, 'place_gate_jump_ring', 0.72,
+    32, 'Test ring', false];
+
+  assert.equal(sys._ensureManufacturedStructure(...args), true);
+  const original = spawned[0];
+  state.entities.delete(original.id);
+  const recycled = {
+    id: original.id,
+    alive: true,
+    type: 'ship',
+    data: { name: 'unrelated hull' },
+  };
+  state.entities.set(recycled.id, recycled);
+
+  assert.equal(sys._ensureManufacturedStructure(...args), true);
+  assert.equal(recycled.data.name, 'unrelated hull');
+  assert.equal(recycled.data.claimTravelInfrastructureId, undefined);
+  assert.equal(spawned.length, 2, 'the route structure is rematerialized under a fresh occupant id');
+  assert.equal(spawned[1].data.claimTravelInfrastructureId, 'route-test');
+  assert.equal(spawned[1].data.claimTravelPart, 'ring');
+});
+
 test('the dead segment sits unambiguously inside one Voronoi cell', () => {
   // If the dead segment straddled the bisector, sectorMembershipAtGlobal would be a coin flip and
   // requestAuthoredEncounter would intermittently reject with wrong_sector — a silent no-pirates bug.

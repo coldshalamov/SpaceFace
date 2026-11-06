@@ -30,6 +30,20 @@ ${T} .con-curve__rungs { display:flex; flex-wrap:wrap; margin-top:2px; line-heig
   overflow:hidden; color:rgb(${BONE} / .86); }
 ${T} .con-curve__rung { white-space:nowrap; }
 ${T} .con-curve__sep { white-space:pre; }
+/* ui-polish-170: a desktop head with height to spare stacks the first two rungs as a short ladder
+   instead of one line. The 28ch line held only "1 Propelled charge" even at 1920, and widening it
+   pulled the dial in (the sky keeps the dial clear of the head's box); one more line under the
+   key costs the dial nothing, since the title's corner is what bounds it. */
+@media (min-width:761px) and (min-height:601px) {
+  /* the second line hangs below the head's box (negative margin): the head keeps its one-line
+     height, so the sky's avoid rect and its top fade (--con-mask-top) stay where master has them */
+  ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; margin-bottom:-1.35em; }
+  ${T} .con-curve { overflow:visible !important; } /* the hung line must not be clipped by the head's own box */
+  ${T} .con-curve__sep { display:none; }
+  /* while the ladder is open it lists every rung, so the head folds back to one line: the fly anchors
+     at the curve box's bottom and would otherwise land on the hung rung and half-fade it */
+  ${T} .con-curve.is-open .con-curve__rungs { height:1.35em; margin-bottom:0; }
+}
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key::after { color:rgb(${WARM} / .9); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__rungs { color:rgb(${WARM}); }
@@ -61,8 +75,34 @@ ${T} .con-curve__fly.is-closing { opacity:0; transition:opacity var(--k-d-settle
    the arrival's fill-forwards label animation (.con-sky.is-arriving .con-label-in) otherwise holds
    opacity 1 above the covered state, and the walk photographs inside that window */
 ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none !important; }
+/* ui-polish-231: a narrow mid-height desktop frame (761–1100 × 501–640, e.g. 960×540) stacked the two
+   costs gauge over gauge in the 270px reading, so they took ~130px and the unlock list stopped after
+   its first row, with Requires under the column's fade. The costs stand side by side as words and
+   figures, the arrangement ui-polish-67 gave the ≤500-tall frame (the "% held" line already says what
+   the gauge draws), and the unlock list reads on the first paint. */
+@media (min-width:761px) and (max-width:1100px) and (min-height:501px) and (max-height:640px) {
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:12px; row-gap:0; margin:2px 0 4px !important; }
+  ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
+  ${T} .con-cost__gauge { display:none; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+}
 @media (max-width:560px) {
   ${T} .con-curve__fly { max-width:min(44ch, 92vw); }
+}
+/* ui-polish-232: on a narrow portrait frame (≤560 wide, ≥601 tall, e.g. 390×844) the two costs stood
+   gauge over gauge and took ~125px of the reading, so the inspector ran ~120px past the frame and
+   Requires opened under the Back footer. The costs stand side by side as words and figures, the
+   arrangement the short frames already use (the "% held" line says what the gauge draws), so the
+   unlock list and Requires sit higher on the first paint. */
+@media (max-width:560px) and (min-height:601px) {
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:16px; row-gap:0; margin:4px 0 8px !important; }
+  ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
+  ${T} .con-cost__gauge { display:none; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
 }
 `;
 

@@ -40,7 +40,7 @@ for (const { system, event, hintKey } of REQUIRED_HINTS) {
 }
 
 // The _showHint mechanism itself must exist + respect the tutorialHints setting + dedupe via hints.
-assert.match(src, /_showHint\(key, text, payload\)/, '_showHint(key, text, payload) must exist (object-attached first-use)');
+assert.match(src, /_showHint\(key,\s*text,\s*payload(?:\s*,|\s*\))/, '_showHint must accept the first-use key, text and payload (with optional queue configuration)');
 assert.match(src, /tutorialHints === false/, '_showHint must respect settings.gameplay.tutorialHints === false');
 assert.match(src, /st\.player\.hints\[key\]/, '_showHint must dedupe via state.player.hints[key] (fire-once-per-save)');
 

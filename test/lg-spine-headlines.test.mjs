@@ -38,19 +38,19 @@ const RUNS = Object.freeze({
     elroyOutcome: 'custody',
     introStationId: 'station_coalition',
     chainStationId: 'station_coalition',
-    verbs: Object.freeze(['mine', 'knock', 'pull', 'tow', 'clear', 'clear', 'deploy', 'jam']),
+    verbs: Object.freeze(['mine', 'weigh', 'hunt', 'tow', 'clear', 'clear', 'deploy', 'jam']),
   }),
   builder: Object.freeze({
     branch: 'traders',
     elroyOutcome: 'force',
     introStationId: 'station_tethys',
     chainStationId: 'station_tethys',
-    verbs: Object.freeze(['mine', 'knock', 'pull', 'tow', 'deliver', 'deliver', 'deploy', 'knock']),
+    verbs: Object.freeze(['mine', 'weigh', 'hunt', 'tow', 'deliver', 'deliver', 'deploy', 'knock']),
   }),
   free: Object.freeze({
     branch: 'free',
     elroyOutcome: 'force',
-    verbs: Object.freeze(['mine', 'knock', 'pull', 'tow', 'run', 'run', 'deploy', 'tow']),
+    verbs: Object.freeze(['mine', 'weigh', 'hunt', 'tow', 'run', 'run', 'deploy', 'tow']),
   }),
 });
 
@@ -141,6 +141,32 @@ function completePhysically(h, mission) {
     });
     return;
   }
+  if (mission.type === 'escort') {
+    // Spine Break is an escort — the convoy lead must reach the dock ring alive,
+    // then the berth read settles it. Killing the escortee fails the op.
+    h.state.world.currentSectorId = mission.destSectorId;
+    h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+    h.missions.spawnTargetsForSector(mission.destSectorId);
+    h.missions._ensureMissionTargets(mission);
+    let berth = [...h.state.entities.values()].find((entity) => (
+      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
+    ));
+    if (!berth) {
+      berth = {
+        id: 9000, type: 'station', alive: true, pos: { x: 0, z: 0 }, radius: 40,
+        data: { stationId: mission.destStationId, dockRadius: 140 },
+      };
+      h.state.entities.set(berth.id, berth);
+      h.state.entityList.push(berth);
+    }
+    const lead = h.state.entities.get(mission._escorteeId);
+    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
+    lead.pos = { x: berth.pos.x + 20, z: berth.pos.z };
+    h.missions.update(0.016, h.state);
+    assert.equal(mission._escorteeArrived, true, 'the convoy lead reaches the dock ring');
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   for (const targetId of [...(mission.targetEntityIds || [])]) {
@@ -171,8 +197,18 @@ function runBeat4(h, run) {
   assert.equal(introReceipts.length, 1);
   assert.equal(introReceipts[0].physicalVerb, run.verbs[4]);
   completePhysically(h, mission);
-  assert.equal(h.state.story.beatIndex, 5);
   assert.equal(h.state.story.branch, run.branch);
+  assert.equal(h.state.story.beatIndex, 4, 'the intro is only the door; the operation still owes');
+  // The door's own operation posts next (Spine Break / the Weighing / Barn Raising)
+  // and closes Pick a Side on completion.
+  const opBoard = h.missions.ensureBoard(run.introStationId);
+  const opOffer = opBoard.slots.find((row) => row.storyTag === 'campaign47a:b4:operation');
+  assert.ok(opOffer, `${run.branch} operation is posted`);
+  assert.equal(h.missions.acceptMission(opOffer.id), true);
+  const op = h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b4:operation');
+  assert.ok(op);
+  completePhysically(h, op);
+  assert.equal(h.state.story.beatIndex, 5);
 }
 
 function runBeat5(h, run) {

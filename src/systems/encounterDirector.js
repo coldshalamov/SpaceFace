@@ -62,7 +62,18 @@ import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
 } from '../data/sectorCoordinates.js';
+import {
+  addEncounterSquad,
+  planAuthoredEncounterItem as planAuthoredEncounterItemPure,
+  planEncounterShape as planEncounterShapePure,
+  resolveEncounterShape,
+  PURSUIT_RESOLVE_S,
+  sectorSecurityOf,
+} from '../data/encounters/planning.js';
+export { PURSUIT_RESOLVE_S, sectorSecurityOf };
 import { makeEnemySpawnSpec } from './combat.js';
+import { patrolJurisdictionFor } from '../data/factionContactGrammar.js';
+import { patrolInterventionHailFor } from '../data/barks.js';
 import {
   ENCOUNTER_REPETITION_DAY_SECONDS,
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
@@ -89,6 +100,15 @@ import {
   regionalEcologyReadout,
   regionalEncounterWeight,
 } from './regionalEcology.js';
+import {
+  DUST_FIRE_GAP_S,
+  DUST_LANE_STREAM_LABEL,
+  DUST_LIVE_STREAM_LABEL,
+  DUST_MAX_PER_DAY,
+  DUST_SCAN_S,
+  DUST_UNSEEN_WEIGHT,
+  isDustLaneEncounter,
+} from '../data/dustLane.js'; // DUST P1b: additive widening lane (design/program/dust/)
 import { ecologyEncounterWeights } from '../data/alienEcology.js'; // AE-072 contamination→deck bias
 import {
   ActivityKind,
@@ -134,6 +154,7 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
+import { tickPatrolBaits } from './patrolBait.js';
 import {
   tickImpoundGrudge,
   noteImpoundGrudgeKill,
@@ -178,7 +199,6 @@ export const ENCOUNTER_FIRE_READY = new Map(
 export const FIRE_READY_HOLD_S = 60;
 
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
-export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
 const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 
@@ -367,6 +387,7 @@ export const encounterDirector = {
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
       // Only705 consumes native contacts; do not fan every collision into unrelated runtimes.
       this.bus.on('physics:impact', (p) => {
         const liveById = this.state && this.state.encounterDirector && this.state.encounterDirector.live;
@@ -408,6 +429,7 @@ export const encounterDirector = {
       this.bus.on('mission:expired', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());
       this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
+      this.bus.on('dock:committed', (p) => this._routeToSelfRegistered('dockCommitted', p));
       // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
       this._fenceDesk = installFenceDesk(this);
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
@@ -471,6 +493,10 @@ export const encounterDirector = {
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
     if (!isDocked(state) && !raceLeaseActive(state)) {
       tickNestVisit(this);
+      // DUST P1b live scan (zone-anchored, own stream): queues a lane item when the player is
+      // standing in a vignette's kind of place. Items still rank below legacy in _pump and
+      // pass every pacing/gate valve; the scan only widens WHAT can be offered.
+      this._tickDustLaneLive(dir, state, now);
       this._pump(dir, state, now);
       // Row 497 cadence governor: after the pump so the verdict sees this tick's admission.
       this._tickCadence(dir, state, now, step);
@@ -489,6 +515,14 @@ export const encounterDirector = {
       tickTowedLurePursuits(state, state.player && state.player.tether);
     } catch (err) {
       dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
+    // inf-patrol-bait: a losing raider's spoofed band can turn two lawful parties on each
+    // other for one short beat; a scanner pulse (or the clock) burns the mask and they
+    // stand down. Stamps and restores ride the same 1 Hz beat as the towed-lure pass.
+    try {
+      tickPatrolBaits(state, this.bus);
+    } catch (err) {
+      dedupWarn('encounterDirector/patrol-bait', '[encounterDirector] patrol bait tick failed', err);
     }
     // CRT-03 second slice: the bought lot hull's nemesis — one cadenced find/track
     // pass per director clock, spawns through the same helpers/budget the scripts use.
@@ -700,7 +734,9 @@ export const encounterDirector = {
     for (const id of Object.keys(dir.live)) {
       const live = dir.live[id];
       const script = encounterScriptFor(live);
-      if (live.script === 'namedHunter' && script) {
+      if (live.script === 'weirAmbush' && script) {
+        script.depart(this, live, this.state);
+      } else if (live.script === 'namedHunter' && script) {
         script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
         if (leaveNestVisit(this, live)) continue;
@@ -737,6 +773,14 @@ export const encounterDirector = {
     ensureNamed(fresh);
     for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
       if (typeof runtime.restoreSaved === 'function') runtime.restoreSaved(this, state);
+    }
+    const weir = ENCOUNTER_SCRIPTS.weirAmbush.restoreSaved(this, state);
+    if (weir) {
+      fresh.active[weir.squadId] = { ids: weir.ids.slice(), sectorId: weir.sectorId };
+      for (const id of weir.ids) {
+        indexSquadMember(fresh, weir, id);
+        indexActiveMember(fresh, weir, id);
+      }
     }
     this._restorePersistedFreightCustodies();
     this._rebindPersistedFreightCustodyCarriers();
@@ -780,7 +824,10 @@ export const encounterDirector = {
       fresh.window = [];
       fresh.lastMeaningfulAt = now;                     // entry breath: first beats land ~40-90s in
       fresh.lastAmbientAt = now - AMBIENT_GAP_S;
-      this._planSector(sectorId);
+      // `dustRotation` records the offers from the schedule already saved before this
+      // restore. Pending rows are intentionally transient and are regenerated here; do not
+      // count that reconstruction as a second offer against the durable rotation ledger.
+      this._planSector(sectorId, { reconstructingAfterLoad: true });
     }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
   },
@@ -853,7 +900,7 @@ export const encounterDirector = {
   },
 
   // Build the deterministic schedule for a sector-day. Pure aside from writing dir.pending.
-  _planSector(sectorId) {
+  _planSector(sectorId, { reconstructingAfterLoad = false } = {}) {
     const state = this.state;
     const dir = ensureDirectorState(state);
     if (!sectorId) return;
@@ -890,7 +937,22 @@ export const encounterDirector = {
       }
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
     }
-    dir.lastPlanned = { sectorId, dayIndex, count: schedule.length };
+    // DUST P1b: the additive widening lane. Planned AFTER the legacy schedule from its own
+    // stream (see planDustLaneDay) and appended behind it, so the legacy picks, delays, and
+    // push order above are bit-identical to a lane-less build. Dust items rank below every
+    // legacy due item in _pump and fire only through the same pacing/gates machinery.
+    const dustSchedule = planDustLaneDay(state.meta && state.meta.seed, sectorId, dayIndex, zones, {
+      started: dustSeenMap(dir),
+      rotation: dustRotationMap(dir),
+    });
+    for (const s of dustSchedule) {
+      if (!reconstructingAfterLoad) {
+        const rotation = dustRotationMap(dir);
+        rotation[s.shapeId] = (rotation[s.shapeId] | 0) + 1;
+      }
+      dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0, dustLane: true });
+    }
+    dir.lastPlanned = { sectorId, dayIndex, count: schedule.length + dustSchedule.length };
   },
 
   // ═══ PRESSURE (deterministic accrual from existing state only) ════════════════════════════════
@@ -1104,8 +1166,10 @@ export const encounterDirector = {
     const row = this._openDeniableRow(p && p.missionId);
     if (!row) return;
     if (kind === 'completed') {
+      // A scheduled clause the pilot never walked into is still a clean delivery: without this
+      // branch the row retires silently on the next tick — no rep, no thanks, no fence beat.
       if (row.hit && row.fired) this._settleDeniable(row, 'survived');
-      else if (!row.hit) this._settleDeniable(row, 'clean');
+      else this._settleDeniable(row, 'clean');
       return;
     }
     if (row.hit && row.fired && !/abandon/i.test(String((p && p.reason) || ''))) {
@@ -1253,6 +1317,11 @@ export const encounterDirector = {
 
     let dueIdx = -1;
     let dueBest = Infinity;
+    // DUST P1b: dust items rank strictly below legacy due items — the lane fills only pumps
+    // the legacy schedule leaves empty (audit §5.1). The legacy comparison below is unchanged:
+    // dust items never enter it, so legacy selection is bit-identical with or without the lane.
+    let dustIdx = -1;
+    let dustBest = Infinity;
     const tutorialActive = isTutorialActive(state);
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
@@ -1263,9 +1332,12 @@ export const encounterDirector = {
         if (it.sectorId && it.sectorId !== this._currentSectorId()) continue;
         if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
         const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
-        if (rank < dueBest) { dueBest = rank; dueIdx = i; }
+        if (it.dustLane === true) {
+          if (rank < dustBest) { dustBest = rank; dustIdx = i; }
+        } else if (rank < dueBest) { dueBest = rank; dueIdx = i; }
       }
     }
+    if (dueIdx < 0) dueIdx = dustIdx;
     if (dueIdx < 0) return;
     const item = dir.pending[dueIdx];
     const shape = ENCOUNTERS[item.shapeId];
@@ -1277,6 +1349,13 @@ export const encounterDirector = {
       if (item.defers > MAX_GATE_DEFERS) { dir.pending.splice(dueIdx, 1); dir.stats.fizzled++; return; }
       defer();
     };
+
+    // DUST P1b rate cap: the lane keeps its own presentation spacing on top of the ordinary
+    // ambient valves below, so a legacy-idle stretch can never turn into a dust drumbeat.
+    if (item.dustLane === true
+      && now - (Number.isFinite(dir.stats && dir.stats.dustLastAt) ? dir.stats.dustLastAt : -Infinity) < DUST_FIRE_GAP_S) {
+      return defer();
+    }
 
     const ceresActivityAmbush = isCeresActivityAmbushItem(item);
     const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
@@ -1309,22 +1388,39 @@ export const encounterDirector = {
     // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
     // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
-    if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
+    // DUST P1b: `allowExternalOnly` re-admits exactly the lane's append-only cohort (the gate
+    // that darkened them); every other authored gate still applies fail-closed to dust items.
+    if (!this._gatesPass(shape, state, {
+      ignoreMinSectorTier: ceresActivityAmbush,
+      allowExternalOnly: item.dustLane === true,
+    })) return gateDefer();
+    let relocatedToPlayer = false;
     if (shape.proximity && !this._playerNearItemZone(item)) {
       // The authored Ceres throughline ambush is anchored to its killbox, not to a spawnable
       // zone: relocating it would detach the telegraph from the durable cohort still holding
       // the authored band, and the 300 s prey deadline would spend the one-shot crossing on a
       // fight that physically cannot happen. It waits (replan carries it) instead of fizzling.
       if (ceresActivityAmbush) return defer();
-      // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
-      // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
-      // must still be offered fights. Civilian/ambient props keep their zone anchoring.
-      if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+      // DUST P1b: lane vignettes keep their authored presentation contract — the lived lane's
+      // "player actually standing in that vignette's kind of place" rule (livedWorldDirector).
+      // When the player is inside a zone of the shape's family, the scene anchors beside the
+      // player like livedScenePlacement does; otherwise it waits for its zone like any prop.
+      if (item.dustLane === true) {
+        if (!this._relocateDustItemIntoPlayerZone(dir, state, item, shape)) return gateDefer();
+        relocatedToPlayer = true;
+      } else if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+        // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
+        // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
+        // must still be offered fights. Civilian/ambient props keep their zone anchoring.
         return gateDefer();
+      } else {
+        relocatedToPlayer = true;
       }
     }
-    if (shape.proximity && shape.deck === 'combat') {
-      // The player reached an authored zone: the starvation clock resets.
+    if (shape.proximity && shape.deck === 'combat' && !relocatedToPlayer) {
+      // The player reached an authored zone: the starvation clock resets. A relocation to the
+      // player does NOT reset it — the sector is still starved of reachable zones, and wiping
+      // the record would re-arm the full PROXIMITY_STARVE_S window on every relocated beat.
       const starve = dir.proxStarve || (dir.proxStarve = {});
       delete starve[this._currentSectorId() || 'sector'];
     }
@@ -1335,6 +1431,13 @@ export const encounterDirector = {
     // without spending pressure/window/voice state; genuine distress needs both a victim and one
     // threat before it can truthfully become live.
     if (!this._spawnAdmissionAvailable(item, shape)) return defer();
+    // The nest is a singleton: the live visit owns the shape until it ends, so a second due item
+    // waits in the queue. Reaching _fire's guard after the splice below would drop the item from
+    // the universe entirely — deferring keeps it pending until the nest frees.
+    if (shape.id === 'the_nest'
+      && Object.values(dir.live).some((l) => l && l.shapeId === 'the_nest' && l.phase !== 'done')) {
+      return defer();
+    }
     const fireReady = ENCOUNTER_FIRE_READY.get(shape.id);
     if (fireReady && item.fireReadyExpired !== true) {
       let ready = false;
@@ -1434,7 +1537,11 @@ export const encounterDirector = {
 
   _gatesPass(shape, state, options = {}) {
     const g = shape.gates || {};
-    if (g.externalOnly) return false;
+    // `externalOnly` means "an authored requester dispatches this" — EXCEPT for the DUST P1b
+    // lane, whose append-only cohort (src/data/dustLane.js) is exactly the dark vignette
+    // families that gate darkened. The option is passed by _pump for lane items only; every
+    // authored-request path is unchanged.
+    if (g.externalOnly && options.allowExternalOnly !== true) return false;
     const sectorId = this._currentSectorId();
     const sector = SECTORS.find((entry) => entry.id === sectorId);
     const completed = state.story && state.story.depthProgramEncounters
@@ -1522,6 +1629,90 @@ export const encounterDirector = {
     return true;
   },
 
+  /** DUST P1b: re-anchor a lane vignette beside the player when — and only when — the player
+   * currently stands inside an authored zone of the shape's family. This is the lived lane's
+   * own presentation contract (livedWorldDirector's "actually standing in that vignette's
+   * kind of place" + livedScenePlacement's beside-the-player anchor), applied to the same
+   * modules the lived tick refuses (row 459). Deterministic: the offset is seeded by
+   * (meta.seed, encounterId). Returns false when the player is elsewhere — the item keeps
+   * waiting for its authored zone like any zone-anchored prop. */
+  _relocateDustItemIntoPlayerZone(dir, state, item, shape) {
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return false;
+    const zoneTypes = Array.isArray(shape.zoneTypes) ? shape.zoneTypes : [];
+    if (!zoneTypes.length) return false;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return false;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zoneTypes.includes(zone.type)) return false;
+    const seed = (state.meta && state.meta.seed) || 0;
+    const rng = mulberry32(hash32(seed, String(item.encounterId || item.shapeId), 'dust-place'));
+    const ang = rng() * Math.PI * 2;
+    const dist = 260 + rng() * 300;
+    const oldCenter = item.zoneCenter && Number.isFinite(item.zoneCenter.x)
+      ? { x: item.zoneCenter.x, z: item.zoneCenter.z }
+      : { x: p.pos.x, z: p.pos.z };
+    const anchor = { x: p.pos.x + Math.cos(ang) * dist, z: p.pos.z + Math.sin(ang) * dist };
+    const dx = anchor.x - oldCenter.x, dz = anchor.z - oldCenter.z;
+    item.zoneCenter = anchor;
+    item.zoneRadius = Math.max(Number(item.zoneRadius) || 400, 400);
+    if (Array.isArray(item.ships)) {
+      for (const sh of item.ships) {
+        if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+      }
+    }
+    // The vignette is now honestly IN the zone the player stands in.
+    item.zoneId = zone.id;
+    item.zoneName = zone.name || zone.id;
+    item.relocated = true;
+    return true;
+  },
+
+  /** DUST P1b live scan: every DUST_SCAN_S seconds of calm, undocked, non-tutorial flight,
+   * when the player stands inside an authored zone, offer ONE unseen lane vignette of that
+   * zone's family — the lived tick's presentation contract (livedWorldDirector: "asks when
+   * the player is actually standing in that vignette's kind of place") carried by the dust
+   * stream. The offered item is an ordinary pending row: it ranks below every legacy due
+   * item in _pump and passes the same pacing, cooldown, pressure, and gates machinery. The
+   * lane's presentation gap (DUST_FIRE_GAP_S) and one-live-item-at-a-time bound the rate. */
+  _tickDustLaneLive(dir, state, now) {
+    const scanAt = Number(dir.stats && dir.stats.dustNextScanAt);
+    if (Number.isFinite(scanAt) && now < scanAt) return;
+    if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+    dir.stats.dustNextScanAt = now + DUST_SCAN_S;
+    // A live offer is for the place the player is in NOW: if it could not present inside its
+    // short window (player left the family's zone), it expires instead of blocking the scan —
+    // the module stays once-ever-unconsumed and can be re-offered in a later zone.
+    for (let i = dir.pending.length - 1; i >= 0; i--) {
+      const it = dir.pending[i];
+      if (it && it.dustLive === true && now - it.dueAt > 120) dir.pending.splice(i, 1);
+    }
+    if (isTutorialActive(state)) return;
+    if (Number.isFinite(dir.stats.dustLastAt) && now - dir.stats.dustLastAt < DUST_FIRE_GAP_S) return;
+    // One live-scan offer at a time (day-planner items ride pending on their own budget).
+    for (const it of dir.pending) {
+      if (it && it.dustLive === true) return;
+    }
+    const p = this.player();
+    if (!p || !p.pos) return;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zone.center) return;
+    const item = planDustLivePresentation(
+      (state.meta && state.meta.seed), sectorId, Math.floor(now / DAY_SECONDS), zone, now,
+      { started: dustSeenMap(dir), rotation: dustRotationMap(dir) },
+    );
+    if (!item) return;
+    const rotation = dustRotationMap(dir);
+    rotation[item.shapeId] = (rotation[item.shapeId] | 0) + 1;
+    dir.pending.push({ ...item, sectorId, dueAt: now + item.delay, defers: 0, dustLane: true, dustLive: true });
+  },
+
   /** Authored "in view" reach: slide the formation so its victim anchor (the hauler when one is
    * planned, else the first ship) lands exactly `reachWu` from the player, along the existing
    * player→anchor bearing. Deterministic — pure function of the plan positions and the player
@@ -1574,6 +1765,12 @@ export const encounterDirector = {
     const shape = ENCOUNTERS[payload.shapeId];
     if (!shape) return { ok: false, reason: 'missing_shape' };
     if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
+    // The onboarding rail owns the opening beats: a shape flagged deferDuringGuidedOnboarding
+    // stays unrequested while the rail is active, and `force` skips ordinary gates, not the
+    // rail itself — the guided run must not spend or chart the encounter early.
+    if (shape.gates && shape.gates.deferDuringGuidedOnboarding && isTutorialActive(state)) {
+      return { ok: false, reason: 'guided_onboarding' };
+    }
     const nestResume = payload.shapeId === 'the_nest' && payload.encounterId === this._nestResumePermit
       && dir.nestVisit?.status === 'active' && payload.data?.nestResume === true;
     if (payload.respectPacing && !nestResume) {
@@ -1722,6 +1919,9 @@ export const encounterDirector = {
   },
 
   _fire(dir, state, item, shape, now) {
+    // The one finite Weir visit is either resumed or terminal. A replan must not replace
+    // its coordinator (including a same-id day row) or manufacture another original lot.
+    if (shape.script === 'weirAmbush' && ENCOUNTER_SCRIPTS.weirAmbush.hasVisit(state)) return;
     if (shape.id === 'the_nest' && Object.values(dir.live).some(l => l?.shapeId === 'the_nest' && l.phase !== 'done')) return;
     const nestResume = shape.id === 'the_nest' && item.encounterId === this._nestResumePermit && item.data?.nestResume === true;
     if (!nestResume) {
@@ -1730,6 +1930,14 @@ export const encounterDirector = {
       if (shape.tier === 'ambient') dir.lastAmbientAt = now;
       else dir.lastMeaningfulAt = now;
       if (shape.tier === 'major') dir.lastMajorAt = now;
+    }
+    // DUST P1b: a lane item that reached _fire is consumed for the save (same once-ever
+    // semantics as the lived tick's startedMap — a fire that aborts still spent the scene)
+    // and stamps the lane's presentation spacing. Authored requests never carry the flag.
+    if (item.dustLane === true) {
+      if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+      dustSeenMap(dir)[shape.id] = now;
+      dir.stats.dustLastAt = now;
     }
 
     // A shape may author fireWithinWu (A1's "inside about two screen-depths"): when the gated
@@ -2051,7 +2259,7 @@ export const encounterDirector = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
     // Same entity contract as salvage.js debris — tether/beam/scanner all just work on it.
-    return spawnEntity({
+    const ent = spawnEntity({
       type: 'wreck',
       pos: { x: opts.pos.x, z: opts.pos.z },
       radius: 9,
@@ -2076,6 +2284,14 @@ export const encounterDirector = {
         ...(opts.provenance ? { provenance: opts.provenance } : {}),
       },
     });
+    // Wreck bodies are encounter-owned dressing, not squad: they ride live.propIds (lazily —
+    // live records minted before this roster exist) so resolve/despawnAll can retire them.
+    // A script that needs one in the combat roster still pushes live.ids itself (whisper, kiln).
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
   },
 
   restoreNestTerminal(visit) {
@@ -2148,7 +2364,14 @@ export const encounterDirector = {
       },
     };
     if (live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door' && opts.nestSavedActor) applyNestSavedSpawnSpec(spec, opts.nestSavedActor);
-    return spawnEntity(spec);
+    const ent = spawnEntity(spec);
+    // Same ownership seam as spawnWreck: props are encounter-owned dressing (live.propIds),
+    // never squad — a script that needs roster semantics pushes live.ids itself.
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
   },
 
   /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
@@ -2372,6 +2595,9 @@ export const encounterDirector = {
       e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
       i++;
     }
+    // Encounter-owned props are not squad — a role filter does not name them — but a blanket
+    // despawn owns them too (otherwise abort/exit strands every wreck and story prop it made).
+    if (role == null) stampLivePropsDespawn(this.state, live, now, afterS || 20, true);
   },
 
   // ── one voice ───────────────────────────────────────────────────────────────────────────────
@@ -2402,7 +2628,9 @@ export const encounterDirector = {
     const state = this.state;
     const options = [];
     for (const id of optionIds) {
-      const def = defs.find((c) => c.id === id) || { id, label: id };
+      // A choice the shape never authored still needs a speakable label — never the raw
+      // snake_case id on a player-facing deck button.
+      const def = defs.find((c) => c.id === id) || { id, label: humanizeId(id, 'Respond') };
       let available = true;
       if (def.needs === 'credits') available = (state.player.credits | 0) >= (live.vars.amount | 0);
       else if (def.needs === 'cargo') available = this.cargoValue() >= (live.vars.amount | 0);
@@ -2411,7 +2639,9 @@ export const encounterDirector = {
       options.push({ id: def.id, label: def.label, available });
     }
     this.emit('encounter:choiceOffered', {
-      encounterId: live.id, kind: live.shapeId, title: live.shape.title || live.zoneName || live.shapeId,
+      encounterId: live.id, kind: live.shapeId,
+      title: live.shape.title || live.zoneName || humanizeId(live.shapeId, 'Encounter'),
+      detail: live.shape.primaryLine || null,
       options, deadlineAt,
       timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
     });
@@ -2482,6 +2712,10 @@ export const encounterDirector = {
     dir.cooldowns[live.shapeId] = now + (live.shape.cooldownS || 300);
     dir.lastEndAt = now;
     dir.stats.resolved++;
+    // The durable row _gatesPass reads: uniqueOnce, blockAfterOutcome, and requiresCompletedShape
+    // chains (the salvage tail waits on the opening raid) all key off this record. Without it a
+    // chained second chapter deadlocks and every once-only shape re-offers forever.
+    noteEncounterCompleted(this.state, live, outcome, now);
     // Stragglers spawned by the director give up rather than chain-hunting the player past the
     // encounter's end. Adopted durable world actors return to world ownership instead.
     if (live.data && live.data.adoptedWorldActors === true) {
@@ -2495,6 +2729,10 @@ export const encounterDirector = {
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
     }
+    // Encounter-owned wrecks and story props ride their own roster (live.propIds — never squad:
+    // aliveCount squad-wipe reads and squadMembership kill-routing must not see set dressing).
+    // They release on the same straggler contract instead of orbiting the sector forever.
+    stampLivePropsDespawn(this.state, live, now, 45, false);
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
       outcome, sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
@@ -2513,18 +2751,21 @@ export const encounterDirector = {
       const voice = this.helpers && this.helpers.voice;
       if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });
       else this.emit('toast', { text, kind: 'info', ttl: 5 });
-      this.emit('encounter:receipt', {
-        encounterId: live.id, shape: live.shapeId, outcome, text, t: now,
-        fingerprint: live.causality && live.causality.fingerprint || null,
-        motiveId: live.causality && live.causality.motiveId || null,
-      });
-      dir.receipts.push({
-        t: now, shape: live.shapeId, outcome, text,
-        fingerprint: live.causality && live.causality.fingerprint || null,
-        motiveId: live.causality && live.causality.motiveId || null,
-      });
-      if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
+    // The receipt is bookkeeping, not the bark: a silent resolution ({ speak: false } or no
+    // authored line) still lands in the saved ledger and still reaches receipt listeners
+    // (recovery prompt, ace memory) — only the spoken/toasted line honors the speak gate.
+    this.emit('encounter:receipt', {
+      encounterId: live.id, shape: live.shapeId, outcome, text: text || null, t: now,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    dir.receipts.push({
+      t: now, shape: live.shapeId, outcome, text: text || null,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     dropLiveSquadMembership(dir, live);
     noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
@@ -2726,6 +2967,8 @@ export const encounterDirector = {
       if (live.roles && typeof live.roles === 'object') delete live.roles[id];
       dropSquadMember(dir, live, id);
     }
+    const propIndex = Array.isArray(live.propIds) ? live.propIds.indexOf(id) : -1;
+    if (propIndex !== -1) live.propIds.splice(propIndex, 1);
   },
 
   _onEntityKilled(p) {
@@ -2752,7 +2995,6 @@ export const encounterDirector = {
       named.killedBy = byPlayer ? 'player' : 'world';
       named.deathSector = sectorId;
       named.deathTick = this.state.tick | 0;
-      named.kills = (named.kills || 0) + (byPlayer ? 0 : 1);
       delete dir.externalNamed[p.id];
       if (byPlayer) {
         for (const survivor of NAMED_CAPTAINS) {
@@ -2771,6 +3013,17 @@ export const encounterDirector = {
         t: this.now(),
         tick: this.state.tick | 0,
       });
+    }
+    // `kills` is the "downed you" tally the watchlist shows — it accrues when that captain's
+    // hull lands the killing blow on the player, never when the captain itself dies (the old
+    // line counted a world death against the player).
+    if (p.id === this.state.playerId && p.killerId != null && dir.externalNamed) {
+      const killerCaptainId = dir.externalNamed[p.killerId];
+      if (killerCaptainId) {
+        const named = dir.named[killerCaptainId]
+          || (dir.named[killerCaptainId] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+        named.kills = (named.kills || 0) + 1;
+      }
     }
     let handled = null;
     // squadMembership answers the squad question in O(1); the walk below stays as the cold path
@@ -3131,8 +3384,16 @@ export const encounterDirector = {
     const spawnX = ppos.x + bx * 420;
     const spawnZ = ppos.z + bz * 420;
 
+    // A zone is not jurisdiction by itself: live control must agree with its local role.
+    const sectorId = state.world && state.world.currentSectorId;
+    const local = globalToSectorLocalForSector(ppos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const jurisdiction = patrolJurisdictionFor(state, sectorId, zone);
+    // Retain the existing Concord responder where no local authority is established.
+    const responderFactionId = jurisdiction || 'faction_scn';
+
     const spec = makeEnemySpawnSpec('patrol_lawman', 4, { x: spawnX, z: spawnZ }, {
-      factionId: 'faction_scn',
+      factionId: responderFactionId,
       startedTick: state.tick,
       motive: 'jurisdiction_enforcement',
       engagementTrigger: 'security_response',
@@ -3168,14 +3429,23 @@ export const encounterDirector = {
     const spawned = spawnEntity(spec);
     if (!spawned) return false;
 
+    const hail = patrolInterventionHailFor(jurisdiction);
+    const seed = state.meta && state.meta.seed;
+    const hailLine = hail.lines[
+      Math.abs(hash32(seed == null ? 0 : seed, 'patrol-intervention-hail', attacker.id, now | 0)) % hail.lines.length
+    ]?.text || hail.lines[0].text;
     this.emit('comms:log', {
-      from: 'CONCORD PATROL',
-      text: 'Patrol Interceptor on scene. Hostile vessel, break off pursuit immediately!',
+      from: hail.name,
+      text: hailLine,
       kind: 'encounter',
     });
     this.emit('encounter:patrolIntervened', {
       patrolId: spawned.id,
       attackerId: attacker.id,
+      factionId: responderFactionId,
+      jurisdiction,
+      zoneId: zone ? zone.id : null,
+      hailText: hailLine,
       t: now,
     });
     return true;
@@ -3666,6 +3936,9 @@ function makeEncounterLiveRecord(state, item, shape, now) {
     deadlineAt: 0,
     ids: [],
     roles: {},
+    // Encounter-owned wrecks/story props — spawned, not squad: cleanup rosters this, aliveCount
+    // and squadMembership never do. Records minted before the field lazily grow it on first spawn.
+    propIds: [],
     vars: {},
     data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
     outcome: null,
@@ -3821,6 +4094,120 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
 }
 
 const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DAY_SECONDS;
+
+// ── DUST P1b: the additive dust lane (design/program/dust/EXPOSURE_AUDIT.md §5) ──────────────────
+// A parallel ambient lane that lights the audit's dark vignette families (the `externalOnly`
+// cohort declared append-only in src/data/dustLane.js). It draws from its OWN
+// mulberry32(hash32(seed, sectorId, dayIndex, 'dust-lane-v1')) stream — the legacy
+// per-(seed, sector, day) stream in planEncountersDay is never read differently, so every
+// legacy pick sequence is bit-preserved. Rank-below-legacy, presentation spacing, and
+// once-ever consumption live at queue/fire time (_pump / _fire); this planner only decides
+// WHAT could happen here today, WHERE it anchors, and its composition — same contract as the
+// legacy planner. The legacy RARE_GATE deliberately does not apply: the lane's own caps
+// (≤DUST_MAX_PER_DAY offers/sector-day, once-ever per save, DUST_FIRE_GAP_S spacing) do the
+// throttling the rare gate does inside the far larger legacy pool.
+export function planDustLaneDay(seed, sectorId, dayIndex, zones, options = {}) {
+  const out = [];
+  if (!Array.isArray(zones) || !zones.length) return out;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;      // once-ever: ids already fired this save
+  const rotation = options.rotation || null;    // unseen-bias input: ids already offered this save
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), dayIndex | 0, DUST_LANE_STREAM_LABEL));
+
+  const zonesByType = new Map();
+  for (const z of zones) {
+    if (!z || !z.type || !z.center) continue;
+    if (!zonesByType.has(z.type)) zonesByType.set(z.type, []);
+    zonesByType.get(z.type).push(z);
+  }
+  if (!zonesByType.size) return out;
+  const presentTypes = new Set(zonesByType.keys());
+
+  const secDef = SECTORS.find((s) => s.id === sectorId);
+  const baselineSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const sectorSecurity = options.ecologyState
+    ? effectiveRegionalSecurity(options.ecologyState, sectorId, baselineSecurity)
+    : baselineSecurity;
+
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false; // once-ever per save
+    if (!e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+    // Ambient scenes keep their authored home sectors (body-level sectorIds — the same field
+    // pickLivedVignette's ambient bucket reads). The 4xx/5xx grid is sector-agnostic by
+    // design: its zone family binds it to exactly the sectors that host those zones.
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    const g = e.gates || {};
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+    return true;
+  });
+  if (!candidates.length) return out;
+
+  const roll = rng();
+  // Offer the full lane budget every sector-day (fire-time valves, once-ever rotation, and
+  // the lane's presentation gap decide what actually presents; the audit's sizing puts this
+  // at ≤240 offers over a 20 h route against a 187-module cohort).
+  const count = roll < 0.1 ? 0 : DUST_MAX_PER_DAY;
+  for (let i = 0; i < count; i++) {
+    // Same variety floor as the legacy pool: a vignette not yet offered this save draws
+    // DUST_UNSEEN_WEIGHT× so the lane rotates through the cohort instead of repeating.
+    const weightOf = (candidate) => (
+      (candidate.weight || 1)
+      * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+    );
+    const enc = pickWeighted(candidates, rng, weightOf);
+    if (!enc) break;
+    const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+    if (!zone) break;
+    const item = resolveEncounter(enc, zone, sectorId, dayIndex, i, rng);
+    if (!item) break;
+    item.encounterId = `dust:${item.encounterId}`;
+    item.squadId = item.encounterId;
+    // Stagger the lane's onsets inside the day (each item ≥270 s after the last) so two dust
+    // offers never stack their due times; the runtime valves still own the real spacing law.
+    item.delay = 60 + i * 270 + rng() * 240;
+    out.push(item);
+  }
+  out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
+  return out;
+}
+
+/** DUST P1b live presentation: pick ONE unseen lane vignette whose zone family matches the
+ * zone the player stands in (the lived tick's placement rule, on the dust stream). Pure:
+ * everything derives from mulberry32(hash32(seed, sectorId, day, zoneKey, scan, 'live')). */
+export function planDustLivePresentation(seed, sectorId, dayIndex, zone, now, options = {}) {
+  if (!zone || !zone.type || !zone.center) return null;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;
+  const rotation = options.rotation || null;
+  const rng = mulberry32(hash32(
+    seed == null ? 0 : seed, String(sectorId), dayIndex | 0,
+    String(zone.id || zone.type), Math.floor(now / DUST_SCAN_S), DUST_LIVE_STREAM_LABEL,
+  ));
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false;
+    if (!e.zoneTypes.includes(zone.type)) return false;
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    return true;
+  });
+  if (!candidates.length) return null;
+  const weightOf = (candidate) => (
+    (candidate.weight || 1)
+    * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+  );
+  const enc = pickWeighted(candidates, rng, weightOf);
+  if (!enc) return null;
+  const item = resolveEncounter(enc, zone, sectorId, dayIndex, 0, rng);
+  if (!item) return null;
+  item.encounterId = `dust:${item.encounterId}`;
+  item.squadId = item.encounterId;
+  item.delay = 8 + rng() * 22;   // the scan noticed the place; the scene starts shortly
+  return item;
+}
 
 // Exported for the check harness: the seeded migration matrix proves the module-split migration
 // stayed lossless, so it must plan each sector-day at its F2-era scheduling semantics — no
@@ -4042,269 +4429,35 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
   return out;
 }
 
-/** Resolve ONE shape on a chosen zone into a schedule item — exported for the check harness so
- *  tests can force-fire a specific shape without re-implementing squad resolution. */
-export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
-  return resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng);
-}
-
-/**
- * The deterministic plan requestAuthoredEncounter fires: authored-zone lookup, anchor
- * fallback chain, zone assembly, and the 'authored-encounter' rng stream — all keyed on the
- * payload fields plus (meta.seed, simTime). Exported so the renderer's decode warm can replay
- * the exact roster an announced request will spawn instead of re-implementing the assembly.
- * Pure: reads state.meta/state.simTime only; returns {item, zone, anchor} or null.
- */
-export function planAuthoredEncounterItem({ state, payload, playerPos }) {
-  const shape = ENCOUNTERS[payload && payload.shapeId];
-  if (!shape) return null;
-  const requestedZone = payload.zoneId
-    ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
-    : null;
-  const anchor = payload.anchor
-    || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
-    || playerPos
-    || { x: 0, z: 0 };
-  const local = globalToSectorLocalForSector(anchor, payload.sectorId);
-  const zone = {
-    ...(requestedZone || {}),
-    id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
-    name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
-    type: payload.zoneType || (requestedZone && requestedZone.type)
-      || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
-    center: { x: local.x, z: local.z },
-    radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
-    threat: Number.isFinite(payload.threat)
-      ? payload.threat
-      : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
-  };
-  const rng = mulberry32(hash32(
-    (state.meta && state.meta.seed) || 0,
-    payload.encounterId,
-    shape.id,
-    'authored-encounter',
-  ));
-  const item = resolveEncounter(
-    shape,
-    zone,
-    payload.sectorId,
-    Math.floor((state.simTime || 0) / DAY_SECONDS),
-    0,
-    rng,
-  );
-  if (!item) return null;
-  return { item, zone, anchor };
-}
-
-// Resolve one encounter shape on a chosen zone into a schedule item (composition + anchor).
-function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
-  const squadId = `enc_${sectorId}_${dayIndex}_${enc.id}_${seq}`;
-  const levelBand = zoneLevelBand(zone);
-  // Authored zone centers are sector-local, while every live entity/world anchor is galactic-global.
-  // Compose once at the planner boundary so squad jitter, proximity gates, telegraphs, and wrecks all
-  // share the same authoritative coordinate space off Helios.
-  const globalZone = {
-    ...zone,
-    center: sectorLocalToGlobalForSector(zone.center, sectorId),
-  };
-  const ships = [];
-  // Civilian route life flies the LOCAL flag (a hauler out of Sker is a Reach press-gang run, not
-  // an MTS liner); combat shapes keep their authored faction identity.
-  const localCivilian = enc.deck === 'civilian' && (enc.script === 'convoy' || enc.script === 'traderRun');
-  let factionId = (localCivilian && zone.factionId) ? zone.factionId : enc.factionId;
-  let variantKind = null;
-
-  if (enc.variant === 'distress') {
-    // High-sec cores (Helios-class): never plan bait — a "mayday" that springs Reach guns
-    // in Concord space breaks the professional first-hour pocket. Genuine distress still rolls.
-    const secDefForDistress = SECTORS.find((s) => s.id === sectorId);
-    const secForDistress = secDefForDistress && Number.isFinite(secDefForDistress.security)
-      ? secDefForDistress.security : 0.5;
-    let genuine = rng() < (Number.isFinite(enc.genuineChance) ? enc.genuineChance : 0.6);
-    if (secForDistress >= 0.85) genuine = true;
-    const branch = genuine ? enc.genuine : enc.bait;
-    factionId = branch.factionId;
-    variantKind = genuine ? 'distress_genuine' : 'distress_bait';
-    addSquad(ships, branch.squad, branch.factionId, branch.context, globalZone, levelBand, rng, genuine ? 'victim' : 'bait');
-    if (genuine && branch.threat) {
-      addSquad(ships, branch.threat, branch.threat.factionId, branch.threat.context, globalZone, levelBand, rng, 'threat');
-    }
-  } else if (enc.script === 'namedHunter') {
-    // Composition is resolved at fire time from the live named-captain roster (grudges evolve).
-  } else {
-    const authoredPredation = (enc.civilian && enc.squad)
-      || (enc.script === 'convoy' && enc.predation && enc.predation.enabled === true && enc.civilian);
-    if (authoredPredation) {
-      // Carrier first means the three-slot admission floor always yields the physical premise:
-      // one manifest-bearing civilian, one readable PD curtain, and one offensive raider. Ordinary
-      // convoy/trader definitions retain their long-standing single-squad composition path below.
-      addSquad(
-        ships,
-        enc.civilian,
-        enc.civilian.factionId || zone.factionId || 'faction_free',
-        enc.civilian.context || 'civilian',
-        globalZone,
-        levelBand,
-        rng,
-        enc.predation?.carrierRole || 'hauler',
-      );
-      addSquad(
-        ships,
-        enc.squad,
-        factionId,
-        enc.context,
-        globalZone,
-        levelBand,
-        rng,
-        enc.predation?.raiderRole || 'raider',
-      );
-    } else {
-      const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
-      addSquad(ships, enc.squad, factionId, enc.context, globalZone, levelBand, rng, mainRole);
-    }
-    if (enc.escort) addSquad(ships, enc.escort, enc.escort.factionId, enc.escort.context || 'patrol', globalZone, levelBand, rng, 'escort');
-  }
-
+function canonicalEncounterPlanOptions() {
   return {
-    encounterId: squadId,
-    shapeId: enc.id,
-    // Self-registering modules are resolved by shapeId at runtime. Keep a legacy script id on the
-    // schedule item so older planner/check tooling can still validate and inspect the schedule
-    // without needing to understand the module runtime extension point.
-    script: SELF_REGISTERED_RUNTIME_BY_ID.has(enc.id) ? (enc.fallbackScript || 'whisper') : enc.script,
-    tier: enc.tier,
-    deck: enc.deck,
-    squadId,
-    zoneId: zone.id,
-    zoneName: zone.name,
-    zoneType: zone.type || null,
-    zoneCenter: { x: globalZone.center.x, z: globalZone.center.z },
-    zoneRadius: zone.radius || 400,
-    factionId,
-    bark: enc.bark,
-    motive: enc.motive || null,
-    engagementTrigger: enc.engagementTrigger || null,
-    variantKind,
-    levelBand,
-    delay: 0,
-    ships,
-    // Packaged bodies the fire path will spawn that share no hull archetype — scripted
-    // cargo-pod spills, authored props. Declared on the encounter body, carried on the
-    // pending item so the decode runway warms them before telegraph resolves.
-    warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
-    // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
-    // spawns beside the fight and a player_in_range trigger can land engagement while it
-    // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
-    warmShips: enc.script === 'namedHunter'
-      // The captain pool resolves at fire time from the live roster (grudges evolve),
-      // so plan.ships stays empty — but every hull it can pick is known now: the three
-      // seed archetypes plus each captain's escort pool. Warm the union so whichever
-      // pool entry fires is already decoded when the entrance lands on-glass.
-      ? NAMED_CAPTAINS.flatMap((cap) => [cap.archetype, ...((cap.escort && cap.escort.archetypes) || [])])
-          .filter((a, i, arr) => typeof a === 'string' && a && arr.indexOf(a) === i)
-          .map((archetype) => ({ archetype, factionId, role: 'captain' }))
-      : (enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
-        ? [{
-          archetype: enc.claimVictim.archetype,
-          factionId: enc.claimVictim.factionId || 'faction_dmc',
-          role: 'claim',
-        }]
-        : null),
-    // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
-    // rock near their anchor (applied at spawnShips time, once per encounter).
-    terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
-    predation: enc.predation && enc.predation.enabled === true
-      ? { ...enc.predation }
-      : null,
+    selfRegisteredEncounterIds: SELF_REGISTERED_RUNTIME_BY_ID,
+    namedCaptains: NAMED_CAPTAINS,
   };
 }
 
-// Append `size`-many ships from a squad template onto `ships`, clustered on the zone.
+function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
+  return resolveEncounterShape(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+/** Resolve one shape with the canonical runtime and named-captain composition. */
+export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
+  return planEncounterShapePure(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  return planAuthoredEncounterItemPure({
+    state,
+    payload,
+    playerPos,
+    encounters: ENCOUNTERS,
+    ...canonicalEncounterPlanOptions(),
+  });
+}
+
 function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) {
-  if (!squad || !squad.archetypes || !squad.archetypes.length) return;
-  const [lo, hi] = Array.isArray(squad.size) && squad.size.length === 2 ? squad.size : [1, 2];
-  const n = Math.max(1, Math.round(lo + rng() * Math.max(0, hi - lo)));
-  const hasIdentityAnchor = typeof squad.anchorArchetype === 'string' && squad.anchorArchetype.length > 0;
-  const clusterR = Number.isFinite(squad.clusterRadius)
-    ? squad.clusterRadius
-    : Math.min(zone.radius || 260, 260);
-  const minSep = Number.isFinite(squad.minSeparation) ? squad.minSeparation : 0;
-  const squadCenterZone = zone;
-  const squadPositions = [];
-  for (let i = 0; i < n; i++) {
-    // Authored swarm packets guarantee exactly one identity/controller anchor. It is first so a
-    // partial cap grant preserves faction readability; every remaining slot draws from the light
-    // pool deterministically. Choir may use the same native hull for both roles—the role marker,
-    // not a foreign silhouette, distinguishes its chorus lead.
-    const isAnchor = i === 0 && hasIdentityAnchor;
-    const archetype = isAnchor
-      ? squad.anchorArchetype
-      : squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
-    const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
-    let pos = jitter(squadCenterZone, rng, clusterR);
-    if (minSep > 0 && squadPositions.length > 0) {
-      for (let attempt = 0; attempt < 24; attempt++) {
-        const tooClose = squadPositions.some(
-          (p) => Math.hypot(p.x - pos.x, p.z - pos.z) < minSep,
-        );
-        if (!tooClose) break;
-        pos = jitter(squadCenterZone, rng, clusterR);
-      }
-    }
-    squadPositions.push(pos);
-    ships.push({
-      archetype,
-      ...(hasIdentityAnchor ? { compositionRole: isAnchor ? 'identity_anchor' : 'light' } : {}),
-      combatDoctrineId: ENEMY_BY_ID.get(archetype)?.combatDoctrineId || null,
-      level,
-      pos,
-      factionId,
-      context,
-      doctrine: squad.doctrine,
-      formation: squad.formation,
-      team: squad.team,
-      passive: squad.passive == null ? undefined : squad.passive === true,
-      roe: squad.roe,
-      role: role || 'squad',
-      factionPresenceDoctrine: squad.factionPresenceDoctrine,
-      cultureId: squad.cultureId,
-      cohortRecipe: squad.cohortRecipe,
-      // Authored frame choreography: squadRecipe puts the whole squad on one director;
-      // squadSockets[i] pins this member's socket (lead/left/right/rear) when the author
-      // wants a specific ship on a specific corner.
-      squadRecipe: squad.squadRecipe,
-      squadSocket: Array.isArray(squad.squadSockets) ? squad.squadSockets[i] : undefined,
-    });
-  }
-  // A squad may name archetypes that must appear at least once — a teaching raid that needs
-  // a throwable wasp cannot leave its light pool to the draw. Deterministic and rng-free:
-  // the earliest non-anchor slots yield to missing guaranteed archetypes in authored order,
-  // after the i.i.d. draw so the stream stays aligned.
-  if (Array.isArray(squad.guaranteeArchetypes) && squad.guaranteeArchetypes.length) {
-    const added = ships.slice(ships.length - n);
-    const claimed = new Set();
-    for (const g of squad.guaranteeArchetypes) {
-      if (added.some((s) => s.archetype === g)) continue;
-      let idx = -1;
-      for (let i = hasIdentityAnchor ? 1 : 0; i < added.length; i++) {
-        if (!claimed.has(i) && !squad.guaranteeArchetypes.includes(added[i].archetype)) { idx = i; break; }
-      }
-      if (idx < 0) break;
-      claimed.add(idx);
-      added[idx].archetype = g;
-      added[idx].combatDoctrineId = ENEMY_BY_ID.get(g)?.combatDoctrineId || null;
-    }
-  }
+  return addEncounterSquad(ships, squad, factionId, context, zone, levelBand, rng, role);
 }
-
-// A deterministic clustered position inside a zone (tight so the squad forms one formation).
-function jitter(zone, rng, clusterR) {
-  const c = zone.center || { x: 0, z: 0 };
-  const ang = rng() * Math.PI * 2;
-  const r = Math.sqrt(rng()) * clusterR;
-  return { x: c.x + Math.cos(ang) * r, z: c.z + Math.sin(ang) * r };
-}
-
 /** Terrain-lee spawn placement (WF-02). Pure and rng-free: the same batch, player pose and rock
  * field always resolve the same shift, so encounters stay deterministic. Returns the rigid offset
  * that parks the batch behind the best cover rock relative to the player's bearing — or null when
@@ -4416,14 +4569,6 @@ function pickWeighted(list, rng, weightOf = (entry) => entry.weight) {
     if (r <= 0) return e;
   }
   return list[list.length - 1];
-}
-
-// A [lo,hi] level band for a zone from its readability threat tier.
-function zoneLevelBand(zone) {
-  const threat = zoneThreat(zone);
-  const lo = Math.max(1, threat);
-  const hi = Math.max(lo + 1, threat + 3);
-  return [lo, hi];
 }
 
 function freightPickupPhysicalSpec(commodityId, qty) {
@@ -5008,6 +5153,69 @@ function noteScriptProbeRow(dir, live, sign) {
   dir.scriptProbeRows += sign;
 }
 
+// The durable resolution record _gatesPass reads (uniqueOnce / blockAfterOutcome /
+// requiresCompletedShape) — the same ledger shape the self-registered runtimes write through
+// their own settle paths (crSituationKit, the e1 finish, the kiln's remember). Those scripts
+// record a richer row (facts, visits, sourceAnchor) before calling resolve, so a row already
+// stamped with THIS encounter's own id is left alone: resolve fills the gap, never flattens.
+function noteEncounterCompleted(state, live, outcome, now) {
+  const story = state.story || (state.story = { flags: {} });
+  if (!story.flags || typeof story.flags !== 'object') story.flags = {};
+  const memory = story.depthProgramEncounters && typeof story.depthProgramEncounters === 'object'
+    ? story.depthProgramEncounters
+    : (story.depthProgramEncounters = { schemaVersion: 1, completed: {}, history: [] });
+  if (!memory.completed || typeof memory.completed !== 'object' || Array.isArray(memory.completed)) memory.completed = {};
+  if (!Array.isArray(memory.history)) memory.history = [];
+  const prev = memory.completed[live.shapeId];
+  if (prev && prev.encounterId === live.id) return;
+  const prevFields = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+  const rec = {
+    ...prevFields,                      // repeat visits keep facts/sourceAnchor the prior row authored
+    outcome,
+    at: now,
+    tick: state.tick | 0,
+    encounterId: live.id,
+    sectorId: live.sectorId || prevFields.sectorId || null,
+    seed: prevFields.seed != null ? prevFields.seed : (state.meta && state.meta.seed),
+    visits: (prevFields.visits | 0) + 1,
+  };
+  memory.completed[live.shapeId] = rec;
+  memory.history.push({ shapeId: live.shapeId, ...rec });
+  if (memory.history.length > 64) memory.history.splice(0, memory.history.length - 64);
+}
+
+// Player-facing fallback for an id that reaches a deck button or choice title — the raw
+// snake_case slug must never render ("Pirate Toll", not "pirate_toll").
+function humanizeId(value, fallback) {
+  const s = String(value || '').replace(/[_:.-]+/g, ' ').trim();
+  if (!s) return fallback || 'Encounter';
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Spawned wrecks/story props are encounter-owned but never squad: they ride live.propIds so
+// aliveCount squad-wipe reads and the squadMembership kill-routing never see them, while
+// resolve's straggler release and despawnAll can still retire them instead of leaving orphans.
+// `overwrite` mirrors the caller's contract: despawnAll restamps authored windows, resolve
+// honors a despawnAt the script already set.
+function stampLivePropsDespawn(state, live, now, afterS, overwrite) {
+  const propIds = live && live.propIds;
+  if (!Array.isArray(propIds) || !propIds.length) return;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return;
+  let stagger = 0;
+  for (const id of propIds) {
+    const e = entities.get(id);
+    if (!e || e.alive === false || !encounterMayScheduleDespawn(e)) continue;
+    if (!overwrite && e.data && e.data.despawnAt != null) continue;
+    e.data = e.data || {};
+    e.data.despawnAt = now + afterS + stagger * 0.5;
+    // Provenance: the releasing encounter's own cleanup stamp is revocable on re-adoption —
+    // a foreign-scheduled despawnAt is a kill order adopters must not touch.
+    e.data.despawnBy = live.id;
+    stagger++;
+  }
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -5125,6 +5333,27 @@ function ensureDirectorState(state) {
   else delete d.stats.escalationLedger;
   ensureNamed(d);
   return d;
+}
+
+// ── DUST P1b lane ledgers (lazy maps on dir.stats; persisted with the durable stats bag) ────────
+// dustSeen mirrors livedSeen's once-ever semantics: a dust vignette that actually fired is out
+// of the lane's pool for good (presence, not truthiness — a stamp of 0 still counts). The
+// rotation map is the planner's unseen-bias input (ids already offered this save); dustLastAt
+// is the lane's own presentation spacing, so dust fills only legacy-idle pumps.
+function dustSeenMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustSeen || typeof dir.stats.dustSeen !== 'object' || Array.isArray(dir.stats.dustSeen)) {
+    dir.stats.dustSeen = {};
+  }
+  return dir.stats.dustSeen;
+}
+
+function dustRotationMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustRotation || typeof dir.stats.dustRotation !== 'object' || Array.isArray(dir.stats.dustRotation)) {
+    dir.stats.dustRotation = {};
+  }
+  return dir.stats.dustRotation;
 }
 
 // The loss ledger is an eviction queue, not a set serialization: application order is authority.
@@ -5376,16 +5605,6 @@ function isAuthoredGuaranteeItem(item) {
 function isWanted(state) {
   const h = state.player && state.player.heat;
   return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
-}
-
-// Exported so presentation-side warm gates can consult the exact baseline the resolver
-// applies — the static SECTORS def, not the drifted live sector record.
-export function sectorSecurityOf(state) {
-  const sid = state.world && state.world.currentSectorId;
-  if (!sid) return 0.5;
-  const def = SECTORS.find((s) => s.id === sid);
-  const baseline = def && Number.isFinite(def.security) ? def.security : 0.5;
-  return effectiveRegionalSecurity(state, sid, baseline);
 }
 
 function finiteEscalationNumber(value) {

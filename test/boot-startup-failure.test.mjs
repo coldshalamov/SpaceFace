@@ -15,6 +15,7 @@ import {
   clearStartupRetry,
   findBrokenModules,
   presentStartupFailure,
+  startupParseOnlySource,
   startupProbeHrefs,
   summarizeStartupError,
 } from '../src/ui/bootStartupFailure.js';
@@ -156,8 +157,7 @@ test('a successful start clears the stamp so a later failure gets its own retry'
 
 test('the dead-end probe names the file V8 rejects, not just the token', async () => {
   // The import() rejection is a bare SyntaxError — the filename is recovered by re-parsing
-  // each warmed module. Healthy modules throw TypeError (their own imports cannot resolve
-  // under a blob: URL), malformed ones throw SyntaxError.
+  // each warmed module. A failed link is ignored; only a parser SyntaxError names a culprit.
   const sources = {
     './src/main.js': 'import "./a.js"; import "./b.js";',
     './src/a.js': 'export const a = 1;',
@@ -174,6 +174,33 @@ test('the dead-end probe names the file V8 rejects, not just the token', async (
   assert.equal(culprits.length, 1);
   assert.equal(culprits[0].href, './src/render/vfx.js');
   assert.match(culprits[0].message, /Unexpected token/);
+});
+
+test('parse-only module probe blocks candidate dynamic imports but still reports syntax errors', async () => {
+  const sideEffectKey = '__spacefaceStartupProbeCandidateExecuted__';
+  const importKey = '__spacefaceStartupProbeDynamicImportRan__';
+  delete globalThis[sideEffectKey];
+  delete globalThis[importKey];
+  try {
+    const candidate = [
+      `globalThis.${sideEffectKey} = true;`,
+      `import('./densityVolumeData/rle.js').catch(() => { globalThis.${importKey} = true; });`,
+      'export const validCandidate = true;',
+    ].join('\n');
+    const validProbeUrl = `data:text/javascript,${encodeURIComponent(startupParseOnlySource(candidate))}`;
+    await assert.rejects(import(validProbeUrl), { code: 'ERR_UNSUPPORTED_ESM_URL_SCHEME' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(globalThis[sideEffectKey], undefined, 'valid candidate body must not execute');
+    assert.equal(globalThis[importKey], undefined, 'candidate relative import must not start');
+
+    const malformed = startupParseOnlySource('export const broken = ;');
+    const malformedUrl = `data:text/javascript,${encodeURIComponent(malformed)}`;
+    await assert.rejects(import(malformedUrl), SyntaxError,
+      'a parser error is reported before the deliberate dependency-link failure');
+  } finally {
+    delete globalThis[sideEffectKey];
+    delete globalThis[importKey];
+  }
 });
 
 test('the probe skips files it cannot fetch and stops when the clock is spent', async () => {

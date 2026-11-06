@@ -360,17 +360,37 @@ export function isFlightInput(ev) {
 function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFlightInput(ev) && ev.sim >= a && ev.sim <= b); }
 
 // The trace stores reader life ids, while the worker receipt stores the raw id plus its
-// occupant generation. Resolve the one exact generation for this observed life; an absent or
-// ambiguous generation intentionally leaves the opening-motion failure in place.
-function gradeSpawnMotionCausality(trace, entity, frame) {
-  const capture = trace?.forceProvenance;
+// occupant generation. Resolve the identity from that mapping; entity ids are not restricted to
+// six digits, so modulo-based life-id decoding can silently change a legitimate raw id.
+function forceWindowForSpawn(trace, wave, roundIndex) {
+  const windows = trace?.forceProvenanceWindows;
+  if (Array.isArray(windows)) {
+    const window = windows.find((entry) => entry?.wave === wave);
+    return window ? { capture: window, missingWindow: window.status === 'missing-window' }
+      : { capture: null, missingWindow: true };
+  }
+  if (roundIndex === 0 || !roundsOf(trace).length) {
+    return { capture: trace?.forceProvenance || null, missingWindow: false };
+  }
+  // Legacy traces only carried one capture. It belongs to the first opening regardless of its
+  // outcome; never reuse an earlier observer's receipts or failure status for a later wave.
+  if (trace?.forceProvenance) return { capture: null, missingWindow: true };
+  return { capture: trace?.forceProvenance || null, missingWindow: false };
+}
+
+function gradeSpawnMotionCausality(trace, entity, frame, capture = trace?.forceProvenance) {
   const readerLifeId = entity?.[E.id];
-  const rawEntityId = Number.isSafeInteger(readerLifeId) ? bodyId(readerLifeId) : null;
-  const generations = new Set((capture?.receipts || [])
-    .filter((receipt) => receipt?.readerLifeId === readerLifeId && receipt.rawEntityId === rawEntityId)
-    .map((receipt) => receipt.occupantGeneration)
-    .filter((generation) => Number.isSafeInteger(generation)));
-  const occupantGeneration = generations.size === 1 ? [...generations][0] : null;
+  const identities = new Map();
+  for (const receipt of capture?.receipts || []) {
+    if (receipt?.readerLifeId !== readerLifeId
+      || !Number.isSafeInteger(receipt.rawEntityId)
+      || !Number.isSafeInteger(receipt.occupantGeneration)) continue;
+    const key = `${receipt.rawEntityId}:${receipt.occupantGeneration}`;
+    identities.set(key, { rawEntityId: receipt.rawEntityId, occupantGeneration: receipt.occupantGeneration });
+  }
+  const identity = identities.size === 1 ? identities.values().next().value : null;
+  const rawEntityId = identity?.rawEntityId ?? null;
+  const occupantGeneration = identity?.occupantGeneration ?? null;
   return {
     rawEntityId,
     occupantGeneration,
@@ -391,8 +411,12 @@ export function checkSpawnMotion(trace) {
   if (!starts.length) return result('spawn_motion', 'Unexplained motion at spawn', 'UNKNOWN', null, `0 bodies >${T.spawnSpeed} u/s`, 'no spawn moment recorded');
   const hasRunMetadata = trace.samples.some((s) => s.run?.w != null && s.run?.ph != null);
   const offenders = []; let count = 0; let checked = 0; let missing = 0;
-  const causal = { status: trace?.forceProvenance?.status || 'unavailable', explained: 0, proofFailures: 0, residualFailures: 0 };
-  for (const st of starts) {
+  const causal = { status: trace?.forceProvenance?.status || 'unavailable', explained: 0,
+    proofFailures: 0, residualFailures: 0, missingWindows: 0 };
+  for (let roundIndex = 0; roundIndex < starts.length; roundIndex += 1) {
+    const st = starts[roundIndex];
+    const forceWindow = forceWindowForSpawn(trace, st.wave, roundIndex);
+    let missingForceWindowCounted = false;
     // Actor polls can notice the round several physics ticks after it opens. The continuous
     // reader already recorded the actual first active frame; later contacts are not spawn motion.
     const nonRound = rounds.length === 0;
@@ -402,8 +426,14 @@ export function checkSpawnMotion(trace) {
     if (!s || !s.p) { missing++; continue; }
     const previous = trace.samples[index - 1];
     if (nonRound && s.sim !== 0 && (!previous || previous.mode === 'flight')) { missing++; continue; }
+    // Physical terrain is born during wave_intro. Its first observed velocity is the spawn
+    // reading; two seconds of legitimate well/contact motion before active is not a launch.
+    const introIndex = st.wave != null && hasRunMetadata ? trace.samples.findIndex((x, i) =>
+      i <= index && x.mode === 'flight' && x.run?.w === st.wave
+      && ['wave_intro', 'active'].includes(x.run.ph)) : index;
+    const roundStartIndex = introIndex >= 0 ? introIndex : index;
     const inputStart = st.wave != null && hasRunMetadata
-      ? Math.min(st.sim, previous?.sim ?? s.sim) : nonRound ? s.sim : st.sim;
+      ? trace.samples[roundStartIndex].sim : nonRound ? s.sim : st.sim;
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
@@ -423,7 +453,8 @@ export function checkSpawnMotion(trace) {
     // first observed state through that announcement, rather than regrade post-solve drift.
     // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
     const announced = nonRound ? trace.samples.findIndex((x, i) => i >= index && x.sim >= st.sim) : index;
-    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1) : [s];
+    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1)
+      : trace.samples.slice(roundStartIndex, index + 1);
     const seen = new Set(); let prev = previous; let incomplete = nonRound && announced < 0;
     for (const frame of cohort) {
       if (nonRound && (frame.mode !== 'flight' || !frame.p
@@ -440,14 +471,24 @@ export function checkSpawnMotion(trace) {
         const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
         const sp = Math.hypot(e[E.vx], e[E.vz]);
         if (sp > T.spawnSpeed) {
-          const proof = gradeSpawnMotionCausality(trace, e, frame);
+          const proof = forceWindow.missingWindow
+            ? { ok: false, reason: 'missing-window', matchedReceipts: 0, deltaV: { x: 0, z: 0 } }
+            : gradeSpawnMotionCausality(trace, e, frame, forceWindow.capture);
           if (proof.ok) {
             causal.explained++;
             continue;
           }
-          causal.proofFailures += proof.reason === 'residual-motion' ? 0 : 1;
-          causal.residualFailures += proof.reason === 'residual-motion' ? 1 : 0;
-          count++;
+          if (proof.reason === 'missing-window') {
+            if (!missingForceWindowCounted) {
+              causal.missingWindows++;
+              missing++;
+              missingForceWindowCounted = true;
+            }
+          } else {
+            causal.proofFailures += proof.reason === 'residual-motion' ? 0 : 1;
+            causal.residualFailures += proof.reason === 'residual-motion' ? 1 : 0;
+            count++;
+          }
           offenders.push({ sp, rawSp: sp, residualSp: proof.speed, causalReason: proof.reason,
             matchedReceipts: proof.matchedReceipts, deltaV: proof.deltaV,
             line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input (${proof.reason})`,
@@ -458,8 +499,9 @@ export function checkSpawnMotion(trace) {
     if (incomplete) missing++;
   }
   offenders.sort((a, b) => b.sp - a.sp);
-  const forceDetail = trace?.forceProvenance
-    ? `; force proof ${causal.status} (${causal.explained} explained, ${causal.proofFailures} proof failures, ${causal.residualFailures} residual failures)` : '';
+  if (causal.missingWindows > 0 && causal.status === 'complete') causal.status = 'partial';
+  const forceDetail = trace?.forceProvenance || Array.isArray(trace?.forceProvenanceWindows)
+    ? `; force proof ${causal.status} (${causal.explained} explained, ${causal.proofFailures} proof failures, ${causal.residualFailures} residual failures${causal.missingWindows ? `, ${causal.missingWindows} missing window(s)` : ''})` : '';
   const verdict = result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
     `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}${forceDetail}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
   verdict.causal = causal;
@@ -474,7 +516,14 @@ export function checkKillsBeforeInput(trace) {
     const end = r.endSim != null ? r.endSim : Infinity;
     const first = inputsBetween(trace, r.startSim, end)[0];
     const cutoff = first ? first.sim : end;
-    const kills = trace.events.filter((ev) => ev.ev === 'killed' && ev.sim >= r.startSim && ev.sim <= cutoff && !ev.byPlayer && ev.type !== 'asteroid' && ev.type !== 'projectile');
+    const kills = trace.events.filter((ev) => {
+      if (ev.ev !== 'killed' || ev.sim < r.startSim || ev.sim > cutoff || ev.byPlayer
+        || ev.type === 'asteroid' || ev.type === 'projectile' || ev.type === 'wreck') return false;
+      // Current readers carry the target's hostility. Older traces did not; retain useful
+      // coverage for their combat-hull rows without mistaking wreck retirement for a kill.
+      return ev.hostile === true || (ev.hostile == null
+        && ['ship', 'drone', 'reaver', 'fauna', 'freighter'].includes(ev.type));
+    });
     n += kills.length;
     if (kills.length) {
       const by = {}; for (const k of kills) { const w = k.killerType || (k.killerId == null ? 'no killer' : 'entity ' + k.killerId); by[w] = (by[w] || 0) + 1; }
@@ -568,8 +617,17 @@ export function checkPlayerControl(trace) {
   const T = THRESHOLDS; const probes = trace.probes || [];
   if (!probes.length) return result('player_control', 'Ship answers input', 'UNKNOWN', null, `thrust Δv≥${T.thrustDeltaSpeed} u/s · yaw Δ≥${T.yawDeltaRad} rad`, 'no control probe ran');
   const offenders = []; let worst = null;
-  for (const pr of probes) {
-    const d = probeDead(trace, pr);
+  const primaries = probes.filter((pr) => !pr.retryOf);
+  let excused = 0; let retries = 0;
+  for (const pr of primaries) {
+    const { first, judged, retry } = judgeControlProbe(trace, probes, pr);
+    if (retry) retries++;
+    if (retry && first.dead && !judged.dead) excused++;
+    const d = retry && judged.dead
+      ? { ...judged, why: first.dead
+        ? `${first.why}; retry ${judged.why}`
+        : `primary retried after sparse evidence; retry ${judged.why}` }
+      : judged;
     if (d.dead) offenders.push({ line: `${pr.label}: ${d.why}`, t: d.b ? d.b.t : pr.startT, sim: d.b ? d.b.sim : pr.startSim, box: d.b ? d.b.p.box : null, bad: true });
     worst = worst || pr;
   }
@@ -577,8 +635,41 @@ export function checkPlayerControl(trace) {
     offenders.push({ line: `pinned ${fmt(sp.start, 1)}–${fmt(sp.end, 1)} s: velocity says ${fmt(sp.expect, 0)} u of travel, ship moved ${fmt(sp.path, 0)} u${heldBy(trace, sp.s)}`, t: sp.s.t, sim: sp.s.sim, box: sp.s.p.box, bad: true, pinned: true });
   }
   const bad = offenders.filter((o) => o.bad).length; const pins = offenders.filter((o) => o.pinned).length;
-  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${probes.length} probes dead · ${pins} pinned spans`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
+  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${primaries.length} probes dead · ${pins} pinned spans${retries ? ` · ${retries} software-GL retr${retries === 1 ? 'y' : 'ies'} (${excused} recovered)` : ''}`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
     probes.map((p) => `${p.label} ${fmt(p.value, 2)}`).join(' · '), offenders, offenders.slice(0, 2));
+}
+
+function judgeControlProbe(trace, probes, primary) {
+  const first = probeDead(trace, primary);
+  primary.dead = first.dead;
+  const retry = validControlProbeRetry(probes, primary);
+  if (!retry) return { first, judged: first, retry: null };
+  const judged = probeDead(trace, retry);
+  retry.dead = judged.dead;
+  return { first, judged, retry };
+}
+
+function validControlProbeRetry(probes, primary) {
+  if (!primary || primary.retried !== true || !primary.label) return null;
+  return probes.find((candidate) => candidate.retryOf === primary.label
+    && candidate.attempt === 2
+    && candidate.kind === primary.kind
+    && candidate.key === primary.key
+    && Number.isFinite(candidate.startSim)
+    && Number.isFinite(candidate.endSim)
+    && candidate.endSim >= candidate.startSim) || null;
+}
+
+/** Fewest trace samples inside a probe window for the checker's verdict on it to count as evidence. */
+export const PROBE_MIN_SAMPLES = 4;
+
+/** Should a software-GL probe be retried? Uses the checker's own evidence: retry when the trace
+ * window is too sparse to judge, or when probeDead on the trace drained so far says dead. */
+export function probeNeedsRetry(trace, pr) {
+  const n = ((trace && trace.samples) || []).filter((s) => s.p && s.sim >= pr.startSim && s.sim <= pr.endSim).length;
+  if (n < PROBE_MIN_SAMPLES) return { retry: true, why: `sparse trace: ${n} sample(s) in window` };
+  const d = probeDead(trace, { ...pr });
+  return d.dead ? { retry: true, why: d.why } : { retry: false, why: null };
 }
 
 /** A thrust/yaw probe is dead when the ship does not answer it on screen. A thrust probe needs real
@@ -605,7 +696,14 @@ export function probeDead(trace, pr) {
     if (expect > 20 && moved < T.pinnedMoveFrac * expect) return { dead: true, a, b, why: `held W ${held} s → velocity reads ${fmt(Math.max(Math.hypot(b.p.vx, b.p.vz), dv), 0)} u/s but the ship moved ${fmt(moved, 1)} u of ${fmt(expect, 0)} u (pinned)` };
     return { dead: false, a, b };
   }
-  let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  // A healthy ship can complete a revolution during a delayed probe. Measure its
+  // observed excursion, rather than cancelling that turn at the endpoint.
+  let d = 0;
+  for (const s of [a, ...trace.samples.filter(s => s.sim >= pr.startSim && s.sim <= pr.endSim), b]) {
+    if (!Number.isFinite(s.p?.rot) || !Number.isFinite(a.p.rot)) continue;
+    const delta = Math.atan2(Math.sin(s.p.rot - a.p.rot), Math.cos(s.p.rot - a.p.rot));
+    if (Math.abs(delta) > Math.abs(d)) d = delta;
+  }
   pr.value = d;
   return Math.abs(d) < T.yawDeltaRad ? { dead: true, a, b, why: `held ${pr.key} ${fmt(pr.endSim - pr.startSim, 1)} s → turned ${fmt(d, 2)} rad` } : { dead: false, a, b };
 }
@@ -634,7 +732,16 @@ export function pinnedSpans(trace, samples) {
   const T = THRESHOLDS; const spans = []; let i = 0;
   while (i < samples.length) {
     let j = i; let expect = 0;
-    while (j + 1 < samples.length && samples[j + 1].sim - samples[i].sim <= 1.0) { j++; expect += Math.hypot(samples[j].p.vx, samples[j].p.vz) * Math.max(0, samples[j].sim - samples[j - 1].sim); }
+    while (j + 1 < samples.length && samples[j + 1].sim - samples[i].sim <= 1.0) {
+      j++;
+      const dt = Math.max(0, samples[j].sim - samples[j - 1].sim);
+      const priorSpeed = Math.hypot(samples[j - 1].p.vx, samples[j - 1].p.vz);
+      const currentSpeed = Math.hypot(samples[j].p.vx, samples[j].p.vz);
+      // Trace samples are irregular and may span a late acceleration or impulse. Integrating
+      // only the later endpoint treats that final speed as if it held for the whole interval,
+      // which can falsely label an answering ship as pinned.
+      expect += (priorSpeed + currentSpeed) * 0.5 * dt;
+    }
     const dur = samples[j].sim - samples[i].sim;
     if (dur >= 0.8 && expect >= T.pinnedMinExpect) {
       let path = 0; for (let k = i + 1; k <= j; k++) path += Math.hypot(samples[k].p.x - samples[k - 1].p.x, samples[k].p.z - samples[k - 1].p.z);
@@ -1143,16 +1250,24 @@ export function checkRoundTransitions(trace) {
     const bad = win.filter((s) => playerBadReasons(s.p).length);
     const tumble = win.filter((s) => Math.abs(s.p.pitch) > T.tumblePitch || Math.abs(s.p.bank) > T.tumbleBank || Math.abs(s.p.y) > T.tumbleY);
     const probes = (trace.probes || []).filter((pr) => pr.label && pr.label.startsWith(`round ${r.wave} `));
-    const dead = probes.filter((pr) => probeDead(trace, pr).dead);
+    const primaryProbes = probes.filter((pr) => !pr.retryOf);
+    const judgedProbes = primaryProbes.map((pr) => ({ pr, ...judgeControlProbe(trace, probes, pr) }));
+    const dead = judgedProbes.filter((entry) => entry.judged.dead);
     const pins = pinnedSpans(trace, win.filter((x) => x.p.alive));
     const hull = win[0] && win[0].p.hullMax ? Math.round(100 * win[0].p.hull / win[0].p.hullMax) : null;
-    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${probes.length} dead probes, ${pins.length} pinned`);
+    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${primaryProbes.length} dead probes, ${pins.length} pinned`);
     const why = [];
     if (!win.length) why.push('no player frames in the first 8 s');
     if (bad.length / Math.max(1, win.length) > T.playerBadFrac) why.push(`ship bad in ${bad.length}/${win.length} frames (${playerBadReasons(bad[0].p).join(', ')})`);
     if (tumble.length >= 3) why.push(`out of plane in ${tumble.length} frames`);
     if (!probes.length) why.push('no control probe ran');
-    else if (dead.length) why.push(`${dead.length}/${probes.length} control probes dead (${dead.map((pr) => probeDead(trace, pr).why).join('; ')})`);
+    else if (dead.length) why.push(`${dead.length}/${primaryProbes.length} control probes dead (${dead.map((entry) => {
+      const { first, judged, retry } = entry;
+      if (!retry) return `${entry.pr.label}: ${judged.why}`;
+      return first.dead
+        ? `${entry.pr.label}: ${first.why}; retry ${judged.why}`
+        : `${entry.pr.label}: primary retried after sparse evidence; retry ${judged.why}`;
+    }).join('; ')})`);
     if (pins.length) why.push(`pinned ${fmt(pins[0].start, 1)}–${fmt(pins[0].end, 1)} s (velocity ${fmt(pins[0].expect, 0)} u, moved ${fmt(pins[0].path, 0)} u${heldBy(trace, pins[0].s)})`);
     if (why.length) { const s0 = bad[0] || tumble[0] || win[0]; offenders.push({ line: `round ${r.wave} start (hull ${hull == null ? '?' : hull + '%'}): ${why.join('; ')}`, t: s0 ? s0.t : r.startT, sim: s0 ? s0.sim : r.startSim, box: s0 && s0.p ? s0.p.box : null }); }
   }

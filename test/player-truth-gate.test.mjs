@@ -117,6 +117,9 @@ test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its 
   const argv = ['--mode=swarm', '--arena=Ricochet Foundry', '--hull=all', '--viewports=960x540,1280x720,1920x1080', '--rounds=2', '--idle=3', '--duration=70', '--wall=12', '--evidence', '--tag=matrix'];
   const matrix = parseArgs(argv);
   assert.equal(matrix.gate, false);
+  assert.equal(parseArgs(['--fortify']).fortify, true);
+  assert.equal(parseArgs(['--fortify=false']).fortify, false);
+  assert.throws(() => parseArgs(['--mode=gauntlet', '--fortify']), /requires --mode=swarm/);
   assert.equal(matrix.hull, 'all');
   assert.deepEqual(matrix.viewportList, ['960x540', '1280x720', '1920x1080']);
   assert.equal(matrix.seed, 4242);

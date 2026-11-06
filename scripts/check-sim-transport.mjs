@@ -53,6 +53,41 @@ async function run() {
   check('diagnostic journaling is opt-in', defaultTransport.journalSize === 0);
   defaultTransport.close();
 
+  // The queue shim is the path used when a host has no MessageChannel. It must still
+  // preserve worker-style copy ownership in both directions, not merely async ordering.
+  const nativeMessageChannel = globalThis.MessageChannel;
+  let fallbackTransport;
+  try {
+    globalThis.MessageChannel = undefined;
+    fallbackTransport = createSimTransport();
+  } finally {
+    globalThis.MessageChannel = nativeMessageChannel;
+  }
+  const senderPayload = { nested: { value: 1 } };
+  let fallbackMessage = null;
+  let resolveFallback;
+  const fallbackDelivered = new Promise(resolve => { resolveFallback = resolve; });
+  fallbackTransport.onRender(message => { fallbackMessage = message; resolveFallback(); });
+  fallbackTransport.publish(TRANSPORT_MESSAGE.EVENT, senderPayload);
+  senderPayload.nested.value = 2;
+  check('queue fallback delivery is asynchronous', fallbackMessage === null);
+  await fallbackDelivered;
+  check('queue fallback copies from sender at publish time', fallbackMessage.payload.nested.value === 1);
+  fallbackMessage.payload.nested.value = 3;
+  check('queue fallback receiver cannot mutate sender payload', senderPayload.nested.value === 2);
+  const platformPayload = { nested: { value: 4 } };
+  let simMessage = null;
+  let resolveSimMessage;
+  const simMessageDelivered = new Promise(resolve => { resolveSimMessage = resolve; });
+  fallbackTransport.onSim(message => { simMessage = message; resolveSimMessage(); });
+  fallbackTransport.request(TRANSPORT_MESSAGE.EVENT, platformPayload);
+  platformPayload.nested.value = 5;
+  await simMessageDelivered;
+  check('queue fallback copies platform requests at send time', simMessage.payload.nested.value === 4);
+  simMessage.payload.nested.value = 6;
+  check('queue fallback sim receiver cannot mutate platform payload', platformPayload.nested.value === 5);
+  fallbackTransport.close();
+
   // Baseline: the single-threaded path, read directly with no transport in between.
   const baselineDigests = [];
   {

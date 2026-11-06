@@ -100,14 +100,20 @@ export function resolveWorldPresentationEntity(state, id) {
 // records (main runner, whole-sim worker) must share this predicate or a mesh-less lane
 // journals a spawn the collect set can never republish (the once-per-tick rebuild storm
 // class). Mirrors pushAlive's mesh test; `alive` is per-record data, not eligibility.
+function isTargetableWorldSiteSensor(e) {
+  const data = e?.data;
+  return e?.type === 'wreck' && e._noMesh === true && data?.role === 'world_site_component'
+    && data.worldSiteTargetable === true && data.worldSiteProxy?.bodyType === 'sensor'
+    && typeof data.worldSiteId === 'string' && typeof data.worldSiteComponentId === 'string';
+}
+
 export function entityIsJournaled(e) {
-  return !!(e && e._noMesh !== true
+  return !!(e && (e._noMesh !== true || isTargetableWorldSiteSensor(e))
     && !(e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)));
 }
 
 function pushAlive(out, row) {
-  if (!row || row.alive === false || row._noMesh) return;
-  if (row.type === 'projectile' && projectileSkipsVisualFactoryMesh(row)) return;
+  if (!row || row.alive === false || !entityIsJournaled(row)) return;
   out.push(row);
 }
 

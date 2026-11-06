@@ -53,7 +53,11 @@ test('every subscribed receipt writes one deed with the right kind and place', (
     bus.emit('survivorPod:abandoned', { id: 'survivor:10', playerLeftIt: true, factionId: 'faction_mts', sectorId: 'sector_ceres_belt', victimId: 10, t: 320 });
     bus.emit('survivorPod:captured', { id: 'survivor:11', factionId: 'faction_mts', captorFactionId: 'faction_reach', sectorId: 'sector_ceres_belt', victimId: 11, t: 330 });
     bus.emit('entity:killed', { id: 70, killerId: 1, type: 'ship', factionId: 'faction_scn', factionLawful: true, targetHostileToPlayer: false, victimClass: 'corvette' });
-    bus.emit('entity:killed', { id: 71, killerId: 1, type: 'ship', factionId: 'faction_reach', factionLawful: false, targetHostileToPlayer: true, victimClass: 'raider' });
+    // The outlaw kill is a ricochet the player authored (a fresh massline throw link on a terrain
+    // collision): it keeps its civic kill_outlaw weight and also earns the kill_thrown deed.
+    bus.emit('entity:killed', { id: 71, killerId: 1, type: 'ship', factionId: 'faction_reach', factionLawful: false, targetHostileToPlayer: true, victimClass: 'raider',
+      presentation: { version: 1, cause: 'terrain_collision', surface: 'terrain', playerCaused: true,
+        impactLink: { actorId: 1, tag: 'massline_throw', appliedTick: state.tick - 60, holdUntilTick: state.tick + 60 } } });
     bus.emit('combat:baseDestroyed', { type: 'pirate_den', factionId: 'faction_reach', sectorId: 'sector_ceres_belt', killerId: 1 });
     bus.emit('deniable:fenceBurned', { stationId: 'station_ceres', sectorId: 'sector_ceres_belt', tick: 200 });
     bus.emit('deniable:fenceEmboldened', { stationId: 'station_ceres', sectorId: 'sector_ceres_belt', tick: 201 });
@@ -77,7 +81,7 @@ test('every subscribed receipt writes one deed with the right kind and place', (
     assert.deepEqual(kinds, [
       'ace_defeated', 'ace_routed', 'base_destroyed', 'bounty_paid', 'dock_slam', 'fence_burned', 'fence_emboldened',
       'fence_route', 'fence_thanked', 'hauler_dragged', 'heat_scrubbed', 'hunter_disabled', 'hunter_outran',
-      'kill_lawful', 'kill_outlaw', 'ore_flood', 'pod_abandoned', 'pod_captured', 'pod_ransomed', 'pod_rescued',
+      'kill_lawful', 'kill_outlaw', 'kill_thrown', 'ore_flood', 'pod_abandoned', 'pod_captured', 'pod_ransomed', 'pod_rescued',
       'station_grudge', 'station_strike', 'stunt', 'tumble_rake', 'wanted_tier',
     ]);
     assert.equal(deedsFor(state, { kinds: ['pod_ransomed'] })[0].stationId, 'station_kepler');

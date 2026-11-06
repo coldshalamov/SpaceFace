@@ -212,6 +212,10 @@ export function createToasts(ctx) {
     if (payload.charonApproach != null) { approach.enqueue(payload); return false; }
     return pushNow(payload);
   }
+  // Geometry changes only after the receipt owner actually changes the visible lane. Refused
+  // or deferred toast events never make the HUD walk and measure the flight overlays.
+  function invalidateReceiptGeometry() { bus?.emit?.('hud:receiptGeometryChanged', {}); }
+
   // Returns true when the receipt was drawn (or folded into a live card) and false when it was
   // refused, so a once-only notice sent through the presenter can tell it was never seen.
   function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
@@ -275,6 +279,7 @@ export function createToasts(ctx) {
         r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
         announceStatus(text, r.count);
         recomputeNextWake();
+        invalidateReceiptGeometry();
         return true;
       }
     }
@@ -326,6 +331,7 @@ export function createToasts(ctx) {
     // animate in next frame
     requestAnimationFrame(() => el.classList.add('sf-toast--in'));
     while (live.length > MAX) dismiss(pickEvictionVictim(live));
+    invalidateReceiptGeometry();
     return true;
   }
 
@@ -357,6 +363,7 @@ export function createToasts(ctx) {
     }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
     recomputeNextWake();
+    invalidateReceiptGeometry();
   }
 
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
@@ -612,8 +619,8 @@ export function bindSlingPassReceipts(bus) {
     if (!payload || typeof bus.emit !== 'function') return;
     const speed = Math.round(Number(payload.exitSpeedWuS) || 0);
     const text = payload.aligned === false
-      ? `Sling ring — thrown wide at ${speed} wu/s.`
-      : `Sling ring — slung forward at ${speed} wu/s.`;
+      ? `Sling ring — thrown wide at ${speed} u/s.`
+      : `Sling ring — slung forward at ${speed} u/s.`;
     bus.emit('toast', { text, kind: 'info', ttl: 4 });
   });
 }

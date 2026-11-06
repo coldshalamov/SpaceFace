@@ -1,4 +1,5 @@
 import { ObjectiveKind, ContactKind, clamp, wrapAngle } from '../ai/contracts.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
 import { canFireByDoctrine } from '../ai/doctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import {
@@ -25,6 +26,9 @@ import { combatFlag } from '../data/featureFlags.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
+// A committed approach belongs to the target life it warned, even while a separate
+// arrival hold prevents the gun from entering its firing window.
+const RUN_CORRIDOR_TARGETS = new WeakMap();
 const PD_CONTACT_ID_SCRATCH = [];
 const PD_TABLE_RADIUS_PAD_WU = 80;
 // Perf memo for recentlyDamagedBy: the backward walk over the combat trace costs O(events in the
@@ -54,6 +58,18 @@ export function applyAIFiringIntent(decision, state) {
   // keeps taking honest leads while a dodge can only pull the line ±capRad off it.
   const aimCommit = combatDoctrine && combatDoctrine.aimCommit
     && Number.isFinite(combatDoctrine.aimCommit.bearing) ? combatDoctrine.aimCommit : null;
+  const runCorridor = !!aimCommit && (combatDoctrine.doctrineId === 'interceptor_flyby'
+    || combatDoctrine.doctrineId === 'brawler_commit');
+  if (runCorridor) {
+    if (!validateRunCorridorTarget(e, state, objective, combatDoctrine, aimCommit)) {
+      FIRE_WINDOW_ADMISSION.delete(e);
+      combat.aimCommit = null;
+      clearFire(intent, 'committed_target_changed');
+      return;
+    }
+  } else {
+    RUN_CORRIDOR_TARGETS.delete(e);
+  }
   const pdActor = isPdScreenActor(e);
   // INF-028 arrival hold: the same data marker the legacy brain honours. A fresh arrival (or a
   // hull a wave director has told to wait its turn) keeps flying and aiming but does not fire.
@@ -93,7 +109,7 @@ export function applyAIFiringIntent(decision, state) {
     if (aimCommit && attack && targetId != null) {
       const commitTarget = state.entities.get(targetId);
       if (commitTarget && commitTarget.alive !== false) {
-        committedCorridorAim(e, combat, aimCommit, commitTarget, data.weapons);
+        committedCorridorAim(e, combat, aimCommit, commitTarget, data.weapons, runCorridor);
         intent.aimAngle = aimCommit.bearing;
       } else {
         combat.aimCommit = null;
@@ -172,7 +188,7 @@ export function applyAIFiringIntent(decision, state) {
   combat.targetId = targetId;
   combat.pdScreen = pdActor;
   if (aimCommit) {
-    aimAngle = committedCorridorAim(e, combat, aimCommit, target, data.weapons);
+    aimAngle = committedCorridorAim(e, combat, aimCommit, target, data.weapons, runCorridor);
     // A corridor only counts if a mount that follows the aim can bear it: fixed guns and beams
     // release along `rot + facing ± gimbalArc`, so a bearing outside every cone would fly the
     // clamped edge — a line the commitment never vetted. Hold and keep aiming the corridor; the
@@ -398,15 +414,35 @@ function aimConeStatus(shooter, weapons, aimAngle) {
  * target keeps taking real leads inside ±capRad, while a dodge reads as a divergent fresh
  * solution and the aim stays pinned on the stale corridor instead of re-tracking.
  */
-function committedCorridorAim(e, combat, commit, target, weapons) {
+function committedCorridorAim(e, combat, commit, target, weapons, runCorridor = false) {
   const fresh = leadAngleFor(e, target, weapons);
   const prior = combat.aimCommit;
-  const anchor = prior && prior.bearing === commit.bearing && Number.isFinite(prior.anchor)
-    ? prior.anchor
-    : fresh;
-  combat.aimCommit = { bearing: commit.bearing, anchor };
+  const anchor = runCorridor ? commit.bearing
+    : prior && prior.runCorridor !== true && prior.bearing === commit.bearing && Number.isFinite(prior.anchor)
+      ? prior.anchor : fresh;
+  combat.aimCommit = { bearing: commit.bearing, anchor, ...(runCorridor ? { runCorridor: true } : {}) };
   const cap = Number.isFinite(commit.capRad) ? Math.abs(commit.capRad) : 0;
   return wrapAngle(anchor + clamp(wrapAngle(fresh - anchor), -cap, cap));
+}
+
+function validateRunCorridorTarget(shooter, state, objective, doctrine, commit) {
+  const tick = state.tick;
+  if (Number.isInteger(commit.untilTick) && Number.isInteger(tick) && tick > commit.untilTick) return false;
+  const targetId = objective && objective.targetId;
+  const target = targetId == null ? null : state.entities.get(targetId);
+  const prior = RUN_CORRIDOR_TARGETS.get(shooter);
+  const newRun = !prior || prior.doctrineId !== doctrine.doctrineId || prior.cycle !== doctrine.cycle
+    || prior.untilTick !== commit.untilTick || prior.bearing !== commit.bearing;
+  if (newRun) {
+    if (!target || target.alive === false) return false;
+    RUN_CORRIDOR_TARGETS.set(shooter, { doctrineId: doctrine.doctrineId, cycle: doctrine.cycle,
+      untilTick: commit.untilTick, bearing: commit.bearing, targetId, target,
+      generation: targetIdentityGeneration(target), shooterGeneration: targetIdentityGeneration(shooter) });
+    return true;
+  }
+  return !!target && target.alive !== false && prior.targetId === targetId && prior.target === target
+    && prior.generation === targetIdentityGeneration(target)
+    && prior.shooterGeneration === targetIdentityGeneration(shooter);
 }
 
 function mountConeStatus(shooter, weapons, aimAngle, canFollow) {

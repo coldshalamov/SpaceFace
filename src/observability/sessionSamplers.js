@@ -169,7 +169,8 @@ function cloneValue(value, depth, maxDepth, maxArray, seen, canonical) {
       const entries = [...value.entries()].sort((a, b) => codeUnitCompare(String(a[0]), String(b[0])));
       if (entries.every(([key]) => typeof key === 'string')) {
         const object = {};
-        for (const [key, entry] of entries) {
+        for (const [key, entry] of entries.slice(0, maxArray)) {
+          if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
           const next = cloneValue(entry, depth + 1, maxDepth, maxArray, seen, canonical);
           if (next !== undefined) object[key] = next;
         }
@@ -182,7 +183,8 @@ function cloneValue(value, depth, maxDepth, maxArray, seen, canonical) {
     }
     if (value instanceof Set) {
       return [...value].map((entry) => cloneValue(entry, depth + 1, maxDepth, maxArray, seen, canonical))
-        .sort((a, b) => codeUnitCompare(stableScalar(a), stableScalar(b)));
+        .sort((a, b) => codeUnitCompare(stableScalar(a), stableScalar(b)))
+        .slice(0, maxArray);
     }
     if (value instanceof Date) return value.toISOString();
     if (value.isObject3D || value.isMesh || value.isMaterial || value.isTexture) return undefined;

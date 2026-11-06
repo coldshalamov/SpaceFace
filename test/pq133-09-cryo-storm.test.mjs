@@ -528,7 +528,8 @@ test('Cryo tick is arena-scoped: far bodies and other arena ids stay inert', () 
   });
   const vx0 = cold.vel.x;
   survivalArena.update(1 / 60, cryo.state);
-  assert.equal(cold.controlScale, CRYO_LOCK_CONTROL_SCALE);
+  assert.equal(cold.controlScale, undefined, 'Cryo uses the combat runtime, not an unconsumed entity override');
+  assert.equal(cryo.state.combat.entities[String(cold.id)].pendingStatuses[0].id, CRYO_LOCK_STATUS_ID);
   assert.equal(cold.vel.x, vx0);
   assert.equal(far.controlScale, undefined);
   assert.equal(far.vel.x, 11);

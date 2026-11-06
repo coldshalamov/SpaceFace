@@ -591,6 +591,8 @@ export function hoverTriggers(rootSelectors) {
     }
     return false;
   };
+  const sel = 'button, a[href], input, select, [role="button"], [role="tab"],'
+    + ' [title], [data-tip], [aria-describedby], [data-why], [tabindex]:not([tabindex="-1"])';
   for (const rootEl of scope) {
     for (const node of rootEl.querySelectorAll(sel)) {
       if (seen.has(node)) continue;

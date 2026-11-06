@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "579dacebebbf72d172e94a0958519ee3fa5fdf7f62094e0dfb2b52ba703b958d",
+  "contentHash": "c1ae27d35b3a7c7d6398b2d86891e661b35342d33287fd04cb22232ccc37f4fa",
   "dynamicGroups": [
     {
       "id": "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -2289,14 +2289,14 @@
       "uri": "ironback_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 475356,
-    "sha256": "7ee2a19e206c0fca9814e073d07b064b4777178192e9994a67c5d9673fbc6f6d",
+    "bytes": 475500,
+    "sha256": "22871bebb1c82fdf2866e92b078ca1a2ee92beb28b200fe4091f01bef08a7e61",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2394,6 +2394,305 @@
       },
       {
         "matrix": [
+          1.6380111575126648,
+          0,
+          0,
+          0,
+          0,
+          1.6380111575126648,
+          0,
+          0,
+          0,
+          0,
+          1.6380111575126648,
+          0,
+          -9.522482872009277,
+          0.10007002204656601,
+          -4.260800778865814e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 7,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.09000015258789062,
+          0,
+          0,
+          0,
+          0,
+          0.09000015258789062,
+          0,
+          0,
+          0,
+          0,
+          0.09000015258789062,
+          0,
+          -5.420000076293945,
+          0.25999999046325684,
+          -3.299999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.09000015258789062,
+          0,
+          0,
+          0,
+          0,
+          0.09000015258789062,
+          0,
+          0,
+          0,
+          0,
+          0.09000015258789062,
+          0,
+          -5.420000076293945,
+          0.25999999046325684,
+          3.299999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.188030481338501,
+          0,
+          0,
+          0,
+          0,
+          1.188030481338501,
+          0,
+          0,
+          0,
+          0,
+          1.188030481338501,
+          0,
+          2.599853992462158,
+          1.730021357536316,
+          -0.00021266937255859375,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_Mechanical",
+        "planIndex": 13,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_Mechanical",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-secondary-hopper-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1279770135879517,
+          0,
+          0,
+          0,
+          0,
+          1.1279770135879517,
+          0,
+          0,
+          0,
+          0,
+          1.1279770135879517,
+          0,
+          1.9493931531906128,
+          1.7797520756721497,
+          0.0004956722259521484,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_MechanicalDark",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-secondary-hopper-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03999999910593033,
+          0,
+          0,
+          0,
+          0,
+          0.03999999910593033,
+          0,
+          0,
+          0,
+          0,
+          0.03999999910593033,
+          0,
+          -4.099999904632568,
+          2.619999885559082,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_glow_red",
+        "planIndex": 17,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_glow_red",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_glow_red",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-sensor-mast-glow-red"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.05950000137090683,
+          0,
+          0,
+          0,
+          0,
+          0.05950000137090683,
+          0,
+          0,
+          0,
+          0,
+          0.05950000137090683,
+          0,
+          -3.7130000591278076,
+          1.812999963760376,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Lights_Cyan",
+        "planIndex": 19,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Lights_Cyan",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-sensor-mast-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5997531414031982,
+          0,
+          0,
+          0,
+          0,
+          0.5997531414031982,
+          0,
+          0,
+          0,
+          0,
+          0.5997531414031982,
+          0,
+          -3.8985687494277954,
+          2.0015525817871094,
+          -0.00015118718147277832,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+        "planIndex": 21,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+            "recordIds": [
+              "sf.render.ironback-production-v1-lod2.mesh.lod0-motion-hull-core-hook-sensor-mast-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2412,7 +2711,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2463,7 +2762,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 22,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2514,7 +2813,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 23,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2565,7 +2864,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 24,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2616,7 +2915,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 25,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2667,7 +2966,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 26,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2718,7 +3017,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 27,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2769,7 +3068,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 28,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2820,7 +3119,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 29,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2871,7 +3170,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 30,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2922,7 +3221,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 31,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2973,7 +3272,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 32,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3031,37 +3330,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 8,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
         "role": "signal"
       },
       {
@@ -3071,32 +3350,52 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 16,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
         "role": "warning"
       }
     ],
@@ -3106,7 +3405,7 @@
       "sha256": "5987c590537ea9b4bccd9b0c51230923fbaaea0bff4065aedcba4e2f06396ad3",
       "uri": "assets/ships/motions/ironback-production-v1.motion.json"
     },
-    "nodeCount": 33,
+    "nodeCount": 41,
     "primitives": [
       {
         "canopy": false,
@@ -3212,8 +3511,8 @@
           -4.260800778865814e-7,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 7,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE002",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -3259,8 +3558,8 @@
           -3.299999952316284,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT002",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3288,8 +3587,8 @@
           3.299999952316284,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD002",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3317,8 +3616,8 @@
           -0.00021266937255859375,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_Mechanical",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_Mechanical002",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -3346,8 +3645,8 @@
           0.0004956722259521484,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_MechanicalDark",
-        "planIndex": 11,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_HOPPER_MechanicalDark002",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -3375,8 +3674,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_glow_red",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_glow_red002",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -3404,8 +3703,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Lights_Cyan",
-        "planIndex": 13,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Lights_Cyan002",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -3433,8 +3732,8 @@
           -0.00015118718147277832,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
-        "planIndex": 14,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical002",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -3463,7 +3762,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 15,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3491,7 +3790,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_oxide",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3519,7 +3818,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 17,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3547,7 +3846,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 18,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3575,7 +3874,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 19,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3603,7 +3902,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
-        "planIndex": 20,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -3615,7 +3914,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ironback_production_v1_lod2.glb"
   },
-  "runtimeHash": "74691e32dd01a666c06345bfaf23a668df09bc158138fc7b272c09d4b5e489d8",
+  "runtimeHash": "03781875ac5e5cc9b693fd452606b34dab1c33ec892538f4e64204d092da340e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

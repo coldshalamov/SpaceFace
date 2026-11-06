@@ -91,6 +91,18 @@ const nestedChain = (parent, steps, detail) => ({
   kind: 'nested', parent, steps, evidence: 'public-route', detail,
 });
 const fixture = (name, detail) => ({ kind: 'fixture', fixture: name, evidence: 'fixture', detail });
+const mapAlias = (legacyId, focus) => ({
+  kind: 'map-alias', legacyId, destination: 'galaxyMap', focus, evidence: 'fixture',
+  detail: `ui:pushScreen ${legacyId} redirects to the chart at ${focus} focus`,
+});
+export function mapAliasProvenance(entry) {
+  return entry?.kind === 'map-alias'
+    ? { legacyId: entry.legacyId, destination: entry.destination, focus: entry.focus, route: 'ui:pushScreen' }
+    : null;
+}
+export function matchesMapAliasProvenance(record, expected) {
+  return !expected || !!record && Object.keys(expected).every((key) => record[key] === expected[key]);
+}
 const none = (detail) => ({ kind: 'none', evidence: 'none', detail });
 
 /**
@@ -283,6 +295,9 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/saveLoad.js',
     screenId: 'saveLoad',
     root: ['[data-screen="saveLoad"]'],
+    // The empty SaveLoad stage is a deliberate vacant berth, not a missing hull. A filed slot
+    // needs its authored preview; otherwise the live flight world underneath is the capture target.
+    worldReadiness: 'preview-or-live-world',
     // The pause menu's Save button opens saveLoad directly; its Load button routes through a
     // destructive confirm, so Save is the non-destructive public route to the same surface.
     entry: nested('pause', '[data-screen="pause"] button', 'Save', 'pause → Save'),
@@ -353,6 +368,9 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/gameOver.js',
     screenId: 'gameOver',
     root: ['[data-screen="gameOver"]'],
+    // A sealed replay owns a stage-ready marker. Without a replay tape the live world behind the
+    // after-action surface remains the world-capture contract.
+    worldReadiness: 'stage-or-live-world',
     // Destructive: it ends the run. Measured last, in its own boot.
     entry: fixture('player-death', 'the run must end; the harness cannot yet die on the public route'),
     owner: 'PQ-181',
@@ -369,6 +387,8 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/statistics.js',
     screenId: 'statistics',
     root: ['[data-screen="statistics"]'],
+    // Records Wall is an overlay over flight, not a screen-owned stage; use the actual world draw.
+    worldReadiness: 'live-world',
     // A REAL public route: the pause sheet's "Records Wall" word (pause.js, Reference group).
     entry: nested('pause', '[data-screen="pause"] [data-action]', 'Records Wall', 'pause → Records Wall'),
     owner: 'PQ-181',
@@ -571,9 +591,8 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/localmap.js',
     screenId: 'localmap',
     status: 'legacy',
-    root: ['[data-screen="localmap"]'],
-    entry: none('superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every '
-      + 'localmap push, key and touch into galaxyMap at LOCAL focus, so the legacy DOM never mounts; a permanent, named gap'),
+    root: ['#sf-galaxymap'],
+    entry: mapAlias('localmap', 'local'),
     owner: 'PQ-168',
     ownerLeaf: 'chart',
   }),
@@ -584,10 +603,8 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/starmap.js',
     screenId: 'starmap',
     status: 'legacy',
-    root: ['[data-screen="starmap"]'],
-    entry: none('superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every '
-      + 'starmap push (including the base screen "Open chart") into galaxyMap at GALAXY focus, so the legacy DOM '
-      + 'never mounts; a permanent, named gap'),
+    root: ['#sf-galaxymap'],
+    entry: mapAlias('starmap', 'galaxy'),
     owner: 'PQ-168',
     ownerLeaf: 'chart',
   }),
@@ -615,7 +632,7 @@ export const SHIPPING_SURFACES = Object.freeze(SURFACES.filter((s) => s.scope ==
  * be called "automatable" because an opener exists for it — not because the manifest describes a
  * route in prose. `openSurface` asserts this list against itself, so the two cannot drift.
  */
-export const IMPLEMENTED_ENTRY_KINDS = Object.freeze(['default', 'key', 'nested', 'fixture', 'boot', 'boot-nested']);
+export const IMPLEMENTED_ENTRY_KINDS = Object.freeze(['default', 'key', 'nested', 'fixture', 'map-alias', 'boot', 'boot-nested']);
 
 /** Surfaces the runtime harness has an implemented opener for. */
 export const AUTOMATABLE_SURFACES = Object.freeze(
@@ -635,7 +652,7 @@ export const CAPTURE_SURFACES = SHIPPING_SURFACES;
  * implemented opener. A legacy screen with no route and a screen that does not exist are listed for
  * honesty, and are never evidence of reach.
  */
-export const REACHABLE_CANDIDATES = AUTOMATABLE_SURFACES;
+export const REACHABLE_CANDIDATES = Object.freeze(AUTOMATABLE_SURFACES.filter((surface) => surface.status !== 'legacy'));
 
 export function surfaceById(id) {
   return SURFACES.find((s) => s.id === id) || null;
@@ -662,7 +679,8 @@ export function passOrder(surface, byId = new Map(SURFACES.map((s) => [s.id, s])
     case 'default': return 0;
     case 'boot':
     case 'boot-nested': return -10; // the menu phase, before Launch
-    case 'key': return 10;
+    case 'key':
+    case 'map-alias': return 10;
     case 'nested': {
       const parent = byId.get(entry.parent);
       return (parent ? passOrder(parent, byId) : 20) + 1;
@@ -712,7 +730,7 @@ export function auditManifest(surfaces = SURFACES) {
   // The floor is thirty REAL surfaces. A row for a screen that does not exist, or a legacy screen
   // with no route, keeps the manifest honest but must never help clear the count.
   const candidates = surfaces.filter((s) => s.scope === 'shipping'
-    && s.ownerFile
+    && s.ownerFile && s.status !== 'legacy'
     && IMPLEMENTED_ENTRY_KINDS.includes(s.entry.kind)).length;
   if (candidates < MIN_MANIFEST_SURFACES) {
     problems.push(

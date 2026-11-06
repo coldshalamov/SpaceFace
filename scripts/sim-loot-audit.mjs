@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { ACE_TROPHY_HEADS } from '../src/data/sectors.js';
 import { ALIEN_UNIQUE_GRANTS } from '../src/data/alienEcology.js';
 import { BLUEPRINTS } from '../src/data/blueprints.js';
+import { BLACK_FLAG_ENCOUNTERS } from '../src/data/blackFlag.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { MODULES } from '../src/data/modules.js';
@@ -38,6 +39,8 @@ const report = runDepthProgramLootAudit({
     weapons: WEAPONS,
     lineageUniqueIds: [...ACE_TROPHY_HEADS.map((row) => row.id), ...SITE_RECOVERED_UNIQUE_IDS],
     siteUniqueIds: ALIEN_UNIQUE_GRANTS.map((row) => row.id),
+    authoredUniqueIds: [...new Set(BLACK_FLAG_ENCOUNTERS.flatMap((row) => row.fitted || [])
+      .filter((id) => MODULES.some((item) => item.id === id && item.unique === true)))],
   },
 });
 

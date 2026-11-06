@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Lane 1 — THE MACHINE & THE PICTURE (high complexity, taste)
 
-**Written only by Lane 1.** Other lanes append one line to *Inbox* and nothing else.
+The controller coordinates current writers under README §3; lane labels do not create permanent path locks.
 Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md).
 
 **The outcome:** SpaceFace runs like a professional game on the owner's Intel-iGPU laptop — combat
@@ -11,13 +11,104 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 
 ## Baseline (packet M0 rewrites this table with today's numbers, then keeps a dated row per re-measure)
 
+**November5 source integration:** c4b88c85acd4 (runtime6794833) passes17/17 baseline groups in73.563s/90s,
+with unchanged source and no failures/timeouts. This is not an FPS comparison. Live worker controls
+no longer wait for an older reply while simulation deadlines advance; the existing watchdog retains
+real progress accounting. Packaged props no longer inherit a second procedural root scale: the
+actual beacon wrapper is28WU rather than1680WU, with procedural transforms/materials retained.
+Actualc4 Ring obstruction is absent and public throttle moves the ship; entry guidance is now
+connected in8398e7c8d2b1, with its ordinary Mouth/ribs look pending. Exactc4 production now serves
+the public demo; fresh public-origin WebKit NewGame reaches visible advancing flight in28.800s.
+The stock touch-capability gate still fails/maxTouchPoints0 and physical iPhone remains UNKNOWN.
+Loading23–29s, frame targets, actual Counterweight courses and signed-update acceptance remain open.
+
+**Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
+JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
+policy. This is a component result; D222/full-owner/FPS targets remain open. Canonical map aliases
+and forced-color icons have selected mounted looks. Fifteen qualified whole-hulk releases now
+share physical/render identity and level collision-aligned presentation; ordinary hull/hero looks
+remain open. Integration found a growth-attachment tilt mismatch and assigns the correction.
+No opaque-sort or refraction quality change has shipped from the latest profile.
+
 | Date | Build | Crucible p50 / p99 / longest | GPU p50 | Adventure p50 / p99 / longest | Longest load task | Loading anim gap p99 | Launch→flight | Host busy |
 |---|---|---|---|---|---|---|---|---|
 | 2026-10-28 (from docs) | various | 86 / ~125 (p95) / multi-s | 23.7 ms | 23.2 / 109.4 / 324 | 5,000 ms | unmeasured | 11.6 s | contended |
 | 2026-10-28 M0 round1 (main) | master+merge | 77.3 / 161.6 / 258.1 (ents~164, sim 22.9 render 20.7) | 25.9 (scene 18.1@194d, composite 7.6) | pending | pending | pending | pending | contended (audit+probes) |
 | 2026-10-28 M0 wave15 (main) | master+merge | 158.2 / 240.0 / 362.2 (ents~215, sim 68.5 render 41.8, 805 draws) | 76.1 (p3 33.3@393d + p1 21.0@340d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B round1 (worker) | master+merge+M1 | 81.0 / 188.8 / 305.1 (ents~201, sim 0.02 render 30.4, 181 draws) | 31.9 (scene 24.6@224d, composite 7.0) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B wave15 (worker) | master+merge+M1 | 152.7 / 411.5 / **1349.6** (ents~236, sim 0.02 render 55.8, 842 draws) | 90.9 (p3 43.0@432d + p1 33.7@384d, composite 15.7) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B round1 (worker, post-storm-fix 530498d) | master+M1 | 68.2 / 143.0 / 191.0 (ents~177, sim 0.02 render 23.9, 175 draws) | 29.7 | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B wave15 (worker, post-storm-fix 530498d) | master+M1 | **129.7 / 255.1 / 314.6** (ents~230, sim 0.02 render 49.4, 746 draws; journalRebuilds 4/session) | 73.6 (p3 32.3@387d + p1 24.5@341d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 M0 loading (main) | master+merge+M1 | — | — | — | 4,168 ms (next: 1,340) | 66.6 (3 gaps >1 s, longest 3.0 s) | 74.1 s | contended; 190 MB streamed (108 MB GLB) |
+| 2026-10-28 M0 adventure (main) | master+M1 | — | — | 239.5 / 1,254.5 / 1,441.6 (ents~127, route 107 s, 359 fr) | — | — | — | contended (audit+probes) |
+| 2026-10-28 M0 adventure (worker) | master+M1+flip | — | — | 80.1 / 212.4 / 1,300.6 (ents~162, 1,247 fr; PASS, 0 ctx loss) | — | — | — | contended (audit+probes) |
 
 Targets and floors: README §4.
+
+2026-11-01 source diagnostics (`finish-8de-crucible-owner`, `finish-ccf2-worker-owner`):
+12.96 / 16.18 world-submit FPS, simulation/wall 0.421 / 0.657, host busy 84.2 / 72.2%.
+These CPU-profiled source captures are not retail qualification or a matched A/B; the first GPU
+timer receipt is invalid. Raw worker attribution puts the largest grouped cost in physics/SG-02,
+then tactical AI. The inspected pose/velocity/CCD guards did not expose a redundant hot operation
+in these captures. Their starting worker clock was inactive, so steady-world readiness is unproven.
+The measured retained-batch material serialization path is repaired by the canonical texture-safe
+clone helper (47 focused checks pass); its live frame benefit is unmeasured. A controlled
+transmission-resolution A/B compared an incomplete first picture with a later world/camera, making
+its result inconclusive. Scale remains 1.0; no quality policy changed. The next diagnostic should
+reuse the existing retail runtime witness after actual public flight readiness. Full frame targets
+remain open.
+
+The later B27 packaged public-recovery tail uses the existing retail runtime witness, without
+`window.SF` or a CPU profiler: 2,754 successful world draws over 120,086.95 ms = 22.933 Hz average,
+and 110.267 simulation seconds = 0.9182 sim/wall. Public input and actual world-pixel response pass
+before and after this tail. These are averages, not scanout or frame-percentile qualification.
+The package predates the later clone repair; no speedup is inferred across these different runs.
+
+A separate B27 launch after closing the stalled fleet-look job passes the same public recovery
+route and cleanup. Its 120,027.765 ms tail records 3,686 completed world draws = 30.7096 Hz, with
+119.9833 simulation seconds = 0.99963 sim/wall. Executed-frame and world-draw deltas are equal;
+this does not establish scanout, frame percentiles or why callbacks arrived at that rate. The two
+launches are not a matched causal A/B. Receipts are in
+`.devshots/finish/integration-2026-11-01/batch27-packaged-world-cadence/` and
+`.devshots/finish/integration-2026-11-01/batch27-packaged-after-fleet-cleanup/`.
+
+The stalled fleet-look job is closed with its original 170 images preserved. Commit d2da0cc4564e
+bounds each view and records partial progress on timeout (one focused check passes). The software
+Cradle retry times out at `render-1` and cleans up normally. Native D3D11 completes in 11 seconds,
+but its ship-close camera shows only sky; the existing bounds-fitted place view then produces an
+inspected complete Cradle image in 10 seconds. The six place views and 20 ship-close views now
+have visible native captures in the November 1 fleet-look recovery artifacts; the earlier blank
+frames remain preserved. These entries are no longer a capture backlog. House-marking readability
+and combined HeroRig/plume appearance remain open, including the later zero-draw Kestrel preview
+recorded in `INTEGRATION_COVERAGE.md`. No ordinary placement verdict is inferred from these asset
+previews. M8's pinned source-Electron run entered its measured window at 14:10:27 UTC,
+then exited 1 at 14:24:53 on the market helper's buyable-row assertion before 30 minutes. It is
+not a soak pass; the failed public trade state is being traced and the original evidence retained.
+
+**Current integration status, 2026-11-02:** the full source41c M8 run completed 52 save/restore
+cycles across 30.1 measured minutes, forced context recovery and the 120-second tail, with normal
+cleanup and no terminal pane. It still fails: heap grew 193.71 MiB, geometry count grew 1,874,
+36 empty-mip warnings followed context recovery, and frame budgets were missed. The source35c
+short route has zero empty-mip warnings, but bloom stalls and retention remain. Offline heap
+analysis identified a visibility memo retaining retired entities; its scalar-only replacement
+passes 15 focused checks. The separate 32 MiB template cap is a budget, not a proven cure for
+the soak growth. Neither the memory fix nor the light-census guard has a live speedup verdict.
+The detailed evidence and current GPU ownership are in the integration checkpoint; M8 remains open.
+
+The subsequent committed-c65 check completed ten cycles, context recovery and the 120-second tail
+without heap-snapshot pauses. Route and cleanup pass; the overall result still fails: heap
++64.63 MiB, geometries+446, programs+2, ten warnings, flight p95/p99 33.395/49.95ms and post-context
+p95/p99 50.015/116.655ms. The template cache held only0.95→1.08MB, with no retired entries; that
+budget does not explain the growth. Entity count changed165→179 and live-scene geometry1555→1700,
+so those resource deltas are not all established leaks. Remaining warnings and retention are active
+work, with no speedup or 30-minute acceptance claimed from this shorter, different-cohort run.
+
+The Market helper recovery now passes its focused production-module control check. The next
+EDF source attempt exposed an actual F9 incomplete-plan failure: a selected wreck lost eligible
+leaves before sealing. Commit 92e515f955bb rebuilds the full candidate and producer census, capped
+at three attempts inside the existing deadline; stale owners and persistent invalidity still fail.
+The owner suite passes 84/84. A fresh 92e run passed its two public save/F9 warmups and entered the
+30-minute measured window at 15:41:47 UTC; final context recovery, tail and cleanup remain pending.
 
 ## Claimed paths (beyond README §3)
 
@@ -25,8 +116,35 @@ Targets and floors: README §4.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+**Current November3 checkpoint:** public demo is `89ddfe4830e2`, deployment `dpl_Gg6MKJkSLbEJeRvdebjMxsS46cn1`; exact receipt/entry/three worker bindings pass. All2,446 authored assets and417 package plans retained. The second Foundry bank surface pass is visible on the ordinary route. Hero readability near Helios and software mobile body legibility remain open. The existing combat profile plus a later bounded census now identify transmission-eligible instanced ice for a specific quality/cost investigation; no FPS improvement is claimed. Incoming UI source-hash refresh is metadata only. Earlier inbox receipts below retain their source and evidence limits.
+
+- 2026-11-03 earlier8ea release: public-origin launch17.761s/native touch19.240WU and actual alias-versioned worker pass; the candidate also passes3.267-second rotation/PauseResume. No rare plasma warning occurred in these runs, but frame hitches and physical iPhone remain open. Authored Kestrel LOD0 appears dark/coarse at software contentScale0.34; CPU presence/AABB is not pixel acceptance. Later89dd native body dispatch was observed before the save route; the distinct settledContinue Helios readability concern still needs its synchronized observation. Public89dd supersedes this earlier deployment.
+
+- 2026-11-03 earlier world/furniture cohort: all17 baseline groups pass in62,057ms under unchanged90,000ms/allowance4; English15,745/0 unresolved. The first52-triangle bank panel pass was superseded by89dd's60-triangle inset/chamfered metal, with no extra maps/lights/draw meshes; root opened its ordinary view. Shared nonplate shape adoption and12 combined geometry/native-contact/retained-surface checks remain valid. Source logs: `.devshots/finish/integration-2026-11-03/world-furniture-*` and `foundry-shared-shape.log`.
+
+- 2026-11-03 integrated follow-up: all17 baseline groups pass in74,889ms under the unchanged90,000ms budget and normal allowance4 after plasma/cache, captured-fleet, Registry, refit, carrier and audio integration. English catalog/readiness remains15,738 surfaces/0 unresolved. This is source integration evidence; the new frozen candidate and changed ordinary controls remain the next player checks.
+
+- 2026-11-03 release: DDE is now live at `https://spaceface-play-demo.vercel.app/` through immutable deployment `dpl_2kmmJ6SmpPmftV7RYXV6iAfFSPoD`. The actual public-origin worker, visible page, native Chromium touch movement, Pause/Resume and6.726-second same-document rotation pass; Launch18.163s. Physical iPhone and smooth-frame targets remain open. The complete upload artifact passed the unchanged build and417 copy plans before publication; no authored runtime assets were omitted.
+
+- 2026-11-03 next cohort: finite opening now warms the actual player's plasma ribbon/forge/throat through the existing admission pipeline before sealing; normal flight adopts that same owner.112 focused checks pass; removal of the observed175.9ms first-drive program hitch awaits the next runtime route. The separate683.5ms authored-turret hitch remains open. Settled render-package live handoff now protects its exact generation before awaiting: a real Drift/default64MiB pressure case falls from2 producer decodes to1, while warm-only eviction remains;50 lifecycle cases pass. Neither result establishes browser FPS.
+
+- 2026-11-03 geometry preparation: the sampled hull-coordinate bake now uses a direct affine path for supported packed/interleaved Float32 and normalized Int16 data, retaining identity aliasing and the generic fallback. Seven behavior cases and actual Drift package byte parity pass. One bounded Node CPU leaf comparison measured41.439→31.373ms; this24.3% leaf result is not a browser FPS claim. No quality, shader, asset or timing-budget change.
+
+- 2026-11-03 connected-cohort verification: `681a633e6348` passes all17 baseline groups in72,633ms under the unchanged90,000ms budget with normal allowance4. English extraction/readiness is current at15,738 surfaces and0 unresolved; translated production coverage is not claimed. Logs are under `.devshots/finish/integration-2026-11-03/connected-cohort-*`. This supports the integrated source; the next frozen deployment and ordinary player routes remain separate checks.
+
+- 2026-11-03 mobile and assets: deployed6736 passes native Chromium mobile touch, visible page, Pause/Resume and3.973-second rotation; root opened both world captures. Windows WebKit's bright-canvas/black-page divergence also occurs in a standalone WebGL triangle, so no renderer workaround was added for that capture path. Physical iPhone remains unknown and alias unchanged. A real683.5ms authored-wreck scene submission remains unresolved; the next planned route retains its full warning. Orchard pod spawn/live vitals now carry canonical bounded body/ownership metadata to the main mirror, preserving authored asset/guide classification, dynamic release, tetherability and stale-life rejection; focused real-worker checks pass. Actual player skim → release → recovery remains open.
+
+- 2026-11-03 purposeful performance check: one8.049-second Ceres profile on current797 with only toast-coalescing reversed produced no toast/comms traffic and0.114% receipt-placement cost. The comparison stopped before B; there is no matched FPS claim. Current host-busy84% cadence was20.54 submissions/s. The same capture identifies a301ms sampled main-thread hull-coordinate bake and repeated package preparation; the narrow arithmetic optimization is selected, while cache/residency causes need their actual owners before changing protections.
+
+- 2026-11-03 Continue result: immutable `8cadc94233ee` and the same earned Ceres save advance both previously blocked wrecks1397/1398 from loading to authored, clear the visual gate, reach flight and answer public turn input. Root opened the paused view over the authored scene; the later capture reveals flight behind the normal run-recap card. The subsequent Anvil actor stopped because it lacked that card's public dismissal action; it did not attempt feed/release/recovery. The owned browser was closed and Mobile received the GPU. This closes this Continue failure, not loading-time, Anvil or device acceptance.
+
+- 2026-11-03 Continue: the ordinary earned Ceres save stalled at the authored-visuals gate with Crossbeam1397 and Keel1398 still loading. A restored-save queue reproduction found the Crossbeam within the gate's required runway but excluded by its restricted loading queue. Both owners now share the same live-entity/mesh/runway predicate; required contacts drain while distant wrecks and ambient work stay deferred. Focused queue/admission/lifetime checks pass. The captured browser omitted queue-owner detail, so the previous Keel promise's cause and the corrected ordinary Continue remain open; no deadline or authored-content shortcut was added.
+
+- 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
+
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.
 - 2026-10-28, Lane 3: foreign-dirty work seen in the tree, not mine — `electron/preload.cjs`, `scripts/lib/ui-layout-measure.mjs`, `src/ui/contactHailPrompt.js`, `src/ui/views/hudStyles.js`, `test/ceres-five-minute-acceptance.test.mjs` left unstaged and preserved.
+- 2026-10-28, Lane 3 (W1-473): title-interactive on the VM profile (headless SwiftShader, retail `build/web`) measured **16.5–17.4 s** clean, ~26–42 s under host load vs the 10 s budget — over entirely inside your boot/loading/render path, nothing UI-side (menu mounts+usable the same frame the shell drops). Tape: `bootEntry.js:33` media hold → `import('../main.js')` eval ~2.5 s longtask ~3–5.5 s → `main.js:141–216` "Preparing/Starting flight systems" ~4–5 s → `main.js:470` "Opening the command deck" → **~5 s tail** (first title-scene paint: serial shader compile on software GL in `src/render/**` admission) → `loadingPresenter.hide()` (`loadingPresenter.js:374–388`, hideDelayMs 600). Evidence script+tape: `.devshots/w1-473-title-timing.mjs` (`--bundle`), run on the hour-old bundle.
 
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
@@ -46,11 +164,12 @@ Targets and floors: README §4.
 | D273 | `GL_INVALID_OPERATION: glTexStorage2D: Texture is immutable` during boot | texture upload path | investigate M1 review |
 | D274 | `[GPU brick] bloomScene` shader compile stall 1.0–3.4 s on first present (Intel D3D11) | program admission / bloom chain | packets M3/M4/M6 |
 | D275 | Two blob workers fail module specifiers `densityVolumeData/rle.js`, `gasVolumeData/density.js` (relative imports inside `blob:`) | blob worker creation sites | investigate; likely silent-tolerated |
+| D276 | ~~Worker-lane wave-15 tail~~ FIXED 530498d: journal rebuild storm — no `visitRangeSteps` on the wire journal (unbounded applies), ack claimed merged end not applied watermark, `journalStart>ack` armed rebuilds on ordinary backpressure, and lane rebuilds gap-checked against stale pending windows | `simLaneJournal`, `presentationRunner`, `wholeSimBrowserWorker` | measured: rebuilds ~76→4/session, wave15 148/508/1972 → 130/255/315 ms; no longer a flip blocker |
 
 ## The ordered packets
 
-Work top to bottom. Two may run at once when their paths are disjoint. Re-measure the baseline
-after every three landed perf packets and add a dated row above.
+Work top to bottom. Two may run at once when their paths are disjoint. Re-measure the affected
+bars when a changed performance owner or a failed/conflicting result requires it; record the result above.
 
 ### Wave M — the machine (do these first; they are the owner's top complaint)
 
@@ -66,7 +185,12 @@ split; (b) a **loading-animation gap probe** that timestamps the loading animati
 flight. Write the numbers into the Baseline table. Done when every README §4 row has a measured
 baseline.
 
-**M1 — Turn the simulation worker on by default.** `src/core/simLaneMain.js`,
+**M1 — Turn the simulation worker on by default.** ✅ **LANDED** (storm fix `530498d` + flip commit):
+worker is the default lane, `?simLane=main`/`sf.simLane`/`SPACEFACE_SIM_LANE=main` are the escape
+hatch; a worker dead before its init reply falls back to the in-process sim with the registry rebuilt
+(bounded 45 s gate). Measured on this host: Crucible wave-15 p50 130 vs 158 ms main, longest 315 vs 362;
+Adventure route p50 80 vs 240 ms, p99 212 vs 1,254 ms; journal rebuilds 4/session; boot+escape verified
+real-browser. `src/core/simLaneMain.js`,
 `wholeSimBrowserWorker.js`, `simLaneCommands.js`, `simLaneJournal.js`, `src/main.js`. State:
 `design/perf/STRUCTURAL-HORIZON.md` stages 0–9 (golden digests bit-identical worker vs main, independent
 review SHIP). Ruling 8 removes the 0.5 ms wire bar. Work: within-session A/B (`?simLane=worker` vs main)
@@ -80,7 +204,30 @@ thread, parity/digest tests are green, and the A/B shows the frame win.
 **M2 — Unwrap `unreadyDrawGuard` once readiness settles.** `src/render/bloom.js:~1337` wraps every draw
 (12.5 % inclusive in the Crucible round). After `unreadyProgramsPending` is false, swap in the raw
 `renderBufferDirect`; re-wrap only on a new mount. Done when the profile share is < 1 % in a settled
-round and no unready program ever draws (keep the existing guard test).
+round and no unready program ever draws (keep the existing guard test). **LANDED 2026-10-28** —
+`createUnreadyDrawableGuard(renderer, { disarmOnSettle: true })` at both production call sites;
+settled hide() swaps the raw `renderBufferDirect` in, mounts/program churn/detach events re-wrap.
+Detach side got its own latch: `packageDetachSerialNow()` bumps on release, dead attribute records,
+dropped residency stamps, manifest eviction and orientation holds, and a bounded-cadence
+`presentedDetachDrawsArmed` scan re-verifies pending payloads so a never-drawn release cannot tax
+every frame. Guard test kept green (17/17 incl. new disarm/rearm + opt-out contract tests); detach
+suites 25/25. Real-browser proof (`probe-crucible-stress` worker arm, contended):
+`drawGuardDisarmed` true in 178/897 diag samples — engaged whenever the frame is actually settled;
+combat mounts legitimately re-arm it mid-round.
+
+Audit follow-up landed same day (m008/m009): the hidden `SF_RosterPrewarm_PartCatalog` root (~30
+part holders + count-0 instanced twins + pool-witness stubs) is not a bounded warm root, so while
+parented it paid into every per-frame scene/matrix/readiness walk for the whole run. It now
+unparents once all decode lanes settle; `_rosterPartCatalogRoot` keeps it reachable for cohort
+sweeps and run-end release (pool-witness mounts and in-flight-decodes' residency predicate are
+settle-complete by then; late mounts land on the detached root harmlessly). Also fixed a teardown
+telemetry hole the audit flagged: `_releaseDetachedBoundaryOwnersSteps` passed `owner.state`
+(undefined on an Object3D) into `disposeObjectSteps`, starving `noteLaneFault` of teardown-fault
+records — now `this.state`. Focused proof: twin-promotion suite 7/7 (incl. a new test pinning
+unparent-after-settle + ownership) — that suite also got a race fix: wave-102's paced drain
+(`yieldToBrowser` per 8 ms slice) made its synchronous post-call asserts catch mid-drain state on
+a loaded box; asserts now drain the pending set first / count pending-set admissions through the
+drain. Detached-owner + liveness suites green (80/80).
 
 **M3 — Fewer programs, fewer switches, fewer draws.** `setProgram` 7.9 % + `renderBufferDirect` 10.6 %;
 203 programs in a Crucible run, split by instancing (57), vertex colour (39), light count (37) and
@@ -91,6 +238,26 @@ is legal for (on for 1 of 414 today); (c) one fixed light-count variant (lights 
 toggle `light.visible`, it recompiles); (d) per-hull-family `InstancedMesh` or the retained-slot opaque
 `BatchedMesh` path (`renderer.js` `_opaqueBatchEnabled`, PQ-129.12) — whichever wins the A/B. Done
 when programs per Crucible run and draws per frame are both down ≥ 40 % and `setProgram` < 2 %.
+
+Current integration checkpoint (2026-10-31): the retained rigid controller is already default-on;
+`_opaqueBatchEnabled` is a separate package-planning switch. A published-144e434 Swarm wave-one
+held-scene ABBA measures 742 retained versus 982 direct draws and 50.005 versus 66.645/66.555 ms p50
+intervals at the same scene/camera/settings. Its original aggregate rejected retained off-state
+census history; a separate source-backed reassessment accepts the live-mode and scene checks.
+No default changed, active-flight causal win or visual parity is claimed, and M3's targets remain
+open. See `INTEGRATION_COVERAGE.md` and `.devshots/main-thread-profile/opaque-retained-default-ab-144e/`.
+
+Seven packages are now configured: Helios, the cockpit pilot (31→9 primitives, 22 joins), and five
+shipbreaking-yard packages (169→43 primitives, 126 joins). Decoded same-winding/material triangles,
+semantic IDs, anchors and collision metadata match; the five-package maximum vertex delta is
+0.001608 WU. Live look/shadow and matched frame checks remain open. A separate compiler repair preserves dynamic
+semantic pivots through quantization (13 compiler cases); actual compiled pivots in all 196 existing
+dynamic packages match source, so that defect requires no package rebuild.
+
+The retained controller now refills retired package CPU attributes under a lease before copying
+batch geometry. A causal native case previously copied zero normals after retirement; the repaired
+normal/UV case and cancellation, failure, deduplication and stale-owner cases pass (5 focused tests).
+This establishes the copy contract; live batch appearance and performance remain open.
 
 **M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
 (`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
@@ -113,6 +280,17 @@ the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening G
 load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
 Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
 
+Current cold Electron profile (`adventure-required-retry-r1`, committed 118d016 source) reaches flight in 55.5 seconds on the worker lane, Intel/ANGLE D3D11 with KHR parallel compile, at 85.7% sampled host busy. Render-pipelines takes 41.17 seconds; 46 first-use shader waits total 26.4 seconds. This is functional Launch acceptance, not a warm-load or matched improvement measurement; startup targets remain open.
+
+The full preliminary authored cohort is restored, incomplete pipeline receipts no longer receive forced draws or readiness stamps, and required loading retries a typed pending-shader timeout under one tracked promise with the existing owner/cap/deadline guards. Focused owner checks pass. The earlier profile exposed a pass-specific readiness gap: bloom could inspect the last-bound program before Three selected a transmission variant. The guard now selects the target tone-mapping/output-color-space and instancing variant, with 18 focused cases passing against vendor-generated cache keys.
+
+The `023c6fac5ee6` same-session public route reaches first flight in 41.1 seconds and its second Launch in 25.4 seconds, retaining the same renderer, canvas and WebGL context. The measured second run has two driver-link waits totaling 47 ms (maximum 27 ms), but render-pipelines still takes 23.21 seconds. Its loading-stage animation p99 is 17.3 ms; host busy is 48.2%. These are diagnostic observations, not a matched code-speed comparison or completion of the startup bars. The first cook timed out before touch/buffer completion; existing identity/version residency caches already skip work, so wholesale cook reuse is not justified. The profiler now measures the trusted Launch click and distinguishes post-transition composition diagnostics from explicit readiness blockers. See `.devshots/main-thread-profile/adventure-warm-claims-r1/` and `INTEGRATION_COVERAGE.md`.
+
+Cook-stretch accounting now resets after a confirmed presented-frame advance across touch/buffer
+yields, so later census work does not charge prior frames' wait time to the current frame. A
+microtask yield retains its same-frame charge. The focused owner case passes; no startup-speed
+improvement is claimed without a matched measurement.
+
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
 (`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before
@@ -130,6 +308,27 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
+Current M8 integration status (2026-11-01): the d5 run completed three warmups and measured
+cycles 0–25, then stopped in cycle 26 before the full 30-minute/context sequence. Its velocity
+check sampled an advancing worker mirror. `4d828f9bdd71` now reads an immutable motion receipt
+after native restore adoption; moving-native and actual-worker checks pass. The full route remains open.
+
+An armed ordinary flight identified detached salvage-cutter UV data in startup residency. `d47`
+leases geometry through startup upload and through secondary-preview texture waits/first draw.
+A later Physics transition identified a separate shadow-depth draw, repaired in `4f503d12f413`,
+and another startup-proxy failure. A focused real-package interleave reproduced a live LOD swap
+between the census and proxy creation; `6d371029db31` makes the proxy draw the exact geometry
+that is leased, checked and stamped, preserving the live replacement for its own admission.
+The focused shadow and package-owner suites pass. These repairs still require the new armed
+ordinary route and full soak; no stability or frame-target pass is claimed.
+
+Latest integrated update (2026-11-01): `d8dc3ee5df64` fixes a demonstrated dormant-instance false
+residency stamp: Three skipped count0 before upload. The scratch proxy now submits1 when existing
+production capacity is real; the live pool remains0 and zero-capacity geometry remains unstamped.
+The exact failed Wasp Armor asset is in the passing53-case owner suite. The fresh armed ordinary
+Physics launch and return pass; the full M8 soak remains open. The integrated batch28 baseline
+passes17/17 in59,171ms, including Massline, within the unchanged90,000ms budget. Earlier baseline failures remain historical; the current verdict is this integrated run.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
@@ -139,26 +338,89 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-**M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
-serializes every link behind one `linkActive` tail): issue links in parallel batches, use
-`programBinaryCache.js`, and rely on M3's smaller program count. **Do not** prewarm with dummy meshes
-(measured worse). Done when no first-sight link blocks > 16 ms in a fixed-seed Adventure route.
+The current source bundle gate passes with417 render packages. The 2026-11-02 integrated main
+static closure is10,109,179 raw bytes across144 outputs (3,154,513 separately gzipped), down from
+11,435,492 at this batch start. Canonical flight, Orchard, lead, economy, beam, fields and scanner
+readers remove their simulation owners from eager presentation imports. A shared pure traffic-event
+constant also removes an accidental audio→traffic→simulation source-preload edge; only two current
+closure hints were needed instead of68 simulation imports. Legacy function identities remain shared;
+focused audio/event checks and the generated preload check pass. These are graph-size results,
+not startup-time improvements, and the integrated delta is not isolated attribution to one change.
+The6MB eager target, total transfer, loading animation and runtime targets remain open.
+
+`d045ab3a0b69` regenerates ten stale hull packages, pilot rows and runtime bindings against current
+authored release models. The scoped compiler and subsequent bundle gates pass. Source/release GLBs
+are unchanged; live visual acceptance remains separate.
+
+Batch27 remains the latest completed packaged ASAR checkpoint, with matching embedded receipt:
+`86d45e157cd30d54ae8e8c759296c60af31e60ffdf06ced9c3d73434d77386c4`.
+Its earlier static closure was 11,409,345 raw / 3,556,953 summed-gzip bytes. No new packaged
+acceptance is inferred from the later source bundle. Earlier M9 receipts are retained in the
+[integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
+
+**M10 — First sight never stalls.** KHR-capable pipeline admissions now issue under one serialized
+owner, restore the target and temporary root homes, then settle up to four independent actual-program
+sets outside that issue slot. Unsupported backends stay serial. Caller deadlines do not release live
+ownership; issue attribution restores before another batch starts. Focused target, context, cancellation,
+delayed-environment and deadline checks pass. The subsequent bundle/package gates pass, and batch26c
+passes bounded packaged recovery. A matched live first-sight measurement remains OPEN. Use
+`programBinaryCache.js` where valid and M3's smaller
+program count. **Do not** prewarm with dummy meshes (measured worse). Done when no first-sight link blocks
+> 16 ms in a fixed-seed Adventure route.
 
 **M11 — Electron and browser flags.** A/B `--disable-renderer-backgrounding`,
 `--force_high_performance_gpu`, `powerPreference: "high-performance"`, `--ignore-gpu-blocklist`,
 and ANGLE `d3d11` vs `vulkan` (confirm the active backend in `chrome://gpu`). Keep what wins.
 
-**M12 — The footage recorder costs 8–12 % fps while recording.** Do not re-run the pixel-read
-experiments (memory: reading pixels at all is the cost). Make capture event-windowed (record only
-around a moment the replay can use) and stop it whenever the frame is over budget; keep the replay
-feature reachable.
+**M12 — Bound footage capture when its current cost warrants it.** The earlier 8–12 % FPS
+claim is historical, not a current implementation requirement. The 2026-10-29 Crucible main-thread
+profile (`finish-post-callout-main-2026-10-29`) records WebCodecs capture at 640 × 340 / 10 FPS:
+recorder, codec and presented hook cost about 0.22 % of measured main-thread CPU, with no pixel
+readback/createImageBitmap path observed. That profile does not measure GPU contention or establish
+an isolated FPS cost. Keep replay reachable; do not disable or window capture solely to satisfy the
+old estimate. Change its budget only if a current within-session comparison identifies a material
+frame cost, preserving useful replay moments.
 
 **M13 — Split the monoliths (one dedicated packet each, no other edits to that file in flight).**
 `renderer.js` (36,741 lines) below 8k (row 412): the free functions into `render/runtime/*`, the `render`
 object into per-concern modules (entity sync, shadows/LOD, residency/prewarm, post stage, lifecycle).
 `vfx.js` (18,470) into `render/vfx/` per effect family. `partsLibrary.js`: collapse the 15 sync/"stepped
-twin" pairs into one generator with a sync driver. Grunt the moves through Grok/Gemini; prove with
+twin" pairs into one generator with a sync driver. Keep the moves bounded and use a suitable implementation tool; prove with
 byte-identical golden digests, the boot census, and `check:baseline`. Do these **after** M1–M5 land.
+
+Current extraction: `d309751297b3` moves the six shadow-depth staging methods into
+`render/runtime/shadowDepthStage.js`, preserving their bodies and renderer-owned queues/lifecycle.
+The focused setting-enable case, 28 admission cases, two retirement cases and 10 real-renderer
+import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
+remain open.
+
+Explosion presentation and weapon-impact pictures now have two additional family modules,
+moving 19 methods while VFX retains pools, subscriptions, scheduling and lifetime. The moved
+bodies match their originals after random-callback normalization. The focused explosion/weapon
+batch exposed one Gyre assertion in authored rather than converted Three-light units; it now
+checks both canonical values and the complete two-case arsenal suite passes. No production light
+gain changed. Source preloads include the new families; full bundle/baseline qualification is
+still the next integrated batch, not a claim supplied by this extraction alone.
+
+Runtime residency/admission queries now have one focused module, with all 35 moved function bodies
+and the pooled band-argument helper matching their originals. Shared scratch identity and public
+renderer exports are preserved, and imported leaf graphs do not cycle to the renderer. The query
+batch passes 79 cases; its one stale file-text pin is replaced by a passing actual composed-zoom
+eviction/prefetch behavior case. The last true first-flight collector twin also shares a canonical
+iterator, preserving the synchronous live walk and paced snapshot/tail handling. Its ordered
+membership, deduplication and 25-variant cap case passes. Size and performance targets remain open.
+The integrated batch-twelve baseline passes 17/17 in 66,831 ms within the unchanged 90,000 ms
+budget; the bundle qualification is pending the next build batch.
+
+The current phase makes template instantiation and detached-object/place teardown use their
+canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
+finishes inline; paced composition retains its existing queue and resource-retain lifetime. AI
+doctrine tells and NPC Working Light signatures/contact/intercept methods now have family modules;
+VFX keeps pools, subscriptions and cadence. All 26 moved method bodies match the originals after
+normalizing the cosmetic random callback. The focused batch passes 70 cases, the baseline passes
+17/17 in 62,394 ms against 90,000 ms, and the batch-eleven bundle gate passes (2808 files, receipt
+`b6887a7a0427d120edfd878cc2f6f2655ca9e0cc166a582446e7b5bc1d136b36`). These working-tree checks
+include concurrent edits; they establish neither the monolith size target nor a runtime frame gain.
 
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
 
@@ -170,6 +432,8 @@ that sit a few hundred pixels tall to 1024 (`place_works_derrick` 21 MB, `works_
 every hull has an LOD chain, dedupe the duplicate refinery GLB and ORM textures, write a triangle and
 texture budget per asset class into `check-asset-census.mjs`. Forge is the only way to build a body
 (`tools/blender/forge/FORGE.md`, skill `forge-graphics`).
+Current static-pilot appearance check: matched PLACE previews preserve the engine section, cargo module, corvette turret, weapon spar, pressure tank and cockpit section after material-group merging. Engine and cockpit INSPECT views also match. The repaired private-camera preview waits for strict authored admission before capture. These checks cover reconstructed preview meshes; gameplay placement, shadow parity and matched frame-cost savings remain open. The remaining-five capture is `.devshots/finish/integration-2026-10-31/shipbreaking-look/remaining-five-private-camera/`; Helios has no matched pair in this batch.
+
 **A2 — Hero hulls and landmarks.** Row 428 (the five hulls a player meets in the first two hours, incl.
 row 18 / D72 Pelican), row 17 / D54 (dark-freighter place model, Anvil well-edge, Wreck Cathedral draw
 scale), row 557 art half (stencils, wear, kill tallies on traffic variants).
@@ -192,29 +456,22 @@ the existing camera/presentation owners; prove it with Lane 2's SC-01 playground
 **R1** deployed route on desktop and phone (`probe-deployed-mobile.mjs`), **R2** the 30-minute soak at
 target, **R3** a final README §4 table on the final build.
 
-## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+## Critical owner map
 
-**Critical systems — each gets a Codex deep review, then packets:** the render frame loop and entity
-sync (`renderer.js` `render` object), program admission and readiness (`pipelineReadiness.js`,
-`shaderLinkReporter.js`, `programBinaryCache.js`), presentation and recovery (`presentationRunner.js`,
-`packageCpuDetach.js`, context loss), the sim-worker lane (`simLane*.js`, `wholeSimBrowserWorker.js`),
-post-processing (`bloom.js` chain + composite), the VFX library (`vfx.js`, `render/vfx/**`, pools,
-`weaponLights.js`), asset loading and residency (`assetLoader.js`, `partsLibrary.js`, render packages,
-`glbPrepassWorker.js`), quality governance (`adaptiveQuality.js`, `slowFrameOffer.js`), the boot and
-loading pipeline (`bootEntry.js`, `bootShellPacing.js`, `loading*.js`, `bootRingWorker.js`), camera
-presentation, the Electron shell (`electron/main.cjs`).
-**Then everything else you own**, ranked by how much a player sees it. Keep the list here with a
-status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+These are the lane's high-impact systems and remain useful when a concrete player, renderer,
+loading, memory or performance issue needs an owner: render frame/entity sync (`renderer.js`),
+program admission/readiness, presentation/recovery, sim-worker lane, post-processing, VFX/pools,
+asset loading/residency, quality governance, boot/loading, camera presentation and Electron shell.
+This is an owner map, not a mandatory review queue or a claim that each system is at bar.
 
-Status (2026-10-28): sim-worker lane — REVIEWED (Gemini line-read, `.devshots/finish/lane1/review-simlane/INVENTORY.md`: 11 findings incl. type-scoped echo gap now FIXED, 250 Hz busy-poll, unbounded domainAppliedKeys; flip surface fully mapped; Codex deep review next). All other systems — UNREVIEWED.
+## Source coverage and current findings
 
-## The audit — read every line you own
-
-Split `src/render/**`, the core frame/boot pipeline, the boot/loading UI and `electron/**` into
-modules of ≤ ~3k lines each and hand them in pairs, evenly, to Grok and Gemini (`TOOLS.md`): each run
-reads every line of its module and writes `.devshots/finish/lane1/audit/<module>.md` — bugs, per-frame
-allocation, dead code, duplicated paths, hidden per-frame DOM reads, debug/census code running in the
-game loop, and the three cheapest wins. Turn real findings into packets below this line.
+The 2026-10-29 full-source inventory, reused reads and explicit coverage caveats are in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md). Current player-visible results,
+open integration risks and route evidence are in [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md).
+Use them before assigning work so completed reads and active findings are not duplicated. Source
+coverage is not gameplay acceptance or a blanket quality verdict; close the concrete product
+outcomes and performance/visual targets on this board with their relevant direct checks.
 
 ## INFERENCE (seed ≈ 20 lines in the brainstorm packet, README §6)
 
@@ -226,6 +483,173 @@ station lights that work at night-side; asteroids with readable mass and materia
 telling a tiny story of the ship powering up; the kill you can see; muzzle flashes and tracers that
 carry weapon identity; shield and Massline feedback on contact; tiny life in the background (traffic
 lights, docking beacons, maintenance drones).
+
+Implemented and focused-tested 2026-11-02 (INFERENCE 100 program, wave 1 — one commit each,
+`test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`; these entries alone
+do not establish ordinary-route appearance or performance acceptance):
+- inf-scar-identity (WF-12 repair): a fresh hull wound glows in the striking weapon's own colors
+  before cooling to burn amber, so a furball reads who hit whom with what (a22326943315).
+- inf-drive-heat (WF-12): the exhaust glow names the maneuver — boost burns white-hot, cruise
+  leans cooler, idle/brake/reverse are a cooling chamber; faction identity kept in the sheath
+  (ec99612a07c4).
+- inf-wreck-burn (WF-11): a sim-stamped fresh kill burns and smokes at its breach and cools over
+  minutes while unstamped set dressing stays cold (7678ce595ea5; zero-kill stamp boundary
+  hardened 9e6371f415d8).
+- inf-far-strobes (WF-11): far traffic carries an anti-collision double-flash plus a running
+  light on its own phase; reduced motion slows the blink, never silences it (9c24822bffbf).
+Support repairs, not units: harness NPCs carry a presented hull for the propulsion ownership
+gate (856c4d37e019); wreck-wisp latch suite drives the current laneVersions schema
+(4971bf6e91ab); the unready-draw guard gates by layer mask so the visible light census holds
+(2693dbdedf91); flight root templates retire within a 32 MB geometry budget (c88f10e5b443).
+Verified already deep, no unit taken: sector sky (per-sector palettes + deep-sky plates +
+landmark layer), loading screen (five authored worker-rendered tableaux), asteroid geology
+family, station side events (7 authored profiles).
+
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, focused
+tests in `test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`):
+- inf-mortal-blow (WF-12, wave 2): the shot that empties a hull punches through with a white
+  core and its own light before the flare, so the kill reads as its own event (212d29beeb05).
+- inf-shield-reknit (WF-12, wave 2): a shield coming back online after a break breathes once
+  through its lattice (af5d3d3bbd8c).
+- inf-scar-history (WF-12, wave 2): sustained fire leaves cool, target-bound hull scars that
+  keep their identity across a fight (with f8b04d2c3ca3).
+- inf-dying-drive (WF-12, wave 3, direct): a dying hull's exhaust says so — the bell cools
+  toward ember and sputters on its own deterministic phase as the hull fails, from the same
+  hull truth the smoke trail reads; hulls without hull fields never gutter (a3ae485e5d6d;
+  accessibility-gated sputter, plasma-stream carrier and pooled-slot pins hardened a795a25d2904).
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-wound-smoke (WF-12 repair): the smoke a wounded ship trails rises from the wounds it
+  actually has — the emitter round-robins the hottest scars, scales by severity/youth, and a
+  fresh energy wound vents the striking weapon's tint before it greys (5861ca1c3e3e).
+- inf-line-shield-bite (WF-12 repair): a massline latching a shielded hull bites at hit
+  parity on the shell's own contact wire, re-asserts on cadence while strained, and lands
+  one last full-strength bite on the break; reduced-flash halves the sustained gain
+  (e5f677b2d8d8).
+- inf-beacon-lamp (WF-11): claim buoys carry a light read at last — breathing running light,
+  claim-green pulse, fast anti-collision double-flash inside the lease warn window; reduced
+  motion stretches periods, never silences (32d3f41104e9).
+- inf-debris-wound-heat (WF-11 repair): death debris tears warm — the freshest wound's heat
+  rides the death receipt into the shard cooling track's start, pulled toward the weapon tint
+  (29a5dddde27f).
+Verified already deep, wave 4: station night-side lights (stationNightLights.js), muzzle flash
+per family (weaponImpactVfx consumes the classifier), projectile-side shield contacts
+(shieldContacts.js). Correction (wave 5 probe): the wave-4 docking-beacon note was stale —
+state.dockingCorridor publishes phase='approach' + berth at ALL distances and the cradle
+preview already fades in pre-approach; the real gap was station-side dressing, shipped below.
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-dock-approach-beacons (WF-11 integration): a docking station says where its dock is and
+  whether it is open — gate pair, inbound lane walk, threshold bar in the cradle's holo-green;
+  walking pulse while the corridor works, anti-collision double-flash on capture; reduced
+  motion stretches, never silences (10168f20ba5d).
+- inf-engine-wash (WF-12): a burning drive hanging over a rock, deck or wreck stirs that
+  surface's dust off its skin — contact under the plume path, breath downrange, strength
+  following throttle and height, tint naming the surface (3713cd0923d0).
+- inf-scar-skid (WF-12 repair): a lasting scar points the way the shot was travelling —
+  grazing fire smears into a gouge, dead-center keeps the round seat, stored hull-local so a
+  turning hull shows the hit's true bearing (4218ebd9d49f).
+- inf-scar-seats (WF-11 repair): a hull chewed on one spot grows one wound there — strikes
+  inside a kept seat widen and reheat it instead of spawning scattered identical pocks;
+  absorbed strikes never touch the scar-history book (5244ade5f3a7).
+Verified already deep, wave 5: Massline cable tension feedback (masslinePresentation.js —
+load swell, strain chatter, overload heat, parting ferrules, whip/reel glow at pixel numbers).
+Defect retracted (controller trace, wave 6): the animateStation wall-clock report was wrong —
+nowSec() prefers the presentation clock the renderer pushes every frame
+(renderer.js setFactoryPresentationNow(state.simTime)); wall clock is only the documented
+headless fallback, so a frozen sim holds its blinkers with the world. No change made.
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-gate-departure (WF-12 integration): leaving through a gate plays the commit — aperture
+  swells as the drive bites, swirl runs hot through the tunnel, the ring collapses behind the
+  hull with the wake snapping shut, then rebounds to idle; reduced motion halves travel,
+  keeps every phase (b9ff98db42ef).
+- inf-mayday-pod (WF-11 repair): the survivor pod is an authored ejection lifeboat — blunt
+  capsule, nose-viewport burn, foam collar, dead retro — carrying a distress lamp group whose
+  period tightens 1.6 s → 0.55 s as the oxygen drains; wreck squatters keep the canister;
+  flashReduce keeps the steady burn, never silences (4f94db085335).
+- inf-mayday-flare (WF-12 integration): a causal eject reads at the kill site — white retro
+  flash, cold vent whiff, and the lamp-red beacon star that outlives the flash 3:1, with a
+  director-owned mayday event light reaching gameplay range; a sector re-entry is not an
+  ejection (b49b2e7edc99).
+- inf-pod-worth (WF-11 repair): a drop's own price grades its light — junk rests dimmer, the
+  median drop keeps today's read bit-exactly, rich lots burn hotter and build a second
+  counter-precessing inner band; unpriceable drops read plain, never dim on a guess
+  (fe4cd12a0718).
+Verified already deep, wave 6: shield-break membrane distinctness (uFlash rupture punch +
+ordered weld-network collapse), asteroid split pop (conchoidal cleavage + parent-scaled
+dust + event light), NPC jump departure surface (fov punch, trauma, travel cues, portal
+spin-up), station apron night family.
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-corridor-speed-read (WF-12 repair): the dock pad reads your own approach speed — a hot
+  lane holds the pad visible in caution amber with a quickened pulse, brackets and chevrons
+  march at your closing speed, a settled berth calms the read; reduced motion keeps the calm
+  sweep (c48c5c7e77eb; also un-nulled cradle engagement on anonymous rows, pre-existing red
+  in the quiet-skip suite).
+- inf-belt-wind (WF-11): sitting still, the near-field dust now rides a slow wind keyed to
+  the sector's palette class — core drift, brisk belt flow, cold fringe pull, wrong-heading
+  anomaly shear — handing over with the sky on the same eased transition; reduced motion
+  freezes the weather clock, never the membership (71384b4fa8c6).
+- inf-storm-crossing (WF-12 integration): the hazard zone you are dying in reads on the hull —
+  a charge beat at the boundary line keyed by the bite, then sparse deterministic static
+  crawling the hull in the family hue while you ride it (8cc0fcb90268).
+- inf-storm-body (WF-11): hazard zones have a body from two rings out — counter-rotating
+  broken arc rings plus orbiting motes in the family hue, brightness keyed on LIVE intensity
+  so the Ashfall boss-defeat aftermath visibly thins the storm on screen (7752cec23d3d).
+Verified already deep, wave 7: mining-at-rock camera read (contact flash, chips, steam,
+carved scars, seam lock pulse, fracture anticipation), capital boss death (authored debris
+families + staged breakup). Skipped: wreck aging (adjacent to a committed subject), zoom
+honesty (lives in foreign-modified LOD owners).
+
+Implemented and focused-tested, wave 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the picture side answering wave-8's brood sim):
+- inf-brood-burst-read (WF-12 integration): a brood bomb's death blast finally reads — the
+  `swarm:broodBurst` receipt had no render consumer anywhere — white-hot core flash in the
+  family's hue, a vent drifting over the blast's actual reach, a star beat outliving the
+  flash, an event light reach-keyed; strain pops wear the strain's mark tint (57011e5ee7f2).
+- inf-sac-death-voice (WF-11 repair): a burst Hive sac — the room's win lever — died an
+  anonymous rock's death; the shatter now reads the hiveSac tag: marker-green light plus a
+  two-beat membrane tear, acid breath, lit star outliving the tear 3:1; untagged rocks keep
+  today's read bit-exactly (e43025097ad9).
+- inf-brood-cascade-flush (WF-12 integration): the panic cascade and grief loop ran as motion
+  only — the view contract itself names the renderer's duty; PANIC sweeps hot pale acid green
+  with a staggered urgent pulse, GRIEF sinks to mourning slate on a slow breath; reduced
+  motion holds floor weight; unwired aggression leaves colors bit-identical (074343829194).
+- inf-jettison-claim (WF-11 repair): when YOU jettison, the pod's own transponder carries the
+  claim window — a hot parting beat easing to a steady claim burn for the embargo, relaxing
+  to anonymous exactly when the embargo lapses; per-pod cloned material, shared siblings pay
+  nothing; reduced flash drops the spike, keeps the claim (1880c12be806).
+Verified already true, wave 8: muzzle smoke in vacuum (weaponDischargePool draws flash + gas,
+no smoke card — the honesty read is already authored). Boundary noted: volatile jettison pods
+route to buildVolatilePod and carry the hazard voice, not the claim window.
+
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-brood-aggression-flush (WF-12 repair, the named wave-9 follow-up): shoot the Queen and
+  the pack rushes you burning red — the authored "filaments flush red" now reads, keyed to the
+  sim's published aggression kind, hotter and faster than panic's beat; reduced motion holds
+  a floor; unwired kinds stay bit-identical (c21d734d5545).
+- inf-storm-departure (WF-12 integration): leaving the storm sheds one last flicker of its
+  hue — thinner and slower than the entry charge, release light capped at contact grade,
+  gated on the picture actually seeing the storm ride; no lie about the damage model after
+  the line (4c0eae8a19f2).
+- inf-hull-dust-wake (WF-11 integration): a hull at cruise combs the belt's own dust off its
+  flanks, shearing away downwind with the weather — the biggest moving object in the sky no
+  longer ignores the medium; engages past 55% of the hull's own max speed (0cb50b88811e).
+- inf-gate-emergence (WF-11 integration): the gate you emerged from rebounds — discharge
+  rings shed off the throat, ion blue for gates and violet for wormholes; drive jumps land
+  far past the emergence radius and honestly get no read; transform-free, the gate mesh
+  stays owned (d82ae72db1f5).
+Verified already true, wave 9: wreck-field census (the despawn law IS the census — cap 8,
+farthest retirement with receipts), yard tow (the corridor/cradle family is the committed
+subject; no live yard-tow sim seam found). Defects for owners: `jump:arrive` omits `via`
+(world.js — presentation works around it geometrically); environmental machinery hazard
+boundaries carry no entityId (Cinder Sluice machines stay silent both directions).
 
 ## Traps — measured and rejected; do not repeat
 

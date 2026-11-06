@@ -115,8 +115,11 @@ const INIT = `(() => {
   const laneDiag = window.__laneDiag = [];
   setInterval(() => {
     try {
-      const d = window.SF && typeof window.SF.simLaneDiag === 'function' ? window.SF.simLaneDiag() : null;
-      if (d) laneDiag.push({ t: performance.now(), d });
+      const r = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.renderer;
+      const d = (window.SF && typeof window.SF.simLaneDiag === 'function' ? window.SF.simLaneDiag() : null) || {};
+      if (r) d.drawGuardDisarmed = r.renderBufferDirect === r.__sfUnreadyDrawGuardInner;
+      d.lane = window.SF && window.SF.ctx ? window.SF.ctx.simLane : null;
+      laneDiag.push({ t: performance.now(), d });
     } catch (_) { /* diag sampling is advisory */ }
   }, 250);
   let last = now();
@@ -190,6 +193,8 @@ const maxOf = (arr) => (arr.length ? Math.round(Math.max(...arr) * 100) / 100 : 
 function laneDiagSummary(diag, rows) {
   if (!diag.length) return null;
   const pick = (d) => d && d.d ? {
+    lane: d.d.lane,
+    drawGuardDisarmed: d.d.drawGuardDisarmed,
     journalRebuilds: d.d.journal && d.d.journal.rebuildPacks,
     appliedPacks: d.d.journal && d.d.journal.appliedPacks,
     retainedSegments: d.d.journal && d.d.journal.retainedSegments,
@@ -204,13 +209,14 @@ function laneDiagSummary(diag, rows) {
   } : null;
   const maxPending = Math.max(...diag.map((s) => (s.d && s.d.completedTicksPending) || 0));
   const maxCoalesce = Math.max(...diag.map((s) => (s.d && s.d.completedTickCoalescingEvents) || 0));
+  const disarmedSamples = diag.filter((s) => s.d && s.d.drawGuardDisarmed === true).length;
   // For the worst frames, attach the diag sample nearest in time so a stall can be
   // tied to a rebuild or a pending-tick surge.
   const worst = rows.filter((r) => r.dt > 150).sort((a, b) => b.dt - a.dt).slice(0, 6).map((r) => {
     const near = diag.reduce((best, s) => (best == null || Math.abs(s.t - r.t) < Math.abs(best.t - r.t)) ? s : best, null);
     return { f: r.f, dt: Math.round(r.dt), t: Math.round(r.t), nearDiag: pick(near) };
   });
-  return { samples: diag.length, first: pick(diag[0]), last: pick(diag[diag.length - 1]), maxPendingTicks: maxPending, maxCoalescingEvents: maxCoalesce, worstFrames: worst };
+  return { samples: diag.length, first: pick(diag[0]), last: pick(diag[diag.length - 1]), maxPendingTicks: maxPending, maxCoalescingEvents: maxCoalesce, drawGuardDisarmedSamples: disarmedSamples, worstFrames: worst };
 }
 
 function windowReport(gpu, frames, longTasks, windowStart, laneDiag) {

@@ -1,9 +1,10 @@
 // scripts/build-bundle.mjs — production bundle for the Electron/web release (P2-18).
 //
 // The dev path (node server.js → browser) is ZERO-BUILD: raw ES modules + an importmap resolve
-// three/rapier from vendor/. That path stays exactly as-is. This script adds a SEPARATE production
+// three/rapier from vendor/. This production build keeps Three on that vendor core and resolves
+// Rapier from node_modules. It adds a SEPARATE production
 // build: esbuild bundles src/main.js + every dynamically-imported screen into a tree-shaken,
-// minified output in build/web/, resolving three/rapier/addons from node_modules. The Electron
+// minified output in build/web/. The Electron
 // builder ships build/web/ instead of the raw src/ tree, cutting load size substantially.
 //
 // Dynamic imports: src/ui/uiRoot.js imports screens through literal import() call sites,
@@ -14,7 +15,7 @@ import * as esbuild from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   acquireReleaseBuildLock,
@@ -24,9 +25,10 @@ import {
   validateReleaseBuildReceipt,
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
-import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
+import { retailBundleAliases, retailThreeCorePlugin } from './lib/retailBundleAliases.mjs';
 import { pinVercelReleaseHtml, vercelReleaseBase } from './lib/vercelReleaseBase.mjs';
 import { buildRetailRuntimeWorkers, moduleWorkerEntryPoints, validateRetailModuleWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
+import { buildUiCssSidecars } from './lib/buildUiCssSidecars.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -35,6 +37,28 @@ const SRC = join(ROOT, 'src');
 const FINAL_OUT = join(ROOT, 'build', 'web');
 const OUT = join(ROOT, 'build', 'web.__building');
 const PREVIOUS_OUT = join(ROOT, 'build', 'web.__previous');
+
+function requestedMetafilePath() {
+  const args = process.argv.slice(2);
+  const option = args.find((arg) => arg.startsWith('--metafile='));
+  if (args.includes('--metafile') && !option) {
+    throw new Error('[bundle] use --metafile=<path> to write the optional esbuild graph');
+  }
+  if (!option) return null;
+  const value = option.slice('--metafile='.length).trim();
+  if (!value) throw new Error('[bundle] --metafile requires a file path');
+  const target = resolve(ROOT, value);
+  for (const releaseDir of [OUT, FINAL_OUT, PREVIOUS_OUT]) {
+    const withinReleaseDir = relative(resolve(releaseDir), target);
+    if (withinReleaseDir === '' || (withinReleaseDir !== '..'
+      && !withinReleaseDir.startsWith(`..${sep}`) && !isAbsolute(withinReleaseDir))) {
+      throw new Error(`[bundle] metafile must be outside retail output trees: ${target}`);
+    }
+  }
+  return target;
+}
+
+const METAFILE_OUT = requestedMetafilePath();
 
 // Count screen modules for the build log. They are imported from uiRoot.js through literal dynamic
 // import call sites, so main.js is the only entry point; adding screens here as independent entries
@@ -74,6 +98,7 @@ async function jsSize(dir) {
 
 async function build() {
   const releaseBase = vercelReleaseBase(process.env.VERCEL_URL);
+  await buildUiCssSidecars({ root: ROOT });
   await recoverPublishedOutput();
   const screens = await screenEntries();
   // bootEntry is the bundled entry: it paints the boot instrument, then imports the game graph.
@@ -101,13 +126,14 @@ async function build() {
     sourcemap: false,         // ship without sourcemaps (smaller; dev uses raw modules)
     target: [...RETAIL_BROWSER_TARGETS], // Include Safari rather than assuming Chromium syntax
     platform: 'browser',
-    // Resolve bare specifiers to the npm packages (three/rapier ship ESM in node_modules).
-    // The vendor/ copies are otherwise only for the zero-build dev path; the bundle uses node_modules...
+    // Resolve bare specifiers to npm packages (Rapier ships ESM in node_modules).
+    // The exact bare `three` specifier is redirected to the same vendor core the import map uses.
     mainFields: ['browser', 'module', 'main'],
     conditions: ['browser', 'import'],
-    // ...except the vendor-patched modules the dev importmap already loads (GLTFLoader), so dev and
-    // retail parse render packages with the same code.
+    // ...and the existing GLTFLoader alias remains pinned to its vendor copy.
     alias: retailBundleAliases(ROOT),
+    plugins: [retailThreeCorePlugin(ROOT)],
+    metafile: !!METAFILE_OUT,
     logLevel: 'info',
     // Treat dynamic imports of literal strings as code-splittable chunks (default).
     legalComments: 'none',
@@ -120,6 +146,14 @@ async function build() {
       __SPACEFACE_RELEASE_BASE__: JSON.stringify(releaseBase),
     },
   });
+
+  // Keep the optional graph outside the staged/published retail tree. It is diagnostic build
+  // metadata, never a packaged runtime file or an input to the release receipt.
+  if (METAFILE_OUT) {
+    await mkdir(dirname(METAFILE_OUT), { recursive: true });
+    await writeFile(METAFILE_OUT, `${JSON.stringify(result.metafile, null, 2)}\n`, 'utf8');
+    console.log('[bundle] esbuild metafile → ' + METAFILE_OUT);
+  }
 
   // Copy every URL-fetched runtime root from one canonical map. Ship authoring sources, Blender
   // files, evidence, rejected candidates, and previous exports are intentionally excluded: normal

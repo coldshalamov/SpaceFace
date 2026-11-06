@@ -6,8 +6,8 @@ import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 
 const EXPECTED = Object.freeze({
-  custody: Object.freeze({ branch: 'patrol', program: 'patrol_guard', variant: 'custody_watch' }),
-  force: Object.freeze({ branch: 'traders', program: 'mine_to_depot', variant: 'force_logistics' }),
+  custody: Object.freeze({ branch: 'patrol', program: 'patrol_guard', label: 'Custody Watch Drone', variant: 'custody_watch' }),
+  force: Object.freeze({ branch: 'traders', program: 'mine_to_depot', label: 'Manifest Logistics Drone', variant: 'force_logistics' }),
 });
 
 function harness(outcome) {
@@ -41,7 +41,9 @@ function harness(outcome) {
 function exerciseOutcome(outcome) {
   const h = harness(outcome);
   assert.equal(h.state.nav.waypoint.storyBeat, 6);
-  assert.match(h.state.nav.waypoint.reason, new RegExp(h.expected.program.replace(/_/g, ' '), 'i'));
+  // The tracker names the program the player picks, never the drone template id.
+  assert.match(h.state.nav.waypoint.reason, new RegExp(h.expected.label, 'i'));
+  assert.doesNotMatch(h.state.nav.waypoint.reason, new RegExp(h.expected.program.replace(/_/g, ' '), 'i'));
 
   h.bus.emit('asset:deployed', { kind: 'trader', id: 'cycle-pulse' });
   assert.equal(h.state.story.beatIndex, 6, 'an unrelated trader pulse cannot settle Empire Seed');

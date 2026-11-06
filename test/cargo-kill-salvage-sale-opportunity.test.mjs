@@ -12,6 +12,8 @@ import { economy } from '../src/systems/economy.js';
 import { lootShards } from '../src/systems/lootShards.js';
 import { mining } from '../src/systems/mining.js';
 import { missions } from '../src/systems/missions.js';
+import { save } from '../src/save/saveSystem.js';
+import { cargoKillLine, HAND_TRADE_PRESSURE_WINDOW_S } from '../src/ui/causeLedger.js';
 
 const SEED = 20901;
 const SECTOR_ID = 'sector_helios_prime';
@@ -34,11 +36,11 @@ function restoreLootFlags() {
   MASSLINE2_FLAGS.lootShards = FLAG_PRIOR.lootShards;
 }
 
-function runChain(seed) {
+function runChain(seed, verifyRestore = false) {
   enableLootFlags();
   const sim = createSimulation({
     seed,
-    systems: [lootShards, mining, cargo, economy, missions],
+    systems: [lootShards, mining, cargo, economy, missions, save],
   });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -125,6 +127,18 @@ function runChain(seed) {
   const creditsBefore = state.player.credits;
   const sale = econ.execute(SALE_STATION, COMMODITY, 'sell', 6);
   const midAfter = state.economy.markets[DEST_STATION][COMMODITY].lastMid;
+  if (verifyRestore) {
+    const fact = state.economy.cargoKillChains[0].pressureReceipts[COMMODITY];
+    assert.equal(fact.receiptId, state.player.tradeLedger[0].receiptId);
+    assert.equal(fact.stationId, DEST_STATION);
+    assert.match(cargoKillLine(state, DEST_STATION, COMMODITY), /sold at Helios/i);
+    const envelope = JSON.parse(JSON.stringify(sim.registry.get('save').serialize('kill-cause')));
+    assert.equal(sim.registry.get('save').loadEnvelope(envelope, 'kill-cause'), true);
+    assert.match(cargoKillLine(state, DEST_STATION, COMMODITY), /sold at Helios/i);
+    state.simTime = fact.seenAt + HAND_TRADE_PRESSURE_WINDOW_S + 1;
+    state.player.tradeLedger.unshift({receiptId:'unrelated',stationId:SALE_STATION,commodityId:COMMODITY,side:'sell',qty:6,seenAt:state.simTime});
+    assert.equal(cargoKillLine(state, DEST_STATION, COMMODITY), null, 'a later unrelated sale cannot revive old blame');
+  }
   const board = state.missions.boards[SALE_STATION];
   const offers = (board && board.slots || []).filter((offer) => offer && offer.source === 'cargoKillChain');
 
@@ -146,7 +160,7 @@ function runChain(seed) {
 
 test('a cargo-ship kill, salvage, and sale opens one salvage contract and moves a price', () => {
   try {
-    const first = runChain(SEED);
+    const first = runChain(SEED, true);
     const second = runChain(SEED);
 
     assert.equal(first.sale.ok, true, 'the salvaged goods sell through economy.execute');
@@ -301,5 +315,45 @@ test('only hulls that can spill a manifest body open chains; custody pods close 
       'a mission-owned hull cannot open a chain');
   } finally {
     restoreLootFlags();
+  }
+});
+
+test('one bulk sale redeems all outstanding salvaged lots in ledger order', () => {
+  const sim = createSimulation({ seed: 20902, systems: [economy] });
+  const { state, bus } = sim;
+  state.world.currentSectorId = SECTOR_ID;
+  state.player.credits = 100_000;
+  state.player.cargo = {
+    items: { [COMMODITY]: 10 }, usedVolume: 10, usedMass: 10, capVolume: 100, capMass: 100,
+  };
+  const makeChain = (id, victimId, manifestId, qty) => ({
+    id, victimId, manifestId, sectorId: SECTOR_ID, pos: { x: 12, z: 34 },
+    commodityId: COMMODITY,
+    lines: [{ commodityId: COMMODITY, qty }],
+    originStationId: SALE_STATION, destStationId: DEST_STATION,
+    salvaged: { [COMMODITY]: qty }, redeemed: {}, closed: false,
+  });
+  state.economy.cargoKillChains = [
+    makeChain('chain:first', 'victim:first', 'manifest:first', 3),
+    makeChain('chain:second', 'victim:second', 'manifest:second', 4),
+  ];
+  const opportunities = [];
+  bus.on('economy:cargoKillOpportunity', payload => opportunities.push(payload));
+
+  try {
+    const econ = sim.registry.get('economy');
+    econ.ensureMarket(SALE_STATION);
+    econ.ensureMarket(DEST_STATION);
+    const sale = econ.execute(SALE_STATION, COMMODITY, 'sell', 10);
+
+    assert.equal(sale.ok, true, `bulk sale succeeds: ${sale.reason || ''}`);
+    assert.equal(state.player.cargo.items[COMMODITY] || 0, 0,
+      'all ten units in the hold were sold, including the three non-chain units');
+    assert.deepEqual(state.economy.cargoKillChains.map(chain => chain.closed), [true, true]);
+    assert.deepEqual(opportunities.map(row => row.chainId), ['chain:first', 'chain:second']);
+    assert.deepEqual(opportunities.map(row => row.qty), [3, 4]);
+  } finally {
+    sim.dispose();
+    economy._instance = null;
   }
 });

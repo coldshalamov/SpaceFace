@@ -35,6 +35,7 @@ import {
   uniqueWreckSilverDraftCleaner,
 } from './uniqueWreckEncounterScripts.js';
 import { markEntityGhost } from './scanner.js';
+import { weirAmbush } from './encounterScripts/weirAmbush.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE, mineCorridorLayout } from './mines.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
@@ -403,6 +404,11 @@ const patrolScan = {
     if (choiceId === 'run') {
       // No attack on a clean (or even suspected) runner — no scan, no proof. The consequence is a
       // transponder flag: a small rep nick. WANTED heat only ever comes from heat's own inputs.
+      d.emit('customs:breakScan', {
+        factionId: live.factionId || 'faction_scn',
+        patrolId: d.entsOf(live)[0]?.id ?? null,
+        stationId: live.data && live.data.stationId || null,
+      });
       d.rep('faction_scn', -3, 'scan_refused');
       d.say(live, 'bark', 'patrol_scan_refused');
       d.despawnAll(live, 40);
@@ -420,12 +426,26 @@ const patrolScan = {
       if (fine <= 0) return;
       const cost = Math.round(fine * 0.3);
       if ((state.player.credits | 0) < cost) return;    // cannot afford → choice unavailable
-      d.emit('contraband:bribe', { fine });             // economy charges 30% (single writer)
+      // The economy writer returns its decision on this synchronous intent. Do not tell the
+      // patrol the pilot paid (or despawn/close the offer) unless the wallet debit committed.
+      const payment = { fine, encounterId: live.id, result: null };
+      d.emit('contraband:bribe', payment);
+      if (!payment.result || payment.result.ok !== true) return;
       d.rep('faction_scn', -2, 'bribe');
       d.despawnAll(live, 40);
       return d.resolve(live, 'bribed');
     }
-    // submit / comply — run the real customs machinery (economy owns fines/confiscation/rep/heat)
+    // submit / comply — acknowledge the pilot's choice, then run the real customs machinery
+    // (economy owns fines/confiscation/rep/heat). The generic scan fact is emitted after resolution
+    // and is not a UI decision signal; this is the actionable, pre-scan owner path.
+    if (choiceId === 'submit' || choiceId === 'comply') {
+      const submitLeader = d.entsOf(live)[0];
+      d.emit('customs:submit', {
+        factionId: live.factionId || 'faction_scn',
+        patrolId: submitLeader ? submitLeader.id : null,
+        stationId: live.data && live.data.stationId || null,
+      });
+    }
     const leader = d.entsOf(live)[0];
     const player = d.player();
     if (!patrolCanInitiateScan(state, leader, player)) {
@@ -3280,6 +3300,34 @@ const convoy = {
     tickFreightCargoCustody(d, live, state, now);
   },
   event(d, live, state, name, p) {
+    if (name === 'openingCarrierEscaped') {
+      // Only the freight owner may retire its pre-spill marker. A real ledger, recovery
+      // persistence, or mismatched identity belongs to another lifecycle and stays untouched.
+      if (live.shapeId !== 'opening_hauler_raid' || live.data.freightCargoCustody
+          || !p || p.carrierId !== live.data.predationTargetId) return;
+      const carrier = state.entities?.get(p.carrierId);
+      const data = carrier && carrier.data;
+      const stamp = data && data.freightCustody;
+      const manifest = data && data.cargoManifest;
+      const identity = live.data.predationTargetIdentityKey;
+      if (!carrier || carrier.alive === false || carrier.occupantGeneration !== p.generation
+          || live.roles?.[carrier.id] !== 'hauler' || !identity || !stamp
+          || data.freightCustodyCarrierIdentityKey !== identity || carrier[FREIGHT_CARRIER_INSTANCE] !== identity
+          || (data.predationEncounterId && data.predationEncounterId !== live.id)
+          || stamp.encounterId !== live.id || stamp.status !== 'carrier'
+          || stamp.carrierId !== carrier.id || stamp.carrierIdentityKey !== identity
+          || data.freightCustodyPersistence || !manifest || stamp.manifestId !== p.manifestId
+          || manifest.manifestId !== p.manifestId || Number(manifest.totalQty) !== p.totalQty
+          || !Array.isArray(manifest.lines)
+          || JSON.stringify(manifest.lines.map((line) => [line.commodityId, line.qty])) !== p.lines) return;
+      delete data.freightCustody;
+      delete data.freightCustodyCarrierIdentityKey;
+      delete carrier[FREIGHT_CARRIER_INSTANCE];
+      if (data.predationEncounterId !== live.id && data.predationIdentityKey === stamp.carrierIdentityKey) {
+        delete data.predationIdentityKey;
+      }
+      return;
+    }
     if (name === 'subsystemDisabled') {
       if (!p || p.subsystemId !== 'subsystem_drive') return;
       if (p.targetId === live.data.predationTargetId) {
@@ -4145,4 +4193,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
   uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
   uniqueWreckCeresRefineryTender: withShapeMeter(uniqueWreckCeresRefineryTender),
+  weirAmbush: withShapeMeter(weirAmbush),
 });

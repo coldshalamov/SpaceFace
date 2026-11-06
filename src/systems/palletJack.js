@@ -12,6 +12,7 @@ import { sweepCollisionProxyInto } from '../core/collisionProxySweep.js';
 import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { primitiveBlocksSegment } from '../combat/lineOfSight.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
+import { readPalletJackMotionFrame } from '../contracts/palletJackMotionFrame.js';
 
 const owners = new WeakMap(), terminal = new Set(['destroyed', 'collected']);
 const clone = value => structuredClone(value);
@@ -57,6 +58,9 @@ export const palletJack = {
     on('palletJack:drop', p => this.demandDrop(p));
     on('palletJack:trail', p => { if (p?.incidentId != null && p.incidentId === this._row.incident?.id) this.plotTrail(); });
     on('scan:pulse', p => { if (p?.source === 'player-scanner' && p.scannerId === this.state.playerId) this.offer(); });
+    on('cargo:jettisoned', () => {
+      if (!this._row.introduced && this._eligible()) this._nextRequest = Math.min(this._nextRequest, this.state.simTime || 0);
+    });
     // A pickup payload without pickupId (uniqueWrecks' salvage grant emits none) must never
     // match the incident's cargo entity — undefined === undefined would slip the guard open.
     on('pickup:collected', p => { const cargo = this._find('cargo');
@@ -256,6 +260,9 @@ export const palletJack = {
     const receipt = { id: `${r.id}:release`, kind: 'release', reason: r.releasePending,
       targetCargoId: r.targetCargoId, atTick: this.state.tick };
     r.receipts.push(receipt); r.releasePending = null; this._phase(r.actorDestroyed ? 'lost' : 'drop');
+    // A renderer may draw before the next simulation tick. Publish the same-tick frame now so
+    // the main-thread read model observes the accepted release without consulting owner state.
+    this._view();
     this.bus.emit('palletJack:released', clone(receipt));
     this._cue(r.actorDestroyed ? 'THIEF LOST — the original load remains separate.'
       : 'CLAMP OPEN — cargo recovered. The thief can leave alive. No transfer or second payment.');
@@ -290,16 +297,27 @@ export const palletJack = {
     if (['approach', 'target', 'grab', 'acquiring'].includes(r.phase) && c) {
       faceAngle = r.phase === 'approach' ? Math.atan2(c.pos.z - a.pos.z, c.pos.x - a.pos.x) : r.grabAngle;
       const cradle = palletJackCradleSocket();
+      const elapsed = Math.max(0, this.state.tick - (r.grabStartTick ?? this.state.tick)) / 60;
+      const drift = r.grabVelocity || { x: 0, z: 0 };
       flightPoint = r.phase === 'approach' ? { x: c.pos.x - Math.cos(faceAngle) * cradle.x,
-        z: c.pos.z - Math.sin(faceAngle) * cradle.x } : r.grabPose || a.pos;
-      flightVelocity = r.phase === 'approach' ? { ...c.vel } : { x: 0, z: 0 };
+        z: c.pos.z - Math.sin(faceAngle) * cradle.x } : {
+          x: (r.grabPose || a.pos).x + drift.x * elapsed,
+          z: (r.grabPose || a.pos).z + drift.z * elapsed,
+        };
+      // Keep the committed load's original drift during the tell. A player-applied change
+      // to its motion still escapes the jaws; no body pose or velocity is written here.
+      flightVelocity = r.phase === 'approach' ? { ...c.vel } : { ...drift };
     } else if (['negotiating', 'drop'].includes(r.phase)) flightPoint = a.pos;
     else faceAngle = Math.atan2(r.routeEndpoint.z - a.pos.z, r.routeEndpoint.x - a.pos.x);
     a.data.palletJack = { phase: r.phase, phaseStartTick: r.phaseStartTick, targetEntityId: c?.id ?? null,
       flightPoint: { ...flightPoint }, flightVelocity, faceAngle, loaded: !!this._line() };
+    // Worker-owned encounter state cannot be recovered from the renderer's mirrored state.
+    // Publish only the bounded frame consumed by the authored clamp driver.
+    a.palletJackMotionFrame = encodePalletJackMotionFrame(palletJackPresentation(this.state, a));
   },
   _drive() {
-    const r = this._row.incident, a = this._find('actor'), c = this._find('cargo'); if (!r || !a) return;
+    const r = this._row.incident, a = this._find('actor'), c = this._find('cargo');
+    if (!r || !a) { if (a) a.palletJackMotionFrame = null; return; }
     if (r.releasePending) { this.release(r.releasePending); return; }
     if (r.phase === 'acquiring' && r.restoreDeadlineTick != null) {
       if (this._line()) { this._publishClamp(); this._phase(r.resumePhase === 'escaped' ? 'escaped' : 'escape');
@@ -311,7 +329,9 @@ export const palletJack = {
     if (!palletJackCargoEligible(c, this.state.simTime, true)) { this.release('custody_changed'); return; }
     const tick = this.state.tick;
     if (r.phase === 'approach' && this._grabGate()) {
-      r.grabPose = { ...a.pos }; r.grabAngle = a.rot; this._phase('target');
+      r.grabPose = { ...a.pos }; r.grabAngle = a.rot;
+      r.grabVelocity = { x: c.vel.x, z: c.vel.z }; r.grabStartTick = tick;
+      this._phase('target');
       this._cue('CLAMP REACHING — move the load before the jaws close.');
     } else if (r.phase === 'target' && tick - r.phaseStartTick >= C.targetTicks) {
       r.grabAttackId++; this._phase('grab');
@@ -414,10 +434,19 @@ export const palletJack = {
       || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')) return;
     this._lastTick = state.tick; this._capture(); this._materialize(); this._drive();
     if (!this._row.introduced && this._eligible() && state.simTime >= this._nextRequest) {
-      this._nextRequest = state.simTime + C.requestSeconds; const c = this._candidate();
-      if (c) this.ctx.registry?.get('encounterDirector')?.requestAuthoredEncounter({ shapeId: C.encounterId,
-        encounterId: 'pallet-jack:first-load', sectorId: state.world.currentSectorId,
-        anchor: { x: c.pos.x - 100, z: c.pos.z + 70 }, respectPacing: true });
+      const director = this.ctx.registry?.get('encounterDirector'), c = this._candidate();
+      if (c) {
+        this._nextRequest = state.simTime + C.requestSeconds;
+        const payload = { shapeId: C.encounterId, encounterId: 'pallet-jack:first-load',
+          sectorId: state.world.currentSectorId, anchor: { x: c.pos.x - 100, z: c.pos.z + 70 },
+          zoneRadius: C.searchRadius + 250, respectPacing: true };
+        director?.requestAuthoredEncounter(payload);
+      } else {
+        // A newly jettisoned body may need one Rapier sync before `_native` can admit it. Poll
+        // absent cargo at one-second cadence; the normal five-second retry begins only after a
+        // real native eligible load exists.
+        this._nextRequest = state.simTime + 1;
+      }
     }
   },
   serialize() { this._capture(); return clone(this._row); },
@@ -479,12 +508,25 @@ export const palletJack = {
 
 export function palletJackPresentation(state, entity) {
   const owner = owners.get(state), r = owner?._row.incident, a = owner?._find('actor');
+  if (!owner) return readPalletJackMotionFrame(state, entity);
   if (!r || entity !== a || state.mode !== 'flight' || r.phaseStartTick > state.tick) return null;
   const c = owner._find('cargo'), nativeReady = !!owner._native(a), line = nativeReady && owner._line();
-  return { phase: r.phase, phaseStartTick: r.phaseStartTick, tick: state.tick, ownerLife: a.occupantGeneration,
+  return { phase: r.phase, phaseStartTick: r.phaseStartTick, tick: state.tick, actorId: a.id, ownerLife: a.occupantGeneration,
     sourceRevision: a.physicsBody?.revision, nativeBodyReady: nativeReady, targetCargoId: r.targetCargoId,
     targetEntityId: c?.id ?? null, targetLife: c?.occupantGeneration ?? null,
     grabAttackId: r.grabAttackId, grabStartTick: r.phase === 'grab' ? r.phaseStartTick : null,
     acceptedAttachmentId: line?.id || null, loaded: !!line,
     lastRelease: r.receipts.findLast(p => p.kind === 'release') || null };
+}
+
+function encodePalletJackMotionFrame(frame) {
+  if (!frame) return null;
+  const release = frame.lastRelease;
+  return JSON.stringify({ v: 1, phase: frame.phase, phaseStartTick: frame.phaseStartTick,
+    tick: frame.tick, actorId: frame.actorId, ownerLife: frame.ownerLife, nativeBodyReady: frame.nativeBodyReady === true,
+    targetCargoId: frame.targetCargoId ?? null, targetEntityId: frame.targetEntityId ?? null,
+    targetLife: frame.targetLife ?? null, grabAttackId: frame.grabAttackId ?? null,
+    grabStartTick: frame.grabStartTick ?? null, acceptedAttachmentId: frame.acceptedAttachmentId ?? null,
+    loaded: frame.loaded === true, release: release ? { id: release.id, atTick: release.atTick,
+      targetCargoId: release.targetCargoId ?? null } : null });
 }

@@ -5,6 +5,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { economy } from '../src/systems/economy.js';
 import { world } from '../src/systems/world.js';
+import { stationTradeMults } from '../src/economy/stationConditions.js';
 import { quoteProvenance, knownStationQuotes } from '../src/ui/marketIntelligence.js';
 import { describeTradeIntel, computeBestTrades } from '../src/ui/market/tradeLogic.js';
 
@@ -64,8 +65,11 @@ test('a fitted uplink streams every sector station live, tagged market-uplink pr
       assert.equal(intel.seenAtT, 123);
       assert.equal(memory[IRON].source, 'uplink');
       assert.equal(memory[IRON].seenAt, 123);
-      assert.equal(memory[IRON].buy, market[IRON].lastBuy);
-      assert.equal(memory[IRON].sell, market[IRON].lastSell);
+      // The feed remembers what the berth would charge: the book price under its trade fold
+      // (market day, festival, strike, blockade), rounded like every remembered quote.
+      const fold = stationTradeMults(state, stationId);
+      assert.equal(memory[IRON].buy, Math.round(market[IRON].lastBuy * fold.buy));
+      assert.equal(memory[IRON].sell, Math.round(market[IRON].lastSell * fold.sell));
     }
   } finally {
     sim.dispose();

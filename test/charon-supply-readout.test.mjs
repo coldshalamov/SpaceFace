@@ -89,8 +89,9 @@ function emitted(bus, name) {
 
 class El {
   constructor(tag) { this.tagName=tag;this.children=[];this.attrs={};this.style={};this.dataset={};this.hidden=false;this.nodes={};this.listeners={};const c=new Set();this.classList={add:(...x)=>x.forEach(v=>c.add(v)),remove:(...x)=>x.forEach(v=>c.delete(v)),contains:x=>c.has(x),toggle:(x,b)=>b?c.add(x):c.delete(x)}; }
-  set innerHTML(html) { for(const key of html.matchAll(/data-k="([^"]+)"/g)) { const el=new El('div');this.nodes[key[1]]=el;this.appendChild(el); } }
+  set innerHTML(html) { for(const key of html.matchAll(/data-k="([^"]+)"/g)) { const el=new El('div');this.nodes[key[1]]=el;this.appendChild(el); } if (this.nodes.panel) this.nodes.panel.nodes = this.nodes; }
   querySelector(selector) { return this.nodes[/data-k="([^"]+)"/.exec(selector)?.[1]]; }
+  getBoundingClientRect(){return {left:0,top:0,width:0,height:0};}
   setAttribute(k,v){this.attrs[k]=String(v);} removeAttribute(k){delete this.attrs[k];}
   appendChild(n){this.children.push(n);return n;} replaceChildren(...n){this.children=n;}
   addEventListener(n,f){this.listeners[n]=f;} removeEventListener(){} remove(){} contains(n){return this===n||this.children.includes(n);} focus(){document.activeElement=this;}

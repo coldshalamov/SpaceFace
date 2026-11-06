@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { TITLE_ATTRACT_TAPE } from '../src/sim/titleAttractTapeData.js';
+import { readFileSync } from 'node:fs';
 import { decodeTape } from '../src/sim/titleAttractTape.js';
 import { buildTitleAttractStage, attractPlaybackTape } from '../src/render/titleAttractStage.js';
 import { createReplayWeaponStage } from '../src/render/replayWeaponStage.js';
 import { resolveWeaponRecipe } from '../src/render/weapons/recipes.js';
+
+const TITLE_ATTRACT_TAPE = JSON.parse(readFileSync(
+  new URL('../src/sim/titleAttractTapeData.json', import.meta.url), 'utf8'));
 
 test('each 15-second chapter records catch, a real swing, release, measured collision and a field', () => {
   const tape = decodeTape(TITLE_ATTRACT_TAPE);
@@ -27,14 +30,14 @@ test('each 15-second chapter records catch, a real swing, release, measured coll
     assert.ok(tape.forces.slice((lo + 570) / 2, (lo + 650) / 2).some((f) => f.fields.length));
   }
   assert.ok(tape.shots.weapons.every(Boolean), 'actual weapon identity survives the packed tape');
-  assert.equal(attractPlaybackTape().ships.length, 20, 'recycled sim ids are separate recorded lives');
+  assert.equal(attractPlaybackTape(TITLE_ATTRACT_TAPE).ships.length, 20, 'recycled sim ids are separate recorded lives');
 });
 
 test('title uses the shared rope renderer and caps reduced flashes in the same stage as kill-cam', async () => {
   const geometry = new THREE.BoxGeometry(6, 2, 4), material = new THREE.MeshStandardMaterial();
   const io = { async loadPart() { return { primitives: [{ name: 'hull', geometry, material, matrix: new THREE.Matrix4() }] }; } };
   const built = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(42, 16 / 9), clock: 20 };
-  const stage = await buildTitleAttractStage(built, io);
+  const stage = await buildTitleAttractStage(built, io, TITLE_ATTRACT_TAPE);
   try {
     assert.equal(stage.ready, true);
     stage.update(built, 1 / 60, { settings: {} });

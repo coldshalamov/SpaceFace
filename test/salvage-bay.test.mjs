@@ -23,6 +23,20 @@ import {
   SALVAGE_BAY, addSalvage, cargo, cashInSalvage, salvageBayCap, salvageBayReading,
 } from '../src/systems/cargo.js';
 import { save } from '../src/save/saveSystem.js';
+import { salvageBaySaleAllowsIllicit } from '../src/economy/stationMarketProfile.js';
+import { salvageBaySaleAllowsIllicit as legacySalvagePolicy } from '../src/systems/economy.js';
+
+test('salvage market policy shares the economy reader and respects runtime station overrides', () => {
+  assert.equal(legacySalvagePolicy, salvageBaySaleAllowsIllicit);
+  const state = { ui: { dockedStationId: 'station_smuggler' } };
+  assert.equal(salvageBaySaleAllowsIllicit(state), true);
+  assert.equal(salvageBaySaleAllowsIllicit(state, 'station_helios'), false);
+  assert.equal(salvageBaySaleAllowsIllicit(state, 'unknown'), false);
+  state.content = { sectors: { test: { stations: [{ id: 'station_smuggler', type: 'trade_hub' }] } } };
+  assert.equal(salvageBaySaleAllowsIllicit(state), false, 'runtime station type overrides the static catalog');
+  state.content.sectors = [{ stations: [{ id: 'station_helios', type: 'blackmarket' }] }];
+  assert.equal(salvageBaySaleAllowsIllicit(state, 'station_helios'), true);
+});
 
 const SCRAP = COMMODITIES.find((c) => c.id === 'cmdty_scrap_metal');
 const OTHER = COMMODITIES.find((c) => c.id !== 'cmdty_scrap_metal' && c.basePrice > 0 && !c.persistent && c.volPerU <= 1);

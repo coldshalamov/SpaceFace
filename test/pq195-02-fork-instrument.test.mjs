@@ -163,7 +163,7 @@ test('each kernel phase maps to the §5 vocabulary, never a raw FSM id', () => {
 
 test('too-fast and misaligned samples map to the actionable §5 wording', () => {
   const fast = classifyForkInstrument({ phase: 'outside', speed: 155, speedLimit: 100, lateral: 0 });
-  assert.equal(fast.statusWord, 'Approach at 100 WU/s or less');
+  assert.equal(fast.statusWord, 'Approach at 100 u/s or less');
   assert.equal(fast.statusKey, 'too_fast');
   assert.equal(fast.tooFast, true);
   assert.match(fast.guidanceWord, /slow/i, 'the fast state also says to slow down');
@@ -190,7 +190,7 @@ test('the read model reports identity, speed vs limit, alignment and phase for a
   assert.equal(braking.identity, 'SP-07 flywheel assembly');
   assert.equal(braking.phase, 'braking');
   assert.equal(braking.statusWord, 'Arresting load');
-  assert.equal(braking.speedText, '42 / 100 WU/s');
+  assert.equal(braking.speedText, '42 / 100 u/s');
   assert.equal(braking.alignmentWord, 'In the fork bay');
   assert.equal(braking.statusKey, 'braking');
   assert.match(braking.ariaLabel, /SP-07 flywheel assembly/);
@@ -228,7 +228,7 @@ test('the instrument mounts into .sf-leftcontext only while live and fully unmou
     assert.equal(root.parentNode, dom.host, 'inside the existing contextual column');
     assert.match(root.textContent, /SP-07 flywheel assembly/);
     assert.match(root.textContent, /Arresting load/);
-    assert.match(root.textContent, /30 \/ 100 WU\/s/);
+    assert.match(root.textContent, /30 \/ 100 u\/s/);
 
     assert.equal(instrument.update(idleState()), null);
     assert.equal(instrument.mounted, false, 'unmounts when the situation ends');
@@ -276,10 +276,10 @@ test('a too-fast approach yields the slow-down wording before any contact', () =
     assert.equal(model.phase, 'outside', 'no contact yet — still outside the mouth');
     assert.equal(model.acquired, false);
     assert.equal(model.statusKey, 'too_fast');
-    assert.equal(model.statusWord, 'Approach at 100 WU/s or less');
-    assert.equal(model.speedText, '155 / 100 WU/s');
+    assert.equal(model.statusWord, 'Approach at 100 u/s or less');
+    assert.equal(model.speedText, '155 / 100 u/s');
     const shown = instrument.root.textContent;
-    assert.match(shown, /Approach at 100 WU\/s or less/);
+    assert.match(shown, /Approach at 100 u\/s or less/);
     assert.match(shown, /slow/i, 'the surface tells the player to slow down, in words');
     assert.ok(!/credits|paid|custody confirmed/i.test(shown), 'it must not claim payment or custody');
     instrument.destroy();

@@ -15,6 +15,12 @@ function busOf(log) {
     on(event, handler) {
       (handlers[event] = handlers[event] || []).push(handler);
     },
+    off(event, handler) {
+      const list = handlers[event];
+      if (!list) return;
+      const index = list.indexOf(handler);
+      if (index >= 0) list.splice(index, 1);
+    },
     emit(event, payload) {
       log.push({ event, payload });
       for (const handler of handlers[event] || []) handler(payload);

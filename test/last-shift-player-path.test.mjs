@@ -15,8 +15,8 @@ function fixture(){const bus=createBus(),prompt={...lastShiftPrompt},events=[];l
 test('actual main registry owns the Last Shift source register',()=>{
  assert.equal(createRegistry({state:createGameState(18),bus:createBus(),helpers:{},simLane:'worker'}).get('lastShiftPrompt'),lastShiftPrompt);
 });
-test('exact production gate contains five Last Shift routes and preserves Ilex/Towline',()=>{
- assert.deepEqual([...gate].filter(x=>x.startsWith('lastShift:')).sort(),['archive','cancelRecovery','cueSurfaced','recover','returnRecorder'].map(x=>`lastShift:${x}`));
+test('exact production gate contains current Last Shift routes and preserves Ilex/Towline',()=>{
+ assert.deepEqual([...gate].filter(x=>x.startsWith('lastShift:')).sort(),['archive','cancelRecovery','cueSurfaced','readRecovery','recover','returnRecorder'].map(x=>`lastShift:${x}`));
  assert.deepEqual([...gate].filter(x=>x.startsWith('ilexArk:')).sort(),['accept','course','deliver','finish'].map(x=>`ilexArk:${x}`));
  assert.deepEqual([...gate].filter(x=>x.startsWith('towlineTable:')).sort(),['assist','course','deliver','release','take'].map(x=>`towlineTable:${x}`));
  for(const id of ['offer','cue','archived','recorderReturned','inspect','destroy'])assert.equal(gate.has(`lastShift:${id}`),false);
@@ -36,7 +36,7 @@ test('production registry owns the prompt on main and the actual worker offer/ac
   const {LAST_SHIFT:C,LAST_SHIFT_POS}=await import('../src/data/lastShift.js');
   const {laneCommandSink,uninstallSimCommandSink,installSimCommandSink}=await import('../src/core/simLaneCommands.js');
   const {default:contract}=await import('../src/data/scenarios/47a.scenario.json',{with:{type:'json'}});
-  const oldDocument=globalThis.document,oldStorage=globalThis.localStorage,worker=createSimHost(),state=createGameState(806),bus=createBus(),entries=new Map(),events=[];
+  const oldDocument=globalThis.document,oldStorage=globalThis.localStorage,worker=createSimHost(),state=createGameState(806),bus=createBus(),entries=new Map();
   let deliver,registry;let commandsDone=Promise.resolve();const saved=[];
   // Same-process bridge harness: hide the main-only DOM and command sink in worker calls.
   const asWorker=async fn=>{const sink=laneCommandSink(),doc=globalThis.document;uninstallSimCommandSink();delete globalThis.document;try{return await fn();}finally{globalThis.document=doc;if(sink)installSimCommandSink(sink);}};
@@ -45,17 +45,19 @@ test('production registry owns the prompt on main and the actual worker offer/ac
       if(message.kind==='init')asWorker(()=>worker.init({...structuredClone(message),scenarioContract:contract}))
         .then(reply=>deliver(structuredClone({kind:'ready',seq:message.seq,...reply})))
         .catch(e=>deliver({kind:'error',seq:message.seq,message:String(e)}));
-      if(message.kind==='clockCommand') commandsDone=commandsDone.then(async()=>{
+      // A real worker receives the command on a later task in its own realm. Yielding
+      // here prevents the fixture's temporary sink removal from covering main microtasks.
+      if(message.kind==='clockCommand') commandsDone=commandsDone.then(()=>new Promise(resolve=>setImmediate(resolve))).then(async()=>{
         assert.equal(message.steps,0,'fixture must not step production/native world');
         const reply=await asWorker(()=>worker.tick({...structuredClone(message),kind:'tick',steps:0}));
         deliver(structuredClone({kind:'clockTick',...reply,commandSequence:message.commandSequence}));
       });
     }})});
   setPromptDeck({offerDecision(s){entries.set(s.id,s);return true;},resolveDecision(id){return entries.delete(id);}});
-  const nodes=[];let showToast=false;const acks=[];
+  const nodes=[];let showToast=false;const acks=[],ackSinks=[];
 
   bus.on('toast',p=>{if(showToast)nodes.push({isConnected:true,textContent:p.text});});
-  bus.on('lastShift:cueSurfaced',p=>acks.push(p));
+  bus.on('lastShift:cueSurfaced',p=>{acks.push(p);ackSinks.push(!!laneCommandSink());});
   try {
     await lane.readyPromise;
   globalThis.document={body:{dataset:{sfHudJob:'mine'}},getElementById:id=>id==='toasts'?{querySelectorAll:()=>nodes}:null};
@@ -72,25 +74,46 @@ test('production registry owns the prompt on main and the actual worker offer/ac
     authority.missions.completedLog=[{type:'cargo_delivery',success:1}];
     const player=runtime.spawn(makeShipEntitySpec('ship_kestrel',{isPlayer:true,player:authority.player,pos:{x:LAST_SHIFT_POS.x,z:LAST_SHIFT_POS.z},fittings:[]}));authority.playerId=player.id;
     state.mode='flight';
-    const flush=async()=>{const reply=await asWorker(()=>worker.tick({kind:'tick',steps:0,tick:0,commands:[]}));deliver(structuredClone({kind:'clockTick',...reply}));await Promise.resolve();await commandsDone;};
+    const drain=async()=>{for(;;){const current=commandsDone;await current;if(current===commandsDone)return;}};
+    // Injected worker-local channels have no autonomous clock. Publish the real host's
+    // queued events on a zero-step reply, then let actual main-to-worker commands drain.
+    const flush=async()=>{
+      lane.runner.prepareWithoutAdvance();await drain();
+      const reply=await asWorker(()=>worker.tick({kind:'tick',steps:0,commands:[],generation:0}));
+      deliver(structuredClone({kind:'clockTick',...reply}));
+      await Promise.resolve();await drain();
+    };
     await asWorker(()=>owner.update(1/60,authority));await flush();
     assert.equal(owner._row.surfaced,false,'DOM root and offer acceptance do not count as presentation');assert.equal(acks.length,0);
-    showToast=true;authority.simTime=6;await asWorker(()=>owner.update(1/60,authority));await flush();
-    assert.equal(owner._row.surfaced,true,'actual matching connected text acknowledges through production gate');assert.equal(acks.length,1);
+    showToast=true;authority.simTime=6;await asWorker(()=>owner.update(1/60,authority));await flush();await flush();
+    assert.equal(owner._row.surfaced,true,'actual matching connected text acknowledges through production gate');
+    assert.equal(acks.length,1);assert.deepEqual(ackSinks,[true],'main command sink is available for the acknowledgement');
     assert.deepEqual(owner._row.knownClueIds,[],'arrival never reads evidence');assert.equal(owner._row.receipts.length,0);
     const recorder=owner._find('recorder');player.pos.copy(recorder.pos);
     await asWorker(()=>owner.inspect(recorder.id));await flush();
     let card=entries.get('last-shift:evidence');assert.ok(card);assert.match(card.detail,/incomplete/);
     assert.deepEqual(owner._row.knownClueIds,['recorder']);
-    card.onChoose('recover');await commandsDone;assert.equal(owner._row.recoveryActive,true);
-    card=entries.get('last-shift:evidence');assert.ok(card.choices.some(c=>c.id==='sources'));
-    card.onChoose('sources');let sources=entries.get('last-shift:evidence');assert.match(sources.detail,/incomplete/);
-    assert.equal(card.onChoose('cancelRecovery'),false,'source toggle retires prior callback');
-    sources.onChoose('guidance');entries.get('last-shift:evidence').onChoose('cancelRecovery');await commandsDone;
-    assert.equal(owner._row.recoveryActive,false);assert.deepEqual(owner._row.knownClueIds,['recorder']);
-    entries.get('last-shift:evidence').onChoose('archive');await commandsDone;
-    bus.emit('lastShift:archive',{revision:owner._row.revision});await commandsDone;
+    const recorderBeforeDirections=owner._find('recorder'),creditsBeforeDirections=authority.player.credits;
+    assert.equal(card.choices.some(c=>c.id==='recovery'),true,'read evidence unlocks optional recovery directions');
+    assert.equal(card.choices.some(c=>c.id==='return'),false,'directions do not bypass a physical tow');
+    card.onChoose('recovery');await flush();
+    let recovery=entries.get('last-shift:evidence');assert.match(recovery.detail,/Optional: tow the original recorder/);
+    assert.ok(recovery.choices.some(c=>c.id==='advice'));assert.ok(recovery.choices.some(c=>c.id==='back'));
+    assert.equal(owner._row.bodies.recorder.status,'live');assert.equal(owner._row.recoveryActive,false);
+    assert.deepEqual(owner._row.knownClueIds,['recorder']);assert.equal(owner._row.receipts.length,0);
+    assert.equal(authority.player.credits,creditsBeforeDirections);assert.equal(owner._find('recorder'),recorderBeforeDirections);
+    const staleRecovery=recovery;recovery.onChoose('advice');
+    let advice=entries.get('last-shift:evidence');assert.match(advice.detail,/Keep separation/);
+    assert.equal(staleRecovery.onChoose('back'),false,'advice page retires the prior recovery callback');
+    advice.onChoose('back');await flush();
+    recovery=entries.get('last-shift:evidence');assert.match(recovery.detail,/Optional: tow the original recorder/);
+    const staleAdvice=advice;recovery.onChoose('back');await flush();
+    let sources=entries.get('last-shift:evidence');assert.match(sources.detail,/incomplete/);
+    assert.equal(staleAdvice.onChoose('archive'),false,'returning to sources retires the advice callback');
+    assert.ok(sources.choices.some(c=>c.id==='archive'));
+    sources.onChoose('archive');await flush();
     assert.equal(owner._row.receipts.length,1);assert.deepEqual(owner._row.receipts[0].clueIds,['recorder']);
+    assert.equal(authority.player.credits,creditsBeforeDirections);
     assert.equal(dossArchiveEvidence(authority).find(e=>e.id==='ceres_last_shift')?.detail,'1 source');
     assert.match(dossArchiveEvidence(authority).find(e=>e.id==='ceres_last_shift').copy,/incomplete/);
     const before=authority.player.credits;
@@ -107,13 +130,19 @@ test('production registry owns the prompt on main and the actual worker offer/ac
       assert.ok(card.choices.some(c=>c.id==='return'));card.onChoose('return');await commandsDone;
       assert.equal(owner._row.bodies.recorder.status,'returned');assert.ok(owner._row.recorderReturn);
       assert.equal(authority.player.credits,before);assert.deepEqual(owner._row.knownClueIds,['recorder']);
+      await flush();
+      const returnedCard=entries.get('last-shift:evidence');
+      assert.match(returnedCard.statusFlag,/REPORT FILED.*ORIGINAL RETURNED/);
+      assert.ok(!returnedCard.choices.some(c=>c.id==='archive'),'return must not reopen the same filed account');
       const receipt=structuredClone(owner._row.recorderReturn),saved=structuredClone(owner._row.receipts),save=owners.get('save');
       const old=entries.get('last-shift:evidence');assert.equal(await asWorker(()=>save.loadEnvelope(save.serialize('last-shift-player-path'))),true);await flush();
       assert.equal(old.onChoose('archive'),false);assert.equal(card.onChoose('return'),false);
       assert.equal(owner._row.surfaced,true);assert.deepEqual(owner._row.recorderReturn,receipt);assert.deepEqual(owner._row.receipts,saved);
+      assert.equal(owner.readout().archiveFiled,true);
       assert.equal(owner._find('recorder'),null);assert.equal(authority.player.credits,before);
       bus.emit('lastShift:returnRecorder',{revision:owner._row.revision});await commandsDone;assert.deepEqual(owner._row.recorderReturn,receipt);
       bus.emit('lastShift:archive',{revision:saved[0].revision});await commandsDone;assert.deepEqual(owner._row.receipts,saved);
+      bus.emit('lastShift:archive',{revision:owner._row.revision});await commandsDone;assert.deepEqual(owner._row.receipts,saved);
       authority.mode='flight';state.mode='flight';authority.simTime+=6;await asWorker(()=>owner.update(1/60,authority));await flush();
       assert.equal(acks.filter(p=>p.id===`${C.siteId}:approach`).length,1,'Continue does not replay already surfaced arrival');
     }finally{owner.ctx.helpers.combatPhysics=oldPort;}

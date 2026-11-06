@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import nodeTest from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
@@ -34,7 +34,9 @@ function stubElement() {
   };
 }
 
-globalThis.document = {
+// The onboarding presenters reach for `document`; the stub lives only inside each test here so
+// a shared-process run (--test-isolation=none) never inherits it in another file.
+const DOCUMENT_STUB = {
   getElementById: () => null,
   querySelector: () => null,
   head: stubElement(),
@@ -42,6 +44,19 @@ globalThis.document = {
   documentElement: null,
   createElement: () => stubElement(),
 };
+
+function test(name, fn) {
+  return nodeTest(name, async (t) => {
+    const had = Object.prototype.hasOwnProperty.call(globalThis, 'document');
+    const prev = globalThis.document;
+    globalThis.document = DOCUMENT_STUB;
+    try {
+      return await fn(t);
+    } finally {
+      if (had) globalThis.document = prev; else delete globalThis.document;
+    }
+  });
+}
 
 function boot(mode = 'loading') {
   const player = makeEntity({

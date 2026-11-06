@@ -3,6 +3,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { MISSION_TUNING } from '../../data/missions.js';
 import {
   applyHaulerStepChoice,
   HAULER_CAREER_ID,
@@ -83,6 +84,19 @@ function stationRoleBias(stationId, commodityId) {
     return { midMult: 1.1, buyMult: 1.05, sellMult: 1.02 };
   }
   return { midMult: 1, buyMult: 1, sellMult: 1 };
+}
+
+/**
+ * Board refresh epoch that is the first one strictly after this offer's deadline. Mission
+ * authority drops an offer once `expiresAtEpoch <= floor(simTime / refreshSec)`; a literal 1
+ * therefore killed every career offer after the first refresh window. Same epoch clock as the
+ * sibling contract builders (missionBoardOps._epoch / economyContracts.fieldContractEpoch).
+ */
+export function haulerOfferExpiresAtEpoch(state, simTime, slackS) {
+  const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
+  const refresh = Number(cfg.refreshSec) > 0 ? Number(cfg.refreshSec) : 600;
+  const deadline = (Number(simTime) || 0) + Math.max(0, Number(slackS) || 0);
+  return Math.floor(deadline / refresh) + 1;
 }
 
 export function buildStepMarketSnapshot(state, step, options = {}) {
@@ -171,7 +185,7 @@ export function buildHaulerStepMissionOffer(state, step, attempt, offerNonce, op
     mapLabel: step.mapLabel || step.acceptLine,
     time_limit_s: step.deadlineSlackS,
     deadlineS: simTime + step.deadlineSlackS,
-    expiresAtEpoch: 1,
+    expiresAtEpoch: haulerOfferExpiresAtEpoch(state, simTime, step.deadlineSlackS),
     marketTruth,
     description: step.acceptLine,
     brief: step.acceptLine,

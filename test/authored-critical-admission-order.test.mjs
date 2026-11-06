@@ -541,7 +541,7 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
     };
     globalThis.window = { SF: { state: runtimeState } };
 
-    const enqueue = ({ id, type = 'asteroid', team = 0, pos = { x: 60, z: 0 }, data = {} }) => {
+    const enqueue = ({ id, type = 'asteroid', team = 0, pos = { x: 60, z: 0 }, data = {}, options = {} }) => {
       const boundary = new THREE.Group();
       boundary.userData.authoredAssetState = 'loading';
       scene.add(boundary);
@@ -551,6 +551,7 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
         boundary,
         entity,
         assetUrls: [`assets/${id}.glb`],
+        options,
         run: () => new Promise((resolve) => {
           starts.push(id);
           inFlight++;
@@ -660,6 +661,21 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
     }
     while (scheduledFrames.length > 0) await runNextFrame();
     assert.equal(maxInFlight, 2, 'flight admission stays serial except the bounded visible-ship bypass');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+
+    const visibleFarFx = enqueue({
+      id: 'opening-visible-fx',
+      type: 'fx',
+      pos: { x: 900, z: 0 },
+      data: { placeId: 'place_claim_outpost_relay' },
+      options: { admissionVisible: true },
+    });
+    await runNextFrame();
+    assert.equal(starts.at(-1), 'opening-visible-fx',
+      'an explicit opening-picture admission can settle even when the survival glass policy considers its FX dressing off-screen');
+    releases.get('opening-visible-fx')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await visibleFarFx;
     assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;

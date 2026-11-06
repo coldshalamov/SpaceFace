@@ -1,7 +1,7 @@
 // PQ-178.00 — beat standard. Headless. No soak. No headed capture.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,12 +11,14 @@ import {
   BEAT_SCHEMA,
   BEAT_SHEET_DIR,
   B0_CHAPTER_REL,
+  LEFTOVER_SPINE_LIVE_SETTLE_REL,
   OPENER_47A_ID,
   REQUIRED_47A_ACTORS,
   SCENARIO_47A_REL,
   load47aScenario,
   loadBeatSheet,
   leftover47aMechanics,
+  leftoverSpineMethods,
   validateBeatCorpus,
   validateBeatSheet,
 } from '../src/story/beatStandard.js';
@@ -80,6 +82,16 @@ test('live corpus and leftover 47-A opener pass the standard without B0 collapse
   assert.match(cli.stdout, /check-beat-standard: PASS/);
 });
 
+test('shipped leftover sheets resolve the archived live-settle receipt', () => {
+  assert.ok(existsSync(join(ROOT, LEFTOVER_SPINE_LIVE_SETTLE_REL)), LEFTOVER_SPINE_LIVE_SETTLE_REL);
+  for (const report of validateBeatCorpus()) {
+    assert.ok(
+      !report.issues.some((row) => row.code === 'leftover_source' && row.path === 'leftoverSource.liveSettle'),
+      `${report.rel} cites the existing live-settle receipt path`,
+    );
+  }
+});
+
 test('validator fails prose-only, choice menu, cutscene, single solution, and no physical verb', () => {
   const proseIssues = validateBeatSheet({
     kind: 'prose',
@@ -114,6 +126,13 @@ test('validator fails prose-only, choice menu, cutscene, single solution, and no
   });
   assert.ok(menuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(menuIssues));
   assert.ok(menuIssues.some((row) => row.code === 'no_physical_verb'), JSON.stringify(menuIssues));
+
+  const stringMenuIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.string-menu',
+    choices: ['Open the hatch', 'Leave it sealed'],
+  });
+  assert.ok(stringMenuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(stringMenuIssues));
 
   const cutsceneIssues = validateBeatSheet({
     schema: BEAT_SCHEMA,
@@ -252,6 +271,19 @@ test('47-A barks are cited, not rewritten, and the seed is the leftover tape see
   wrongSeed.seedCapture.seed = tape.seed + 1;
   const seedIssues = validateBeatSheet(wrongSeed, { scenario });
   assert.ok(seedIssues.some((row) => row.code === 'seed'), JSON.stringify(seedIssues));
+});
+
+test('book-route beats fall back to their bookContracts solution vocabulary', () => {
+  // bigger_boat still reads its single leftover board contract.
+  assert.deepEqual(leftoverSpineMethods('bigger_boat'), ['tow_in', 'sling_in']);
+  // honest_work and first_blood post ordered book contracts instead — the union of
+  // each contract's two physical solutions is the live vocabulary the sheet must name.
+  assert.deepEqual(leftoverSpineMethods('honest_work'), [
+    'sealed_delivery', 'partial_settle', 'mites_then_furnace', 'furnace_then_mites',
+  ]);
+  assert.deepEqual(leftoverSpineMethods('first_blood'), [
+    'clear_and_tow', 'tow_under_fire', 'terminal_register_kill', 'custody_reel',
+  ]);
 });
 
 test('an undeclared reply list or stick-lock fails with the forbidden flags left false', () => {

@@ -20,6 +20,8 @@ const SL = 'html body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload
 /** SL for desktop-only rules, after `html:root:not([data-sf-mobile="1"])`. */
 const SLD = 'body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
+// Back and its keycap reset all properties with !important, so their label voice must match.
+const LABEL_I = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -45,13 +47,20 @@ ${SL} > .k-title .k-t-title { ${DISPLAY} margin:0; font-size:calc(72px * var(--s
   color:rgb(${BONE}) !important; -webkit-text-fill-color:currentColor; background:none !important; text-shadow:0 2px 18px rgb(0 0 0 / .5); }
 ${SL} > .k-title .k-t-emph { ${BODY} margin:calc(12px * var(--sv)) 0 0; font-size:max(13px, calc(16.5px * var(--sv))); line-height:1.35; font-weight:500; color:rgb(${BONE} / .94); }
 
-/* ---- the reading: free type on a pool of shade, no panel ---- */
+/* ---- the reading: a lit face (consoleStandard paints it) with its own inset and hairline ---- */
 ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !important; inset:auto !important; left:auto !important; bottom:auto !important; top:auto !important;
   width:auto !important; max-width:none !important; height:auto; min-height:0; align-self:start; box-sizing:border-box; display:flex; flex-direction:column;
-  gap:calc(12px * var(--sv)); margin:0; padding:calc(10px * var(--sv)) 0 0 !important; overflow:visible !important; ${PLAIN} z-index:2; }
+  gap:calc(12px * var(--sv)); margin:0; overflow:visible !important; ${PLAIN} z-index:2;
+  /* ui-polish-286: consoleStandard paints this reading as a lit face (its ::after) but PLAIN zeroed the
+     padding and hairline it asked for, so every line sat flush on the face's left, top and bottom edges
+     and LOAD hung on its corner. The face keeps its own inset and edge here, and grows outward by its
+     side inset so the reading keeps the title's left edge and its measure (nothing rewraps). */
+  --sv-face-x:clamp(12px, 1.05vw, 20px); margin:0 calc(-1 * var(--sv-face-x));
+  padding:calc(16px * var(--sv)) var(--sv-face-x) calc(18px * var(--sv)) !important;
+  border:1px solid rgb(${BONE} / .12) !important; border-radius:2px; }
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
-${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(12px, calc(11.5px * var(--sv))); letter-spacing:.2em; line-height:1.35; color:rgb(${BONE} / .86); }
+${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(13px, calc(12.5px * var(--sv))); letter-spacing:.06em; line-height:1.35; color:rgb(${BONE} / .86); }
 ${SL} .sf-save-ledger .sf-slot-context__part { white-space:nowrap; }
 ${SL} .sf-save-ledger .sf-slot-card-title { all:unset; display:block; ${DISPLAY} margin:0; font-size:calc(44px * var(--sv)); line-height:.95; letter-spacing:.01em;
   color:rgb(246 241 230); text-shadow:0 2px 16px rgb(0 0 0 / .5); overflow-wrap:anywhere; cursor:default; }
@@ -66,22 +75,23 @@ ${SL} .sf-ledger-facts { display:grid !important; grid-template-columns:repeat(3
 ${SL} .sf-ledger-fact { margin:0; min-width:0; }
 ${SL}[data-slot-state="empty"] .sf-ledger-facts { display:none !important; }
 ${SL} .sf-ledger-fact--figure { grid-column:1 / -1; }
-${SL} .sf-ledger-fact dt { ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
+${SL} .sf-ledger-fact dt { ${LABEL} font-size:max(13px, calc(12px * var(--sv))); letter-spacing:.05em; color:rgb(${BONE} / .72); }
 ${SL} .sf-ledger-fact dd { margin:calc(5px * var(--sv)) 0 0; ${BODY} font-weight:600; font-size:max(12.5px, calc(16px * var(--sv))); line-height:1.2; font-variant-numeric:tabular-nums;
   color:var(--dp-phos, rgb(223 238 255)); text-shadow:0 0 12px rgb(143 203 255 / .12); overflow-wrap:anywhere; }
 ${SL} .sf-ledger-fact--figure dd { display:flex; align-items:flex-end; gap:calc(10px * var(--sv)); margin-top:calc(2px * var(--sv)); }
 ${SL} .sf-fact-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 250, "wdth" 100; font-weight:250;
   font-size:calc(76px * var(--sv)); line-height:.92; letter-spacing:-.02em; color:var(--dp-phos, rgb(223 238 255)); font-variant-numeric:tabular-nums lining-nums; }
 ${SL} .sf-fact-n.orr-counter { line-height:1; }
-${SL} .sf-fact-u { ${LABEL} font-size:max(12px, calc(13px * var(--sv))); line-height:1; letter-spacing:.2em; color:rgb(${BONE} / .7); padding-bottom:calc(9px * var(--sv)); }
+${SL} .sf-fact-u { ${LABEL} font-size:max(13px, calc(13px * var(--sv))); line-height:1; letter-spacing:.06em; color:rgb(${BONE} / .7); padding-bottom:calc(9px * var(--sv)); }
 ${SL} .sf-ledger-fact dd.is-blank, ${SL} .sf-ledger-fact dd.is-blank .sf-fact-n { color:rgb(${BONE} / .5); text-shadow:none; }
 
 /* the hull's own record: a ledger of caps and values under a quiet head */
 ${SL} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; margin:calc(4px * var(--sv)) 0 0; padding:0; border:0 !important; }
-${SL} .sf-ledger-head { display:flex; align-items:center; gap:12px; margin:0 0 calc(4px * var(--sv)); ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
+${SL} .sf-ledger-head { display:flex; align-items:center; gap:12px; margin:0 0 calc(4px * var(--sv)); ${LABEL} font-size:max(13px, calc(12px * var(--sv))); letter-spacing:.05em; color:rgb(${BONE} / .72); }
 ${SL} .sf-ledger-head::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .28), rgb(${BONE} / 0)); }
-${SL} .sf-ledger-line { display:grid; grid-template-columns:max(76px, calc(96px * var(--sv))) minmax(0, 1fr); align-items:baseline; gap:12px; padding:calc(4px * var(--sv)) 0; background:none !important; }
-${SL} .sf-ledger-k { ${LABEL} font-size:max(12px, calc(10px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .62); }
+${SL} .sf-ledger-line { display:grid; grid-template-columns:max(76px, calc(96px * var(--sv))) minmax(0, 1fr); align-items:baseline; gap:12px; padding:calc(5px * var(--sv)) 0; border-bottom:1px solid rgb(${BONE} / .1); background:none !important; }
+${SL} .sf-ledger-line:last-of-type { border-bottom:0; }
+${SL} .sf-ledger-k { ${LABEL} font-size:max(13px, calc(11.5px * var(--sv))); letter-spacing:.05em; color:rgb(${BONE} / .68); }
 ${SL} .sf-ledger-line .k-sentence { ${BODY} margin:0; font-size:max(12.5px, calc(14px * var(--sv))); line-height:1.35; color:rgb(${BONE} / .84); }
 ${SL} .sf-ledger-line .k-sentence.sf-entity-link { cursor:pointer; padding:0; border:0 !important; background:none !important; text-decoration:none; color:rgb(${BONE} / .84); }
 ${SL} .sf-ledger-line .sf-entity-link:is(:hover, :focus-visible) { color:rgb(246 241 230); outline:none; text-decoration:underline 1px rgb(${BONE} / .5); text-underline-offset:3px; }
@@ -92,12 +102,20 @@ ${SL} .sf-save-actions > .k-words { display:flex !important; flex-direction:row 
   margin:0; padding:0; list-style:none; background:none !important; }
 ${SL} .sf-save-actions > .k-words > li { margin:0; padding:0; }
 ${SL} .sf-save-actions .k-word.orr-lampkey { font-size:max(12.5px, calc(15px * var(--sv))) !important; min-height:calc(44px * var(--sv)) !important; padding:0 calc(30px * var(--sv)) 0 calc(24px * var(--sv)) !important; }
-${SL} .sf-save-actions .k-word.sf-save-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:var(--dp-row, 34px) !important; min-width:0 !important; height:auto !important; width:auto !important;
-  padding:6px 0 !important; font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); cursor:pointer; }
+/* the save's verbs: real secondary keys (STATION_STANDARD §5) — a hairline box a player can
+   press, not a text line; DELETE keeps the red hover so the risk reads. */
+${SL} .sf-save-actions .k-word.sf-save-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:calc(30px * var(--sv)) !important; min-width:0 !important; height:auto !important; width:auto !important;
+  padding:0 calc(14px * var(--sv)) !important; font-size:max(13px, calc(12.5px * var(--sv))) !important; letter-spacing:.05em !important;
+  color:rgb(${BONE} / .92) !important; text-shadow:none !important; cursor:pointer;
+  background:rgb(${BONE} / .05) !important; border:1px solid rgb(${BONE} / .38) !important; border-radius:2px !important;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear; }
 ${SL} .sf-save-actions .k-word.sf-save-verb::after { display:none !important; content:none !important; }
-${SL} .sf-save-actions .k-word.sf-save-verb::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
-${SL} .sf-save-actions .k-word.sf-save-verb:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
-${SL} .sf-save-actions .k-word.sf-save-verb--danger:is(:hover, :focus-visible) { color:var(--dp-danger-hot, #ff7a5c) !important; }
+${SL} .sf-save-actions .k-word.sf-save-verb::before { all:unset !important; content:none !important; }
+${SL} .sf-save-actions .k-word.sf-save-verb:is(:hover, :focus-visible) { color:#fff !important; outline:none !important;
+  background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+${SL} .sf-save-actions .k-word.sf-save-verb--danger { color:rgb(255 176 160 / .92) !important; border-color:rgb(255 80 56 / .4) !important; }
+${SL} .sf-save-actions .k-word.sf-save-verb--danger:is(:hover, :focus-visible) { color:rgb(255 218 208 / .96) !important;
+  background:rgb(255 80 56 / .22) !important; border-color:rgb(255 120 96 / .8) !important; }
 
 /* ---- the hull alone on the glass: no dock, no frame; a pool of shade under it ---- */
 ${SL} > .sf-save-stage { grid-area:stage; position:relative; min-height:0; margin:0; padding:0 !important; ${PLAIN} isolation:isolate; overflow:visible; }
@@ -125,7 +143,7 @@ ${SL} > .sf-save-stage > .sf-save-vacant .dp-mark { display:none; }
 ${SL} > .sf-save-stage > .sf-save-vacant::before { display:none; }
 /* no hull on file: the word stands on the open berth's floor */
 ${SL} > .sf-save-stage > .sf-save-vacant > .sf-save-vacant__word { position:absolute; left:50%; top:76%; transform:translate(-50%, -50%); white-space:nowrap;
-  ${LABEL} font-size:max(12px, calc(12.5px * var(--sv))); letter-spacing:.3em; color:rgb(${BONE} / .9); text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 18px rgb(255 244 222 / .18); }
+  ${LABEL} font-size:max(13px, calc(12.5px * var(--sv))); letter-spacing:.1em; color:rgb(${BONE} / .9); text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 18px rgb(255 244 222 / .18); }
 
 /* ---- the filmstrip: frames on their stations along the rail ---- */
 ${SL} > .k-hang { grid-area:hang; position:relative; min-height:0; height:calc(214px * var(--sv)); margin:0; padding:0 !important; overflow:visible !important;
@@ -156,14 +174,14 @@ ${SL} .orr-film__list > .k-row.sf-slot[aria-selected="true"] .sf-slot-frame > im
 ${SL} .orr-film__list > .k-row.sf-slot[aria-selected="true"] .sf-slot-frame::before { content:""; position:absolute; left:8%; right:8%; bottom:-10px; height:max(40px, calc(52px * var(--sv)));
   z-index:-1; pointer-events:none; background:radial-gradient(closest-side, rgb(255 244 222 / .2), rgb(255 244 222 / .07) 60%, transparent); }
 html.sf-reduce-motion ${SL} .sf-slot-frame { transition:none; }
-${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-size:max(12px, calc(12px * var(--sv))) !important; letter-spacing:.14em !important; line-height:1.3;
+${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-size:max(13px, calc(12.5px * var(--sv))) !important; letter-spacing:.04em !important; line-height:1.3;
   color:rgb(${BONE} / .86) !important; white-space:normal; overflow:visible; text-overflow:clip; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${SL} .orr-film__list .k-row.empty .k-row__name.sf-slot-name { color:rgb(${BONE} / .82) !important; }
 ${SL} .orr-film__list > .k-row[aria-selected="true"] .k-row__name.sf-slot-name { color:rgb(250 247 240) !important; }
 ${SL} .orr-film__list .sf-slot-badges { display:inline !important; margin:0 !important; padding:0 !important; vertical-align:baseline !important; }
 ${SL} .orr-film__list .sf-slot-badge { display:inline !important; vertical-align:baseline !important; margin:0 0 0 .5em !important; padding:0 !important; }
 ${SL} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:"·"; margin-right:.5em; color:rgb(${BONE} / .56); }
-${SL} .orr-film__list .sf-slot-badge { ${LABEL} font-size:max(12px, calc(9.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .64) !important; text-shadow:none !important; }
+${SL} .orr-film__list .sf-slot-badge { ${LABEL} font-size:max(12px, calc(11px * var(--sv))); letter-spacing:.06em; color:rgb(${BONE} / .68) !important; text-shadow:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--calm { display:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--you { color:rgb(${BONE} / .86) !important; }
 ${SL} .orr-film__list .sf-slot-badge--foe { color:var(--dp-danger-hot, #ff7a5c) !important; }
@@ -180,11 +198,11 @@ ${SL} > .k-foot .k-word { ${PLAIN} ${LABEL} display:inline-flex !important; alig
 ${SL} > .k-foot .k-word:not(.sf-back)::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word:not(.sf-back)::after { display:none !important; content:none !important; }
 ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; ${LABEL} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; ${LABEL_I} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL_I} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -199,7 +217,7 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
   ${SL} .sf-ledger-k { letter-spacing:.12em; white-space:nowrap; }
   ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
   ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
-  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:0 !important; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
   ${SL} > .k-hang { height:calc(226px * var(--sv)); }
   ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
   ${SL} { row-gap:clamp(8px, 1.4vh, 30px) !important; padding-bottom:clamp(16px, 2.6vh, 84px) !important; }
@@ -318,6 +336,17 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
+/* ui-polish-301: 461–560 tall from 791 wide (960×540) the band above gave LOAD a 10px top margin, so the
+   title hugged the frame edge while the left column kept ~150px spare under the reading. It takes back a real
+   margin there; the ≤460 band keeps its 10px. */
+@media (min-width:791px) and (min-height:461px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:clamp(20px, 4.4vh, 26px) !important; row-gap:8px !important; }
+}
+/* ui-polish-303: 1200–1279 wide up to 560 tall (1200×560) the reading column is ~365px and the actions' 30px
+   tracked gap pushed DELETE onto its own line under LOAD. The three keys close up to a 16px gap and hold one row. */
+@media (min-width:1200px) and (max-width:1279px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions > .k-words { column-gap:16px !important; }
+}
 /* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
    and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
    carries it ("QUICK SAVE · CURRENT · …"). */
@@ -375,6 +404,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+  /* ui-polish-302: at 860×500 a long filed name still broke inside a word ("RECOVE / RY") over five lines;
+     it breaks between words with closer tracking, as it does from 941 (ui-polish-264) and under 640 */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
 }
 /* ui-polish-95: 941–1199 wide above 460 tall, the ~100px stations still ran a filed save's line to four or five
    ragged lines ("Adventure· / Hitch·Helios / Prime·1h / 12m played"), and at ~1000 the context line broke
@@ -383,6 +416,20 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 @media (min-width:941px) and (max-width:1199px) and (min-height:461px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
+  /* ui-polish-264: at 960 a long filed name still broke inside a word ("RECOVER / Y") over five lines;
+     it breaks between words with closer tracking, as it does under 640 */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
+}
+/* ui-polish-183/186: a narrow desktop window (≤640 wide, up to the 641 band) gives each strip station ~68-90px,
+   so a long filed name broke mid-word ("RECOV / ERY") or ran four lines with CURRENT and its credits into
+   EXPORT / IMPORT (561-599 still overlapped). A filed station breaks its name between words, not inside them,
+   with closer tracking, and the badge steps aside (the context line carries CURRENT), so it ends above the foot. */
+@media (max-width:640px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { margin-bottom:34px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .sf-slot-badges { display:none !important; }
 }
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
 @media (max-width:739px) and (max-height:460px) {
@@ -395,6 +442,19 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; row-gap:0; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line { display:grid; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:0; }
+}
+/* ui-polish-310: a phone-width page from 821 to 899 tall (390×844, 393×852, 412×890) kept the roomy reading: the
+   short-screen tightening above stops at 820, so the stacked page ran ~895px and scrolled ~50px before EXPORT /
+   IMPORT / BACK showed (the bench cut them in half at the fold). The same tightening reads the whole page, foot
+   included, on one screen; 900 and taller keep the roomy page, 820 and shorter already had this. */
+@media (max-width:520px) and (min-height:821px) and (max-height:899px) {
+  ${SL} .sf-save-ledger .sf-slot-card-title { font-size:calc(38px * var(--sv)); }
+  ${SL} .sf-ledger-facts { row-gap:calc(8px * var(--sv)); margin-top:0 !important; }
+  ${SL} .sf-save-ledger .sf-save-portrait { margin-top:0; }
+  ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
+  ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
+  ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
 }
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
@@ -520,7 +580,7 @@ ${GO} .sf-go-st { position:absolute; margin:0; display:flex; flex-direction:colu
 ${GO} .sf-go-st[data-side="right"] { transform:translate(0, -50%); text-align:left; align-items:flex-start; }
 ${GO} .sf-go-st[data-side="left"] { transform:translate(-100%, -50%); text-align:right; align-items:flex-end; }
 ${GO} .sf-go-st > :is(dt, dd) { margin:0 !important; padding:0 !important; background:none !important; border:0 !important; }
-${GO} .sf-go-st .sf-go-recap__k { ${LABEL} font-size:max(12px, calc(10px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(${BONE} / .68) !important; }
+${GO} .sf-go-st .sf-go-recap__k { ${LABEL} font-size:max(12px, calc(10px * var(--sv))) !important; letter-spacing:.06em !important; color:rgb(${BONE} / .68) !important; }
 ${GO} .sf-go-st .sf-go-recap__v { display:flex; align-items:baseline; gap:6px; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wght" 300, "wdth" 100 !important;
   font-weight:300 !important; font-size:calc(27px * var(--sv)) !important; line-height:1 !important; letter-spacing:-.01em; text-align:inherit !important;
   color:var(--dp-phos, rgb(223 238 255)) !important; font-variant-numeric:tabular-nums; }

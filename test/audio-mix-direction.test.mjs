@@ -471,3 +471,21 @@ test('idle frames do no allocation-class work: zero node creation, bounded ledge
 
 // The music sequencer re-arms a lookahead setTimeout; release it so the process can exit.
 after(() => { try { audio.destroy(); } catch (_) {} });
+
+test('mining beam keeps its authored level as its target moves and releases on stop', () => {
+  const h = boot();
+  h.state.mode = 'flight';
+  const rock = { id: 2, type: 'asteroid', alive: true, pos: { x: 15, z: 0 }, activity: { pinnedExact: true } };
+  h.state.entities.set(2, rock);
+  h.bus.emit('mining:start', { minerId: 1, targetId: 2, position: rock.pos });
+  const voice = h.rt.loops.mining;
+  assert.ok(voice, 'the live mining event starts a loop');
+  audio._applyLoopPosition(voice, h.rt, h.state.entities, { x: 0, z: 0 }, h.ctx.currentTime);
+  assert.equal(voice.gain.gain.value, 1, 'nearby target must not apply the recipe gain twice');
+  rock.pos.x = 300;
+  audio._applyLoopPosition(voice, h.rt, h.state.entities, { x: 0, z: 0 }, h.ctx.currentTime);
+  assert.ok(voice.gain.gain.value > 0 && voice.gain.gain.value < 1, 'distance attenuates the same voice');
+  h.bus.emit('mining:stop', { minerId: 1, targetId: 2 });
+  assert.equal(h.rt.loops.mining, undefined);
+  assert.equal(voice._stopped, true);
+});

@@ -34,6 +34,7 @@ import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -50,6 +51,15 @@ export const STABLE_LOAD_CLEARANCE_PX = 12;
 /** Under 901 wide (or 621 tall) the prompt deck is a bottom sheet across the same left edge. */
 export const PROMPT_DECK_SELECTOR = '#sf-prompt-deck:not([hidden])';
 export const PROMPT_DECK_CLEARANCE_PX = 12;
+export const OBJECTIVE_SELECTOR = '#hud > .sf-leftcontext';
+export const VITALS_SELECTOR = '#hud .orr-hud-cluster .orr-cluster';
+export const RADAR_SELECTOR = '#hud .sf-rightdock';
+export const TOUCH_STATUS_SELECTOR = '#sf-touch-overlay .mf-status';
+export const TOUCH_BUTTONS_SELECTOR = '#sf-touch-overlay .mf-buttons';
+export const TOUCH_PAUSE_SELECTOR = '#sf-touch-overlay .mf-pause';
+export const TOUCH_EDGE_SELECTOR = '#sf-touch-overlay .mf-edge';
+export const TOUCH_DOCK_SELECTOR = '#sf-touch-overlay .mf-dock';
+export const HUD_PRIORITY_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -62,41 +72,47 @@ function calloutRarity(value) {
 }
 
 const CSS = `
-.sf-stuntcall { position:fixed; left:16px; bottom:32vh; z-index:12; display:flex; flex-direction:column;
+.sf-stuntcall { position:fixed; left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); bottom:32vh; z-index:12; display:flex; flex-direction:column;
   align-items:flex-start; gap:5px; pointer-events:none; }
 .sf-stuntcall[hidden] { display:none; }
-.sf-stuntcall__line { display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
+.sf-stuntcall__line { display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
+  padding:3px 9px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .86), rgb(11 14 20 / .86));
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60); }
 .sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.sf-stuntcall__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
+.sf-stuntcall__name { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
 .sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
-  color:rgb(248 244 234 / .72); }
+  color:rgb(248 244 234 / .78); }
 .sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
-  color:rgb(248 244 234 / .84); }
+  color:rgb(248 244 234 / .88); }
 .sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
-  color:rgb(248 244 234 / .95); }
+  color:rgb(248 244 234 / .96); }
 .sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
   color:rgb(248 244 234 / 1); }
-.sf-stuntcall__pts { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(${BONE} / .66); }
+.sf-stuntcall__pts { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:500;
+  font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.02em; color:rgb(${BONE} / .76); }
+.sf-stuntcall__line.is-bank { border-color:rgb(242 185 80 / .36); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__pts { color:var(--dp-hand, #f2b950); }
-.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px; }
+.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px;
+  padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88)); }
 .sf-stuntcall__rowtop { display:flex; align-items:baseline; gap:10px; }
-.sf-stuntcall__mult { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:30px; line-height:1; letter-spacing:-.01em; font-variant-numeric:tabular-nums;
+.sf-stuntcall__mult { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:600;
+  font-size:24px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
   color:rgb(248 244 234 / .95); }
-.sf-stuntcall__names { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .72); }
-.sf-stuntcall__scale { position:relative; width:190px; height:3px;
-  background:rgb(${BONE} / .22); }
+.sf-stuntcall__names { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:rgb(${BONE} / .78); }
+.sf-stuntcall__scale { position:relative; width:190px; height:3px; border-radius:1.5px;
+  background:rgb(${BONE} / .20); }
 .sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
-  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .78); }
+  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .82); }
 .sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
   background:rgb(${BONE} / .55); }
-.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .58); }
+.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-num, "Spline Sans Mono", monospace);
+  font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
+  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .64); }
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
@@ -393,20 +409,36 @@ function collectText(node, acc) {
  * Returns { root, update, destroy, active } — `update(nowMs)` is the whole render step, also
  * called by the shared frame listener, so tests drive it deterministically without rAF.
  */
-export function createStuntCallout({ state = null, bus = null, host = null, doc = globalThis.document } = {}) {
-  const inert = { root: null, update() {}, destroy() {}, active: () => false };
+export function createStuntCallout({ state = null, bus = null, host = null, doc = globalThis.document,
+  onFlightTextGeometryChange = null } = {}) {
+  const inert = { root: null, update() {}, destroy() {}, active: () => false, setFlightTextGeometryChangeListener() {} };
   if (!usable(doc)) return inert;
   injectOrrery(doc);
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
   root.hidden = true;
+  let flightTextGeometryChangeListener = typeof onFlightTextGeometryChange === 'function'
+    ? onFlightTextGeometryChange : null;
+  let lastFlightTextGeometryKey = 'hidden';
+  function notifyFlightTextGeometryIfChanged(rect = null) {
+    const width = Number(rect?.width ?? (rect?.right - rect?.left));
+    const height = Number(rect?.height ?? (rect?.bottom - rect?.top));
+    const visible = !root.hidden && root.style.opacity !== '0' && rect && width > 0 && height > 0;
+    const key = visible
+      ? `${rect.left}|${rect.top}|${rect.right}|${rect.bottom}|${width}|${height}`
+      : 'hidden';
+    if (key === lastFlightTextGeometryKey) return;
+    lastFlightTextGeometryKey = key;
+    if (flightTextGeometryChangeListener) flightTextGeometryChangeListener();
+  }
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
   lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
   meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
+  meter.style.display = 'none';
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
   const namesLine = mk(doc, 'span', 'sf-stuntcall__names', '');
@@ -491,7 +523,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       if (rarity) existing.node.setAttribute('data-rarity', calloutRarity(rarity));
-      if (!root.hidden) seatClearOfSpeedDial();
+      if (!root.hidden) scheduleSeatClearOfSpeedDial();
       return;
     }
     const node = mk(doc, 'div', 'sf-stuntcall__line' + (isBank ? ' is-bank' : ''));
@@ -508,8 +540,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
     // A decision card may have risen since the column was seated (e.g. IMPACT LOGGED over a
-    // recovery choice); re-seat on each new or refreshed line, never per frame.
-    if (!root.hidden) seatClearOfSpeedDial();
+    // recovery choice); request a seat on new or refreshed lines. Worker-event bursts coalesce
+    // into one pre-paint layout read.
+    if (!root.hidden) scheduleSeatClearOfSpeedDial();
   }
 
   function dismissLine(key, fallbackName = '') {
@@ -638,9 +671,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function renderMeter(readout) {
     if (!readout) {
       if (!meter.hidden) meter.hidden = true;
+      if (meter.style.display !== 'none') meter.style.display = 'none';
       return;
     }
     if (meter.hidden) meter.hidden = false;
+    if (meter.style.display) meter.style.display = '';
     const multText = `×${readout.multiplier.toFixed(2)}`;
     if (mult.textContent !== multText) mult.textContent = multText;
     const namesText = readout.names.join(' → ');
@@ -669,7 +704,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const st = getState();
     const scope = calloutScope(st);
     if (!scope) {
-      root.hidden = true;
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
       return false;
     }
     // FB-012 — the chain meter is Crucible-only; adventure speaks through the callout lines.
@@ -680,47 +718,149 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const hasLines = lineNodes.size > 0;
     const wasHidden = root.hidden;
     root.hidden = !hasLines && !readout;
-    if (root.hidden) return false;
+    if (root.hidden) {
+      if (!wasHidden) notifyFlightTextGeometryIfChanged();
+      return false;
+    }
     if (wasHidden) seatClearOfSpeedDial();
     renderMeter(readout);
     return true;
   }
 
-  // getBoundingClientRect forces a synchronous layout of the whole HUD. addLine reaches this on every
-  // callout line, and a kill storm or a collision burst adds many per second, so an unthrottled
-  // re-seat measured ~9% of all main-thread CPU in a Crucible run. The three obstacles only move when
-  // the HUD re-lays out, so: look the nodes up every time (querySelector forces no layout), and
-  // re-measure only when one of them appeared or disappeared (a decision card rising under the column
-  // must lift it on the very next line) or SEAT_MIN_INTERVAL_MS has passed (a window resize, a dial
-  // that moved).
+  // getBoundingClientRect forces layout. A worker reply can deliver several callout events in one
+  // burst, so line handlers request one shared pre-paint seat instead of repeating these reads.
+  // Obstacles are converted into vertical blocked bands only when they overlap the callout column;
+  // this keeps a phone status strip at the top from pushing the callout off the top edge.
   const SEAT_MIN_INTERVAL_MS = 250;
   let lastSeatAt = -Infinity;
   let lastSeatNodes = null;
+  let seatFramePending = false;
+  let seatFrameHandle = null;
+  let seatFrameCancel = null;
 
-  function seatClearOfSpeedDial() {
+  function seatClearOfSpeedDial(force = false) {
     const view = doc.defaultView;
     if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
     const obstacles = [
       [SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX],
       [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX],
       [PROMPT_DECK_SELECTOR, PROMPT_DECK_CLEARANCE_PX],
+      [OBJECTIVE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [VITALS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [RADAR_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_STATUS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_BUTTONS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_PAUSE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_EDGE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_DOCK_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
     ];
     const nodes = obstacles.map(([selector]) => doc.querySelector(selector) || null);
     const seatNow = calloutNow();
     const unchanged = lastSeatNodes !== null && nodes.every((node, i) => node === lastSeatNodes[i]);
-    if (unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) return;
+    if (!force && unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) {
+      notifyFlightTextGeometryIfChanged(root.getBoundingClientRect());
+      return;
+    }
     lastSeatNodes = nodes;
     lastSeatAt = seatNow;
     const ownRect = root.getBoundingClientRect();
-    let top = Infinity;
+    const viewportHeight = Number(view.innerHeight);
+    const ownWidth = Number(ownRect.width ?? (ownRect.right - ownRect.left));
+    const ownHeight = Number(ownRect.height ?? (ownRect.bottom - ownRect.top));
+    if (!(ownWidth > 0) || !(ownHeight > 0) || !(viewportHeight > 0)) return;
+    const viewportTop = Math.min(8, viewportHeight / 2);
+    const viewportBottom = Math.max(viewportTop, viewportHeight - viewportTop);
+    const blocked = [];
+    let hasOverlappingObstacle = false;
     for (let i = 0; i < obstacles.length; i++) {
       const node = nodes[i];
       if (!node || typeof node.getBoundingClientRect !== 'function') continue;
       const rect = node.getBoundingClientRect();
-      if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
-      top = Math.min(top, rect.top - obstacles[i][1]);
+      const rectWidth = Number(rect.width ?? (rect.right - rect.left));
+      const rectHeight = Number(rect.height ?? (rect.bottom - rect.top));
+      if (!(rectWidth > 0) || !(rectHeight > 0)
+        || rect.left >= ownRect.right || rect.right <= ownRect.left
+        || rect.bottom <= viewportTop || rect.top >= viewportBottom) continue;
+      hasOverlappingObstacle = true;
+      const clearance = obstacles[i][1];
+      blocked.push({
+        top: Math.max(viewportTop, rect.top - clearance),
+        bottom: Math.min(viewportBottom, rect.bottom + clearance),
+      });
     }
-    root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
+    blocked.sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+    const bands = [];
+    let cursor = viewportTop;
+    for (const band of blocked) {
+      if (band.top > cursor) bands.push({ top: cursor, bottom: band.top });
+      cursor = Math.max(cursor, band.bottom);
+      if (cursor >= viewportBottom) break;
+    }
+    if (cursor < viewportBottom) bands.push({ top: cursor, bottom: viewportBottom });
+
+    const authoredTop = viewportHeight - viewportHeight * 0.32 - ownHeight;
+    let selectedTop = null;
+    let selectedDistance = Infinity;
+    for (const band of bands) {
+      if (band.bottom - band.top < ownHeight) continue;
+      const top = Math.max(band.top, Math.min(authoredTop, band.bottom - ownHeight));
+      const distance = Math.abs(top - authoredTop);
+      if (distance < selectedDistance) {
+        selectedTop = top;
+        selectedDistance = distance;
+      }
+    }
+
+    if (selectedTop == null) {
+      if (root.style.bottom) root.style.bottom = '';
+      if (root.style.opacity !== '0') root.style.opacity = '0';
+      const postSeatRect = root.getBoundingClientRect();
+      notifyFlightTextGeometryIfChanged(postSeatRect);
+      return;
+    }
+
+    if (root.style.opacity === '0') root.style.opacity = '';
+    let nextBottom = '';
+    if (hasOverlappingObstacle && Math.abs(selectedTop - authoredTop) >= 1) {
+      const bottom = Math.round(viewportHeight - selectedTop - ownHeight);
+      nextBottom = selectedTop < authoredTop
+        ? `max(32vh, ${bottom}px)`
+        : `min(32vh, ${bottom}px)`;
+    }
+    if (root.style.bottom !== nextBottom) root.style.bottom = nextBottom;
+    // Publish the actual post-placement box so HUD readers never chase the stale pre-seat rect.
+    const postSeatRect = root.getBoundingClientRect();
+    notifyFlightTextGeometryIfChanged(postSeatRect);
+  }
+
+  // Worker replies can deliver several presentation events in one burst. Keep their text and
+  // live-region receipts synchronous, but coalesce the shared HUD layout read to one pre-paint
+  // callback so each event does not independently query and measure the same obstacles.
+  function scheduleSeatClearOfSpeedDial(force = false) {
+    if (destroyed || seatFramePending) return;
+    const view = doc.defaultView;
+    const raf = (view && view.requestAnimationFrame) || globalThis.requestAnimationFrame;
+    if (typeof raf !== 'function') {
+      seatClearOfSpeedDial(force);
+      return;
+    }
+    seatFramePending = true;
+    seatFrameCancel = (view && view.cancelAnimationFrame)
+      ? view.cancelAnimationFrame.bind(view)
+      : (typeof globalThis.cancelAnimationFrame === 'function'
+        ? globalThis.cancelAnimationFrame.bind(globalThis) : null);
+    seatFrameHandle = raf.call(view || globalThis, () => {
+      seatFramePending = false;
+      seatFrameHandle = null;
+      seatFrameCancel = null;
+      if (!destroyed && !root.hidden) seatClearOfSpeedDial(force);
+    });
+  }
+
+  const layoutResizeView = doc.defaultView;
+  const onLayoutResize = () => scheduleSeatClearOfSpeedDial(true);
+  if (layoutResizeView && typeof layoutResizeView.addEventListener === 'function') {
+    layoutResizeView.addEventListener('resize', onLayoutResize);
   }
 
   function wake() {
@@ -738,10 +878,6 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   // word -> { count, until } — the physics-cause counters that ride the same TTL the
   // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
   const causeRuns = new Map();
-  // word -> { count, until } — the ARENA register's own run, same TTL law. The LOG lane
-  // keeps its one slot per desk (a filing supersedes, never stacks), so the storm roll
-  // rides the pts cell instead of spending a line per word: "ARENA: SWALLOWED ×4".
-  const arenaRuns = new Map();
   function onSwarmKill(p) {
     if (destroyed) return;
     const st = getState();
@@ -761,12 +897,16 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     rec.count += 1;
     rec.until = now + CALLOUT_TTL_MS;
     causeRuns.set(word, rec);
-    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    addLine('log:swarm:killPopup', `ARENA: ${word.toUpperCase()}`,
+      rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
     spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
     sr.textContent = spoken;
     wake();
   }
   if (bus && typeof bus.on === 'function') {
+    unsubs.push(bus.on('hud:layoutChanged', () => {
+      if (!root.hidden) scheduleSeatClearOfSpeedDial(true);
+    }));
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:styleBanked', (b) => onBank(b)));
@@ -809,34 +949,37 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       const st = getState();
       const scope = calloutScope(st);
       if (!scope || physicsLogSilent(st)) return;
-      // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
-      // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
-      if (eventName === 'swarm:killPopup'
-        && (scope.adventure || !payload || payload.friendlyFire === true
-          || !SWARM_TEACHING_CAUSES.has(payload.cause))) return;
+      // physics:impact is a room-wide receipt, emitted for any energetic contact pair. LOG is
+      // the player's feed, so NPC-versus-NPC impacts must not refresh its register every tick.
+      if (eventName === 'physics:impact' && payload.playerInvolved !== true
+        && (st.playerId == null || (payload.aId !== st.playerId && payload.bId !== st.playerId
+          && payload.causalActorId !== st.playerId))) return;
+      // These lien events cover the whole sector. The flight register speaks only when the
+      // physical clamp or filing concerns this ship; player-specific paid/cut receipts remain.
+      if ((eventName === 'vael:lienClamped' || eventName === 'vael:lienThrown')
+        && payload?.hostId !== st.playerId) return;
+      if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
+        && payload?.shipId !== st.playerId) return;
+      // Durable world bookkeeping is global; Adventure's personal register is not.
+      // Read the canonical receipt's involvement/ownership facts, never a current
+      // occupant of a victim id or an invented proximity/witness relationship.
+      if (scope.adventure && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) {
+        const record = payload || {};
+        const playerCause = record.killedByPlayer === true;
+        const ownHull = record.playerWreck === true || record.source === 'player:death'
+          || record.sitePlayerOwned === true;
+        const ownAutomation = eventName === 'lossLedger:recorded'
+          && (record.source === 'automation:assetLost' || record.source === 'automation:outpostRaided');
+        if (!playerCause && !ownHull && !ownAutomation) return;
+      }
+      // Swarm's cause lane already files this same kill word, including its run count.
+      // The two durable world records need no additional flight-register receipt during
+      // this fast arena: their owners still record them normally.
+      if (eventName === 'swarm:killPopup') return;
+      if (!scope.adventure && isSwarmRuleset(scope.run.ruleset)
+        && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) return;
       const line = physicsLogLine(eventName, payload || {});
       if (!line) return;
-      // A kill storm used to rewrite the register's one slot per kill — the ARENA line
-      // flashed through words. Same run law as the kc lane's pinball: the word's own
-      // count rolls inside the beat, a different word files fresh with its own count,
-      // and one register slot still supersedes instead of stacking.
-      if (eventName === 'swarm:killPopup') {
-        const word = String(payload.word || '').toUpperCase();
-        const now = calloutNow();
-        let rec = arenaRuns.get(word);
-        if (!rec || rec.until <= now) rec = { count: 0 };
-        rec.count += 1;
-        rec.until = now + CALLOUT_TTL_MS;
-        arenaRuns.set(word, rec);
-        addLine(`log:${eventName}`, line, rec.count > 1 ? `×${rec.count}` : '',
-          now, CALLOUT_TTL_MS, false);
-        spoken = rec.count > 1
-          ? `${line.toLowerCase()}, ${rec.count} in a row`
-          : line.toLowerCase();
-        sr.textContent = spoken;
-        wake();
-        return;
-      }
       speak({ key: `log:${eventName}`, name: line, detail: '' });
     };
     for (const ev of PHYSICS_LOG_EVENTS) unsubs.push(bus.on(ev, onLogEvent(ev)));
@@ -885,11 +1028,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       heardStatuses.clear();
       // The run maps ride the same session — a leftover count must not greet the next run.
       causeRuns.clear();
-      arenaRuns.clear();
+      renderMeter(null);
       for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
       lineNodes.clear();
       sr.textContent = '';
-      root.hidden = true;
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
     }));
     unsubs.push(bus.on('bombs:primed', (payload) => {
       if (destroyed) return;
@@ -905,6 +1051,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    setFlightTextGeometryChangeListener(listener) {
+      flightTextGeometryChangeListener = typeof listener === 'function' ? listener : null;
+      lastFlightTextGeometryKey = '';
+    },
     announceStroke(stroke) {
       if (destroyed) return false;
       if (!calloutScope(getState())) return false;
@@ -922,6 +1072,20 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     },
     destroy() {
       destroyed = true;
+      if (layoutResizeView && typeof layoutResizeView.removeEventListener === 'function') {
+        layoutResizeView.removeEventListener('resize', onLayoutResize);
+      }
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
+      flightTextGeometryChangeListener = null;
+      if (seatFramePending && seatFrameCancel && seatFrameHandle != null) {
+        try { seatFrameCancel(seatFrameHandle); } catch (_) { /* frame already retired */ }
+      }
+      seatFramePending = false;
+      seatFrameHandle = null;
+      seatFrameCancel = null;
       if (frameOff) { frameOff(); frameOff = null; }
       for (const off of unsubs) {
         if (typeof off === 'function') off();
@@ -942,12 +1106,16 @@ let liveCallout = null;
 
 /** Idempotent mount used by the Crucible door and results screens. */
 export function ensureStuntCallout(ctx) {
-  if (liveCallout) return liveCallout;
+  if (liveCallout) {
+    liveCallout.setFlightTextGeometryChangeListener?.(ctx && ctx.onFlightTextGeometryChange);
+    return liveCallout;
+  }
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
     host: ctx && ctx.host,
     doc: ctx && ctx.doc,
+    onFlightTextGeometryChange: ctx && ctx.onFlightTextGeometryChange,
   });
   return liveCallout;
 }

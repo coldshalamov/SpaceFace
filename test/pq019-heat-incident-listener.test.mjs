@@ -531,10 +531,12 @@ test('production-order multi-hit trader kill preserves first-hit clean provenanc
   assert.equal(trader.data.ai.retaliationTargetId, run.player.id,
     'the first clean hit grants self-defense authority');
 
-  // Exercise the real failure boundary: the sub-WANTED hit chip clears on the next heat update,
-  // while retaliation remains live before world capture, JSON save, and entity rematerialization.
+  // Exercise the real failure boundary: the first hit banks only sub-WANTED suspicion (never a
+  // conviction), while retaliation remains live before world capture, JSON save, and entity
+  // rematerialization.
   run.sim.step();
-  assert.equal(run.state.player.heat, 0);
+  assert.ok(run.state.player.heat < WANTED_THRESHOLD,
+    `a lone hit chip stays suspicion, not WANTED (heat ${run.state.player.heat})`);
   const rematerialized = rematerializeThroughSavedWorldRecord(
     run,
     trader,

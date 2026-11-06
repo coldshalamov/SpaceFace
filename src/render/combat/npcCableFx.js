@@ -94,7 +94,9 @@ export class NpcCableFx {
     }
     for (const id in attachments) {
       const link = attachments[id];
-      if (!link || link.defId !== 'tether_standard' || link.state !== 'active'
+      const serviceCable = link?.defId === 'attachment_transport_clamp'
+        && link.controlMode === 'lantern_ward_attended_work';
+      if (!link || (link.defId !== 'tether_standard' && !serviceCable) || link.state !== 'active'
         || link.ownerId === state.playerId || link.targetId === state.playerId
         || link.controllerId === state.playerId
         || !this._endpoints(state, link, alpha)) continue;
@@ -177,14 +179,18 @@ export class NpcCableFx {
     updateEnergyMaterial(cable.group.children[2].material, frame);
   }
 
-  dispose() {
+  dispose({ disposeGpu = true } = {}) {
     this.group.removeFromParent();
-    for (let i = 0; i < this.cables.length; i++) {
-      const children = this.cables[i].group.children;
-      for (let j = 0; j < children.length; j++) {
-        children[j].geometry.dispose();
-        children[j].material.dispose();
+    if (disposeGpu) {
+      for (let i = 0; i < this.cables.length; i++) {
+        const children = this.cables[i].group.children;
+        for (let j = 0; j < children.length; j++) {
+          children[j].geometry.dispose();
+          children[j].material.dispose();
+        }
       }
     }
+    this.cables.length = 0;
+    this.selected.fill(null);
   }
 }

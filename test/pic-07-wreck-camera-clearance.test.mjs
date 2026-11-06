@@ -106,9 +106,10 @@ test('a non-finite bound is rejected the same way', () => {
 });
 
 test('the clearance kinds list names wrecks in the live owner', () => {
-  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  // The kinds set lives in the guard owner since the clearance pass moved out of renderer.js.
+  const source = readFileSync(new URL('../src/render/cameraClearanceGuard.js', import.meta.url), 'utf8');
   const kinds = source.match(/const CAMERA_CLEARANCE_KINDS = new Set\(\[([^\]]*)\]\)/);
-  assert.ok(kinds, 'the clearance kinds set stays a literal in renderer.js');
+  assert.ok(kinds, 'the clearance kinds set stays a literal in the guard owner');
   const names = kinds[1].split(',').map((token) => token.trim().replaceAll("'", ''));
   assert.ok(names.includes('wreck'), `'wreck' is in the camera-clearance kinds: ${names}`);
 });

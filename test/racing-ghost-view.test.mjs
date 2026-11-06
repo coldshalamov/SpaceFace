@@ -5,6 +5,8 @@ import { createRacingGhostView, RACING_GHOST_OPACITY } from '../src/render/racin
 import { createRacingCourseView } from '../src/render/racingCourseView.js';
 import { observeRacingGhost, readRacingGhost } from '../src/systems/racingGhosts.js';
 import { racingLoadoutCategory } from '../src/systems/racingSteer.js';
+import { rememberStaticBatchGeometry, retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree,
+  clearStaticBatchGeometryCacheForTests } from '../src/render/staticBatchGeometryCache.js';
 
 function fixture(){
   const rows=new Map(),storage={getItem:k=>rows.get(k)||null,setItem:(k,v)=>rows.set(k,v)};
@@ -32,6 +34,26 @@ function fixture(){
   const scene=new THREE.Scene();scene.add(source);
   return {state,player,race,params,storage,source,geometry,material,scene,sourceData,materialData};
 }
+
+test('racing ghost retains an evicted source geometry until its own retirement', () => {
+  clearStaticBatchGeometryCacheForTests();
+  const f = fixture();
+  const view = createRacingGhostView(f.scene, f.state, { storage: f.storage });
+  let disposed = 0;
+  f.geometry.addEventListener('dispose', () => { disposed++; });
+  rememberStaticBatchGeometry('racing-source', f.geometry);
+  retainStaticBatchGeometryTree(f.source);
+  view.frame(f.race);
+  assert.ok(view.root);
+  rememberStaticBatchGeometry('racing-evictor', new THREE.BoxGeometry(), 1);
+  releaseStaticBatchGeometryTree(f.source);
+  assert.equal(disposed, 0);
+  view.dispose();
+  view.dispose();
+  assert.equal(disposed, 1);
+  clearStaticBatchGeometryCacheForTests();
+  f.material.dispose();
+});
 
 test('ghost clones the admitted hull geometry without target identity or simulation registration',()=>{
   const f=fixture(),view=createRacingGhostView(f.scene,f.state,{storage:f.storage});

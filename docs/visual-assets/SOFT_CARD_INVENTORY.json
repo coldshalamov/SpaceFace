@@ -107,6 +107,15 @@
       "files": ["src/render/graphicsLab.js"]
     },
     {
+      "id": "hero-pilot-lamp",
+      "effectClasses": ["engine-jet"],
+      "status": "pending-visual-acceptance",
+      "playerSees": "A small at-rest ember at the player ship's stern nozzle",
+      "technique": "Additive camera-facing sprite using a radial DataTexture; follows the presented hull and fades with flight presence",
+      "whyListed": "The HeroRig adds this live nozzle cue while the propulsion plume sleeps at rest. It is recorded here for technique review; listing it does not grant an exception or visual acceptance.",
+      "files": ["src/render/heroRig.js"]
+    },
+    {
       "id": "asteroid-tier-badges",
       "effectClasses": [],
       "classificationRole": "ui-overlay; outside the world-effect matrix",

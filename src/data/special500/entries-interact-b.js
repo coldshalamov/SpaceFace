@@ -363,9 +363,9 @@ export const ENTRIES_INTERACT_B = [
     sectors: ['sector_triton_wake'],
     trigger: { type: 'receipt', event: 'scan:completed' },
     channel: 'memory',
-    followup: 'Quill read-ring logic + copy-stamp check (src/data/quill.js): fires when a delivered wreck\'s manifest has already been copied once; AR-3 refuses on principle, copies anyway, files the third as "RUMOR: [log name]. CONFIDENCE: TOTAL" — flag quill_rumor, codex page "The Rumor Index", Archive standing +2 (they side with the index).',
+    followup: 'Quill read-ring logic + copy-stamp check (src/data/quill.js): fires when a delivered wreck\'s manifest has already been copied once; AR-3 refuses on principle, copies anyway, files the third as "RUMOR: THAT LOG. CONFIDENCE: TOTAL" — flag quill_rumor, codex page "The Rumor Index", Archive standing +2 (they side with the index).',
     payload: {
-      text: 'AR-3 refuses, gently, on principle: "This log exists twice. A third is not a copy. A third is a rumor. I do not deal in rumors." Then it copies it anyway, and files the third in its own index: "RUMOR: [log name]. CONFIDENCE: TOTAL." The distinction matters to exactly one machine in the universe, and it is this one.',
+      text: 'AR-3 refuses, gently, on principle: "This log exists twice. A third is not a copy. A third is a rumor. I do not deal in rumors." Then it copies it anyway, and files the third in its own index: "RUMOR: THAT LOG. CONFIDENCE: TOTAL." The distinction matters to exactly one machine in the universe, and it is this one.',
     },
   },
 

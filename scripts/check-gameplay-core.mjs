@@ -3737,6 +3737,7 @@ function checkNewGameOwnedShipDefaultsAreFitted() {
 
 function checkAmmoServiceOnlyChargesAcceptedCargo() {
   const state = {
+    ui: { docked: true, dockedStationId: 'station_helios' },
     playerId: 1,
     player: {
       credits: 1000,
@@ -3760,6 +3761,7 @@ function checkAmmoServiceOnlyChargesAcceptedCargo() {
   assert(events.some((e) => e.event === 'cargo:full'), 'partial ammo service should report a full hold');
 
   const fullState = {
+    ui: { docked: true, dockedStationId: 'station_helios' },
     playerId: 1,
     player: {
       credits: 1000,
@@ -3784,6 +3786,7 @@ function checkAmmoServiceOnlyChargesAcceptedCargo() {
 
 function checkRefuelServiceOnlyChargesAffordableFuel() {
   const state = {
+    ui: { docked: true, dockedStationId: 'station_helios' },
     player: { credits: 200 },
     fuel: { current: 40, max: 100 },
   };
@@ -3799,6 +3802,7 @@ function checkRefuelServiceOnlyChargesAffordableFuel() {
   assert(events.some((e) => e.event === 'toast' && e.payload.kind === 'warn' && /Partial refuel/.test(e.payload.text)), 'partial refuel should notify as partial');
 
   const poorState = {
+    ui: { docked: true, dockedStationId: 'station_helios' },
     player: { credits: 5 },
     fuel: { current: 40, max: 100 },
   };

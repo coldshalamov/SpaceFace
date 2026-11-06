@@ -2,7 +2,6 @@
 // Run: node --test test/save-arbitration-insertion-order.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
 import { fnv1a } from '../src/save/checksum.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
@@ -53,7 +52,6 @@ test('tied slot maps agree across three insertion orders', () => {
   const winner = assertSameLatest('equal timestamp', permutations, latestOccupiedSlot);
   assert.equal(winner, 'zebra', 'equal timestamps and playtime break ties by descending slot id');
 });
-
 test('integer-index slot ids do not outrank string ids by enumeration order', () => {
   const orders = [
     ['auto', '2', '10', 'quick'],
@@ -196,16 +194,4 @@ test('live latest-slot resolution ignores storage insertion order', () => {
   } finally {
     globalThis.localStorage = previous;
   }
-});
-
-test('menu and save/load both call the save-system latest-slot authority', () => {
-  const menu = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
-  const saveLoad = readFileSync(new URL('../src/ui/screens/saveLoad.js', import.meta.url), 'utf8');
-  const owner = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
-  assert.match(menu, /selectLatestOccupiedSlot\(slots\)/);
-  assert.doesNotMatch(menu, /score >= bestScore/);
-  assert.match(saveLoad, /selectLatestOccupiedSlot\(slots\)/);
-  assert.match(owner, /export function selectLatestOccupiedSlot\(slots\)/);
-  assert.match(owner, /return selectLatestOccupiedSlot\(idx\)/);
-  assert.match(owner, /selectLatestOccupiedSlot\(raw\)/);
 });

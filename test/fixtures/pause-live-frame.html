@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SpaceFace — pause live-frame fixture</title>
+  <!-- UI input reaches the authored voice module through the production import graph. -->
+  <script type="importmap">
+    {"imports":{
+      "@elemaudio/core":"/node_modules/@elemaudio/core/dist/index.js",
+      "shallowequal":"/vendor/elemaudio-deps/shallowequal.mjs",
+      "invariant":"/vendor/elemaudio-deps/invariant.mjs",
+      "eventemitter3":"/vendor/elemaudio-deps/eventemitter3.mjs"
+    }}
+  </script>
   <!-- Same styles as the public game route (index.html). Browser and Electron share this CSS. -->
   <link rel="stylesheet" href="/styles/ui.css" />
   <link rel="stylesheet" href="/styles/accessibility.css" />

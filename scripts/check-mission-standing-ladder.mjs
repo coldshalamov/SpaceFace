@@ -26,6 +26,7 @@ import { recommendMissionBoardOffer } from '../src/ui/station/stationMissionMode
 
 const dataSrc = readFileSync(new URL('../src/data/missions.js', import.meta.url), 'utf8');
 const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
+const missionBoardOpsSrc = readFileSync(new URL('../src/systems/missionBoardOps.js', import.meta.url), 'utf8');
 const preflightSrc = readFileSync(new URL('../src/ui/missionPreflight.js', import.meta.url), 'utf8');
 const factionLogicSrc = readFileSync(new URL('../src/ui/factionStanding.js', import.meta.url), 'utf8');
 const stationFactionsSrc = readFileSync(new URL('../src/ui/station/screens/factions.js', import.meta.url), 'utf8');
@@ -38,7 +39,7 @@ assert.match(missionsSrc, /function missionOfferMinRep\(offer, state = null\)/,
   'acceptance must derive standing requirements for old saves as well as new offers');
 assert.match(preflightSrc, /export function missionStandingRequirement/,
   'mission preflight must expose the shared standing requirement helper');
-assert.match(missionsSrc, /_rollStoryBranchIntroOffer/,
+assert.match(missionBoardOpsSrc, /_rollStoryBranchIntroOffer/,
   'Beat 4 story-intro offers must be explicitly generated and tagged');
 assert.match(factionLogicSrc, /export function factionContractLadderRows/,
   'Faction standing logic must expose direct-testable contract ladder rows');
@@ -113,7 +114,7 @@ function bus() {
   const events = [];
   return {
     events,
-    on() {},
+    on() { return () => {}; },
     emit(type, payload) { events.push({ type, payload }); },
   };
 }

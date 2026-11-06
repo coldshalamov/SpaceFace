@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "87ccb3c65eb676ee7f87f83b16c64378eb3b39688bd2bebe6d649ca43593b6ab",
+  "contentHash": "45fd7efde668b156ba10d45865bac51e0ff48d4aba258bde0b06e05d7e3d653b",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.dynamic",
@@ -3053,14 +3053,52 @@
       "uri": "wasp_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 454968,
-    "sha256": "9ca8a3cb5604f7d21bf18290baacbd0353f860b278bd7c08c60392c391349f1d",
+    "bytes": 161860,
+    "resources": [
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 72992,
+        "mimeType": "image/ktx2",
+        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
+        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
+      },
+      {
+        "bytes": 58536,
+        "mimeType": "image/ktx2",
+        "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
+        "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
+      },
+      {
+        "bytes": 114191,
+        "mimeType": "image/ktx2",
+        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+      },
+      {
+        "bytes": 6409,
+        "mimeType": "image/ktx2",
+        "sha256": "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
+        "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "d4093b6e5c83dfecc69d30f3232df0cc60a933a52407aa29e9a4208e353b19d3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3093,6 +3131,153 @@
     "markers": [
       {
         "matrix": [
+          1.1731383800506592,
+          0,
+          0,
+          0,
+          0,
+          1.1731383800506592,
+          0,
+          0,
+          0,
+          0,
+          1.1731383800506592,
+          0,
+          -8.23009204864502,
+          -0.05147496983408928,
+          -2.675191640853882,
+          1
+        ],
+        "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
+        "planIndex": 6,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_ARMOR_FLAP_Armor",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.734557628631592,
+          0,
+          0,
+          0,
+          0,
+          4.734557628631592,
+          0,
+          0,
+          0,
+          0,
+          4.734557628631592,
+          0,
+          -9.767492294311523,
+          2.868473529815674e-7,
+          -0.000001073349267244339,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 8,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          -10.399999618530273,
+          -0.019999999552965164,
+          -7.980000019073486,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          0,
+          0,
+          0,
+          0.06000041961669922,
+          0,
+          -10.399999618530273,
+          -0.019999999552965164,
+          7.980000019073486,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3111,7 +3296,7 @@
           1
         ],
         "name": "MOTION_WASP_GUNS",
-        "planIndex": 14,
+        "planIndex": 18,
         "tags": {
           "motionGroup": true
         },
@@ -3176,7 +3361,7 @@
           1
         ],
         "name": "MOTION_WASP_WINGLET_P",
-        "planIndex": 18,
+        "planIndex": 22,
         "tags": {
           "motionGroup": true
         },
@@ -3223,6 +3408,43 @@
       },
       {
         "matrix": [
+          1.6905381679534912,
+          0,
+          0,
+          0,
+          0,
+          1.6905381679534912,
+          0,
+          0,
+          0,
+          0,
+          1.6905381679534912,
+          0,
+          -8.101752519607544,
+          1.2251839339733124,
+          -4.400001764297485,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+        "planIndex": 24,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3241,7 +3463,7 @@
           1
         ],
         "name": "MOTION_WASP_WINGLET_S",
-        "planIndex": 22,
+        "planIndex": 27,
         "tags": {
           "motionGroup": true
         },
@@ -3306,7 +3528,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 25,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3358,7 +3580,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 26,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3410,7 +3632,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 27,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3462,7 +3684,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 28,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3514,7 +3736,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 29,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3566,7 +3788,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 30,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3618,7 +3840,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 31,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3670,7 +3892,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 32,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3722,7 +3944,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 33,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3774,7 +3996,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 34,
+        "planIndex": 39,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3826,7 +4048,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 35,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3878,7 +4100,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 36,
+        "planIndex": 41,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3941,28 +4163,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 6,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 7,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
@@ -3971,18 +4178,18 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
-        "role": "mechanical"
+        "planIndex": 13,
+        "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
-        "role": "mechanical"
+        "planIndex": 14,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4002,7 +4209,7 @@
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -4016,7 +4223,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 24,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
         "role": "mechanical"
       }
     ],
@@ -4026,7 +4248,7 @@
       "sha256": "b62538c381d24be3de52e639cc774a80cfd65d6f59ea79f3e0a7eeca08d36621",
       "uri": "assets/ships/motions/wasp-production-v1.motion.json"
     },
-    "nodeCount": 37,
+    "nodeCount": 42,
     "primitives": [
       {
         "canopy": false,
@@ -4129,8 +4351,8 @@
           -2.675191640853882,
           1
         ],
-        "name": "LOD0_HOOK_ARMOR_FLAP_Armor",
-        "planIndex": 6,
+        "name": "LOD0_HOOK_ARMOR_FLAP_Armor002",
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -4157,8 +4379,8 @@
           -0.000001073349267244339,
           1
         ],
-        "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 7,
+        "name": "LOD0_HOOK_DRIVE_CORE002",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -4203,8 +4425,8 @@
           -7.980000019073486,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 8,
+        "name": "LOD0_HOOK_NAV_PORT002",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4231,8 +4453,8 @@
           7.980000019073486,
           1
         ],
-        "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 9,
+        "name": "LOD0_HOOK_NAV_STARBOARD002",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4260,7 +4482,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 10,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4287,7 +4509,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 11,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4314,7 +4536,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 12,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4341,7 +4563,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 13,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -4368,7 +4590,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_Armor",
-        "planIndex": 15,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4396,7 +4618,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_Mechanical",
-        "planIndex": 16,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4424,7 +4646,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_GUNS_MechanicalDark",
-        "planIndex": 17,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4452,7 +4674,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Armor",
-        "planIndex": 19,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4479,8 +4701,8 @@
           -4.400001764297485,
           1
         ],
-        "name": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
-        "planIndex": 20,
+        "name": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor002",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4509,7 +4731,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
-        "planIndex": 21,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4537,7 +4759,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Armor",
-        "planIndex": 23,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4565,7 +4787,7 @@
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
-        "planIndex": 24,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4577,7 +4799,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "6dc3dbb0fb78aea28d8daa03c5a3d77c9cf598c532a2a6008808cee6509bcc90",
+  "runtimeHash": "7534f99fc00c3693e3fbfbfdac5c3e1888c51109b2909deef293a95924a4c289",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

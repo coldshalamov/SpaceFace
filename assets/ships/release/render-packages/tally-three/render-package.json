@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "45df8a33e4bc396d363f56bd480b3891be9420ddffe7dc68ecfc457de74b4ca0",
+  "contentHash": "12444b1864313b1593a385088b98bae7eee6493b10fdbec05aeb65fe356238e8",
   "dynamicGroups": [
     {
       "id": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical.dynamic",
@@ -3518,14 +3518,14 @@
       "uri": "place_tally_three.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 639052,
-    "sha256": "01e099f6bc1ff06fea82a7081aed85d089582f3618c644b04023baefc57d0768",
+    "bytes": 639268,
+    "sha256": "a13751f405017be38f1bd094fd297b8d54f8e9afaa7467764d47a8079cdc55e5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3681,6 +3681,117 @@
       },
       {
         "matrix": [
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          3.432722181081772,
+          0.5199999660253525,
+          -3.8113107085227966,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 26,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          3.4361200481653214,
+          0.5199999660253525,
+          -3.8140215277671814,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 28,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          3.4290432035923004,
+          0.5199999660253525,
+          -3.8422123193740845,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3699,7 +3810,7 @@
           1
         ],
         "name": "MOTION_TALLY_ARM_RIGHT",
-        "planIndex": 29,
+        "planIndex": 32,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -3751,6 +3862,117 @@
       },
       {
         "matrix": [
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          2.7277814745903015,
+          0.5199999660253525,
+          3.554844558238983,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 33,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          2.73063725233078,
+          0.5199999660253525,
+          3.5529231429100037,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 35,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          2.7361245304346085,
+          0.5199999660253525,
+          3.556902587413788,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 37,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3769,7 +3991,7 @@
           1
         ],
         "name": "MOTION_TALLY_SCAN",
-        "planIndex": 33,
+        "planIndex": 39,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -3821,6 +4043,117 @@
       },
       {
         "matrix": [
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          7.855961561203003,
+          0.5400000661611557,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 40,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          7.85597038269043,
+          0.5399134606122971,
+          6.556510925292969e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 42,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          7.856235504150391,
+          0.5405195951461792,
+          -0.0013867467641830444,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 44,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3839,7 +4172,7 @@
           1
         ],
         "name": "MOTION_TALLY_STAMP",
-        "planIndex": 37,
+        "planIndex": 46,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -3891,6 +4224,117 @@
       },
       {
         "matrix": [
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          -7.070080280303955,
+          3.0447921752929688,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 47,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          -7.067931175231934,
+          3.0444141626358032,
+          0.0019278526306152344,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 49,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          -7.063710927963257,
+          3.044166088104248,
+          0.0011272430419921875,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 51,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3909,7 +4353,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 41,
+        "planIndex": 53,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3961,7 +4405,7 @@
           1
         ],
         "name": "SOCKET_CLAIM_CRADLE",
-        "planIndex": 42,
+        "planIndex": 54,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4013,7 +4457,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 43,
+        "planIndex": 55,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4065,7 +4509,7 @@
           1
         ],
         "name": "SOCKET_TALLY_STAMP",
-        "planIndex": 44,
+        "planIndex": 56,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4218,22 +4662,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 27,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 28,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
+        "planIndex": 29,
         "role": "mechanical"
       },
       {
@@ -4243,37 +4677,47 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 32,
+        "planIndex": 34,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 34,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 36,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 39,
+        "planIndex": 50,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 40,
+        "planIndex": 52,
         "role": "accent"
       }
     ],
@@ -4283,7 +4727,7 @@
       "sha256": "9512676779b6318f12d6aca839360c7fcaf086cac899fe3f5cbd0e51eefbd0c5",
       "uri": "assets/ships/motions/tally-three.motion.json"
     },
-    "nodeCount": 45,
+    "nodeCount": 57,
     "primitives": [
       {
         "canopy": false,
@@ -4935,8 +5379,8 @@
           -3.8113107085227966,
           1
         ],
-        "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
-        "planIndex": 26,
+        "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4964,8 +5408,8 @@
           -3.8140215277671814,
           1
         ],
-        "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
-        "planIndex": 27,
+        "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -4993,8 +5437,8 @@
           -3.8422123193740845,
           1
         ],
-        "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
-        "planIndex": 28,
+        "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5022,8 +5466,8 @@
           3.554844558238983,
           1
         ],
-        "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
-        "planIndex": 30,
+        "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5051,8 +5495,8 @@
           3.5529231429100037,
           1
         ],
-        "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
-        "planIndex": 31,
+        "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5080,8 +5524,8 @@
           3.556902587413788,
           1
         ],
-        "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
-        "planIndex": 32,
+        "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5109,8 +5553,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
-        "planIndex": 34,
+        "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5138,8 +5582,8 @@
           6.556510925292969e-7,
           1
         ],
-        "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
-        "planIndex": 35,
+        "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5167,8 +5611,8 @@
           -0.0013867467641830444,
           1
         ],
-        "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
-        "planIndex": 36,
+        "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5196,8 +5640,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_TALLY_STAMP_Livery",
-        "planIndex": 38,
+        "name": "LOD0_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5225,8 +5669,8 @@
           0.0019278526306152344,
           1
         ],
-        "name": "LOD1_MOTION_TALLY_STAMP_Livery",
-        "planIndex": 39,
+        "name": "LOD1_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5254,8 +5698,8 @@
           0.0011272430419921875,
           1
         ],
-        "name": "LOD2_MOTION_TALLY_STAMP_Livery",
-        "planIndex": 40,
+        "name": "LOD2_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -5268,7 +5712,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_three.glb"
   },
-  "runtimeHash": "d9947b916a31907f951b1e00137b8981851be324432ca55f47d54987b828afc1",
+  "runtimeHash": "4b94fe2e4249d2906136255ff4af4b1ab620adcff39681e4d8d46731ca43a67c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

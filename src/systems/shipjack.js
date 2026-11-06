@@ -1,5 +1,5 @@
 // BLACK FLAG coordinator. Canonical owners perform combat, control, cargo, law and settlement.
-import { admitVessel, captureReadiness, currentSector, ensureShipjack, finite, isBlackFlagAdventure, normalizeShipjack, peekShipjack, queryShipjack, registryOwnerLabel, SHIPJACK_LIMITS, vesselForEntity, vesselHistory } from '../shipjack/model.js';
+import { admitVessel, captureReadiness, currentSector, ensureShipjack, finite, isAssignedFleetBody, isBlackFlagAdventure, normalizeShipjack, peekShipjack, queryShipjack, registryOwnerLabel, SHIPJACK_LIMITS, vesselForEntity, vesselHistory } from '../shipjack/model.js';
 import { advanceYardOperations, executeYardOperation } from '../shipjack/yardOperations.js';
 import { BLACK_FLAG_ENCOUNTERS } from '../data/blackFlag.js';
 import { SECTORS } from '../data/sectors.js';
@@ -34,9 +34,21 @@ export const shipjack = {
     on('sector:enter',()=>{this._pendingEntry=true;this._nextWork=0;});
     on('sector:exit',()=>this.parkSector());
     on('save:restoring',()=>{delete this.state.shipjack;this._pendingEntry=false;this._opportunitiesDeferred=false;});
+    on('save:started',()=>this.snapshotFleetVessels());
     on('save:loaded',()=>{
       const normalized=normalizeShipjack(this.state.player?.shipjack);
-      if(normalized){this.state.player.shipjack=normalized;this.state.shipjack=normalized;}
+      if(normalized){
+        this.state.player.shipjack=normalized;this.state.shipjack=normalized;
+        // Fleet live IDs are transient and are intentionally omitted by the fleet save.
+        // Re-open only an assigned saved flight body; the wing owner rematerializes it.
+        for(const owned of this.state.player?.ownedShips || []){
+          const v=owned?.fleetAssignmentId!=null&&normalized.vesselsById[owned.vesselId];
+          const e=v?.location?.entityId!=null?this.state.entities?.get(v.location.entityId):null;
+          if(v&&v.location?.kind==='field'&&!(e?.alive&&e.data?.vesselId===v.vesselId&&e.data?.shipjackGeneration===v.generation)){
+            v.location.kind='remote';v.location.entityId=null;
+          }
+        }
+      }
       else {delete this.state.player.shipjack;delete this.state.shipjack;}
       this._pendingEntry=true;this._nextWork=0;
     });
@@ -309,7 +321,56 @@ export const shipjack = {
   snapshot(v,e){
     v.condition.hull=Math.max(0,Math.min(1,e.hull/Math.max(1,e.hullMax)));
     Object.assign(v.location,{entityId:e.id,sectorId:currentSector(this.state),pos:globalToSectorLocalForSector(e.pos,currentSector(this.state)),vel:vec(e.vel),rot:e.rot,angVel:finite(e.angVel),at:now(this.state)});
-    v.parkedBody={hull:e.hull,armorHp:e.armorHp,shield:e.shield,cap:e.cap,fittings:[...(e.data.fittings || [])],subsystems:JSON.parse(JSON.stringify(this.state.combat?.entities?.[String(e.id)]?.subsystems || {}))};
+    v.parkedBody={hull:e.hull,armorHp:e.armorHp,armorMax:e.armorMax,shield:e.shield,cap:e.cap,fittings:[...(e.data.fittings || [])],subsystems:JSON.parse(JSON.stringify(this.state.combat?.entities?.[String(e.id)]?.subsystems || {}))};
+  },
+  snapshotFleetVessels(){
+    for(const row of this.state.automation?.fleet || []){
+      const e=this.state.entities?.get(row?._liveId),v=vesselForEntity(this.state,e);
+      if(e?.alive&&v&&isAssignedFleetBody(this.state,e)&&v.generation===e.data.shipjackGeneration)this.snapshot(v,e);
+    }
+  },
+  spawnFleetVessel(row,spec){
+    const owned=this.registry?.get('ships')?.fleetOwnedHull?.(row?.id);
+    const v=owned?.vesselId&&peekShipjack(this.state)?.vesselsById?.[owned.vesselId];
+    const old=v?.location?.entityId!=null?this.state.entities.get(v.location.entityId):null;
+    const anyLive=(this.state.entityList || []).some(e=>e?.alive&&e.data?.vesselId===v?.vesselId);
+    if(!v||v.custodian!=='player'||v.defId!==owned.defId||!['berth','remote','field'].includes(v.location?.kind)
+      ||anyLive||(old?.alive&&old.data?.vesselId===v.vesselId)||!this.helpers.spawnEntity)return null;
+    const b=v.parkedBody || {};
+    Object.assign(spec,{hull:b.hull??spec.hull,armorHp:b.armorHp??spec.armorHp,armorMax:b.armorMax??spec.armorMax,shield:b.shield??spec.shield,cap:b.cap??spec.cap});
+    Object.assign(spec.data,{vesselId:v.vesselId,shipjackGeneration:v.generation,persistenceOwner:'shipjack',
+      shipjackParked:false,shipjackUncrewed:v.crewSafe||v.crew==='evacuated'});
+    const e=this.helpers.spawnEntity(spec);if(!e)return null;
+    row._liveId=e.id;e.data.wingmanOf=row.id;e.data.isWingman=true;
+    this.registry.get('ships').configureFleetHull(e,row);
+    e.data.fittedInstances=owned.fittedInstances;
+    if(Number.isFinite(b.armorMax))e.armorMax=b.armorMax;
+    for(const [key,max] of [['hull','hullMax'],['armorHp','armorMax'],['shield','shieldMax'],['cap','capMax']])
+      if(Number.isFinite(b[key]))e[key]=Math.max(0,Math.min(e[max]??b[key],b[key]));
+    if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
+    v.location.kind='field';v.location.stationId=null;this.snapshot(v,e);this.dirty();return e;
+  },
+  parkFleetVessel(row,e){
+    const v=vesselForEntity(this.state,e);
+    if(!e?.alive||!v||!isAssignedFleetBody(this.state,e)||v.generation!==e.data.shipjackGeneration)return false;
+    this.snapshot(v,e);v.location.kind='remote';v.location.entityId=null;this.dirty();return true;
+  },
+  returnFleetVessel(row,e){
+    const owned=this.registry?.get('ships')?.fleetOwnedHull?.(row?.id);
+    const v=owned?.vesselId&&peekShipjack(this.state)?.vesselsById?.[owned.vesselId];
+    const stationId=this.state.ui?.docked===true?this.state.ui.dockedStationId:null;
+    const station=stationId&&this.stationEntity(stationId);
+    if(!v||v.custodian!=='player'||!station)return false;
+    if(!e)return row._liveId==null&&v.location?.kind==='berth'&&v.location.stationId===stationId&&!v.location.entityId
+      && !(this.state.entityList || []).some(body=>body?.alive&&body.data?.vesselId===v.vesselId);
+    if(e.id===this.state.playerId||!e.alive||!isAssignedFleetBody(this.state,e)
+      ||e.data.vesselId!==v.vesselId||e.data.shipjackGeneration!==v.generation||v.location?.entityId!==e.id
+      ||![e.pos?.x,e.pos?.z,e.vel?.x,e.vel?.z,station.pos?.x,station.pos?.z,station.radius].every(Number.isFinite)
+      ||Math.hypot(e.pos.x-station.pos.x,e.pos.z-station.pos.z)>station.radius+180
+      ||Math.hypot(e.vel.x,e.vel.z)>25||!this.helpers.removeEntity)return false;
+    this.snapshot(v,e);
+    if(!this.helpers.removeEntity(e.id))return false;
+    v.location.kind='berth';v.location.stationId=stationId;v.location.entityId=null;this.dirty();return true;
   },
   fleetContext(){return {state:this.state,bus:this.bus,registry:this.registry,
     detachVessel:v=>{
@@ -379,11 +440,10 @@ export const shipjack = {
     this.abortAll();
     for(const v of Object.values(own.vesselsById)){
       const e=this.state.entities.get(v.location?.entityId);
-      if(!e?.alive||e.id===this.state.playerId||e.data?.vesselId!==v.vesselId)continue;
+      if(!e?.alive||e.id===this.state.playerId||e.data?.vesselId!==v.vesselId||isAssignedFleetBody(this.state,e))continue;
       this.snapshot(v,e);v.location.kind='remote';
       if(v.materializationOwner!=='shipjack'){v.location.entityId=null;continue;}
-      // Store only the finite ship spec needed to restore this exact body, once.
-      v.parkedBody={hull:e.hull,armorHp:e.armorHp,shield:e.shield,cap:e.cap,fittings:[...(e.data.fittings || [])],subsystems:JSON.parse(JSON.stringify(this.state.combat?.entities?.[String(e.id)]?.subsystems || {}))};
+      // snapshot() above stores the physical condition before the sector removes the body.
       this.helpers.removeEntity?.(e.id);v.location.entityId=null;
     }
   },
@@ -393,7 +453,8 @@ export const shipjack = {
     if(own){state.shipjack=own;
       // Saved persistent entities have new numeric ids; reconcile by durable vessel identity.
       for(const e of state.entityList || []){const v=vesselForEntity(state,e);if(v&&e.alive){v.location.entityId=e.id;v.generation=e.data.shipjackGeneration;}}
-      for(const v of Object.values(own.vesselsById))if(v.materializationOwner==='shipjack'&&v.location.kind==='remote'&&v.location.sectorId===currentSector(state))this.rematerialize(v);
+      for(const v of Object.values(own.vesselsById))if(v.materializationOwner==='shipjack'&&v.location.kind==='remote'&&v.location.sectorId===currentSector(state)
+        && !state.player?.ownedShips?.some(s=>s?.vesselId===v.vesselId&&s.fleetAssignmentId!=null))this.rematerialize(v);
     }
     // Deferred admission is a runtime retry edge, not a consumed encounter or save field.
     if(isGuidedOnboardingActive(state)){this._opportunitiesDeferred=true;return;}
@@ -420,10 +481,16 @@ export const shipjack = {
       spec.homeSectorId=row.sectorId;spec.data.homeSectorId=row.sectorId;spec.data.sectorId=row.sectorId;
       if(row.disabled&&row.crew==='evacuated'){spec.data.ai=null;spec.data.intent=null;spec.shieldRegenRate=0;}
       spec.hull*=row.condition;spec.shield=row.disabled?0:spec.shield;spec.vel={x:row.disabled?2:12,z:row.disabled?1:0};
-      const e=this.helpers.spawnEntity(spec);
-      this.helpers.spawnBudget?.bindEntity(e.id,budgetId);
+      let e=null;
+      try { e=this.helpers.spawnEntity(spec); }
+      catch { this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue; }
+      if(!e||(this.helpers.spawnBudget&&!this.helpers.spawnBudget.bindEntity(e.id,budgetId))){
+        if(e)this.helpers.removeEntity?.(e.id);
+        this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue;
+      }
       const v=this.admit(e,{origin:row.id,name:row.name,ownerId:row.ownerId,profile:PROFILE[row.profile] || 'civilian',crew:row.crew,legalCategory:row.legalCategory==='salvage'?'unregistered':row.legalCategory});
-      if(!v)continue;v.materializationOwner='shipjack';v.salvageEligible=row.legalCategory==='salvage';v.returnReward=row.returnReward;v.recoveryAuthorized=['recovery','warrant','salvage'].includes(row.legalCategory);
+      if(!v){this.helpers.removeEntity?.(e.id);this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue;}
+      v.materializationOwner='shipjack';v.salvageEligible=row.legalCategory==='salvage';v.returnReward=row.returnReward;v.recoveryAuthorized=['recovery','warrant','salvage'].includes(row.legalCategory);
       sj.encounters[row.id]={admitted:true,vesselId:v.vesselId,outcome:'open'};
       if(row.disabled)this.helpers.disableShipjackSubsystem?.({entityId:e.id,subsystemId:'subsystem_drive'});
       this.bus.emit('shipjack:opportunity',{vesselId:v.vesselId,encounterId:row.id,entityId:e.id,stationId:row.stationId,defId:row.defId});
@@ -432,8 +499,14 @@ export const shipjack = {
         if(!this.helpers.spawnBudget||this.helpers.spawnBudget.request(1,escortBudget)>0){
           const escort=makeEnemySpawnSpec('patrol_lawman',2,{x:pos.x+110,z:pos.z-80},{factionId:row.factionId,spawnContext:'black_flag_escort'});
           escort.data.name='Sera Holt · recovery escort';
-          const guard=this.helpers.spawnEntity(escort);this.helpers.spawnBudget?.bindEntity(guard.id,escortBudget);
-          v.escortEntityId=guard.id;
+          let guard=null;
+          try { guard=this.helpers.spawnEntity(escort); } catch { /* the optional escort can be retried with its encounter */ }
+          if(guard&&(!this.helpers.spawnBudget||this.helpers.spawnBudget.bindEntity(guard.id,escortBudget))){
+            v.escortEntityId=guard.id;
+          }else{
+            if(guard)this.helpers.removeEntity?.(guard.id);
+            this.helpers.spawnBudget?.release(escortBudget);
+          }
         }
       }
       this.say(row.intro);this.dirty();
@@ -445,12 +518,18 @@ export const shipjack = {
     const b=v.parkedBody || {},dt=Math.min(60,Math.max(0,now(this.state)-v.location.at));
     const pos=sectorLocalToGlobalForSector({x:v.location.pos.x+v.location.vel.x*dt,z:v.location.pos.z+v.location.vel.z*dt},v.location.sectorId);
     const pilot=this.state.entities.get(this.state.playerId);if(pilot&&Math.hypot(pos.x-pilot.pos.x,pos.z-pilot.pos.z)<80){pos.x+=100;}
-    const spec=makeShipEntitySpec(v.defId,{team:v.custodian==='player'?0:2,fittings:b.fittings || this.state.player.ownedShips?.find(s=>s.vesselId===v.vesselId)?.fittings || [],pos,rot:v.location.rot});
+    const owned=this.state.player.ownedShips?.find(s=>s.vesselId===v.vesselId);
+    const spec=makeShipEntitySpec(v.defId,{team:v.custodian==='player'?0:2,fittings:b.fittings || owned?.fittings || [],appearance:owned?.appearance,pos,rot:v.location.rot});
     Object.assign(spec,{vel:vec(v.location.vel),angVel:v.location.angVel,hull:b.hull ?? spec.hull*v.condition.hull,armorHp:b.armorHp ?? spec.armorHp,shield:b.shield ?? 0,cap:b.cap ?? spec.cap});
     Object.assign(spec.data,{vesselId:v.vesselId,shipjackGeneration:v.generation,persistenceOwner:'shipjack',shipjackParked:v.custodian==='player',name:v.name,shipjackUncrewed:v.crewSafe || v.crew==='evacuated'});spec.flags={...spec.flags,persistent:true};
     if(v.location.sectorId!=null){spec.homeSectorId=v.location.sectorId;spec.data.homeSectorId=v.location.sectorId;spec.data.sectorId=v.location.sectorId;}
-    const e=this.helpers.spawnEntity(spec);v.location.entityId=e.id;v.location.kind='field';
+    let e=null;
+    try { e=this.helpers.spawnEntity(spec); }
+    catch { this._pendingEntry=true;return null; }
+    if(!e){this._pendingEntry=true;return null;}
+    v.location.entityId=e.id;v.location.kind='field';
     if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
+    return e;
   },
   berthAt(stationId){
     const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!isBlackFlagAdventure(this.state))return;
@@ -471,7 +550,7 @@ export const shipjack = {
     }
     if(!own)return;
     for(const v of Object.values(own.vesselsById)){
-      const e=this.state.entities.get(v.location.entityId);if(!e?.alive||v.custodian!=='player')continue;
+      const e=this.state.entities.get(v.location.entityId);if(!e?.alive||v.custodian!=='player'||isAssignedFleetBody(this.state,e))continue;
       if(e.id===this.state.playerId){
         v.location.kind='active';v.location.stationId=stationId;
         continue;

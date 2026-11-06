@@ -515,10 +515,11 @@ export function createTallyho() {
         id: `tallyho_rate_${p.id}`, sender: TALLYHO.sender, category: 'story',
         text: tallyhoRateLine(s.count), ttl: 5, persist: false,
       });
-      this._ratedSinceSpectator += 1;
+      const score = tallyhoScoreFor(s.count);
+      this._ratedSinceSpectator += score;
       if (this._ratedSinceSpectator >= TALLYHO.ratedKillsPerSpectator
           && this._spectators().length < TALLYHO.spectatorCap && this.helpers.spawnEntity) {
-        this._ratedSinceSpectator = 0;
+        this._ratedSinceSpectator -= TALLYHO.ratedKillsPerSpectator;
         // Next seat = one past the highest LIVE seat, never the live count: a dead
         // rail-sitter's chair stays empty and the new arrival does not spawn
         // coincident with the survivor. The stamped seat rides data.*, so a

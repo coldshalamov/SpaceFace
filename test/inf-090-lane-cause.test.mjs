@@ -70,7 +70,9 @@ test('INF-090 the displayed cause shares the record of the pressure that moved t
       inst.bus.emit('economy:applyTradePressure', { stationId: t.route.from, good: t.route.good, vol: -120 });
       inst.bus.emit('economy:applyTradePressure', { stationId: t.route.to, good: t.route.good, vol: 120 });
     },
-    creditPassive: () => {},
+    // Mirror the real seam: creditPassive pays into the wallet and returns what landed;
+    // the receipt only reads 'paid' when credits actually arrived.
+    creditPassive: (amount) => { state.player.credits += amount; return amount; },
   });
   inst._completeTraderCycle(trader, def, state.automation, 0);
   assert.equal(pressure.length, 2);

@@ -11,11 +11,15 @@ import {
   modelTruthUnmeasuredHitVolumes,
 } from '../src/data/modelTruth.js';
 
+// SUBSYSTEM_DEFS also contains archetype-specific Last Argument and pallet-jack volumes;
+// this generic hull fixture must not give those unrelated hulls their extra geometry.
+const ordinaryShipSubsystems = SUBSYSTEM_DEFS.filter((def) => !def.id.startsWith('subsystem_last_argument_')
+  && def.id !== 'subsystem_pallet_jack_clamp');
 const catalog = {
-  subsystems: new Map(SUBSYSTEM_DEFS.map((def) => [def.id, def])),
+  subsystems: new Map(ordinaryShipSubsystems.map((def) => [def.id, def])),
 };
 const combatant = {
-  subsystems: Object.fromEntries(SUBSYSTEM_DEFS.map((def) => [def.id, { hp: def.health }])),
+  subsystems: Object.fromEntries(ordinaryShipSubsystems.map((def) => [def.id, { hp: def.health }])),
 };
 
 function ship(id) {
@@ -72,7 +76,7 @@ test('an unmeasured hull keeps the generic volume and is listed', () => {
     assert.ok(modelTruthUnmeasuredHitVolumes(row.id).includes('subsystem_transport_clamp')
       || modelTruthUnmeasuredHitVolumes(row.id).length > 0);
   }
-  const health = SUBSYSTEM_DEFS.map((def) => [def.id, def.health, def.armor.flat]);
+  const health = ordinaryShipSubsystems.map((def) => [def.id, def.health, def.armor.flat]);
   assert.deepEqual(health, [
     ['subsystem_drive', 45, 2],
     ['subsystem_weapon', 38, 1],

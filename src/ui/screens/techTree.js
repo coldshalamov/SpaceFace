@@ -18,6 +18,7 @@
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createConstellation } from '../orrery/constellation.js';
 import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { injectTechTreeScreens } from '../orrery/tech-treeLayouts.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { reducedMotion } from '../kit/motion.js';
@@ -235,7 +236,7 @@ export const techTreeScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectConstellationScreens();
+    this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
     injectTechTreeScreens();
     this._ctx = ctx;
     this._root = rootEl;
@@ -451,7 +452,7 @@ export const techTreeScreen = {
         settle(this._regions.foot, { from: 'bottom', state: 'techTree:open' });
       } catch (e) { /* motion is cosmetic */ }
     }
-    if (this._root) this._root.dataset.kReady = '1';
+    if (this._markCssReady) this._markCssReady();
     // keyboard and pad land on the chosen star
     const focus = () => { if (this._sky && this._root && this._root.isConnected) this._sky.focusChosen(); };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focus)); else focus();
@@ -539,15 +540,17 @@ export const techTreeScreen = {
       hideTimer = window.setTimeout(finish, 150);
     };
     this._curveReset = () => { pinned = false; close({ instant: true }); };
-    // The rungs row is one clipped line: hide any rung that wrapped below it, so a narrow head shows
-    // whole rungs and nothing half-hidden (re-checked whenever the row's width changes).
+    // The rungs row is a clipped box (one line, or a two-rung stack on a tall desktop head, set in
+    // tech-treeLayouts.js): hide any rung that falls below it, so the head shows whole rungs and
+    // nothing half-hidden (re-checked whenever the row's size changes).
     const rungs = this._curve.rungs;
     if (rungs && typeof ResizeObserver === 'function') {
       const fitRungs = () => {
         const items = [...rungs.children];
         for (const r of items) r.hidden = false;
         const top = items.length ? items[0].offsetTop : 0;
-        items.forEach((r, i) => { if (i && r.offsetTop > top) r.hidden = true; });
+        const room = rungs.clientHeight + 1;
+        items.forEach((r, i) => { if (i && r.offsetTop - top + r.offsetHeight > room) r.hidden = true; });
       };
       // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
       if (this._rungsObserver) this._rungsObserver.disconnect();

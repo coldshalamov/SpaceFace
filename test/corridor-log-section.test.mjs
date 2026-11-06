@@ -114,7 +114,7 @@ test('corridor log: an empty ring reads the honest line, not an empty box', asyn
     screen._corrListEl = document.createElement('div');
     screen._ctx = { state: { simTime: 0, encounterDirector: {} } };
     screen._renderCorridorLog();
-    assert.ok(screen._corrListEl.innerHTML.includes('Nothing worth logging yet'), 'the empty line');
+    assert.ok(screen._corrListEl.innerHTML.includes('Nothing in the corridor log yet'), 'the empty line');
   } finally {
     global.document = savedDocument;
     global.window = savedWindow;

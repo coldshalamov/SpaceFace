@@ -14,7 +14,7 @@ import {
   resumeAuthoredUpgradeQueueAfterOpening,
   waitForOpeningGraphPublicationRelease,
 } from '../src/render/partsLibrary.js';
-import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
+import { POST_PROCESS_ROUTE, isRetiredPackagePoolResidencyOwner, render as renderSystem } from '../src/render/renderer.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
 import {
   createPipelineAdmissionTracker,
@@ -360,6 +360,46 @@ test('captured residency ports invoke the captured render and fail closed when i
   }
 });
 
+test('a held boundary residency upload cannot continue across context loss', async () => {
+  const fixture = liveRenderFixture();
+  let held = deferred();
+  let uploads = 0;
+  fixture.render.contextRecovery = { losses: 0, generation: 0 };
+  fixture.render.prepareAuthoredGpuResidency = async (_root, options) => {
+    await held.promise;
+    if (!options.isActive()) {
+      const error = new Error('owner became inactive');
+      error.name = 'AbortError';
+      throw error;
+    }
+    uploads++;
+    return 'resident';
+  };
+  try {
+    const entity = { id: 'context-owner', type: 'station', alive: true, data: {} };
+    const boundary = new THREE.Group();
+    const old = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    const pending = old.prepareAuthoredGpuResidency(boundary);
+    fixture.render.contextRecovery.losses++;
+    held.resolve();
+    await assert.rejects(pending, (error) => error.name === 'AbortError');
+    assert.equal(uploads, 0, 'the old-context continuation cannot submit');
+    held = deferred();
+    const duringLoss = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    const pendingRestore = duringLoss.prepareAuthoredGpuResidency(boundary);
+    fixture.render.contextRecovery.generation++;
+    held.resolve();
+    await assert.rejects(pendingRestore, (error) => error.name === 'AbortError');
+    assert.equal(uploads, 0, 'a lost-context admission cannot submit after restoration');
+    const current = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    assert.equal(await current.prepareAuthoredGpuResidency(boundary), 'resident');
+    assert.equal(uploads, 1, 'a current-context admission can upload normally');
+  } finally {
+    held.resolve();
+    fixture.restore();
+  }
+});
+
 test('the opening publication gate refuses a foreign generation and settles for the live one', async () => {
   const fixture = liveRenderFixture();
   try {
@@ -508,6 +548,120 @@ test('a synchronous exact-target touch throws on a retired port instead of leaki
       'no state was ever marked ready by a dead touch');
   } finally {
     fixture.restore();
+  }
+});
+
+test('captured residency owner snapshot distinguishes a retired same-id entity from its replacement', async () => {
+  const fixture = liveRenderFixture();
+  try {
+    const entity = { id: 'player-owner', type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, data: {} };
+    const replacement = { ...entity };
+    fixture.liveState.playerId = entity.id;
+    fixture.liveState.entities.set(entity.id, entity);
+    fixture.liveState.entityList = [entity];
+    fixture.liveState.world = { currentSectorId: 'sector_helios_prime' };
+    const boundary = new THREE.Group();
+    const options = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+
+    await options.prepareAuthoredPipelines(boundary);
+    const isActive = fixture.calls[0].options.isActive;
+    assert.equal(typeof isActive.ownerSnapshot, 'function');
+    const current = isActive.ownerSnapshot();
+    assert.equal(current.entityId, entity.id);
+    assert.equal(current.entityIsCurrent, true);
+    assert.equal(current.entityStillRequired, true);
+    assert.equal(current.admissionGenerationMatches, true);
+    assert.equal(current.portMatches, true);
+
+    fixture.liveState.entities.set(entity.id, replacement);
+    fixture.liveState.entityList = [replacement];
+    const retired = isActive.ownerSnapshot();
+    assert.equal(retired.entityIsCurrent, false);
+    assert.equal(retired.entityStillRequired, true,
+      'the snapshot keeps predicate membership separate from identity replacement');
+  } finally {
+    fixture.restore();
+  }
+});
+
+test('only proven retired empty-pool cancellation gets the expected owner disposition', () => {
+  const snapshot = {
+    ownerType: 'authored-boundary', entityStillRequired: false, nestedAdmissionOwnerActive: false,
+    entityAlive: true, entityIsCurrent: true, boundaryAttached: true, renderMatches: true,
+    rendererMatches: true, admissionGenerationMatches: true, contextLossGenerationMatches: true, portMatches: true,
+    nestedAdmissionOwner: { ownerType: 'render-package-pool-admission', cancelled: true,
+      requestedOwnerActive: true, liveSlotCount: 0, liveOwnerCount: 0, poolRetiring: true, chunkRetired: false },
+  };
+  assert.equal(isRetiredPackagePoolResidencyOwner(snapshot), true);
+  for (const change of [null, { ownerType: 'unknown' }, { cancelled: false },
+    { liveSlotCount: 2, liveOwnerCount: 2 }, { requestedOwnerActive: false },
+    { requestedOwnerActive: null }, { poolRetiring: false }]) {
+    const nestedAdmissionOwner = change === null ? null : { ...snapshot.nestedAdmissionOwner, ...change };
+    assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, nestedAdmissionOwner }), false,
+      `uncertain, live or upstream-withdrawn owner stays unexpected: ${JSON.stringify(change)}`);
+  }
+  assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, entityStillRequired: true }), false);
+  assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, admissionGenerationMatches: false }), false);
+});
+
+test('GPU residency snapshot names nested authored-job cancellation while outer boundary stays live', async () => {
+  const pump = fakeDisplayPump();
+  const fixture = liveRenderFixture();
+  const scene = new THREE.Group();
+  const boundary = new THREE.Group();
+  scene.add(boundary);
+  const entity = { id: 'cutter-residency-owner', type: 'ship', alive: true, data: {} };
+  fixture.liveState.entities.set(entity.id, entity);
+  fixture.liveState.entityList = [entity];
+  let requestedActive = true;
+  const requestedOwner = () => requestedActive;
+  requestedOwner.ownerSnapshot = () => ({ requestedBoundaryCurrent: requestedActive });
+  const pending = deferred();
+  let jobOwnerActive;
+  const job = {
+    boundary,
+    entity,
+    key: `entity:ship:${entity.id}`,
+    assetUrls: [],
+    run: ({ options }) => { jobOwnerActive = options.isResidencyOwnerActive; return pending.promise; },
+    options: { isResidencyOwnerActive: requestedOwner },
+  };
+  let warningSnapshot = null;
+  fixture.render.prepareAuthoredGpuResidency = (_root, options) => {
+    warningSnapshot = options.isActive.ownerSnapshot();
+    assert.equal(options.isActive(), false, 'the nested job owner is the cancellation source');
+    return Promise.resolve('resident');
+  };
+  try {
+    const completion = enqueueBoundaryUpgrade(scene, job);
+    pump.flushFrame();
+    await flushMicrotasks();
+    assert.equal(typeof jobOwnerActive, 'function');
+    requestedActive = false;
+
+    const residency = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    await residency.prepareAuthoredGpuResidency(boundary, {
+      isResidencyOwnerActive: jobOwnerActive,
+    });
+
+    assert.equal(warningSnapshot.entityAlive, true);
+    assert.equal(warningSnapshot.entityIsCurrent, true);
+    assert.equal(warningSnapshot.renderMatches, true);
+    assert.equal(warningSnapshot.portMatches, true);
+    assert.equal(warningSnapshot.nestedAdmissionOwnerActive, false);
+    assert.equal(warningSnapshot.nestedAdmissionOwner.jobStillNeeded, true,
+      'the live scene job was cancelled by its requested owner, not detachment');
+    assert.equal(warningSnapshot.nestedAdmissionOwner.requestedOwnerActive, false);
+    assert.deepEqual(warningSnapshot.nestedAdmissionOwner.requestedOwner,
+      { requestedBoundaryCurrent: false });
+
+    cancelAuthoredUpgradeQueue(scene, 'fixture-retired');
+    await completion;
+  } finally {
+    pending.resolve('settled-after-cancel');
+    cancelAuthoredUpgradeQueue(scene, 'fixture-retired');
+    fixture.restore();
+    pump.restore();
   }
 });
 

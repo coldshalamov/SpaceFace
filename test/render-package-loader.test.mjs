@@ -13,15 +13,81 @@ import {
   renderPackageContentIdentity,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
-import { createAssetResidencyRegistry, getAssetResidency } from '../src/render/assetResidency.js';
+import { createAssetResidencyRegistry, getAssetResidency, disposeAssetResidency } from '../src/render/assetResidency.js';
 import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
-import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import {
+  assertRenderResourceBindings,
+  createRenderPackageLoader,
+  fetchVerifiedRenderResources,
+} from '../src/render/renderPackageLoader.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import {
+  detachPackageGeometry, isPackageGeometryDetached, noteOrientationDetachedHold,
+  presentedDetachRehydrateInFlight,
+} from '../src/render/packageCpuDetach.js';
 
 Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
   Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
 
 const HASH = '1'.repeat(64);
+
+function glbJson(json) {
+  const jsonBytes = Buffer.from(JSON.stringify(json));
+  const padded = Buffer.concat([jsonBytes, Buffer.alloc((4 - jsonBytes.length % 4) % 4, 0x20)]);
+  const bytes = Buffer.alloc(20 + padded.length);
+  bytes.writeUInt32LE(0x46546c67, 0); bytes.writeUInt32LE(2, 4); bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(padded.length, 12); bytes.writeUInt32LE(0x4e4f534a, 16); padded.copy(bytes, 20);
+  return bytes;
+}
+
+test('shared KTX2 fetch resolves package-relative URLs and fails closed on missing or stale bytes', async () => {
+  const payload = Buffer.from([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);
+  const sha = createHash('sha256').update(payload).digest('hex');
+  const resource = { uri: `../_shared/images/${sha}.ktx2`, mimeType: 'image/ktx2', sha256: sha, bytes: payload.length };
+  const metadata = { assetId: 'fixture.ship', render: { resources: [resource] } };
+  const urls = [];
+  const fetchGood = async (url, options) => {
+    urls.push([url, options.cache]);
+    return { ok: true, arrayBuffer: async () => payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
+  };
+  const verified = await fetchVerifiedRenderResources(
+    fetchGood,
+    'file:///app/assets/ships/release/render-packages/fixture/render.glb',
+    metadata,
+  );
+  assert.deepEqual([...verified.get(resource.uri)], [...payload]);
+  assert.equal(urls[0][0], `file:///app/assets/ships/release/render-packages/_shared/images/${sha}.ktx2`);
+  assert.equal(urls[0][1], 'force-cache');
+  await fetchVerifiedRenderResources(fetchGood, 'https://assets.example/packages/fixture/render.glb', metadata);
+  assert.equal(urls[1][0], `https://assets.example/packages/_shared/images/${sha}.ktx2`);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({ ok: false, status: 404 }), 'https://game.test/packages/fixture/render.glb', metadata), /HTTP 404/);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({
+    ok: true, arrayBuffer: async () => Buffer.from('stale').buffer,
+  }), 'https://game.test/packages/fixture/render.glb', metadata), /byte length mismatch|SHA-256 mismatch/);
+});
+
+test('render GLB external KTX2 URI set must match the hash-bound resource descriptors', () => {
+  const sha = 'a'.repeat(64), uri = `../_shared/images/${sha}.ktx2`;
+  const bytes = glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/ktx2' }] });
+  const resource = { uri, mimeType: 'image/ktx2', sha256: sha, bytes: 12 };
+  assert.equal(assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: { resources: [resource] } }), true);
+  assert.throws(() => assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: {} }), /undeclared external/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [] }), {
+    assetId: 'fixture.ship', render: { resources: [resource] },
+  }), /unreferenced external/);
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ bufferView: 0, mimeType: 'image/ktx2' }] }), {
+    assetId: 'legacy.ship', render: {},
+  }), true, 'legacy embedded packages remain readable');
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'data:image/png;base64,AA==', mimeType: 'image/png' }] }), {
+    assetId: 'legacy.data-uri.ship', render: {},
+  }), true, 'legacy self-contained data URIs remain readable');
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'textures/escape.png' }] }), {
+    assetId: 'untyped.external.ship', render: {},
+  }), /unsupported external URI/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/png' }] }), {
+    assetId: 'wrong-mime.external.ship', render: { resources: [resource] },
+  }), /unsupported external URI/);
+});
 
 test('verified URL cache rejects changed metadata that reuses declared trust anchors', async () => {
   let current = packageMetadata();
@@ -153,6 +219,81 @@ function decodedFixture(disposals = null) {
 
   return { scene: root, geometry, material, texture };
 }
+
+test('private orientation trace follows the real verified GLTF decoder through refill and rebind', async () => {
+  // An actual binary GLTF triangle, with the same semantic owners as packageMetadata().
+  // No GPU or texture decoder is stubbed; this exercises the production decoder's CPU path.
+  const bin = Buffer.alloc(80);
+  [0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((value, i) => bin.writeFloatLE(value, i * 4));
+  [0, 0, 1, 0, 0, 1, 0, 0, 1].forEach((value, i) => bin.writeFloatLE(value, 36 + i * 4));
+  [0, 1, 2].forEach((value, i) => bin.writeUInt16LE(value, 72 + i * 2));
+  const json = {
+    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0, 1] }],
+    nodes: [
+      { name: 'Hull', mesh: 0, children: [2], extras: semanticLocator('Hull', ['fixture.body']) },
+      { name: 'Turret', mesh: 0, extras: semanticLocator('Turret', ['fixture.turret']) },
+      { name: 'FX_Trail_Left', extras: semanticLocator('FX_Trail_Left', ['fixture.trail.left']) },
+    ],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2 }] }],
+    buffers: [{ byteLength: bin.length }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: 36 },
+      { buffer: 0, byteOffset: 36, byteLength: 36 },
+      { buffer: 0, byteOffset: 72, byteLength: 6 },
+    ],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [0, 0, 0], max: [1, 1, 0] },
+      { bufferView: 1, componentType: 5126, count: 3, type: 'VEC3' },
+      { bufferView: 2, componentType: 5123, count: 3, type: 'SCALAR' },
+    ],
+  };
+  const jsonChunk = glbJson(json);
+  const bytes = Buffer.concat([jsonChunk, Buffer.alloc(8), bin]);
+  bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(bin.length, jsonChunk.length);
+  bytes.writeUInt32LE(0x004e4942, jsonChunk.length + 4);
+  const metadata = packageMetadata();
+  metadata.render.sha256 = createHash('sha256').update(bytes).digest('hex');
+  metadata.render.bytes = bytes.length;
+  metadata.contentHash = createHash('sha256').update(stableJsonStringify(renderPackageContentIdentity(metadata))).digest('hex');
+  let reads = 0;
+  const loader = createRenderPackageLoader({ fetchImpl: async () => {
+    reads++;
+    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  } });
+  const priorDiagnostic = globalThis.__SF_BUFFER_RESIZE_DIAG__;
+  const originalInfo = console.info;
+  const rows = [];
+  try {
+    const loaded = await loader.load(metadata);
+    const geometry = [...loaded.resources].find(resource => resource.isBufferGeometry);
+    assert.ok(geometry, 'the real GLTF scene publishes geometry');
+    assert.equal(detachPackageGeometry(geometry), true);
+    globalThis.__SF_BUFFER_RESIZE_DIAG__ = true;
+    console.info = (label, value) => {
+      if (label === '[render:package-refill]') rows.push(JSON.parse(value));
+      else originalInfo(label, value);
+    };
+    noteOrientationDetachedHold({}, { geometries: [geometry], textures: [] });
+    await presentedDetachRehydrateInFlight();
+    assert.equal(isPackageGeometryDetached(geometry), false);
+    assert.equal(reads, 2, 'the refill uses the real verified package decoder again');
+    assert.deepEqual(rows.map(row => row.stage), [
+      'decode:start', 'fetch-verify-glb:start', 'fetch-verify-glb:complete',
+      'prepass:start', 'prepass:complete', 'fetch-verify-images:start', 'fetch-verify-images:complete',
+      'parse:queued', 'parse:start', 'parse:complete',
+      'dedupe:queued', 'dedupe:start', 'dedupe:complete', 'rebind:start', 'rebind:complete',
+    ]);
+    assert.ok(rows.every(row => row.assetId === metadata.assetId && Number.isFinite(row.elapsedMs)));
+    assert.ok(geometry.attributes.position.array.length > 0);
+    assert.equal(geometry.attributes.normal.array.length, 9, 'the detached native GLTF attribute is refilled');
+  } finally {
+    console.info = originalInfo;
+    if (priorDiagnostic === undefined) delete globalThis.__SF_BUFFER_RESIZE_DIAG__;
+    else globalThis.__SF_BUFFER_RESIZE_DIAG__ = priorDiagnostic;
+    loader.dispose();
+  }
+});
 
 function flightPackageMetadata() {
   const metadata = packageMetadata();
@@ -687,6 +828,45 @@ test('loader disposal cancels an in-flight package generation and releases decod
   await assert.rejects(loader.load(packageMetadata()), /loader has been disposed/i);
 });
 
+test('late package progress and decode completion retain cancellation safety after admission settles', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  let resolveDecode;
+  let markDecodeStarted;
+  let reportProgress;
+  let ownerProgressCalls = 0;
+  const decodeStarted = new Promise((resolve) => { markDecodeStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    loadGlb: async (_url, _metadata, onProgress) => {
+      reportProgress = onProgress;
+      markDecodeStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+  });
+
+  const pending = loader.load(packageMetadata(), { onFetchProgress: () => { ownerProgressCalls++; } });
+  await decodeStarted;
+  assert.equal(loader.dispose('fixture-late-decode-cancel'), true);
+  await assert.rejects(pending, { name: 'AbortError' },
+    'the caller retains the original cancellation verdict');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(typeof reportProgress, 'function');
+  assert.doesNotThrow(() => reportProgress(),
+    'a late decoder progress callback must remain cancellation-safe after the cache entry detaches admission');
+  assert.equal(ownerProgressCalls, 0, 'late progress does not call back into a completed/canceled owner scope');
+
+  resolveDecode({ scene: decoded.scene });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.doesNotThrow(() => reportProgress(),
+    'progress arriving after the underlying decode settles is ignored safely');
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'a late decoded payload is disposed instead of being published');
+  assert.equal(loader.diagnostics().cacheEntries, 0, 'the canceled generation is not cached');
+  assert.equal(loader.diagnostics().residency.residentAssets, 0,
+    'the late decode does not publish residency');
+});
+
 test('loader disposal during content hashing cannot admit a later decode', async () => {
   const metadata = packageMetadata();
   let decodeCount = 0;
@@ -1204,6 +1384,209 @@ function pilotRuntimeFixture(loader) {
     renderPackages: loader,
   };
 }
+
+async function settledPilotHandoffFixture() {
+  let clock = 0, decodes = 0, eventHook = null;
+  const renderer = {}, events = [];
+  const residency = getAssetResidency(renderer, { now: () => clock, maxEvents: 512,
+    onEvent(event) { events.push(event); eventHook?.(event); } });
+  residency.rotateSector('sector_ceres_belt');
+  const metadata = packageMetadata();
+  const loader = createRenderPackageLoader({ residency,
+    loadGlb() { decodes++; return { scene: decodedFixture().scene }; },
+    prepareDecoded: () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  runtime.defaultResidencyOwner = { type: 'authored-runtime-cache' };
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const load = options => loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+    renderer, slot: 'hull', optional: true, sectorId: 'sector_ceres_belt',
+    isResidencyOwnerActive: () => true, ...options,
+  });
+  const initial = new THREE.Group();
+  const first = await load({ residencyOwner: initial, residencyRole: 'current-sector' });
+  const key = first.residency.key;
+  const bytes = residency.diagnostics().assets.find(asset => asset.key === key).bytes;
+  clock = 10;
+  residency.releaseOwner(initial, 'initial-boundary-departed');
+  clock = 20;
+  residency.registerAsset('served-soft-pressure', [{ userData: {},
+    byteSize: 64 * 1024 * 1024 - Math.floor(bytes / 2), dispose() {} }]);
+  const pressure = () => residency.retain('served-soft-pressure', {}, {
+    role: 'runtime-cache', decodeServed: true, sectorId: 'sector_ceres_belt',
+  });
+  pressure();
+  clock = 30;
+  return { renderer, residency, runtime, loader, first, key, events, load, pressure,
+    decodes: () => decodes,
+    onEvent(hook) { eventHook = hook; },
+    close() { eventHook = null; loader.dispose(); disposeAssetResidency(renderer); },
+  };
+}
+
+function assertNoHandoffPin(f, renderPackage = f.first.renderPackage) {
+  assert.equal(f.residency.diagnostics().pendingRequests, 0);
+  const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+  assert.equal(row?.roles.includes('current-sector') || false, false, 'no cancelled or departed boundary retain remains');
+  // A legitimate cache residue may outlive the boundary; end those actual leases instead of
+  // assuming the budget must choose this particular victim over an older pressure asset.
+  f.residency.releaseOwner(f.runtime.defaultResidencyOwner, 'warm-expired');
+  renderPackage.release('cache-released');
+  assert.equal(f.residency.has(f.key), false, 'only the normal cache/warm leases kept the resources resident');
+}
+
+test('settled pilot handoff protects a requested live joiner before a warm cache hit can evict it', async () => {
+  const f = await settledPilotHandoffFixture();
+  const owner = new THREE.Group();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1, 'handoff is protected synchronously, before await');
+    const [warmRecord, record] = await Promise.all([warm, live]);
+    assert.strictEqual(record.renderPackage, f.first.renderPackage);
+    assert.strictEqual(warmRecord.renderPackage, record.renderPackage);
+    assert.equal(f.decodes(), 1, 'warm-first/live-join must not decode a replacement generation');
+    const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+    assert.equal(row.refCount, 3, 'one cache owner, one warm owner and the normal boundary owner');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'boundary-departed');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff leaves warm-only eviction and live-first generation reuse intact', async () => {
+  for (const liveFirst of [false, true]) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group();
+    try {
+      if (liveFirst) {
+        const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+        const warm = f.load({ residencyRole: 'decode-runway' });
+        assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+        await warm;
+        assert.equal(f.first.renderPackage.evicted, false);
+      } else {
+        await f.load({ residencyRole: 'decode-runway' });
+        assert.equal(f.first.renderPackage.evicted, true, 'an unneeded warm-only package remains a legitimate victim');
+        assert.ok(f.events.some(e => e.type === 'asset-evicted' && e.key === f.key && e.reason === 'soft-residency-budget'));
+      }
+      assert.equal(f.decodes(), 1);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels aborted or departed live consumers without an extra hard owner', async () => {
+  for (const departure of ['abort', 'release', 'inactive']) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group(), controller = new AbortController();
+    let active = true;
+    try {
+      const warm = f.load({ residencyRole: 'decode-runway' });
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        signal: controller.signal, isResidencyOwnerActive: () => active });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'abort') controller.abort();
+      else if (departure === 'release') f.residency.releaseOwner(owner, 'boundary-departed');
+      else active = false;
+      assert.equal(await live, null);
+      await warm;
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+      f.pressure();
+      assert.equal(f.residency.has(f.key), false, 'cancelled demand cannot leave an eviction-blocking owner');
+      assert.equal(f.decodes(), 1, 'a departed consumer cannot request a replacement decode');
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels failed waits without removing an existing boundary claim', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    f.residency.retain(f.key, owner, { role: 'current-sector', sectorId: 'sector_ceres_belt' });
+    const record = await f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+      asyncAdmission: { wait: () => Promise.reject(new Error('consumer wait failed')) } });
+    assert.equal(record, null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.has(f.key), true, 'another existing boundary claim must survive this failed request');
+    f.residency.releaseOwner(owner, 'existing-boundary-left');
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff ends its exact request without cancelling a same-owner sibling', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const cancelled = f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 2);
+    controller.abort();
+    assert.equal(await cancelled, null);
+    assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+    await warm;
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.diagnostics().assets.find(a => a.key === f.key).refCount, 3);
+    assert.equal(f.decodes(), 1);
+    f.residency.releaseOwner(owner, 'sibling-boundary-left');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rolls back only its new claim if cancellation lands during retain', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    f.onEvent(event => {
+      if (event.type === 'asset-retained' && event.key === f.key && event.role === 'current-sector') controller.abort();
+    });
+    assert.equal(await f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal }), null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rejects retired renderer, sector and generation scopes before committing', async () => {
+  for (const departure of ['renderer', 'runtime', 'sector', 'context-loss', 'context-generation']) {
+    const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+    const scope = f.residency.diagnostics();
+    try {
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        isResidencyOwnerActive: () => {
+          const now = f.residency.diagnostics();
+          return !now.contextLost && now.currentSectorId === scope.currentSectorId && now.contextGeneration === scope.contextGeneration;
+        } });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'renderer') disposeAssetResidency(f.renderer, 'renderer-disposed');
+      else if (departure === 'runtime') f.runtime.retiring = true;
+      else if (departure === 'sector') f.residency.rotateSector('sector_next');
+      else {
+        f.residency.handleContextLost();
+        if (departure === 'context-generation') f.residency.handleContextRestored({ sectorId: 'sector_ceres_belt' });
+      }
+      assert.equal(await live, null, departure);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0, departure);
+      assert.equal(f.decodes(), 1, 'an invalid scope must not re-admit its old generation');
+      assert.equal(f.residency.diagnostics().assets.some(a => a.roles.includes('current-sector')), false);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff closes a stale request before a fresh generation retry', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1);
+    f.first.renderPackage.release('old-cache-generation-released');
+    const record = await live;
+    assert.ok(record && !record.renderPackage.evicted && !record.renderPackage.released);
+    assert.notStrictEqual(record.renderPackage, f.first.renderPackage);
+    assert.equal(f.decodes(), 2, 'only an explicitly retired generation needs its legitimate replacement');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'new-boundary-left');
+    assertNoHandoffPin(f, record.renderPackage);
+  } finally { f.close(); }
+});
 
 test('packaged scenario props retain their production package through pressure until boundary release', async () => {
   const renderer = {};

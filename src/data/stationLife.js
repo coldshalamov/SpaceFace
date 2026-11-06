@@ -1,5 +1,6 @@
 import { SECTORS } from './sectors.js';
 import { FACTION_META } from './factions.js';
+import { COMMODITIES } from './commodities.js';
 import { stationShiftAt, barPressureAt } from './worldCalendar.js';
 
 const STATIONS = new Map(SECTORS.flatMap(s => (s.stations || []).map(st => [st.id, st])));
@@ -86,4 +87,68 @@ export function stationPALine(profile, index = 0) {
       : 'Keep your manifest ready and the transfer lane clear.'}`;
   return `${profile.stationName} public address. ${profile.shift.name} has the floor. ${profile.shift.ending
     ? 'Relief crews, report to the locks. Outgoing crews, leave the lane clear.' : profile.notice}`;
+}
+
+// ── The market desk (inf-pa-market-desk) ────────────────────────────────────────────────
+// The PA rings watch bells and clears berth lanes all day, but the one announcement a
+// working station's public address would actually make — what its own market just did —
+// never came over the speakers. The desk reads two earned voices, best first: an active
+// shortage the world's news owner already recorded for THIS station, else the biggest
+// listing move against a mid at least one watch old on the desk's own price history.
+
+const CMDTY_NAMES = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+/** One station watch: three watches per the world's 600 s day (worldCalendar). */
+export const MARKET_WATCH_S = 200;
+/** A reference mid younger than this cannot ground a "since the last bell" claim. */
+export const MARKET_REF_MIN_AGE_S = 120;
+/** Noise floor: a move must clear both gates before the desk will name it. */
+export const MARKET_MOVE_MIN_CR = 5;
+export const MARKET_MOVE_MIN_FRAC = 0.08;
+
+/**
+ * The docked station's market desk line, or null when it has nothing true to say.
+ * The station is the price authority while the pilot stands in it, so the live book is
+ * the honest source — no memory, no survey packets, no invented movement. Pure read.
+ */
+export function stationMarketLine(state, stationId, observed = null) {
+  if (!state || !stationId) return null;
+  const starved = state.worldNews && state.worldNews.starved;
+  if (starved && typeof starved === 'object' && !Array.isArray(starved)) {
+    const names = [];
+    for (const key of Object.keys(starved)) {
+      if (!key.startsWith(`${stationId}:`)) continue;
+      const name = CMDTY_NAMES.get(key.slice(stationId.length + 1));
+      if (name) names.push(name);
+    }
+    if (names.length) {
+      names.sort();
+      return { text: `Market desk: ${names[0]} is starved at this berth. Haulers, the desk is listening.` };
+    }
+  }
+  if (!observed || observed.stationId !== stationId || !Number.isFinite(observed.asOf)) return null;
+  const market = observed.comparisons;
+  if (!market || typeof market !== 'object' || Array.isArray(market)) return null;
+  const now = Number(state.simTime) || 0;
+  if (now < observed.asOf || now - observed.asOf > 5) return null;
+  let best = null;
+  for (const commodityId of Object.keys(market).sort()) {
+    const entry = market[commodityId];
+    const mid = Number(entry && entry.current);
+    const ref = Number(entry && entry.reference);
+    const observedAt = Number(entry && entry.observedAt);
+    if (!Number.isFinite(mid) || !(ref > 0) || !Number.isFinite(observedAt)
+      || observed.asOf - observedAt < MARKET_REF_MIN_AGE_S || observed.asOf > now) continue;
+    const drift = mid - ref;
+    if (Math.abs(drift) < MARKET_MOVE_MIN_CR) continue;
+    if (Math.abs(drift) < Math.abs(ref) * MARKET_MOVE_MIN_FRAC) continue;
+    const name = CMDTY_NAMES.get(commodityId) || commodityId;
+    if (!best || Math.abs(drift) > Math.abs(best.drift)) {
+      best = { name, drift, observedAt };
+    }
+  }
+  if (!best) return null;
+  const cr = Math.max(1, Math.round(Math.abs(best.drift)));
+  return {
+    text: `Market desk: ${best.name} is ${best.drift > 0 ? 'up' : 'down'} ${cr} compared with ${Math.floor(now - best.observedAt)} seconds ago. Trade at the counter, not on the floor.`,
+  };
 }

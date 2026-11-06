@@ -309,7 +309,8 @@ test('claim construction and commissioning stay behind an explicit player confir
   assert.equal(buildConfirm.title, 'Build Throughline Sling?');
   assert.equal(buildConfirm.confirmLabel, 'Build');
   assert.match(buildConfirm.body, /Cost: 18,000 CR\./);
-  assert.match(buildConfirm.body, /12 Alloys, 6 Comp Circuitry, 4 Fuel Cells/);
+  // Materials read by their commodity names (src/data/commodities.js), not the id stems.
+  assert.match(buildConfirm.body, /Uses 12 Composite Alloys, 6 Circuitry, 4 Fuel Cells from your hold\./);
   assert.match(buildConfirm.body, /Adds Throughline Sling to Pallas Industrial Moon/);
   assert.equal(buildConfirm.danger, true, 'a route consuming 90% of available credits is danger');
 

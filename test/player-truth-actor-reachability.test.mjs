@@ -1,10 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readTarget, fightBeat } from '../scripts/player-truth/driver.mjs';
+import { readTarget, fightBeat, fighterCombatChoice } from '../scripts/player-truth/driver.mjs';
 import { applyWorldObjectSelection, clearWorldObjectSelection } from '../src/ui/worldObjectInteraction.js';
 import { radarHostileCourseText, publishRadarHostileCourse } from '../src/ui/radar.js';
 
 const drawnMeshes = rows => new Map(rows.map(e => [e.id, { visible: true, matrixWorld: e.pos }]));
+
+test('combat pilot sustains evasive beats and suppresses optional Massline under nearby danger', () => {
+  const threatened = fighterCombatChoice({ hull: 0.42, near: 3, packDist: 280,
+    targetDist: 170, hullLost: 0, beat: 3, breakBeats: 0 });
+  assert.equal(threatened.retreat, true);
+  assert.equal(threatened.breakBeats, 4, 'danger renews a usable evasive window');
+  assert.equal(threatened.massline, false, 'the optional tether does not interrupt a close low-hull escape');
+
+  const stillThreatened = fighterCombatChoice({ hull: 0.42, near: 2, packDist: 430,
+    targetDist: 310, hullLost: 0, beat: 4, breakBeats: threatened.breakBeats });
+  assert.equal(stillThreatened.retreat, true, 'evasion is renewed while nearby pressure persists');
+
+  const safeWindow = fighterCombatChoice({ hull: 0.9, near: 0, packDist: Infinity,
+    targetDist: Infinity, hullLost: 0, beat: 10, breakBeats: 0 });
+  assert.equal(safeWindow.retreat, false);
+  assert.equal(safeWindow.massline, true, 'the ordinary cadence can still exercise the physical ability safely');
+  assert.equal(fighterCombatChoice({ hull: 0.9, near: 1, packDist: 400,
+    targetDist: 400, hullLost: 0.05, beat: 10, breakBeats: 0 }).massline, false,
+  'a recent hit keeps the pilot in its evasive window even with plenty of hull');
+  assert.equal(fighterCombatChoice({ hull: 0.9, near: 1, packDist: NaN,
+    targetDist: Infinity, hullLost: 0, beat: 10, breakBeats: 0 }).massline, false,
+  'an unavailable threat distance cannot authorize the optional maneuver');
+});
 
 test('fighter aims at a visible gameplay target rather than a nearer off-canvas or HUD target', async () => {
   const savedWindow = globalThis.window; const savedDocument = globalThis.document;

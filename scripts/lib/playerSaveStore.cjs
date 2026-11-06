@@ -124,7 +124,7 @@ function writeAtomicSync(file, contents) {
   }
 }
 
-function writePlayerStoreKeysSync(dir, patch) {
+function writePlayerStoreKeysSync(dir, patch, { returnKeys = true } = {}) {
   const raw = String(dir || '').trim();
   if (!raw) throw new Error('player store directory is required');
   const root = path.resolve(raw);
@@ -143,7 +143,7 @@ function writePlayerStoreKeysSync(dir, patch) {
     if (value.length > MAX_VALUE_CHARS) throw new Error(`player store value too large: ${key}`);
     writeAtomicSync(file, value);
   }
-  return readPlayerStoreKeysSync(root);
+  return returnKeys ? readPlayerStoreKeysSync(root) : undefined;
 }
 
 function jsonHeaders() {
@@ -240,8 +240,15 @@ async function handlePlayerStoreRequest(req, res, dir) {
       return;
     }
     try {
-      const keys = writePlayerStoreKeysSync(dir, patch);
-      sendJson(res, 200, { ok: true, keys });
+      const minimal = String(req.headers?.prefer || '').split(',')
+        .some((preference) => preference.trim().toLowerCase() === 'return=minimal');
+      const keys = writePlayerStoreKeysSync(dir, patch, { returnKeys: !minimal });
+      if (minimal) {
+        res.writeHead(204, { 'Cache-Control': 'no-store', 'Preference-Applied': 'return=minimal' });
+        res.end();
+      } else {
+        sendJson(res, 200, { ok: true, keys });
+      }
     } catch (error) {
       const message = error && error.message ? String(error.message) : '';
       if (message.includes('too many keys')) {

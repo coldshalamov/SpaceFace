@@ -1,3 +1,13 @@
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { MAX_PER_SECTOR, CORE_MIN_TRAFFIC, priorityCourierServiceForSector,
+  FLEET_BY_FACTION, TRAFFIC_ROLES, CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST,
+  CERES_ACTIVITY_CAST_BY_SLOT_ID, sectorHasAuthoredRock, trafficRoleMixForSector,
+  sectorEnterTrafficShipStubs, ambientCountForSector, ceresActivityActorWorldRecordId,
+} from '../data/trafficPresentationReads.js';
+export { CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST, CERES_ACTIVITY_CAST_BY_SLOT_ID,
+  trafficRoleMixForSector, sectorEnterTrafficShipStubs, ambientCountForSector,
+  ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { ownsWinnowRecoveryHull, normalizeWinnowRecovery, admitWinnowRecovery, reconcileWinnowRecovery, stepWinnowRecovery, winnowPickupReceipt, winnowSpillReceipt, winnowKilledReceipt, winnowDestroyedReceipt } from '../world/vestaWinnowRecovery.js';
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
@@ -6,6 +16,7 @@ import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTall
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
+import { acceptSweeperPickup, dispatchSweeperWork, finishSweeperCycle } from './scrapSweeperOps.js';
 import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 // Ambient NPC traffic (V2 §28b / cut-list #2 visible-haulers). Spawns benign freighter ships that
 // ply station-to-station routes, making populated space feel ALIVE and — now that the economy
@@ -80,12 +91,10 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { STATION_CREW_ROLES } from '../economy/stationConditions.js';
-import { FACTION_KITS } from '../data/factions.js';
 import { OCCUPATIONAL_JOB_KIND_BY_ROLE } from '../data/occupationalTrafficCraft.js';
 import {
   PRIORITY_COURIER_ITINERARY_KIND,
   PRIORITY_COURIER_JOB_SCHEMA,
-  PRIORITY_COURIER_SERVICE,
   PRIORITY_COURIER_SERVICE_SCHEMA,
   PASSENGER_LINER_ITINERARY_KIND,
   PASSENGER_LINER_SERVICE,
@@ -102,10 +111,6 @@ import { ASTEROIDS } from '../data/mining.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { SECTORS } from '../data/sectors.js';
 import {
-  regionalTrafficDensityMultiplier,
-  regionalTrafficRoleWeights,
-} from './regionalEcology.js';
-import {
   APERTURE_GLOBAL_POS,
   APERTURE_ID,
   CINDER_SLUICE_SITE_ID,
@@ -119,7 +124,6 @@ import {
 } from '../data/environmentalMachinery.js';
 import { ceresDisabledHaulerManifestTruth, HEAVE_TO_COMPLIANT_ROLES } from '../data/contactHail.js';
 import {
-  CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
   CERES_ACTIVITY_SERVICE_SLOTS,
   TETHYS_ACTIVITY_SECTOR_ID,
@@ -156,9 +160,6 @@ import { trafficCausalChainOps } from './trafficCausalChainOps.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
-const MAX_PER_SECTOR = 8;
-const CORE_MIN_TRAFFIC = 6;    // high-security / high-tpm cores never feel empty
-const DEFAULT_TRAFFIC = 3;     // sectors without explicit trafficPerMin get a small ambient count
 const SPEED = 28;              // wu/s — slow, reads as a heavy freighter
 export const DOCK_RANGE = 60;         // how close before "docking" (trading)
 export const TRADE_INTERVAL_S = 8;    // min seconds between trades per freighter (staggered)
@@ -255,10 +256,6 @@ export function releaseExpiredTrafficWatch(entity, simTime) {
   delete data.trafficWatchCue;
   delete data.trafficWatchUntil;
   return true;
-}
-
-function priorityCourierServiceForSector(sectorId) {
-  return sectorId === PRIORITY_COURIER_SERVICE.sectorId ? PRIORITY_COURIER_SERVICE : null;
 }
 
 export function passengerLinerServiceForSector(sectorId) {
@@ -467,13 +464,6 @@ export function isShipDisabled(entity, state = null) {
 // Determinism: a faction with no authored fleet, or whose fleet has no group containing the anchor
 // hull, returns the anchor unchanged AND never draws from the RNG, so its traffic stream is
 // byte-identical to before. Nine of the fourteen factions are in that state today.
-const FLEET_BY_FACTION = new Map();
-for (const kit of FACTION_KITS) {
-  const groups = (Array.isArray(kit.shipRoles) ? kit.shipRoles : [])
-    .filter((entry) => Array.isArray(entry.hullIds) && entry.hullIds.length > 0);
-  if (groups.length) FLEET_BY_FACTION.set(kit.id, groups);
-}
-
 export function factionHullFor(anchorHull, factionId, rng) {
   const groups = FLEET_BY_FACTION.get(factionId);
   if (!groups) return anchorHull;
@@ -534,80 +524,6 @@ export function heliosFreightTallies(state) {
   return normalizeHeliosFreightTallyList(state && state.traffic && state.traffic.heliosFreightTallies);
 }
 export const HELIOS_BERTH_MAX_DRIFT = 20;
-const TRAFFIC_ROLES = {
-  hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
-              label: 'Cargo Hauler', docks: true, trades: true },
-  courier:  { ship: 'ship_kestrel',  team: 2, speed: 52, archetype: 'fleeing_trader', weight: 18,
-              label: 'Courier', docks: true, trades: true },
-  miner:    { ship: 'ship_pelican',  team: 2, speed: 30, archetype: 'fleeing_trader', weight: 16,
-              label: 'Mining Barge', docks: true, trades: true, seeks: 'asteroid' },
-  patrol:   { ship: 'ship_wasp',     team: 2, speed: 44, archetype: 'passive', weight: 14,
-              label: 'System Patrol', docks: false, orbits: true },
-  escort:   { ship: 'ship_wasp',     team: 2, speed: 40, archetype: 'passive', weight: 8,
-              label: 'Convoy Escort', docks: false, escorts: true },
-  smuggler: { ship: 'ship_drifter',  team: 2, speed: 46, archetype: 'fleeing_trader', weight: 6,
-              label: 'Smuggler', docks: true, trades: true },
-  pirate:   { ship: 'ship_hornet',   team: 2, speed: 50, archetype: 'fleeing_trader', weight: 5,
-              label: 'Raider', docks: false, flees: true },
-  rescue:   { ship: 'ship_drifter',  team: 2, speed: 48, archetype: 'passive', weight: 3,
-              label: 'Rescue Craft', docks: true, trades: false },
-  // A heavy neutral liner on a real station route. `speed` is descriptive only; the live motion
-  // path is the V3 NPC boost intent in update(), which keeps momentum honest and tether-shareable.
-  express:  { ship: 'ship_mule',     team: 2, speed: 247, archetype: 'fleeing_trader', weight: 3,
-              label: 'Express Liner', docks: true, trades: true, express: true },
-  // ── The working trades (design/fiction/THE_WORKING_TRADES.md) ─────────────────────────────────
-  // Hulls chosen from the dossiers, not from what was convenient: the Ranger's long-endurance
-  // utility spine is why a surveyor flies one and why "surveyors who cannot afford a Ranger fake
-  // the trade on a Hitch and die of range"; the Pelican is a barge frame, which is what a salvor
-  // needs to drag cut plate home; the Drifter's speed is why a tender gets off the berth fast when
-  // somebody is venting.
-  surveyor: { ship: 'ship_ranger',   team: 2, speed: 34, archetype: 'passive', weight: 9,
-              label: 'Survey Rig', docks: true, trades: false },
-  salvor:   { ship: 'ship_pelican',  team: 2, speed: 40, archetype: 'fleeing_trader', weight: 7,
-              label: 'Salvage Cutter', docks: true, trades: false },
-  tender:   { ship: 'ship_drifter',  team: 2, speed: 66, archetype: 'passive', weight: 6,
-              label: 'Repair Tender', docks: true, trades: false },
-  // PQ-045: the ore barge is its own presentation role, NOT a hauler reskin — `hauler` already
-  // owns the accepted helios_span whole-ship, so a barge keyed as `hauler` would replace that
-  // asset in every sector while silently wearing the "Cargo Hauler" label. `ore_carrier` has its
-  // own TRAFFIC_ROLES entry and its own whole-ship binding (wholeships/ore_barge.glb), so ship,
-  // team, speed, label and hull all resolve to the barge. The Ironback def was the unused
-  // mining_barge hull class this trade always implied (ROLE_MATRIX row "ore carrier"). It docks
-  // at stations like any bulk hull. PQ-048.01 closes its formerly inert seam by reusing the miner
-  // work kernel: the Ironback cuts one ore-only lot, carries it under this stable role identity,
-  // and settles it through freight/economy ownership.
-  ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
-              label: 'Ore Barge', docks: true, trades: true, seeks: 'asteroid' },
-  // PQ-136.02 — packaged work-fleet hulls on existing job kinds. Weights add variety
-  // inside the current ambient cap; they do not raise MAX_PER_SECTOR.
-  //
-  // PQ-193.08: tanker and customs are Helios fixtures (mix weight zeroed below), not
-  // ambient rolls. They do not remap hauler/Span, Atlas, Arclight, or hostile customs.
-  prospector: { ship: 'ship_drifter',  team: 2, speed: 32, archetype: 'fleeing_trader', weight: 5,
-              label: 'Prospector', docks: true, trades: false, seeks: 'asteroid' },
-  sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 4,
-              label: 'Scrap Sweeper', docks: true, trades: false },
-  shuttle:    { ship: 'ship_mule',     team: 2, speed: 38, archetype: 'fleeing_trader', weight: 4,
-              label: 'Apron Shuttle', docks: true, trades: true },
-  // The tug carries a finite freight lot through the existing hauler graph. Its lower planning
-  // speed keeps the working hull visibly distinct; the Hawser def is the yard-tug hull the
-  // role already renders (wholeships/yard_tug.glb), so its sim mass and radius now match the body.
-  tug:        { ship: 'ship_hawser',   team: 2, speed: 20, archetype: 'passive', weight: 4,
-              label: 'Yard Tug', docks: true, trades: true },
-  // PQ-193.07: rare Helios heavy. Own role and body — never remaps hauler/Span or Atlas.
-  // Ambient mix weight is zeroed below so the seeded hauler draw stays Span.
-  arclight:   { ship: 'ship_mule',     team: 2, speed: 22, archetype: 'fleeing_trader', weight: 2,
-              label: 'Helios Arclight', docks: true, trades: true },
-  // PQ-193.08: rare Helios extras. Own roles and bodies. Ambient mix is zeroed so
-  // seeded haulers stay Span and goldens stay byte-identical.
-  tanker:     { ship: 'ship_mule',     team: 2, speed: 24, archetype: 'fleeing_trader', weight: 2,
-              label: 'Volatiles Tanker', docks: true, trades: true },
-  customs:    { ship: 'ship_wasp',     team: 2, speed: 40, archetype: 'passive', weight: 2,
-              label: 'Inspection Cutter', docks: true, trades: false },
-  tourist:    { ship: 'ship_drifter',  team: 2, speed: 24, archetype: 'passive', weight: 4,
-              label: 'Sightseer', docks: true, trades: false, loiters: true },
-};
-
 export function lawPresenceRole(role) {
   return role === 'patrol' || role === 'escort';
 }
@@ -646,7 +562,6 @@ function trafficHeaveToComplies(role, entity) {
   return !(ai && ai.pirate === true);
 }
 
-export const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 export const CERES_REFINERY_HAULER_SLOT_ID = 'ceres_refinery_hauler';
 export const CERES_AMBUSH_HAULER_SLOT_ID = 'ceres_ambush_loaded_hauler';
 export const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
@@ -654,13 +569,6 @@ export const CERES_SEAM_SURVEYOR_SLOT_ID = 'ceres_seam_surveyor';
 export const CERES_CATHEDRAL_SALVOR_SLOT_ID = 'ceres_cathedral_salvor';
 const CERES_CATHEDRAL_PATROL_SLOT_ID = 'ceres_cathedral_patrol';
 const CERES_CINDER_HOOK_ID = 'ceres_cinder_sluice_service';
-export const CERES_ACTIVITY_CAST = Object.freeze([
-  ...CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots
-    .filter((slot) => slot.id !== CERES_TENDER_SLOT_ID)
-    .map((slot) => Object.freeze({ pocket, slot, service: false }))),
-  ...CERES_ACTIVITY_SERVICE_SLOTS.map((slot) => Object.freeze({ pocket: null, slot, service: true })),
-]);
-export const CERES_ACTIVITY_CAST_BY_SLOT_ID = new Map(CERES_ACTIVITY_CAST.map((entry) => [entry.slot.id, entry]));
 export const CERES_ACTIVITY_JOB_KINDS = new Set(['hauler', 'miner', 'surveyor', 'patrol', 'salvor']);
 export const CERES_PRIMARY_ACTION_BY_JOB_KIND = Object.freeze({
   hauler: Object.freeze({ action: 'unload', phase: NPC_JOB_PHASE.UNLOAD, intentField: 'destination' }),
@@ -688,7 +596,6 @@ const AMBIENT_NEAR_PERIOD = 2;
 // cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
 // envelope), identity keys are worldRecordSlotId / jobId, and movement stays with npcJobsRuntime.
 const CERES_CAUSAL_CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
-const CERES_CAUSAL_CHAIN_EVENT = 'traffic:ceresCausalChain';
 const CERES_CAUSAL_CHAIN_MAX_CONCURRENT = 2;
 const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
 export const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
@@ -1601,103 +1508,6 @@ function exactCeresRouteTargetRefMode(route, canonicalRoute, legacyTargetRefs = 
  * traffic_density recipe carries the live field's densityMultiplier/roleMixBias — authored as
  * the M2-C3 "scalar → recipe" contract that previously nobody read.
  */
-function embodimentDensityPayload(state, sectorId) {
-  const bySector = state && state.world && state.world.embodiment
-    && state.world.embodiment.bySector;
-  const rec = bySector && sectorId ? bySector[sectorId] : null;
-  const intents = rec && Array.isArray(rec.intents) ? rec.intents : null;
-  if (!intents) return null;
-  for (const it of intents) {
-    if (it && it.kind === 'traffic_density' && it.payload && typeof it.payload === 'object') {
-      return it.payload;
-    }
-  }
-  return null;
-}
-
-function sectorServiceSet(sector) {
-  const set = new Set();
-  const stations = sector && sector.stations;
-  if (!Array.isArray(stations)) return set;
-  for (const station of stations) {
-    const services = station && station.services;
-    if (!Array.isArray(services)) continue;
-    for (const service of services) {
-      if (typeof service === 'string' && service) set.add(service);
-    }
-  }
-  return set;
-}
-
-function hazardTypeSet(sector) {
-  const set = new Set();
-  const hazards = sector && sector.hazards;
-  if (!Array.isArray(hazards)) return set;
-  for (const hazard of hazards) {
-    if (hazard && typeof hazard.type === 'string' && hazard.type) set.add(hazard.type);
-  }
-  return set;
-}
-
-/**
- * FB-029 / FB-133 — flags the mixer already knows how to read, plus the service gates
- * that field the volatiles tanker and the inspection cutter. Synthetic pockets that
- * set none of these flags keep the prior weights. Ambient count is not touched.
- */
-function applySectorPopulationFlags(weights, sector) {
-  const sec = sector || {};
-  const out = weights;
-  const ind = sec.industries && typeof sec.industries === 'object' ? sec.industries : null;
-  const mining = !!(ind && ind.mining);
-  const refinery = !!(ind && ind.refinery);
-  const research = !!(ind && ind.research);
-  if (research && !mining && !refinery) {
-    out.surveyor *= 2.2;
-    out.courier *= 1.25;
-  } else if (research) {
-    out.surveyor *= 1.45;
-  }
-  if (refinery && !mining) {
-    out.hauler *= 1.35;
-    out.ore_carrier *= 1.2;
-  }
-  if (mining && !refinery) out.prospector *= 1.35;
-  if (sec.threat === 'vael') {
-    out.surveyor *= 1.55;
-    out.escort *= 1.18;
-  } else if (sec.threat === 'quiet') {
-    out.smuggler *= 1.9;
-    out.courier *= 0.75;
-  }
-  const hazards = hazardTypeSet(sec);
-  if (hazards.has('nebula')) out.surveyor *= 1.12;
-  if (hazards.has('radiation')) out.tender *= 1.18;
-  if (hazards.has('debris')) out.sweeper *= 1.22;
-  if (hazards.has('dense_asteroid')) out.prospector *= 1.08;
-  const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
-  const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
-  const threat = sec.threat || sec.danger;
-  const lowBand = threat === 'high' || sec.security === 'lawless'
-    || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3;
-  if (lowBand && numericSecurity != null) out.patrol *= (0.85 + numericSecurity);
-  const services = sectorServiceSet(sec);
-  const highCore = numericSecurity != null && numericSecurity >= 0.9;
-  const escorted = (out.escort || 0) > 0 || (out.patrol || 0) > 0;
-  if (!highCore && services.has('refuel') && ((out.pirate || 0) <= 0 || escorted)) out.tanker = 6;
-  if (!highCore && (services.has('scan') || services.has('toll'))) out.customs = 6;
-  return out;
-}
-
-// A sector with authored rock is a sector somebody cuts. Field records exist in three shapes: the
-// authored def (`count`), the embodied runtime record (`asteroidIds`), and the live view (`rocks`).
-function sectorHasAuthoredRock(sec) {
-  return Array.isArray(sec && sec.fields) && sec.fields.some((f) => f && (
-    (f.count | 0) > 0
-    || (Array.isArray(f.asteroidIds) && f.asteroidIds.length > 0)
-    || (Array.isArray(f.rocks) && f.rocks.length > 0)
-  ));
-}
-
 function ensureServiceCraftRoles(roles, weights, sector = null) {
   if (!Array.isArray(roles) || !roles.length || !weights) return roles;
   const out = roles.slice();
@@ -1739,88 +1549,6 @@ function ensureServiceCraftRoles(roles, weights, sector = null) {
 
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
-export function trafficRoleMixForSector(sector, state = null) {
-  const sec = sector || {};
-  const out = {};
-  for (const [id, role] of Object.entries(TRAFFIC_ROLES)) out[id] = role.weight;
-  const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
-  const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
-  // Industrial (mining/refinery) sectors: more miners + haulers. The ore barge plies the same
-  // declared extraction economy (it is the heavy logistics end of the miner's trade, not a
-  // contents-derived read — a sector that merely HAS rocks does not attract bulk carriers).
-  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) {
-    out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5;
-    out.prospector *= 2.5; out.sweeper *= 1.7;
-  }
-  // A sector with authored ROCK is a sector somebody cuts, whether or not an `industries` flag was
-  // ever set on it. Read the contents, not only the label.
-  //
-  // Concrete case this exists for: `sector_helios_prime` authors 70 asteroids across two named
-  // fields — the comments in sectors.js call one of them "the starter seam" — and Helios Station
-  // carries a standing iron shortage (`marketEquilibriumFactors: { cmdty_ore_iron: 0.09 }`). It has
-  // no `industries` flag, so the miner weight stayed at its base 16 while the `security >= 0.9`
-  // branch below multiplied patrol x1.6 and hauler x1.4 on top of it. Measured result across
-  // repeated live captures of the sector every new player starts in: **zero barges**, consistently
-  // 1 hauler + 4 patrols. The economy said iron was short and nobody was mining it.
-  //
-  // Deliberately weaker than the explicit flag (x1.7 vs x2.5) and NOT applied on top of it: a
-  // declared mining economy should still out-mine a core sector that merely happens to have rocks.
-  else if (sectorHasAuthoredRock(sec)) {
-    out.miner *= 1.7;
-  }
-  // Hostile/danger sectors: more suspicious raiders, fewer civilians.
-  const threat = sec.threat || sec.danger;
-  if (threat === 'high' || sec.security === 'lawless' || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3) {
-    out.pirate *= 4; out.courier *= 0.4; out.escort *= 2;
-  }
-  // Secure faction sectors: more patrols + escorts, no suspicious raider traffic in the safe lanes.
-  if (sec.security === 'secure' || sec.factionControl === 'strong' || (numericSecurity != null && numericSecurity >= 0.6)) {
-    out.patrol *= 2.5; out.escort *= 1.8; out.pirate = 0;
-  }
-  // Professional core pocket (Helios-class): licensed traders + one lawful presence — no smuggler
-  // scenery in the first-hour safe lane (smugglers still exist elsewhere via lower security).
-  if (numericSecurity != null && numericSecurity >= 0.9) {
-    out.smuggler = 0;
-    out.pirate = 0;
-    out.hauler *= 1.4;
-    out.courier *= 1.2;
-    out.patrol *= 1.6;
-  }
-  // Call-time gate: headless/golden and explicit flag-off sessions retain the exact prior role mix.
-  if (!massline2Flag('hitchhiking')) out.express = 0;
-  // General salvors are demand-driven from live wrecks/payloads (see _dispatchGeneralSalvors).
-  // Zero ambient weight so golden scenarios and ordinary pockets never roll a cutter from the
-  // role mix alone — the cleanup profession only appears when there is something to clean.
-  out.salvor = 0;
-  // The yard tug follows the same doctrine, and for a stronger reason: a tug whose whole job is to
-  // drag a body somewhere is a decorative hull if it rolls into a pocket with nothing to drag. It is
-  // dispatched against a real towable body by `_dispatchYardTugs`, so ambient weight is zero here.
-  // This also keeps the weighted draw byte-identical to the pre-tug distribution, which is why the
-  // sim/massline goldens are untouched by fielding the role.
-  out.tug = 0;
-  // PQ-193.07: the Arclight is a dedicated Helios fixture, not a mix roll. Zero here keeps
-  // every seeded hauler as Span and leaves goldens byte-identical.
-  out.arclight = 0;
-  // PQ-193.08: tanker and inspection cutter are the same fixture doctrine.
-  out.tanker = 0;
-  out.customs = 0;
-  out.tourist = (sec.scenic || sec.tourism) ? 4 : 0;
-  let weights = state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
-  // Live field read: the retained traffic_density recipe's roleMixBias tilts the mix toward what
-  // the sector's danger/scarcity/influence actually projects (more miners under mining industry,
-  // more raiders under Reach pressure). Deterministic per epoch; absent cache → authored mix.
-  const bias = state && sec && sec.id ? embodimentDensityPayload(state, sec.id) : null;
-  const mix = bias && bias.roleMixBias;
-  if (mix && typeof mix === 'object') {
-    const adjusted = { ...weights };
-    for (const role of Object.keys(adjusted)) {
-      const factor = Number(mix[role]);
-      if (Number.isFinite(factor)) adjusted[role] = Math.max(0, adjusted[role] * factor);
-    }
-    weights = adjusted;
-  }
-  return applySectorPopulationFlags(weights, sec);
-}
 function pickRole(roleWeights, rng) {
   let total = 0; for (const w of Object.values(roleWeights)) total += Math.max(0, w);
   if (total <= 0) return 'hauler';
@@ -1836,108 +1564,6 @@ function pickRole(roleWeights, rng) {
 // service slots, and the named lane contacts stamped for this sector (a contact's own ship
 // outranks the faction fleet exactly as the spawn code does). Extra files in the runway
 // cost nothing; a missed hull decodes cold at mount and pops in.
-export function sectorEnterTrafficShipStubs(sector, state) {
-  const out = [];
-  const seen = new Set();
-  const sectorId = sector && sector.id;
-  const factionId = (sector && sector.factionId) || 'faction_free';
-  // Rows carry the mount's trafficRole: wholeShipVisualForEntity resolves role before defId
-  // and the role/defId whole-ship maps are near-disjoint, so a stub without the role warms
-  // the wrong GLB. Dedupe on defId|role — two roles mapping to one hull still need both
-  // role files warmed.
-  const push = (defId, role) => {
-    if (typeof defId !== 'string' || !defId) return;
-    const key = defId + '|' + (role || '');
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({ defId, factionId, trafficRole: role || null });
-  };
-  const pushWithFactionGroup = (anchorDefId, role) => {
-    push(anchorDefId, role);
-    const groups = FLEET_BY_FACTION.get(factionId);
-    const group = groups && groups.find((entry) => entry.hullIds.includes(anchorDefId));
-    if (group && group.hullIds.length > 1) {
-      for (const hullId of group.hullIds) push(hullId, role);
-    }
-  };
-  if (!sector) return out;
-  if (ambientCountForSector(sector, state) > 0) {
-    const mix = trafficRoleMixForSector(sector, state);
-    for (const [roleId, w] of Object.entries(mix)) {
-      if (!Number.isFinite(w) || w <= 0) continue;
-      const def = TRAFFIC_ROLES[roleId];
-      if (def && def.ship) pushWithFactionGroup(def.ship, roleId);
-    }
-  }
-  for (const pocket of activityPocketsForSector(sectorId) || []) {
-    for (const slot of (pocket && pocket.actorSlots) || []) {
-      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
-      if (def && def.ship) push(def.ship, slot.presentationRole);
-    }
-  }
-  if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
-    for (const slot of CERES_ACTIVITY_SERVICE_SLOTS) {
-      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
-      if (def && def.ship) push(def.ship, slot.presentationRole);
-    }
-  }
-  for (const contact of NAMED_LANE_CONTACTS) {
-    if (!contact || !Array.isArray(contact.sectorIds)
-        || contact.sectorIds.indexOf(sectorId) < 0) continue;
-    // The spawn stamps trafficRole = contact.role || 'hauler' whether the hull is the
-    // contact's own or a role-default faction pick — the stub mirrors that role so the
-    // warm resolves the same whole-ship file the mount reads. A named contact's own hull
-    // outranks the faction fleet: the spawn does not run factionHullFor for it, so neither
-    // does the stub.
-    const contactRole = contact.role || 'hauler';
-    if (contact.ship) {
-      push(contact.ship, contactRole);
-    } else {
-      const def = TRAFFIC_ROLES[contactRole];
-      if (def && def.ship) pushWithFactionGroup(def.ship, contactRole);
-    }
-  }
-  return out;
-}
-
-/** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. Exported for tests. */
-export function ambientCountForSector(sector, state = null) {
-  // NO AMBIENT FREIGHT IN A CRUCIBLE RUN (PQ-135). Helios carries eighteen haulers a minute, and a
-  // live arena walk had nineteen of them on the board: they filled the contact list with things the
-  // player must not shoot, held spawn slots the wave needed, and turned a match into rush hour.
-  // The run is a sealed box; the only ships in it should be the ones it put there.
-  if (isRunSealed(state)) return 0;
-  const tpm = sector && sector.trafficPerMin;
-  let count;
-  if (typeof tpm === 'number') {
-    // denser reading for high-tpm cores: tpm/3 instead of /4 so Helios (18) → 6
-    count = Math.min(MAX_PER_SECTOR, Math.round(tpm / 3));
-  } else {
-    count = DEFAULT_TRAFFIC;
-  }
-  const sec = Number.isFinite(sector && sector.security) ? sector.security : null;
-  if (sec != null && sec >= 0.85 && count > 0) {
-    count = Math.min(MAX_PER_SECTOR, Math.max(CORE_MIN_TRAFFIC, count));
-  }
-  // Explicit zero remains authored silence. Otherwise ecology changes embodied freight density
-  // within the existing cap; the corresponding role mix also changes actual market manifests.
-  if (count > 0 && state) {
-    count = Math.min(MAX_PER_SECTOR, Math.max(1, Math.round(
-      count * regionalTrafficDensityMultiplier(state, sector && sector.id),
-    )));
-    // Live field read: the retained sectorSim traffic_density recipe scales the pocket with the
-    // field's projected density (danger surges thin the lanes; scarcity draws hulls). Same cap
-    // and floor as the ecology multiplier; absent cache → authored density unchanged.
-    const density = embodimentDensityPayload(state, sector && sector.id);
-    if (density && Number.isFinite(density.densityMultiplier)) {
-      count = Math.min(MAX_PER_SECTOR, Math.max(1, Math.round(
-        count * Math.max(0.35, Math.min(2.75, density.densityMultiplier)),
-      )));
-    }
-  }
-  return count;
-}
-
 /**
  * Professional first-hour mix: guarantee ≥1 lawful patrol + majority traders in high-sec.
  * Pure: takes pre-picked roles and returns a corrected array of the same length.
@@ -2158,8 +1784,10 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('save:loaded', () => bindRestoredCharonSupply(this));
     this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p));
+    this.bus.on('npcjobs:cycle', p => finishSweeperCycle(this, p));
     this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p));
     this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => acceptSweeperPickup(this, p));
     this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {}));
@@ -2173,7 +1801,7 @@ export const traffic = {
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
-    this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
+    this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
@@ -2568,7 +2196,10 @@ export const traffic = {
         : def.express
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
-      const manifest = this._assignManifest(ent, role, target, sectorId);
+      const manifest = role === 'sweeper'
+        ? this._emptySalvorManifest(ent, 0)
+        : this._assignManifest(ent, role, target, sectorId);
+      if (role === 'sweeper' && ent.data) ent.data.cargoManifest = manifest;
       this._watchSpawnedTraffic(ent);
       this._active.push(ent.id);
       const rec = {
@@ -4278,6 +3909,7 @@ export const traffic = {
     }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
+    dispatchSweeperWork(this, stations, state.world && state.world.currentSectorId);
     // Even with zero freighters, a wreck can still call a cutter into the sector.
     if ((!list || list.length === 0) || stations.length === 0) {
       if (stations.length > 0) {
@@ -4408,6 +4040,9 @@ export const traffic = {
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
+      // Retire only this exact rescue hull's old unleased generic tender assignment. Until
+      // that owner releases it, the normal job and violence branches remain authoritative.
+      if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
@@ -4444,9 +4079,20 @@ export const traffic = {
       }
       if (stepCharonSupply(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
       if (stepWinnowRecovery(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
-      if (e.data?.itinerary?.kind === 'anvil_work') continue;
-      if (e.data && e.data.jobId) continue;
-      if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
+      if (e.data?.itinerary?.kind === 'anvil_work' || e.data?.jobId || e.data?.claimDepotId) {
+        this._releaseHeatChallengeBrake(e, false);
+        continue; // the job/depot owns its current intent, including any brake
+      }
+      // inf-patrol-challenge — the law owns the fact (lawSecurity stamps data.heatChallenge on
+      // an ambient patrol that acquires a wanted hull); traffic owns the flying. The challenged
+      // hull breaks its station orbit and holds the standoff ring off the wanted hull's beam
+      // until the law releases the stamp. Route work and role behavior wait behind it.
+      if (e.data?.heatChallenge || this._heatChallengeBrakeLeases?.has(e)) {
+        if (this._stepHeatChallenge(e, state)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+      }
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
@@ -4671,11 +4317,91 @@ export const traffic = {
     setIntent(entity, 0, 1, true, false, null, aim);
   },
 
+  /**
+   * inf-patrol-challenge — fly the standing-heat challenge ring. The law stamped
+   * `data.heatChallenge` on this ambient patrol (its fact, our flying): close onto the
+   * standoff ring around the wanted hull, then hold station there — engines simmering,
+   * nose on the hull — until the law releases the stamp and the route resumes below.
+   * Returns false only when the wanted hull is gone; the ordinary dispatch takes the
+   * hull back and lawSecurity releases the stamp on its own watch.
+   */
+  _stepHeatChallenge(e, state) {
+    const stamp = e.data && e.data.heatChallenge;
+    if (!stamp || stamp.patrolId !== e.id
+        || (stamp.patrolGeneration != null && stamp.patrolGeneration !== occupantGenerationOf(e))) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
+    const wanted = state && state.playerId != null && state.entities
+      ? state.entities.get(state.playerId) : null;
+    if (!wanted || wanted.alive === false || !wanted.pos || !e.pos) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
+    const dx = wanted.pos.x - e.pos.x;
+    const dz = wanted.pos.z - e.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const standoff = Math.max(60, Number(stamp.standoffWu) || 0);
+    const leases = this._heatChallengeBrakeLeases || (this._heatChallengeBrakeLeases = new WeakMap());
+    const old = leases.get(e);
+    if (old && (old.stamp !== stamp || old.intent !== e.data.intent)) this._releaseHeatChallengeBrake(e);
+    if (dist > standoff * 1.15) {
+      // Close the ring at station-keeping speed, never a ramming burn.
+      setIntent(e, 0, 0.45, false, false, null, Math.atan2(dz, dx));
+    } else {
+      // On the ring: hold position facing the hull. The visible pressure is the stop
+      // itself — a patrol sitting off the beam, nose on, while the band names the sheet.
+      setIntent(e, 0, 0, false, false, null, Math.atan2(dz, dx));
+    }
+    const intent = e.data.intent;
+    let lease = leases.get(e);
+    if (!lease) {
+      // The generic save carries the intent. Keep data-only provenance with our borrowed brake
+      // so Continue can return it without making traffic a writer of the law's challenge stamp.
+      const borrow = { token: heatChallengeBrakeToken(stamp),
+        hadBrake: Object.prototype.hasOwnProperty.call(intent, 'brake'), priorBrake: intent.brake };
+      lease = { stamp, intent, generation: occupantGenerationOf(e), borrow };
+      leases.set(e, lease);
+    }
+    intent.brake = dist <= standoff * 1.15;
+    intent.heatChallengeBrakeBorrow = lease.borrow;
+    lease.borrow.writtenBrake = intent.brake;
+    return true;
+  },
+
+  _releaseHeatChallengeBrake(e, restore = true) {
+    const lease = this._heatChallengeBrakeLeases?.get(e);
+    if (!lease) return;
+    this._heatChallengeBrakeLeases.delete(e);
+    const data = e.data;
+    const intent = data && data.intent;
+    // This is a traffic-owned, same-life borrow. A new intent/controller keeps its brake.
+    if (!restore || intent !== lease.intent || occupantGenerationOf(e) !== lease.generation) return;
+    this._restoreHeatChallengeBrake(e, lease.stamp, lease.borrow);
+  },
+
+  _restoreHeatChallengeBrake(e, stamp, borrow = e.data?.intent?.heatChallengeBrakeBorrow) {
+    const data = e.data;
+    const intent = data && data.intent;
+    if (!intent || typeof borrow?.hadBrake !== 'boolean' || typeof borrow.writtenBrake !== 'boolean'
+        || borrow.token !== heatChallengeBrakeToken(stamp) || intent.heatChallengeBrakeBorrow !== borrow
+        || intent.brake !== borrow.writtenBrake || data.jobId || data.claimDepotId
+        || data.itinerary?.kind === 'anvil_work' || data.ai?.securityTargetId != null) return false;
+    if (borrow.hadBrake) intent.brake = borrow.priorBrake;
+    else delete intent.brake;
+    delete intent.heatChallengeBrakeBorrow;
+    return true;
+  },
+
 
 
 
 
 };
+
+function heatChallengeBrakeToken(stamp) {
+  return `${typeof stamp?.patrolId}:${stamp?.patrolId}:${stamp?.patrolGeneration ?? 'unknown'}:${stamp?.episodeId}:${stamp?.since}`;
+}
 
 export function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   const data = e.data || (e.data = {});
@@ -4822,21 +4548,6 @@ export function entityWithWorldRecord(state, worldRecordId) {
  * slot-scoped lookups outside traffic (audio cue positioning) probe the world-record index
  * instead of walking entityList.
  */
-export function ceresActivityActorWorldRecordId(state, slotId) {
-  if (typeof slotId !== 'string' || !slotId) return null;
-  const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
-  const worldRecordSlotId = entry && entry.slot && entry.slot.worldRecordSlotId
-    ? entry.slot.worldRecordSlotId
-    : `ceres:activity:${slotId}`;
-  const seed = (state && state.meta && state.meta.seed) || 1;
-  return stableRecordId(
-    seed,
-    CERES_ACTIVITY_SECTOR_ID,
-    RECORD_KIND.CONVOY,
-    worldRecordSlotId,
-  );
-}
-
 // Per-tick worldRecordId → entity index for callers that resolve several records in one pass
 // (world-site routes). When the entity index is ready its byWorldRecordId map is the source
 // (O(record count) instead of O(entity count) per tick); otherwise one walk of the entity

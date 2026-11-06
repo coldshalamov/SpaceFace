@@ -187,7 +187,7 @@ test('destroyed receiver navigation retains run mass but promises no replacement
   h.bus.emit('entity:killed', { id: h.receiver.id, entity: h.receiver });
   const wp = waypoint.call(h.missions, D.CAMPAIGN_BEATS.find(b => b.beat === 2));
   assert(wp.reason.includes('100t from zero')); assert(wp.reason.includes('Retained growth 0 biomass'));
-  assert(wp.reason.includes('8/240t')); assert(wp.reason.includes('no replacement 52 biomass'));
+  assert(wp.reason.includes('8/240t')); assert(!wp.reason.includes('52 biomass'), 'no restored starting biomass is promised');
   assert.deepEqual(plain(wp.pos), plain(R.receiverApproach()));
   assert.deepEqual(completed(h), ['cinder_board']);
 });
@@ -211,7 +211,7 @@ test('navigation names actual receiver and keeps approach outside mature mouth w
   assert.equal(wp.targetEntityId, null, 'location is not rebound to receiving hull centre');
   assert(Math.hypot(wp.pos.x - h.receiver.pos.x, wp.pos.z - h.receiver.pos.z) > 380 * E.UNDERSTORY_GARDENS.absorbPadding + 100);
   assert(wp.reason.includes('52 biomass')); assert(wp.reason.includes('0/240t'));
-  assert(wp.reason.includes('13.4t feed')); assert(wp.reason.includes('13.6t contents')); assert(wp.reason.includes('No cargo is provided'));
+  assert(wp.reason.includes('13.4t feed')); assert(wp.reason.includes('13.6t of feed')); assert(wp.reason.includes('No feed is supplied'));
   assert(wp.reason.includes('No pay before 240t')); assert(wp.reason.includes('12cr/t of actual run mass'));
   // Partial real feed does not cross a threshold; progress remains visible and no book credit.
   h.feed(8); const partial = waypoint.call(h.missions, beat);

@@ -16,6 +16,7 @@ import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { starterAirCard } from '../starterAirCard.js';
+import { paintStarterWorkPreview } from '../starterWorkPreview.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
@@ -342,7 +343,7 @@ function shipDefFor(ctx, shipId) {
 export const STARTER_LINE_GLOSS = 'winch speed';
 
 function paintStarterStats(host, card, scale, others = []) {
-  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'wu/s', STARTER_LINE_GLOSS]];
+  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'u/s', STARTER_LINE_GLOSS]];
   host.textContent = '';
   const a0 = -110; const a1 = 110;
   const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
@@ -758,21 +759,31 @@ export const newGameScreen = {
       mountLegacyField(candidate, loadoutField.wrap);
     });
 
-    // The first fifteen minutes: four static rows under the loadout.
+    // Keep the opening rail; its last row follows the selected hull's Helios ticket.
     const route = el('div', 'sf-ng-route');
     route.setAttribute('aria-label', coreText('firstMinutes'));
     route.appendChild(el('div', 'k-caps', coreText('firstMinutes')));
     const steps = el('ul', 'k-rows sf-ng-route__steps');
     steps.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
-    for (const [beat, verb] of FIRST_MINUTES) {
+    let workHeading, workDetail;
+    for (const [index, [beat, verb]] of FIRST_MINUTES.entries()) {
       const row = el('li', 'k-row k-row--static sf-ng-route__step');
       pin(row, { 'box-shadow': 'none' });
       const cell = el('div');
-      cell.appendChild(el('span', 'k-row__name', beat));
-      cell.appendChild(el('div', 'k-row__sub', verb));
+      const heading = el('span', 'k-row__name', beat);
+      const detail = el('div', 'k-row__sub', verb);
+      cell.appendChild(heading);
+      cell.appendChild(detail);
+      if (index === FIRST_MINUTES.length - 1) {
+        workHeading = heading;
+        workDetail = detail;
+        cell.setAttribute('aria-live', 'polite');
+        cell.setAttribute('aria-atomic', 'true');
+      }
       row.appendChild(cell);
       steps.appendChild(row);
     }
+    const renderWorkPreview = starter => paintStarterWorkPreview(workHeading, workDetail, starter);
     route.appendChild(steps);
     body.appendChild(route);
 
@@ -804,7 +815,7 @@ export const newGameScreen = {
       const allCards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
       const ringStatsMix = (a, b, f) => {
         const ca = starterAirCard(a); const cb = starterAirCard(b || a);
-        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']].map(([name, key, unit]) => {
+        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'u/s']].map(([name, key, unit]) => {
           const value = (1 - f) * (Number(ca[key]) || 0) + f * (Number(cb[key]) || 0);
           return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
             frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]),
@@ -964,7 +975,7 @@ export const newGameScreen = {
 
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
-      starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
+      starterWords, starterDesc, hullName, hullBlurb, renderLoadout, renderWorkPreview,
       firstFlightWords, firstFlightDesc, flownBefore: false,
       starter: DEFAULT_STARTER,
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
@@ -1027,6 +1038,7 @@ export const newGameScreen = {
     refs.hullName.textContent = (ship && ship.name) || starter.name;
     refs.hullBlurb.textContent = starter.blurb;
     refs.renderLoadout(starter);
+    refs.renderWorkPreview(starter);
     // a poster-only stage has no mount but still shows the picked hull
     if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });

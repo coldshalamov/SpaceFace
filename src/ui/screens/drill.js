@@ -220,6 +220,10 @@ export function createDrillInputController({ drillSys, getState }) {
   let intent = null;
   let accumulator = 0;
   let blockedUntilRelease = false;
+  // A worker-lane tick is accepted before its state reply reaches this mirror. Keep the intent
+  // until the relevant published drill facts change; sessionElapsed is deliberately excluded,
+  // since idle UI-clock commands also advance it.
+  let pendingMirrorReceipt = null;
   // True while this press still owes the player the one cell it promised. Cleared the moment that
   // cell lands — so it can never be confused with a cruise intent, which release must cancel.
   let seatOwed = false;
@@ -263,13 +267,60 @@ export function createDrillInputController({ drillSys, getState }) {
     return null;
   }
 
+  function intentReceipt() {
+    if (!intent) return null;
+    const d = getState();
+    const avatar = d?.avatar;
+    const tile = d?.field?.[intent.col]?.[intent.row];
+    return {
+      active: !!d?.active,
+      asteroidId: d?.asteroidId ?? null,
+      asteroidGeneration: d?.asteroidGeneration ?? null,
+      fieldId: d?.fieldId ?? null,
+      col: avatar?.col ?? null,
+      row: avatar?.row ?? null,
+      isDrilling: !!avatar?.isDrilling,
+      drillTargetCol: avatar?.drillTarget?.col ?? null,
+      drillTargetRow: avatar?.drillTarget?.row ?? null,
+      drillBlocked: !!avatar?.drillBlocked,
+      tileType: tile?.type ?? null,
+      tileHp: tile?.hp ?? null,
+      tileHasStructure: !!tile?.structure,
+    };
+  }
+
+  function sameIntentReceipt(a, b) {
+    return !!a && !!b
+      && a.active === b.active
+      && a.asteroidId === b.asteroidId
+      && a.asteroidGeneration === b.asteroidGeneration
+      && a.fieldId === b.fieldId
+      && a.col === b.col
+      && a.row === b.row
+      && a.isDrilling === b.isDrilling
+      && a.drillTargetCol === b.drillTargetCol
+      && a.drillTargetRow === b.drillTargetRow
+      && a.drillBlocked === b.drillBlocked
+      && a.tileType === b.tileType
+      && a.tileHp === b.tileHp
+      && a.tileHasStructure === b.tileHasStructure;
+  }
+
   function step(dt, allowArm = true, impulse = false) {
+    if (pendingMirrorReceipt) {
+      const currentReceipt = intentReceipt();
+      if (!sameIntentReceipt(currentReceipt, pendingMirrorReceipt)) {
+        pendingMirrorReceipt = null;
+        settleIntent();
+      }
+    }
     if (!intent && activeDirection && allowArm && !blockedUntilRelease) armIntent(activeDirection);
     const before = getState()?.avatar;
     const beforeCol = before?.col;
     const beforeRow = before?.row;
-    drillSys.tickInput(held, dt, impulse ? PRESS_IMPULSE : undefined);
-    settleIntent();
+    const queued = drillSys.tickInput(held, dt, impulse ? PRESS_IMPULSE : undefined);
+    if (queued === true) pendingMirrorReceipt = intentReceipt();
+    else settleIntent();
     const after = getState()?.avatar;
     return !!after && (after.col !== beforeCol || after.row !== beforeRow);
   }
@@ -314,6 +365,7 @@ export function createDrillInputController({ drillSys, getState }) {
       activeDirection = null;
       blockedUntilRelease = false;
       accumulator = 0;
+      pendingMirrorReceipt = null;
       // Release stops the chain at the current cell. A seat still waiting on the beat clock is not
       // a chain — it is the tap itself — so it stays latched and completes.
       if (!seatPending()) clearCommand();
@@ -342,6 +394,7 @@ export function createDrillInputController({ drillSys, getState }) {
       activeDirection = null;
       blockedUntilRelease = false;
       seatOwed = false;
+      pendingMirrorReceipt = null;
       clearCommand();
       // Opening guidance/drawers can cancel before the drill owner has mounted. Retire the
       // local intent even then; an absent owner has no held drilling state to release.

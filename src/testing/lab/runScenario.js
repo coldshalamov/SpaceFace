@@ -3,6 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import { createAuthoritativeRuntime, bindRuntimeToState } from '../../runtime/createAuthoritativeRuntime.js';
+import { loadModelTruthCensus } from '../../data/modelTruth.js';
 import { SIM_DT } from '../../core/sim.js';
 import { canonicalStringify } from '../../core/simSnapshot.js';
 import { observeMasslineOrbit } from '../../combat/masslineOrbitTelemetry.js';
@@ -130,6 +131,9 @@ export async function runLabScenarioInternal(scenarioDoc, options = {}) {
 }
 
 async function runLabScenarioInternalBody(scenarioDoc, options = {}) {
+  // The model-truth census is a fetched asset now: like main.js boot and the sim worker, the lab
+  // arm loads it before any synchronous consumer (solid dressing, collider lookups) runs.
+  await loadModelTruthCensus();
   const runId = options.runId || `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const verbosity = options.verbosity ?? 1;
   // Child-arm marker: parent will evaluate multi-run equivalence (O3).

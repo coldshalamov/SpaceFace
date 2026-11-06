@@ -1351,23 +1351,39 @@ ${NS} .k-words--row .fh-key.fh-key--legend::before { display:none; }
 
 // Racing surfaces: placement only, on the existing Deckplate materials and tokens.
 const RACING = `
-.race-tape { position:fixed; z-index:11; top:calc(env(safe-area-inset-top,0px) + 68px); left:50%; transform:translateX(-50%); display:grid; grid-template-columns:110px minmax(0,1fr); width:min(480px,calc(100vw - 24px)); box-sizing:border-box; gap:var(--dp-pad); padding:var(--dp-pad); color:var(--dp-ink); font:12px/1.45 var(--dp-font-mono,monospace); pointer-events:none; }
+.race-tape { position:fixed; z-index:11; top:calc(env(safe-area-inset-top,0px) + 68px); left:50%; transform:translateX(-50%); display:grid; grid-template-columns:110px minmax(0,1fr); width:min(480px,calc(100vw - 24px)); box-sizing:border-box; gap:var(--dp-pad); padding:var(--dp-pad); border-radius:4px; border:1px solid rgb(236 230 216 / .14); color:var(--dp-ink); font:12px/1.45 var(--dp-face-read,var(--dp-font-mono,sans-serif)); pointer-events:none; }
 .race-tape[hidden] { display:none; }
-.race-tape[data-compact="true"] { left:auto; right:max(12px,env(safe-area-inset-right,0px)); transform:none; width:auto; grid-template-columns:1fr; }
+.race-tape[data-compact="true"] { left:auto; right:max(12px,env(safe-area-inset-right,0px)); transform:none; width:auto; grid-template-columns:1fr; padding:0; background:transparent !important; border:0 !important; box-shadow:none !important; }
+/* syncParent (racingHud.js) reparents the compact tape into .sf-rightdock, where the dock's
+   contain:layout makes position:fixed resolve against the dock box — the fixed top/right then
+   landed the Overhead/Circuits row mid target card. Inside the dock the tape is its first
+   column child, so static flow stacks it above the target readout and overlap is impossible.
+   Outside the dock (the #hud-root fallback mount) the fixed top-right rail above still owns
+   placement. Mobile flight overrides this wholesale with absolute anchors (mobileFlightLayouts). */
+.sf-rightdock > .race-tape[data-compact="true"] { position:static; right:auto; align-self:center; margin-bottom:2px; }
 .race-tape-map { align-self:center; }
-.race-tape-readings { min-width:0; }
+.race-tape-readings { min-width:0; font-family:var(--dp-face-num,var(--dp-font-mono,monospace)); font-variant-numeric:tabular-nums; }
 .race-tape[data-phase="handoff"] { grid-template-columns:1fr; }
-.race-tape-goal { color:var(--dp-lamp); }
+.race-tape-goal { color:var(--dp-lamp); font-weight:600; }
 .race-map { display:block; width:100%; height:auto; overflow:visible; }
-.race-tape-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dp-lamp); }
-.race-tape-hint { min-height:1.45em; color:var(--dp-ink-dim); }
-.race-tape-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; justify-content:center; gap:4px; pointer-events:auto; }
-.race-tape-actions .k-word { min-height:44px; padding:6px 10px; font:inherit; color:var(--dp-ink); background:transparent; border:1px solid var(--dp-metal-hi); cursor:pointer; }
-.race-tape-actions .k-word:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
-.race-tape-actions .k-word:disabled { cursor:default; color:var(--dp-ink-dim); }
+.race-tape-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dp-lamp); font-family:var(--dp-face-read,sans-serif); font-weight:600; letter-spacing:.03em; }
+.race-tape-hint { min-height:1.45em; color:var(--dp-ink-dim); font-family:var(--dp-face-read,sans-serif); }
+.race-tape-actions { grid-column:1/-1; display:inline-flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:0; padding:0; overflow:hidden; border-radius:4px; border:1px solid rgb(236 230 216 / .15); background:linear-gradient(180deg, rgb(18 22 30 / .92), rgb(11 14 20 / .92)); box-shadow:inset 0 1px 0 rgb(255 255 255 / .06), 0 8px 20px -6px rgb(0 0 0 / .65); pointer-events:auto; }
+.race-tape-actions .k-word { min-height:28px; padding:4px 12px; border-radius:0; font:500 12px/1.25 var(--dp-face-read,"Instrument Sans",sans-serif); letter-spacing:.02em; word-spacing:.08em; color:var(--dp-ink); background:transparent; border:0; cursor:pointer; transition:background 120ms ease, color 120ms ease; }
+.race-tape-actions .k-word + .k-word { border-left:1px solid rgb(236 230 216 / .12); }
+.race-tape-actions .k-word:hover:not(:disabled) { background:rgb(255 255 255 / .07); color:var(--dp-ink-hi,#f4f1ea); }
+.race-tape-actions .k-word:focus-visible { outline:1px solid var(--dp-lamp); outline-offset:-1px; }
+/* The mobile layout's outer focus ring would be clipped by this rounded action row. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word:focus-visible { outline-offset:-2px; }
+.race-tape-actions .k-word:disabled { cursor:default; color:var(--dp-ink-dim); opacity:.5; }
 .race-tape-actions { transition:opacity 160ms ease; }
 .race-tape[data-combat-lock="true"] .race-tape-actions { pointer-events:none; opacity:.42; }
 .race-tape[data-combat-lock="true"] .race-tape-actions .k-word { border-style:dashed; color:var(--dp-ink-dim); }
+/* The compact mobile menu has its own override; active races and coarse tablets need the same
+   reachable targets without changing the compact desktop rail. */
+@media (max-width:600px), (pointer:coarse) {
+  .race-tape-actions .k-word { min-width:44px; min-height:44px; }
+}
 @media (prefers-reduced-motion: reduce) { .race-tape-actions { transition:none; } }
 .race-tape [hidden] { display:none; }
 .race-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }

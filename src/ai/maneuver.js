@@ -978,7 +978,14 @@ function predictFormationSlot(intent, predictionTicks) {
 }
 
 function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters, hullScale) {
-  if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
+  if (intent.matchFormationVelocity === true && intent.flightPoint
+      && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
+    // A committed moving socket holds its frame, not the universe's origin. The tracker
+    // handles relative braking; the stationary-slot brake must not erase that drift.
+    return { ...trackPoint(self, intent.flightPoint, intent.formationVelocity, 0.8), contactSeek: true };
+  }
+  if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)
+      && !(intent.seekContactWhenAvailable === true && target)) {
     const speed = intent.enemyMindOwned && intent.kind === ManeuverKind.RETREAT
       ? config.retreatSpeed : config.interceptSpeed;
     return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1),
@@ -987,7 +994,9 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
       return target
-        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign, config.interceptSpeed * (hullScale && hullScale.speed || 1), config, intent)
+        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign,
+          (intent.contactRun === true && intent.committedRun === true ? config.escapeSpeed : config.interceptSpeed)
+          * (hullScale && hullScale.speed || 1), config, intent)
         : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
@@ -1056,8 +1065,22 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
   const tvx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
   const tvz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
   const point = { x: target.pos.x + tvx * horizon / 60, z: target.pos.z + tvz * horizon / 60 };
+  const contactRun = seeksHullContact(intent, self);
+  if (contactRun) {
+    // A committed contact run flies the collision course, not a pursuit lag: solve
+    // the time-of-arrival against the target's track and aim at where the hull will
+    // meet it, so a fast receding prey is intercepted head-on instead of trailed.
+    let t = Math.max(0.05, distance / Math.max(30, commitSpeed));
+    for (let i = 0; i < 3; i++) {
+      const px = target.pos.x + tvx * t;
+      const pz = target.pos.z + tvz * t;
+      t = Math.hypot(px - self.pos.x, pz - self.pos.z) / Math.max(30, commitSpeed);
+    }
+    point.x = target.pos.x + tvx * t;
+    point.z = target.pos.z + tvz * t;
+  }
   // An authorized ram pass is head-on: the crossing-lane offset below exists to avoid contact.
-  if (lateralSign && !explicitRamApproach(intent, self)) {
+  if (lateralSign && !contactRun) {
     const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
     const length = Math.hypot(dx, dz);
     let nx, nz;
@@ -1093,7 +1116,7 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
     };
     return commitPoint(self, point, commitSpeed, feedVel);
   }
-  return commitPoint(self, point, commitSpeed, target.vel || ZERO_VEL);
+  return commitPoint(self, point, commitSpeed, target.vel || ZERO_VEL, contactRun);
 }
 
 // SF-059: when the ring's tangent carries the hull into solid terrain the reactive dodge cone
@@ -1306,6 +1329,11 @@ function applyFriendlySeparation(desired, self, contacts, config, counters, coun
 }
 
 function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy', target = null) {
+  // A kamikaze's committed run is authored as ONE STRAIGHT final approach: a pass-around point
+  // re-aims the line ~1.85x clearance off a bystander hull and the dart sweeps wide of its own
+  // 56 WU fuse ring — a miss that only re-arms the cycle, not a dodge it survives by. Lit-run
+  // scrapes against bystanders resolve physically; rocks still own the obstacle cone.
+  if (intent && intent.contactRun === true && intent.committedRun === true) return desired;
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   let x = dir.x, z = dir.z;
   const rightX = -dir.z;
@@ -1321,7 +1349,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
-    if (contact.id === intent.targetId && explicitRamApproach(intent, self)) continue;
+    if (contact.id === intent.targetId && seeksHullContact(intent, self)) continue;
     const dx = contact.pos.x - self.pos.x;
     const dz = contact.pos.z - self.pos.z;
     const distance = Math.hypot(dx, dz);
@@ -1375,7 +1403,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
 }
 
 function closeApproachLimit(kind, intent, self, target, config, fallback) {
-  if (explicitRamApproach(intent, self) || tetherApproach(kind)) return fallback;
+  if (seeksHullContact(intent, self) || tetherApproach(kind)) return fallback;
   const clearance = config.shipCollisionClearance + bodyRadius(self) + bodyRadius(target)
     + massClearanceFor(target, intent, self, config);
   const distance = distance2(self.pos, target.pos);
@@ -1386,10 +1414,18 @@ function closeApproachLimit(kind, intent, self, target, config, fallback) {
 }
 
 function massClearanceFor(contact, intent, self, config) {
-  if (intent && contact.id === intent.targetId && (explicitRamApproach(intent, self) || tetherApproach(intent.kind))) return 0;
+  if (intent && contact.id === intent.targetId && (seeksHullContact(intent, self) || tetherApproach(intent.kind))) return 0;
   if (contact.operationalMassBand === 'capital') return config.capitalTargetClearance;
   if (contact.operationalMassBand === 'heavy') return config.heavyTargetClearance;
   return 0;
+}
+
+// Approaches whose intent is to reach the named target's hull: an authorized ram pass, or the
+// detonator dart's contact run (its body is the weapon — every anti-contact layer would steer
+// it out of its own fuse ring). Scoped to intent.targetId like the ram path, never a blanket
+// collision bypass.
+function seeksHullContact(intent, self) {
+  return explicitRamApproach(intent, self) || (intent != null && intent.contactRun === true);
 }
 
 function explicitRamApproach(intent, self) {
@@ -1460,12 +1496,25 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
     z: obstacle.pos.z - dir.z * clearance * 0.4 + dir.x * side * clearance * 1.25,
   };
   const route = unit2(point.x - self.pos.x, point.z - self.pos.z);
-  const routeSpeed = Math.min(config.interceptSpeed, Math.max(25, speed * 0.75));
+  const committedContact = intent && intent.contactRun === true && intent.committedRun === true;
+  // The lit run burns full pace through the dodge leg too — an anchor on current speed
+  // (0.75x) pins it to whatever it entered the corner at, which is how the Ceres dart sat
+  // at ~47-63 WU/s through its own windup and reached the fuse ring 21 WU after commit
+  // expired. The route direction still bends around the rock; only the anchor lifts.
+  const routeSpeed = committedContact
+    ? config.escapeSpeed
+    : Math.min(config.interceptSpeed, Math.max(25, speed * 0.75));
+  // A committed contact run still routes around terrain, but never brakes for it: braking a
+  // kamikaze's final approach wall-slides it along the shoulder arc at crawl speed while the
+  // prey recedes (measured: the Ceres dart sat at 15-26 WU/s against a rock 20 WU off its line
+  // and never reached the 56-WU fuse ring). The route stays authoritative — the run clears the
+  // shoulder at route speed, then re-acquires the line.
+  const brake = !committedContact && speed > 20 && along < clearance + speed * 0.75;
   return {
     ...desired, x: route.x, z: route.z, control: 'track', desiredPos: point,
     desiredVel: { x: route.x * routeSpeed, z: route.z * routeSpeed },
     obstacleAvoidance: true,
-    obstacleBrake: speed > 20 && along < clearance + speed * 0.75,
+    obstacleBrake: brake,
   };
 }
 
@@ -1501,8 +1550,15 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
       maxClosingSpeed = config.maxApproachClosingSpeed;
       break;
     case ManeuverKind.INTERCEPT:
-      maxSpeed = config.interceptSpeed;
-      maxClosingSpeed = config.interceptSpeed * 1.5;
+      // A committed contact run is the kamikaze's burn-everything dive: everyday intercept
+      // pace (100) merely tails a fleeing prey running its own escape envelope — the Ceres
+      // dart plateaued ~86–100 WU/s behind a hauler receding at ~100+ and its commit window
+      // expired 88 WU short of the fuse ring. The lit run borrows the escape pace instead:
+      // faster than a laden freighter's flee, still inside the hull's own governor.
+      maxSpeed = intent && intent.contactRun === true && intent.committedRun === true
+        ? config.escapeSpeed
+        : config.interceptSpeed;
+      maxClosingSpeed = maxSpeed * 1.5;
       break;
     case ManeuverKind.RETREAT:
       maxSpeed = config.retreatSpeed;

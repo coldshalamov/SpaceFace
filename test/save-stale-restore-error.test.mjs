@@ -150,6 +150,50 @@ test('a superseded loadAsync reaches its failure tail without publishing the sta
   }
 });
 
+test('a superseded latest-slot scan resolves handled without publishing no-save over the newer run', async () => {
+  const store = installStorage();
+  const h = boot(flightState());
+  const previousScan = save._newerUnplayableSkipAsync;
+  const previousLatest = save._latestSlotAsync;
+  try {
+    let releaseScan;
+    save._newerUnplayableSkipAsync = () => new Promise(resolve => { releaseScan = resolve; });
+    save._latestSlotAsync = async () => null;
+    const stale = save.loadAsync('latest');
+    save._beginRestoreSequence();
+    releaseScan(null);
+
+    assert.equal(await stale, true, 'the superseded latest request is handled quietly');
+    assert.equal(h.events('save:error').length, 0,
+      'a stale no-save result must not cover the newer route with an error receipt');
+  } finally {
+    save._newerUnplayableSkipAsync = previousScan;
+    save._latestSlotAsync = previousLatest;
+    h.restore();
+    store.restore();
+  }
+});
+
+test('a current latest-slot miss still reports no-save', async () => {
+  const store = installStorage();
+  const h = boot(flightState());
+  const previousScan = save._newerUnplayableSkipAsync;
+  const previousLatest = save._latestSlotAsync;
+  try {
+    save._newerUnplayableSkipAsync = async () => null;
+    save._latestSlotAsync = async () => null;
+
+    assert.equal(await save.loadAsync('latest'), false);
+    assert.equal(h.events('save:error').length, 1);
+    assert.equal(h.events('save:error')[0].payload.reason, 'no_save');
+  } finally {
+    save._newerUnplayableSkipAsync = previousScan;
+    save._latestSlotAsync = previousLatest;
+    h.restore();
+    store.restore();
+  }
+});
+
 test('a superseded FileReader import failure stays silent once a newer restore owns the run', async () => {
   const store = installStorage();
   const h = boot(flightState());

@@ -1,58 +1,26 @@
 <!-- LIFETIME: STABLE -->
-# Named-task router
+# Task router
 
-Read this when the job is a **named campaign, symptom, or specialty door** — not for an ordinary
-code fix. Root [`../AGENTS.md`](../AGENTS.md) stays small; [`../build_map.md`](../build_map.md)
-is the single program map. Campaign laws that must not drift live in the map's §1B, not here.
+Use this page for a named workflow or recurring symptom. Ordinary code work starts at root
+[`AGENTS.md`](../AGENTS.md) → [`MODULE_MAP.md`](./MODULE_MAP.md) → the nearest `AGENTS.md`.
+For current whole-game work, the Finish Program README and lane boards are authoritative; this page
+does not assign a competing queue.
 
-Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary code task.
-
-| Task | Start here |
+| Task or symptom | Start here |
 |---|---|
-| Modern professional experience / complete the starter region / what is missing from the plans / make agent development faster | **[`build_map.md` §29](../build_map.md#29-professional-experience--the-complete-starter-region)** — one complete Helios experience using built seams; missing connections, tuning and recovery. **§1.9** owns the agentic loop and consolidation: heavy outcomes on the build map, resolved small leaves on INFERENCE; proportional checks and one material critique. |
-| "Fix all the bugs" / super buggy / make it solid / debug and polish / overflowing text / missing models / excessive off-screen loading / demo ready | **[`build_map.md` §1.8](../build_map.md#18-production-maturity-debugging-and-polish)** — agents discover and repair ordinary workflows across existing lanes; confirmed player-facing defects outrank feature expansion. One existing demo defect ledger, no requirement for the owner to diagnose bugs. Clean-machine results stay in `QUIET_HOST_PROGRAM.md`; repairs keep moving |
-| No instruction, "next", "go", or "do N tasks" | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`. Claim a `free` seam whose files are not in a live NOW row and do up to N of its open rows (the rows are the tasks). `program-dispatch --next` only when it returns a real packet. A drained queue is not an empty plan and is not the inference catalog. When every seam reads `done`, the §M reservoir-admission rows are the remaining plan — the task banks are on this map, never outside it. An A-list pass with no packet is a §27 lane, not a smaller queue row |
-| The board is running low / plan more / brainstorm the game / grade the systems / keep the plan full | **[`../design/program/PLAN_ENGINE.md`](../design/program/PLAN_ENGINE.md)** — run the due cycle (report card, stranger pass, reference diff, harvest, factory tiering, dream, integration walk, prune); outputs are §1C rows and catalog lines only. Vision and ladder: **[`build_map.md` §32](../build_map.md#32-the-gold-game--the-directors-vision-and-the-engine-that-keeps-the-plan-full-2026-10-19)**; grades: [`../design/program/REPORT_CARD.md`](../design/program/REPORT_CARD.md) |
-| Expand the world / new factions, enemies, aliens, sectors, characters, assets, missions, the campaign script / "what content are we missing" / swarm-physics Katamari direction | **[`../design/expansion/00_README.md`](../design/expansion/00_README.md)**: THE WEIGHT, the expansion bible (owner, 2026-10-21). It holds the taste for every faction, the Bloom swarm ladder, sectors, the asset roster, the campaign play script, 48 encounters, and systems and polish. The complex work is **[`build_map.md` §34](../build_map.md)** (rows 498–550), behind the §33 swarm core. The small, exact work is the EXP section of `design/program/INFERENCE_IDEAS.md` |
-| Program map, "next N" / "what next" / multi-plan work, check-off, plan routing | **`build_map.md`**, then `design/program/NOW.md` + queue |
-| Same-picture performance option, investigation, or large port later | **`build_map.md` §8.2** → [`../design/PERF_OPTION_SPACE.md`](../design/archive/perf/PERF_OPTION_SPACE.md) |
-| Hitching / stuttering / not playing smoothly / low FPS | **`build_map.md` §8.4** → `--id PQ-204` ([`../design/program/PERF_ADVANCED_CAMPAIGN.md`](../design/archive/perf/PERF_ADVANCED_CAMPAIGN.md), prompt [`../design/program/PERF_ADVANCED_GOAL.txt`](../design/program/PERF_ADVANCED_GOAL.txt)). Table leftover scans stay [`../design/perf/TABLE_AUTHORITY_PLAN.md`](../design/perf/TABLE_AUTHORITY_PLAN.md). Do **not** cut quality, empty the sky, or dummy-prewarm shaders |
-| Combat and flight feel wonky / "agents keep adding content instead of fixing the feel" | **`build_map.md` §13C** → [`../design/FEEL_CONTRACT.md`](../design/FEEL_CONTRACT.md) → `PQ-137`. Answer with a bar and the number that moved, never with more content |
-| "Make it better" / it sucks / it's not fun | [`../design/program/FUN_CONVERGENCE_LOOP.md`](../design/program/FUN_CONVERGENCE_LOOP.md) → copy `design/program/FUN_CONVERGENCE_GOAL.txt`. Play the bench on fixed seeds, name the ONE fundamental, fix the guts, show the number. Crucible first; never answer with content. Headed captures are not the gate |
-| INFERENCE / make N missions / develop the game / throw an agent at the world | [`../design/program/INFERENCE_LANES.md`](../design/program/INFERENCE_LANES.md) → copy `design/program/INFERENCE_GOAL.txt`. If [`../design/program/INFERENCE_IDEAS.md`](../design/program/INFERENCE_IDEAS.md) has an OPEN line, do that line (§0.1). Look-then-rotate only when the catalog is empty or a domain was named. Detect is an optional count hint, not the assignment. Thin rows do not count. Captures are not the review |
-| Unify the picture / one art direction / convergence / creative campaigns / superpower pass / make it A-list | **`build_map.md` §27** → [`../design/program/FINISH_LANES.md`](../design/program/FINISH_LANES.md), the lane that owns the area. The §23 campaigns are absorbed into the lanes and stay the detailed wording: a campaign is a feeling; invent the system. Outside resources, when one is needed: [`../docs/OPEN_SOURCE_INTAKE.md`](../docs/OPEN_SOURCE_INTAKE.md) §0. §22 is the measured gap list. Grunt lines stay in `design/program/INFERENCE_IDEAS.md` |
-| Bring in a library, a sound, or a material | [`../docs/OPEN_SOURCE_INTAKE.md`](../docs/OPEN_SOURCE_INTAKE.md) §0 names the gets and the refusals, including Unreal source |
-| INFERENCE that should turn a busy sim into designed moments | [`../design/program/INFERENCE_INTENTIONAL_FUN.md`](../design/program/INFERENCE_INTENTIONAL_FUN.md) → copy `design/program/INFERENCE_INTENTIONAL_FUN_GOAL.txt`. Role tiles for the place; still think/complete/rotate. Not a new queue. Guts still the Fun Loop |
-| Finish the game / it still looks unfinished / run the fleet / own an area to A-list | [`design/program/FINISH_LANES.md`](../design/program/FINISH_LANES.md) — nine lanes, each an open-ended area assignment (named checklist + review-and-tune mandate). Take the first lane whose files are free. The manager/fleet variant stays [`FINISH_THE_GAME.md`](../design/program/FINISH_THE_GAME.md); fleet: [`FLEET_COMMAND_STRUCTURE.md`](../docs/agentic-development/FLEET_COMMAND_STRUCTURE.md) |
-| What is next for release / the professional bar (packet sequence only) | **`build_map.md` §15** → `--id PQ-146` or any §15.2 ID; the eight reactivated packets `PQ-026`–`PQ-033` are ready again |
-| Independent pass over what just landed / taste, improvements, and bugs | **`build_map.md` §1.7** — play the named surfaces yourself, fix real defects, report in §1.4 words. No standing review queue |
-| What is active or occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` → `design/program/README.md` |
-| Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
-| Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
-| Recurring bug | `docs/COMMON_BUGS.md` |
-| Event or update-order trace | Generated `docs/EVENT_ROUTING.md` / `docs/SYSTEM_REGISTRY.md` |
-| Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
-| Make the ship's position matter / hull burst, gravity bumper, fire lance / physics-first combat / arcade kill loot that homes into the hull / salvage bay / "every object is a primitive" reaction chains | [`plans/2026-09-29-hull-burst-physics-overhaul-design.md`](./plans/2026-09-29-hull-burst-physics-overhaul-design.md) — owner-validated design, read its §0 first. Design only: admit a stage through `build_map.md` §1 |
-| Any player-facing graphics or visual asset | **`docs/visual-assets/README.md` first**, then `assets/AGENTS.md` or the owning runtime/UI route it names |
-| Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md` |
-| Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` → ship/root maps in `src/render/partsLibrary.js`; never infer from a screenshot or legacy filename |
-| Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`build_map.md` §13D** → `--id PQ-193` leaf `.10` (handoff: `assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`) |
-| 3D looks broken / unused models / ships don't render / missing pieces | **`build_map.md` §13D** → `--id PQ-193` |
-| Ships pop in late / box then ship / blank lock / LOD / “shave a little” | [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](../design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). First production: `--id PQ-193` leaf `.00`. Do not start an impostor or cheaper-hull campaign. |
-| Audit all 3D models / inventory the shelf / plan A-list quality from what we have | **`design/program/MODEL_STOCKTAKE_GOAL.txt`** (law: [`MODEL_STOCKTAKE.md`](../design/program/MODEL_STOCKTAKE.md)). Research and a plan. Do not model. Folds into §13D / `PQ-193`, not a second queue |
-| Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`ORPHAN_HARVEST_PLAYBOOK.md`](../design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](../design/program/ORPHAN_HARVEST_LEDGER.md) |
-| Resume non-Hitch flyable ship remaster (not Hitch) | **`build_map.md` §13D Wave C** → `PQ-050` / [`PQ-050.md`](../design/archive/program/roadmap/retired/PQ-050.md) |
-| NPC ships look like another game / floating parts / reverse jets are needles | **`build_map.md` §13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`VISUAL_WORLD_CLEANUP.md`](../design/program/VISUAL_WORLD_CLEANUP.md) |
-| Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **not done until `npm run check:atlas-integrity` is green** |
-| Frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`docs/UI_VISUAL_ITERATION.md`** — shoot `node scripts/ui-bench.mjs --shot=<id>`, open the PNG, fix what you see, `--walk` the controls. Direction context: `design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md` → `PQ-194`. Nothing under `design/archive/frontend-direction/approved/` carries owner authority |
-| UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
-| Asteroid Works / mining minigame unreadable or undrivable | **`build_map.md`** door → [`ASTEROID_WORKS_PLAYFIELD.md`](../design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` |
-| Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |
-| Render/performance / audit flow | [`PERFORMANCE_AUDIT_PLAYBOOK.md`](./PERFORMANCE_AUDIT_PLAYBOOK.md), `src/render/AGENTS.md`, and `design/archive/perf/PERF_BUDGET.md` |
-| Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |
-| Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
-| Search/archaeology | `docs/SEARCH_CONTEXT.md` |
-| Leftover `sf-*` / agent worktree cleanup, integrate-or-drop triage | **`design/program/WORKTREE_RECOVERY.md`** — exact current ownership only; never delete a ref or clone until its cleanup gate is durable |
+| Finish the game, improve the default experience, or choose current work | [`design/program/finish/README.md`](../design/program/finish/README.md) → the relevant Lane 1, 2, or 3 board |
+| Performance, startup, loading, hitching, or frame pacing | Finish Lane 1 and its named measurement/check; preserve authored quality. Use [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) for the relevant comparison. |
+| Combat, Swarm, Crucible, Fortify, AI, or physics | Finish Lane 2 and its named gameplay/test owner; design detail comes from the selected task's spec. |
+| Adventure, missions, world, economy, story, audio, or screens | Finish Lane 3 and its named owner/spec. |
+| Find a module or event/update owner | [`MODULE_MAP.md`](./MODULE_MAP.md), then generated [`SYSTEM_REGISTRY.md`](./SYSTEM_REGISTRY.md) or [`EVENT_ROUTING.md`](./EVENT_ROUTING.md) |
+| Recurring bug or known hazard | [`COMMON_BUGS.md`](./COMMON_BUGS.md), then confirm against current source and behavior |
+| UI/HUD or visual asset work | [`docs/visual-assets/README.md`](./visual-assets/README.md) for visual craft; then the owning UI/asset guidance. For a player-facing result, verify the changed screen or route directly. |
+| Blender/GLB authoring | [`tools/blender/forge/FORGE.md`](../tools/blender/forge/FORGE.md) and [`design/program/GRAPHICS_PROGRAM.md`](../design/program/GRAPHICS_PROGRAM.md) |
+| Product direction or system design | [`design/VISION.md`](../design/VISION.md) → relevant sections of [`design/GDD_2_0.md`](../design/GDD_2_0.md) and the selected active spec |
+| Tests, checks, or browser/Electron validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md), plus `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` for the files involved |
+| Add a map-visible place or station | `src/data/PLACE_REGISTRATION.md` and its current atlas/map check |
+| Asset manifest, release bundle, or deploy issue | [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) and [`COMMON_BUGS.md`](./COMMON_BUGS.md) §15 |
 
-Vendored [`../skills/`](../skills/README.md) is generic third-party kit, not SpaceFace policy. Do not
-load it. Blender/GLB work uses `.grok/skills/spaceface-blender-material-truth/SKILL.md`.
+Read only the sections and artifacts required by the active task. Historical campaign plans, old
+acceptance packs, and completed-work ledgers are context, not automatic assignments or extra review
+gates. The Finish README defines current shared workflow and verification scope.

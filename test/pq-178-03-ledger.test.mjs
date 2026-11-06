@@ -51,7 +51,7 @@ function playedCampaign() {
   const state = freshStory();
   assert.equal(recordBeatStep(state, 'mining:yield', {}, 12).ok, true);
   assert.equal(recordBeatStep(state, 'story:skimResolved', {}, 26).ok, true);
-  assert.equal(recordBeatStep(state, 'dock:docked', {}, 40).ok, true);
+  assert.equal(recordBeatStep(state, 'dock:docked', { stationId: 'station_helios' }, 40).ok, true);
   state.story.beatIndex = 1;
   assert.equal(recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b1:alloy_run',

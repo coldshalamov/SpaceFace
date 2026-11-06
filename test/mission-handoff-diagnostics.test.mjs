@@ -117,22 +117,29 @@ test('probe settlement follows the accepted instance receipt and exact tracked i
   assert.equal(settled(), false, 'only an active instance settles the acceptance probe');
 });
 
-test('the accept actor sends one intent and distinguishes a pending worker request from readiness denial', () => {
+test('the accept actor only reads the key, and distinguishes a pending worker request from readiness denial', () => {
+  // Accept is a continuous hold: a bare click() can never commit it, so the in-page actor
+  // observes the control and the driver performs the real pointer hold (page.mouse down/up).
   let clicks = 0;
   const key = { disabled: false, isConnected: true, textContent: 'Accept',
     getAttribute: name => { assert.equal(name, 'aria-label'); return 'Accept Probe and bind its route. Ship and account ready.'; },
     click() { clicks++; this.disabled = true; } };
   const h = helpers({ document: { querySelector: selector => selector.endsWith('.k-bad') ? null : key } });
   const first = h.attemptSeededMissionAccept();
-  assert.equal(first.activated, true);
+  assert.equal(first.found, true);
+  assert.equal(first.disabled, false, 'a ready key is reported holdable');
   assert.equal(first.readinessBlocked, false);
-  assert.equal(clicks, 1);
+  assert.equal(first.pending, false);
+  assert.equal(first.connected, true);
+  assert.equal(first.activated, undefined, 'activation belongs to the driver’s pointer hold');
+  assert.equal(clicks, 0, 'the actor never synthesizes a click');
+  key.disabled = true; // the hold committed; the worker RPC is in flight
   const pending = h.attemptSeededMissionAccept();
   assert.equal(pending.disabled, true);
   assert.equal(pending.pending, true, 'the controller retains its ready explanation while awaiting the RPC');
   assert.equal(pending.readinessBlocked, false);
   assert.equal(pending.activated, undefined);
-  assert.equal(clicks, 1, 'a pending intent is never clicked again');
+  assert.equal(clicks, 0, 'a pending intent is never clicked');
 });
 
 test('the accept actor preserves actual readiness reasons and unknown disabled controls fail closed', () => {
@@ -212,17 +219,31 @@ test('acceptance snapshot observes current board, selection, receipt and hold pr
     missions: { boards: { station_ceres: { slots: [offer] } },
       active: [{ id: 'm_2', sourceOfferId: 'previous_offer', status: 'active' }] } };
   const before = JSON.stringify(state);
+  const stationRoot = { hidden: false, getAttribute: name => name === 'data-operation' ? 'contracts' : 'board' };
   const key = { isConnected: true, disabled: false, textContent: 'Accept + Bind Route',
     getAttribute: name => {
       if (name === 'aria-label') return 'Accept Probe and bind its route. Ship and account ready.';
       assert.equal(name, 'data-accept'); return offer.id;
     },
     classList: { contains: name => name === 'is-holding' },
+    getBoundingClientRect: () => ({ x: 10, y: 20, width: 120, height: 40 }),
     querySelector: selector => { assert.equal(selector, '.dp-holdring'); return {
       style: { getPropertyValue: name => { assert.equal(name, '--sf-hold-p'); return '0.375'; } },
     }; } };
-  const h = helpers({ window: { SF: { state } }, document: { querySelector: selector =>
-    selector.includes('aria-selected') ? { getAttribute: () => offer.id } : key } });
+  const h = helpers({ window: { SF: { state } },
+    getComputedStyle: el => {
+      assert.ok(el === key || el === stationRoot);
+      return { display: 'flex', visibility: 'visible', opacity: '1' };
+    },
+    // The acceptance collector reads the live key's rect and computed style as visibility evidence.
+    // Keep this fixture deliberately small; these values do not influence its read-only assertions.
+    document: { querySelector: selector => {
+      if (selector.includes('aria-selected')) return { getAttribute: () => offer.id };
+      if (selector === '[data-screen="station"]') return stationRoot;
+      if (selector.includes('.sx-dossier__gate')) return null;
+      if (selector.includes('.sx-dossier') && !selector.includes('[data-accept]')) return { textContent: 'Offer detail' };
+      return key;
+    } } });
   const snapshot = JSON.parse(JSON.stringify(h.collectAcceptHandoffSnapshot()));
   assert.equal(snapshot.activeCount, 1);
   assert.deepEqual(snapshot.active, [{ id: 'm_2', status: 'active', sourceOfferId: 'previous_offer' }]);

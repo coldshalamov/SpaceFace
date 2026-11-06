@@ -31,6 +31,7 @@ export const SIGN_BAY = Object.freeze([
   { id: 'bay_repair_01', surface: 'bay', sponsor: 'Yard Office', text: 'Patch work carries no warranty past the airlock. Neither do you.' },
   { id: 'bay_power_01', surface: 'bay', sponsor: 'Grid Office', text: 'Shore power draws are metered. The meter is also audited.' },
   { id: 'bay_lost_01', surface: 'bay', sponsor: 'Lost Property', text: 'A crate marked HANDLE WITH CARE has been at the column since Tuesday. It is being handled.' },
+  { id: 'bay_lost_02', surface: 'bay', sponsor: 'Lost Property', text: 'A conscience in a taped evidence bag has been at the column since last rotation. It is being processed.' },
   { id: 'bay_notice_01', surface: 'bay', sponsor: 'Station Clerk', text: 'Notices older than one rotation are binding regardless of readership.' },
   { id: 'bay_mil_01', surface: 'bay', sponsor: 'Perimeter Watch', types: Object.freeze(['military']), text: 'Weapons stay safed and slaved inside the ring. The tower counts muzzles.' },
   { id: 'bay_mil_02', surface: 'bay', sponsor: 'Perimeter Watch', types: Object.freeze(['military']), text: 'Transponder on. IFF current. Visitors without clearances berth at the far cradle.' },
@@ -74,6 +75,7 @@ export const SIGN_BILLBOARD = Object.freeze([
   { id: 'sign_bb_20', surface: 'billboard', sponsor: 'Concord Towage', text: 'IMPOUND IS A STORAGE SOLUTION WITH A PAPERWORK PREMIUM.' },
   { id: 'sign_bb_21', surface: 'billboard', sponsor: 'Meridian Futures', text: 'HEDGE YOUR HAUL. THE MARKET ALREADY BET AGAINST YOU.' },
   { id: 'sign_bb_22', surface: 'billboard', sponsor: 'Helios Watch', text: 'CURFEW IS A SERVICE WINDOW. COMPLY AND BE SERVICED.' },
+  { id: 'sign_bb_23', surface: 'billboard', sponsor: 'Wormald & Sons', text: 'WORMALD AND SONS VACUUMS. BAY NINE. OUR SUCTION SCHEMATICS HAVE BEEN CLASSIFIED TWICE.' },
 ]);
 
 // ── news crawl ───────────────────────────────────────────────────────────────────────────
@@ -96,6 +98,7 @@ export const SIGN_CRAWL = Object.freeze([
   { id: 'sign_crawl_14', surface: 'crawl', sponsor: 'Local Wire', text: 'Dockside prayer wheel turns again. The Choir asks that you not lean on it.' },
   { id: 'sign_crawl_15', surface: 'crawl', sponsor: 'Local Wire', text: 'A long-haul skipper swore the lane sang back. The wire prints it anyway.' },
   { id: 'sign_crawl_16', surface: 'crawl', sponsor: 'Local Wire', text: 'Survey crews report the rocks are where the charts left them. A good week.' },
+  { id: 'sign_crawl_17', surface: 'crawl', sponsor: 'Local Wire', text: 'The lamplighters finished their wiring ahead of schedule. Surveillance remains a courtesy.' },
 ]);
 
 // ── faction propaganda ───────────────────────────────────────────────────────────────────

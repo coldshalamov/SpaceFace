@@ -69,6 +69,16 @@ const DISCOVERY_RULE_RESOLVERS = {
   tech: (id) => TECH_NODES.some((node) => node && node.id === id),
 };
 
+/** Allow only the floating-point roundoff from adding and subtracting galactic-scale origins. */
+export function withinAtlasRoundTripPrecision({ local, global, back, origin }) {
+  if (![local?.x, local?.z, global?.x, global?.z, back?.x, back?.z, origin?.x, origin?.z]
+    .every(Number.isFinite)) return false;
+  const xTolerance = Number.EPSILON * Math.max(1, Math.abs(global.x), Math.abs(origin.x), Math.abs(local.x)) * 2;
+  const zTolerance = Number.EPSILON * Math.max(1, Math.abs(global.z), Math.abs(origin.z), Math.abs(local.z)) * 2;
+  return Math.abs(back.x - local.x) <= xTolerance
+    && Math.abs(back.z - local.z) <= zTolerance;
+}
+
 function loadManifest() {
   if (!existsSync(MANIFEST_PATH)) return null;
   try {
@@ -240,14 +250,16 @@ export function checkAtlasIntegrity(sources = null) {
   }
   checks.push({ name: 'uniqueEdgeIds', pass: dupEdges.length === 0, details: dupEdges });
 
-  // 5. Every authored anchor round-trips exactly through the global frame. This is the assertion
-  //    that protects nonzero-origin sectors: Tethys sits at (12288, 8192), so any lossy conversion
-  //    shows up here rather than as a station drawn on top of the player 12k units away.
+  // 5. Every authored anchor round-trips through the global frame within double-precision
+  //    representation error. At galactic offsets, adding a local float and subtracting the origin
+  //    can move the result by a few ULPs; that is not a world-unit placement error. This assertion
+  //    still fails for any meaningful spatial drift.
   const roundTripFails = [];
   for (const { nodeId, sectorId, local } of anchors) {
     const global = sectorLocalToGlobalForSector(local, sectorId);
     const back = globalToSectorLocalForSector(global, sectorId);
-    if (back.x !== local.x || back.z !== local.z) {
+    const origin = origins[sectorId] || { x: 0, z: 0 };
+    if (!withinAtlasRoundTripPrecision({ local, global, back, origin })) {
       roundTripFails.push(`${nodeId}: (${local.x},${local.z}) -> (${global.x},${global.z}) -> (${back.x},${back.z})`);
     }
   }
@@ -453,46 +465,20 @@ export function checkAtlasIntegrity(sources = null) {
   }
   checks.push({ name: 'proxyAssetsAvailable', pass: assetProblems.length === 0, details: assetProblems });
 
-  // 14. The map-proxy triangle cap stays below the cheapest shipped gameplay LOD0 a chart marker
-  //     actually derives from, and no resolved proxy exceeds it. Re-derived every run so the
-  //     constant cannot rot as the art library grows.
-  //
-  //     Dated 2026-08-23: compare against authoredAssetForNode sources (the same association
-  //     check 13 already uses), not every `category: "places"` row. Everyday-space scatter props
-  //     (PQ-045-PROP-PROMOTION-001, e.g. place_cargo_pod_standard at 168 tris) live in the
-  //     places/ folder as occupational yard dressing and are not atlas proxy sources. Including
-  //     them made MAP_PROXY_TRIANGLE_CAP 256 fail even though the cheapest chart-marker source
-  //     remains place_ash_pin at 420 tris — the cap still has headroom under the object a marker
-  //     stands for. This is not an allowlist.
+  // 14. Every map proxy stays under its global ceiling, and an asset-derived proxy also stays
+  //     below the exact authored source it summarizes. A global cap may be higher than a small
+  //     source, while that source's 1/8 proxy still costs fewer triangles than the object.
+  //     Compare authoredAssetForNode sources (the same association check 13 uses), not every
+  //     `category: "places"` row; everyday-space scatter props are not atlas proxy sources.
   const budgetProblems = [];
-  if (manifest) {
-    const proxySourceIds = new Set();
-    for (const node of atlas.nodes) {
-      const assetId = authoredAssetForNode(node.id);
-      if (assetId) proxySourceIds.add(assetId);
-    }
-    const proxySourceParts = (manifest.parts || []).filter((p) => (
-      p && proxySourceIds.has(p.id) && Number.isFinite(p.tris)
-    ));
-    if (proxySourceParts.length) {
-      let cheapest = Infinity;
-      let cheapestId = '';
-      for (const part of proxySourceParts) {
-        if (part.tris < cheapest) {
-          cheapest = part.tris;
-          cheapestId = part.id;
-        }
-      }
-      if (MAP_PROXY_TRIANGLE_CAP >= cheapest) {
-        budgetProblems.push(`MAP_PROXY_TRIANGLE_CAP ${MAP_PROXY_TRIANGLE_CAP} is no longer below the cheapest `
-          + `chart-marker source ${cheapestId} (${cheapest} tris) — a chart marker may now cost more than the object it represents`);
-      }
-    }
-  }
   for (const [id, proxy] of proxies) {
     const tris = proxy.budget && Number.isFinite(proxy.budget.triangles) ? proxy.budget.triangles : 0;
     if (tris > MAP_PROXY_TRIANGLE_CAP) {
       budgetProblems.push(`${id}: proxy budget ${tris} tris exceeds MAP_PROXY_TRIANGLE_CAP ${MAP_PROXY_TRIANGLE_CAP}`);
+    }
+    const sourceTris = proxy.source && proxy.source.sourceTriangles;
+    if (proxy.tier === PROXY_TIER.GLB_DERIVED && Number.isFinite(sourceTris) && tris >= sourceTris) {
+      budgetProblems.push(`${id}: GLB-derived proxy budget ${tris} tris is not below its source ${proxy.source.assetId} (${sourceTris} tris)`);
     }
   }
   checks.push({

@@ -28,6 +28,7 @@ import { FACTION_META } from '../data/factions.js';
 import { showWhyTip, hideWhyTip } from './whyReveal.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_NAME_BY_ID = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const STATION_TO_SECTOR = new Map();
 for (const sec of SECTORS) for (const st of (sec.stations || [])) STATION_TO_SECTOR.set(st.id, sec.id);
@@ -112,6 +113,69 @@ export function lanePressureLine(state, stationId, commodityId) {
   return `Your hauler lane ${stationShort(r.from)}→${stationShort(r.to)} (delivery #${r.n}) ${leg}. Re-route it from the Automation board to let the spread recover.`;
 }
 
+/** A lot the board can feel: the quote's own impact math moves on any stock change, but a
+ *  two-unit buy claiming the price is the ledger overreaching. TUNE, not a physical constant. */
+export const HAND_TRADE_PRESSURE_MIN_QTY = 10;
+/** Attribution goes stale: past this window the move has usually settled back out. */
+export const HAND_TRADE_PRESSURE_WINDOW_S = 1200;
+
+/**
+ * handTradeLine(state, stationId, commodityId) -> one receipt-cited cause line or null.
+ *
+ * The hand-trade twin of lanePressureLine: the player's OWN settled trade of this good at this
+ * station, read from the economy-owned trade ledger (state.player.tradeLedger — the same record
+ * tradeTruth projects). Every settled trade moves the mid price by the stock it shifts (the
+ * quote's impact math), so the receipt IS the cause record; the line names the lot and lets the
+ * spread recover on its own. Newest matching receipt only, inside the freshness window, and a
+ * lot big enough to claim. PURE + deterministic; null renders NOTHING.
+ */
+export function handTradeLine(state, stationId, commodityId) {
+  const entries = state && state.player && state.player.tradeLedger;
+  if (!stationId || !commodityId || !Array.isArray(entries)) return null;
+  const now = Number(state && state.simTime) || 0;
+  const hit = entries.find((e) => e && String(e.stationId || '') === String(stationId)
+    && e.commodityId === commodityId
+    && Number.isFinite(Number(e.seenAt)) && now - Number(e.seenAt) >= 0
+    && now - Number(e.seenAt) <= HAND_TRADE_PRESSURE_WINDOW_S
+    && Math.floor(Number(e.qty) || 0) >= HAND_TRADE_PRESSURE_MIN_QTY);
+  if (!hit) return null;
+  const qty = Math.floor(Number(hit.qty));
+  const verb = hit.side === 'sell' ? 'pressed' : 'lifted';
+  const leg = hit.side === 'sell' ? 'sold' : 'bought';
+  const seq = Number(hit.tradeSequence) > 0 ? ` (receipt #${Number(hit.tradeSequence)})` : '';
+  return `Your last trade here ${verb} this board: ${qty}u of lot ${leg}${seq}. The spread recovers as the stock settles.`;
+}
+
+/**
+ * cargoKillLine(state, stationId, commodityId) -> one receipt-cited cause line or null.
+ *
+ * The third player-cause twin (inf-cause-your-kill): a laden hauler the pilot downed, whose
+ * freight never landed here. Economy owns the chain (state.economy.cargoKillChains): killing
+ * a manifested hauler opens one, salvaging its spill debits it, and selling the salvaged
+ * units redeems it with buy-side stock pressure at the destination — this board tightened
+ * because of the pilot's own kill. The chain carries no clock, so recency joins to the
+ * pilot's own settled sell receipt at the sale station (state.player.tradeLedger, the same
+ * record handTradeLine reads, under the same freshness window): a chain with no redeeming
+ * receipt inside the window renders NOTHING, and an old chain never claims a live move.
+ * PURE + deterministic; null is the honest default.
+ */
+export function cargoKillLine(state, stationId, commodityId) {
+  const chains = state && state.economy && Array.isArray(state.economy.cargoKillChains)
+    ? state.economy.cargoKillChains : null;
+  if (!chains || !stationId || !commodityId) return null;
+  const now = Number(state && state.simTime) || 0;
+  const chain = chains.find((row) => {
+    const fact = row && row.pressureReceipts && row.pressureReceipts[commodityId];
+    return fact && fact.stationId === stationId && fact.receiptId && fact.saleStationId
+      && Number.isFinite(fact.seenAt) && now >= fact.seenAt
+      && now - fact.seenAt <= HAND_TRADE_PRESSURE_WINDOW_S && fact.qty > 0;
+  });
+  if (!chain) return null;
+  const fact = chain.pressureReceipts[commodityId];
+  const saleName = STATION_NAME_BY_ID.get(fact.saleStationId) || fact.saleStationId;
+  return `Its freight ran short when the hauler you downed never landed: ${fact.qty}u of its manifest was sold at ${saleName}.`;
+}
+
 /**
  * causeFor(state, sectorId) -> stable current field snapshot + 1–3 sanctioned cause receipts
  * or null for an unknown sector.
@@ -178,7 +242,7 @@ export const causeLedger = {
 
   // ── hover tooltip over market commodity rows (cosmetic; fully guarded; read-only) ────────────
   _mountTooltip() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
     this._over = (ev) => {
       const row = ev.target && ev.target.closest && ev.target.closest('[data-cmdty], .st-row');
       // `.st-market` is the legacy hub host; `.sx-mkt` is the live station rebuild's market screen
@@ -189,12 +253,19 @@ export const causeLedger = {
       // INF-090: per-commodity lane record. The row carries the good; the docked station is
       // the market being read. A paid lane receipt on this station+good appends its line.
       let lane = null;
+      let hand = null;
+      let kill = null;
       try {
         const cmdty = row.getAttribute && row.getAttribute('data-cmdty');
         const docked = this._state && this._state.ui && this._state.ui.dockedStationId;
         lane = cmdty ? lanePressureLine(this._state, docked, cmdty) : null;
-      } catch (_) { lane = null; }
-      const text = [lines && lines.pricePressure, lines && lines.danger, lane].filter(Boolean).join('\n');
+        hand = cmdty ? handTradeLine(this._state, docked, cmdty) : null;
+        kill = cmdty ? cargoKillLine(this._state, docked, cmdty) : null;
+      } catch (_) { lane = null; hand = null; kill = null; }
+      // A downed hauler outranks the generic hand-trade note: the closing sale is the same
+      // receipt, and the kill line is the truer why.
+      const text = [lines && lines.pricePressure, lines && lines.danger, lane,
+        kill || hand].filter(Boolean).join('\n');
       if (!text) { this._hideTip(); return; }
       this._showTip(text, ev.clientX, ev.clientY);
     };

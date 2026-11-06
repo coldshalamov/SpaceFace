@@ -87,6 +87,6 @@ test('two sling traversals post two pass events and two receipts', () => {
     (e) => e.name === 'toast' && /Sling ring/.test(e.payload.text),
   );
   assert.equal(receipts.length, 2, `expected 2 receipts, got ${receipts.length}`);
-  assert.match(receipts[0].payload.text, /slung forward at \d+ wu\/s/);
-  assert.match(receipts[1].payload.text, /thrown wide at \d+ wu\/s/);
+  assert.match(receipts[0].payload.text, /slung forward at \d+ u\/s/);
+  assert.match(receipts[1].payload.text, /thrown wide at \d+ u\/s/);
 });

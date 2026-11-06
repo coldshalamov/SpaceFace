@@ -4,10 +4,35 @@ import test from 'node:test';
 import {
   applyFirstPlayablePaintRelease,
   freezeOpeningGraphPublication,
+  render,
   releaseOpeningMeshDefer,
   serviceRenderMeshResidency,
   shouldScheduleFirstPlayablePaintRelease,
 } from '../src/render/renderer.js';
+
+test('frozen loading picture holds the prepared owner until its graph release', () => {
+  let syncs = 0, cameraFollows = 0;
+  const owner = Object.assign(Object.create(render), {
+    state: { mode: 'loading', simTime: 5, tick: 10, timeScale: 0, entities: new Map(),
+      world: { currentSectorId: 'helios' }, render: { openingGraphPublicationFrozen: true, firstPlayableFrameAt: 1234 } },
+    _openingFirstPicturePrepared: true, _contextLost: false, _rendererResourcesDisposed: false,
+    _notePicturePresent() {}, _presentationPublisher: { consume: () => ({}) },
+    _snapshotFence: null, _presentationWorld: null, _meshes: new Map(), _meshBuildQueue: [], _meshBuildQueueHead: 0,
+    _syncAuthoredInstanceSubmission() {}, _syncAsteroidInstanceSubmission() {},
+    syncEntityViews() { syncs++; }, cam: { follow() { cameraFollows++; }, obj: {} },
+  });
+  owner.prepareFrame(1, 1 / 60);
+  assert.equal(syncs, 0, 'frozen loading must not reselect visibility and LOD');
+  assert.equal(cameraFollows, 0, 'frozen loading must not change the census camera');
+  owner.state.render.openingGraphPublicationFrozen = false;
+  owner.prepareFrame(1, 1 / 60);
+  assert.equal(syncs, 1, 'ordinary loading preparation resumes after release');
+  assert.equal(cameraFollows, 1);
+  owner.state.mode = 'flight';
+  owner.state.render.openingGraphPublicationFrozen = true;
+  owner.prepareFrame(1, 1 / 60);
+  assert.equal(syncs, 2, 'post-paint flight keeps moving while publication remains frozen');
+});
 
 test('first-playable-paint always clears mesh streaming defer even off the flight mode', () => {
   const owner = {

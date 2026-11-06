@@ -11,6 +11,7 @@ import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
 import { SITE_RECOVERED_UNIQUE_IDS, UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { BLACK_FLAG_ENCOUNTERS } from '../src/data/blackFlag.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { combat } from '../src/systems/combat.js';
 import {
@@ -27,6 +28,8 @@ const catalogs = {
   weapons: WEAPONS,
   lineageUniqueIds: [...ACE_TROPHY_HEADS.map((row) => row.id), ...SITE_RECOVERED_UNIQUE_IDS],
   siteUniqueIds: ALIEN_UNIQUE_GRANTS.map((row) => row.id),
+  authoredUniqueIds: [...new Set(BLACK_FLAG_ENCOUNTERS.flatMap((row) => row.fitted || [])
+    .filter((id) => MODULES.some((item) => item.id === id && item.unique === true)))],
 };
 
 function audit(overrides = {}) {
@@ -70,6 +73,15 @@ test('reserved unique loot never enters normal rolls or station acquisition surf
   assert.equal(liveReport.uniqueNormalLootHits, 0);
   assert.deepEqual(liveReport.stationAcquisitionHits, []);
   assert.match(formatLootAuditSummary(liveReport), /21 reserved uniques \(18 equipment, 3 story\)/);
+});
+
+test('an authored Shipjack unique fitting is tracked at its encounter source, not as a wreck or outfitting item', () => {
+  assert.deepEqual(catalogs.authoredUniqueIds, ['unique_blackbird_governor']);
+  assert.equal(liveReport.authoredUniqueEquipment, 1);
+  assert.equal(liveReport.issues.some((row) => row.path === 'unique_blackbird_governor'), false,
+    'the live Blackbird fitting must be source-accounted without creating a fake wreck row');
+  assert.equal(liveReport.stationAcquisitionHits.some((row) => row.id === 'unique_blackbird_governor'), false,
+    'a salvage-only fitting with purchasable:false is not outfitting stock');
 });
 
 test('the live combat roller produces a byte-stable receipt for the same seed interval', () => {

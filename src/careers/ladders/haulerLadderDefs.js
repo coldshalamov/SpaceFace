@@ -15,6 +15,7 @@
 //  mining:bulkHaulDelivered, mission:forceEvent → economy.injectEvent.
 
 import { hash32 } from '../../core/rng.js';
+import { MISSION_TUNING } from '../../data/missions.js';
 import {
   LADDER_REWARD_EVENTS,
   validateLadderDefinition,
@@ -483,6 +484,18 @@ export function haulerLadderStepSeed(masterSeed, stepId, nonce = 0) {
 }
 
 /**
+ * First board refresh epoch strictly after the step's deadline. Mission authority drops an offer
+ * once `expiresAtEpoch <= floor(simTime / refreshSec)`; the old literal 1 ended every ladder
+ * offer after the first refresh window. Same epoch clock as missionBoardOps._epoch.
+ */
+export function haulerLadderOfferExpiresAtEpoch(state, simTime, slackS) {
+  const cfg = (state && state.missions && state.missions.config) || MISSION_TUNING;
+  const refresh = Number(cfg.refreshSec) > 0 ? Number(cfg.refreshSec) : 600;
+  const deadline = (Number(simTime) || 0) + Math.max(0, Number(slackS) || 0);
+  return Math.floor(deadline / refresh) + 1;
+}
+
+/**
  * Board-shaped mission offer for missions.postAndAcceptAuthoredOffer.
  * Missions remain sole mission authority; ladder only authors the offer shape.
  */
@@ -550,7 +563,7 @@ export function buildHaulerLadderMissionOffer(state, stepId, attempt, offerNonce
     ladderStepId: stepId,
     time_limit_s: params.deadlineSlackS,
     deadlineS: simTime + params.deadlineSlackS,
-    expiresAtEpoch: 1,
+    expiresAtEpoch: haulerLadderOfferExpiresAtEpoch(state, simTime, params.deadlineSlackS),
     description: params.acceptLine,
     teach: params.teach,
   };

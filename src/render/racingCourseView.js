@@ -21,7 +21,7 @@ function attachmentEndpoint(entity, local, out) {
 }
 const noRaycast = () => {};
 
-export function createRacingCourseView(scene, state) {
+function createActiveRacingCourseView(scene, state) {
   const ghost = createRacingGhostView(scene, state);
   const draft = createRacingDraftView(scene, state);
   const root = new THREE.Group(); root.name = 'Racing course'; root.visible = false;
@@ -194,6 +194,30 @@ export function createRacingCourseView(scene, state) {
       markers.dispose();
       ropeGeometry.dispose();ropeCoreMaterial.dispose();ropeStrandMaterial.dispose();
       ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
+    },
+  };
+}
+
+export function createRacingCourseView(scene, state) {
+  // Course, rope, ghost, and wake resources belong to an authored race. The renderer creates
+  // this owner for every scene, including ordinary Swarm, so keep the cohort off-scene until a
+  // race is present. A race already active at scene setup is materialized eagerly, before the
+  // opening submission plan and GPU cook inspect the scene. If a race is accepted later, the
+  // same prepareFrame call that observes it creates the full cohort before drawing it.
+  let view = activeAuthoredRace(state) ? createActiveRacingCourseView(scene, state) : null;
+  let disposed = false;
+  return {
+    get root() { return view?.root || null; },
+    frame() {
+      if (disposed) return;
+      if (!view && activeAuthoredRace(state)) view = createActiveRacingCourseView(scene, state);
+      view?.frame();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      view?.dispose();
+      view = null;
     },
   };
 }

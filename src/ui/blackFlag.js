@@ -22,7 +22,7 @@ export function shipjackPromptDetail(view) {
   const readiness = view.readiness || {};
   const reasons = (readiness.reasons || []).slice(0, 2).map(reason =>
     typeof reason === 'string' ? reason : reason.label || reason.reason || '').filter(Boolean);
-  const speed = Number.isFinite(readiness.relativeSpeed) ? `Relative speed ${Math.round(readiness.relativeSpeed)} wu/s` : '';
+  const speed = Number.isFinite(readiness.relativeSpeed) ? `Relative speed ${Math.round(readiness.relativeSpeed)} u/s` : '';
   const dwell = Number.isFinite(readiness.dwell) ? `steady ${Math.floor(readiness.dwell * 2) / 2}s` : '';
   const title = BLACK_FLAG_TERMS[view.titleStatus] || view.titleLabel || 'Title unconfirmed — read the frame';
   return [view.detail, title, [speed, dwell].filter(Boolean).join(' · '), reasons.join(' · ')].filter(Boolean).map(text=>text.replace(/[.\s]+$/,'')).join('. ');

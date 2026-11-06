@@ -69,6 +69,45 @@
       "min_iou_gate": 0.12,
       "note": "asset-transaction-repair hooks+reexport",
       "updated": "2026-07-11T03:18:18.734Z"
+    },
+    "place_station_fab": {
+      "concept_sha256": "0399545c1aa81abae917958d0857f2f42ebcf02cbd920906839dbf8ca6f8b11c",
+      "glb_sha256": "651894dcb01bc9b9709c82e608ec4062c19f67c803ab9ca21398bdd32069df43",
+      "blend_mtime": 1787086669411.6191,
+      "silhouette_iou": 0.3519,
+      "align": {
+        "dx": 3,
+        "dy": 2,
+        "flip": true
+      },
+      "promoted_at": "2026-11-01T10:42:01.326Z",
+      "silhouette_metric_role": "diagnostic"
+    },
+    "place_station_mining": {
+      "concept_sha256": "edd48488fbdeab2957b4e0356a70ce732aa96445ffd8048d91d7f3113632d445",
+      "glb_sha256": "206d3b72da3f0f5648eb31c446f528ad872c9c9f474b595e88b85cfad1a56b41",
+      "blend_mtime": 1787086669445.8806,
+      "silhouette_iou": 0.7023,
+      "align": {
+        "dx": -2,
+        "dy": -3,
+        "flip": true
+      },
+      "promoted_at": "2026-11-01T10:42:04.400Z",
+      "silhouette_metric_role": "diagnostic"
+    },
+    "place_station_research": {
+      "concept_sha256": "6e1ae014204df794bb9589ec7bdf09cf461ed8d36453d8fe902242dce4f6155a",
+      "glb_sha256": "848d10f9fa37f882d8234a8664cfe18ab0d4f215c021931d15210ea71c50c96e",
+      "blend_mtime": 1787086669488.484,
+      "silhouette_iou": 0.5057,
+      "align": {
+        "dx": 0,
+        "dy": -6,
+        "flip": false
+      },
+      "promoted_at": "2026-11-01T10:42:05.416Z",
+      "silhouette_metric_role": "diagnostic"
     }
   }
 }

@@ -159,6 +159,10 @@ test('TEACH-11 seed 4242: a scoop that fits, a partial fill, and a fractional ga
     assert.equal(h.shown.some((payload) => payload.verbId === 'firstCargoFull'), true, 'that beat still says to sell');
     h.scoop(1);
     h.scoop(1);
+    // The sell-it beat owns the first-use window for its display span; the refusal
+    // lesson queues behind it and speaks once the window closes.
+    h.state.simTime += 7;
+    h.sim.registry.get('onboarding')._drainHintQueue();
     assert.equal(h.jettisonHints().length, 1, 'the next rock is the one refusal lesson');
     assert.equal(h.state.player.cargo.capVolume, 3);
 
@@ -206,6 +210,9 @@ test('TEACH-11 seed 4242: a spent profile, hints off, the tutorial rail, touch, 
     quiet.scoop(1, { collectorId: quiet.player.id + 99 });
     assert.equal(quiet.jettisonHints().length, 0, 'another collector does not teach the player');
     quiet.scoop(1);
+    // The rail muted the mid-rail refusal into the deferred queue; once the rail
+    // released the voice it drains and still teaches on its own beat.
+    quiet.sim.registry.get('onboarding')._drainHintQueue();
     assert.equal(quiet.jettisonHints().length, 1, 'the first refusal the player can hear still teaches');
     assert.equal(quiet.state.player.cargo.capVolume, 3);
   } finally { quiet.restore(); }

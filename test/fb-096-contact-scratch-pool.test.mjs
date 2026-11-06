@@ -82,10 +82,13 @@ test('release resets contact state in place and keeps the objects', () => {
 
 test('production pool construction wires the scratch initializer', async () => {
   const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  // The signature-pool emit loop and its fallback guard moved to the sibling methods module
+  // when vfx split; the wiring contract is the same, read across both sources.
+  const methods = await readFile(new URL('../src/render/vfx/npcJobSignatureMethods.js', import.meta.url), 'utf8');
   // The signature pool loop and the pirate scratch both init at fill time; the emit path's
   // remaining guard is the bare-slot harness fallback, not the pool's allocation site.
   assert.match(source, /const slot = initNpcJobContactScratch\(\{/);
   assert.match(source, /this\._pirateInterceptScratch = initNpcJobContactScratch\(\{/);
-  assert.match(source, /resetNpcJobContactScratch\(slots\[i\]\)/);
-  assert.match(source, /if \(!slot\.contactVisit\) initNpcJobContactScratch\(slot\)/);
+  assert.match(methods, /resetNpcJobContactScratch\(slots\[i\]\)/);
+  assert.match(source + methods, /if \(!slot\.contactVisit\) initNpcJobContactScratch\(slot\)/);
 });

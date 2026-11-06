@@ -3,6 +3,7 @@
 // Seed 16602.
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -21,11 +22,19 @@ import {
 import { SHIPPED_LOCALES, catalogFor, fiveCatalogsShip } from '../src/localization/fiveLocales.js';
 import { STORE_COPY, STORE_KEYS } from '../src/localization/storeCopy.js';
 import { barkMessagesFor, barkParityErrors, barkTextMap } from '../src/localization/barks.js';
+import {
+  BARKS,
+  BARK_FACTIONS,
+  BARK_SITUATIONS,
+  HULL_RECOGNITION,
+} from '../src/data/barks.js';
 import { extractPlaceholders, hasPlaceholderParity } from '../src/localization/runtime.js';
 import { LOCALE_FONT_STACKS, fontStackForLocale } from '../src/localization/fonts.js';
 import { LOCALIZED_CORE_COPY } from '../src/ui/localizedCoreCopy.js';
 
 const SEED = 16602;
+const BARK_TRANSLATIONS = JSON.parse(readFileSync(
+  new URL('../src/localization/barks.generated.json', import.meta.url), 'utf8'));
 const CATALOG_BY_LOCALE = {
   'en-US': catalogFor('en-US'),
   'es-ES': esMessages,
@@ -77,8 +86,27 @@ test('bark corpus is register-faithful, not a raw English dump', () => {
   const en = barkMessagesFor('en-US');
   const keys = Object.keys(en);
   assert.ok(keys.length >= 300, `bark overlay too small: ${keys.length}`);
+  const localeIndex = { 'es-ES': 0, 'fr-FR': 1, 'de-DE': 2, 'pt-BR': 3 };
   for (const locale of ['es-ES', 'fr-FR', 'de-DE', 'pt-BR']) {
     const translated = barkMessagesFor(locale);
+    assert.deepEqual(Object.keys(translated), keys, `${locale} keeps every English bark key in order`);
+    for (const faction of BARK_FACTIONS) {
+      for (const situation of BARK_SITUATIONS) {
+        const english = BARKS[faction]?.[situation] || [];
+        const rows = BARK_TRANSLATIONS.tables[faction][situation];
+        english.forEach((source, index) => {
+          assert.equal(translated[`loc.bark.${faction}.${situation}.${index}`],
+            rows[index][localeIndex[locale]] || source, `${locale} ${faction}.${situation}.${index}`);
+        });
+      }
+    }
+    for (const faction of Object.keys(HULL_RECOGNITION)) {
+      (HULL_RECOGNITION[faction] || []).forEach((source, index) => {
+        assert.equal(translated[`loc.bark.hull.${faction}.${index}`],
+          BARK_TRANSLATIONS.hull[faction][index][localeIndex[locale]] || source,
+          `${locale} hull.${faction}.${index}`);
+      });
+    }
     let different = 0;
     for (const key of keys) {
       const source = en[key];
@@ -97,6 +125,20 @@ test('bark corpus is register-faithful, not a raw English dump', () => {
   const vael = 'Vael Consensus. Clause 1: your presence is registered. Await disposition.';
   assert.match(barkTextMap('es-ES').get(vael), /Cláusula 1/);
   assert.match(barkTextMap('pt-BR').get(vael), /Cláusula 1/);
+});
+
+test('bark JSON preserves every pre-extraction localized message and hull line', () => {
+  const beforeExtraction = {
+    'en-US': 'a460d1f4996430fefe2a7dd4d7ba1dfe89b01c579c406291968d9f84192b1526',
+    'es-ES': 'ab978160eb63dd6a49ba8b46aa31fec261818762fc709ab173a06e76bd4126aa',
+    'fr-FR': '3f849fb5d19eeeb49f407844ab7dd218edc744cd9a4c3e899c08220a7936553e',
+    'de-DE': '7dda2283607e61b04f6b8e02b9ec4d41b4688f56312a12fc18793b2b903d7d10',
+    'pt-BR': '905c0912b8d2e20d1263f29307896e5ae0f683cdc918a0f56b49f80e377e2186',
+  };
+  for (const locale of SHIPPED_LOCALES) {
+    const digest = createHash('sha256').update(JSON.stringify(barkMessagesFor(locale))).digest('hex');
+    assert.equal(digest, beforeExtraction[locale], `${locale} message and hull values changed during extraction`);
+  }
 });
 
 test('core UI phrases and placeholders survive in every catalog', () => {

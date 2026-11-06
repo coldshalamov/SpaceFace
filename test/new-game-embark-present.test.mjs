@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { armCallbackAfterPresent } from '../src/render/compilePresentSlice.js';
+import { isMobileRenderContext } from '../src/render/renderCapabilityProfile.js';
 import { parseUniverseSeed } from '../src/ui/screens/newGame.js';
 
 // Exercise the screen's actual methods with its real post-present scheduler, without
@@ -36,12 +37,12 @@ function fixture({ frames = true } = {}) {
     setLaunching() {}, launchError: { hidden: false, textContent: '' }, cancelHullRelease() {},
     name: {}, title: {}, body: {}, stage: {}, foot: {},
   };
-  const owner = new Function('initialRefs', 'armCallbackAfterPresent', 'parseUniverseSeed', `
+  const owner = new Function('initialRefs', 'armCallbackAfterPresent', 'parseUniverseSeed', 'isMobileRenderContext', `
     let refs = initialRefs;
     const NEW_GAME = { startingSectorId: 'sector_helios_prime' };
     const cue = () => {}, settle = () => {}, isPhoneLayout = () => true;
     return { screen: { ${methods} }, replaceRefs(next) { refs = next; } };
-  `)(refs, armCallbackAfterPresent, parseUniverseSeed);
+  `)(refs, armCallbackAfterPresent, parseUniverseSeed, isMobileRenderContext);
   const tick = target => {
     for (;;) {
       const next = [...timers].filter(([, timer]) => timer.due <= target).sort((a, b) => a[1].due - b[1].due)[0];

@@ -56,7 +56,7 @@ export function mountSableDemo(host,{state,owned,moduleId,slotIndex,afterFitting
       if(disposed)return null;if(!stillCurrent()){close();return null;}
       if(!result.ok){status.textContent='No physical trial for this item. Read its current fitting metrics at the counter.';graphic.remove();return result;}
       packet=result;const [before,after]=result.runs;
-      const benefit=result.family==='drive'?`peak ${number(before.peakSpeed)} → ${number(after.peakSpeed)} WU/s; after braking ${number(before.stoppedSpeed)} → ${number(after.stoppedSpeed)} WU/s`
+      const benefit=result.family==='drive'?`peak ${number(before.peakSpeed)} → ${number(after.peakSpeed)} u/s; after braking ${number(before.stoppedSpeed)} → ${number(after.stoppedSpeed)} u/s`
         :`shield ${number(before.shieldMax)} → ${number(after.shieldMax)}; three identical 30-damage strikes`;
       status.textContent=`${benefit}. Mass ${number(before.mass)} → ${number(after.mass)}; capacitor ${number(before.capMax)} → ${number(after.capMax)}. More capability carries its cost.`;
       onMeasured?.(result);replay.disabled=false;pause.disabled=reducedMotion;time=reducedMotion?result.duration:0;draw();

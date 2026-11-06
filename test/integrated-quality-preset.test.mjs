@@ -13,6 +13,7 @@ import {
   INTEGRATED_PRESET_SUGGESTION,
   QUALITY_PRESETS,
   applyQualityPreset,
+  adaptiveResolutionEnabledForSettings,
   detectGpu,
   normalizeFrameCap,
   qualityTierForPreset,
@@ -33,6 +34,9 @@ test('default picture stays Medium — integrated is opt-in only', () => {
   assert.equal(state.settings.video.sharpen, false);
   assert.equal(state.settings.video.frameCap, 0);
   assert.equal(state.settings.video.dynamicResolution, false);
+  assert.equal(state.settings.video.qualityMode, 'auto');
+  assert.equal(adaptiveResolutionEnabledForSettings({ tier: 'integrated' }, state.settings.video), true,
+    'automatic policy may adapt render resolution without changing saved effects or preset values');
   assert.equal(state.settings.video.particleQuality, 'medium');
   assert.ok(QUALITY_PRESETS.some((p) => p.id === 'integrated'), 'Integrated GPU preset is listed');
   assert.notEqual(DEFAULT_QUALITY_PRESET, 'integrated');
@@ -66,6 +70,7 @@ test('integrated preset bundles the plumbed #86–#94 knobs', () => {
   assert.equal(state.settings.video.postFx, false);
   assert.equal(state.settings.video.frameCap, 30);
   assert.equal(state.settings.video.dynamicResolution, true);
+  assert.equal(state.settings.video.qualityMode, 'manual');
   assert.equal(state.settings.video.particleQuality, 'low');
   assert.ok(applied.changed.includes('qualityPreset'));
   assert.ok(applied.changed.includes('renderScale'));
@@ -85,6 +90,7 @@ test('leaving integrated restores a stock preset picture', () => {
   assert.equal(v.postFx, true);
   assert.equal(v.frameCap, 0);
   assert.equal(v.dynamicResolution, false);
+  assert.equal(v.qualityMode, 'manual');
   assert.equal(v.particleQuality, 'medium');
 });
 

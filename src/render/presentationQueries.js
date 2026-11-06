@@ -126,10 +126,11 @@ export function createPresentationQueries(world) {
   }
 
   // exactVisible is a pure function of the slot columns it reads plus the
-  // per-call bounds/origin/playerId — memoize on those exact inputs (identity
-  // for entityRefs). A slot queried twice in one window (dirty re-check plus
-  // the candidate walk, or back-to-back queries on a quiet tick) pays one
-  // entry compare instead of the entity deref + bounds arithmetic.
+  // per-call bounds/origin/playerId. Keep only those scalar inputs in the memo:
+  // retaining entityRefs here pins retired entity meshes after their world slots
+  // are released. A slot queried twice in one window (dirty re-check plus the
+  // candidate walk, or back-to-back queries on a quiet tick) pays one entry
+  // compare instead of the bounds arithmetic.
   const visCache = [];
 
   function exactVisible(slot, bounds, origin, playerId) {
@@ -151,7 +152,7 @@ export function createPresentationQueries(world) {
     if (entry
         && entry.doomed === doomedNow && entry.alive === aliveNow
         && entry.bound === boundNow && entry.entityId === entityIdNow
-        && entry.flags === flagsNow && entry.entity === entityNow
+        && entry.flags === flagsNow
         && entry.posBad === posBadNow
         && entry.x === xNow && entry.z === zNow && entry.radius === radiusNow
         && entry.boundsX === bounds.x && entry.boundsZ === bounds.z
@@ -162,11 +163,11 @@ export function createPresentationQueries(world) {
       return entry.result;
     }
     const result = exactVisibleCompute(slot, bounds, origin, playerId,
-      doomedNow, aliveNow, boundNow, entityIdNow, flagsNow, entityNow, posNow,
+      doomedNow, aliveNow, boundNow, entityIdNow, flagsNow,
       posBadNow, xNow, zNow, radiusNow);
     visCache[slot] = {
       doomed: doomedNow, alive: aliveNow, bound: boundNow, entityId: entityIdNow,
-      flags: flagsNow, entity: entityNow, posBad: posBadNow,
+      flags: flagsNow, posBad: posBadNow,
       x: xNow, z: zNow, radius: radiusNow,
       boundsX: bounds.x, boundsZ: bounds.z, halfX: bounds.halfX, halfZ: bounds.halfZ,
       originX: origin.x, originZ: origin.z, playerId,
@@ -177,7 +178,7 @@ export function createPresentationQueries(world) {
   }
 
   function exactVisibleCompute(slot, bounds, origin, playerId,
-    doomedNow, aliveNow, boundNow, entityIdNow, flagsNow, entityNow, posNow,
+    doomedNow, aliveNow, boundNow, entityIdNow, flagsNow,
     posBadNow, xNow, zNow, radiusNow) {
     // Doomed rows (suppressed mid-collect destroys, feed-skip tombstones) fail
     // before every bypass — player/FORCE_RENDER/NEVER_CULL included — so the

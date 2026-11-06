@@ -75,13 +75,29 @@ export function normalizeStandingOrders(raw) {
       seen: Array.isArray(row.seen) ? row.seen.map(String).slice(-8) : [] })) : [];
 }
 
+/** Relief cycles that earn the captain's gratuitous gift — the seed shape "a freighter you saved
+ *  sends cargo later": the third completed run, then every fourth after. */
+export function captainGratitudeDue(cycle) {
+  const n = Math.max(0, Math.floor(Number(cycle) || 0));
+  return n >= 3 && (n - 3) % 4 === 0;
+}
+
 export function noteStandingOrderCompletion(state, mission) {
   if (!mission?.stationId || !mission.type) return;
   if (mission.source === 'captainStandingOrder') {
     const captainId = mission.cause?.captainId;
     if (captainId) {
       const cycles = state.missions.captainOrderCycles || (state.missions.captainOrderCycles = {});
-      cycles[captainId] = { cycle: (cycles[captainId]?.cycle || 0) + 1, dueAtS: (state.simTime || 0) + 600 };
+      const previous = cycles[captainId];
+      const rec = { cycle: (previous?.cycle || 0) + 1, dueAtS: (state.simTime || 0) + 600,
+        gratitude: previous?.gratitude || null };
+      // The gift rides the run's own goods, waiting at the captain's home dock. A full hold
+      // keeps it waiting; a stamp already paid stays paid.
+      if (captainGratitudeDue(rec.cycle)) {
+        rec.gratitude = { stationId: mission.stationId, cmdtyId: mission.params?.cmdtyId || 'cmdty_food',
+          qty: 2, paid: false };
+      }
+      cycles[captainId] = rec;
       while (Object.keys(cycles).length > 24) delete cycles[Object.keys(cycles)[0]];
     }
     const row = state.missions.standingOrders?.find(item => item.id === mission.cause?.standingOrderId);
@@ -148,7 +164,10 @@ export function syncCaptainStandingOrders(host, info, board) {
       time_limit_s: 1800, duration_s: 1800,
       params: { cmdtyId: shape.cmdtyId, qty: shape.qty, taskTime: 20, fValue: 1 },
       title: `${captain.name} — standing relief run${runNo}`,
-      summary: `${captain.name} remembers your rescue. Carry two units of ${goods} to ${destination.name}. This client will keep a route open for you.`,
+      // The offer speaks in the giver's own voice (W1): the captain who was rescued writes the
+      // line, first person, with the route promise that makes it a standing order.
+      summary: `${captain.name}: "You pulled my crew out of the black, so the route stays yours. `
+        + `Haul two units of ${goods} to ${destination.name} for me — the standing rate, every cycle."`,
       cause: { tag: 'remembered_captain', captainId: captain.id },
     });
   }
@@ -159,7 +178,10 @@ export function syncCaptainStandingOrders(host, info, board) {
     candidates.push({ ...clone(row.template), id: `${row.id}:${row.cycle}`, source: 'captainStandingOrder',
       stationId: info.id, giverId: `desk:${info.id}:${row.type}`, clientId: `desk:${info.id}:${row.type}`,
       title: `${clientName} — standing ${typeLabel}`,
-      summary: `${clientName} keeps a ${typeLabel} desk at ${info.name}. Three finished runs earned the next one.`,
+      // The desk regular speaks too: three finished runs is a working relationship, and the
+      // line reads as theirs, not the board's.
+      summary: `${clientName}: "Three runs finished — that is a working relationship. `
+        + `Keep the ${typeLabel} run and I keep the desk open for you."`,
       cause: { tag: 'standing_client', standingOrderId: row.id },
     });
   }

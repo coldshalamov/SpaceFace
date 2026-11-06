@@ -32,11 +32,15 @@ function contactsFor(sectorId) {
   const rows = [
     {
       type: 'station', team: 0, radius: 90, pos: { x: 1280, z: -420 }, factionId: 'faction_scn',
-      data: { ...home, name: 'Helios Station', stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub', dockRadius: 160 },
+      data: { ...home, name: 'Helios Station', stationId: 'station_helios', stationTypeId: 'trade_hub', archetypeGlb: 'place_station_trade_hub', dockRadius: 160 },
     },
     {
       type: 'station', team: 0, radius: 70, pos: { x: -920, z: 1080 }, factionId: 'faction_scn',
-      data: { ...home, name: 'Coalition HQ', stationId: 'station_coalition', archetypeGlb: 'place_station_military', dockRadius: 130 },
+      data: { ...home, name: 'Coalition HQ', stationId: 'station_coalition', stationTypeId: 'military', archetypeGlb: 'place_station_military', dockRadius: 130 },
+    },
+    {
+      type: 'station', team: 3, radius: 58, pos: { x: 760, z: 740 }, factionId: 'faction_pitborn',
+      data: { ...home, name: 'Press Camp', stationId: 'station_bench_press_camp', stationTypeId: 'pirate_camp', archetypeGlb: 'place_station_trade_hub', dockRadius: 112 },
     },
     {
       type: 'ship', team: 0, radius: 16, pos: { x: 470, z: 150 }, vel: { x: 38, z: -22 }, rot: -0.52, factionId: 'faction_mts',

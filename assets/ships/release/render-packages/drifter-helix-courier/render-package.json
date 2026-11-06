@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4b900b97c901a16ccd7fc7232a78b678f206aa430a6210a171c78ac021caea34",
+  "contentHash": "299677ae558a3d93683c3b24751df391a5c66c429a072180ce5ca725d70329fd",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -7622,14 +7622,14 @@
       "uri": "drifter_helix_courier.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1256492,
-    "sha256": "a47eb79c3dfefbdec0fd81b9f1f9333c4c4fa8d1bd79b15cf68c2b49eef4fb4f",
+    "bytes": 1257328,
+    "sha256": "60fd1fd989cad64f700ce6d4240256cc9cdcbbda0a2c37376e508a733612d6f6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7727,6 +7727,1643 @@
       },
       {
         "matrix": [
+          1.936949610710144,
+          0,
+          0,
+          0,
+          0,
+          1.936949610710144,
+          0,
+          0,
+          0,
+          0,
+          1.936949610710144,
+          0,
+          -5.2540518045425415,
+          0.019999999552965164,
+          -1.7749996185302734,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+        "planIndex": 8,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-armor-winglet-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.942746639251709,
+          0,
+          0,
+          0,
+          0,
+          1.942746639251709,
+          0,
+          0,
+          0,
+          0,
+          1.942746639251709,
+          0,
+          -5.251830101013184,
+          -0.051437193527817726,
+          -1.7750000357627869,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-armor-winglet-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.472399950027466,
+          0,
+          0,
+          0,
+          0,
+          2.472399950027466,
+          0,
+          0,
+          0,
+          0,
+          2.472399950027466,
+          0,
+          -8.301250219345093,
+          0.0998000055551529,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 12,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          -2.0999999046325684,
+          0.11999999731779099,
+          -3.5199999809265137,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 14,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          -4.300000190734863,
+          0.5000000149011612,
+          3.450000047683716,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 16,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          -2.4000000953674316,
+          2.4000000953674316,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+        "planIndex": 18,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-crane-glow-red"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.2200000882148743,
+          0,
+          0,
+          0,
+          0,
+          1.2200000882148743,
+          0,
+          0,
+          0,
+          0,
+          1.2200000882148743,
+          0,
+          -2.7664464116096497,
+          1.6500000357627869,
+          1.8400000929832458,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+        "planIndex": 20,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-crane-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.08000004291534424,
+          0,
+          0,
+          0,
+          0,
+          0.08000004291534424,
+          0,
+          0,
+          0,
+          0,
+          0.08000004291534424,
+          0,
+          -1.600000023841858,
+          1.1799999475479126,
+          2.2699999809265137,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+        "planIndex": 22,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-crane-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1728036999702454,
+          0,
+          0,
+          0,
+          0,
+          1.1728036999702454,
+          0,
+          0,
+          0,
+          0,
+          1.1728036999702454,
+          0,
+          -2.7500001788139343,
+          1.7999999523162842,
+          2.599999785423279,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+        "planIndex": 24,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-crane-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6840939074754715,
+          0,
+          0,
+          0,
+          0,
+          0.6840939074754715,
+          0,
+          0,
+          0,
+          0,
+          0.6840939074754715,
+          0,
+          -0.19999997317790985,
+          0.7200000435113907,
+          -2.449999988079071,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+        "planIndex": 26,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-turret-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.1762499809265137,
+          0,
+          0,
+          0,
+          0,
+          2.1762499809265137,
+          0,
+          0,
+          0,
+          0,
+          2.1762499809265137,
+          0,
+          1.216249942779541,
+          0.5000000074505806,
+          -2.450000047683716,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 28,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-turret-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.449999988079071,
+          0,
+          0,
+          0,
+          0,
+          1.449999988079071,
+          0,
+          0,
+          0,
+          0,
+          1.449999988079071,
+          0,
+          2.050000011920929,
+          0.7200000286102295,
+          -2.450000047683716,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 30,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          -1.2100000381469727,
+          2.2699999809265137,
+          0.3499999940395355,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 32,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6762775331735611,
+          0,
+          0,
+          0,
+          0,
+          0.6762775331735611,
+          0,
+          0,
+          0,
+          0,
+          0.6762775331735611,
+          0,
+          -0.9287253767251968,
+          1.8074814081192017,
+          0.3500000089406967,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 34,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.41999998688697815,
+          0,
+          0,
+          0,
+          0,
+          0.41999998688697815,
+          0,
+          0,
+          0,
+          0,
+          0.41999998688697815,
+          0,
+          -1.0099999904632568,
+          1.9100000858306885,
+          0.3499999940395355,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 36,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod0-motion-hull-core-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9402616024017334,
+          0,
+          0,
+          0,
+          0,
+          1.9402616024017334,
+          0,
+          0,
+          0,
+          0,
+          1.9402616024017334,
+          0,
+          -5.25311541557312,
+          0.01967621222138405,
+          -1.7749918103218079,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+        "planIndex": 52,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-armor-winglet-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.943126916885376,
+          0,
+          0,
+          0,
+          0,
+          1.943126916885376,
+          0,
+          0,
+          0,
+          0,
+          1.943126916885376,
+          0,
+          -5.252194166183472,
+          -0.04939728602766991,
+          -1.7749918103218079,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+        "planIndex": 54,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-armor-winglet-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.472399950027466,
+          0,
+          0,
+          0,
+          0,
+          2.472399950027466,
+          0,
+          0,
+          0,
+          0,
+          2.472399950027466,
+          0,
+          -8.301250219345093,
+          0.0998000055551529,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 56,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          -2.0999999046325684,
+          0.11999999731779099,
+          -3.5199999809265137,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 58,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          -4.300000190734863,
+          0.5000000149011612,
+          3.450000047683716,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 60,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          0,
+          0,
+          0,
+          0.03500008583068848,
+          0,
+          -2.4000000953674316,
+          2.4000000953674316,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+        "planIndex": 62,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-crane-glow-red"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.2193316221237183,
+          0,
+          0,
+          0,
+          0,
+          1.2193316221237183,
+          0,
+          0,
+          0,
+          0,
+          1.2193316221237183,
+          0,
+          -2.7663446068763733,
+          1.6502391397953033,
+          1.839797854423523,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+        "planIndex": 64,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-crane-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07927942276000977,
+          0,
+          0,
+          0,
+          0,
+          0.07927942276000977,
+          0,
+          0,
+          0,
+          0,
+          0.07927942276000977,
+          0,
+          -1.5998423099517822,
+          1.1799999475479126,
+          2.2699999809265137,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+        "planIndex": 66,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-crane-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1734808683395386,
+          0,
+          0,
+          0,
+          0,
+          1.1734808683395386,
+          0,
+          0,
+          0,
+          0,
+          1.1734808683395386,
+          0,
+          -2.7500170469284058,
+          1.7999483942985535,
+          2.5999433994293213,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+        "planIndex": 68,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-crane-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6840939074754715,
+          0,
+          0,
+          0,
+          0,
+          0.6840939074754715,
+          0,
+          0,
+          0,
+          0,
+          0.6840939074754715,
+          0,
+          -0.19999997317790985,
+          0.7200000435113907,
+          -2.449999988079071,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+        "planIndex": 70,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-turret-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.1770335137844086,
+          0,
+          0,
+          0,
+          0,
+          2.1770335137844086,
+          0,
+          0,
+          0,
+          0,
+          2.1770335137844086,
+          0,
+          1.2179669439792633,
+          0.49947788938879967,
+          -2.4499592185020447,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 72,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-turret-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4496515095233917,
+          0,
+          0,
+          0,
+          0,
+          1.4496515095233917,
+          0,
+          0,
+          0,
+          0,
+          1.4496515095233917,
+          0,
+          2.0500206649303436,
+          0.7199490070343018,
+          -2.4500001668930054,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 74,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-secondary-turret-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          -1.2100000381469727,
+          2.2699999809265137,
+          0.3499999940395355,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 76,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6767777651548386,
+          0,
+          0,
+          0,
+          0,
+          0.6767777651548386,
+          0,
+          0,
+          0,
+          0,
+          0.6767777651548386,
+          0,
+          -0.9288768619298935,
+          1.8075936436653137,
+          0.34999997913837433,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 78,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.41909101605415344,
+          0,
+          0,
+          0,
+          0,
+          0.41909101605415344,
+          0,
+          0,
+          0,
+          0,
+          0.41909101605415344,
+          0,
+          -1.0100061297416687,
+          1.9099705219268799,
+          0.3499988615512848,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 80,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod1-motion-hull-core-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9408067464828491,
+          0,
+          0,
+          0,
+          0,
+          1.9408067464828491,
+          0,
+          0,
+          0,
+          0,
+          1.9408067464828491,
+          0,
+          -5.253402829170227,
+          0.018680479377508163,
+          -1.7749290466308594,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+        "planIndex": 96,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-armor-winglet-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9415571689605713,
+          0,
+          0,
+          0,
+          0,
+          1.9415571689605713,
+          0,
+          0,
+          0,
+          0,
+          1.9415571689605713,
+          0,
+          -5.252652406692505,
+          -0.05604346585460007,
+          -1.7745774984359741,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+        "planIndex": 98,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-armor-winglet-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.472814917564392,
+          0,
+          0,
+          0,
+          0,
+          2.472814917564392,
+          0,
+          0,
+          0,
+          0,
+          2.472814917564392,
+          0,
+          -8.301241397857666,
+          0.09789730608463287,
+          -1.0803341865539551e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 100,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          0,
+          0,
+          0,
+          0.06999993324279785,
+          0,
+          -2.0999999046325684,
+          0.11999999731779099,
+          -3.5199999809265137,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 102,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          0,
+          0,
+          0,
+          0.07000017166137695,
+          0,
+          -4.300000190734863,
+          0.5000000149011612,
+          3.450000047683716,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 104,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1928067207336426,
+          0,
+          0,
+          0,
+          0,
+          1.1928067207336426,
+          0,
+          0,
+          0,
+          0,
+          1.1928067207336426,
+          0,
+          -2.764395236968994,
+          1.324056714773178,
+          2.6511876583099365,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+        "planIndex": 106,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-crane-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07897567749023438,
+          0,
+          0,
+          0,
+          0,
+          0.07897567749023438,
+          0,
+          0,
+          0,
+          0,
+          0.07897567749023438,
+          0,
+          -1.600248098373413,
+          1.1799999475479126,
+          2.2699999809265137,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+        "planIndex": 108,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-crane-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.1725345849990845,
+          0,
+          0,
+          0,
+          0,
+          1.1725345849990845,
+          0,
+          0,
+          0,
+          0,
+          1.1725345849990845,
+          0,
+          -2.74990713596344,
+          1.800000011920929,
+          2.599973678588867,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+        "planIndex": 110,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-crane-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6864981800317764,
+          0,
+          0,
+          0,
+          0,
+          0.6864981800317764,
+          0,
+          0,
+          0,
+          0,
+          0.6864981800317764,
+          0,
+          -0.20013348758220673,
+          0.7195508033037186,
+          -2.4499008655548096,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+        "planIndex": 112,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-turret-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.177708148956299,
+          0,
+          0,
+          0,
+          0,
+          2.177708148956299,
+          0,
+          0,
+          0,
+          0,
+          2.177708148956299,
+          0,
+          1.2204656600952148,
+          0.49947261810302734,
+          -2.449832022190094,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+        "planIndex": 114,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-turret-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.449424386024475,
+          0,
+          0,
+          0,
+          0,
+          1.449424386024475,
+          0,
+          0,
+          0,
+          0,
+          1.449424386024475,
+          0,
+          2.0500773191452026,
+          0.719815582036972,
+          -2.4489890336990356,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+        "planIndex": 116,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-secondary-turret-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          0,
+          0,
+          0,
+          0.03999999165534973,
+          0,
+          -1.2100000381469727,
+          2.2699999809265137,
+          0.3499999940395355,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 118,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.6759965717792511,
+          0,
+          0,
+          0,
+          0,
+          0.6759965717792511,
+          0,
+          0,
+          0,
+          0,
+          0.6759965717792511,
+          0,
+          -0.9288100302219391,
+          1.8097566366195679,
+          0.34993109107017517,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 120,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.4166726879775524,
+          0,
+          0,
+          0,
+          0,
+          0.4166726879775524,
+          0,
+          0,
+          0,
+          0,
+          0.4166726879775524,
+          0,
+          -1.0100547075271606,
+          1.9100711345672607,
+          0.3503010459244251,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 122,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.drifter-helix-courier.mesh.lod2-motion-hull-core-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -7745,7 +9382,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 88,
+        "planIndex": 132,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7796,7 +9433,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 89,
+        "planIndex": 133,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7847,7 +9484,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 90,
+        "planIndex": 134,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7898,7 +9535,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 91,
+        "planIndex": 135,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7949,7 +9586,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 92,
+        "planIndex": 136,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8000,7 +9637,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 93,
+        "planIndex": 137,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8051,7 +9688,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 94,
+        "planIndex": 138,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8102,7 +9739,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 95,
+        "planIndex": 139,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8153,7 +9790,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 96,
+        "planIndex": 140,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8204,7 +9841,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 97,
+        "planIndex": 141,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8255,7 +9892,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 98,
+        "planIndex": 142,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8306,7 +9943,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 99,
+        "planIndex": 143,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8370,67 +10007,32 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
         "role": "signal"
       },
       {
@@ -8440,47 +10042,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 22,
+        "planIndex": 23,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 25,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
         "role": "mechanical"
       },
       {
@@ -8490,17 +10067,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 32,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 33,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
         "role": "signal"
       },
       {
@@ -8510,28 +10077,23 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 36,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 37,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 39,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -8546,32 +10108,32 @@
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 48,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -8586,12 +10148,7 @@
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 52,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -8600,48 +10157,23 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 54,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 55,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 56,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 57,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 58,
-        "role": "accent"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 59,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 60,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 61,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 62,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -8650,18 +10182,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 64,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 65,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 66,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8670,47 +10192,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 68,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 69,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 70,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 71,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 72,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 73,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 74,
+        "planIndex": 71,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 75,
+        "planIndex": 73,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 76,
+        "planIndex": 75,
         "role": "mechanical"
       },
       {
@@ -8720,23 +10217,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 78,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 79,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 80,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 81,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -8746,26 +10233,176 @@
       {
         "allowTextures": true,
         "planIndex": 83,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 84,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 85,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 86,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 87,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 88,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 89,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 90,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 91,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 92,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 93,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 94,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 95,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 97,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 99,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 101,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 103,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 105,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 107,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 109,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 111,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 113,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 115,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 117,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 119,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 121,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 123,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 124,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 125,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 126,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 127,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 128,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 129,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 130,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 131,
         "role": "warning"
       }
     ],
@@ -8775,7 +10412,7 @@
       "sha256": "f2c1d39eb1e024ca31e1e2644772f29e79452d7bf5ce628843433f0cf9fb3251",
       "uri": "assets/ships/motions/drifter-helix-courier.motion.json"
     },
-    "nodeCount": 100,
+    "nodeCount": 144,
     "primitives": [
       {
         "canopy": false,
@@ -8909,8 +10546,8 @@
           -1.7749996185302734,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor_1",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -8938,8 +10575,8 @@
           -1.7750000357627869,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical_1",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -8967,8 +10604,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -9014,8 +10651,8 @@
           -3.5199999809265137,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 11,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9043,8 +10680,8 @@
           3.450000047683716,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9072,8 +10709,8 @@
           0.699999988079071,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
-        "planIndex": 13,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9101,8 +10738,8 @@
           1.8400000929832458,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
-        "planIndex": 14,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical_1",
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9130,8 +10767,8 @@
           2.2699999809265137,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
-        "planIndex": 15,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark_1",
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9159,8 +10796,8 @@
           2.599999785423279,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
-        "planIndex": 16,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning_1",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9188,8 +10825,8 @@
           -2.449999988079071,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
-        "planIndex": 17,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull_1",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9217,8 +10854,8 @@
           -2.450000047683716,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
-        "planIndex": 18,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical_1",
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9246,8 +10883,8 @@
           -2.450000047683716,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
-        "planIndex": 19,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9275,8 +10912,8 @@
           0.3499999940395355,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 20,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -9304,8 +10941,8 @@
           0.3500000089406967,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 21,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -9333,8 +10970,8 @@
           0.3499999940395355,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 22,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -9363,7 +11000,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 23,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9391,7 +11028,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull_patch",
-        "planIndex": 24,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9419,7 +11056,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull_primer",
-        "planIndex": 25,
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9447,7 +11084,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
-        "planIndex": 26,
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9475,7 +11112,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_copper",
-        "planIndex": 27,
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9503,7 +11140,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 28,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9531,7 +11168,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Livery",
-        "planIndex": 29,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9559,7 +11196,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 30,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9587,7 +11224,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 31,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9615,7 +11252,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
-        "planIndex": 32,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -9643,7 +11280,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Armor",
-        "planIndex": 33,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -9671,7 +11308,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
-        "planIndex": 34,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -9699,7 +11336,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_BrushedMetal",
-        "planIndex": 35,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -9727,7 +11364,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_CANOPY",
-        "planIndex": 36,
+        "planIndex": 51,
         "tags": {
           "canopy": true,
           "lod": "lod1",
@@ -9754,8 +11391,8 @@
           -1.7749918103218079,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
-        "planIndex": 37,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor_1",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -9783,8 +11420,8 @@
           -1.7749918103218079,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
-        "planIndex": 38,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical_1",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -9812,8 +11449,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 39,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -9859,8 +11496,8 @@
           -3.5199999809265137,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 40,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9888,8 +11525,8 @@
           3.450000047683716,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 41,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -9917,8 +11554,8 @@
           0.699999988079071,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red",
-        "planIndex": 42,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_glow_red_1",
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9946,8 +11583,8 @@
           1.839797854423523,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
-        "planIndex": 43,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical_1",
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -9975,8 +11612,8 @@
           2.2699999809265137,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
-        "planIndex": 44,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark_1",
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10004,8 +11641,8 @@
           2.5999433994293213,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
-        "planIndex": 45,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning_1",
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10033,8 +11670,8 @@
           -2.449999988079071,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
-        "planIndex": 46,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull_1",
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10062,8 +11699,8 @@
           -2.4499592185020447,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
-        "planIndex": 47,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical_1",
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10091,8 +11728,8 @@
           -2.4500001668930054,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
-        "planIndex": 48,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark_1",
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10120,8 +11757,8 @@
           0.3499999940395355,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 49,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -10149,8 +11786,8 @@
           0.34999997913837433,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 50,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 79,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -10178,8 +11815,8 @@
           0.3499988615512848,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 51,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -10208,7 +11845,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Hull",
-        "planIndex": 52,
+        "planIndex": 82,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10236,7 +11873,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Hull_patch",
-        "planIndex": 53,
+        "planIndex": 83,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10264,7 +11901,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Hull_primer",
-        "planIndex": 54,
+        "planIndex": 84,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10292,7 +11929,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
-        "planIndex": 55,
+        "planIndex": 85,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10320,7 +11957,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_copper",
-        "planIndex": 56,
+        "planIndex": 86,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10348,7 +11985,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 57,
+        "planIndex": 87,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10376,7 +12013,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Livery",
-        "planIndex": 58,
+        "planIndex": 88,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10404,7 +12041,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 59,
+        "planIndex": 89,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10432,7 +12069,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 60,
+        "planIndex": 90,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10460,7 +12097,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Warning",
-        "planIndex": 61,
+        "planIndex": 91,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -10488,7 +12125,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Armor",
-        "planIndex": 62,
+        "planIndex": 92,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10516,7 +12153,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
-        "planIndex": 63,
+        "planIndex": 93,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10544,7 +12181,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_BrushedMetal",
-        "planIndex": 64,
+        "planIndex": 94,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -10572,7 +12209,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_CANOPY",
-        "planIndex": 65,
+        "planIndex": 95,
         "tags": {
           "canopy": true,
           "lod": "lod2",
@@ -10599,8 +12236,8 @@
           -1.7749290466308594,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor",
-        "planIndex": 66,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Armor_1",
+        "planIndex": 97,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -10628,8 +12265,8 @@
           -1.7745774984359741,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical",
-        "planIndex": 67,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_ARMOR_WINGLET_Mechanical_1",
+        "planIndex": 99,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -10657,8 +12294,8 @@
           -1.0803341865539551e-7,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 68,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 101,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -10704,8 +12341,8 @@
           -3.5199999809265137,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 69,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 103,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10733,8 +12370,8 @@
           3.450000047683716,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 70,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 105,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10762,8 +12399,8 @@
           2.6511876583099365,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical",
-        "planIndex": 71,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Mechanical_1",
+        "planIndex": 107,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10791,8 +12428,8 @@
           2.2699999809265137,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark",
-        "planIndex": 72,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_MechanicalDark_1",
+        "planIndex": 109,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10820,8 +12457,8 @@
           2.599973678588867,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning",
-        "planIndex": 73,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_CRANE_Warning_1",
+        "planIndex": 111,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10849,8 +12486,8 @@
           -2.4499008655548096,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull",
-        "planIndex": 74,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Hull_1",
+        "planIndex": 113,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10878,8 +12515,8 @@
           -2.449832022190094,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical",
-        "planIndex": 75,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_Mechanical_1",
+        "planIndex": 115,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10907,8 +12544,8 @@
           -2.4489890336990356,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark",
-        "planIndex": 76,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SECONDARY_TURRET_MechanicalDark_1",
+        "planIndex": 117,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -10936,8 +12573,8 @@
           0.3499999940395355,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 77,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 119,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -10965,8 +12602,8 @@
           0.34993109107017517,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 78,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 121,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -10994,8 +12631,8 @@
           0.3503010459244251,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 79,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 123,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -11024,7 +12661,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull",
-        "planIndex": 80,
+        "planIndex": 124,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11052,7 +12689,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull_patch",
-        "planIndex": 81,
+        "planIndex": 125,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11080,7 +12717,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull_primer",
-        "planIndex": 82,
+        "planIndex": 126,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11108,7 +12745,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_copper",
-        "planIndex": 83,
+        "planIndex": 127,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11136,7 +12773,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Livery",
-        "planIndex": 84,
+        "planIndex": 128,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11164,7 +12801,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 85,
+        "planIndex": 129,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11192,7 +12829,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 86,
+        "planIndex": 130,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11220,7 +12857,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Warning",
-        "planIndex": 87,
+        "planIndex": 131,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11232,7 +12869,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_helix_courier.glb"
   },
-  "runtimeHash": "605cfca55148904cd5a3b87d3733663feac1874f71e12b4a73dd97c8a73046db",
+  "runtimeHash": "642f02ef083ec7c4a167d56bc85c4b6c22c8563c012c31c485c3b16ff4bc167c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

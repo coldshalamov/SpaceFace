@@ -46,8 +46,8 @@
 // rolls draw from hash32 salts and the serializable seq counter; bark picks draw
 // from hash32 or state.rng. Money moves only through economy:grantCredits and
 // economy:chargeCredits; standing only through faction:repDelta. All quiet-ledger
-// state is plain JSON under state.understory — session-scoped like the compost
-// ledger, so once-only truth rides the entities: a resolved pod carries
+// state is plain JSON under state.understory. Finite cache work rides this owner's
+// save section; once-only truth also rides the entities: a resolved pod carries
 // data.understoryResolved, a finished run rides data.compostRunComplete, and a
 // dead id can never cash a record stamped for another occupantGeneration.
 
@@ -70,6 +70,17 @@ import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 
 const FACTION_ID = 'faction_understory';
 const EDIBLE = new Set(UNDERSTORY_GARDENS.edibleTypes);
+// Refusal only: generic meals cannot retire these other-owner identities.
+const GENERIC_MEAL_FOREIGN_KEYS = Object.freeze(['persistenceOwner', 'runtimeOwner', 'worldRecordId', 'identityKey', 'resourceBodyId',
+  'fieldId', 'worldSiteId', 'worldSitePayloadId', 'worldSiteComponentId', 'worldSiteStructural',
+  'worldObjectId', 'siteId', 'activityObjectSlotId', 'missionId', 'missionTag', 'missionPinned',
+  'wreckMissionId', 'claimId', 'claimedBy', 'custodyOwner', 'freightCustody', 'freightCustodyPod',
+  'caughtByNet', 'contractClaimSiteOf', 'salvorClaimedBy', 'recoveryEncounterId', 'survivorPod',
+  'storyPropKind', 'authored', 'authoredCharacter', 'uniqueWreckId', 'authoredWreckId', 'poiId',
+  'protected', 'durable', 'anchored', 'living', 'playerOwned', 'persistent', 'claimable',
+  'markerId', 'physicalCustodyOnly', 'orchardId', 'alienSiteId', 'arenaShardOf', 'reefMineId', 'reefMine',
+  'originId', 'destinationId', 'originStationId', 'destStationId', 'cargoIdentity', 'ownership']);
+
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 
 // Normalization helpers — every record field is coerced, never trusted.
@@ -186,6 +197,7 @@ export function understoryAccessTierFor(favors) {
 }
 
 const DROP_KINDS = new Set(['stash', 'consignment', 'marked']);
+const DROP_STATES = new Set(['open', 'lost', 'expired', 'returned', 'delivered', 'absorbed', 'cracked']);
 const WHISPER_KINDS_ALL = Object.freeze(['feed', 'run', 'keep']);
 const WHISPER_KINDS_EARLY = Object.freeze(['feed', 'keep']);
 const WHISPER_KINDS = new Set(WHISPER_KINDS_ALL);
@@ -403,6 +415,23 @@ function normalizeDropRec(r) {
   r.state = typeof r.state === 'string' ? r.state : 'lost';
   r.wild = r.wild === true;
   return r;
+}
+
+/** Copy only finite canonical cache work, never manufacture a receipt from a saved body tag. */
+function cacheWorkSnapshot(r) {
+  if (!isObj(r) || !/^drop:\d+$/.test(r.id) || !DROP_KINDS.has(r.kind) || !DROP_STATES.has(r.state)
+    || ![r.entityId, r.gen, r.cacheLife].every(n => Number.isSafeInteger(n) && n > 0)
+    || !Number.isSafeInteger(r.valueCr) || r.valueCr <= 0
+    || ![r.postedAt, r.expiresAt, r.pos?.x, r.pos?.z].every(Number.isFinite)
+    || r.postedAt < 0 || r.expiresAt <= r.postedAt
+    || r.expiresAt > r.postedAt + UNDERSTORY_QUIET.dropTtlS * 2
+    || (r.state !== 'open' && (!Number.isFinite(r.settledAt) || r.settledAt < 0))) return null;
+  return { id: r.id, kind: r.kind, entityId: r.entityId, gen: r.gen, cacheLife: r.cacheLife,
+    gardenId: str(r.gardenId) || null, destGardenId: str(r.destGardenId) || null,
+    informant: str(r.informant) || null, sectorId: str(r.sectorId) || null,
+    pos: { x: r.pos.x, z: r.pos.z }, valueCr: r.valueCr, postedAt: r.postedAt,
+    expiresAt: r.expiresAt, state: r.state, settledAt: r.state === 'open' ? null : r.settledAt,
+    wild: r.wild === true, playerHandled: r.playerHandled === true };
 }
 
 function normalizeWhisperRec(r) {
@@ -668,6 +697,7 @@ export const understoryGardens = {
     this.destroy(); // Reinitialisation must not duplicate bus listeners.
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     this._saveRestoring = false;
+    this._cacheRestorePending = false;
     this._subs = [
       this.bus.on('entity:spawned', (p) => this._adoptGardenVisual(p?.entity || this.state.entities.get(p?.id))),
       this.bus.on('entity:killed', (p) => this._onKilled(p)),
@@ -682,11 +712,15 @@ export const understoryGardens = {
       this.bus.on('sector:enter', () => this.ensureAuthoredReceiver()),
       this.bus.on('save:restoring', () => { this._saveRestoring = true; }),
       this.bus.on('save:loaded', () => {
-        const authoredReceiver = ensureUnderstoryState(this.state).authoredReceiver;
-        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver };
+        const { authoredReceiver, drops, seq } = ensureUnderstoryState(this.state);
+        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq };
+        // Only deserialize authorizes rebinding to new runtime occupants. A repeated
+        // save:loaded must never adopt an id recycled since the first notification.
+        if (this._cacheRestorePending) this._restoreCacheBodies();
+        this._cacheRestorePending = false;
         this._saveRestoring = false; this.ensureAuthoredReceiver(); this._announceStoredGrowth();
       }),
-      this.bus.on('save:error', () => { this._saveRestoring = false; }),
+      this.bus.on('save:error', () => { this._saveRestoring = false; this._cacheRestorePending = false; }),
     ];
     ensureUnderstoryState(this.state);
   },
@@ -724,16 +758,56 @@ export const understoryGardens = {
       gardenFirstPlayerGrowth: d.gardenFirstPlayerGrowth ? { ...d.gardenFirstPlayerGrowth } : null };
   },
 
-  /** Additive save section: live progress stays on entities; only finite terminal facts live here. */
+  /** Live growth stays on entities; finite cache work and terminal receiver facts ride this section. */
   serialize() {
-    const own = ensureUnderstoryState(this.state).authoredReceiver;
+    const u = ensureUnderstoryState(this.state);
+    const own = u.authoredReceiver || (u.drops.length ? { status: 'unseen' } : null);
     if (!own) return undefined;
     const result = { version: 1, authoredReceiver: { status: own.status } };
     if (own.status === 'destroyed') {
       result.authoredReceiver.terminalGardenData = this._normalizeTerminal(own.terminalGardenData);
       result.authoredReceiver.firstPlayerGrowth = result.authoredReceiver.terminalGardenData?.gardenFirstPlayerGrowth || null;
     }
+    result.quietCaches = { version: 1, seq: u.seq, drops: u.drops.map(cacheWorkSnapshot).filter(Boolean).map(r => {
+      const body = this.state.entities.get(r.entityId);
+      if (r.state === 'open' && (body?.occupantGeneration !== r.gen
+        || body?.data?.understoryCacheLife !== r.cacheLife || this._rawMealMass(body) !== UNDERSTORY_QUIET.dropMass)) {
+        r.state = 'lost'; r.settledAt = this.state.simTime;
+      }
+      // A real Line release can await intake when saved. Numeric pilot ids are
+      // renewed on load, so retain its attribution with this exact work receipt.
+      if (r.state === 'open') r.playerHandled = this._playerHandled(this.state, body);
+      return r;
+    }) };
     return result;
+  },
+
+  _restoreCacheBodies() {
+    const s = this.state, u = ensureUnderstoryState(s);
+    for (const r of u.drops) {
+      const matches = s.entityList.filter(e => e?.alive !== false && s.entities.get(e.id) === e
+        && e.data?.understoryCacheId === r.id);
+      const body = matches.length === 1 ? matches[0] : null;
+      if (body?.data?.understoryCacheLife === r.cacheLife && body.data.cacheKind === r.kind
+        && (body.data.destGardenId || null) === r.destGardenId
+        && Number.isSafeInteger(body.occupantGeneration) && body.occupantGeneration > 0) {
+        // The generic loader can remap ids and always renews runtime generations.
+        // This producer's saved birth token identifies the same finite cache body.
+        r.entityId = body.id; r.gen = body.occupantGeneration;
+        if (r.state !== 'open') continue;
+        if (body.data.understoryResolved !== true && this._rawMealMass(body) === UNDERSTORY_QUIET.dropMass) {
+          if (s.simTime < r.expiresAt) {
+            if (r.playerHandled && s.playerId != null) body.data.lastThrowerId = s.playerId;
+            continue;
+          }
+          r.state = 'expired'; r.settledAt = s.simTime;
+          body.data.understoryResolved = true;
+          this.helpers.removeEntity(body.id, { reason: 'understory_cache_expired' });
+          continue;
+        }
+      }
+      if (r.state === 'open') { r.state = 'lost'; r.settledAt = s.simTime; }
+    }
   },
 
   _normalizeTerminal(raw) {
@@ -752,6 +826,7 @@ export const understoryGardens = {
   },
 
   deserialize(data) {
+    this._cacheRestorePending = false;
     const own = this.state.understory = { gardens: {}, compost: {}, tidePushback: {} };
     if (data === undefined) return; // Only an absent legacy section may create initial ecology.
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -760,6 +835,16 @@ export const understoryGardens = {
     const row = data.version === 1 && data.authoredReceiver;
     if (!row || !['unseen', 'live', 'destroyed', 'unavailable'].includes(row.status)) {
       own.authoredReceiver = { status: 'unavailable' }; return;
+    }
+    const caches = data.quietCaches;
+    if (caches?.version === 1 && Number.isSafeInteger(caches.seq) && caches.seq >= 0 && caches.seq <= 0x7fffffff
+      && Array.isArray(caches.drops) && caches.drops.length <= UNDERSTORY_QUIET.maxOpenDrops + UNDERSTORY_QUIET.dropLogKeep) {
+      const rows = caches.drops.map(cacheWorkSnapshot).filter(r => r && Number(r.id.slice(5)) < caches.seq);
+      // A duplicate work id has no unique payable body, even if one row is closed.
+      own.drops = boundLedgerRows(rows.filter(r => rows.filter(other => other.id === r.id).length === 1),
+        UNDERSTORY_QUIET.maxOpenDrops, UNDERSTORY_QUIET.dropLogKeep);
+      own.seq = caches.seq;
+      this._cacheRestorePending = true;
     }
     if (row.status === 'destroyed') {
       const terminal = this._normalizeTerminal(row.terminalGardenData);
@@ -777,8 +862,49 @@ export const understoryGardens = {
     if (prey.data?.persistenceOwner === 'aftermathWrecks') {
       const owner = this.ctx.registry?.get?.('aftermathWrecks');
       if (owner?.consumeByGarden?.(prey, garden) !== true) return null;
+      return Number(prey.mass);
     }
-    return Number(prey.mass);
+    return this._rawMealMass(prey);
+  },
+
+  /** Garden-specific refusal: generic mass has no authority to retire another owner's body. */
+  _rawMealMass(prey) {
+    if (!this.isEdible(prey) || this.state.entities?.get(prey.id) !== prey
+      || !Number.isFinite(prey.mass) || prey.mass <= 0) return null;
+    const d = prey.data, f = prey.flags || {};
+    if (f.missionPinned || f.durable || f.protected || f.invuln
+      || prey.ownerId != null || d.ownerId != null
+      || GENERIC_MEAL_FOREIGN_KEYS.some(key => !!d[key])) return null;
+    if (f.persistent || d.understoryCacheId != null || d.understoryDrop) {
+      if (!this._ownCacheMeal(prey)) return null;
+    }
+    return prey.mass;
+  },
+
+  /** Existing quiet-cache custody, including its owner-normalized restored ordinary-mass path. */
+  _ownCacheMeal(prey) {
+    const d = prey.data;
+    if (prey.type !== 'payload' || prey.flags?.persistent !== true || d.understoryDrop !== true
+      || typeof d.understoryCacheId !== 'string' || !/^drop:\d+$/.test(d.understoryCacheId)
+      || !DROP_KINDS.has(d.cacheKind) || prey.mass !== UNDERSTORY_QUIET.dropMass
+      || prey.radius !== UNDERSTORY_QUIET.dropRadius || prey.hullMax !== UNDERSTORY_QUIET.dropHull
+      || !Number.isFinite(prey.hull) || prey.hull <= 0) return false;
+    const rows = Array.isArray(this.state.understory?.drops) ? this.state.understory.drops : [];
+    const row = rows.find(r => r.id === d.understoryCacheId && r.state === 'open');
+    if (row) return row.entityId === prey.id && (row.gen == null || row.gen === prey.occupantGeneration)
+      && row.kind === d.cacheKind && d.understoryResolved !== true;
+    // _tickDrops, not this read, normalizes an orphan/closed cache to ordinary mass.
+    // Legacy saves carry no independent authenticity token: a unique byte-identical forged
+    // orphan cannot be distinguished here without changing the save schema. Do not claim one.
+    if (d.understoryResolved !== true) return false;
+    if (rows.some(r => r.id === d.understoryCacheId
+      && (r.entityId !== prey.id || (r.gen != null && r.gen !== prey.occupantGeneration)))) return false;
+    let matches = 0;
+    for (const e of this.state.entityList || []) {
+      if (e?.alive !== false && this.state.entities?.get(e.id) === e
+        && e.data?.understoryCacheId === d.understoryCacheId) matches += 1;
+    }
+    return matches === 1;
   },
 
   /** Legacy persistent gardens receive only missing visual identity on real spawn, before queued mesh build. */
@@ -856,6 +982,11 @@ export const understoryGardens = {
     return e;
   },
 
+  /** Read-only intake eligibility for route readers; custody stays with the material owner. */
+  gardenFeedMass(prey) {
+    return this._feedMassAvailable(prey);
+  },
+
   _feedMassAvailable(prey) {
     if (!this.isEdible(prey)) return null;
     if (prey.data?.jettisonedCargo === true) {
@@ -864,7 +995,7 @@ export const understoryGardens = {
     if (prey.data?.persistenceOwner === 'aftermathWrecks') {
       return this.ctx.registry?.get?.('aftermathWrecks')?.gardenFeedMass?.(prey) ?? null;
     }
-    return Number(prey.mass);
+    return this._rawMealMass(prey);
   },
 
   _reseedDestroyedReceiver() {
@@ -891,9 +1022,10 @@ export const understoryGardens = {
       rec.fedMass = saved.gardenFedMass; rec.fedByPlayer = saved.gardenFedByPlayer;
       delete own.compost[UNDERSTORY_RECEIVER.gardenId];
       own.authoredReceiver = { status: 'live' };
-      this._digest(garden, rec, prey);
-      // The exact owner rechecks at commit. A refusal never leaves a free living replacement.
-      if (prey.data?.understoryConsumed !== true) {
+      const consumed = this._digest(garden, rec, prey);
+      // The intake result follows its one canonical consume commit, not an unowned prey flag.
+      // A refusal never leaves a free living replacement or consumes another load.
+      if (!(consumed > 0)) {
         this.helpers.removeEntity(garden.id, { reason: 'understory_reseed_refused' });
         own.authoredReceiver = lifecycle; delete own.gardens[UNDERSTORY_RECEIVER.gardenId];
         return null;
@@ -975,6 +1107,7 @@ export const understoryGardens = {
    * both requiring the line to be active).
    */
   _playerHandled(state, e) {
+    if (state.playerId == null) return false;
     const d = e && e.data;
     if (d && (d.lastThrowerId === state.playerId || d.thrownBy === state.playerId
         || d.thrownBy === 'player')) return true;
@@ -990,6 +1123,7 @@ export const understoryGardens = {
   /** One body commits once: retire its actual owner before removal, then retain the receipt. */
   _digest(e, rec, onlyPrey = null) {
     const s = this.state;
+    let consumed = 0;
     const reach = e.radius * UNDERSTORY_GARDENS.absorbPadding;
     for (const prey of s.entityList) {
       if ((onlyPrey && prey !== onlyPrey) || prey === e || !this.isEdible(prey)) continue;
@@ -1013,6 +1147,7 @@ export const understoryGardens = {
         this._resolveDropEaten(s, e, rec, prey, byPlayer);
       }
       this.helpers.removeEntity(prey.id, { reason: 'understory_garden' });
+      consumed += 1;
       const { grew, stage } = syncGardenStage(s, e, rec);
       const receipt = { version: 1, gardenId: e.data.gardenId, entityId: e.id,
         eatenId: prey.id, eatenType: prey.type, fedMass, gained, byPlayer,
@@ -1035,6 +1170,7 @@ export const understoryGardens = {
         this._oweInformantByName(s, u, rec.informant, UNDERSTORY_QUIET.feedOwedCr, e.data.gardenId);
       }
     }
+    return consumed;
   },
 
   /** E-26 the Compost Run: player-fed mass accrues until the run closes. */
@@ -1045,7 +1181,11 @@ export const understoryGardens = {
     let run = u.compost[e.data.gardenId];
     if (!isObj(run)) {
       u.compost[e.data.gardenId] = run = {
-        gardenId: e.data.gardenId, fedMass: 0, complete: e.data.compostRunComplete === true,
+        gardenId: e.data.gardenId,
+        // The persistent body is the run receipt after Continue or destroyed-site regrowth.
+        fedMass: Number.isFinite(e.data.compostFedMass) && e.data.compostFedMass >= 0
+          ? e.data.compostFedMass : 0,
+        complete: e.data.compostRunComplete === true,
       };
     }
     // The entity stamp is the persistent truth — re-read it every credit so a
@@ -1304,12 +1444,14 @@ export const understoryGardens = {
     });
     const rec = {
       id, kind, entityId: e.id, gen: e.occupantGeneration ?? null,
+      cacheLife: e.occupantGeneration ?? null,
       gardenId: opts.gardenId || null, destGardenId: opts.destGardenId || null,
       informant: opts.informant || null, sectorId: opts.sectorId || null,
       pos: { x: pos.x, z: pos.z }, valueCr,
       postedAt: num(state.simTime), expiresAt: num(state.simTime) + UNDERSTORY_QUIET.dropTtlS,
       state: 'open', wild: opts.wild === true,
     };
+    e.data.understoryCacheLife = rec.cacheLife;
     u.drops.push(rec);
     this.bus.emit('understory:dropStashed', {
       dropId: id, kind, entityId: e.id, gardenId: rec.gardenId, destGardenId: rec.destGardenId,
@@ -1923,6 +2065,24 @@ export const understoryGardens = {
     this.ensureAuthoredReceiver();
     this._reseedDestroyedReceiver();
     const u = ensureUnderstoryState(state);
+    // The arena may retain real reefs, heads and quiet-market obligations, but
+    // an empty ledger has no ambient ecology to seed or poll every fixed tick.
+    const dormant = u;
+    if (state.run?.kind === 'survival'
+        && !dormant.notice && !dormant.debtCr && !dormant.blackoutUntil
+        && !dormant.favors && !dormant.nextWildDropAt
+        && Array.isArray(dormant.drops) && !dormant.drops.length
+        && Array.isArray(dormant.whispers) && !dormant.whispers.length
+        && Array.isArray(dormant.covers) && !dormant.covers.length
+        && isObj(dormant.gardens) && !Object.keys(dormant.gardens).length
+        && isObj(dormant.compost) && !Object.keys(dormant.compost).length
+        && isObj(dormant.tidePushback) && !Object.keys(dormant.tidePushback).length
+        && isObj(dormant.informants) && !Object.keys(dormant.informants).length
+        && !state.entityList.some((e) => e && (e.data?.understoryCacheId != null
+          && e.data?.understoryResolved !== true || e.alive !== false
+          && (e.data?.understoryGarden === true || e.data?.lineHeadId === UNDERSTORY_SPORE_HEAD.id
+            || e.factionId === FACTION_ID
+              && (e.data?.role === 'gardener-skiff' || e.data?.shipRole === 'gardener-skiff'))))) return;
     const gardens = gardenEntities(state);
     for (const e of gardens) {
       // A reef without a gardenId has no ledger identity — skip it rather than

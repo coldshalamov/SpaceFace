@@ -49,6 +49,7 @@ function bake(group) {
     bucket.push(geo);
     buckets.set(child.material, bucket);
     original.add(child.geometry);
+    child.castShadow = false;
     group.remove(child);
   }
   for (const [mat, pieces] of buckets) {

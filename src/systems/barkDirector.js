@@ -7,6 +7,7 @@ import { createOrchardEncounter } from '../world/anvilOrchardEncounter.js';
 import {
   BARK_EVENT_SITUATIONS,
   BARK_SITUATIONS,
+  adriftConfessionBarkFor,
   barkFor,
   dockDeedBarkFor,
   freightRaiderEscapeBarkFor,
@@ -15,12 +16,14 @@ import {
   lawResponseBarkFor,
   lawStepBarkFor,
   oreFloodBarkFor,
+  patrolInterventionHailFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
   sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
   tumbleRakeBarkFor,
+  thrownWreckBarkFor,
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
@@ -54,6 +57,9 @@ import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, o
 import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 import { TUMBLE_RAKE_BARK_RANGE } from '../ai/tumbleRake.js';
+
+/** Earshot for the thrown-wreck witness line — the same combat-radio reach as the rake bark. */
+const THROWN_WRECK_BARK_RANGE = TUMBLE_RAKE_BARK_RANGE;
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
 // Reading duration. The arbiter gives queued barks one additional inter-bark gap of
@@ -638,6 +644,13 @@ export function cargoSpillLedgerText(ownerName, reaction) {
   return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
 }
 
+const CARGO_RECOVERY_NOTICE = Object.freeze({
+  restitution: { text: 'Cargo recovery notice: restitution after the spill.' },
+  bounty: { text: 'Cargo recovery notice: bounty after the spill.' },
+  thanks: { text: 'Cargo recovery notice: cargo returned.' },
+});
+const CARGO_RECOVERY_SENDER = Object.freeze({ text: 'Cargo recovery notice' });
+
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
   const faction = (factionId && Object.hasOwn(STUNT_BARKS, factionId)) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
@@ -860,7 +873,13 @@ export const barkDirector = {
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
       this.bus.on('economy:oreFlood', this._onOreFlood);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
+      this._onThrownWreck = (payload) => this._speakThrownWreck(payload || {});
       this.bus.on('combat:tumbleRake', this._onTumbleRake);
+      this.bus.on('combat:thrownWreck', this._onThrownWreck);
+      // A failing hull confesses on the band before anyone decides what it is (rescue, salvage,
+      // prey): the same drive-down seam the yard dispatch and surrender recovery already read.
+      this._onDriveDown = (payload) => this._speakAdriftConfession(payload || {});
+      this.bus.on('combat:subsystemDisabled', this._onDriveDown);
       // THE WORLD REMEMBERS (U-E): dock control greets a pilot the Record has made known.
       this._onDockDeed = (payload) => this._speakDockDeed(payload || {});
       this.bus.on('dock:docked', this._onDockDeed);
@@ -1212,16 +1231,16 @@ export const barkDirector = {
     return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', lineFor, payload);
   },
 
-  // LAW-03 — a patrol that spawns to take the player's fight announces itself in the law's
-  // register: the arriving hull speaks its pursuit line at the attacker it was dispatched on.
+  // The encounter owner supplies the same truthful line to the log and the live voice.
   _speakLawIntervention(payload) {
     const state = this.state;
     const patrol = payload && payload.patrolId != null
       && state && state.entities && state.entities.get && state.entities.get(payload.patrolId);
     if (!patrol || patrol.alive === false) return false;
-    // No _speak fallback: the corpus always resolves, and a re-emitted event must not spend
-    // the hull's 'warn' situation on a moment it already announced.
-    return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened', pursuitBarkFor, payload);
+    const text = typeof payload.hailText === 'string' && payload.hailText
+      ? payload.hailText : patrolInterventionHailFor(null).lines[0].text;
+    return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened',
+      () => text, payload);
   },
 
   // FB-040 — the law's own receipts read back in the lawful register. Each event resolves a
@@ -1233,12 +1252,14 @@ export const barkDirector = {
   _speakLawStep(eventName, payload) {
     const state = this.state;
     if (!state || !payload) return false;
-    const text = eventName === 'law:response'
+    const baseText = eventName === 'law:response'
       ? lawResponseBarkFor(payload)
       : lawStepBarkFor(eventName);
-    if (!text) return false;
+    if (!baseText) return false;
     const step = lawStepRead(state, eventName, payload);
     if (!step || !step.witnessed) return false;
+    // A gate may name the outcome-specific receipt (fine paid / left / worked / short).
+    const text = step.text || baseText;
     const own = ensureState(state);
     if (!own.lawStepSaid || typeof own.lawStepSaid !== 'object' || Array.isArray(own.lawStepSaid)) {
       own.lawStepSaid = {};
@@ -1454,6 +1475,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
+    const speakerGeneration = entity.occupantGeneration;
     const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     const factionId = factionFor(entity);
@@ -1473,7 +1495,7 @@ export const barkDirector = {
       factionId,
       valid: () => {
         const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
-        return !!e && e.alive !== false;
+        return e === entity && e.occupantGeneration === speakerGeneration && e.alive !== false;
       },
     });
     if (!accepted) return false;
@@ -1525,12 +1547,13 @@ export const barkDirector = {
       ship: identity.name,
       class: identity.className,
     });
+    const voiceId = `hullRecognition:${witness.id}:${notoriety}`;
     const accepted = voice.say({
       channel: 'bark',
       text,
       kind: 'hullRecognition',
       ttl: HULL_RECOGNITION_TTL_S,
-      id: `hullRecognition:${witness.id}:${notoriety}`,
+      id: voiceId,
       factionId,
       valid: () => speakerStillLive(state, witness.id),
     });
@@ -1550,6 +1573,12 @@ export const barkDirector = {
       text,
       t: now,
     };
+    // The voice receipt is what schedules the radio click, speech and squelch (audioSystem
+    // pairs it with the floor surface by voiceId) — without it the name line played mute.
+    this._emit('barkDirector:voice', {
+      entityId: witness.id, situation: 'hull-recognition', reason: 'hullRecognition',
+      text, factionId, voiceId, t: now,
+    });
     this._emit('barkDirector:hullRecognition', receipt);
     return receipt;
   },
@@ -1982,7 +2011,8 @@ export const barkDirector = {
         position: { x: entity.pos.x, z: entity.pos.z },
         gain: 0.8,
       });
-      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: this.state.simTime });
+      // npc:hailed already went out from _speakRegisterHail — a second emit fired every
+      // wing-rock and receipt trigger twice per pass.
     }
     return !!accepted;
   },
@@ -2293,6 +2323,157 @@ export const barkDirector = {
     noteSpeakerSpoke(own, speaker, 'tumble-rake', now, text);
     const receipt = {
       entityId: speaker.id, situation: 'tumble-rake', text, rakeKey: key, rakerId: hull.id, t: now, factionId, voiceId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  // ── A failing hull confesses before it is a distress mission ────────────────────────────────
+  // The same drive-down seam the yard dispatch (npcJobsRuntime INF-WF01) and surrender recovery
+  // already read. The hull itself tells the band what just happened — once per drive-down
+  // episode, inside combat-radio reach, in its own faction register. Ephemeral: the throttle
+  // lives in this owner's runtime, never on the hull, and a repaired-then-broken drive may
+  // honestly confess again.
+  ADRIFT_CONFESSION_MIN_GAP_S: 45,
+
+  _adriftDriveStillDown(state, entityId) {
+    const runtime = state && state.combat && state.combat.entities
+      ? state.combat.entities[String(entityId)]
+      : null;
+    const drive = runtime && runtime.subsystems ? runtime.subsystems.subsystem_drive : null;
+    return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
+  },
+
+  _adriftConfessionEligible(state, hull) {
+    if (!hull || hull.alive === false || hull.type !== 'ship') return false;
+    if (isPlayerSideHull(state, hull)) return false;
+    const data = hull.data || {};
+    const ai = data.ai || {};
+    // Authored narrative combatants keep their authored contract (shovePanic's exemption shape).
+    if (data.isBoss === true || data.encounterBoss === true || data.missionBoss === true
+      || data.aceMemory || data.missionTag || data.missionId
+      || ai.isBoss === true || ai.fanatic === true || ai.ace === true
+      || ai.moraleImmune === true) return false;
+    // Morale owns a crew already breaking off; law owns the patrol voice.
+    if (ai.pirateDisengaged === true || ai.fsm === 'flee' || ai.fsm === 'surrender') return false;
+    if (data.trafficRole === 'patrol') return false;
+    return true;
+  },
+
+  _adriftSectorPlace(state) {
+    const sectorId = state.world && state.world.currentSectorId;
+    const sector = SECTORS.find((row) => row && row.id === sectorId);
+    return (sector && sector.name) || 'the drift';
+  },
+
+  _speakAdriftConfession(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.subsystemId !== 'subsystem_drive') return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    if (payload.targetId == null || payload.targetId === state.playerId) return null;
+    const hull = entityAt(state, payload.targetId);
+    if (!this._adriftConfessionEligible(state, hull)) return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || !player.pos || !hull.pos) return null;
+    if (Math.hypot(hull.pos.x - player.pos.x, hull.pos.z - player.pos.z)
+      > tableSimAuthorityWuFromState(state)) return null;
+    const now = Number(state.simTime) || 0;
+    // One voice per episode: the transition event fires once per flip, and the gap buckets
+    // rapid repair-flip churn so the band never machine-guns the same mayday.
+    const last = this._adriftConfessionAt && this._adriftConfessionAt.get(hull.id);
+    if (Number.isFinite(last) && now - last < this.ADRIFT_CONFESSION_MIN_GAP_S) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const seed = state.meta && state.meta.seed;
+    const text = adriftConfessionBarkFor(hash32(seed == null ? 0 : seed, hull.id, 'adrift-confession'),
+      this._adriftSectorPlace(state));
+    if (!text) return null;
+    const factionId = factionFor(hull);
+    const voiceId = `barkDirector:${hull.id}:adrift-confession`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'adriftConfession',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      // The floor may free seconds later: a dead hull or a re-welded drive owes nobody a stale
+      // confession — the line drops unspoken instead of lying about the state it named.
+      valid: () => speakerStillLive(state, hull.id) && this._adriftDriveStillDown(state, hull.id),
+      factionId,
+    });
+    if (!accepted) return null;
+    if (!this._adriftConfessionAt) this._adriftConfessionAt = new Map();
+    this._adriftConfessionAt.set(hull.id, now);
+    if (this._adriftConfessionAt.size > 48) {
+      // Bounded residency: drop the oldest stamps, never grow with every hull ever hit.
+      const oldest = this._adriftConfessionAt.keys().next().value;
+      this._adriftConfessionAt.delete(oldest);
+    }
+    noteSpeakerSpoke(ensureState(state), hull, 'adrift-confession', now, text);
+    const receipt = {
+      entityId: hull.id, situation: 'adrift-confession', text,
+      attackerId: payload.attackerId != null ? payload.attackerId : null,
+      dependencyDisabled: payload.dependencyDisabled === true,
+      t: now, factionId, voiceId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
+   * THE RICOCHET GETS NOTICED — a hull died of momentum the player authored (`combat:thrownWreck`,
+   * from deedRecord's impact-link verdict). One surviving wingmate of the dead hull says so, once
+   * per victim: "it was still moving when it hit." Silent when nobody of the victim's side is
+   * left in earshot — the rocks keep the secret.
+   */
+  _speakThrownWreck(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.victimId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || !finitePos(player.pos)) return null;
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const dead = entityAt(state, payload.victimId);
+    const team = dead && dead.team != null ? dead.team : null;
+    const faction = dead && dead.factionId ? dead.factionId : null;
+    // A surviving wingmate speaks — same team or faction, on glass, in earshot.
+    let speaker = null;
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      if (isPlayerSideHull(state, entity)) continue;
+      if (team != null ? entity.team !== team : (!faction || entity.factionId !== faction)) continue;
+      if (!entity.pos || !finitePos(entity.pos)) continue;
+      if (Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) > THROWN_WRECK_BARK_RANGE) continue;
+      if (!hullOnGlass(state, entity) || speakerRecentlySpoke(own, entity, now)) continue;
+      speaker = entity;
+      break;
+    }
+    if (!speaker) return null;
+    const key = `${payload.victimId}`;
+    if (this._thrownWreckKeys && this._thrownWreckKeys.has(key)) return null;
+    const seed = state.meta && state.meta.seed;
+    const text = thrownWreckBarkFor(hash32(seed == null ? 0 : seed, 'thrownWreck', key));
+    if (!text) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(speaker);
+    const voiceId = `barkDirector:${speaker.id}:thrown-wreck`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'thrownWreck',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      valid: () => speakerStillLive(state, speaker.id),
+      factionId,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_thrownWreckKeys', key)) return null;
+    noteSpeakerSpoke(own, speaker, 'thrown-wreck', now, text);
+    const receipt = {
+      entityId: speaker.id, situation: 'thrown-wreck', text, victimId: payload.victimId,
+      cause: payload.cause || null, t: now, factionId, voiceId,
     };
     this._emit('barkDirector:voice', receipt);
     return receipt;
@@ -2644,8 +2825,10 @@ export const barkDirector = {
     const key = `${resolved.ownerId}|${reaction}|${state.tick || 0}`;
     if (record.lastKey === key) return null;
 
-    const barkText = cargoSpillBarkText(resolved.ownerName, reaction);
-    const ledgerText = cargoSpillLedgerText(resolved.ownerName, reaction);
+    const barkText = resolved.claimantName
+      ? cargoSpillBarkText(resolved.claimantName, reaction) : CARGO_RECOVERY_NOTICE[reaction].text;
+    const ledgerText = resolved.claimantName
+      ? cargoSpillLedgerText(resolved.claimantName, reaction) : CARGO_RECOVERY_NOTICE[reaction].text;
     const barkKey = CARGO_OWNER_REACTIONS[reaction].barkKey;
     const voice = this.helpers && this.helpers.voice;
     let accepted = true;
@@ -2685,7 +2868,7 @@ export const barkDirector = {
     };
     this._emit('barkDirector:voice', receipt);
     this._emit('comms:log', {
-      from: resolved.ownerName,
+      from: resolved.claimantName || CARGO_RECOVERY_SENDER.text,
       text: ledgerText,
       kind: 'cargo',
       reaction,
@@ -2725,10 +2908,13 @@ export const barkDirector = {
 
     const factionId = payload.raiderFactionId || (raider && factionFor(raider)) || null;
     const factionShort = factionId && FACTION_SHORT_BY_ID.get(factionId);
+    // Same spoken-name law as haulerDisplayName: raw ids, snake_case and digit runs stay off.
     const raiderName = raider && raider.data
-      && (raider.data.displayName || raider.data.name) || null;
+      && (speakableNameOrNull(raider.data.displayName, raider.id)
+        || speakableNameOrNull(raider.data.name, raider.id)) || null;
     const who = raiderName || (factionShort ? `a ${factionShort} raider` : 'a raider');
-    const what = CARGO_NAME_BY_ID.get(payload.commodityId) || String(payload.commodityId || 'cargo');
+    // An unknown commodity is "cargo", never its raw id.
+    const what = CARGO_NAME_BY_ID.get(payload.commodityId) || 'cargo';
     // "Last seen headed" names the last observed velocity; when the velocity receipt is
     // missing, the bearing to its authored escape point is the same bounded clue.
     const vel = payload.lastObservedVel;
@@ -2819,6 +3005,7 @@ export const barkDirector = {
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
+      if (this._onDriveDown) this.bus.off('combat:subsystemDisabled', this._onDriveDown);
       if (this._onDockDeed) this.bus.off('dock:docked', this._onDockDeed);
     }
     this._onEntitySpawnedBark = null;
@@ -2872,9 +3059,13 @@ export const barkDirector = {
     this._onHaulerRegroup = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
+    this._onThrownWreck = null;
     this._onDockDeed = null;
+    this._onDriveDown = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
+    this._thrownWreckKeys = null;
+    this._adriftConfessionAt = null;
     this._haulerRegroupKeys = null;
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
@@ -2911,8 +3102,11 @@ export function classifyBarkSituation(entity, state) {
   if (!eligibleShip(entity, state)) return null;
   const data = entity.data || {};
   const ai = data.ai || {};
+  // A stamped situation (combat.js stamps the faction grammar's primaryBark at spawn; doctrines
+  // and scripts stamp theirs) is the hull's voice for its quiet moments. It must LOSE to what
+  // is live — distress, flee, reinforcement, demand, warn, attack — or a faction hull is locked
+  // to one line for life and its mayday never plays. It is resolved below, after those.
   const explicit = normalizeSituation(ai.barkSituation || data.barkSituation || data.radioSituation);
-  if (explicit) return explicit;
 
   const fsm = String(ai.fsm || ai.state || ai.mode || '').toLowerCase();
   // A crippled hull calls for help instead of barking its flee — the distress corpus is written
@@ -2933,11 +3127,12 @@ export function classifyBarkSituation(entity, state) {
   }
   if (WARN_FSMS.has(fsm) || ai.warning || data.zoneWarning || data.customsWarning) return 'warn';
   if (isAttackingPlayer(entity, state, fsm)) return 'attack';
-  if (isScanningPlayer(entity, state, fsm)) {
-    // Concord grammar: first contact is paperwork (scan), not a taunt.
-    if (grammar && grammar.primaryBark === 'scan') return 'scan';
-    return 'scan';
-  }
+  // The stamp speaks once nothing live outranks it — but only from a hull on scope: a stamped
+  // 'scan' 5,000 WU off must not reopen the hail gate isScanningPlayer closes.
+  if (explicit && barkHailRange(entity, state) !== 'out') return explicit;
+  if (explicit) return undefined;
+  // Concord grammar: first contact is paperwork (scan), not a taunt.
+  if (isScanningPlayer(entity, state, fsm)) return 'scan';
   if (ai.taunting || data.taunt) return 'taunt';
   // First passive contact: faction primary bark situation (Quiet terse scan, Reach demand, etc.).
   if (grammar && (ai.openingContact || data.openingContact || ai.firstContact)) {
@@ -2976,6 +3171,32 @@ function entityFromState(state, id) {
     return state.entities.get(id) || null;
   }
   return null;
+}
+
+/** A name the radio may say: never the owner's raw id, a snake_case key or a digit run. */
+function speakableNameOrNull(raw, ownerId) {
+  const s = typeof raw === 'string' ? raw.trim() : (typeof raw === 'number' ? String(raw) : '');
+  if (!s || s.length > 48) return null;
+  if (ownerId != null && s === String(ownerId)) return null;
+  if (/[_:]/.test(s) || /\d{3,}/.test(s) || !/[A-Za-z]/.test(s)) return null;
+  return s;
+}
+
+/** A wreck's own label describes the object, not the person or organization making a claim. */
+function speakableClaimantName(name, ownerId, ownerEntity) {
+  const d = ownerEntity && ownerEntity.data || {};
+  const stamped = speakableNameOrNull(name, ownerId);
+  if (ownerEntity && ownerEntity.type === 'wreck') {
+    const labels = [d.displayName, d.name, d.label, d.scanLabel, ownerEntity.name];
+    if (stamped && !labels.some((label) => typeof label === 'string'
+      && label.trim().toLowerCase() === stamped.toLowerCase())) return stamped;
+    return null;
+  }
+  return stamped
+    || speakableNameOrNull(d.displayName, ownerId)
+    || speakableNameOrNull(d.trafficLabel, ownerId)
+    || speakableNameOrNull(d.callsign, ownerId)
+    || null;
 }
 
 function namedPodIdentity(entity) {
@@ -3077,10 +3298,24 @@ function resolveNamedCargoIncident(state, payload, eventName) {
     role: payload.role || identity.role,
     isCivilian: payload.isCivilian,
   });
-  const ownerEntity = entityFromState(state, ownerId);
+  // A spill seam that names its attacker bills the player only when the player was the
+  // attacker: an NPC hit or a panic dump (attackerId null) is not the player's restitution.
+  if ((reaction === 'restitution' || reaction === 'bounty')
+    && eventName === 'freight:cargoSpilled' && Object.hasOwn(payload, 'attackerId')
+    && (payload.attackerId == null || String(payload.attackerId) !== String(playerId))) {
+    return null;
+  }
+  // Cargo identities stringify entity ids; live entity maps commonly use numeric keys.
+  const numericOwnerId = typeof ownerId === 'string' && /^(0|[1-9]\d*)$/.test(ownerId)
+    ? Number(ownerId) : null;
+  const ownerEntity = entityFromState(state, ownerId)
+    || (Number.isSafeInteger(numericOwnerId) ? entityFromState(state, numericOwnerId) : null);
+  const ownerName = identity.ownerName;
+  const claimantName = speakableClaimantName(ownerName, ownerId, ownerEntity);
   return {
     ownerId,
-    ownerName: identity.ownerName,
+    ownerName,
+    claimantName,
     originId: identity.originId || null,
     destinationId: identity.destinationId || null,
     reaction,
@@ -3362,6 +3597,28 @@ function lawStepAnchorPos(state, payload) {
   return null;
 }
 
+// Fine-counter receipts in the lawful register, one per answer the law desk emits. 'offer' is
+// the corpus line in data/barks.js (LAW_STEP_BARKS['law:fineAssessed']).
+const LAW_FINE_OUTCOME_LINES = Object.freeze({
+  offer: null,
+  paid: 'Assessment settled at the desk. The warrant is cleared on the ledger — resume transit.',
+  worked: 'Shift logged in full against the assessment. The warrant is cleared on the ledger.',
+  left: 'Assessment left unanswered. The warrant stands, and the lane keeps the record.',
+  work: 'Work-off logged against the assessment. The warrant holds until the shift is done.',
+  short: 'Payment short of the assessment. The warrant stands until the balance clears.',
+});
+
+/** Which answer a law:fineAssessed payload records; null when it is not a receipt to voice. */
+function fineOutcomeOf(payload) {
+  if (!payload) return null;
+  if (payload.paid === true) return payload.choice === 'work' ? 'worked' : 'paid';
+  if (payload.offer === true) return 'offer';
+  if (payload.choice === 'leave') return 'left';
+  if (payload.choice === 'work') return 'work';
+  if (payload.choice === 'pay') return 'short';
+  return null;
+}
+
 function lawStepRead(state, eventName, payload) {
   const player = entityAt(state, state && state.playerId);
   const playerPos = player && finitePos(player.pos);
@@ -3387,14 +3644,21 @@ function lawStepRead(state, eventName, payload) {
     }
     // The assessment lands on the player's own dock receipt — docked at the berth is always
     // witnessed. The settled echo on a later re-dock is not new information.
+    // Each answer at the fine counter gets its own receipt line: a paid fine is never voiced
+    // with the "answer the warrant" sentence, and leave / work-off / shortfall reach the radio.
+    // The key carries outcome, amount and a 10-minute bucket so a NEW assessment at the same
+    // dock speaks again instead of staying silent for the session.
     case 'law:fineAssessed': {
       if (payload.alreadySettled === true) return null;
-      if (payload.offer !== true && payload.paid !== true) return null;
-      const outcome = payload.paid === true ? 'paid' : 'offer';
+      const outcome = fineOutcomeOf(payload);
+      if (!outcome) return null;
+      const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
+      const bucket = Math.floor((Number(state.simTime) || 0) / 600);
       return {
         witnessed: true,
         anchor: stationPosFor(state, payload.stationId) || playerPos,
-        key: `fine:${payload.stationId}:${outcome}`,
+        key: `fine:${payload.stationId}:${outcome}:${amount}:${bucket}`,
+        text: LAW_FINE_OUTCOME_LINES[outcome],
       };
     }
     case 'law:distressRaised':
@@ -3492,27 +3756,30 @@ function hullCrippled(entity) {
   return Number.isFinite(hull) && Number.isFinite(max) && max > 0 && hull / max <= DISTRESS_HULL_FRACTION;
 }
 
-function withinBarkHailRange(entity, state) {
+/** 'in' | 'out' | 'unknown' — is this hull inside the scan-hail radius of the player? */
+function barkHailRange(entity, state) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId) : null;
-  if (!player || !player.pos || !entity || !entity.pos) return true; // cannot prove out-of-range
-  return (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2 <= SCAN_BARK_RANGE_WU ** 2;
+  const ep = entity && entity.pos, pp = player && player.pos;
+  if (!ep || !pp || ![ep.x, ep.z, pp.x, pp.z].every(Number.isFinite)) return 'unknown';
+  return (ep.x - pp.x) ** 2 + (ep.z - pp.z) ** 2 <= SCAN_BARK_RANGE_WU ** 2 ? 'in' : 'out';
+}
+
+/** A scan hail needs a hull PROVABLY on scope: missing or non-finite coordinates are not in range. */
+function withinBarkHailRange(entity, state) {
+  return barkHailRange(entity, state) === 'in';
 }
 
 function isScanningPlayer(entity, state, fsm) {
   const data = entity.data || {};
   const ai = data.ai || {};
   const targeting = targetsPlayer(entity, state);
-  if (SCAN_FSMS.has(fsm) && (targeting || ai.lawful || isHostileToPlayer(entity, playerTeam(state), state))) {
-    // A scan hail must come from a hull plausibly on scope — a lawful patrol beyond the watch
-    // radius scans the sector silently instead of hailing the player across the map.
-    if (!targeting && ai.lawful && !isHostileToPlayer(entity, playerTeam(state), state)
-      && !withinBarkHailRange(entity, state)) return false;
-    return true;
-  }
-  if (targeting && !isAttackingPlayer(entity, state, fsm)) return true;
-  if (isHostileToPlayer(entity, playerTeam(state), state) && !isAttackingPlayer(entity, state, fsm)) return true;
-  return false;
+  const hostile = isHostileToPlayer(entity, playerTeam(state), state);
+  const scanning = (SCAN_FSMS.has(fsm) && (targeting || ai.lawful || hostile))
+    || ((targeting || hostile) && !isAttackingPlayer(entity, state, fsm));
+  // Every scan branch holds the same gate: a hull beyond the watch radius (lawful, hostile or
+  // targeting) scans the sector silently instead of hailing the player across the map.
+  return scanning && withinBarkHailRange(entity, state);
 }
 
 function currentSectorId(state) {

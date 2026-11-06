@@ -18,6 +18,7 @@ const GIVEN = Object.freeze([
   'Pell', 'Nyra', 'Quill', 'Tamsin', 'Jory', 'Ivo', 'Sable', 'Ketch',
   'Rill', 'Mira', 'Doss', 'Wren', 'Brack', 'Edda', 'Fenn', 'Osla',
   'Corm', 'Pike', 'Rue', 'Sten', 'Halla', 'Vorn',
+  'Karla', 'Porfiry',
 ]);
 
 const EPITHET = Object.freeze([
@@ -27,6 +28,7 @@ const EPITHET = Object.freeze([
   'Short-Count', 'the Wake', 'Bent-Transponder', 'Grey', 'Spare-Hull',
   'Tally', 'the Debtor', 'Scar-Luck', 'No-Witness', 'Driftwise', 'Half-Burn',
   'Ledger-Skip', 'the Returnee',
+  'the Circus', 'Bullet-Tooth', 'the Kid', 'of Patusan',
 ]);
 
 const CREW_ADJ = Object.freeze([

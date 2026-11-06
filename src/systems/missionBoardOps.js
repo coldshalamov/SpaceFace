@@ -26,7 +26,7 @@ import { AUTHORED_SET_PIECES, AUTHORED_SET_PIECE_SOURCE, AUTHORED_SET_PIECE_TYPE
 import { LANDMARK_QUEST_SOURCE, validateLandmarkQuestOffer } from '../data/landmarkMissions.js';
 import { SET_PIECE_MISSION_SOURCE, buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
 import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js';
-import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
+import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_SOURCE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
 import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE, YARD_BOARD_STATION_ID, YARD_WORK_SOURCE, buildQuietBerthOffer, buildSplitManifestOffer } from '../data/yardContracts.js';
 import { syncWakeHandoffOffer } from './wakeHandoffRuntime.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
@@ -112,9 +112,11 @@ export const missionBoardOps = {
     // Ghost-convoy lane bounties are once-per-run authored progress minted from real lane losses:
     // the news line told the player exactly which station holds this row, so a board refresh must
     // not swallow it (the ledger never re-fires a lane, so a dropped row kills the arc for the save).
+    // No slice cap: lossLedger mints one row per faction lane and never re-mints a lane, and two
+    // lanes can post to one desk — a cap of one deleted the second lane's row for the save.
     const retainedGhostConvoyOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'ghostConvoyRumor'
-    )).slice(0, 1);
+    ));
     // One salvage contract minted from a completed cargo-kill sale. The news line names this
     // station, so a board refresh must not drop the row before the player can take it.
     const retainedCargoKillOffers = previousSlots.filter((offer) => (
@@ -183,8 +185,16 @@ export const missionBoardOps = {
     ));
     // postBoardOffer rows are posted authored work kept until accepted — same
     // class as the other player-earned retentions; acceptMission withdraws them.
+    // One-shot emitters belong here too: The Lost Coils latches `own.offers[id]` before the row
+    // can post again, an aftermath cause parked at `offered` is never reopened, black-flag rows
+    // carry their own eligibility pruning (blackFlagMissions.refresh), and the Book-4 DOUBLED
+    // interdiction choice stands until taken or the book closes (_syncDoubledInterdictionOffer
+    // strips it the moment it is no longer live). Dropping any of them on the 600 s rebuild
+    // deleted a contract class the player could never see again.
     const retainedPostedOffers = previousSlots.filter((offer) => (
-      offer && [POSTED_BOARD_SOURCE, 'mercyService', 'wreckCourt'].includes(offer.source)
+      offer && ([POSTED_BOARD_SOURCE, 'mercyService', 'wreckCourt',
+        'uniqueWreck', 'encounterAftermath', 'blackFlag'].includes(offer.source)
+        || offer.storyTag === 'campaign47a:b4:doubled')
     ));
     board = {
       refreshEpoch: epoch,
@@ -242,11 +252,20 @@ export const missionBoardOps = {
   },
 
   _syncQuietPassageOffer(info, board) {
-    if (info.id !== QUIET_PASSAGE.stationId) return false;
-    const exists = [...board.slots, ...this.state.missions.active].some(m => m.id === QUIET_PASSAGE.id || m.params?.quietPassage);
-    const settled = (this.state.missions.receipts || []).some(r => r.outcome === 'completed'
+    const settled = (this.state.missions.receipts || []).some(r => r && r.outcome === 'completed'
       && (r.sourceOfferId === QUIET_PASSAGE.id || r.source === QUIET_PASSAGE.source
         || r.missionId === QUIET_PASSAGE.id));
+    // The 10-deep receipt ring evicts the completion evidence; promote it to the durable story
+    // flag the check below already reads, so a later settlement can never repost the 1600 cr run.
+    // Latch before the station guard: any desk read (every dock runs ensureBoard) catches the
+    // receipt, not only a Tethys visit that might come after ten other settlements.
+    if (settled) {
+      const story = this.state.story || (this.state.story = {});
+      const flags = story.flags || (story.flags = {});
+      flags[QUIET_PASSAGE.id] = true;
+    }
+    if (info.id !== QUIET_PASSAGE.stationId) return false;
+    const exists = [...board.slots, ...this.state.missions.active].some(m => m.id === QUIET_PASSAGE.id || m.params?.quietPassage);
     if (exists || settled || this.state.story?.flags?.[QUIET_PASSAGE.id]) return false;
     board.slots.push(buildQuietPassageOffer());
     return true;
@@ -449,7 +468,37 @@ export const missionBoardOps = {
     if ((this.state.missions.active || []).some((m) => m && m.status === 'active' && m.heist)) {
       return false;
     }
-    if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
+    const existing = board.slots.find((offer) => offer && offer.type === PQ019C_HEIST_TYPE);
+    if (existing) {
+      // Observation is durable player-authored progress, not a new offer roll. Refresh only the
+      // standing row's projected case-file copy; keep its identity, placement, terms and any
+      // unrelated params intact. Active heists returned above, so accepted terms never change.
+      if (existing.source !== PQ019C_HEIST_SOURCE) return false;
+      const projected = buildHeistOffer({
+        epoch: existing.epochPosted ?? epoch,
+        attempt: Number.isInteger(existing.heistAttempt) ? existing.heistAttempt : 0,
+        sourceMissionId: existing.recoveryFromMissionId || null,
+        observed: this._heistObserved(),
+      });
+      const currentParams = existing.params && typeof existing.params === 'object' ? existing.params : {};
+      const nextMethods = projected.params.methods;
+      const nextCaseFile = projected.params.caseFile;
+      const currentMethods = Array.isArray(currentParams.methods) ? currentParams.methods : [];
+      const currentCaseFile = currentParams.caseFile || {};
+      const methodsChanged = currentMethods.length !== nextMethods.length
+        || currentMethods.some((method, index) => method !== nextMethods[index]);
+      const caseFileChanged = currentCaseFile.learned !== nextCaseFile.learned
+        || currentCaseFile.total !== nextCaseFile.total
+        || currentCaseFile.cased !== nextCaseFile.cased;
+      if (!methodsChanged && !caseFileChanged && existing.description === projected.description) return false;
+      existing.params = {
+        ...currentParams,
+        methods: nextMethods,
+        caseFile: nextCaseFile,
+      };
+      existing.description = projected.description;
+      return true;
+    }
     // APPEND, never unshift. `_syncEmbodiedStoryOffer` and `_syncSetPieceOpeningOffers` both run
     // before this and both unshift, and `_generateOffers` puts a B4 branch-intro contract at the head
     // of what it returns. A standing black-market contract that claimed the top slot would displace
@@ -1135,7 +1184,7 @@ export const missionBoardOps = {
     // Only a hand-set/legacy-resolved outcome pins one door; the live route leaves all
     // three introductions open until the player actually chooses (PQ-032.02).
     const flags = story.flags || {};
-    const pinned = !flags.elroy_outcome_legacy && !!flags.elroy_outcome;
+    const pinned = campaign47aRouteKind(this.state) === 'pinned';
     const stake = pinned ? getPickSideStake(flags.elroy_outcome) : null;
     if (stake && (info.id !== stake.stationId || intro.branch !== stake.branch)) return false;
     const slots = board && Array.isArray(board.slots) ? board.slots : [];
@@ -1712,7 +1761,7 @@ export const missionBoardOps = {
     // Pinned saves (an outcome token already exists) earn only the stake door; live and
     // legacy saves see all three introductions (PQ-032.02).
     const flags = story.flags || {};
-    const pinned = !flags.elroy_outcome_legacy && !!flags.elroy_outcome;
+    const pinned = campaign47aRouteKind(this.state) === 'pinned';
     const stake = pinned ? getPickSideStake(flags.elroy_outcome) : null;
     if (stake && (info.id !== stake.stationId || intro.branch !== stake.branch)) return null;
     const offer = this._rollOffer(

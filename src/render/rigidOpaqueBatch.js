@@ -8,6 +8,11 @@
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
 
 import * as THREE from 'three';
+import { ashlineFactorMaterialKey, makeAshlineFactorGeometry, applyAshlineFactorShader } from './ashlineFactorPalette.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
+import { assertPackageGeometryRefillReady, isPackageGeometryDetached,
+  rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
+import { motionGroupIdFor } from '../contracts/motionBank.js';
 import {
   OPAQUE_BATCH_MAX_INDICES,
   OPAQUE_BATCH_MAX_INSTANCES,
@@ -21,6 +26,12 @@ import {
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_ARRAY = Object.freeze([]);
+// A staging snapshot can outlive its owner's synchronous retirement. Weak identity prevents
+// the staging cleanup from putting a disposed batch back into the live scene.
+const retiredRigidOpaqueMeshes = new WeakSet();
+export function isRetiredRigidOpaqueBatch(mesh) {
+  return !!mesh && retiredRigidOpaqueMeshes.has(mesh);
+}
 // A streamed world can add one authored root per frame while the player crosses a sector. Keep
 // the already admitted cohort alive through that burst; additions remain on their direct path until
 // this many consecutive syncs observe the same root set, at which point one bounded full rebuild
@@ -156,7 +167,7 @@ function copyMaterialForBatch(source) {
   if (!source) return null;
   let material = source;
   if (typeof source.clone === 'function') {
-    material = source.clone();
+    material = cloneMaterialPreservingShaderHooks(source);
     // Material.clone() does not promise to copy own-property shader patches. Keep the exact
     // authored Look hook and cache-key identity on the retained program.
     material.onBeforeCompile = source.onBeforeCompile;
@@ -433,6 +444,43 @@ function matrixChanged(previous, elements) {
   return false;
 }
 
+function attestedMotionPivotForSource(source, options) {
+  const ownsMotion = options && options.isAttestedRigidMotionOwner;
+  if (typeof ownsMotion !== 'function') return null;
+  try {
+    if (ownsMotion(source, source) !== true) return null;
+  } catch (_) {
+    return null;
+  }
+  for (let node = source && source.parent; node; node = node.parent) {
+    if (node.userData?.animated === true && motionGroupIdFor(node.name) !== null) return node;
+  }
+  return null;
+}
+
+function refreshMotionPivots(pivots) {
+  if (!pivots || pivots.size === 0) return;
+  try {
+    // One pivot refresh composes its parent chain and descendants. Prefer the highest
+    // attested pivot in a nested set so an owner subtree is walked once per batch sync.
+    for (const pivot of pivots) {
+      let covered = false;
+      for (let parent = pivot.parent; parent; parent = parent.parent) {
+        if (pivots.has(parent)) { covered = true; break; }
+      }
+      if (!covered) pivot.updateWorldMatrix(true, true);
+    }
+  } finally {
+    pivots.clear();
+  }
+}
+
+function refreshEntryMotionPivots(entries, scratch) {
+  scratch.clear();
+  for (const entry of entries || EMPTY_ARRAY) if (entry.motionPivot) scratch.add(entry.motionPivot);
+  refreshMotionPivots(scratch);
+}
+
 function copyMatrix(previous, elements) {
   if (!previous || !elements) return;
   for (let i = 0; i < 16; i++) previous[i] = elements[i];
@@ -447,7 +495,11 @@ function rootsEqual(a, b) {
 function disposeBatch(batch, scene) {
   if (!batch) return;
   const mesh = batch.mesh;
-  if (mesh && mesh.parent === scene) {
+  if (mesh) {
+    retiredRigidOpaqueMeshes.add(mesh);
+    mesh.castShadow = false;
+  }
+  if (mesh && mesh.parent) {
     const notes = scene && scene.userData && scene.userData.shadowMeshNotes;
     if (notes && typeof notes.removed === 'function') {
       try { notes.removed(mesh); } catch (_) { /* diagnostics only */ }
@@ -460,9 +512,17 @@ function disposeBatch(batch, scene) {
   }
 }
 
-function createBatch(scene, source, lane, capacity) {
+function hasLiveBatchDataTextures(batch) {
+  const mesh = batch && batch.mesh;
+  return mesh?.isBatchedMesh === true
+    && mesh._matricesTexture?.image?.data != null
+    && mesh._indirectTexture?.image?.data != null;
+}
+
+function createBatch(scene, source, lane, capacity, factorPalette = false) {
   const material = copyMaterialForBatch(source.material);
   if (!material) return null;
+  if (factorPalette) applyAshlineFactorShader(material);
   let mesh;
   try {
     mesh = new THREE.BatchedMesh(
@@ -513,6 +573,10 @@ function buildCandidate(scene, plan, options) {
   const batches = [];
   const entries = [];
   const materialUniforms = new Map();
+  const motionPivotBySource = options.motionPivotBySource;
+  const motionPivots = options.motionPivots;
+  motionPivotBySource.clear();
+  motionPivots.clear();
   _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
   const destroy = () => {
     for (const batch of batches) disposeBatch(batch, scene);
@@ -521,6 +585,16 @@ function buildCandidate(scene, plan, options) {
   };
 
   try {
+    for (const group of plan.groups) {
+      for (const source of group.surfaces) {
+        const pivot = attestedMotionPivotForSource(source, options);
+        if (pivot) {
+          motionPivotBySource.set(source, pivot);
+          motionPivots.add(pivot);
+        }
+      }
+    }
+    refreshMotionPivots(motionPivots);
     for (const group of plan.groups) {
       let pendingSources = [];
       let pendingVerts = 0;
@@ -532,15 +606,19 @@ function buildCandidate(scene, plan, options) {
           maxVerts: Math.max(1, pendingVerts),
           maxIndices: Math.max(1, pendingIndices),
         };
-        const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity);
+        const factorPalette = group.materialKey.startsWith('ashline-factor-v1:');
+        const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity, factorPalette);
         if (!batch) throw new Error('rigid-opaque-batch-create-failed');
         batch.recipe = { materialKey: group.materialKey, geometryKey: group.geometryKey };
         batches.push(batch);
         for (const source of pendingSources) {
-          let geometryId = batch.geometryIds.get(source.geometry);
+          const geometryKey = factorPalette ? `${source.geometry.uuid}|${source.material.uuid}` : source.geometry;
+          let geometryId = batch.geometryIds.get(geometryKey);
           if (geometryId == null) {
-            geometryId = batch.mesh.addGeometry(source.geometry);
-            batch.geometryIds.set(source.geometry, geometryId);
+            const geometry = factorPalette ? makeAshlineFactorGeometry(source) : source.geometry;
+            try { geometryId = batch.mesh.addGeometry(geometry); }
+            finally { if (factorPalette) geometry.dispose(); }
+            batch.geometryIds.set(geometryKey, geometryId);
           }
           const instanceId = batch.mesh.addInstance(geometryId);
           _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
@@ -552,6 +630,7 @@ function buildCandidate(scene, plan, options) {
           }
           const entry = {
             source,
+            motionPivot: motionPivotBySource.get(source) || null,
             root: rootForSource(source, options.roots),
             batch,
             instanceId,
@@ -605,13 +684,15 @@ function buildCandidate(scene, plan, options) {
   } catch (error) {
     destroy();
     throw error;
+  } finally {
+    motionPivotBySource.clear();
   }
 
   return { batches, entries, destroy };
 }
 
 function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null,
-  materialUniformStability = null, noteCheck = null) {
+  materialUniformStability = null, noteCheck = null, shadowDepthDisabled = false) {
   const check = (name, ok) => { if (!ok && noteCheck) noteCheck(name); return ok; };
   const source = entry.source;
   const material = source && source.material;
@@ -650,8 +731,8 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && check('after-render-swap', !material || material.onAfterRender === entry.materialOnAfterRender)
     && check('render-order', source.renderOrder === entry.renderOrder)
     && check('layer-mask', source.layers && source.layers.mask === (directSuppressed ? 0 : entry.layersMask))
-    && check('cast-shadow', source.castShadow === entry.castShadow)
-    && check('receive-shadow', source.receiveShadow === entry.receiveShadow)
+    && check('cast-shadow', shadowDepthDisabled || source.castShadow === entry.castShadow)
+    && check('receive-shadow', shadowDepthDisabled || source.receiveShadow === entry.receiveShadow)
     && check('custom-depth', source.customDepthMaterial == null)
     && check('custom-distance', source.customDistanceMaterial == null)
     && check('morph-influences', source.morphTargetInfluences == null)
@@ -697,6 +778,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const isAttestedRigidMotionOwner = typeof options.isAttestedRigidMotionOwner === 'function'
     ? options.isAttestedRigidMotionOwner : undefined;
   const motionOptions = { getTags, isTransformOnlySource, isAttestedRigidMotionOwner };
+  const motionPivotBySource = new Map();
+  const motionPivots = new Set();
   // Selection only narrows the admitted cohort. It cannot override the policy's shader,
   // material, motion or geometry guards, and remains binding until the candidate retires.
   const selectSource = typeof options.selectSource === 'function' ? options.selectSource : null;
@@ -717,6 +800,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   // flips have gone quiet for a short window so the sweep collapses into one recommit.
   const RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET = 45;
   const shadowFlipMemory = new WeakMap();
+  let shadowDepthDisabled = false;
   let syncSerial = 0;
   let lastShadowFlipSync = Number.NEGATIVE_INFINITY;
   const noteShadowFlip = (source) => {
@@ -738,7 +822,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const isRenderHookSafe = (source) => {
     try {
       return !mutableMaterials.has(source?.material)
-        && shadowLaneQuiet(source)
+        && (shadowDepthDisabled || shadowLaneQuiet(source))
         && (!selectSource || selectSource(source) === true)
         && (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
           (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
@@ -782,6 +866,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     activations: 0,
     lastReason: null,
     lastError: null,
+    preparationStage: 'idle',
+    preparationLeg: null,
+    preparationCurrentGroup: 0,
+    preparationCompletedGroups: 0,
+    preparationGroupCount: 0,
     // Diagnostic only: which per-entry stability check failed, plus a bounded subject label.
     // Not part of any rollback decision; tests and probes read it to attribute churn.
     lastDetail: null,
@@ -1004,18 +1093,93 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     return true;
   };
 
+  // A shadow policy change belongs to its presentation owner, not to every retained ship.
+  // The changed owner's old batch lane is no longer safe, so restore that owner's direct
+  // primitives and retire only its instances. Other owners keep their valid retained copies.
+  const detachShadowChangedOwner = (batchOwner, root, restoreDirectSources) => {
+    if (!batchOwner || !root) return true;
+    let removedCount = 0;
+    for (const entry of batchOwner.entries) {
+      if (entry.root !== root || entry.removed) continue;
+      try { entry.batch.mesh.deleteInstance(entry.instanceId); }
+      catch (_) { return false; }
+      if (restoreDirectSources && entry.source.layers && Number.isFinite(entry.layersMask)) {
+        entry.source.layers.mask = entry.layersMask;
+      }
+      if (entry.visible) entry.batch.visibleCount = Math.max(0, entry.batch.visibleCount - 1);
+      entry.removed = true;
+      removedCount += 1;
+    }
+    if (!removedCount) return true;
+
+    let entryWrite = 0;
+    for (const entry of batchOwner.entries) {
+      if (entry.removed) continue;
+      batchOwner.entries[entryWrite++] = entry;
+    }
+    batchOwner.entries.length = entryWrite;
+
+    let batchWrite = 0;
+    for (const batch of batchOwner.batches) {
+      let batchEntryWrite = 0;
+      for (const entry of batch.entries) {
+        if (entry.removed) continue;
+        batch.entries[batchEntryWrite++] = entry;
+      }
+      batch.entries.length = batchEntryWrite;
+      if (batch.entries.length === 0) {
+        disposeBatch(batch, scene);
+      } else {
+        publishBatchOpeningPackage(batch);
+        batch.mesh.visible = restoreDirectSources && batch.visibleCount > 0;
+        batchOwner.batches[batchWrite++] = batch;
+      }
+    }
+    batchOwner.batches.length = batchWrite;
+    if (restoreDirectSources) batchOwner.entryTopology = captureEntryTopology(batchOwner.entries);
+    stats.eligibleMeshes = Math.max(0, stats.eligibleMeshes - removedCount);
+    stats.directFallbackMeshes += removedCount;
+    stats.lastReason = 'shadow-owner-direct-fallback';
+    return true;
+  };
+
   const validateAndRefresh = () => {
     if (!active) return false;
+    for (const batch of active.batches) {
+      if (hasLiveBatchDataTextures(batch)) continue;
+      stats.lastDetail = `disposed-batch@${batch?.mesh?.name || '?'}`;
+      return false;
+    }
     if (!entryTopologyMatches(active.entryTopology)) {
       stats.lastDetail = 'entry-topology';
       return false;
+    }
+    refreshEntryMotionPivots(active.entries, motionPivots);
+    const shadowChangedOwners = new Map();
+    for (const entry of active.entries) {
+      const source = entry.source;
+      const changedPolicy = shadowDepthDisabled ? null : source?.castShadow !== entry.castShadow
+        ? 'cast-shadow'
+        : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
+      if (!changedPolicy) continue;
+      noteUnstableCheck(entry)(changedPolicy);
+      if (!shadowChangedOwners.has(entry.root)) {
+        shadowChangedOwners.set(entry.root, `${changedPolicy}@${source?.name || '?'}`);
+      }
+    }
+    for (const [root, detail] of shadowChangedOwners) {
+      if (!detachShadowChangedOwner(active, root, true)) {
+        stats.lastDetail = 'shadow-owner-ejection-failed';
+        return false;
+      }
+      stats.lastDetail = detail;
     }
     let visibleCount = 0;
     const materialUniformStability = new Map();
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
       if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
-        materialUniformStability, noteUnstableCheck(entry))) return false;
+        materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled)) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -1058,8 +1222,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     isTransformOnlySource,
     isAttestedRigidMotionOwner,
     isRenderHookSafe,
-    materialProgramKey: rigidOpaqueMaterialProgramKey,
-    shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
+    materialProgramKey: (material, source) => options.isAshlineFactorSource?.(source) === true
+      ? (ashlineFactorMaterialKey(material, source) || rigidOpaqueMaterialProgramKey(material))
+      : rigidOpaqueMaterialProgramKey(material),
+    shadowLane: (source) => shadowDepthDisabled ? 'nocast|noreceive'
+      : `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
   });
 
   const request = (roots, requestOptions = {}) => {
@@ -1067,6 +1234,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (disposed || !scene) return refreshDiagnostics();
     if (stats.supported !== true) {
       stats.status = 'disabled';
+      stats.preparationStage = 'disabled';
       stats.lastReason = 'unsupported-batched-mesh-capability';
       return refreshDiagnostics();
     }
@@ -1109,17 +1277,28 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       }
     }
     const signature = signatureFor(normalized);
-    if (pending && pending.signature === signature) return pending.promise;
+    // Arriving roots stay on their canonical direct draws while the resident plan compiles.
+    // Restarting that work on every arrival can starve admission in a streaming fight.
+    // A departure/replacement still cancels, as do all captured owner/source guards.
+    if (pending && (pending.signature === signature
+        || pending.roots.every((root) => rootInList(normalized, root)))
+        && (typeof pending.ownerIsActive !== 'function' || pending.ownerIsActive() === true)) return pending.promise;
     if (pending) {
       pending.cancelled = true;
+      pending.releaseCpu?.();
       releaseCandidate(pending.candidate, scene, true);
       pending = null;
+      stats.preparationLeg = null;
+      lastSignature = null;
+      lastRoots = [];
+      lastTopology = null;
     }
     if (syncSerial - lastShadowFlipSync < RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET) {
       // Flips are still landing — re-planning now would commit against source state the next
       // flip invalidates again. Sources stay on their authored direct draws until quiet; the
       // signature is left unstamped so the first quiet sync plans against current roots.
       stats.status = 'settling';
+      stats.preparationStage = 'settling';
       stats.lastReason = 'shadow-flip-quiet-window';
       return refreshDiagnostics();
     }
@@ -1146,23 +1325,91 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     stats.potentialDrawReduction = plan.potentialDrawReduction;
     if (plan.groups.length === 0) {
       stats.status = 'idle';
+      stats.preparationStage = 'idle';
+      stats.preparationCurrentGroup = 0;
+      stats.preparationCompletedGroups = 0;
+      stats.preparationGroupCount = 0;
       stats.lastReason = 'no-eligible-groups';
       return refreshDiagnostics();
     }
     const prepare = typeof requestOptions.prepare === 'function' ? requestOptions.prepare : prepareDefault;
     if (typeof prepare !== 'function') {
       stats.status = 'unprepared';
+      stats.preparationStage = 'unprepared';
       stats.lastReason = 'prepare-callback-required';
       return refreshDiagnostics();
+    }
+
+    // Batch construction copies every source attribute synchronously. A package may have
+    // retired non-position CPU arrays after its direct draw uploaded them; hold all selected
+    // source geometry while refilling and copying so another residency pass cannot retire it.
+    const sourceGeometries = [...new Set(plan.groups.flatMap(group =>
+      group.surfaces.map(source => source.geometry)))];
+    if (sourceGeometries.some(isPackageGeometryDetached)) {
+      const record = {
+        signature, roots: normalized.slice(), candidate: null, cancelled: false,
+        ownerIsActive: typeof options.capturePreparationGuard === 'function'
+          ? options.capturePreparationGuard() : null,
+        releaseCpu: retainPackageGeometryCpu(sourceGeometries), promise: null,
+      };
+      const current = () => !disposed && pending === record && !record.cancelled
+        && (typeof record.ownerIsActive !== 'function' || record.ownerIsActive() === true);
+      stats.status = 'preparing';
+      stats.preparationStage = 'source-refill';
+      stats.preparationLeg = 'source-refill';
+      stats.lastReason = 'source-refill-running';
+      stats.lastError = null;
+      record.promise = Promise.resolve()
+        .then(() => current() ? rehydrateDetachedGeometries(sourceGeometries) : null)
+        .then((receipt) => {
+          if (!current()) return refreshDiagnostics();
+          assertPackageGeometryRefillReady(sourceGeometries, receipt);
+          pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          // Replan current membership after the await; the lease spans the synchronous copy.
+          const next = request(record.roots, requestOptions);
+          record.releaseCpu();
+          return next;
+        })
+        .catch((error) => {
+          if (!current()) return refreshDiagnostics();
+          pending = null;
+          preparationRetry ||= { frames: 0, used: false };
+          stats.status = 'failed';
+          stats.preparationStage = 'source-refill-failed';
+          stats.preparationLeg = null;
+          stats.lastReason = 'source-refill-failed';
+          stats.lastError = String(error && error.message || error);
+          return refreshDiagnostics();
+        })
+        .finally(() => {
+          record.releaseCpu();
+          if (pending === record && !current()) {
+            pending = null;
+            lastSignature = null;
+            lastRoots = [];
+            lastTopology = null;
+            stats.status = 'idle';
+            stats.preparationStage = 'stale';
+            stats.preparationLeg = null;
+            stats.lastReason = 'preparation-stale';
+          }
+        });
+      pending = record;
+      return record.promise;
     }
 
     let candidate;
     try {
       candidate = buildCandidate(scene, plan, {
         maxInstances, maxVerts, maxIndices, roots: normalized,
+        isAttestedRigidMotionOwner, motionPivotBySource, motionPivots,
       });
     } catch (error) {
       stats.status = 'failed';
+      stats.preparationStage = 'candidate-failed';
       stats.lastReason = 'candidate-build-failed';
       stats.lastError = String(error && error.message || error);
       return refreshDiagnostics();
@@ -1173,25 +1420,67 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       candidate,
       entryTopology: captureEntryTopology(candidate.entries),
       cancelled: false,
+      ownerIsActive: typeof options.capturePreparationGuard === 'function'
+        ? options.capturePreparationGuard() : null,
       promise: null,
     };
     stats.status = 'preparing';
+    stats.preparationStage = 'prepare-starting';
+    stats.preparationLeg = null;
+    stats.preparationCurrentGroup = 0;
+    stats.preparationCompletedGroups = 0;
+    stats.preparationGroupCount = candidate.batches.length;
+    stats.lastReason = 'preparation-running';
     stats.lastError = null;
-    const activeNow = () => !disposed && pending === record && record.cancelled !== true;
+    const activeNow = () => !disposed && pending === record && record.cancelled !== true
+      && (typeof record.ownerIsActive !== 'function' || record.ownerIsActive() === true);
+    const reportProgress = (stage, currentGroup, completedGroups, groupCount) => {
+      if (!activeNow()) return false;
+      const boundedCount = Math.max(0, Math.min(candidate.batches.length,
+        Math.trunc(Number(groupCount) || candidate.batches.length)));
+      stats.preparationStage = stage === 'group-ready' ? 'group-ready'
+        : stage === 'ready' ? 'ready' : 'compiling';
+      stats.preparationGroupCount = boundedCount;
+      stats.preparationCurrentGroup = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(currentGroup) || 0)));
+      stats.preparationCompletedGroups = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(completedGroups) || 0)));
+      return true;
+    };
+    const reportLeg = (leg) => {
+      if (!activeNow()) return false;
+      if (!['pipeline', 'residency', 'exact-target'].includes(leg)) return false;
+      stats.preparationLeg = leg;
+      return true;
+    };
     record.promise = Promise.resolve()
       .then(() => prepare(candidate.batches.map((batch) => batch.mesh), {
         roots: normalized,
         plan,
         isActive: activeNow,
+        reportProgress,
+        reportLeg,
       }))
       .then((result) => {
         const wasActive = activeNow();
+        if (wasActive) stats.preparationLeg = null;
         const ready = result === true || result?.ready === true;
         if (!wasActive || !ready || result?.skipped === true
             || result?.ready === false || result?.timedOut === true
             || result?.superseded === true) {
           releaseCandidate(candidate, scene, true);
-          if (pending === record) pending = null;
+          if (pending === record) {
+            pending = null;
+            if (!wasActive) {
+              lastSignature = null;
+              lastRoots = [];
+              lastTopology = null;
+              stats.preparationLeg = null;
+              stats.status = 'idle';
+              stats.preparationStage = 'stale';
+              stats.lastReason = 'preparation-stale';
+            }
+          }
           if (!wasActive) return refreshDiagnostics();
           if (wasActive && (!ready || result?.skipped === true
               || result?.ready === false || result?.timedOut === true
@@ -1201,21 +1490,70 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             lastTopology = null;
           }
           stats.status = 'idle';
+          stats.preparationStage = result?.timedOut === true ? 'timed-out'
+            : result?.skipped === true || result?.ready === false ? 'incomplete' : 'stale';
           stats.lastReason = !wasActive ? 'preparation-stale' : 'preparation-incomplete';
+          if (wasActive && result?.reason != null) {
+            stats.lastError = String(result.reason).slice(0, 240);
+          }
           return refreshDiagnostics();
         }
-        const topologyStable = entryTopologyMatches(record.entryTopology);
-        if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
-        const materialUniformStability = new Map();
-        if (!topologyStable
-            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
-              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry)))) {
+        stats.preparationStage = 'validating';
+        const shadowChangedOwners = new Map();
+        for (const entry of candidate.entries) {
+          const source = entry.source;
+          const changedPolicy = shadowDepthDisabled ? null : source?.castShadow !== entry.castShadow
+            ? 'cast-shadow'
+            : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
+          if (!changedPolicy) continue;
+          noteUnstableCheck(entry)(changedPolicy);
+          if (!shadowChangedOwners.has(entry.root)) {
+            shadowChangedOwners.set(entry.root, `${changedPolicy}@${source?.name || '?'}`);
+          }
+        }
+        for (const [root, detail] of shadowChangedOwners) {
+          if (!detachShadowChangedOwner(candidate, root, false)) {
+            releaseCandidate(candidate, scene, true);
+            if (pending === record) pending = null;
+            lastSignature = null;
+            lastRoots = [];
+            lastTopology = null;
+            stats.status = 'idle';
+            stats.preparationStage = 'ejection-failed';
+            stats.lastReason = 'shadow-owner-ejection-failed';
+            stats.lastDetail = detail;
+            return refreshDiagnostics();
+          }
+          record.shadowOwnerFallback = true;
+          record.shadowFallbackDetail = detail;
+        }
+        if (shadowChangedOwners.size) record.entryTopology = captureEntryTopology(candidate.entries);
+        if (candidate.entries.length === 0) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
           lastRoots = [];
           lastTopology = null;
           stats.status = 'idle';
+          stats.preparationStage = 'direct-fallback';
+          stats.lastReason = 'shadow-owner-direct-fallback';
+          stats.lastDetail = record.shadowFallbackDetail || null;
+          return refreshDiagnostics();
+        }
+        const topologyStable = entryTopologyMatches(record.entryTopology);
+        if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
+        refreshEntryMotionPivots(candidate.entries, motionPivots);
+        const materialUniformStability = new Map();
+        if (!topologyStable
+            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,
+              noteMutableMaterial, materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled))) {
+          releaseCandidate(candidate, scene, true);
+          if (pending === record) pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          stats.status = 'idle';
+          stats.preparationStage = topologyStable ? 'source-changed' : 'topology-changed';
           stats.lastReason = topologyStable
             ? 'source-state-changed-before-commit'
             : 'source-topology-changed-before-commit';
@@ -1252,17 +1590,34 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         pending = null;
         preparationRetry = null;
         stats.status = 'active';
+        stats.preparationStage = 'active';
+        stats.preparationCurrentGroup = 0;
+        stats.preparationCompletedGroups = candidate.batches.length;
         stats.activations += 1;
-        stats.lastReason = 'activated-after-residency';
+        stats.lastReason = record.shadowOwnerFallback
+          ? 'shadow-owner-direct-fallback' : 'activated-after-residency';
+        if (record.shadowFallbackDetail) stats.lastDetail = record.shadowFallbackDetail;
         return refreshDiagnostics();
       })
       .catch((error) => {
         const wasActive = activeNow();
         releaseCandidate(candidate, scene, true);
+        if (!wasActive && pending === record) {
+          pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          stats.preparationLeg = null;
+          stats.status = 'idle';
+          stats.preparationStage = 'stale';
+          stats.lastReason = 'preparation-stale';
+        }
         if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
+        stats.preparationLeg = null;
         preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
+        stats.preparationStage = 'failed';
         stats.lastReason = 'preparation-failed';
         stats.lastError = String(error && error.message || error);
         return refreshDiagnostics();
@@ -1274,12 +1629,27 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   return {
     sync: request,
     request,
+    setShadowDepthDisabled(disabled) {
+      const next = disabled === true;
+      if (next === shadowDepthDisabled) return false;
+      // Restore sources and cancel asynchronous work before changing lane semantics.
+      this.rollback('shadow-depth-mode-changed');
+      shadowDepthDisabled = next;
+      return true;
+    },
+    retireUnusableActiveResources() {
+      if (!active || active.batches.every(hasLiveBatchDataTextures)) return false;
+      stats.lastDetail = 'disposed-batch-resources';
+      disposeActive('disposed-batch-resources');
+      return true;
+    },
     getDiagnostics() {
       return refreshDiagnostics();
     },
     rollback(reason = 'manual-rollback') {
       if (pending) {
         pending.cancelled = true;
+        pending.releaseCpu?.();
         releaseCandidate(pending.candidate, scene, true);
         pending = null;
       }
@@ -1288,13 +1658,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       lastRoots = [];
       lastTopology = null;
       preparationRetry = null;
+      stats.preparationLeg = null;
       return refreshDiagnostics();
     },
     dispose() {
       if (disposed) return false;
       disposed = true;
+      stats.preparationLeg = null;
       if (pending) {
         pending.cancelled = true;
+        pending.releaseCpu?.();
         releaseCandidate(pending.candidate, scene, true);
         pending = null;
       }
@@ -1305,6 +1678,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       return true;
     },
   };
+}
+
+/**
+ * A render admission can race an external retirement of the retained GPU textures while the
+ * scene still references the BatchedMesh. Retire through the canonical owner before touching
+ * the live scene, which restores authored source layers and removes the dead batch so those
+ * real source draws can receive their warm pass.
+ */
+export function retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState = null) {
+  if (controller?.retireUnusableActiveResources?.() !== true) return false;
+  if (renderState) renderState.rigidOpaqueBatch = controller.getDiagnostics();
+  return true;
 }
 
 /**

@@ -21,7 +21,7 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { rockName } from './rockNames.js';
-import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
+import { createAsteroidRenderer3d, readWorksDrillSession } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
   MODES,
@@ -37,6 +37,7 @@ import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/
 import { spillConfirmWarning } from '../../systems/asteroidSites.js';
 import { industryReadoutFromState } from '../screens/industryReadout.js';
 import { miningNextStep } from './progressionGuide.js';
+import { firstTunnelControl } from './miningEntryFeedback.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -49,6 +50,7 @@ const { COLS, ROWS } = DRILL_CONST;
 // ORRERY Surface 1 (F1): the unclaimed rock is staged, not blank. One fixed seed, so the same
 // rock always stages the same way; the 2D strata painter is the honest cross-section, dimmed.
 const EMPTY_ROCK_SEED = 20260928;
+let miningRequestSequence = 0;
 
 // ORRERY Surface 1 (F5): the Arc Gauge pair. One semicircle, drawn once per gauge; the value
 // snaps and the ghost trails it on a CSS transition, so a falling reading leaves a delta.
@@ -88,6 +90,60 @@ export function createSessionMutationGate(isOpen = () => true) {
     current() { return epoch; },
     accepts,
     settle,
+  };
+}
+
+export function createPublishedDrillBoardGate({ readDrill, readEntity, isOpen, begin }) {
+  let expected = null, started = false, rejected = false, accepted = false;
+  const matches = () => {
+    if (!expected || !isOpen()) return null;
+    const entity = readEntity(expected.id);
+    if (entity !== expected.entity || entity?.alive === false
+      || (entity?.occupantGeneration ?? null) !== expected.generation) return null;
+    const drill = readWorksDrillSession(readDrill());
+    if (!drill || drill.asteroidId !== expected.id
+      || (drill.asteroidGeneration ?? null) !== expected.generation) return null;
+    return drill;
+  };
+  const status = () => {
+    if (!expected || !isOpen()) return 'closed';
+    const entity = readEntity(expected.id);
+    if (!entity || entity !== expected.entity || entity.alive === false
+      || (entity.occupantGeneration ?? null) !== expected.generation) return 'target-lost';
+    if (rejected) return 'rejected';
+    if (!accepted) return 'pending';
+    const drill = readDrill();
+    if (started && (!drill || drill.active === false || drill.asteroidId !== expected.id
+      || (drill.asteroidGeneration ?? null) !== expected.generation)) return 'session-lost';
+    return matches() ? 'ready' : 'pending';
+  };
+  const ownsSession = () => {
+    const drill = readDrill();
+    return !!(expected && drill && drill.asteroidId === expected.id
+      && (drill.asteroidGeneration ?? null) === expected.generation);
+  };
+  return {
+    request(id, requestId = null) {
+      const entity = readEntity(id);
+      expected = { id, entity, generation: entity?.occupantGeneration ?? null, requestId };
+      started = false;
+      rejected = false;
+      accepted = requestId == null;
+    },
+    poll() {
+      if (rejected || !accepted) return false;
+      const drill = matches();
+      if (!drill) return false;
+      if (!started) { begin(drill); started = true; }
+      return true;
+    },
+    ready: () => started && !!matches(),
+    status,
+    ownsSession,
+    requestIdentity: () => expected && ({ requestId: expected.requestId, asteroidGeneration: expected.generation }),
+    accept(requestId) { if (expected && expected.requestId === requestId) accepted = true; },
+    reject(requestId) { if (expected && expected.requestId === requestId) rejected = true; },
+    invalidate() { expected = null; started = false; rejected = false; accepted = false; },
   };
 }
 
@@ -642,7 +698,28 @@ export const asteroidScreen = {
 
     // ---------- session + render state ----------
     let renderer3d = null;         // created lazily on first session (owns the WebGL context)
-    const boardReady = () => !renderer3d?.readiness || renderer3d.readiness().ready;
+    const boardPublication = createPublishedDrillBoardGate({
+      readDrill: () => state.drill,
+      readEntity: id => state.entities?.get?.(id),
+      isOpen: () => screen._active,
+      begin() {
+        ensureRenderer3d();
+        renderer3d.begin({ motionReduce, flashReduce: !!state.settings?.accessibility?.flashReduce });
+        projDirty = true;
+        refreshProjection();
+        seedLedgerFromSite();
+        // begin() resets to work zoom; an existing factory opens at its site scale.
+        armSiteZoom();
+        const allowed = paletteSettleAllowed;
+        paletteSettleAllowed = false;
+        try { updateHud(); } finally { paletteSettleAllowed = allowed; }
+        if ((state.drill?.tilesCleared || 0) <= 1) {
+          announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
+        }
+      },
+    });
+    const boardReady = () => boardPublication.ready()
+      && (!renderer3d?.readiness || renderer3d.readiness().ready);
     let rafId = 0;
     let last = 0;
     let hudElapsed = 0;
@@ -933,6 +1010,8 @@ export const asteroidScreen = {
     let guideDismissed = state.settings?.gameplay?.tutorialHints === false;
     let guideStep = null;
     let guideSignature = '';
+    let entryFailure = null;
+    let endRequested = false;
     guideToggle.addEventListener('click', () => {
       controller.cancel();
       guideDismissed = !guideDismissed;
@@ -958,7 +1037,7 @@ export const asteroidScreen = {
     });
     function updateGuide() {
       guideToggle.setAttribute('aria-expanded', String(!guideDismissed));
-      guide.hidden = guideDismissed || !state.drill || drawerTab !== null;
+      guide.hidden = guideDismissed || !boardPublication.ready() || drawerTab !== null;
       if (guide.hidden) return;
       const s = site();
       const missing = shortfallMap(s, [CORE_ID, 'sm_extractor']);
@@ -966,7 +1045,8 @@ export const asteroidScreen = {
         cargo: state.player.cargo, coreMissing: missing[CORE_ID] || {},
         extractorMissing: missing.sm_extractor || {},
         build: controller.state.mode === MODES.BUILD,
-        movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel });
+        movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel,
+        firstTunnel: firstTunnelControl(state.drill, controlMap, drillSys.getDrillTier?.() ?? 1) });
       if (!guideStep) { guide.hidden = true; return; }
       const signature = JSON.stringify(guideStep);
       if (guideSignature === signature) return;
@@ -2082,6 +2162,12 @@ export const asteroidScreen = {
     // ---------- bus subscriptions ----------
     // The shell keeps the words (alert slot, screen-reader, ledger buffer); the renderer gets
     // the pictures.
+    unsubs.push(ctx.bus.on('drill:beginRejected', (p) => {
+      if (screen._active && p?.requestId != null) boardPublication.reject(p.requestId);
+    }));
+    unsubs.push(ctx.bus.on('drill:start', (p) => {
+      if (screen._active && p?.requestId != null) boardPublication.accept(p.requestId);
+    }));
     unsubs.push(ctx.bus.on('drill:yield', (p) => {
       const name = commodityName(p.commodityId);
       if (renderer3d) {
@@ -2475,6 +2561,20 @@ export const asteroidScreen = {
       rafId = requestAnimationFrame(frame);
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
+      if (!boardPublication.poll()) {
+        controller.cancel();
+        const status = boardPublication.status();
+        const failure = status === 'target-lost'
+          ? 'Mining target could not be confirmed — leave and select an asteroid again'
+          : status === 'session-lost' ? 'Mining session ended — leave and try again'
+            : status === 'rejected' ? 'Mining request declined — leave and try again' : null;
+        showBanner('equipment', failure || 'Loading mining equipment…', failure ? 'bad' : 'warn');
+        if (failure && entryFailure !== failure) announce(failure);
+        entryFailure = failure;
+        updateGuide();
+        return;
+      }
+      entryFailure = null;
       const d = state.drill;
       if (!d) return;
 
@@ -2538,6 +2638,7 @@ export const asteroidScreen = {
       // Every visible session owns a token. Replies from a prior worker session must not be
       // allowed to settle UI after this point, even when the same asteroid is reopened.
       sessionGate.begin();
+      endRequested = false;
       workbenchPending = false;
       workbenchQueuedDt = 0;
       workbenchSiteId = null;
@@ -2563,6 +2664,7 @@ export const asteroidScreen = {
         motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
       });
       bannerKind = null;
+      entryFailure = null;
       alertEl.textContent = '';
       alertEl.className = 'aw-alert';
       lastLedgerText = null;
@@ -2573,17 +2675,14 @@ export const asteroidScreen = {
       siteZoomHold = false;
       transferQty = 5;
 
-      drillSys.begin(pendingId);
-      const astId = asteroidId();
+      const requestId = `mining-screen-${++miningRequestSequence}`;
+      boardPublication.request(pendingId, requestId);
+      const beginResult = drillSys.begin(pendingId, boardPublication.requestIdentity());
+      if (beginResult === false) boardPublication.reject(requestId);
+      const astId = pendingId;
       hudEls.siteName = nameEl;
       nameEl.textContent = rockName(astId);
       projDirty = true;
-      refreshProjection();
-      seedLedgerFromSite();
-      // The guide teaches the visible next action; announce the basic verb once as well.
-      if ((state.drill.tilesCleared || 0) <= 1) {
-        announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
-      }
       // INPUT FIRST, PIXELS SECOND. These used to be registered after the renderer was built, so
       // any throw inside scene construction left a screen with no keys at all — not even Escape,
       // which is the difference between "the mine looks wrong" and "the game is stuck". Every
@@ -2602,10 +2701,7 @@ export const asteroidScreen = {
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       ensureRenderer3d();
-      renderer3d.begin({ motionReduce, flashReduce: !!state.settings?.accessibility?.flashReduce });
-      // Law §9, immediately after begin() (which resets the register to work): a site with
-      // machines opens pulled back so the first second reads lit / flowing / dark.
-      armSiteZoom();
+      boardPublication.poll();
       // Re-entering an already-built site must not replay the §9 first-Core settle: the palette is
       // simply there, the way it was when you left. Only a Core landing DURING a session animates.
       paletteSettleAllowed = false;
@@ -2629,6 +2725,8 @@ export const asteroidScreen = {
       // queued time as well: it belongs to the closed session and must never become a new-session
       // workbench RPC. The active check only gates the DOM/listener teardown below.
       sessionGate.invalidate();
+      const request = boardPublication.requestIdentity();
+      boardPublication.invalidate();
       workbenchPending = false;
       workbenchQueuedDt = 0;
       workbenchSiteId = null;
@@ -2655,14 +2753,20 @@ export const asteroidScreen = {
       canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('wheel', onWheel);
       document.removeEventListener('mousedown', onDocMouseDown, true);
-      if (state.drill && drillSys) drillSys.end();
+      if (!endRequested && request && drillSys) {
+        endRequested = true;
+        drillSys.end({ requestId: request.requestId });
+      }
     };
 
     function exit(reason = 'retracted') {
-      const d = state.drill;
+      const d = boardPublication.ownsSession() ? state.drill : null;
+      const request = boardPublication.requestIdentity();
       // end() cooks a paid charge off against the live field before the session closes, so the
       // report must read the result it returns — a pre-detonation snapshot would drop blast ore.
-      const result = d && drillSys ? drillSys.end({ reason }) : null;
+      const result = !endRequested && request && drillSys
+        ? drillSys.end({ reason, requestId: request.requestId }) : null;
+      endRequested = true;
       const yields = result ? { ...result.yieldLog } : (d ? { ...d.yieldLog } : {});
       const total = Object.values(yields).reduce((a, b) => a + b, 0);
       const fade = document.getElementById('sf-dock-overlay');

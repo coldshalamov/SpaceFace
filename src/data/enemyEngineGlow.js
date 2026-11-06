@@ -16,6 +16,12 @@ export const ENEMY_SILHOUETTE_ENGINE_GLOW = Object.freeze({
   kilnback: '#ff6a3d',
   mothlight: '#cfe8a0',
   pallet_jack: '#e8c46a',
+  iron_kraken: '#85d0da',       // siphon drive — cold machine teal, not a burn
+  // LW-06 role variants — one burn colour per specialist silhouette (test/lwf-silhouette-variants).
+  warden_screen: '#63e6be',     // screen projector — ward teal
+  anchor_dish: '#b9a7ff',       // snare field — pale violet
+  jackal_rack: '#c9e05a',       // salted wake — sickly chartreuse
+  customs_prow: '#cfe2ff',      // plated prow — authority ice
 });
 
 export function engineGlowForSilhouette(id) {

@@ -14,7 +14,8 @@
 > `aiBackend:'sg06-tactical'`, and `flightBackend:'v3'`; `src/core/gameState.js` declares them and
 > `src/save/saveSystem.js` force-stamps them during normalization.
 >
-> **System vs library:** a *system* is registered in `src/core/registry.js` (runs every tick).
+> **System vs library:** a *system* is registered with the runtime manifest and its realm's registry.
+> It receives its declared init, simulation, presentation or event hooks.
 > A *library module* lives in `src/systems/` but is just imported by other code — it does NOT run
 > on its own. Marked 📚 below.
 
@@ -30,7 +31,10 @@
 | `electron/main.cjs` | Optional desktop shell. Serves the SAME game route on private port 41788. Player saves also go to the shared loopback store both shells read. | Shell-only; must not change gameplay/assets/reachability. Isolated evidence must not use the player save directory. `check:launch-policy` enforces. |
 | `src/core/gameState.js` | `createGameState(seed)` — the single flat `GameState`, including default backend flags and raw input axes (`actions.*` are added by input.js). | The one state object every system reads/writes. See `AGENTS.md` §6 for single-writer rules. |
 | `src/core/eventBus.js` | The event bus. All cross-system comms. Event names: `domain:verb`, lowercase, `:`-delimited. | ARCHITECTURE §0.3, §4.4. |
-| `src/core/registry.js` 🟢 | System registry: instantiates systems, runs `init(ctx)` in registration order, selects the flight/AI backends, and steps `UPDATE_ORDER`. `get(name)` returns the selected slot winner by name. | Authoritative order; use generated `SYSTEM_REGISTRY.md` as the navigable projection. |
+| `src/core/registry.js` | Full browser registry for explicit main mode and worker fallback; selects flight/AI backends and materializes manifest init/update order. Worker callers delegate to the presentation registry. | Loaded asynchronously by main when the full browser simulation is needed. |
+| `src/runtime/presentationRegistry.js` 🟢 | Default worker route's main-thread registry: presentation owners, read/intent facades, gamepad polling, render phase and keepalive forwarding. | The worker retains simulation ownership. Both registries share manifest identity and lifecycle code. |
+| `src/runtime/laneSystemFacades.js` | Synchronous mirrored reads and existing command/RPC seams for worker-owned systems. | Shared by presentation callers; simulation mutations reach the worker owner. |
+| `src/runtime/registryLifecycle.js` / `bindRuntimeToState.js` | Shared initialization, rollback, dependency-ordered one-shot teardown and lightweight state/runtime binding. | Binding does not import the authoritative system factories. |
 | `src/core/loop.js` 🟢 | Facade over `simulationRunner.js` + `presentationRunner.js`. 60 Hz sim, render every frame, catch-up capped at 4 steps (`MAX_CATCHUP_STEPS`). | ARCHITECTURE §2. Order itself lives in `src/runtime/authoritativeSystemManifest.js`. |
 | `src/core/timeEffects.js` 🟢 | Sole runtime writer of `state.timeScale`. Per-state singleton; minimum named request wins (`0` pause, fractions slow-time, `1` normal). | Requests are transient/nonserialized; owners clear only their own source. |
 | `src/core/runTransitionGuard.js` 🟢 | Monotonic ownership for async New Game/load readiness. Privately branded token identity rejects forged/cloned generation objects; the issued current token commits once. | Complements save's synchronous latest-route deferral queue. |
@@ -43,6 +47,23 @@
 | `src/core/math.js` | Shared math helpers. | |
 
 ---
+
+## Shared presentation reads
+
+These libraries expose the same reads used by their simulation owners, without importing the full
+owner into the window's startup graph. They do not register simulation ticks. Existing owner exports
+remain available for callers that already use them.
+
+| Library | Shared read / owner |
+|---|---|
+| `src/core/flight/flightPresentationReads.js` | Autopilot target and docking approach, plus target-assist profile transforms; used by `flightV3.js`, route ribbons and combat targeting. |
+| `src/combat/leadAngle.js` | Ballistic lead solver shared by weapons, targeting and the gunnery HUD. |
+| `src/core/orchardPoseReader.js` | Current Orchard native-pose reader registration; physics registers, presentation reads. |
+| `src/core/fields/fieldReadModel.js` | Field lifecycle, deployment/body prediction, collector fitting and published field snapshots; shared with `systems/fields.js`. |
+| `src/systems/scannerReadModel.js` | Hostility, contact mass/threat tier and scanner range; shared with the scanner owner and its UI/render consumers. |
+| `src/systems/miningBeamTargetingRead.js` | Beam eligibility/range and haul threshold; shared by mining, input and target UI. |
+| `src/economy/stationMarketProfile.js` | Catalog/runtime station profiles and salvage contraband policy; shared by economy and cargo. |
+| `src/ui/map/routePreview.js` | Pure charted-route preview and world-owned cost formatting; `galaxyMap.js` retains screen state and charting policy. |
 
 ## Flight (two implementations — V3 is live)
 

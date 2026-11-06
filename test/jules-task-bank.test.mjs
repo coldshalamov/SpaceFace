@@ -1,6 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import test from 'node:test';
 import {
   DEFAULT_BANK_PATH,
@@ -79,16 +77,18 @@ test('task scope never points at the bank, live program board, queue, or golden 
 });
 
 
-test('generated catalogs contain one heading for every canonical task', () => {
-  const headings = [];
-  for (const lane of bank.lanes) {
-    const path = resolve(DEFAULT_BANK_PATH, '..', lane.catalog);
-    const markdown = readFileSync(path, 'utf8');
-    const laneHeadings = [...markdown.matchAll(/^## (JULES-\d{4}) — /gm)].map((match) => match[1]);
-    assert.equal(laneHeadings.length, lane.count, `${lane.id} catalog count`);
-    headings.push(...laneHeadings);
-  }
-  assert.deepEqual(headings, bank.tasks.map((task) => task.id));
+test('every canonical task lands in exactly one lane, and lane counts agree', () => {
+  // The human-readable catalog/ rendering was retired in the 2026-10-15 token-reduction pass
+  // (README §47-50); task-bank.json is canonical. The durable invariant that check enforced —
+  // every task accounted for exactly once, lane tallies honest — lives on the bank itself.
+  const byLane = new Map();
+  for (const task of bank.tasks) byLane.set(task.lane, (byLane.get(task.lane) || 0) + 1);
+  assert.deepEqual(
+    bank.lanes.map((lane) => [lane.id, lane.count]),
+    bank.lanes.map((lane) => [lane.id, byLane.get(lane.id) || 0]),
+    'each lane declares exactly the tasks the bank assigns to it',
+  );
+  assert.equal(byLane.size, bank.lanes.length, 'no task points at a lane the bank does not declare');
 });
 
 test('selector is deterministic and respects collision caps', () => {

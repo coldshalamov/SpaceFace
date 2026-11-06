@@ -358,6 +358,9 @@ const SHIPPED_WEAPONS = [
     // it is triggered off the PQ-009 provenance the hit leaves ('rcs_disruptor_spike'). Distinct from
     // the concussion cannon: it does NOT throw the ship, it removes its steering. Low hull damage —
     // this is a disable verb, not a killer.
+    // Retired from sale (row 550, §7.1 heads now exist): the Override head fires a held ship's
+    // own thrusters — steering removed by using it against itself. Owned copies keep working.
+    retiredInto: 'mod_line_head_override',
     id: 'wpn_rcs_disruptor_m', name: 'RCS Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 34000, requiresTech: 'tech_plasma_dynamics',
     sentence: 'Steals the target’s steering for seconds: a hull that cannot aim is almost ammunition.',
     dmg: 16, rof: 1.4, dps: 22.4, damageType: 'emp', energyCost: 10,
@@ -404,7 +407,7 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_micro_barrage_m', name: 'Micro-missile Barrage', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 36000,
     requiresTech: 'tech_guided_ordnance',
     dmg: 4, rof: 0.9, dps: 21.6, damageType: 'explosive', energyCost: 12,
-    projSpeed: 300, projSpeedMin: 160, range: 300, tracking: 'homing', turnRate: 2.2, lockTimeS: 0.8,
+    projSpeed: 300, projSpeedMin: 160, range: 280, tracking: 'homing', turnRate: 2.2, lockTimeS: 0.8,
     heatPerShot: 14, heatMax: 60, heatDissip: 14,
     impulsePerHit: 8, tumbleTorque: 3, impulseProvenance: 'micro_seeker_burst',
     volley: { count: 6, spreadDeg: 60 }, swarmSeekers: true,
@@ -448,7 +451,7 @@ const SHIPPED_WEAPONS = [
     // SEED-SW-23 — flies out, carves back through the thrower once, hits on each pass.
     id: 'wpn_glaive_s', name: 'Glaive', slotType: 'weapon', size: 'S', tier: 3, mass: 4, price: 33000,
     dmg: 12, rof: 1.1, dps: 13.2, damageType: 'kinetic', energyCost: 8,
-    projSpeed: 320, range: 300, tracking: 'fixed',
+    projSpeed: 320, range: 280, tracking: 'fixed',
     heatPerShot: 11, heatMax: 60, heatDissip: 14,
     impulsePerHit: 14, tumbleTorque: 8, impulseProvenance: 'glaive_return',
     returnArc: { legRange: 140 },

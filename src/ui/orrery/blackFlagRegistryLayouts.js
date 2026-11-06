@@ -6,6 +6,9 @@ export function injectBlackFlagRegistryLayout(doc = globalThis.document) {
   style.textContent = `
 .orr-blackflag-registry { position:relative; min-width:0; pointer-events:auto; color:var(--dp-ink); }
 .orr-blackflag-registry[hidden] { display:none!important; }
+/* The fleet readings are separately positioned over this rail. Keep the closed
+   registry entry above them so its real pointer target remains reachable. */
+.orr-blackflag-registry:not([open]) { z-index:31; background:var(--dp-void,#05070a); }
 .orr-blackflag-registry > summary { cursor:pointer; min-height:44px; display:flex; align-items:center; gap:8px; font-family:var(--dp-face-body); font-size:14px; }
 .orr-blackflag-registry > summary::before { content:'›'; font-size:20px; color:var(--dp-hand); }
 .orr-blackflag-registry[open] > summary::before { content:'‹'; }

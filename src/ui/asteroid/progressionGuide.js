@@ -3,7 +3,8 @@
 import { planSiteVisit } from '../../systems/siteIndustryPlanner.js';
 
 export function miningNextStep({ drill, site, projection, cargo = {}, build = false,
-  movementLabel = 'WASD / arrows', scanLabel = 'C', coreMissing = null, extractorMissing = null } = {}) {
+  movementLabel = 'WASD / arrows', scanLabel = 'C', firstTunnel = undefined,
+  coreMissing = null, extractorMissing = null } = {}) {
   if (!drill) return null;
   const step = (id, title, detail, action = null, label = null, selection = null) =>
     ({ id, title, detail: build && action === 'build'
@@ -19,7 +20,12 @@ export function miningNextStep({ drill, site, projection, cargo = {}, build = fa
     'Release the direction to cool and recharge. Survey the nearby rock while you recover.', 'scan', 'Survey');
   if (!core) {
     if (!build && !(drill.tilesCleared > 1)) return step('bore', 'Cut your first tunnel',
-      `Hold ${movementLabel} to drive and bore. Hover a block to inspect it.`, 'help', 'Controls');
+      firstTunnel === undefined
+        ? `Hold ${movementLabel} to drive and bore. Hover a block to inspect it.`
+        : firstTunnel
+          ? `Hold ${firstTunnel.label} to drive ${firstTunnel.direction} and bore. Hover a block to inspect it.`
+          : 'Choose a reachable face. Open Controls for driving keys; hover a block to inspect it.',
+      'help', 'Controls');
     if (!build && !(drill.scan?.serial > 0)) return step('survey', 'Find a face worth keeping',
       `Press ${scanLabel} to survey. Leave ore and sealed gas beside a small bay for future machines.`, 'scan', 'Survey');
     const kit = planSiteVisit('first_claim', { cargo: cargo.items || {}, machines });

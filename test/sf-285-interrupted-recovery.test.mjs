@@ -221,6 +221,11 @@ test('(d) a restored defeat re-presents the after-action surface; a living load 
     ...state,
     entities: new Map([[1, { ...state.entities.get(1), alive: true, flags: {} }]]),
   }), false, 'a living restored player gets the ordinary flight surface');
+  assert.equal(gameOverScreen.restoredDefeatIntent({ entities: new Map(), playerId: 1 }), false,
+    'a missing restored player does not create a defeat intent');
+  assert.equal(gameOverScreen.restoredDefeatIntent({
+    entities: new Map([[1, { alive: true, flags: { defeated: true } }]]), playerId: 1,
+  }), true, 'the durable defeated flag remains authoritative even when alive is not false');
 
   const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
   const boundary = [...uiRoot.matchAll(/bus\.on\('save:loaded',[\s\S]*?\}\);/g)]

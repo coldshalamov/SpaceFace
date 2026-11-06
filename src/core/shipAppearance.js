@@ -1,6 +1,9 @@
 export const SHIP_APPEARANCE_VERSION = 1;
 export const SHIP_FINISHES = Object.freeze(['worn', 'satin', 'polished']);
-export const SHIP_DECALS = Object.freeze(['none', 'borrowed_time', 'concord', 'industrial', 'frontier']);
+export const SHIP_DECALS = Object.freeze([
+  'none', 'borrowed_time', 'concord', 'industrial', 'frontier',
+  'probate', 'addendum', 'heavy_is_honest', 'dead_schedule', 'gate_law',
+]);
 
 const GENERIC_DEFAULT = Object.freeze({
   version: SHIP_APPEARANCE_VERSION,
@@ -28,6 +31,8 @@ export function normalizeShipAppearance(input, defId = null) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const finish = SHIP_FINISHES.includes(source.finish) ? source.finish : fallback.finish;
   const decalId = SHIP_DECALS.includes(source.decalId) ? source.decalId : fallback.decalId;
+  const variantId = defId === 'ship_hornet' && source.variantId === 'customs_cutter'
+    ? 'customs_cutter' : null;
   const wearNumber = Number(source.wear);
   return Object.freeze({
     version: SHIP_APPEARANCE_VERSION,
@@ -36,12 +41,13 @@ export function normalizeShipAppearance(input, defId = null) {
     finish,
     wear: Number.isFinite(wearNumber) ? Math.max(0, Math.min(1, wearNumber)) : fallback.wear,
     decalId,
+    ...(variantId ? { variantId } : {}),
   });
 }
 
 export function shipAppearanceSignature(input, defId = null) {
   const appearance = normalizeShipAppearance(input, defId);
-  return [
+  const signature = [
     appearance.version,
     appearance.hullColor || '-',
     appearance.accentColor || '-',
@@ -49,6 +55,7 @@ export function shipAppearanceSignature(input, defId = null) {
     appearance.wear.toFixed(3),
     appearance.decalId,
   ].join('|');
+  return appearance.variantId ? `${signature}|${appearance.variantId}` : signature;
 }
 
 export function paletteWithShipAppearance(entity, basePalette) {

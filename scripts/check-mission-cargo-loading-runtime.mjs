@@ -83,7 +83,22 @@ try {
     const detail = await page.evaluate(() => {
       const state = window.SF && window.SF.state;
       const render = state && state.render;
+      const renderOwner = window.SF?.registry?.get?.('render') || null;
       const player = state && state.entities && state.entities.get(state.playerId);
+      const renderer = render && render.renderer;
+      const rendererFrame = renderer && renderer.info && renderer.info.render
+        ? renderer.info.render.frame : null;
+      const witness = state && state.runtimeWitness;
+      const presentation = witness && typeof witness.snapshot === 'function'
+        ? witness.snapshot() : null;
+      const recentPresentation = witness && typeof witness.recent === 'function'
+        ? witness.recent().slice(-4) : [];
+      const presentationVerdict = witness && typeof witness.verdict === 'function'
+        ? witness.verdict() : null;
+      const startup = window.__SF_STARTUP__ && typeof window.__SF_STARTUP__.snapshot === 'function'
+        ? window.__SF_STARTUP__.snapshot() : null;
+      const firstPictureFailure = render && render.openingFirstPictureFailure;
+      const submissionValidation = render && render.openingSubmissionValidation;
       return {
         launch: window.__sfMissionCargoLaunch,
         mode: state && state.mode,
@@ -93,8 +108,65 @@ try {
         flightVeilHoldsSim: render && render.flightVeilHoldsSim,
         firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
           ? render.firstPlayableFrameAt : null,
+        firstPlayableGate: {
+          gameStarted: window.__sfMissionCargoLaunch?.started === true,
+          flightMode: state?.mode === 'flight',
+          playerAlive: player?.alive !== false && player?.hull > 0,
+          veilReleased: render?.flightVeilHoldsSim !== true,
+          firstPlayableStamped: Number.isFinite(render?.firstPlayableFrameAt),
+          openingPictureReady: render?.openingFirstPictureReady === true,
+          openingFirstDrawSubmittedAt: Number.isFinite(render?.openingSubmissionFirstDrawSubmittedAt)
+            ? render.openingSubmissionFirstDrawSubmittedAt : null,
+          firstPlayablePaintAt: Number.isFinite(render?.firstPlayablePaintAt)
+            ? render.firstPlayablePaintAt : null,
+          worldSubmittedFrames: render?.worldSubmittedFrames ?? null,
+          paintReleaseScheduled: renderOwner?._firstPlayablePaintScheduled === true,
+          paintReleaseRearms: renderOwner?._firstPlayablePaintRearms ?? null,
+          paintReleaseScheduledAtMs: Number.isFinite(renderOwner?._firstPlayablePaintScheduledAtMs)
+            ? renderOwner._firstPlayablePaintScheduledAtMs : null,
+          openingPicturePrepared: renderOwner?._openingFirstPicturePrepared === true,
+          meshStreamingDeferred: renderOwner?._deferNoncriticalMeshStreaming === true,
+        },
         firstPicturePhase: render && render.openingFirstPicturePhase != null
           ? render.openingFirstPicturePhase : null,
+        openingFailures: {
+          currentSector: render && render.openingCurrentSectorFailure || null,
+          firstPicture: firstPictureFailure ? {
+            stage: firstPictureFailure.stage || null,
+            pass: firstPictureFailure.pass || null,
+            pendingCount: firstPictureFailure.pendingCount ?? null,
+            elapsedMs: firstPictureFailure.elapsedMs ?? null,
+            budgetMs: firstPictureFailure.budgetMs ?? null,
+            pending: Array.isArray(firstPictureFailure.pending)
+              ? firstPictureFailure.pending.slice(0, 8) : null,
+            meshCount: Array.isArray(firstPictureFailure.meshes) ? firstPictureFailure.meshes.length : null,
+          } : null,
+          submissionValidation: submissionValidation ? {
+            ok: submissionValidation.ok ?? null,
+            reason: submissionValidation.reason || null,
+            validationState: submissionValidation.validationState || null,
+          } : null,
+        },
+        presentation: presentation ? {
+          lifecycle: presentation.lifecycle || null,
+          suspended: presentation.suspended === true,
+          visibilityState: presentation.visibilityState || null,
+          executedFrames: presentation.executedFrames ?? null,
+          renderUpdates: presentation.renderUpdates ?? null,
+          rendererFrame: presentation.rendererFrame ?? rendererFrame,
+          worldSubmittedFrames: presentation.worldSubmittedFrames ?? render?.worldSubmittedFrames ?? null,
+          lastFrameError: presentation.lastFrameError || null,
+          frameErrorCount: presentation.frameErrorCount ?? null,
+          contextLost: presentation.contextLost === true,
+        } : null,
+        presentationVerdict,
+        recentPresentation,
+        startup: startup ? {
+          status: startup.current?.status || null,
+          phase: startup.current?.phase || null,
+          sample: startup.current?.sample || null,
+          events: Array.isArray(startup.current?.events) ? startup.current.events.slice(-12) : [],
+        } : null,
       };
     }).catch(() => null);
     throw new Error(`${error.message} :: Mission cargo launch state ${JSON.stringify(detail)} :: page issues ${JSON.stringify(issues.errorIssues().slice(-5))}`);
@@ -294,7 +366,7 @@ try {
     if (ap) { ap.active = false; ap.status = 'idle'; }
   });
   // Live flight HUD after this route (observed, not inferred): the tracker is one destination
-  // line — "Sell 1u Iron Ore at Coalition HQ · 1.4k WU · ETA — · ↙". CURRENT OBJECTIVE and
+  // line — "Sell 1u Iron Ore at Coalition HQ · 1.4k u · ETA — · ↙". CURRENT OBJECTIVE and
   // AMBER DIAMOND / GOAL were retired as tracker chrome; the world diamond is the goal marker.
   assert.equal(hud.trackerVisible, true,
     'flight HUD should show the loaded contract destination line: ' + JSON.stringify(hud));
@@ -302,7 +374,7 @@ try {
     'flight HUD should carry the loaded contract sell action: ' + JSON.stringify(hud));
   assert(hud.waypointLabel && hud.trackerText.includes(hud.waypointLabel),
     'flight HUD should carry the loaded contract destination: ' + JSON.stringify(hud));
-  assert.match(hud.trackerText, /\d+(?:\.\d+)?k?\s*WU/i,
+  assert.match(hud.trackerText, /\d+(?:\.\d+)?k?\s*u\b/i,
     'flight HUD destination line should carry distance to the loaded contract: ' + JSON.stringify(hud));
   assert.match(hudMoving.trackerText, /ETA/i,
     'flight HUD destination line should carry ETA to the loaded contract once closing: ' + JSON.stringify(hudMoving));

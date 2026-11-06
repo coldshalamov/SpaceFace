@@ -143,6 +143,29 @@ test('matching a moving pursuit slot does not also engage world-relative precisi
     'a correctly matched slot should require no relative correction');
 });
 
+test('live hero choreography owns its coasting axes; stale or previous-life packets do not', () => {
+  for (const validity of ['live', 'stale', 'previous-life']) {
+    const { system, state, player } = flightRig({ step: false });
+    player.vel = { x: 0, z: 20 };
+    player.occupantGeneration = 3;
+    state.flightRuntime.heroManeuverIntent = {
+      version: 1, tick: validity === 'stale' ? state.tick - 1 : state.tick,
+      playerId: player.id, occupantGeneration: validity === 'previous-life' ? 2 : 3,
+      throttle: 1, strafe: 0, turn: 0, boost: false,
+    };
+    system.update(DT, state);
+    const packet = consumePhysicsCommand(player);
+    if (validity === 'live') {
+      assert.ok(packet.control.force.x > 0, 'the choreography must reach the propulsion adapter');
+      assert.ok(packet.control.force.z > -24 * 4,
+        'a scripted coast must not fight world-relative precision counter-thrust');
+    } else {
+      assert.ok(packet.control.force.z < -24 * 30,
+        `${validity} choreography cannot disable the live pilot's precision assist`);
+    }
+  }
+});
+
 test('automatic precision counter-thrust reaches the existing player thrust cue', () => {
   const { system, state, bus } = flightRig({ step: false });
   const cues = [];

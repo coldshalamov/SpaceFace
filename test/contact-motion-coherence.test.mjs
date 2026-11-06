@@ -140,6 +140,33 @@ test('the player ram retains the native knock and the existing player contact po
   }
 });
 
+for (const count of [2, 3]) {
+  test(`a ${count}-body overlap touching the player cannot project only the NPC side of its impulse`, async () => {
+    const results = [];
+    for (const guarded of [false, true]) {
+      const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+      if (!guarded) owner._prepareContactMotionBudgets = () => {};
+      const bodies = Array.from({ length: count }, (_, i) => body(i + 1,
+        { x: i, mass: i === 1 ? 2 : 24, vx: i === 0 ? 0.1 : 0 }));
+      bodies[0].isPlayer = true;
+      try {
+        owner.syncFromEntities(bodies);
+        const frames = [];
+        let contacts = 0;
+        for (let tick = 0; tick < 20; tick++) {
+          owner.step(DT);
+          contacts += owner.drainContactImpacts().length;
+          frames.push(bodies.map(e => [e.pos.x, e.pos.z, e.vel.x, e.vel.z, e.rot, e.angVel]));
+        }
+        assert.ok(contacts > 0, 'the fixture must exercise real contact processing');
+        results.push(frames);
+      } finally { owner.dispose(); }
+    }
+    assert.deepEqual(results[1], results[0],
+      'a connected player island keeps the established policy on every body; no asymmetric energy projection');
+  });
+}
+
 function roundDebris(id, options) {
   const e = body(id, { type: 'wreck', shape: 'ball', ...options });
   e.data = {}; // Known round geometry lets the fixture put the bodies exactly in contact.
@@ -330,6 +357,36 @@ test('a rotating wreck transfers real angular motion and damage through the nati
       }
     }
   } finally { COMBAT_FLAGS.weaponImpulseConsequences = previous; }
+});
+
+test('surface closure uses one native frame and stays invariant under common coast and origin shifts', async () => {
+  let reference;
+  for (const origin of [0, 12000]) for (const coast of [0, 100, 500]) for (const sign of [-1, 1]) {
+    const rod = body(1, { type: 'wreck', mass: 80, x: origin, vx: coast });
+    rod.physicsBody.inertiaY = 80 * 6 * 6;
+    rod.data.proportions = { length: 4, halfWidth: 0.42, height: 0.3 };
+    rod.angVel = sign * 4;
+    const target = body(2, { x: origin + 8, z: sign * 6, vx: coast });
+    target.radius = target.physicsBody.radius = 3;
+    target.physicsBody.inertiaY = 24 * 3 * 3;
+    const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT,
+      frameOrigin: { x: origin, z: 0 } });
+    try {
+      owner.syncFromEntities([rod, target]);
+      let first;
+      for (let i = 0; i < 30 && !first; i++) {
+        owner.step(DT);
+        first = owner.drainContactImpacts()[0];
+      }
+      assert.ok(first, 'the rotating body must make a native contact in every frame');
+      assert.equal(first.preSolveClosingSpeed, 0, 'shared coast cannot create centre closure');
+      assert.ok(first.preSolveContactSpeed > 30, 'spin remains real approaching surface motion');
+      assert.ok(first.normal.z * sign > 0, 'the native normal follows the actual struck side');
+      reference ??= first.preSolveContactSpeed;
+      assert.ok(Math.abs(first.preSolveContactSpeed - reference) < 0.001,
+        `surface closure cannot depend on common coast ${coast} or origin ${origin}`);
+    } finally { owner.dispose(); }
+  }
 });
 
 test('surface and island channels survive deferred consequences and do not leak across pooled receipts', async () => {

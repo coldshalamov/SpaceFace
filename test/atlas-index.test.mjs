@@ -16,7 +16,7 @@ import {
   ATLAS_SCHEMA,
   DISCOVERY_TIER,
 } from '../src/core/atlasIndex.js';
-import { checkAtlasIntegrity } from '../scripts/check-atlas-integrity.mjs';
+import { checkAtlasIntegrity, withinAtlasRoundTripPrecision } from '../scripts/check-atlas-integrity.mjs';
 import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import {
@@ -134,6 +134,28 @@ test('round-trip holds for a nonzero-origin sector', () => {
   assert.deepStrictEqual({ x: sectorNode.globalPos.x, z: sectorNode.globalPos.z }, { x: origin.x, z: origin.z });
 });
 
+test('local/global atlas round-trip accepts only double-precision representation error', () => {
+  const samples = [
+    {
+      local: { x: 1400.348799000276, z: -728.2497319263825 },
+      global: { x: -39559.651200999724, z: 44327.750268073614 },
+      back: { x: 1400.348799000276, z: -728.2497319263857 },
+      origin: { x: -40960, z: 45056 },
+    },
+    {
+      local: { x: 1254.2907008894967, z: 468.4198236582945 },
+      global: { x: -23321.709299110502, z: 49620.419823658296 },
+      back: { x: 1254.290700889498, z: 468.4198236582961 },
+      origin: { x: -24576, z: 49152 },
+    },
+  ];
+  for (const sample of samples) assert.equal(withinAtlasRoundTripPrecision(sample), true);
+  assert.equal(withinAtlasRoundTripPrecision({
+    ...samples[0],
+    back: { ...samples[0].back, x: samples[0].back.x + 1e-6 },
+  }), false, 'a spatial drift of one microunit must remain visible to the integrity gate');
+});
+
 test('an anchorless place gets a null position, never a fabricated origin', () => {
   const atlas = buildAtlasIndex(syntheticSources());
   const adrift = atlas.getNode('st_adrift');
@@ -229,6 +251,26 @@ test('query APIs return what the consumers need', () => {
   const touching = atlas.edgesFrom(gateNode.id);
   assert.ok(touching.length > 0);
   assert.ok(touching.every((e) => e.a === gateNode.id || e.b === gateNode.id));
+});
+
+test('query result arrays cannot mutate later atlas reads', () => {
+  const atlas = buildAtlasIndex();
+  const sectorId = ZERO_ORIGIN_SECTOR;
+  const firstSectorRows = atlas.nodesInSector(sectorId);
+  const firstStationRows = atlas.nodesOfKind('station');
+  const gate = atlas.nodesOfKind('gate')[0];
+  const firstEdgeRows = atlas.edgesFrom(gate.id);
+
+  assert.ok(Object.isFrozen(firstSectorRows));
+  assert.ok(Object.isFrozen(firstStationRows));
+  assert.ok(Object.isFrozen(firstEdgeRows));
+  assert.throws(() => firstSectorRows.pop(), TypeError);
+  assert.throws(() => firstStationRows.pop(), TypeError);
+  assert.throws(() => firstEdgeRows.pop(), TypeError);
+
+  assert.deepStrictEqual(atlas.nodesInSector(sectorId), firstSectorRows);
+  assert.deepStrictEqual(atlas.nodesOfKind('station'), firstStationRows);
+  assert.deepStrictEqual(atlas.edgesFrom(gate.id), firstEdgeRows);
 });
 
 test('discoveryTier reports the authored baseline only', () => {

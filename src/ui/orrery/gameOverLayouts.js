@@ -24,7 +24,7 @@ ${GO} > .k-stage > .k-sentence { color:rgb(${BONE} / .86) !important; }
 ${GO} .sf-go-foot > .k-words { flex-wrap:nowrap !important; column-gap:calc(30px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb {
   position:relative !important; padding:10px 0 11px !important; min-height:44px !important; white-space:nowrap !important;
-  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(250 247 240) !important;
+  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.06em !important; color:rgb(250 247 240) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb::before { color:rgb(${BONE} / .7) !important; margin-right:.6em !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb:is(:hover, :focus-visible) {
@@ -66,6 +66,34 @@ ${GO} > .sf-go-tape .orr-tape__legend { fill:rgb(${BONE} / .88); }
 ${GO} > .sf-go-tape .orr-tape__legend--sub { fill:rgb(${BONE} / .72); }
 ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 
+/* On desktop, recovery dock, cost, and cargo consequence share one readable row of cards. */
+@media (min-width:641px) {
+  ${GO} .sf-go-grid { flex-wrap:nowrap !important; align-items:stretch !important; gap:clamp(6px, .6vw, 10px) !important; max-width:min(100%, 640px); }
+  ${GO} .sf-go-grid .k-hero { flex:1 1 0; box-sizing:border-box; justify-content:space-between; gap:6px;
+    padding:clamp(7px, 1.1vh, 12px) clamp(9px, .8vw, 14px) !important; border:1px solid rgb(${BONE} / .16); border-radius:6px;
+    background:rgb(12 12 14 / .62); }
+  ${GO} .sf-go-grid .k-hero__w { letter-spacing:.12em !important; line-height:1.25; }
+  ${GO} .sf-go-grid .k-hero__n { overflow-wrap:break-word; }
+}
+/* desktop cards size to their label, so Cargo consequence keeps one line while the row still fits;
+   a row too long for the column shrinks and wraps as before */
+@media (min-width:1101px) {
+  ${GO} .sf-go-grid .k-hero { flex:1 1 auto; }
+}
+/* Compact desktop: keep a long loss cause inside its report column, clear of the dial's labels.
+   Allow unusually long ship names to wrap instead of painting across the column boundary. */
+@media (min-width:1101px) and (max-width:1500px) and (min-height:641px) {
+  ${GO} > .k-title { min-width:0; }
+  ${GO} > .k-title .k-t-title { font-size:calc(52px * var(--sv)) !important; max-width:min(17ch, 100%) !important; overflow-wrap:anywhere; }
+  ${GO} .sf-go-grid .k-hero__w { letter-spacing:.1em !important; }
+}
+/* ...and with the headline a line shorter the one-line verb rail, already wider than the 538px column at
+   1280, rose into Lifetime profit at the ring's lower left. Up to 1400w the primary keeps its own line
+   and the two loads sit beneath it, inside the column, as in the short band */
+@media (min-width:1101px) and (max-width:1400px) and (min-height:641px) {
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(4px * var(--sv)) !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex-basis:100%; }
+}
 /* 720p: keep the four actions on one rail */
 @media (max-width:1400px) {
   ${GO} .sf-go-foot > .k-words { column-gap:20px !important; }
@@ -90,11 +118,46 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .sf-go-tape { height:112px; }
 }
 /* short stacked windows (641-1100w, <=640h, e.g. 960x540): the 66px headline ran to three lines and
-   pushed the recovery verbs and the career record below the fold, so it takes the short-desktop size */
+   pushed the recovery verbs and the career record below the fold, so it takes the short-desktop size.
+   The filled dial kept the 210px ring (378px across at --sv .75) with no scroll (scrollHeight = viewport),
+   so the ring was cut mid-dial; shrink every recap to the short-desktop ring and tighten the stage. */
 @media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} { --r:calc(112px * var(--sv)); row-gap:calc(8px * var(--sv)) !important;
+    padding-block:16px 12px !important; }
   ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
   ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
   ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
+  ${GO} > .sf-go-recap { height:calc(var(--r) * 2 + 100px * var(--sv)); width:calc(var(--r) * 2 + 280px * var(--sv)); }
+  /* a blank record has no rim stations, so its bare dial takes a slightly taller host */
+  ${GO} > .sf-go-recap.is-blank { height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
+}
+/* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
+   lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears
+   the bezel; the diagonals step out sideways by their sy^2 (0 at 3 and 9 o'clock), so nothing moves
+   up into the title or down into the verb rail. */
+@media (min-width:641px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) {
+    left:calc(50% + var(--sx, 0) * (var(--r) + 26px * var(--sv) + 110px * var(--sv) * var(--sy, 0) * var(--sy, 0))); }
+}
+@media (min-width:641px) and (max-width:1500px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) {
+    left:calc(50% + var(--sx, 0) * (var(--r) + 28px * var(--sv) + 110px * var(--sv) * var(--sy, 0) * var(--sy, 0))); }
+}
+/* the short desktop band (1101w+, <=640h) keeps its 124px ring and the 720p placement: there the
+   sideways step would run Contracts done off the right edge */
+@media (min-width:1101px) and (max-width:1500px) and (max-height:640px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 14px * var(--sv))); }
+}
+/* short stacked (641-1100w, <=640h): same idea — the general 641w+ step would walk the
+   rim stations past the narrowed recap host once --r drops to 112 */
+@media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 18px * var(--sv))); }
+}
+/* narrow short desktop (1101-1260w, <=640h): the left column is narrower than the one-line verb rail,
+   so Load latest ran under Lifetime profit. The primary keeps its own line; the two loads sit beneath it */
+@media (min-width:1101px) and (max-width:1260px) and (max-height:640px) {
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(4px * var(--sv)) !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex-basis:100%; }
 }
 /* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
    stretching the scroll sideways and past the tape into bare backdrop */
@@ -107,7 +170,7 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
    small dial over a two-up list of its figures (the rim stations need ~750px) */
 @media (max-width:640px) {
   ${GO} { --sv:1; --r:76px; padding:28px 22px 24px !important; row-gap:22px !important; }
-  ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:none; text-wrap:pretty; overflow-wrap:break-word; }
+  ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:100%; min-width:0; text-wrap:pretty; overflow-wrap:normal; word-break:normal; hyphens:none; }
   ${GO} .sf-go-grid { gap:14px 28px !important; }
   ${GO} .sf-go-foot, ${GO} .sf-go-foot > .k-words { width:100%; }
   ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; column-gap:28px !important; row-gap:4px !important; }
@@ -117,8 +180,12 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .sf-go-recap { justify-self:stretch; width:100%; height:auto; padding-top:calc(34px + var(--r) * 2.4 + 22px) !important; }
   ${GO} > .sf-go-recap::before { top:calc(34px + var(--r) * 1.2); width:calc(var(--r) * 3.4); height:calc(var(--r) * 3.4); }
   ${GO} .sf-go-ring, ${GO} .sf-go-st--hub, ${GO} .sf-go-hubscrub { top:calc(34px + var(--r) * 1.2); }
-  ${GO} .sf-go-recap__rows { position:static !important; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 20px !important; }
+  ${GO} .sf-go-recap__rows { position:static !important; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 14px !important; }
   ${GO} .sf-go-st:not(.sf-go-st--hub), ${GO} .sf-go-st[data-side] { position:static; transform:none; text-align:left; align-items:flex-start; white-space:normal; }
+  /* the two-up figures: labels track tighter so most hold one line, and each figure sits on its
+     cell's floor so a pair's numerals share a baseline even when one label still wraps */
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { justify-content:flex-end; }
+  ${GO} .sf-go-st:not(.sf-go-st--hub) .sf-go-recap__k { letter-spacing:.1em !important; }
   ${GO} .sf-go-st--hub { padding:10px 14px !important; }
   ${GO} .sf-go-st--hub .sf-go-recap__v, ${GO} .sf-go-hubscrub__t { font-size:30px !important; }
   ${GO} > .sf-go-tape { height:160px; }

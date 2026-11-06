@@ -621,7 +621,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
     return true;
   }
 
-  const impulseObserver = createPlayerTruthImpulseObserver({ getState: () => state, getBus: () => deps.bus });
+  const impulseObserver = createPlayerTruthImpulseObserver({ getState: () => state, getBus: () => deps.bus,
+    getFields: () => registry.get?.('fields') || null });
   const unregisterImpulseObserver = registerLaneRpcHandler('playerTruthImpulseObserver', impulseObserver.rpc);
   return {
     fixedDt,

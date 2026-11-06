@@ -7,9 +7,54 @@ import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
 import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
+import { LINE_HEAD_MODULES } from './lineProgression.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
+  // ===================== FIRST-HAUL RACK (DUST P2a, 2026-10-31) =====================
+  // The honest early rung. Story beats pay 400-3,000 cr and the Foothold wage is 6,000 cr/h, but
+  // the cheapest existing fitting was 4,000 cr (Stripped RCS / Cargo Scanner S) — the first
+  // *earned* purchase landed hours out, not inside the first 30 minutes. These tier-0 parts are
+  // ungated (no requiresTech), so every yard rack stocks them, including the first-route stations
+  // (Helios, Ceres, Tycho) a 0-2h pilot actually berths at. Every mods key below is one the
+  // derived-stats fold in systems/ships.js (or the mining scoop floor in systems/mining.js)
+  // already reads — no new mechanics, no repriced ladder, no credit writer.
+  {
+    // The cheap hull patch: bolt-on plates over the old seams. hullFlat is additive on every hull.
+    id: 'mod_hull_patch_kit_s', name: 'Third-Owner Patch Kit', slotType: 'utility', size: 'S', tier: 0, mass: 1, price: 900,
+    energyDraw: 0, mods: { hullFlat: 30 },
+    description: 'Surplus plate, third owner, still mil-spec where it counts. Covers the seams the last war opened.',
+  },
+  {
+    // The parking brake: better stopping, nothing else. Replaces the stock neutral RCS set;
+    // turn and slide stay exactly 1.0, so the Vernier cluster above it keeps its whole job.
+    id: 'mod_harbor_brake_s', name: 'Harbor Brake Set S', slotType: 'thruster', size: 'S', tier: 0, mass: 2, price: 1400,
+    energyDraw: 0, mods: { turnMult: 1.0, strafeMult: 1.0, brakeMult: 1.25 },
+    description: 'Yard-issue docking brakes with the inspection stamps still on. Reverse thrust answers like it means it.',
+  },
+  {
+    // The first cargo module that fits the starter hull's S cargo bay — before this row the only
+    // S cargo fitting in the catalog was the 38,000 cr Smuggler Hold.
+    id: 'mod_cargo_net_s', name: 'Deck Cargo Net S', slotType: 'cargo', size: 'S', tier: 0, mass: 1, price: 1600,
+    energyDraw: 0, mods: { cargoFlat: 20 },
+    description: 'Kiln-back cask webbing, re-stretched and re-stamped. The hold carries more; the manifest does not care.',
+  },
+  {
+    // The miner's wide mouth: ore pickup radius 800 -> 900 wu (systems/mining.js resolves
+    // max(MAGNET_RANGE floor, derived.magnetRange)). Loot Magnet Ring S (lootShards) and the
+    // faction Deep-Scoop Array are different systems and keep their own tiers.
+    id: 'mod_scoop_ring_s', name: 'Wide-Mouth Scoop Ring S', slotType: 'utility', size: 'S', tier: 0, mass: 2, price: 1800,
+    energyDraw: 1, mods: { magnetRange: 900 },
+    description: 'A wider mouth on the ore scoop. Rocks you used to chase now drift in on their own.',
+  },
+  {
+    // The shield liner: thin, legal, felt. Strictly under the Shield Booster S (60/2 at 6,000 cr),
+    // which remains the clear upgrade.
+    id: 'mod_shield_liner_s', name: 'Shield Liner S', slotType: 'shield', size: 'S', tier: 0, mass: 1, price: 2400,
+    energyDraw: 1, mods: { shieldFlat: 15, shieldRegenFlat: 1 },
+    description: 'Emitter liner on a roll, surplus of a fleet that no longer files claims. Thin, but it holds.',
+  },
+
   // ===================== SHIELDS =====================
   {
     id: 'mod_shield_booster_s', name: 'Shield Booster S', slotType: 'shield', size: 'S', tier: 1, mass: 3, price: 6000,
@@ -324,6 +369,13 @@ const SHIPPED_MODULES = [
     energyDraw: 10, mods: { boostTopSpeedPct: 0.40, boostDurS: 4, boostCdS: 12 },
   },
   {
+    // Evolution product (row 270 B7): the burst drive and the ram plate become one fitted
+    // part — the closing burst IS the ram. Two slots fold to one S bay.
+    id: 'mod_battering_ram_s', name: 'Battering Ram S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 60000,
+    requiresTech: 'tech_drive_tuning',
+    energyDraw: 8, mods: { boostTopSpeedPct: 0.40, boostDurS: 4, boostCdS: 12, ramDamageDealtMult: 1.80 },
+  },
+  {
     id: 'mod_repair_nanobots_m', name: 'Repair Nanobots M', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 38000, requiresTech: 'tech_nanofabrication',
     energyDraw: 3, mods: { hullRepairOOC: 4 },
   },
@@ -338,6 +390,13 @@ const SHIPPED_MODULES = [
     // magnetRange must beat mining.MAGNET_RANGE floor (800) so the fitted tractor is player-felt.
     // Salvage cutters snapshot this head onto their wreck latch so the player sees the pick-up verb.
     energyDraw: 3, mods: { magnetRange: 1200, masslineHeadId: 'tractor' },
+  },
+  {
+    // Evolution product (row 270 B7): tractor + the bumper's gravity tech folded into the head —
+    // same pull verb, a longer reach. The separate burst is the trade.
+    id: 'mod_tractor_beam_s', name: 'Greedy Tractor S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 58000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 3, mods: { magnetRange: 1500, masslineHeadId: 'tractor' },
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
@@ -376,6 +435,20 @@ const SHIPPED_MODULES = [
     energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },
   },
   {
+    // Evolution product (row 270 B7): the whip and the heavy winch become one — same snap law,
+    // the reel folded in. The separate winch is spent.
+    id: 'mod_snap_whip_s', name: 'Snap Whip S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 56000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 4, mods: { masslineHeadId: 'elastic_whip', tetherReelRateMult: 1.8 },
+  },
+  {
+    // Evolution product (row 270 B7): the sweep and the charge rack — the cutting line carries
+    // the rack's kick behind it. Same line, the charges ride along.
+    id: 'mod_serrated_sweep_s', name: 'Serrated Sweep S', slotType: 'utility', size: 'S', tier: 4, mass: 3, price: 64000,
+    requiresTech: 'tech_fire_control',
+    energyDraw: 3, mods: { masslineHeadId: 'monofilament_sweep', impulseChargeCapacity: 8 },
+  },
+  {
     // FRAME COUPLER — the winched rest length is the hitch. A 200-mass tow turns with you.
     // Yard tugs snapshot this hitch onto the existing npc_tow line; they do not need the M slot.
     id: 'mod_frame_coupler_m', name: 'Frame Coupler M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 22000, requiresTech: 'tech_tractor_systems',
@@ -397,6 +470,9 @@ const SHIPPED_MODULES = [
     // Bolas throw: latch A then B within the 2 s combat window; relative speed tumbles both lights (B11).
     energyDraw: 8, mods: { masslineHeadId: 'twin_bridle' },
   },
+  // The §7.1 behavior heads (mod_line_head_*): the catalog rows live in lineProgression.js with
+  // the provenance model — one behavior per head, purchased at its rarity floor.
+  ...LINE_HEAD_MODULES,
   {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
@@ -557,6 +633,16 @@ const SHIPPED_MODULES = [
     id: 'mod_veil_step', name: 'Veil Step', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 9800,
     shopOffers: { station_helios: { price: 4200 } },
     energyDraw: 1, mods: { phaseBlink: true },
+  },
+  {
+    id: 'mod_boomerang_run', name: 'Boomerang Run', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 0, mods: { heroManeuver: 'boomerang_bomb_run' },
+    sentence: 'Lock a hostile and press Bomb to bank through a real bomb release, then phase back to a reserved clear point.',
+  },
+  {
+    id: 'mod_pinball_rush', name: 'Pinball Rush', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 0, mods: { heroManeuver: 'pinball_rush' },
+    sentence: 'Hold Boost while aiming at a clear hostile lane, then release for one charged physical dash.',
   },
   {
     // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
@@ -899,6 +985,11 @@ function mergeUserModules(base) {
 // The fit screen already prints `sentence` on the row. Unwired promises are not claimed —
 // an afterburner and a market uplink do not move the ship or the prices the sim reads.
 const MODULE_AIR_SENTENCE = Object.freeze({
+  mod_hull_patch_kit_s: 'Bolt-on plates over the old seams. The hull takes one more knock before it opens.',
+  mod_harbor_brake_s: 'The hull stops on the mark. Turn and slide stay exactly as the yard built them.',
+  mod_cargo_net_s: 'A net over the deck plates. Twenty more units ride without sliding.',
+  mod_scoop_ring_s: 'Loose rock drifts to the hull from farther out. You stop chasing single stones.',
+  mod_shield_liner_s: 'A liner inside the emitter. The shield holds a little longer and comes back sooner.',
   mod_shield_booster_s: 'A thicker shield that keeps rebuilding while you fly.',
   mod_shield_capacitor_m: 'A much thicker shield, and it comes back faster.',
   mod_shield_aegis_l: 'The heavy shield. It soaks a fight and rebuilds afterward.',
@@ -937,6 +1028,10 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_toll_saint_bridle: 'Anchors two points at once, and the pull tumbles light hulls.',
   unique_broken_ring_whip: 'Stores the stretch of a swing and gives it back as a snap.',
   mod_elastic_whip_m: 'Stretch the line, then spend that stored snap when you cut it.',
+  mod_snap_whip_s: 'The same snap law with the winch folded in — the stored snap reels back faster.',
+  mod_serrated_sweep_s: 'The cutting line carries the rack behind it — a taut swing still cuts, and the charges ride along.',
+  mod_battering_ram_s: 'The burst drive and the ram plate in one part: the closing burn IS the hit.',
+  mod_tractor_beam_s: 'The tractor drinks the bumper\'s gravity — same haul, a longer reach.',
   mod_frame_coupler_m: 'Holds a heavy tow on a hitch so the load turns with you.',
   mod_monofilament_sweep_m: 'A taut swing cuts a hostile line and staggers a light hull.',
   mod_transverse_snare_m: 'A fast hull that crosses your line gets snatched and tumbled.',
@@ -1024,6 +1119,12 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_double_entry_mask: 'You read quieter than a stock scrambler, and the scan reaches a little farther.',
   unique_first_notch_marker: 'Closes an anomaly fix in two scans instead of three, and the scan reaches farther.',
   unique_regular_mass_shifter: 'More room in the hold than the hull was built with.',
+  mod_claw_anchor_s: 'Holds a Masslined hull steadier on a close custody approach; the line can still break.',
+  mod_signature_reader_s: 'Reads a little farther, and flags a hull whose broadcast disagrees with its drive before you dock.',
+  mod_quiet_intrusion_s: 'Replays a scanned maintenance handshake once — one quiet attempt before the keys rotate.',
+  mod_proof_recorder_s: 'Records crew release and intact arrival; recoveries with testimony carry a stronger salvage claim.',
+  unique_blackbird_governor: 'An overbored Sprint bus: harder thrust, more mass, more draw — and an exhaust that names the prototype.',
+  mod_collector_maw_s: 'Pull drops a collector that binds loose rock and wreck into one knot you can aim and throw.',
 });
 
 function attachAirSentences(list) {

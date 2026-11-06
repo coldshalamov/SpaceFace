@@ -395,12 +395,13 @@ export class SpaceRenderGraph {
     u.uGrain.value = finite(this.options.grain, 0);
     this.bloomMaterial.uniforms.uThreshold.value = finite(this.options.bloomThreshold, POST_DEFAULTS.bloomThreshold);
     this.bloomMaterial.uniforms.uKnee.value = finite(this.options.bloomKnee, 0.18);
-    // Keep the pyramid allocated only while bloom is on (see _allocate). Release on
-    // hard-disable; rebuild on re-enable without reallocating the other targets.
-    if (this.options.bloom === false && this.bloomTargets && this.bloomTargets.length > 0) {
+    // Strength zero disables the pass just like the hard toggle. Do not retain four
+    // half-float targets for a pyramid that cannot contribute to the composite.
+    const bloomActive = this._bloomActive();
+    if (!bloomActive && this.bloomTargets && this.bloomTargets.length > 0) {
       for (const target of this.bloomTargets) target.dispose();
       this.bloomTargets = [];
-    } else if (this.options.bloom !== false && this.sceneTarget
+    } else if (bloomActive && this.sceneTarget
         && this.bloomTargets && this.bloomTargets.length === 0) {
       const rw = Math.max(1, Math.floor(this.width * this.options.renderScale));
       const rh = Math.max(1, Math.floor(this.height * this.options.renderScale));
@@ -435,12 +436,23 @@ export class SpaceRenderGraph {
       // override material changes in this window. With AO off there is no second pass —
       // render plainly and skip the capture allocations entirely.
       if (this.options.ao) {
-        const captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
+        const canReplay = typeof renderer.renderAndCaptureList === 'function'
+          && typeof renderer.renderCapturedList === 'function';
+        let captured = null;
+        if (canReplay) {
+          captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
+        } else {
+          renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
+        }
         scene.overrideMaterial = this.normalMaterial;
         renderer.setRenderTarget(this.normalTarget);
         renderer.clear(true, true, true);
         try {
-          renderWithoutAutoClear(renderer, () => renderer.renderCapturedList(scene, camera, captured));
+          if (canReplay) {
+            renderWithoutAutoClear(renderer, () => renderer.renderCapturedList(scene, camera, captured));
+          } else {
+            renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
+          }
         } finally {
           scene.overrideMaterial = previousOverride;
         }
@@ -577,7 +589,8 @@ export class SpaceRenderGraph {
       bloomLevels: this.bloomTargets.length,
       fullFramePasses: 2 + (this.options.ao ? 1 : 0),
       bloomPasses: this._bloomActive() ? this.bloomTargets.length : 0,
-      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length + 1 + (atmosphere?.targets || 0),
+      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length + 1
+        + (this.gradeTarget ? 1 : 0) + (atmosphere?.targets || 0),
       atmosphere,
       presentationComposite: true,
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
@@ -793,7 +806,7 @@ export class SpaceRenderGraph {
     // with zero strength while disabled, so the levels are pure dead memory then. Same
     // live-toggle treatment as the AO targets above.
     this.bloomTargets = [];
-    if (this.options.bloom !== false) {
+    if (this._bloomActive()) {
       let bw = Math.max(1, rw >> 1), bh = Math.max(1, rh >> 1);
       for (let i=0; i<4; i++) {
         this.bloomTargets.push(hdrTarget(bw,bh,false,0));

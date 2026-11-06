@@ -2,7 +2,80 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
-import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
+import { createBloom, createUnreadyDrawableGuard } from '../src/render/bloom.js';
+
+for (const pass of ['render', 'rehearseScenePass']) {
+  test(`bloom ${pass} checks ready hull and star programs against its scene target`, () => {
+    let target = null;
+    const draws = [], admissions = [], records = new WeakMap();
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    const stars = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial());
+    hull.name = 'player-hull'; stars.name = 'background-stars';
+    scene.add(hull, stars);
+    const renderer = {
+      capabilities: { isWebGL2: false, maxSamples: 0 }, autoClear: true,
+      outputColorSpace: THREE.SRGBColorSpace, toneMapping: THREE.ACESFilmicToneMapping,
+      info: { programs: [] },
+      state: { buffers: { depth: { getReversed: () => false } } },
+      shadowMap: { enabled: false, type: THREE.PCFShadowMap },
+      getRenderTarget: () => target, setRenderTarget(value) { target = value; },
+      setViewport() {}, getViewport(out) { return out.set(0, 0, 390, 664); },
+      setScissor() {}, getScissor(out) { return out.set(0, 0, 390, 664); },
+      setScissorTest() {}, getScissorTest: () => false, clear() {},
+      properties: { get: material => records.get(material) || {} },
+      userData: { spacefaceQueuePipelineAdmission(subject) {
+        admissions.push(subject); return Promise.resolve();
+      } },
+      renderBufferDirect(_camera, _scene, _geometry, _material, object) { draws.push(object); },
+      render(candidate, view) {
+        if (candidate !== scene) return;
+        candidate.traverseVisible(object => {
+          if (object.material && object.layers.test(view.layers)) {
+            this.renderBufferDirect(view, candidate, object.geometry, object.material, object, null);
+          }
+        });
+      },
+    };
+    const bloom = createBloom(renderer, 390, 664);
+    const sceneTarget = bloom.contextLossResources().find(resource => resource.isWebGLRenderTarget);
+    const programs = WebGLPrograms(renderer, { get: () => null }, { has: () => false },
+      { precision: 'highp', logarithmicDepthBuffer: false }, {}, { numPlanes: 0, numIntersection: 0 });
+    const lights = { sun: [], directional: [], point: [], spot: [], spotLightMap: [], rectArea: [], hemi: [],
+      sunShadowMap: [], directionalShadowMap: [], pointShadowMap: [], spotShadowMap: [],
+      numSpotLightShadowsWithMaps: 0 };
+    try {
+      // These are the actual programs compiled for bloom's linear HDR scene, not extra
+      // default-framebuffer variants. Pause leaves the previous held target on screen.
+      renderer.setRenderTarget(sceneTarget);
+      for (const object of [hull, stars]) {
+        const parameters = programs.getParameters(object.material, lights, [], scene, object, []);
+        const cacheKey = programs.getProgramCacheKey(parameters);
+        const program = { program: {}, cacheKey, isReady: () => true };
+        records.set(object.material, { currentProgram: program, programs: new Map([[cacheKey, program]]),
+          instancing: false, instancingColor: false, instancingMorph: false, skinning: false,
+          toneMapping: parameters.toneMapping, outputColorSpace: parameters.outputColorSpace,
+          __version: object.material.version });
+        renderer.info.programs.push(program);
+        assert.equal(parameters.toneMapping, THREE.NoToneMapping);
+        assert.equal(parameters.outputColorSpace, THREE.LinearSRGBColorSpace);
+      }
+      renderer.setRenderTarget(null);
+      bloom[pass](scene, camera);
+      assert.deepEqual(draws.map(object => object.name), ['player-hull', 'background-stars'],
+        'ready authored hull and stars survive the first readiness scan');
+      assert.deepEqual(admissions, [], 'the held screen target must not manufacture missing scene variants');
+      assert.equal(renderer.getRenderTarget(), null, 'the screen/rehearsal target is restored');
+      assert.equal(hull.layers.mask, 1);
+      assert.equal(stars.layers.mask, 1);
+      assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0);
+    } finally {
+      bloom.dispose(); hull.geometry.dispose(); hull.material.dispose();
+      stars.geometry.dispose(); stars.material.dispose();
+    }
+  });
+}
 
 function fixture(stamped = true) {
   const geometry = new THREE.BoxGeometry();

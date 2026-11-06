@@ -24,13 +24,13 @@ export function slateColumnInRange(pos, column = SLATE_COLUMN.pos, radius = SLAT
 }
 
 /** What the column says for a hull with n spikes: under the canon number it predicts;
- *  at or past it, it recites. */
-export function slateColumnLine(spikes) {
+ *  at or past it, the entry is filed. It only recites "the seam went" when the sim
+ *  actually opened the seam (`seamWent` — the adapter reads the story's real seam
+ *  failure, not the weld count). Zero is plural: "0 weld-spikes". */
+export function slateColumnLine(spikes, { seamWent = false } = {}) {
   const n = Math.max(0, Math.floor(Number(spikes) || 0));
-  if (n >= SLATE_COLUMN.failureSpike) {
-    return SLATE_COLUMN.readFailed.replace('{n}', String(n));
-  }
-  if (n <= 0) return SLATE_COLUMN.readOne.replace('{n}', '0');
+  if (seamWent === true) return SLATE_COLUMN.readFailed.replace('{n}', String(n));
+  if (n >= SLATE_COLUMN.failureSpike) return SLATE_COLUMN.readEntry.replace('{n}', String(n));
   const tpl = n === 1 ? SLATE_COLUMN.readOne : SLATE_COLUMN.readMany;
   return tpl.replace('{n}', String(n));
 }

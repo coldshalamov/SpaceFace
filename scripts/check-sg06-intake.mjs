@@ -20,7 +20,6 @@ const REQUIRED_MODULES = Object.freeze([
 ]);
 
 const REQUIRED_FULL_HANDOFF = Object.freeze([
-  'docs/handoffs/SG-06_AI_HANDOFF.md',
   'docs/Spec/SG-06_ACCEPTANCE.json',
   'third_party/reference-ledger-sg06.yml',
   'scripts/check-sg06-ai.mjs',
@@ -34,17 +33,13 @@ const REQUIRED_FULL_HANDOFF = Object.freeze([
 const PRODUCTION_CLAIM_MARKERS = Object.freeze([
   'src/ai/index.js',
   'src/systems/tacticalAI.js',
-  'docs/handoffs/SG-06_AI_HANDOFF.md',
 ]);
 
 const packageJson = json('package.json');
 const scripts = packageJson.scripts || {};
 
-assert(exists('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md'), 'SG-06 intake guard requires docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
-const intake = read('docs/handoffs/SG-06_LAYERED_AI_INTAKE.md');
-assert(intake.includes('F10CC6B0FF01339EA90522D0C969DFE049DAF8788203580D3851B56220A358D5'),
-  'SG-06 intake doc must record the accepted zip SHA-256');
-assert(intake.includes('Accepted at port level'), 'SG-06 intake doc must mark the final artifact as accepted at port level');
+// Preserve source provenance; live contracts below establish the runtime state.
+assert(exists('third_party/reference-ledger-sg06.yml'), 'SG-06 requires its source provenance ledger');
 assert(scripts['check:sg06:intake'], 'package.json must expose check:sg06:intake');
 assert(scripts['check:sg06'] && scripts['check:sg06'].includes('check:sg06:intake'),
   'package.json check:sg06 must include the SG-06 intake guard');

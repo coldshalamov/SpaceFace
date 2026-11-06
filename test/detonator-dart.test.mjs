@@ -11,6 +11,7 @@ import {
   normalizeCombatDoctrineId,
 } from '../src/ai/combatDoctrine.js';
 import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
+import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import {
@@ -228,6 +229,43 @@ test('a missed run egresses, reforms, and re-announces the next pass', () => {
   assert.equal(r.telegraph.kind, 'detonator_fuse');
 });
 
+test('a committed detonator run holds its straight final line through corridor traffic', () => {
+  // The authored contract is one straight final approach: a pass-around point re-aims the run
+  // ~1.85x clearance off a bystander hull and the dart sweeps wide of its own 56 WU fuse ring —
+  // measured on the Ceres ambush, where a convoy body in the run corridor bent the lit commit
+  // ~65 degrees and the dart missed at 167 WU. The exemption is scoped to the committed window:
+  // ingress/breakaway legs still give traffic the shoulder like any other flight plan.
+  const planner = new ManeuverPlanner({ seed: 7, config: { inputSlewPerTick: 1,
+    emergencyInputSlewPerTick: 1, torqueSlewPerTick: 1, emergencyTorqueSlewPerTick: 1 } });
+  const target = { id: 1, kind: 'ship', alive: true, pos: { x: 600, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 10, tags: [], confidence: 1 };
+  const blocker = { id: 5, kind: 'ship', alive: true, pos: { x: 90, z: 8 }, vel: { x: 0, z: 0 },
+    radius: 10, tags: [], confidence: 1 };
+  const self = { id: 0, team: 1, pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 }, rot: 0,
+    radius: 12, energyFraction: 1, heatFraction: 0 };
+  const base = { kind: ManeuverKind.INTERCEPT, targetId: 1, lateralSign: 0,
+    formationBound: 170, breakFormation: true, reason: 'combat_doctrine:detonator_run:commit' };
+  const directive = { squadId: 'run', formation: { slot: { x: 600, z: 0 }, bound: 170,
+    breakFormation: true } };
+  const plan = (entityId, maneuver) => planner.plan({
+    entityId, tick: 1,
+    perception: { tick: 1, self: { ...self, id: entityId }, contacts: [target, blocker] },
+    behavior: { maneuver }, directive,
+  });
+
+  const ordinary = plan(2, { ...base });
+  assert.ok(Math.abs(ordinary.targetHeading) > 0.1,
+    `an ordinary intercept still bends around the corridor ship, got ${ordinary.targetHeading}`);
+
+  const lit = plan(3, { ...base, contactRun: true, committedRun: true });
+  assert.ok(Math.abs(lit.targetHeading) < 0.1,
+    `the lit final approach must hold the straight line, got ${lit.targetHeading}`);
+
+  const egress = plan(4, { ...base, contactRun: true, committedRun: false });
+  assert.ok(Math.abs(egress.targetHeading) > 0.1,
+    `outside the committed window the dart still dodges traffic, got ${egress.targetHeading}`);
+});
+
 test('detonator_run normalizes and presents like a first-class doctrine', () => {
   assert.equal(normalizeCombatDoctrineId('detonator_run'), 'detonator_run');
   assert.equal(isLiveDoctrineId('detonator_run'), true);
@@ -369,6 +407,27 @@ test('an NPC kill does not steal the player chain', () => {
   const receipt = h.events.find((e) => e.name === 'detonator:detonated');
   assert.ok(receipt, 'the death pop still happens far from the player');
   assert.equal(receipt.payload.killerId, 7);
+});
+
+test('proximity: a doctrine-armed dart is fused for its named target, not the hull it brushes', () => {
+  const namedPrey = {
+    id: 99, type: 'ship', alive: true, team: 0,
+    mass: 40, radius: 12,
+    pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, shield: 0, armorHp: 0,
+    data: {},
+  };
+  const h = blastHarness({ dartX: 30, wingman: namedPrey });
+  h.dart.data.ai = { combatDoctrineId: 'detonator_run', activity: { targetId: 99 } };
+  h.dart.data.combat = { targetId: 99 };
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.events.filter((e) => e.name === 'detonator:detonated').length, 0,
+    'a bystander inside the ring is not the authored fuse');
+  namedPrey.pos.x = 40;
+  h.system.update(1 / 60, h.state);
+  const receipt = h.events.find((e) => e.name === 'detonator:detonated');
+  assert.ok(receipt, 'the named prey inside the ring is still the fuse');
+  assert.equal(receipt.payload.trigger, 'proximity');
 });
 
 test('the fuse is exactly-once: duplicated kill receipts and a spent proximity pop dedupe', () => {

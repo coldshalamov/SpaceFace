@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1153b3b8f11c9e063a976b8748cd519933bb5246a6ccb46ab10fe5e36b32d19d",
+  "contentHash": "498603db0eae3216db74f03d39e970a6c8a2fae516d294bcfbf4b0fd7586ca67",
   "dynamicGroups": [
     {
       "id": "sf.render.scrap-cage.mesh.lod0-hook-nav-port.dynamic",
@@ -2683,14 +2683,14 @@
       "uri": "place_scrap_cage.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 331796,
-    "sha256": "749fe2fd577f8e72f11fc2f886d2a538a8c359447054de1567b1a0d86c35b8ba",
+    "bytes": 331852,
+    "sha256": "85e1fcb9c2d84830832f2121eb62dc7af97fee88d8ec8c8914a4a1d8da1ca001",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2723,6 +2723,114 @@
     "markers": [
       {
         "matrix": [
+          0.18599998950958252,
+          0,
+          0,
+          0,
+          0,
+          0.18599998950958252,
+          0,
+          0,
+          0,
+          0,
+          0.18599998950958252,
+          0,
+          4.400000095367432,
+          3.6825000047683716,
+          -2.899999976158142,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 7,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.scrap-cage.mesh.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.18678903579711914,
+          0,
+          0,
+          0,
+          0,
+          0.18678903579711914,
+          0,
+          0,
+          0,
+          0,
+          0.18678903579711914,
+          0,
+          4.399423122406006,
+          3.6828784942626953,
+          -2.900091290473938,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 18,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.scrap-cage.mesh.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.19075489044189453,
+          0,
+          0,
+          0,
+          0,
+          0.19075489044189453,
+          0,
+          0,
+          0,
+          0,
+          0.19075489044189453,
+          0,
+          4.400003671646118,
+          3.6819387674331665,
+          -2.904780864715576,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 29,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.scrap-cage.mesh.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2741,7 +2849,7 @@
           1
         ],
         "name": "SOCKET_Gate",
-        "planIndex": 33,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2798,18 +2906,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 8,
         "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2819,115 +2922,120 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "rubber"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "warning"
+        "role": "rubber"
       },
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "rubber"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
         "role": "rubber"
       },
       {
         "allowTextures": true,
+        "planIndex": 24,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "rubber"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
         "role": "warning"
       }
     ],
-    "nodeCount": 34,
+    "nodeCount": 37,
     "primitives": [
       {
         "canopy": false,
@@ -3057,8 +3165,8 @@
           -2.899999976158142,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 7,
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3086,7 +3194,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3113,7 +3221,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3140,7 +3248,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3167,7 +3275,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark_scorch",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3194,7 +3302,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3221,7 +3329,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3248,7 +3356,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3275,7 +3383,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal_steel",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3302,7 +3410,7 @@
           1
         ],
         "name": "LOD1_deadmetal_rust",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3328,8 +3436,8 @@
           -2.900091290473938,
           1
         ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 17,
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3357,7 +3465,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 18,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3384,7 +3492,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 19,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3411,7 +3519,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 20,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3438,7 +3546,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark_scorch",
-        "planIndex": 21,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3465,7 +3573,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 22,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3492,7 +3600,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 23,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3519,7 +3627,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 24,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3546,7 +3654,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal_steel",
-        "planIndex": 25,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3573,7 +3681,7 @@
           1
         ],
         "name": "LOD2_deadmetal_rust",
-        "planIndex": 26,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3599,8 +3707,8 @@
           -2.904780864715576,
           1
         ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 27,
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3628,7 +3736,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 28,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3655,7 +3763,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 29,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3682,7 +3790,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 30,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3709,7 +3817,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark_scorch",
-        "planIndex": 31,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3736,7 +3844,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 32,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3747,7 +3855,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_scrap_cage.glb"
   },
-  "runtimeHash": "7e2ee830ad0295e16b040e753f6f22e606dc68a2ade5c32a66dea8f63da7fd4e",
+  "runtimeHash": "66f35087ccddd8dce28ab920eac0f86595d87bae4c9d522f012983ac531b7e9e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

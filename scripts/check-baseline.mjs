@@ -53,9 +53,9 @@
 // is one 36s long pole plus about 26s of small change, so what actually buys the headroom is giving
 // the long pole an early start and not oversubscribing the machine around it.
 //
-// TIMEOUTS ARE NOT FAILURES. A link that blows LINK_TIMEOUT_MS is reported as TIMEOUT with its
-// budget, never as a plain FAIL, because a timeout is an environment/contention signal and a failed
-// assertion is a product signal. Note also that killing a `shell: true` child on Windows kills only
+// A link that exceeds LINK_TIMEOUT_MS is a deadline failure with unknown assertion status.
+// Keep TIMEOUT distinct from an observed assertion failure; its cause requires direct evidence.
+// Note also that killing a `shell: true` child on Windows kills only
 // cmd.exe — the node grandchild survives and holds the stdio pipes, so 'close' never fires. That is
 // how a 180s budget once reported 361820ms and exit null with "(no output captured)". killTree()
 // and the kill grace window below are what actually enforce the budget.
@@ -77,8 +77,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const BUDGET_MS = 90_000;
 const JOBS_ENV = 'SPACEFACE_CHECK_JOBS';
 
-// Roughly 4x the slowest link measured with the machine to itself (massline, ~40s). A breach at 4x
-// is contention or a hang, not a slow assertion. It sits above the aggregate's own 150s child
+// This bound was set above the historical quiet-host Massline measurement (~40s). Exceeding it
+// does not identify the cause. It sits above the aggregate's own 150s child
 // budget so a stuck massline child surfaces as that child's TIMEOUT and not as an opaque link one.
 const LINK_TIMEOUT_MS = 210_000;
 // A killed process can leave a grandchild holding the stdio pipes open, so 'close' may never fire.
@@ -195,13 +195,13 @@ const LINKS = [
     costHintMs: 9000,
     // Envelope cleanRunCountRequired is 5. npm run check:sim:v3 still repeats 20 for the long
     // chain. Five clean runs plus the reload proof are the whole gate inside this 90s wall.
-    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
+    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.native-contact.save-v23.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
     why: 'The V3 golden hash. NOTE: sim-v3-compare cannot fail on a stale golden (sf-sim.mjs tolerates expectedHash diffs) — this link is the one that can. Repeat matches the envelope minimum so the wall stays inside 90s.',
   },
   {
     id: 'sim',
     costHintMs: 9000,
-    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 5 --reload-at 600',
+    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.save-v23.expected.json --hash --repeat 5 --reload-at 600',
     why: 'The legacy golden hash. Same note as sim-v3: the compare links do not gate the goldens, this one does. Repeat matches the envelope minimum.',
   },
   {
@@ -268,17 +268,17 @@ if (asJson) {
   console.log('');
   console.log(`  ${results.length - failed.length}/${results.length} green in ${wallMs}ms wall (${serial ? 'serial' : mode}), budget ${BUDGET_MS}ms, headroom ${BUDGET_MS - wallMs}ms`);
   console.log(`  concurrency allowance ${allowance} from ${allowanceSource()} — split, not multiplied (see the header)`);
-  if (overBudget) console.log('  BUDGET EXCEEDED — make a link faster or drop one; do not raise the number quietly.');
+  if (overBudget) console.log('  BUDGET EXCEEDED — fix the cause without raising the budget or deleting required coverage.');
   if (timedOutResults.length) {
-    console.log('  A TIMEOUT is a contention/environment signal, not a product failure. Before you file a bug,');
-    console.log('  re-run the timed-out link on its own and see whether it is green with the machine to itself.');
+    console.log('  A TIMEOUT has unknown assertion status and an unclassified cause. Inspect progress and resource');
+    console.log('  ownership; isolate the link when needed to distinguish a regression, stalled work, or contention.');
   }
   for (const r of failed) {
     console.log('');
     if (r.timedOut) {
       console.log(`--- ${r.id} TIMED OUT after ${r.durationMs}ms (budget ${r.timeoutMs}ms) :: ${r.command}`);
       console.log('    Killed mid-run, so the output below is partial by construction and no assertion was');
-      console.log('    reported. Reproduce alone before treating this as a product defect.');
+      console.log('    reported. Preserve this deadline failure and diagnose its cause before classifying it.');
       console.log(tailOrNote(r.output, 40, '(killed before it wrote anything — no assertion was reported)'));
     } else {
       console.log(`--- ${r.id} (exit ${r.code}) :: ${r.command}`);
@@ -456,9 +456,12 @@ function allowanceSource() {
   return 'availableParallelism';
 }
 
-// HALF of availableParallelism(), not all of it and not cpus-1. This is the ONE place the machine is
-// consulted; everything below this point divides what it says, so the number has to be the point
-// where adding a process stops paying. Measured 2026-07-27 on an 8-logical-core box:
+// HALF of availableParallelism(), capped at four. This is the ONE place the machine is consulted;
+// everything below divides what it says. The older 8-logical-core measurements favored a wider
+// ceiling, but a recent owner-machine run measured the automatic 7-job (3+4) split at 92.054s and
+// the explicit 4-job (2+2) split at 86.286s. Keep the automatic ceiling at the measured faster
+// configuration while leaving explicit --jobs and inherited SPACEFACE_CHECK_JOBS overrides intact.
+// Historical measurements from 2026-07-27 on an 8-logical-core box:
 //
 //   the 8 leaf links      serial 19.5s | x2 16.2s | x3 15.2s | x4 15.0s
 //   the massline aggregate serial 63.2s | x2 47.9s | x3 52.4s | x4 63.8s | x7 49.4s
@@ -466,12 +469,11 @@ function allowanceSource() {
 // Past about two concurrent heavy sims per lane, per-process time inflates faster than the pool
 // drains (check:sim goes 8.2s -> 14.9s), so the wall stops improving and starts getting NOISIER,
 // which is the failure mode this whole change exists to kill. availableParallelism() reports logical
-// CPUs; on an SMT machine half of that is the physical core count, which is where the knee sat here.
-// Floor of 2 so even a tiny box overlaps the long pole with something; ceiling of 8 because only six
-// of the aggregate's 23 children are non-trivial, so nothing wider has work to do.
+// CPUs; on an SMT machine half of that approximates physical cores. Floor of 2 so the long pole can
+// overlap other work; the automatic ceiling is 4 based on the more recent full-baseline comparison.
 function defaultAllowance() {
   const cpus = typeof availableParallelism === 'function' ? availableParallelism() : 4;
-  return Math.max(2, Math.min(8, Math.round(cpus / 2)));
+  return Math.max(2, Math.min(4, Math.round(cpus / 2)));
 }
 
 function readOption(name) {

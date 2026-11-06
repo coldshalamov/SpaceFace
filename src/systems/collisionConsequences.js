@@ -4,6 +4,7 @@
 // those receipts into setup/payoff combat without ever writing velocity, hull, heat, economy, or
 // save state directly: control crosses physicsAuthority, damage crosses the combat kernel, and
 // transient episode/control state stays outside the entity graph.
+import { currentChainWreckWitness } from '../combat/killCausality.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
@@ -306,8 +307,12 @@ export const collisionConsequences = {
     const projectiles = combatFlag('tumbleFling');
     const looseA = projectiles && isLooseHull(this.state, a);
     const looseB = projectiles && isLooseHull(this.state, b);
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA);
+    // Snapshot admitted live body lives before resolving either direction: the first direction
+    // may destroy the wreck even though it was a valid participant at contact admission.
+    const chainA = this._chainContactForBody(a, tick);
+    const chainB = this._chainContactForBody(b, tick);
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseB, chainB);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, looseA, chainA);
   },
 
   _resolveOrchardPodShock(target, other, pending) {
@@ -337,7 +342,16 @@ export const collisionConsequences = {
     }
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false) {
+  _chainContactForBody(body, tick) {
+    if (!this.state || body?.type !== 'wreck') return null;
+    const witness = currentChainWreckWitness(this.state, body);
+    if (!witness) return null;
+    const history = readRecentImpulseProvenanceHistory(body, tick);
+    const provenance = readRecentImpulseProvenance(body, tick);
+    return { witness, provenance, history, body, playerId: this.state.playerId };
+  },
+
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false, chainContact = null) {
     const state = this.state;
     if (target.type === 'wreck') {
       // Wrecks share the contact damage law and combat's hull/death writer, but never
@@ -481,7 +495,7 @@ export const collisionConsequences = {
     // salvage and deals none. Ordinary bodies read scale 1 (no behavior change).
     const scaledImpact = scaledImpactForHotDebris(receipt, other, state);
     const damageResult = scaledImpact > 0
-      ? this._routeImpactDamage(target, other, receipt, scaledImpact)
+      ? this._routeImpactDamage(target, other, receipt, scaledImpact, chainContact)
       : null;
     if (target.alive !== false) clearPendingSlam(target.id);
 
@@ -580,7 +594,7 @@ export const collisionConsequences = {
     for (const shard of shards) this._tearOffLive.add(shard.id);
   },
 
-  _routeImpactDamage(target, other, receipt, damageOverride) {
+  _routeImpactDamage(target, other, receipt, damageOverride, chainContact = null) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
@@ -591,6 +605,12 @@ export const collisionConsequences = {
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
     const collisionPresentation = buildCollisionPresentationProvenance(target, other, receipt);
+    let chainWitness = null;
+    if (chainContact?.body === other && receipt.provenance.actorId === chainContact.playerId) {
+      const matches = (candidate) => candidate && candidate.actorId === receipt.provenance.actorId
+        && candidate.appliedTick === receipt.provenance.appliedTick && candidate.tag === receipt.provenance.tag;
+      if (matches(chainContact.provenance) || chainContact.history.some(matches)) chainWitness = chainContact.witness;
+    }
     const packet = scalarHitToDamagePacket({
       damage: impactDamage,
       damageType: 'kinetic',
@@ -600,6 +620,7 @@ export const collisionConsequences = {
         weaponId: receipt.provenance.weaponId,
         impulseProvenance: receipt.provenance.tag,
         collisionPresentation,
+        ...(chainWitness ? { chainWitness } : {}),
       },
     });
     // A physical blow breaks wreckage regardless of the dead body's former team.

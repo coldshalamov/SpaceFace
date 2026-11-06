@@ -46,8 +46,19 @@ test('Band deed gates derive only from canonical gameplay receipts', () => {
   assert.deepEqual(deriveBandEventKeys('dock:docked', {}, state), ['player.dock_heavily_damaged']);
   player.hull = 25;
   assert.deepEqual(deriveBandEventKeys('dock:docked', {}, state), []);
-  assert.deepEqual(deriveBandEventKeys('player.cross_vale_closure', {}, state), [],
-    'Vale closure copy stays dependency-bound until a real tagged crossing producer exists');
+  // The tagged crossing producer exists: entering Vael space is the deed the Margin reports.
+  assert.deepEqual(deriveBandEventKeys('sector:enter', {
+    sectorId: 'sector_ashfall_reach', sector: { id: 'sector_ashfall_reach', factionId: 'faction_vael' },
+  }, state), ['player.cross_vale_closure']);
+  assert.deepEqual(deriveBandEventKeys('sector:enter', {
+    sectorId: 'sector_helios_prime', sector: { id: 'sector_helios_prime', factionId: 'faction_scn' },
+  }, state), [], 'a lawful-sector entry is not a closure crossing');
+  assert.deepEqual(deriveBandEventKeys('sector:enter', { sectorId: 'sector_ashfall_reach' }, state), [],
+    'no sector def, no closure claim');
+  // A bonded hunter the player's own hull put down is Margin copy; someone else's kill is not.
+  assert.deepEqual(deriveBandEventKeys('warrant:hunterDisabled', { byPlayer: true, name: 'Vex' }, state),
+    ['player.downed_hunter']);
+  assert.deepEqual(deriveBandEventKeys('warrant:hunterDisabled', { byPlayer: false, name: 'Vex' }, state), []);
 });
 
 test('numbers station synchronously records one real canonical fuzzy wreck bearing', () => {

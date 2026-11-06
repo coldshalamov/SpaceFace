@@ -29,6 +29,7 @@ import { SECTORS } from '../data/sectors.js';
 import { swarmLevel } from '../data/swarmMode.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
+import { swarmPilotHasActed } from './swarmSafety.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -111,10 +112,11 @@ export function createProductionCapitalBossEncounters() {
           && state.world.currentSectorId === mission?.destSectorId);
       const notDocked = !(state.ui && (state.ui.docked === true || state.ui.dockedStationId != null));
       const inRange = capitalBossInRange(record, boss, target);
+      const characterAdmitted = !swarmFight || !bossEntity?.data?.ironKraken || swarmPilotHasActed(state);
       return {
         boss,
         target,
-        active: Boolean(missionLive && sectorLive && notDocked && boss && target && inRange),
+        active: Boolean(missionLive && sectorLive && notDocked && boss && target && inRange && characterAdmitted),
         targets: target ? [target] : [],
       };
     },

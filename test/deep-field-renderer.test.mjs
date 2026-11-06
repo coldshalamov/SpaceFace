@@ -62,7 +62,8 @@ test('normal rotation precedes instance normal transform; shape selection preced
   const state = fixtureState();
   const stack = parallax.init(new THREE.Scene(), state, null, state.render.sectorPalette);
   try {
-    assert.equal(stack.groups.length, 3);
+    assert.equal(stack.groups.length, Object.keys(parallax.PARALLAX_BANDS).length,
+      'each authored depth band shares the shader contract');
     for (const group of stack.groups) {
       const mesh = group.children[0];
       const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader,
@@ -103,7 +104,7 @@ test('movement, rebase, and regional finish changes upload no instance matrices 
       assert.equal(r.mesh.geometry.getAttribute('aDeepFieldVariant').version, r.shapeVersion);
     }
     assert.deepEqual(stack.groups.map(g => g.children[0].count),
-      ['far', 'mid', 'near'].map(name => parallax.PARALLAX_BANDS[name].count));
+      Object.values(parallax.PARALLAX_BANDS).map(band => band.count));
   } finally { parallax.dispose(); }
   assert.equal(scene.children.length, 0);
 });

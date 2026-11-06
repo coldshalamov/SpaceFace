@@ -10,10 +10,14 @@
 //   4. Dock Pulse: berthing is two-sided — the centrifuge eases while the berth seats (and surges
 //      on release) with a sub-percent contact thump, matched to the docked station by stationId.
 //      Ring rates are size-scaled (ω = √(a/r)) so big stations turn slower for the same gravity.
+//   5. Gate Departure Pulse: a committed gate jump plays on the departure gate — the aperture
+//      swells, runs hot through the tunnel, and collapses behind the departing hull — so leaving
+//      through a gate has a stage, not just a camera kick.
 //
 // PURE RENDER-ONLY PRESENTATION: Determinism-safe, zero per-frame allocation.
 
 import { resolveStationSideEventVfxProfile } from './stationSideEventVfx.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -101,6 +105,92 @@ export function resolveRingSizeFactor(radius) {
   return clamp(Math.sqrt(60 / r), 0.4, 1.6);
 }
 
+// --- Gate departure pulse: the gate plays the committed jump ---------------------------------
+// The tunnel is the biggest traversal moment in the game, and the gate — the stage it happens
+// on — used to sit idle through it: the hull shuddered (shipMicroMotion), the camera punched
+// (feel.js), and the aperture kept its idle swirl for the whole 1.2 s crossing. A committed
+// gate jump now plays on the structure itself: the aperture swells as the drive bites, the
+// swirl runs hot through the tunnel, and the ring collapses behind the departing hull — a
+// wake closing — before easing back to idle. The window mirrors the sim's JUMPING duration;
+// keyed off simTime like the dock pulse, never the wall clock. Transform-only: gate
+// materials are shared, so the pulse never touches emissive.
+export const GATE_JUMP_WINDOW_S = 1.2;   // mirrors world.js JUMPING_DURATION (the tunnel)
+export const GATE_JUMP_SETTLE_S = 0.45;  // rebound tail after the tunnel
+export const GATE_JUMP_RADIUS_WU = 420;  // only the departure gate plays (hostile-clear radius is 400)
+
+/** smoothstep on a clamped 0..1 input. */
+function gateJumpSmooth(x) {
+  const c = clamp(x, 0, 1);
+  return c * c * (3 - 2 * c);
+}
+
+/**
+ * The pulse a committed gate jump arms, or null when the payload is not a gate departure
+ * (drive jumps have no gate, aborts never reach jump:start). Pure.
+ */
+export function jumpPulseFromCommit(payload) {
+  if (!payload || payload.via !== 'gate') return null;
+  const x = Number(payload.fromPos && payload.fromPos.x);
+  const z = Number(payload.fromPos && payload.fromPos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return { x, z };
+}
+
+/** Whether this gate is the departure gate. A null pulse or off-map gate never plays. Pure. */
+export function gateServesJumpPulse(pulse, gatePos) {
+  if (!pulse) return false;
+  const gx = Number(gatePos && gatePos.x);
+  const gz = Number(gatePos && gatePos.z);
+  if (!Number.isFinite(gx) || !Number.isFinite(gz)) return false;
+  const dx = gx - pulse.x;
+  const dz = gz - pulse.z;
+  return (dx * dx + dz * dz) <= GATE_JUMP_RADIUS_WU * GATE_JUMP_RADIUS_WU;
+}
+
+/**
+ * The departure gate's aperture response, by elapsed seconds since jump:start.
+ *
+ * SWELL — the aperture opens over the first fifth of the tunnel and peaks at ~42% (the drive
+ * biting). COLLAPSE — from 55% the ring runs closed behind the departing hull, bottoming at
+ * 0.55 of its base as the sector crosses: the wake snapping shut. SETTLE — the tail eases the
+ * aperture back to idle. The swirl runs hot through the swell and eases home with the settle;
+ * the hub glow swells with the aperture.
+ *
+ * Reduced motion keeps every phase boundary and the swirl read but halves how far the
+ * aperture and glow travel — stretched, never silenced. Idle (elapsed outside the window,
+ * negative, or NaN) returns neutral. Pure.
+ */
+export function resolveGateJumpResponse(elapsedS, reducedMotion = false) {
+  const idle = { swirlMul: 1, scaleMul: 1, glowMul: 1 };
+  const t = Number(elapsedS);
+  if (!Number.isFinite(t) || t < 0) return idle;
+  if (t >= GATE_JUMP_WINDOW_S + GATE_JUMP_SETTLE_S) return idle;
+  const u = clamp(t / GATE_JUMP_WINDOW_S, 0, 1);
+  const settle = clamp((t - GATE_JUMP_WINDOW_S) / GATE_JUMP_SETTLE_S, 0, 1);
+  // Swell rises over the first fifth, holds, and the collapse pulls it closed from 42%.
+  const swell = gateJumpSmooth(u / 0.2) * (1 - gateJumpSmooth((u - 0.42) / 0.58));
+  const collapse = gateJumpSmooth((u - 0.55) / 0.45);
+  const swellScale = reducedMotion ? 0.11 : 0.22;
+  const collapseScale = reducedMotion ? 0.225 : 0.45;
+  const swellGlow = reducedMotion ? 0.3 : 0.6;
+  const swirlReach = reducedMotion ? 2.5 : 5;
+  // Tunnel: swell up, then the collapse pulls the ring closed. Settle: rebound from the
+  // bottomed aperture back to idle. The tunnel value at u=1 equals the settle start, so the
+  // handoff is continuous.
+  const tunnelScale = 1 + swellScale * swell - collapseScale * collapse;
+  const settledScale = 1 - collapseScale;
+  const settleEase = gateJumpSmooth(settle);
+  return {
+    // Swell and glow decay to neutral inside the tunnel itself; the settle tail only
+    // rebounds the aperture scale.
+    swirlMul: 1 + swirlReach * swell,
+    glowMul: 1 + swellGlow * swell,
+    scaleMul: settleEase > 0
+      ? settledScale + (1 - settledScale) * settleEase
+      : tunnelScale,
+  };
+}
+
 // --- Station work arms (FB-076) ---------------------------------------------------------------
 // station:sideEvent is the station's real operating state — while an event is live the matching
 // hardware articulates once: reach, hold, settle. Constant decorative spinning was rejected
@@ -173,6 +263,9 @@ export function createInfrastructureMotionTracker() {
   // undock pulse reuses the last docked station — berths always release where they seated.
   const dockPulse = { stationId: null, kind: null, t0: -1 };
   const gatePulse = { sectorId: null, kind: null, t0: -1 };
+  // Latest committed gate jump: where the hull left from, so the departure gate — and only
+  // it — plays the aperture response through the tunnel.
+  const jumpPulse = { t0: -1, x: 0, z: 0 };
   // FB-076 — one live articulation record per station, keyed off the same stationId the dock
   // pulse uses. start/settle stamps make the record inspectable; the envelope writes the pose.
   const armWork = new Map();
@@ -200,6 +293,18 @@ export function createInfrastructureMotionTracker() {
       gatePulse.sectorId = payload.sectorId != null ? String(payload.sectorId) : null;
       gatePulse.kind = payload.type || payload.kind || null;
       gatePulse.t0 = lastSimTime;
+    }));
+    // A committed gate jump arms the departure pulse at the hull's exit point. Arriving ends
+    // it — the collapse has finished, and no gate in the new sector may inherit a stale pulse.
+    busSubscribers.push(bus.on('jump:start', (payload) => {
+      const pulse = jumpPulseFromCommit(payload);
+      if (!pulse) return;
+      jumpPulse.t0 = lastSimTime;
+      jumpPulse.x = pulse.x;
+      jumpPulse.z = pulse.z;
+    }));
+    busSubscribers.push(bus.on('jump:arrive', () => {
+      jumpPulse.t0 = -1;
     }));
     // FB-076 — a side event is the station doing work: arm one articulation record per event.
     busSubscribers.push(bus.on('station:sideEvent', (payload) => {
@@ -232,6 +337,7 @@ export function createInfrastructureMotionTracker() {
     gatePulse.sectorId = null;
     gatePulse.kind = null;
     gatePulse.t0 = -1;
+    jumpPulse.t0 = -1;
     armWork.clear();
   }
 
@@ -321,11 +427,22 @@ export function createInfrastructureMotionTracker() {
     }
 
     const swirlSpeed = (0.7 + approachFactor * 1.8) * (reducedMotion ? 0.3 : 1.0);
-    rec.portalSwirl += swirlSpeed * dt;
+    // Committed departure: the aperture plays the jump — swell, hot run, collapse behind the
+    // hull. Only the departure gate answers; every other gate keeps its idle cadence.
+    let jumpResp = null;
+    if (jumpPulse.t0 >= 0 && entity.pos) {
+      const elapsed = simTime - jumpPulse.t0;
+      if (elapsed <= GATE_JUMP_WINDOW_S + GATE_JUMP_SETTLE_S
+        && gateServesJumpPulse(jumpPulse, entity.pos)) {
+        jumpResp = resolveGateJumpResponse(elapsed, reducedMotion);
+      }
+    }
+    rec.portalSwirl += swirlSpeed * (jumpResp ? jumpResp.swirlMul : 1) * dt;
 
     // Portal breathing & expansion
     const breath = Math.sin(simTime * 2.2 + rec.phase) * (0.04 + approachFactor * 0.08);
-    rec.portalScale = 1.0 + breath;
+    rec.portalScale = (1.0 + breath) * (jumpResp ? jumpResp.scaleMul : 1.0);
+    const glowMul = jumpResp ? jumpResp.glowMul : 1.0;
 
     // Find and animate gate components. This tracker is the sole transform owner — bases are
     // captured on first contact because build code pre-scales nodes by the structure radius.
@@ -366,7 +483,7 @@ export function createInfrastructureMotionTracker() {
           rec.hubGlowBase = (hubGlow.scale && Number.isFinite(hubGlow.scale.x)) ? hubGlow.scale.x : 1;
         }
         if (hubGlow.scale && typeof hubGlow.scale.setScalar === 'function') {
-          hubGlow.scale.setScalar(rec.hubGlowBase * (1.0 + breath * 1.5));
+          hubGlow.scale.setScalar(rec.hubGlowBase * (1.0 + breath * 1.5) * glowMul);
         }
       }
     }
@@ -528,13 +645,31 @@ export function createInfrastructureMotionTracker() {
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
+    const boundHulk = isPhysicsBoundWholeHulk(entity);
     lastSimTime = simTime;
+
+    // A qualified full hulk's child must stay in the solver's planar frame.
+    // This also removes drift left by a late physics-binding handoff.
+    if (boundHulk) {
+      const body = (mesh.children && mesh.children[0]) || null;
+      const hull = mesh.userData && mesh.userData.hull;
+      if (body && body !== mesh && body.rotation
+          && (body.rotation.x !== 0 || body.rotation.y !== 0 || body.rotation.z !== 0)) {
+        body.rotation.x = 0; body.rotation.y = 0; body.rotation.z = 0;
+        if (body.matrixAutoUpdate === false && typeof body.updateMatrix === 'function') body.updateMatrix();
+      }
+      if (hull && hull !== mesh && hull !== body && hull.rotation
+          && (hull.rotation.x !== 0 || hull.rotation.y !== 0 || hull.rotation.z !== 0)) {
+        hull.rotation.x = 0; hull.rotation.y = 0; hull.rotation.z = 0;
+        if (hull.matrixAutoUpdate === false && typeof hull.updateMatrix === 'function') hull.updateMatrix();
+      }
+    }
 
     // Slow zero-G dead drift: a bounded wobble riding the entity's real yaw. Wrecks now carry an
     // elongated capsule collider aligned with the spine, so the visual may only oscillate around
     // the sim-authored heading — an accumulating tumble would swing the drawn hulk through space
     // the collider doesn't occupy.
-    if (!reducedMotion) {
+    if (!reducedMotion && !boundHulk) {
       rec.driftRotX += rec.driftRate * 0.7 * dt;
       rec.driftRotY += rec.driftRate * dt;
       rec.driftRotZ += rec.driftRate * 0.5 * dt;
@@ -558,7 +693,7 @@ export function createInfrastructureMotionTracker() {
     }
     if (rec.arcIntensity > 0) {
       rec.arcIntensity = Math.max(0, rec.arcIntensity - dt * 6.0);
-      if (!reducedMotion) {
+      if (!reducedMotion && !boundHulk) {
         const body = (mesh.children && mesh.children[0]) || mesh;
         const jolt = rec.arcIntensity * rec.arcIntensity * 0.028;
         body.rotation.y += Math.sin(simTime * 71.0 + rec.phase) * jolt;

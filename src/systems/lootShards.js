@@ -50,6 +50,7 @@ import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { cargoIdentityOf, identityFromManifest } from '../data/cargoIdentity.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../data/cargoPayloadTypes.js';
 import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
 import { gardenGrowthRadius } from '../data/understoryReceiver.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
@@ -66,7 +67,9 @@ function catchNetsMembershipVersion(state) {
   // -1 (index unready) plays the old null role: the latch refuses to arm.
   return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
 }
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
+
+export { JETTISONED_CARGO_PAYLOAD_TYPE };
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
 const COMPOST_COMMODITY_MASS = new Map(COMMODITIES.map(row => [row.id, row.massPerU]));
@@ -81,7 +84,6 @@ export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
  * `flags.persistent` plus this eviction bound. Cargo inventory stays cargo-owned.
  */
 export const MAX_JETTISONED_CARGO_PODS = 48;
-export const JETTISONED_CARGO_PAYLOAD_TYPE = 'jettisoned_cargo';
 export const JETTISONED_CARGO_MASS_FLOOR = 20;
 // LOOT MAGNET ring pull: peak acceleration (WU/s²) at the ring's centre, falling linearly to
 // zero at the ring edge. Enough to close a 420 WU ring in a few seconds against drift, never
@@ -736,6 +738,9 @@ export const lootShards = {
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('loot:magnetCaptured', {
         schemaVersion: 1, podId: pod.id, playerId: state.playerId, tick: state.tick,
+        // Where the field took the pod, so the capture beat can hold the catch point even
+        // if the pod is consumed before the presentation pass reads it.
+        pos: { x: pod.pos.x, z: pod.pos.z },
       });
     }
   },

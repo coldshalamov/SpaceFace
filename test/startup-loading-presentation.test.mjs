@@ -273,13 +273,14 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
       const overlay = fakeElement();
       const document = { getElementById: () => overlay, querySelector: () => null };
       const info = { render: { frame: 10 } };
-      const state = { render: { renderer: { info }, firstPlayableFrameAt: null } };
+      const state = { mode: 'loading', render: { renderer: { info }, firstPlayableFrameAt: null } };
       const presenter = createLoadingPresenter({ document, bus, state });
       bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
+      state.mode = 'flight';
       bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
       info.render.frame = 11;
       pump(3);
-      return { overlay, state, presenter };
+      return { overlay, state, presenter, bus };
     };
 
     const a = run();
@@ -287,8 +288,10 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
       'a presented frame before the first playable paint must keep the veil up');
     assert.equal(a.state.render.flightVeilHoldsSim, true, 'the veil holds the sim while it waits');
     a.state.render.firstPlayableFrameAt = 1234;
+    a.bus.emit('game:loadingProgress', { id: 'late-gpu-progress', progress: .9 });
     pump(2);
-    assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
+    assert.equal(a.overlay.classList.contains('hidden'), true,
+      'stale progress after flight cannot cancel the reveal after the first playable paint lands');
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
     assert.equal(a.state.render.veilStage, undefined, 'a quick first draw never shows the stage label');
     assert.equal(a.state.render.flightVeilHoldsSim, true,
@@ -557,6 +560,26 @@ test('load_failed during the active loading shell becomes a startup failure; ord
     assert.equal(ordinary.overlay.classList.contains('hidden'), true);
   } finally {
     ordinaryPresenter.destroy(); globalThis.document = ordinary.priorDocument;
+  }
+});
+
+test('unrelated save errors do not dismiss an active New Game loading shell', async () => {
+  const f = fixture('menu');
+  const presenter = await makePresenter(f);
+  try {
+    f.bus.emit('game:new', {});
+    f.state.mode = 'loading';
+    f.bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
+    f.bus.emit('game:loadingProgress', { id: 'gpu-resources', transition: 'new-game', progress: .9 });
+    for (const error of [{ reason: 'settings_write_failed', slot: 'settings' }, {}]) {
+      f.bus.emit('save:error', error);
+      assert.equal(f.overlay.classList.contains('hidden'), false);
+      assert.equal(f.overlay.getAttribute('aria-busy'), 'true');
+      assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
+    }
+    assert.equal(f.state.mode, 'loading');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
   }
 });
 

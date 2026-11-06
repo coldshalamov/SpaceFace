@@ -54,7 +54,9 @@ self.addEventListener('unhandledrejection', (e) => { try { self.postMessage({ __
   page.on('pageerror', (e) => console.log('[pageerror]', String((e && e.stack) || e).slice(0, 800)));
   page.on('requestfailed', (r) => console.log('[reqfail]', r.url(), r.failure()?.errorText));
   page.on('response', (r) => { if (r.status() >= 400) console.log('[http', r.status() + ']', r.url()); });
-  await page.goto(`${server.baseUrl}?simLane=worker`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  const laneArg = (process.argv.find((a) => a.startsWith('--sim-lane=')) || '').slice('--sim-lane='.length);
+  const url = laneArg ? `${server.baseUrl}?simLane=${laneArg}` : server.baseUrl;
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 240000 });
   const t0 = Date.now();
   let state = 'booting';
   while (Date.now() - t0 < 45000) {

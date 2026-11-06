@@ -43,6 +43,10 @@ function fixture(t, { worker = true, library = true, visuals = true, picture = a
     ui: { screenStack: ['mainMenu'] },
   };
   const bus = createBus();
+  bus.on('ui:closeAll', () => {
+    state.ui.screenStack = [];
+    state.ui.docked = false;
+  });
   const failureUi = mountStartupFailurePresenter(t, bus, state);
   const guard = createRunTransitionGuard();
   const errors = [];
@@ -265,6 +269,9 @@ test('a late New Game callback remains classified but never fabricates a save re
   bus.on('save:error', payload => errors.push(payload));
   bus.on('toast', payload => toasts.push(payload));
   let deadline;
+  // The real New Game boot resets the main-owned UI before it enters flight. The
+  // presentation timer intentionally pauses while a screen still covers the canvas.
+  state.ui.screenStack = [];
   createEnterFlightMode()(state, bus, {
     runTransitionGuard: guard,
     transitionToken: token,

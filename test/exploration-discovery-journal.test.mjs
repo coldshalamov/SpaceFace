@@ -4,9 +4,21 @@ import assert from 'node:assert/strict';
 import { world } from '../src/systems/world.js';
 import {
   explorationDiscoveryPlates,
+  isAuthoredExplorationSite,
   sectorExplorationProgress,
 } from '../src/world/explorationJournal.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { buildSystemModel } from '../src/ui/galaxyMap.js';
+
+// The census grows with authored content (beacons, derelicts, claim sites with discovery plates),
+// so each sector's total is read from the authored rows the census rule admits — never a frozen count.
+function authoredSites(sectorId, floor) {
+  const sector = SECTORS.find((row) => row.id === sectorId);
+  const total = (sector.pois || []).filter(isAuthoredExplorationSite).length;
+  assert.ok(total >= floor, `${sectorId} keeps at least its ${floor} original authored sites`);
+  return total;
+}
+const pct = (found, total) => Math.round((found / total) * 100);
 
 function harness() {
   const events = [];
@@ -34,11 +46,12 @@ test('a triangulated fix does not count as a physical discovery', () => {
     completedAt: 20,
   });
 
+  const veilTotal = authoredSites('sector_veil_nebula', 3);
   assert.deepEqual(sectorExplorationProgress(t.state, 'sector_veil_nebula'), {
     sectorId: 'sector_veil_nebula',
     found: 0,
-    total: 3,
-    remaining: 3,
+    total: veilTotal,
+    remaining: veilTotal,
     value: 0,
     percent: 0,
   });
@@ -62,9 +75,10 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
   }), true);
 
   const progress = sectorExplorationProgress(t.state, 'sector_veil_nebula');
+  const veilTotal = authoredSites('sector_veil_nebula', 3);
   assert.equal(progress.found, 1);
-  assert.equal(progress.total, 3);
-  assert.equal(progress.percent, 33);
+  assert.equal(progress.total, veilTotal);
+  assert.equal(progress.percent, pct(1, veilTotal));
 
   const plates = explorationDiscoveryPlates(t.state);
   assert.equal(plates.length, 1);
@@ -74,7 +88,7 @@ test('flying down an anomaly source unlocks one durable find-story and sector pr
   assert.match(plates[0].body, /nothing recognized as matter/);
   assert.match(plates[0].body, /dark companion/);
   assert.match(plates[0].meta, /Veil Nebula · SOURCE INVESTIGATED/);
-  assert.match(plates[0].note, /1\/3 authored sites found · 33% sector exploration/);
+  assert.ok(plates[0].note.includes(`1/${veilTotal} authored sites found · ${pct(1, veilTotal)}% sector exploration`));
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);
 
   const restored = {
@@ -124,7 +138,7 @@ test('physically approaching the Quiessence unlocks its durable census story', (
   assert.equal(plate.title, 'The Quiessence Census');
   assert.match(plate.body, /Seventeen intact freighters/);
   assert.match(plate.body, /every bunk is warm/i);
-  assert.match(plate.note, /1\/4 authored sites found/);
+  assert.ok(plate.note.includes(`1/${authoredSites('sector_pallas_drift', 4)} authored sites found`));
   assert.equal(
     t.events.filter((event) => event.name === 'discovery:plateUnlocked'
       && event.payload.poiId === 'poi_quiessence').length,
@@ -218,9 +232,10 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   );
 
   const progress = sectorExplorationProgress(t.state, 'sector_ashfall_reach');
+  const ashTotal = authoredSites('sector_ashfall_reach', 3);
   assert.equal(progress.found, 1);
-  assert.equal(progress.total, 3);
-  assert.equal(progress.percent, 33);
+  assert.equal(progress.total, ashTotal);
+  assert.equal(progress.percent, pct(1, ashTotal));
 
   const plate = explorationDiscoveryPlates(t.state)
     .find((entry) => entry.poiId === 'poi_boss');
@@ -234,7 +249,7 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   assert.equal(headline.payload.kind, 'combat-aftermath');
   assert.match(headline.payload.text, /Iron Maw is dead/);
   assert.match(headline.payload.text, /vault coordinates/);
-  assert.match(plate.note, /1\/3 authored sites found · 33% sector exploration/);
+  assert.ok(plate.note.includes(`1/${ashTotal} authored sites found · ${pct(1, ashTotal)}% sector exploration`));
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);
 
   const restored = {
@@ -336,7 +351,7 @@ test('investigating the Ancient Vault unlocks its authored aftermath story', () 
   assert.equal(plate.title, 'The Deep-Mother Vault');
   assert.match(plate.body, /growth archive/);
   assert.match(plate.body, /empty cradle/);
-  assert.match(plate.note, /2\/3 authored sites found/);
+  assert.ok(plate.note.includes(`2/${authoredSites('sector_ashfall_reach', 3)} authored sites found`));
   assert.equal(
     t.events.filter((event) => event.name === 'discovery:plateUnlocked' && event.payload.poiId === 'poi_vault').length,
     1,

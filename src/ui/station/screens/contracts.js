@@ -1,3 +1,4 @@
+import { mountCinderglassJobContracts } from '../../../features/cinderglassJob/integration.js';
 import { briefingDiagramHtml, contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
 import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
@@ -51,6 +52,9 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
+// DUST P5: mission-type tag chips — a small type glyph plus the type's own label leads each
+// board row, so the board scans by verb instead of by reading every authored title.
+import { missionTypeChipHtml, missionTypeGlyphSvg } from '../../icons/index.js';
 import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
 import { injectOrreryStationContracts } from '../../orrery/station-contractsLayouts.js';
 import { arcGauge } from '../../orrery/instruments.js';
@@ -525,6 +529,7 @@ export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
+  const cinderglassContact = mountCinderglassJobContracts(ctx, el);
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
   const standingEl = document.createElement('p');
   standingEl.className = 'k-sentence';
@@ -655,8 +660,8 @@ export function createContractsScreen(ctx) {
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',
-        headline: 'No missions posted at this berth.',
-        fills: 'Boards fill when a station has cargo it cannot move itself. Try a mission desk or black-market contact at another berth.',
+        headline: 'The board is blank tonight.',
+        fills: 'This berth can move everything it owns. Desks with freight they cannot shift post at busier stations — or wait a shift; boards answer to whoever gets desperate.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
@@ -733,6 +738,9 @@ export function createContractsScreen(ctx) {
             // not inside the title: the title's overflow:hidden would clip it entirely.
             (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
+              // DUST P5: the type chip leads the title (glyph is decorative; the type word is
+              // real content, so the spoken row names its verb before its prose).
+              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type) })}` +
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
@@ -1192,13 +1200,15 @@ export function createContractsScreen(ctx) {
     const dt = Math.max(0, t - hold.last);
     hold.last = t;
     if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
-    // filling runs at the hold's pace; a released hold falls back twice as fast
-    hold.frac += (dt / hold.ms) * (hold.dir > 0 ? 1 : -2);
-    if (hold.frac >= 1) {
-      // Input holds use elapsed time, not a minimum number of rendered frames.
-      // Carry the actual threshold time so a delayed frame also catches up the retract.
-      const completedAt = t - (hold.frac - 1) * hold.ms;
-      hold.frac = 1; paintHold(); fireHold(completedAt); return;
+    if (hold.dir > 0) {
+      // Progress is elapsed monotonic press time; rAF only paints it. If frames stall while the
+      // input remains down, the first later frame still sees the full hold duration.
+      const elapsed = Math.max(0, t - hold.startedAt);
+      hold.frac = Math.min(1, elapsed / hold.ms);
+      if (elapsed >= hold.ms) { paintHold(); fireHold(hold.startedAt + hold.ms); return; }
+    } else {
+      // A released short hold falls back twice as fast; keep the spring frame-driven visually.
+      hold.frac = Math.max(0, hold.frac - (dt / hold.ms) * 2);
     }
     // reduced motion shows the end state at once: no retract travel, the light simply goes out
     if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
@@ -1213,18 +1223,43 @@ export function createContractsScreen(ctx) {
     if (terms == null) return;
     if (hold && (hold.missionId !== missionId || hold.terms !== terms)) endHold();
     if (hold && hold.done) return;
-    if (!hold) hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: holdClock(),
-      frame: 0, done: false, missionId, terms };
-    else { hold.dir = 1; hold.source = source; }
+    if (!hold) {
+      const startedAt = holdClock();
+      hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: startedAt,
+        startedAt, frame: 0, done: false, missionId, terms };
+    }
+    else {
+      const resumedAt = holdClock();
+      hold.dir = 1;
+      hold.source = source;
+      // Preserve the visible spring position on a quick re-arm without counting the released gap.
+      hold.startedAt = resumedAt - hold.frac * hold.ms;
+      hold.last = resumedAt;
+    }
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
     else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
   }
   function releaseHold(source) {
     if (!hold || hold.done || hold.source === 'auto') return;
     if (source && hold.source !== source) return;
+    // Capture/bubble listeners and document fallbacks can report the same release twice. Once
+    // the first short release starts retracting, later events must not reuse the original press.
+    if (hold.dir <= 0) return;
+    const releasedAt = holdClock();
+    const elapsed = Math.max(0, releasedAt - hold.startedAt);
+    if (elapsed >= hold.ms) {
+      hold.frac = 1;
+      paintHold();
+      fireHold(hold.startedAt + hold.ms);
+      return;
+    }
     if (reducedMotion()) { endHold(); return; }
     hold.dir = -1;
+    hold.last = releasedAt;
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
+  }
+  function cancelHold() {
+    if (hold && !hold.done) endHold();
   }
   function fireHold(completedAt = holdClock()) {
     if (!hold || hold.done) return;
@@ -1347,8 +1382,8 @@ export function createContractsScreen(ctx) {
       endHold();
       mountDataState(dossierEl, 'empty', {
         code: 'BRIEF_UNSELECTED',
-        headline: 'No mission selected.',
-        fills: 'Pick a job to open its briefing.',
+        headline: 'Nothing under seal yet.',
+        fills: 'The board only talks about what you point at. Pick a job to read its terms.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-brief' }),
@@ -1399,7 +1434,7 @@ export function createContractsScreen(ctx) {
           const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-              `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`
@@ -1410,6 +1445,7 @@ export function createContractsScreen(ctx) {
   }
 
   function renderAll(state) {
+    cinderglassContact.frame(state);
     renderBoard(state);
     renderDossier(state);
     renderActive(state);
@@ -1506,9 +1542,17 @@ export function createContractsScreen(ctx) {
   // a bare activation with nothing held (assistive tech) runs the hold through on its own.
   const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
   el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+  el.addEventListener('pointerup', (ev) => {
+    if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+  }, true);
+  for (const type of ['pointercancel', 'pointerleave']) {
     el.addEventListener(type, (ev) => {
-      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+      if (type === 'pointerleave') {
+        const accept = onAccept(ev);
+        if (accept && ev.relatedTarget
+          && (accept === ev.relatedTarget || accept.contains?.(ev.relatedTarget))) return;
+      }
+      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
     }, true);
   }
   el.addEventListener('keydown', (ev) => {
@@ -1531,13 +1575,35 @@ export function createContractsScreen(ctx) {
     if (hold?.source !== 'pointer') return;
     pointerAt = holdClock(); releaseHold('pointer');
   };
+  const onPointerCancelled = () => {
+    if (hold?.source !== 'pointer') return;
+    pointerAt = holdClock(); cancelHold();
+  };
   const onKeyReleased = (ev) => {
     if (hold?.source !== 'key' || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     keyAt = holdClock(); releaseHold('key');
   };
+  const cancelInteraction = () => { cancelPendingCommit(); cancelHold(); };
+  const onEscape = (ev) => { if (ev.key === 'Escape') cancelInteraction(); };
+  const onHidden = () => { if (document.visibilityState === 'hidden') cancelInteraction(); };
   releaseTarget?.addEventListener?.('pointerup', onPointerReleased, true);
-  releaseTarget?.addEventListener?.('pointercancel', onPointerReleased, true);
+  releaseTarget?.addEventListener?.('pointercancel', onPointerCancelled, true);
   releaseTarget?.addEventListener?.('keyup', onKeyReleased, true);
+  releaseTarget?.addEventListener?.('keydown', onEscape, true);
+  releaseTarget?.addEventListener?.('visibilitychange', onHidden, true);
+  const lifecycleTarget = globalThis.window;
+  const onWindowBlur = (ev) => {
+    // Window capture also sees bubbling blur events from focused descendants. Those are normal
+    // during pointer interaction (for example, when focus moves to the held control).
+    if (ev?.target !== lifecycleTarget) return;
+    cancelInteraction();
+  };
+  const onAcceptFocusOut = (ev) => {
+    if (hold?.source === 'key' && onAccept(ev)) cancelInteraction();
+  };
+  el.addEventListener('focusout', onAcceptFocusOut, true);
+  lifecycleTarget?.addEventListener?.('blur', onWindowBlur, true);
+  lifecycleTarget?.addEventListener?.('pagehide', cancelInteraction, true);
 
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
@@ -1580,10 +1646,16 @@ export function createContractsScreen(ctx) {
       endHold();
     },
     dispose() {
+      cinderglassContact.destroy();
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       releaseTarget?.removeEventListener?.('pointerup', onPointerReleased, true);
-      releaseTarget?.removeEventListener?.('pointercancel', onPointerReleased, true);
+      releaseTarget?.removeEventListener?.('pointercancel', onPointerCancelled, true);
       releaseTarget?.removeEventListener?.('keyup', onKeyReleased, true);
+      releaseTarget?.removeEventListener?.('keydown', onEscape, true);
+      releaseTarget?.removeEventListener?.('visibilitychange', onHidden, true);
+      el.removeEventListener('focusout', onAcceptFocusOut, true);
+      lifecycleTarget?.removeEventListener?.('blur', onWindowBlur, true);
+      lifecycleTarget?.removeEventListener?.('pagehide', cancelInteraction, true);
       for (const stop of stopDecrypt.splice(0)) stop();
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
       cancelPendingCommit();

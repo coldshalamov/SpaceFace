@@ -88,6 +88,27 @@ function spacefaceShadowCastersIn( scene ) {
 
 }
 
+// Consult the presented-pass owner only after Three has selected the actual program.
+// Keep the pending identity on the material properties so a later bind is checked again.
+function spacefaceSelectedProgramDeferred( renderer, properties, program, object, material, changed ) {
+
+	if ( renderer.__sfUnreadyDrawGuardDepth > 0 &&
+		( changed || properties.__sfDeferredProgram === program || renderer.__sfExactTargetTouch === true ) &&
+		typeof renderer.__sfDeferSelectedProgram === 'function' &&
+		renderer.__sfDeferSelectedProgram( program, object, material ) === true ) {
+
+		properties.__sfDeferredProgram = program;
+		return true;
+
+	}
+
+	properties.__sfDeferredProgram = null;
+	return false;
+
+}
+
+export { spacefaceSelectedProgramDeferred };
+
 // SpaceFace (PERF-59): upstream walks every child of every node once per frame in
 // updateMatrixWorld — O(scene nodes) work even when nothing moved. A subtree whose every
 // node has matrixAutoUpdate === false can never recompose a local matrix, so when no
@@ -482,7 +503,21 @@ function WebGLAttributes( gl ) {
 
 			if ( data.size !== attribute.array.byteLength ) {
 
-				throw new Error( 'THREE.WebGLAttributes: The size of the buffer attribute\'s array buffer does not match the original size. Resizing buffer attributes is not supported.' );
+				const error = new Error( 'THREE.WebGLAttributes: The size of the buffer attribute\'s array buffer does not match the original size. Resizing buffer attributes is not supported.' );
+				if ( globalThis.__SF_BUFFER_RESIZE_DIAG__ === true ) {
+					try {
+						Object.defineProperty( error, '__sfBufferResizeDiagnostic', {
+							value: {
+								attribute,
+								expectedByteLength: data.size,
+								actualByteLength: attribute.array.byteLength,
+							},
+							enumerable: false,
+							configurable: true
+						} );
+					} catch ( _ ) { /* diagnostic metadata never replaces the original error */ }
+				}
+				throw error;
 
 			}
 
@@ -17385,6 +17420,7 @@ class WebGLRenderer {
 			const frontFaceCW = ( object.isMesh && object.matrixWorld.determinant() < 0 );
 
 			const program = setProgram( camera, scene, geometry, material, object );
+			if ( program === null ) return;
 
 			state.setMaterial( material, frontFaceCW );
 
@@ -19062,6 +19098,8 @@ class WebGLRenderer {
 				}
 
 			}
+
+			if ( spacefaceSelectedProgramDeferred( _this, materialProperties, program, object, material, needsProgramChange ) ) return null;
 
 			let refreshProgram = false;
 			let refreshMaterial = false;

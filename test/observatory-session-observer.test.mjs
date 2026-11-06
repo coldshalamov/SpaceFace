@@ -146,6 +146,13 @@ test('pure samplers clone every present input/action field without mutation or a
   assert.deepEqual(cloneObservatoryValue(new Map([['b', 2], ['a', 1]])), { a: 1, b: 2 });
 });
 
+test('observatory value copies honor maxArray for keyed Maps and Sets', () => {
+  assert.deepEqual(cloneObservatoryValue(new Map([['c', 3], ['a', 1], ['b', 2]]), { maxArray: 2 }),
+    { a: 1, b: 2 }, 'keyed maps keep deterministic order and bound returned fields');
+  const setCopy = cloneObservatoryValue(new Set(['c', 'a', 'b']), { maxArray: 2 });
+  assert.deepEqual(setCopy, ['a', 'b'], 'sets keep deterministic order and bound returned entries');
+});
+
 test('observer emits exact cadences, monotonic sequence ids, drains, and isolated clones', () => {
   const state = stateAt();
   const observer = createSessionObserver({

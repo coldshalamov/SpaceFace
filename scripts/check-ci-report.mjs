@@ -32,6 +32,13 @@ const COMMAND_TIMEOUT_OVERRIDES_MS = {
   // environment reality the check's own START_TIMEOUT_MS documents: software-GL boot is ~2x a
   // real GPU. Budget the environment, assert the behavior.
   'check-station-tabs': 420000,
+  // 2026-11-05 (PR #845 run 42088841482): after the leftover-FX opening barrier fix, mission
+  // accept+track printed OK and wrote its station-handoff trace, then was SIGKILL'd at the 180s
+  // DEFAULT cap during cleanup (~185s wall). The resolved leaf
+  // (check-mission-accept-handoff-runtime.mjs) carries no playwright/chromium/probe token, so the
+  // browser-text classifier never gave it the LONG class — same trap as check-station-tabs. Cold
+  // software-GL boot already burns most of 180s; budget the environment, assert the behavior.
+  'check-mission-accept-handoff-runtime': 420000,
 };
 const TAIL_LIMIT = 1600;
 
@@ -224,7 +231,7 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
   const seenIds = new Map();
   return commands.map((command, index) => {
     const npmScript = command.match(/^npm\s+run\s+([\w:@.-]+)/)?.[1];
-    const nodeTarget = command.match(/^node\s+(?:--test\s+)?([^\s]+)/)?.[1];
+    const nodeTarget = findNodeScriptTarget(command);
     const rawId = npmScript
       ? `check-${npmScript.replace(/^check:?/, '')}`
       : nodeTarget
@@ -252,6 +259,35 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
         : DEFAULT_TIMEOUT_MS);
     return cmd(id, command, timeoutMs);
   });
+}
+
+// Node options can precede the script path (`node --test --test-concurrency=2 test/foo.test.mjs`).
+// Use the actual script to form the matrix ID; treating the first option as a filename leaks the
+// check into the unclassified bucket and prevents every named group from running.
+const NODE_OPTIONS_WITH_SEPARATE_VALUES = new Set([
+  '--conditions', '--experimental-loader', '--import', '--input-type', '--loader', '--max-http-header-size',
+  '--openssl-config', '--redirect-warnings', '--require', '--test-concurrency', '--test-name-pattern',
+  '--test-reporter', '--test-reporter-destination', '--title', '-e', '-p', '-r',
+]);
+
+function findNodeScriptTarget(command) {
+  const tokens = String(command).trim().split(/\s+/);
+  if (tokens[0] !== 'node') return null;
+
+  for (let index = 1; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token === '--test') continue;
+    if (token.startsWith('--')) {
+      if (!token.includes('=') && NODE_OPTIONS_WITH_SEPARATE_VALUES.has(token)) index++;
+      continue;
+    }
+    if (token.startsWith('-')) {
+      if (['-e', '-p', '-r'].includes(token)) index++;
+      continue;
+    }
+    return token;
+  }
+  return null;
 }
 
 function expandCompositeCommands(command, scripts, stack = []) {
@@ -715,7 +751,7 @@ function staleGoldenDiagnosticText(stdout, stderr) {
   // TAP names describe the case under test, not observed golden drift. Strip only
   // stdout label metadata; stderr diagnostics and structured code-zero debt remain.
   const diagnosticStdout = String(stdout || '').replace(/\r/g, '').split('\n')
-    .filter((line) => !/^\s*(?:#\s*Subtest:|(?:not\s+)?ok\s+\d+(?:\s|$))/.test(line))
+    .filter((line) => !/^\s*(?:#\s*Subtest:|(?:not\s+)?ok\s+\d+(?:\s|$)|[✔✓✖✘▶]\s)/.test(line))
     .join('\n');
   return `${stderr || ''}\n${diagnosticStdout}`.replace(/\r/g, '').trim();
 }

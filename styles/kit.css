@@ -124,6 +124,10 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   grid-template-columns: var(--k-hang) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas: "title title" "hang stage" "foot foot"; }
+#screens > .k-screen[data-ui-css-pending],
+#screens > .k-screen[data-ui-css-pending] *,
+#sf-touch-overlay[data-ui-css-pending],
+#sf-touch-overlay[data-ui-css-pending] * { visibility: hidden !important; pointer-events: none !important; }
 .k-screen::before { content: ""; position: absolute; inset: 0; z-index: -1;
   background: var(--k-scrim); transition: background-color var(--k-d-temp) var(--k-ease); }
 .k-screen--dense::before { background: rgb(26 20 16 / 0.45); }
@@ -162,6 +166,11 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   transition: opacity var(--k-d-temp) var(--k-ease); }
 [data-screen="mainMenu"] .k-world--plate,
 [data-screen="motionAsk"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
+/* The borrowed mark's 340px floor must fit the first-boot frame on narrow screens. */
+[data-screen="motionAsk"] .dp-logotype { max-width: 100%; }
+@media (max-width: 960px), (max-height: 540px) and (pointer: coarse) {
+  html[data-sf-mobile="1"] [data-screen="motionAsk"] .dp-logotype { max-width: min(100%, 85vw) !important; }
+}
 [data-screen="crucible"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
 /* The results screen stands on the kill-cam stage; its authored still is the Crucible's
    own door plate — the picture that holds while the scene assembles, and the one SKIP
@@ -388,6 +397,23 @@ body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; pointer-events: n
 .k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
 /* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
 body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !important; pointer-events: none !important; }
+/* Pause keeps its modal stack while Photo is active; its legacy backdrop must not darken the
+   exposure preview relative to the image captured from the canvas. */
+body.k-photo #modal-backdrop { background: none !important; }
+/* The deckplate small-key selector is more specific; Photo keys keep their touch floor. */
+body.k-photo .sf-photo-bar button { box-sizing: border-box; min-width: 44px !important; min-height: 44px !important; }
+body.k-photo .sf-photo-bar .sf-photo-hint {
+  position: static; inset: auto; flex: 0 0 100%; box-sizing: border-box;
+  width: 100%; max-width: 100%; margin: 0; text-align: center; pointer-events: none;
+}
+/* A bright planet can fill the frame behind any control: the small deck owns an opaque kit
+   ground, while the photo preview itself remains unshaded. No backdrop filter is needed. */
+body.k-photo #screens > .sf-photo-bar {
+  box-sizing: border-box; padding: 12px; background: var(--k-ink); color: var(--k-bone);
+  max-width: calc(100vw - 2 * var(--k-margin, 24px) - var(--sf-safe-left, 0px) - var(--sf-safe-right, 0px)) !important;
+  max-height: calc(100dvh - 2 * var(--k-margin, 24px) - var(--sf-safe-top, 0px) - var(--sf-safe-bottom, 0px));
+  overflow-y: auto; overscroll-behavior: contain;
+}
 /* The legacy modal backdrop (ui.css #modal-backdrop) paints a radial vignette under every screen; a kit
    screen's scrim (.k-screen::before) is the only darkening the sheet allows, so the vignette goes with the ground. */
 body.k-screen-top #modal-backdrop { background: none; }

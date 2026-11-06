@@ -1,5 +1,6 @@
 import { collectMobileCameraWitness } from './lib/mobileCameraWitness.mjs';
 import { installMobileDrawErrorObserver } from './lib/mobileDrawErrorObserver.mjs';
+import { exerciseMobileFlightControl } from './lib/mobileFlightControlWitness.mjs';
 import {
   createMobileResponseLedger,
   observedWorkerFailures,
@@ -11,6 +12,7 @@ import {
 // Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
 // MOBILE_PROBE_CONTINUE=1 also reloads the same browser context and taps the public Continue route.
+// MOBILE_PROBE_FLIGHT_CONTROL=1 uses native Chromium touch drag and requires ship + world-frame response.
 // MOBILE_PROBE_THROTTLE=handset applies handset timing acceptance (4x CPU + Slow-4G-class network)
 //   through CDP — Chromium only; tokens cpu:<n> and net:slow4g|fast3g|slow3g|off may be combined
 //   comma-separated (e.g. cpu:6,net:off). The 3G profiles are stress tokens, not the acceptance bar.
@@ -26,12 +28,16 @@ const engine = process.env.MOBILE_PROBE_ENGINE || 'webkit';
 if (!['webkit', 'chromium'].includes(engine)) throw new Error('Engine must be webkit or chromium');
 const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment/${engine}`);
 const checkContinue = process.env.MOBILE_PROBE_CONTINUE === '1';
+const checkFlightControl = process.env.MOBILE_PROBE_FLIGHT_CONTROL === '1';
+if (checkFlightControl && engine !== 'chromium')
+  throw new Error('Native touch-drag verification requires Chromium CDP; WebKit tap-only automation cannot establish flight control');
 const drawErrorMode = process.env.MOBILE_PROBE_DRAW_ERRORS || 'off';
 const drawErrorProbe = ['1', 'on-error'].includes(drawErrorMode);
 const headed = process.env.MOBILE_PROBE_HEADED === '1';
 const channel = process.env.MOBILE_PROBE_CHANNEL || null;
 const throttleRequest = process.env.MOBILE_PROBE_THROTTLE || 'off';
 const contextLossExercise = process.env.MOBILE_PROBE_CONTEXT_LOSS === '1';
+const powersPauseFrontier = process.env.MOBILE_PROBE_FRONTIER === 'powers-pause';
 const mobileDeviceName = 'iPhone 14';
 const mobileDeviceProfile = devices[mobileDeviceName];
 // Chromium's literal-loopback path is pathologically slow on some loaded Windows hosts — local
@@ -102,6 +108,7 @@ const report = { url: url.href, engine, startedAt: new Date().toISOString(), pas
     workerContract: 'pending', rendererHealth: 'pending',
     rendererRecovery: contextLossExercise ? 'pending' : 'not-requested', worldVisibility: 'unverified' },
   continue: { requested: checkContinue, status: checkContinue ? 'pending' : 'not-requested' },
+  flightControl: { requested: checkFlightControl, status: checkFlightControl ? 'pending' : 'not-requested' },
   ...createMobileResponseLedger(), pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
   startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0,
   menuWaitObservations: [], finalDiagnosticErrors: [] };
@@ -414,12 +421,28 @@ async function exerciseRendererRecovery(page, { report, timeoutMs = 120000 } = {
   return exercise;
 }
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
+const profileLifecycle = page => boundedBrowserRead(() => page.evaluate(async () => {
+  const result = { navigationType: performance.getEntriesByType('navigation')[0]?.type,
+    releaseScript: document.querySelector('script[type="module"][src]')?.src,
+    serviceWorkerController: navigator.serviceWorker?.controller?.scriptURL || null, storage: [] };
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('sf.')) result.storage.push({ key, characters: localStorage.getItem(key)?.length || 0 });
+    }
+    result.storage.sort((a, b) => a.key.localeCompare(b.key));
+    result.serviceWorkerRegistrations = navigator.serviceWorker
+      ? (await navigator.serviceWorker.getRegistrations()).map(row => ({ scope: row.scope, script: row.active?.scriptURL })) : [];
+    result.cacheNames = globalThis.caches ? await caches.keys() : [];
+  } catch (error) { result.observationError = String(error?.message || error); }
+  return result;
+}));
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: !headed,
     ...(channel ? { channel } : {}),
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio',
       ...(isLoopbackTarget ? [`--host-resolver-rules=MAP ${LOOPBACK_PROBE_HOST} 127.0.0.1`] : [])] } : {}) });
-  const context = await browser.newContext({ ...mobileDeviceProfile, serviceWorkers: 'block',
+  const context = await browser.newContext({ ...mobileDeviceProfile, serviceWorkers: checkContinue ? 'allow' : 'block',
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
@@ -450,7 +473,17 @@ try {
       // (the throttled local run's New Game tap landed on empty space that way).
       await control.tap({ timeout: 20000 });
       return;
-    } catch { /* fall through to the touchscreen tap below */ }
+    } catch (error) {
+      if (powersPauseFrontier) {
+        report.firstControlError = { route: activeRoute, actorStage,
+          selector: typeof selector === 'string' ? selector : 'locator',
+          at: new Date().toISOString(), error: String(error?.stack || error) };
+        await writeFile(join(out, 'first-control-error.json'), JSON.stringify(report.firstControlError, null, 2))
+          .catch(writeError => report.finalDiagnosticErrors.push({ kind: 'first-control-error-write', error: String(writeError) }));
+        throw error;
+      }
+      // Other existing probe routes retain their animated-menu tap handling.
+    }
     // Under handset-class CPU throttle the animated menu never settles enough for the
     // scroll helper's stability gate; scrolling is best-effort (the tap reads the live box).
     await control.scrollIntoViewIfNeeded({ timeout: 500 }).catch(() => {});
@@ -727,6 +760,7 @@ try {
     throw new Error(`${label} did not reach mobile flight UI with the loading shell cleared within five minutes`);
   };
   await waitForMenu();
+  if (checkContinue) report.continue.initialProfile = await profileLifecycle(page);
   await page.screenshot({ path: join(out, '01-menu.png') }).catch(error => report.finalDiagnosticErrors.push({ kind: 'stage-screenshot', name: '01-menu.png', at: new Date().toISOString(), error: String(error?.message || error) }));
   await boundedBrowserRead(() => page.evaluate(installStartupObserver));
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
@@ -749,6 +783,19 @@ try {
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-edge', '.mf-pause']) {
     if (!(await visible(page, selector))) throw new Error(`Missing visible touch control: ${selector}`);
   }
+  if (checkFlightControl) {
+    actorStage = 'new-game-touch-flight';
+    try {
+      report.flightControl = { requested: true, ...await exerciseMobileFlightControl(page) };
+    } catch (error) {
+      report.flightControl = { requested: true, status: 'failed', reason: String(error?.message || error) };
+      throw error;
+    }
+    report.flightControl.status = report.flightControl.passed ? 'passed' : 'failed';
+    if (!report.flightControl.passed)
+      throw new Error(`Touch flight control failed: ${report.flightControl.reason}`);
+    await page.screenshot({ path: join(out, '03b-touch-flight.png') });
+  }
   actorStage = 'new-game-powers';
   await tapControl('.mf-edge');
   await page.locator('.mf-wheel').waitFor({ state: 'visible' });
@@ -767,6 +814,14 @@ try {
     actorStage = 'new-game-context-loss';
     await exerciseRendererRecovery(page, { report });
   }
+  if (powersPauseFrontier) {
+    if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
+    if (report.criticalResponseCount || report.criticalRequestFailureCount || report.workerResponseFailureCount)
+      throw new Error('Frontier route recorded critical HTTP or runtime worker response failures; see response ledger');
+    report.acceptance.startupAndControls = 'passed';
+    report.acceptance.workerContract = 'not-run-frontier-scope';
+    report.scopedRoute = 'new-game-powers-pause-resume';
+  } else {
   actorStage = 'new-game-rotation';
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(1500);
@@ -835,10 +890,14 @@ try {
       throw new Error('Save here public touch was not delivered to the Save control');
     actorStage = 'continue-save-receipt';
     report.saveReceipt = await waitForPublicSave(page, { slot: saveSlot, afterAt: saveAt });
+    report.continue.savedProfile = await profileLifecycle(page);
     report.stages.push({ stage: 'continue-save-completed', saveReceipt: report.saveReceipt, ...await snapshot(page) });
     actorStage = 'continue-reload';
     await page.reload({ waitUntil: 'domcontentloaded', timeout: throttle ? 180000 : 60000 });
     await waitForMenu();
+    report.continue.reloadedProfile = await profileLifecycle(page);
+    if (report.continue.reloadedProfile.navigationType !== 'reload')
+      throw new Error('Returning-player check did not retain its context through a real reload');
     actorStage = 'continue-menu';
     await boundedBrowserRead(() => page.evaluate(installStartupObserver));
     report.stages.push({ stage: 'continue-menu', ...await snapshot(page) });
@@ -860,6 +919,13 @@ try {
     for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
       if (!(await visible(page, selector))) throw new Error(`Continue is missing a visible touch control: ${selector}`);
     }
+    if (checkFlightControl) {
+      actorStage = 'continue-touch-flight';
+      report.continue.flightControl = await exerciseMobileFlightControl(page);
+      if (!report.continue.flightControl.passed)
+        throw new Error(`Continue touch flight control failed: ${report.continue.flightControl.reason}`);
+      await page.screenshot({ path: join(out, '08b-continue-touch-flight.png') });
+    }
     assertContinuePageHealth(report.pageErrors, continuePageErrorsBefore);
     report.workerObservedFailures = observedWorkerFailures(report.responses, report.workerUrls,
       report.workerResponseFailures, report.workerResponseSuccesses);
@@ -873,6 +939,7 @@ try {
       throw new Error(`Continue observed ${report.criticalResponseCount + report.criticalRequestFailureCount} critical HTTP failure(s)`);
     report.acceptance.continue = 'passed';
     report.continue.status = 'passed';
+  }
   }
   report.passed = report.acceptance.mobileCapabilities === 'passed'; // Renderer health is applied below; world visibility remains unverified.
   if (report.acceptance.mobileCapabilities === 'mismatch') {

@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
+import { traffic } from '../src/systems/traffic.js';
 import {
   isCausalSurvivorPod,
   shouldEjectCausalSurvivorPod,
@@ -146,7 +147,7 @@ function boot({ withVoice = true } = {}) {
   }
 
   function addRescueHull(id, pos) {
-    return add({
+    const hull = add({
       id,
       type: 'ship',
       team: 2,
@@ -154,9 +155,19 @@ function boot({ withVoice = true } = {}) {
       pos: { ...pos },
       vel: { x: 0, z: 0 },
       radius: 10,
-      data: { trafficRole: 'rescue', role: 'rescue' },
+      data: { trafficRole: 'rescue', role: 'rescue', worldRecordId: `test:rescue:${id}` },
       flags: {},
     });
+    if (!state.traffic) state.traffic = { freighters: [] };
+    state.traffic.freighters.push({ id, role: 'rescue' });
+    const station = add({ id: 998, type: 'station', alive: true, pos: { x: -200, z: 0 }, radius: 40, data: {} });
+    const owner = { ...traffic, state, bus, helpers, _sectorStations: () => [station], _pickStation: () => station };
+    bus.on('survivorPod:boarded', p => owner._onSurvivorPodRescued(p));
+    hull.deliverForTest = () => {
+      hull.pos = { ...station.pos };
+      owner._stepRescue(hull, state.traffic.freighters.find(r => r.id === id), [station], state, .1);
+    };
+    return hull;
   }
 
   function restore() {
@@ -281,11 +292,13 @@ test('player handoff to a rescue hull while latched is also player-attributed an
     assert.ok(pod);
     pod.pos.x = 40;
     pod.pos.z = 0;
-    h.addRescueHull(902, { x: 45, z: 2 });
+    const hull = h.addRescueHull(902, { x: 45, z: 2 });
 
     h.latch(pod);
     survivorPod.update(1 / 60, h.state);
 
+    assert.equal(h.credits.length, 0, 'boarding is not delivery');
+    hull.deliverForTest();
     assert.equal(h.credits.length, 1);
     assert.equal(h.credits[0].amount, MAYDAY_FEE);
     assert.equal(h.credits[0].reason, `survivor_mayday:${pod.id}`);
@@ -325,12 +338,14 @@ test('unattended AI rescue-hull claim rescues for rep alone and pays nothing', (
     assert.ok(pod);
     pod.pos.x = 40;
     pod.pos.z = 0;
-    h.addRescueHull(903, { x: 45, z: 2 });
+    const hull = h.addRescueHull(903, { x: 45, z: 2 });
 
     survivorPod.update(1 / 60, h.state);
 
     assert.equal(h.pods().length, 0);
     assert.equal(h.credits.length, 0, 'no player involvement → no fee');
+    assert.equal(h.rep.length, 0, 'no reward before arrival');
+    hull.deliverForTest();
     assert.equal(h.voiceCalls.filter((c) => c.kind === 'survivorMaydayPaid').length, 0);
     assert.equal(h.toasts.filter((t) => t.kind === 'survivorMaydayPaid').length, 0);
     assert.ok(h.rep.some((r) => r.reason === 'survivorPod:rescued' && r.delta === 3),

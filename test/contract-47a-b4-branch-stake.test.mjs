@@ -76,28 +76,14 @@ function completePhysicalIntro(h, mission) {
   }
 }
 
-/** W-BOOKS-3-4: the door's operation is its own posted contract — Spine Break is
- *  an escort (the convoy lead must dock alive), the Weighing a patrol clear. */
+/** The Weighing is a patrol clear. Spine Break's native coupling and completed-book
+ *  route are exercised by w534-spine-break-operation.test.mjs. */
 function completeDoorOperation(h, mission) {
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   h.missions.spawnTargetsForSector(mission.destSectorId);
   h.missions._ensureMissionTargets(mission);
-  if (mission.type === 'escort') {
-    const berth = [...h.state.entities.values()].find((entity) => (
-      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
-    )) || h.helpers.spawnEntity({
-      type: 'station', pos: { x: 0, z: 0 },
-      data: { stationId: mission.destStationId, dockRadius: 140 },
-    });
-    const lead = h.state.entities.get(mission._escorteeId);
-    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
-    lead.pos = { x: berth.pos.x + 20, z: berth.pos.z };
-    h.missions.update(0.016, h.state);
-    assert.equal(mission._escorteeArrived, true, 'the convoy lead reaches the dock ring');
-    h.bus.emit('dock:docked', { stationId: mission.destStationId });
-    return;
-  }
+  assert.notEqual(mission.type, 'escort', 'Spine Break is exercised through its native physical fixture');
   for (const targetId of [...mission.targetEntityIds]) {
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
@@ -142,6 +128,12 @@ function exerciseOutcome(outcome) {
   const op = h.state.missions.active.find((row) => row.sourceOfferId === opOffer.id)
     || h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b4:operation');
   assert.ok(op);
+  if (op.type === 'escort') {
+    h.bus.emit('dock:docked', { stationId: op.destStationId });
+    assert.equal(op.status, 'active', 'the trader door cannot close before its physical work');
+    assert.equal(h.state.story.beatIndex, 4);
+    return;
+  }
   completeDoorOperation(h, op);
   assert.equal(h.state.story.beatIndex, 5);
   // The posted contract pays its own reward — the beat grant stays skipped,
@@ -149,7 +141,7 @@ function exerciseOutcome(outcome) {
   assert.equal(h.credits.filter((row) => row.reason === 'story:pick_a_side').length, 0);
 }
 
-test('47-A B4 makes custody and force distinct completed faction stakes', () => {
+test('47-A B4 opens distinct custody and force stakes and holds the trader operation pending', () => {
   exerciseOutcome('custody');
   exerciseOutcome('force');
 });

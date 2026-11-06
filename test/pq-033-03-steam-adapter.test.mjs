@@ -290,7 +290,7 @@ async function loadMain({ env = {}, isPackaged = false, isolatedEvidence = false
 }
 
 test('main.cjs answers both Steam channels and validates the renderer payload', async () => {
-  const loaded = await loadMain();
+  const loaded = await loadMain({ env: { SPACEFACE_DEV_SIM_WORKER_BUNDLE: '0' } });
   try {
     const unlock = loaded.ipcHandlers.get(steamworks.ACHIEVEMENT_UNLOCK_CHANNEL);
     const status = loaded.ipcHandlers.get(steamworks.STEAM_STATUS_CHANNEL);
@@ -348,7 +348,20 @@ test('preload exposes unlockAchievement and steamStatus on the allowlisted bridg
     },
   }, { filename: PRELOAD_PATH });
   const shell = exposed.spacefaceShell;
-  assert.deepEqual(Object.keys(shell).sort(), ['buildInfo', 'quit', 'saveClip', 'steamStatus', 'unlockAchievement']);
+  assert.deepEqual(Object.keys(shell).sort(), [
+    'buildInfo',
+    'getWindowMode',
+    'onPrepareQuit',
+    'perfMetrics',
+    'quit',
+    'saveClip',
+    'setWindowMode',
+    'steamStatus',
+    'unlockAchievement',
+    'workshopPublish',
+    'workshopStatus',
+    'workshopSync',
+  ]);
   await shell.unlockAchievement('berth_assigned');
   await shell.unlockAchievement({ path: 'C:/Windows' });
   await shell.steamStatus();

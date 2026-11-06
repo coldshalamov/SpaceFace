@@ -11,6 +11,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -27,6 +28,7 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { consumePageConditionValue } from './lib/playwrightCspPolling.mjs';
 import {
   PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
   PQ024_H3_PROFILE_IDS,
@@ -50,6 +52,7 @@ import {
   projectPq024CommittedIdentityDigests,
 } from './lib/pq024CommittedPresentation.mjs';
 import { sampleRafWindow } from './lib/releaseSoakProbe.mjs';
+import { strictWorktreeFingerprint } from './lib/releaseSoakContracts.mjs';
 import {
   computeGateDigestsFromManifest,
   requireBrokerClaimOrDiagnostic,
@@ -65,6 +68,7 @@ import h3Manifest, {
 } from './validation-manifests/pq024-h3-performance.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
 const ELECTRON_PARITY = process.argv.includes('--electron-parity');
 const H3_PERFORMANCE = process.argv.includes('--h3-performance');
 const COMMITTED_TRANSITION = process.argv.includes('--committed-transition');
@@ -101,6 +105,10 @@ const VIEWPORT = H3_PERFORMANCE
   ? PQ024_H3_VIEWPORT
   : Object.freeze({ width: 1460, height: 900, deviceScaleFactor: 1 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
+const BASELINE_SOURCE = resolveStrictRuntimeSourceOverlay(readArg('baseline-source'), ROOT);
+if (BASELINE_SOURCE && (!DIAGNOSTIC || ELECTRON_PARITY || H3_PERFORMANCE || COMMITTED_TRANSITION)) {
+  throw new Error('--baseline-source is available only for non-promoting Browser PQ-024 diagnostics');
+}
 const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
   ? Number(process.env.SF_PROBE_SEED)
   : COMMITTED_TRANSITION
@@ -108,6 +116,7 @@ const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
     : PQ024_ASTEROID_CLAIM_FIXED_SEED;
 const ROUTE_SCREENSHOTS = Object.freeze([
   '01-market-materials.png',
+  '02-asteroid-ops-ready.png',
   '02-survey-reveal.png',
   '03-core-committed.png',
   '04-producing-relay.png',
@@ -162,10 +171,24 @@ let browserClosed = false;
 let serverClosed = false;
 let activePhase = 'bootstrap';
 let h3Gpu = null;
+let servedSourceOverlay = null;
+let localCheckoutIdentity = null;
 const h3Completed = [];
 const screenshots = [];
 
 try {
+  if (BASELINE_SOURCE) {
+    const [digests, worktree] = await Promise.all([
+      computeGateDigestsFromManifest({ root: ROOT, manifest }),
+      strictWorktreeFingerprint(ROOT),
+    ]);
+    localCheckoutIdentity = {
+      candidateDigest: digests.candidateDigest,
+      productionDigest: digests.productionDigest,
+      harnessDigest: digests.harnessDigest,
+      worktree: projectWorktreeIdentity(worktree),
+    };
+  }
   if (ELECTRON_PARITY) {
     browserReceipt = JSON.parse(await readFile(BROWSER_RECEIPT_PATH, 'utf8'));
     if (COMMITTED_TRANSITION) {
@@ -204,8 +227,14 @@ try {
     rootUrl = assertIsolatedElectronRootUrl(await electronUrlTracker.waitForCanonicalRoot(10_000));
     await page.waitForLoadState('domcontentloaded', { timeout: 90_000 });
   } else {
-    server = await acquireVisualProbeServer({ root: ROOT });
+    server = await acquireVisualProbeServer({
+      root: ROOT,
+      sourceOverlay: BASELINE_SOURCE?.path || null,
+    });
     rootUrl = server.baseUrl;
+    if (BASELINE_SOURCE) {
+      servedSourceOverlay = await readAndVerifySourceOverlayIdentity(rootUrl, BASELINE_SOURCE);
+    }
     const executablePath = findSystemBrowser();
     assert(executablePath, 'headed Chrome or Edge is required for PQ-024 route acceptance');
     const { chromium } = await loadPlaywright();
@@ -420,6 +449,20 @@ if (H3_PERFORMANCE) {
   }
 }
 
+if (BASELINE_SOURCE) {
+  receipt.sourceOverlay = {
+    ...(servedSourceOverlay || projectSourceOverlayReceipt(BASELINE_SOURCE, null)),
+    assetsOutsidePin: 'served from the live working tree',
+    localHarness: {
+      source: 'live working tree',
+      candidateDigest: localCheckoutIdentity?.candidateDigest || null,
+      productionDigest: localCheckoutIdentity?.productionDigest || null,
+      harnessDigest: localCheckoutIdentity?.harnessDigest || null,
+    },
+    localWorktree: localCheckoutIdentity?.worktree || null,
+  };
+}
+
 await writeFile(
   RECEIPT_PATH,
   `${JSON.stringify(receipt, null, 2)}\n`,
@@ -473,7 +516,8 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'asteroid-course';
     const asteroid = await selectAsteroidOnLocalMap(page);
     await waitForAutopilotArrival(page, asteroid);
-    await enterAsteroidOps(page, asteroid.targetEntityId);
+    const asteroidRendererReadiness = await enterAsteroidOps(page, asteroid.targetEntityId);
+    if (!options.stopAfterCore) await screenshot('02-asteroid-ops-ready.png');
 
     phase = 'survey-reveal';
     await carveCoreBuildCorridor(page);
@@ -514,6 +558,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
         observations: {
           cargo,
           asteroid,
+          asteroidRendererReadiness,
           surveyReveal,
           core,
           committedPresentation,
@@ -579,6 +624,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
       observations: {
         cargo,
         asteroid,
+        asteroidRendererReadiness,
         surveyReveal,
         core,
         committedPresentation,
@@ -1803,8 +1849,35 @@ async function enterAsteroidOps(page, targetEntityId) {
   }
   await page.keyboard.press('KeyB');
   await waitVisible(page, '[data-screen="drill"]', 'Asteroid Ops');
-  await page.waitForFunction((id) => window.SF?.state?.drill?.active === true
-    && window.SF.state.drill.asteroidId === id, targetEntityId);
+  let readinessHandle;
+  try {
+    readinessHandle = await page.waitForFunction((id) => {
+      const drill = window.SF?.state?.drill;
+      if (drill?.active !== true || String(drill.asteroidId) !== String(id)) return null;
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      if (typeof hook?.readiness !== 'function') return null;
+      const readiness = hook.readiness();
+      return readiness?.ready === true || readiness?.failed === true
+        ? {
+          ready: readiness.ready === true,
+          failed: readiness.failed === true,
+          terrain: readiness.terrain === true,
+          rover: readiness.rover === true,
+        }
+        : null;
+    }, targetEntityId, { timeout: 30_000 });
+  } catch (error) {
+    const lastReadiness = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      return typeof hook?.readiness === 'function' ? hook.readiness() : null;
+    }).catch(() => null);
+    error.message += `; last Asteroid Ops renderer readiness: ${JSON.stringify(lastReadiness)}`;
+    throw error;
+  }
+  const readiness = await consumePageConditionValue(readinessHandle);
+  assert.equal(readiness.ready, true,
+    `Asteroid Ops renderer reported a terminal readiness failure: ${JSON.stringify(readiness)}`);
+  return readiness;
 }
 
 async function createPq024MasslineLatchError(page, targetEntityId, samples) {
@@ -2336,6 +2409,75 @@ async function readGpuContract(page) {
       renderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
     };
   });
+}
+
+function readArg(name) {
+  const prefix = `--${name}=`;
+  const inline = process.argv.find((argument) => argument.startsWith(prefix));
+  if (inline) return inline.slice(prefix.length);
+  const index = process.argv.indexOf(`--${name}`);
+  return index >= 0 ? process.argv[index + 1] || null : null;
+}
+
+function resolveStrictRuntimeSourceOverlay(value, root) {
+  if (!value) return null;
+  const resolved = path.resolve(root, String(value));
+  const relative = path.relative(root, resolved).replace(/\\/g, '/');
+  if (!relative.startsWith('.devshots/')) {
+    throw new TypeError('PQ-024 --baseline-source must point inside .devshots/');
+  }
+  const overlay = loadSourceOverlayManifest(resolved);
+  if (overlay.identity.strictRuntimeIsolation !== true) {
+    throw new TypeError('PQ-024 --baseline-source requires an all-runtime source manifest');
+  }
+  return Object.freeze({
+    path: resolved,
+    relative,
+    identity: projectSourceOverlayIdentity(overlay.identity),
+  });
+}
+
+function projectSourceOverlayIdentity(identity) {
+  return {
+    schema: identity?.schema || null,
+    sourceCommit: identity?.sourceCommit || null,
+    sourceOverlayDigest: identity?.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity?.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity?.totalBytes) ? identity.totalBytes : null,
+    strictRuntimeIsolation: identity?.strictRuntimeIsolation === true,
+  };
+}
+
+function projectSourceOverlayReceipt(baselineSource, served) {
+  return {
+    manifest: baselineSource.relative,
+    requested: baselineSource.identity,
+    served: served ? projectSourceOverlayIdentity(served) : null,
+  };
+}
+
+function projectWorktreeIdentity(fingerprint) {
+  return fingerprint ? {
+    id: fingerprint.id || null,
+    head: fingerprint.head || null,
+    branch: fingerprint.branch || null,
+    digest: fingerprint.digest || null,
+    changedFileCount: Number.isSafeInteger(fingerprint.changedFileCount)
+      ? fingerprint.changedFileCount : null,
+  } : null;
+}
+
+async function readAndVerifySourceOverlayIdentity(baseUrl, baselineSource) {
+  const response = await fetch(new URL('/__source_overlay_identity', baseUrl));
+  if (!response.ok) throw new Error(`source overlay identity endpoint returned HTTP ${response.status}`);
+  const observed = projectSourceOverlayIdentity(await response.json());
+  const expected = baselineSource.identity;
+  for (const field of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes', 'strictRuntimeIsolation']) {
+    if (observed[field] !== expected[field]) {
+      throw new Error(`served source overlay ${field} does not match requested baseline`);
+    }
+  }
+  return projectSourceOverlayReceipt(baselineSource, observed);
 }
 
 function repoRel(file) {

@@ -31,6 +31,11 @@ export function stepWasteHeat(online, event) {
   return { online: on, text: null };
 }
 
+// A deliberate command sets a requested state; a repeated command never toggles it.
+export function setWasteHeat(online) {
+  return { online, text: online ? HEAT_ON : HEAT_OFF };
+}
+
 // The local tradeoff is mobility: cold cysts drift sluggishly; hot eels are held
 // back. No death, population growth, or offscreen upkeep clock is introduced.
 export function wasteHeatMotionMult(online, speciesId) {

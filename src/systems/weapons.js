@@ -1,3 +1,5 @@
+import { solveLeadAngle } from '../combat/leadAngle.js';
+export { solveLeadAngle } from '../combat/leadAngle.js';
 import { addEnvironmentHeat } from './environmentMaterials.js';
 import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
 import { steerAfterBounce } from '../combat/surfaceReflection.js';
@@ -66,7 +68,7 @@ import {
   MOMENTUM_SINK_STATUS_ID,
   MOMENTUM_SINK_WEAPON_ID,
 } from '../data/combatDefs.js';
-import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigration.js';
+import { causalKindsFromSpec, collectAttackModifiers } from '../combat/adventureAttackReaders.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley, tryBounce } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';
@@ -1575,7 +1577,9 @@ export const weapons = {
       // when the turret is engaging the tethered hostile — one solver everywhere it matters.
       const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
         ? mountGate.muzzleAngle
-        : this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
+        : (isPlayer
+          ? this._leadAngle(e, tgt, mountProjSpeed)
+          : this._arcadeMountAngle(e, w, tgt, mountProjSpeed));
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
@@ -1598,12 +1602,10 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.muzzleAngle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        // A locked player shot leaves the real muzzle, not the hull centre: solve from there with
-        // the same muzzle + launch-model solve G mode uses. Hull-centre lead put off-axis mounts
-        // 3-10 deg wide of the solution. NPC aim keeps the hull-centre lead (balance unchanged).
-        fixedAim = isPlayer
-          ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
-          : this._leadAngle(e, forceTarget, mountProjSpeed);
+        // A target-bound round leaves the real muzzle, not the hull centre. Use the same bounded
+        // muzzle + launch-model solve for NPC shots so hardpoint offsets do not move the physical
+        // line off an intercept. Player-directed fixed fire still follows its manual aim below.
+        fixedAim = this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed);
       }
       // G trades manual barrel alignment for independent dodging. Use the same physical shot
       // model, but no cone clamp or random aim error on this explicit hostile solution.
@@ -2233,7 +2235,7 @@ export const weapons = {
         };
         shots.set(p.id, rec);
       }
-      if (p.alive !== false) {
+      if (rec.phase === 'fly' && p.alive !== false) {
         rec.pos.x = p.pos.x;
         rec.pos.z = p.pos.z;
       }
@@ -2248,7 +2250,12 @@ export const weapons = {
         const spawnPos = p && p.data && p.data.spawnPos ? p.data.spawnPos : null;
         const maxDist = p && p.data && Number.isFinite(p.data.maxDistance) ? p.data.maxDistance : Infinity;
         const flown = p && spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
-        if (dead || flown >= maxDist) this._mortarLand(rec, state, now);
+        if (dead || flown >= maxDist) {
+          this._mortarLand(rec, state, now);
+          // Range is the mortar's authored landing seam. Stop the shell here so physics cannot
+          // carry it through the well and leave a second live damaging projectile downstream.
+          if (!dead && p) p.alive = false; // core lifetime owns removal; this is not a hit receipt
+        }
       } else if (rec.phase === 'pull') {
         this._mortarPullTick(rec, state, dt);
         if (now >= rec.pullUntil) this._mortarDetonate(rec, state);
@@ -2313,10 +2320,10 @@ export const weapons = {
           this.helpers.routeCombatDamage({
             attackerId: rec.ownerId ?? null,
             targetId: body.id,
-            packet: scalarHitToDamagePacket({
+            packet: { ...scalarHitToDamagePacket({
               damage: dmg * fall, damageType: 'explosive', pos,
               source: { kind: 'weapon', weaponId: rec.weaponId },
-            }),
+            }), flags: { splash: true } },
             origin: { kind: 'weapon', id: rec.weaponId },
           });
         }
@@ -2686,40 +2693,6 @@ export function refineLeadForLaunch(angle, projSpeed, shooterVel, target, muzzle
   return a;
 }
 
-export function solveLeadAngle(shooter, tgt, projSpeed) {
-  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
-  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
-  const tp = (tgt && tgt.pos) || { x: 0, z: 0 };
-  const tv = (tgt && tgt.vel) || { x: 0, z: 0 };
-  const px = tp.x - sp.x, pz = tp.z - sp.z;
-  if (!Number.isFinite(projSpeed)) return Math.atan2(pz, px);
-  const rvx = tv.x - sv.x, rvz = tv.z - sv.z;
-  const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
-  const a = rvx * rvx + rvz * rvz - ps * ps;
-  const b = 2 * (px * rvx + pz * rvz);
-  const c = px * px + pz * pz;
-  let t = 0;
-  if (c > 1e-9) {
-    if (Math.abs(a) < 1e-9) {
-      const linearT = Math.abs(b) > 1e-9 ? -c / b : -1;
-      if (linearT > 0) t = linearT;
-    } else {
-      const disc = b * b - 4 * a * c;
-      if (disc >= 0) {
-        const root = Math.sqrt(disc);
-        const t0 = (-b - root) / (2 * a);
-        const t1 = (-b + root) / (2 * a);
-        if (t0 > 0 && t1 > 0) t = Math.min(t0, t1);
-        else if (t0 > 0) t = t0;
-        else if (t1 > 0) t = t1;
-      }
-    }
-  }
-  const aimx = px + tv.x * t;
-  const aimz = pz + tv.z * t;
-  return Math.atan2(aimz, aimx);
-}
-
 /** A missile may finish its old solution. It may not adopt a body that reused the target id. */
 export function guidanceAcceptsTarget(data, target) {
   if (!data || !target) return false;
@@ -2904,7 +2877,9 @@ export function applyProjectilePhysicalContact(host, payload) {
     const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
-      { port: host.helpers?.combatPhysics, referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+      // Scenery contacts obey the same authored momentum as the damage route.
+      { port: host.helpers?.combatPhysics, scaleEnvironment: false,
+        referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
     if (delivery.accepted) {
       recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
       if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
@@ -2939,7 +2914,8 @@ export function applyProjectilePhysicalContact(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
@@ -2972,7 +2948,8 @@ function detonateInterceptedSplash(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });

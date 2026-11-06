@@ -110,9 +110,12 @@ test('every machine publishes its map/scanner hazard disc in its own sector', ()
     assert.equal(zone.radius, machine.hazardRadius);
     assert.equal(zones.length, 1, `${sectorId} publishes exactly its own machine`);
   }
-  // A machineless sector publishes none - no Ceres mouths bleed into other charts.
+  // A machineless sector publishes none - no Ceres mouths bleed into other charts. The frontier
+  // law machines are census members too: nyx_march publishes exactly its own crosswind, not
+  // silence (an invisible kill volume) and not a bleed.
   assert.equal(killMachineHazardZones('sector_pallas_drift').length, 0);
-  assert.equal(killMachineHazardZones('sector_nyx_march').length, 0);
+  assert.equal(killMachineHazardZones('sector_eris_margin').length, 0);
+  assert.deepEqual(killMachineHazardZones('sector_nyx_march').map((z) => z.id), ['nyx_crosswind']);
 });
 
 test('world.js actually injects each machine disc into active.hazards', () => {
@@ -139,7 +142,7 @@ test('world.js actually injects each machine disc into active.hazards', () => {
     assert.ok(pallas.hazards.every((h) => !machineIds.has(h.id)),
       'Pallas reef row is not a census machine');
     const empty = { hazards: [] };
-    world._spawnHazards({ id: 'sector_nyx_march', hazards: [] }, empty);
+    world._spawnHazards({ id: 'sector_dione_lane', hazards: [] }, empty);
     assert.deepEqual(empty.hazards, [], 'a machineless sector injects nothing');
   } finally {
     world.state = prevState;

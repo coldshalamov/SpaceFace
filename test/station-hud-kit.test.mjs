@@ -245,6 +245,11 @@ test('a raw button is not the primary station control', () => {
   assert.equal(primaryTagIsMachined(machined, css), true);
 });
 
+test('decant station control maps its visible label', () => {
+  assert.equal(stationControlLabel('decant'), 'Decant');
+  assert.match(stationControlAttrs('decant'), /data-control-label="Decant"/);
+});
+
 test('every station control label comes from the binding map', () => {
   for (const [id, row] of Object.entries(STATION_CONTROLS)) {
     assert.equal(stationControlLabel(id), row.label);

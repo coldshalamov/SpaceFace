@@ -188,7 +188,7 @@ function notePeer(plan, pos, radius, key, cls, placed = false) {
   peers.push({ pos: { x: pos.x, z: pos.z }, radius, key, cls: cls || 'solid', placed: placed === true });
 }
 
-function outsidePoint(plan, original, radius, salt, cls) {
+function outsidePoint(plan, original, radius, salt, cls, computedPose = false) {
   // Fail closed on malformed input: a non-finite point or a negative/non-finite
   // radius returns the input untouched, so each caller's unchanged fast-path keeps
   // the authored position instead of minting a NaN/Infinity seat into the world.
@@ -204,7 +204,9 @@ function outsidePoint(plan, original, radius, salt, cls) {
     // computed overlaps it: a body shifted earlier could not foresee a later
     // materialization, so the later body yields instead of stacking on it.
     if (!placedSeatBlocked(plan, original, radius, key)) {
-      notePeer(plan, original, radius, key, rowCls);
+      // A computed pose (see racingAsteroidSpec) is a seat this pass chose even when it is
+      // kept, so later bodies yield to it exactly as they would to a moved seat.
+      notePeer(plan, original, radius, key, rowCls, computedPose === true);
       return { ...original };
     }
   }
@@ -306,7 +308,13 @@ export function racingAsteroidSpec(state, spec) {
       : { ...spec, pos: { x: spec.pos.x + offset.x, z: spec.pos.z + offset.z } };
   }
   const radius = asteroidColliderRadius(spec.data?.typeId, spec.radius);
-  const moved = outsidePoint(plan, spec.pos, radius, spec.data?.fieldId || 'rock', 'memrock');
+  // W-LADDER rungs (world._ensureRockLadderBedrock, ids `ladder_<field>_<tier>_<k>`) are not
+  // authored points: each walks its spoke past THIS pass's rocks, so in a racing session it
+  // lands where the banked scatter left room — a pose no author saw. Register it as placed
+  // occupancy so later dressing (a survey drone, a debris chunk) yields instead of stacking.
+  const boulderId = spec.data?.authoredBoulderId;
+  const computedPose = typeof boulderId === 'string' && boulderId.startsWith('ladder_');
+  const moved = outsidePoint(plan, spec.pos, radius, spec.data?.fieldId || 'rock', 'memrock', computedPose);
   return moved.x === spec.pos.x && moved.z === spec.pos.z ? spec : { ...spec, pos: moved };
 }
 

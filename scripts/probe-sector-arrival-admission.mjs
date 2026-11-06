@@ -30,6 +30,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TARGET_SECTOR = 'sector_ceres_belt';
@@ -450,6 +451,9 @@ async function waitForScreenVisible(page, id, timeoutMs = 30_000) {
 
 let failure = null;
 try {
+  await installFirstLightPromptHandler(page, (label, ok, detail) => {
+    console.log(`[${ok ? 'ok' : 'fail'}] ${label}${detail ? `: ${detail}` : ''}`);
+  });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
   await page.waitForFunction(() => !!window.SF?.state, null, { timeout: APP_SURFACE_TIMEOUT_MS });
   await waitForMenuAction(page, 'newGame');

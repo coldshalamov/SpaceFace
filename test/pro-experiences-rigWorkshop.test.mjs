@@ -543,6 +543,129 @@ test('ordinary Adventure discovers the fixed workshop, respects refusal, accepts
   } finally { system.destroy(); h.close(); }
 });
 
+test('optional workshop intro waits out a live timed encounter and remains pending through restore', async () => {
+  const h = await nativeFixture();
+  const system = createRigWorkshopSystem();
+  const prompts = [];
+  h.bus.on('rigWorkshop:prompt', value => prompts.push(value));
+  try {
+    delete h.state.rigWorkshop;
+    system.init(h.sim.registry.ctx);
+    const encounterId = 'test:urgent-encounter';
+    h.state.encounterDirector = { live: {
+      [encounterId]: { phase: 'offer', deadlineAt: (h.state.simTime || 0) + 8,
+        deck: 'combat', sectorId: h.state.world.currentSectorId,
+        shape: { choices: [{ id: 'respond', label: 'Respond' }] } },
+    } };
+    h.bus.emit('encounter:choiceOffered', { encounterId, deadlineAt: (h.state.simTime || 0) + 8,
+      options: [{ id: 'respond', label: 'Respond' }] });
+
+    system.update(DT);
+    assert.ok(system.workshop.bench?.entityId, 'the workshop remains available while its intro waits');
+    assert.equal(system.workshop.introduced, false);
+    assert.equal(system.workshop.prompt, null);
+    assert.deepEqual(prompts, [], 'no optional workshop decision competes with the encounter offer');
+
+    const save = system.serialize();
+    assert.equal(save.workshop.introduced, false, 'the not-yet-offered choice is represented by the canonical saved state');
+    assert.equal(system.deserialize(save).ok, true);
+    system.update(DT);
+    assert.equal(system.workshop.introduced, false);
+    assert.deepEqual(prompts, [], 'Continue does not lose the pending choice or surface it over the live encounter');
+
+    const nearbyRaider = h.sim.spawn({ type: 'ship', team: 1, pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
+      radius: 8, mass: 120, hull: 100, hullMax: 100, collides: true,
+      physicsBody: { schemaVersion: 1, dynamic: true, shape: 'ball', radius: 8, mass: 120, inertiaY: 3200, revision: 0 },
+      data: {} });
+    h.state.encounterDirector.live[encounterId].phase = 'conflict';
+    h.state.encounterDirector.live[encounterId].ids = [nearbyRaider.id];
+    system.update(DT);
+    assert.equal(system.workshop.introduced, false, 'the optional card waits while encounter-owned combatants remain near the player');
+
+    delete h.state.encounterDirector.live[encounterId];
+    h.bus.emit('encounter:resolved', { encounterId, outcome: 'released' });
+    system.update(DT);
+    assert.equal(system.workshop.introduced, true, 'the intro becomes introduced only when emitted after the encounter');
+    assert.equal(prompts.length, 1);
+    assert.deepEqual(prompts[0].options.map(option => option.id), ['visit', 'later']);
+    system.update(DT);
+    assert.equal(prompts.length, 1, 'the pending intro is offered once');
+
+    const visibleChoiceSave = system.serialize();
+    assert.equal(visibleChoiceSave.workshop.introPending, true);
+    assert.equal(system.deserialize(visibleChoiceSave).ok, true);
+    assert.equal(system.workshop.introduced, false, 'a visible but unanswered intro is pending again after Continue');
+    assert.equal(system.workshop.prompt, undefined, 'prompt DOM is not serialized as a stale live control');
+    system.update(DT);
+    assert.equal(prompts.length, 2, 'Continue re-offers the unanswered choice');
+    assert.deepEqual(prompts[1].options.map(option => option.id), ['visit', 'later']);
+    system.update(DT);
+    assert.equal(prompts.length, 2, 'the restored choice is offered once in the resumed run');
+  } finally { system.destroy(); h.close(); }
+});
+
+test('rig workshop intro does not return after the player uses the bench, and distant combat does not block explicit opening', async () => {
+  {
+    const h = await nativeFixture();
+    const system = createRigWorkshopSystem();
+    try {
+      delete h.state.rigWorkshop;
+      system.init(h.sim.registry.ctx);
+      assert.equal(system.discover(), true);
+      assert.equal(system.workshop.introPending, true, 'the optional introduction is offered on first ordinary discovery');
+      const bench = { ...system.workshop.bench.pos };
+      h.player.pos.x = bench.x;
+      h.player.pos.z = bench.z;
+      system.update(DT);
+      assert.equal(system._page, 'bench', 'reaching the actual bench opens its working controls');
+      assert.ok(system.workshop.prompt.options.some(option => option.id === 'edit'));
+      assert.equal(system.workshop.introPending, false, 'bench use consumes the pending introduction');
+      h.player.pos.x += 500;
+      h.state.simTime += 21;
+      system.update(DT);
+      assert.equal(system.workshop.introPending, false);
+      assert.notEqual(system._page, 'intro', 'leaving and returning to ordinary flight does not reintroduce the workshop');
+    } finally { system.destroy(); h.close(); }
+  }
+
+  for (const choiceId of ['visit', 'later']) {
+    const h = await nativeFixture();
+    const system = createRigWorkshopSystem();
+    try {
+      delete h.state.rigWorkshop;
+      system.init(h.sim.registry.ctx);
+      assert.equal(system.discover(), true);
+      assert.equal(system.workshop.introPending, true);
+      const prompt = clone(system.workshop.prompt);
+      assert.equal(system.choose({ promptId: prompt.id, revision: prompt.revision, choiceId }), true);
+      assert.equal(system.workshop.introPending, false, `${choiceId} records the player's decision`);
+    } finally { system.destroy(); h.close(); }
+  }
+
+  {
+    const h = await nativeFixture();
+    const system = createRigWorkshopSystem();
+    try {
+      delete h.state.rigWorkshop;
+      system.init(h.sim.registry.ctx);
+      const distantRaider = h.sim.spawn({ type: 'ship', team: 1, pos: { x: 8000, z: 8000 }, vel: { x: 0, z: 0 },
+        radius: 8, mass: 120, hull: 100, hullMax: 100, collides: true,
+        physicsBody: { schemaVersion: 1, dynamic: true, shape: 'ball', radius: 8, mass: 120, inertiaY: 3200, revision: 0 },
+        data: {} });
+      h.state.encounterDirector = { live: { 'test:distant-combat': { phase: 'conflict', deck: 'combat',
+        sectorId: h.state.world.currentSectorId, ids: [distantRaider.id], shape: { choices: [] } } } };
+      system.update(DT);
+      assert.equal(system._page, 'intro', 'a distant same-sector combat record does not indefinitely hold the optional intro');
+
+      system.dispatch('close');
+      h.state.rigWorkshop.introduced = true;
+      system.dispatch('open');
+      assert.equal(system._page, 'intro', 'a player-initiated workshop opening remains available during distant combat');
+      assert.ok(system.workshop.prompt?.options.some(option => option.id === 'visit'));
+    } finally { system.destroy(); h.close(); }
+  }
+});
+
 test('the field deck secures ordinary owned salvage, can recapture a failed restraint, and offers bounded recovery away from the rig', async () => {
   const h = await nativeFixture(), system = createRigWorkshopSystem();
   try {

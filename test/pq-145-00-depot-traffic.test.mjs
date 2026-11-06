@@ -68,6 +68,12 @@ test('PQ-145.00 default Ceres claim dispatches a real persistent hauler service'
     assert.deepEqual(drawnRoute.drawFrom, globalToSectorLocalForSector(drawnRoute.from, SECTOR));
     assert.deepEqual(drawnRoute.drawTo, globalToSectorLocalForSector(drawnRoute.to, SECTOR));
     sim.runTicks(900);
+    // The watch arms ~12 s after dispatch, telegraphs 4 s, and springs on the director's next pass
+    // with the player on the route — a pass that can land just past the 900-tick mark. Give it a
+    // bounded few seconds to spring rather than pinning the exact director boundary.
+    for (let s = 0; s < 5 && state.encounterDirector?.live?.[`depot-watch:${body.id}`]?.phase === 'offer'; s += 1) {
+      sim.runTicks(60);
+    }
     const watch = state.encounterDirector?.live?.[`depot-watch:${body.id}`];
     console.log(JSON.stringify({ pirateWatch: !!watch, pirateShips: watch?.ids,
       watchPhase: watch?.phase, planShips: watch?.plan?.ships?.length }));
