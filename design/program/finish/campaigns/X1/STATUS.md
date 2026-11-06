@@ -23,7 +23,18 @@
   - `after-lineup-plate-ship-sky.png` — ship + bank plate + rock + sky planet in one frame at the
     gameplay camera.
 - Focused checks: `node --test test/pq133-08-law-dressing.test.mjs test/pq133-09-cryo-storm-dressing.test.mjs`
-  — 23/23 pass. Geometry: unit bounding box exactly [-0.5, 0.5]³.
+  — 23/23 pass at the time of the finish. **Session close:** those two files now fail to import
+  because a concurrent edit in `src/systems/waveMaterialization.js` uses `MILL_BOSS_ROLE` before
+  initialization (TDZ). That file is not ours; the failure is the shared tree's, not the arena
+  finish. Re-run once the owner of that edit lands it.
+
+## Published
+
+- `25fd5cf` — campaigns, arena finish, Adventure glass, input contexts, music stems, tests.
+- `60b7778` — the X1/X3 hunks inside the two shared files (`visualFactory.js`, `hudAdapter.js`);
+  their other in-flight changes stay in the working tree for their owners.
+- Local master could not merge back the second publish commit because a concurrent uncommitted
+  `src/render/vfx.js` edit would be overwritten; the working tree preserves it.
 
 ## Evidence / limitations
 
