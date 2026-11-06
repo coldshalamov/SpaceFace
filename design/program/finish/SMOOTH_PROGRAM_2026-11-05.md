@@ -140,10 +140,13 @@ hostile's `userData.authoredAssetState` through the fight):**
   traffic ship (≤24 roots). Live wave-15 diagnosis (`swarm-batch-probe.mjs`): status stayed
   `preparing` for the whole fight, roots 1→5, **0 batches committed**. Not churn — the pending
   prepare correctly survives new arrivals (rigidOpaqueBatch ~1283); it never lands because its
-  prepare queues in the same serial compile lane ~20 enemy mounts saturate for the whole fight.
-  **Crowd batching cannot win by queueing behind the thing it exists to replace** — it needs a
-  dedicated instanced admission path (instance-at-mount for repeat archetypes), not a post-hoc
-  retained-batch replay. That is the real shape of backlog row 2.
+  group compiles queued ambient behind ~20 enemy mounts for the whole fight.
+  **FIXED (urgent lane):** batch group compiles now carry `urgent` in flight — they are on-glass
+  deadline work (sources draw individually every frame until commit). Re-probe: **commits twice
+  mid-fight, 7 batches collapsing 110 then 210 sources**; departures already remove instances
+  incrementally (deleteInstance), so the preparing gaps are new-arrival replans landing ~6 s.
+  Remaining lever on this row: raise `RIGID_OPAQUE_SHIP_COHORT_MAX_ROOTS` (24) or instance-at-mount
+  for repeat archetypes to skip the replan cycle entirely.
 - `kind:payload` reached 228 drawables mid-fight (~25 drops × ~9 shared-geometry parts) —
   factory-shared (geometry, material) pairs, simplest instancing target after enemy hulls.
 
