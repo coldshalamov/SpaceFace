@@ -21,6 +21,7 @@ import {
   crucibleHullSetupFor,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
+  freshSeed,
   lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
@@ -415,6 +416,13 @@ const ARENA_TILE = Object.freeze({
   cryo_drift: 'assets/tiles/tile.arena.cryo-drift.png',
   storm_lattice: 'assets/tiles/tile.arena.storm-lattice.png',
 });
+// S9 — untiled arenas never wear another room's picture. An arena with no authored tile
+// art yet presents its own glyph; the hero panel shows the active mode's art instead of
+// a mislabeled Foundry still.
+const ARENA_GLYPH = Object.freeze({
+  asteroid_mill: 'asteroid',
+  the_hive: 'seed',
+});
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -454,11 +462,8 @@ function hullBlurb(starter) {
   return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
 }
 
-/** A fresh seed for the door. UI-only: the sim's determinism starts once the seed is chosen. */
-function freshSeed() {
-  const now = Date.now() >>> 0;
-  return normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
-}
+// `freshSeed` lives in crucibleLaunch.js — the title's one-press Swarm launch uses the same
+// roll the door does, so the two entries can never drift on what "a new run" means.
 
 function arenaName() {
   const arena = survivalArenaById(CRUCIBLE_ARENA_ID);
@@ -882,7 +887,7 @@ export const crucibleScreen = {
       let shown = null;
       let heroTurn = 0;
       paintHero = (id, name, line) => {
-        const src = kitUrl((ARENA_TILE[id] || ARENA_TILE.helios_core).replace(/\.png$/, '@2x.png'));
+        const src = kitUrl((ARENA_TILE[id] || MODE_TILE[ruleset] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png'));
         const reduce = document.documentElement
           && document.documentElement.classList.contains('sf-reduce-motion');
         if (shown === src) {
@@ -1665,7 +1670,9 @@ export const crucibleScreen = {
       armEmbarkSpec();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
-      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
+      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice',
+        ARENA_TILE[arena.id] ? kitUrl(ARENA_TILE[arena.id]) : null,
+        ARENA_TILE[arena.id] ? null : ARENA_GLYPH[arena.id]);
       button.dataset.arenaId = arena.id;
       button.addEventListener('click', () => {
         if (arenaLockedFor(arena.id)) {
