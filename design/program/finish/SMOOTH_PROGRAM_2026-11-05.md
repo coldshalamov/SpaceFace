@@ -136,6 +136,16 @@ hostile's `userData.authoredAssetState` through the fight):**
 - Census (ordinary flight): 756 visible drawables; `kind:ship` 326 + `kind:drone` 184 +
   `kind:wreck` 103 = **81 %, zero instanced**. `rigidOpaqueBatch` (BatchedMesh) is proven but
   scoped to the player + ashline cohort only.
+- **Ship cohort batching already exists** — `isRigidOpaqueShipCohortRoot` admits every authored
+  traffic ship (≤24 roots). Live wave-15 diagnosis (`swarm-batch-probe.mjs`): status stayed
+  `preparing` for the whole fight, roots 1→5, **0 batches committed**. Not churn — the pending
+  prepare correctly survives new arrivals (rigidOpaqueBatch ~1283); it never lands because its
+  prepare queues in the same serial compile lane ~20 enemy mounts saturate for the whole fight.
+  **Crowd batching cannot win by queueing behind the thing it exists to replace** — it needs a
+  dedicated instanced admission path (instance-at-mount for repeat archetypes), not a post-hoc
+  retained-batch replay. That is the real shape of backlog row 2.
+- `kind:payload` reached 228 drawables mid-fight (~25 drops × ~9 shared-geometry parts) —
+  factory-shared (geometry, material) pairs, simplest instancing target after enemy hulls.
 
 ## 5. The ranked backlog (what else to do, highest ROI first)
 
