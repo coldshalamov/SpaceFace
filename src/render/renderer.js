@@ -363,6 +363,7 @@ import {
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   adaptiveFrameBudgetMs,
+  adaptiveFloorForCombinedScale,
   adaptiveResolutionEligibleForState,
   adaptiveResolutionEnabledForSettings,
   dynResFloorForTier,
@@ -597,7 +598,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
-import { createResidencyManager, RESIDENCY_LOOKAHEAD_S } from './residencyManager.js';
+import { createResidencyManager, RESIDENCY_HELD, RESIDENCY_LOOKAHEAD_S } from './residencyManager.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
@@ -11297,6 +11298,7 @@ export const render = {
     // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
     // to the player below.
     const dynFloor = dynResFloorForTier(gpu.tier);
+    this._dynFloor = dynFloor;
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
       initialScale: gpu.software === true ? dynFloor : 1,
@@ -11310,6 +11312,7 @@ export const render = {
     // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
     state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(adaptiveResolutionEnabledForSettings(gpu, state.settings && state.settings.video));
+    this._adaptive.setFloor(this._adaptiveFloorForRelief());
 
     // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
     // fast — apply the software-only emergency profile and tell the player exactly how to fix it.
@@ -25262,6 +25265,13 @@ export const render = {
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
       : SUBMIT_LANE.OPAQUE;
+    // A fresh root whose buffers have never reached the GPU is held before it is ever
+    // submitted: the off-screen lane uploads it, then it appears complete. A rebind of a
+    // live root is never held here (that would blank a body the player is already watching);
+    // its missing leaves are held individually by the draw guard instead.
+    if (this._residencyManager && !mesh.parent && hasUnresidentGeometry(mesh)) {
+      this._residencyManager.holdRoot(mesh, 'bind');
+    }
     lanes.reserve(entity.id, lane);
     const bound = world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
     if (!bound) return false;
@@ -28227,6 +28237,7 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.residencyHeld = !!(mesh.userData && mesh.userData[RESIDENCY_HELD]);
         _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
           || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
           && rootDrawsResidentStandIn(mesh);
@@ -28538,6 +28549,7 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.residencyHeld = !!(mesh.userData && mesh.userData[RESIDENCY_HELD]);
         _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
           || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
           && rootDrawsResidentStandIn(mesh);
@@ -30156,7 +30168,10 @@ export const render = {
       // 30 frames, never per draw.
       const frameSeq = (this._residencyPublishSeq = (this._residencyPublishSeq | 0) + 1);
       if ((frameSeq % 30) === 0 && this.state && this.state.render) {
-        this.state.render.residency = this._residencyManager.snapshot();
+        this.state.render.residency = {
+          ...this._residencyManager.snapshot(),
+          compileFailOpen: this.renderer ? (this.renderer.__sfCompileFailOpen | 0) : 0,
+        };
       }
     }
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;

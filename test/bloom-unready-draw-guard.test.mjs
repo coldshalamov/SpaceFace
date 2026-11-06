@@ -755,3 +755,23 @@ test('without disarmOnSettle the guard keeps the wrapped draw path when settled'
   }
   await Promise.resolve();
 });
+
+test('a drawable whose program never links fails open after the bounded window and is counted', () => {
+  const { renderer, draws } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const material = { userData: {} };
+  const mesh = { isMesh: true };
+  guard.hide(scene);
+  try {
+    for (let i = 0; i < 90; i++) {
+      assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
+    }
+    assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn',
+      'a stuck admission lane must not hide the body forever');
+    assert.equal(renderer.__sfCompileFailOpen, 1, 'the fail-open is counted for the probes');
+    assert.equal(draws.length, 1);
+  } finally {
+    guard.restore();
+  }
+});

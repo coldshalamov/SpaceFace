@@ -1475,6 +1475,10 @@ function linkedDrawProgramVariant(renderer, rec, material, object) {
 // The wrapper is per-renderer — this guard exists twice per renderer (bloom's own and
 // the renderer's route-level instance) — and composes with the perf-counter drawObject
 // wrapper whichever installs first. Warm variants allocate nothing on the draw path.
+// Consecutive presented frames a drawable may be refused for an unlinked program before the
+// guard fails open (~1.5 s at 60 fps). A stuck admission lane must not hide a body forever.
+const COMPILE_REFUSAL_FAIL_OPEN = 90;
+
 function installUnreadyDrawGuard(renderer) {
   if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
   if (typeof renderer.renderBufferDirect !== 'function') return;
@@ -1564,17 +1568,29 @@ function installUnreadyDrawGuard(renderer) {
         }
       } catch (_) { /* draw as today */ }
       if (!compiled) {
-        const admissionData = data || (material.userData = {});
-        // Same material stamp dedupe as hideIfProgramUnready: one admission
-        // in flight per material while the draw keeps being skipped.
-        const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
-        if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
-          admissionData.__sfPipelineAdmission = true;
-          Promise.resolve(queueAdmission(object))
-            .catch(() => null)
-            .finally(() => { admissionData.__sfPipelineAdmission = false; });
+        // Bounded fail-open: if admission cannot produce a program for this drawable (a
+        // detached boundary, a throw in the compile lane), a permanently invisible part is
+        // worse than one brick. After ~1.5 s of refusals the draw proceeds and the event is
+        // counted, so a stuck lane is visible to the probes instead of silent.
+        const refusals = (object.__sfCompileRefusals | 0) + 1;
+        if (refusals <= COMPILE_REFUSAL_FAIL_OPEN) {
+          object.__sfCompileRefusals = refusals;
+          const admissionData = data || (material.userData = {});
+          // Same material stamp dedupe as hideIfProgramUnready: one admission
+          // in flight per material while the draw keeps being skipped.
+          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+          if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+            admissionData.__sfPipelineAdmission = true;
+            Promise.resolve(queueAdmission(object))
+              .catch(() => null)
+              .finally(() => { admissionData.__sfPipelineAdmission = false; });
+          }
+          return undefined;
         }
-        return undefined;
+        object.__sfCompileRefusals = 0;
+        renderer.__sfCompileFailOpen = (renderer.__sfCompileFailOpen | 0) + 1;
+      } else if (object.__sfCompileRefusals) {
+        object.__sfCompileRefusals = 0;
       }
     }
     const result = inner.call(this, camera, scene, geometry, material, object, group);

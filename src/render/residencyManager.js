@@ -100,8 +100,10 @@ export function createResidencyManager(options = {}) {
     admittedResident: 0,
     admittedInline: 0,
     heldDraws: 0,
-    /** Draw calls submitted while unready. This is the pop-in counter; it must stay 0. */
+    /** Drawables held again after they had already been presented: the blink class. Must be 0. */
     visibleUnready: 0,
+    /** Drawables held before their first presentation: pre-admission working as intended. */
+    preAdmittedHolds: 0,
     uploadRequests: 0,
     uploadRuns: 0,
     uploadFailures: 0,
@@ -186,6 +188,7 @@ export function createResidencyManager(options = {}) {
     if (type && /Depth|Distance/.test(String(type))) return false;
     const pending = object.__sfResidencyPendingGeometry;
     if (pending === geometry) object.__sfResidencyPendingGeometry = null;
+    if (object.__sfPresentedOnce !== true) object.__sfPresentedOnce = true;
     const data = geometry.userData || (geometry.userData = {});
     if (data.spacefaceGpuResident === true) return false;
     // Only a geometry this manager allowed inline may be stamped by its own draw; a
@@ -202,6 +205,14 @@ export function createResidencyManager(options = {}) {
     return object || null;
   }
 
+  /** Whether this drawable (or an ancestor) has already been presented at least once. */
+  function wasEverPresented(object) {
+    for (let node = object; node; node = node.parent) {
+      if (node.__sfPresentedOnce === true) return true;
+    }
+    return false;
+  }
+
   /** Hold one drawable invisible until its geometry is resident, and queue the upload. */
   function holdRoot(root, reason = 'geometry', geometry = null) {
     if (!root || !root.userData) return false;
@@ -211,14 +222,18 @@ export function createResidencyManager(options = {}) {
     data.sfResidencyHeldAt = nowMs();
     data.sfResidencyHeldReason = reason;
     data.sfResidencyGeometry = geometry || root.geometry || null;
+    const wasPresented = wasEverPresented(root);
     // Fail closed: a drawable without resident geometry is not submitted at all. The
     // prior visibility is remembered so the release restores the authored state instead
     // of forcing a hidden child on screen.
     data.sfResidencyPriorVisible = root.visible !== false;
-    // Pop-in counter: this drawable was on screen (or in the submit set) before its data
-    // existed — exactly the frame the player used to see the brick. Predictive
-    // pre-admission is what drives this to zero.
-    if (root.visible !== false) counters.visibleUnready += 1;
+    if (wasPresented) {
+      // It had already been on screen and is now unready again: the blink/pop class.
+      counters.visibleUnready += 1;
+    } else {
+      // Held before its first presentation — the residency lane got there first.
+      counters.preAdmittedHolds += 1;
+    }
     root.visible = false;
     counters.heldRoots += 1;
     requestUpload(root, reason);
@@ -241,15 +256,13 @@ export function createResidencyManager(options = {}) {
     return true;
   }
 
-  /** A resident drawable that was held is released on its first admitted draw. */
+  /** A resident drawable that was held on its own is released on its first admitted draw. */
   function raiseHeldRoot(object) {
-    let root = object;
-    while (root) {
-      if (root.userData && root.userData[RESIDENCY_HELD] === true) {
-        releaseRoot(root);
-        return;
-      }
-      root = root.parent;
+    // Only a hold placed on this exact drawable is cleared here. An ancestor (bind-time root)
+    // hold must wait for the whole subtree: releasing it on one leaf's proof would show the
+    // hull with its other leaves still missing.
+    if (object && object.userData && object.userData[RESIDENCY_HELD] === true) {
+      releaseRoot(object);
     }
   }
 
@@ -306,7 +319,8 @@ export function createResidencyManager(options = {}) {
     }
     if (stillPending(root)) {
       // The driver prepared a batch, but this root still holds unuploaded geometry
-      // (a late child mount). Keep it queued; it is not visible yet.
+      // (a late child mount). Put it back on the queue; it is not visible yet.
+      if (pendingSet.has(root)) pendingRoots.push(root);
       return;
     }
     pendingSet.delete(root);
@@ -379,6 +393,7 @@ export function createResidencyManager(options = {}) {
       admittedInline: counters.admittedInline,
       heldDraws: counters.heldDraws,
       visibleUnready: counters.visibleUnready,
+      preAdmittedHolds: counters.preAdmittedHolds,
       uploadRequests: counters.uploadRequests,
       uploadRuns: counters.uploadRuns,
       uploadFailures: counters.uploadFailures,

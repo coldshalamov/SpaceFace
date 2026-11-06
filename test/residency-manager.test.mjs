@@ -91,7 +91,7 @@ test('the inline wallet is per frame: once spent, the next upload waits', () => 
   assert.equal(manager.admitGeometry(drawable(), overflow), true, 'next frame the wallet resets');
 });
 
-test('an over-budget geometry is held invisible, queued once, and counted as pop-in', async () => {
+test('an over-budget geometry is held invisible, queued once, and counted as pre-admission', async () => {
   const batches = [];
   let release = null;
   const manager = createResidencyManager({
@@ -109,7 +109,8 @@ test('an over-budget geometry is held invisible, queued once, and counted as pop
   assert.equal(mesh.visible, false, 'held fail-closed');
   assert.equal(mesh.userData[RESIDENCY_HELD], true);
   assert.equal(manager.snapshot().uploadRequests, 1, 'requests dedupe across refused draws');
-  assert.equal(manager.snapshot().visibleUnready, 1, 'counted once, not per refused draw');
+  assert.equal(manager.snapshot().preAdmittedHolds, 1, 'held before its first presentation');
+  assert.equal(manager.snapshot().visibleUnready, 0, 'it was never on screen, so it is not a blink');
   // Drain hands the drawable to the off-screen driver exactly once.
   assert.equal(manager.drainUploads(), 1);
   assert.equal(batches.length, 1);
@@ -144,6 +145,7 @@ test('a root that still holds unresident geometry stays held after a batch', asy
   await Promise.resolve();
   assert.equal(mesh.visible, false, 'a partial upload never reveals the drawable');
   assert.equal(manager.isHeld(mesh), true);
+  assert.equal(manager.pendingCount(), 1, 'a partial upload is re-queued, not stranded');
 });
 
 test('a failed upload keeps the drawable held and records the failure', async () => {
@@ -164,7 +166,24 @@ test('a failed upload keeps the drawable held and records the failure', async ()
   assert.equal(failures.length, 1);
 });
 
-test('a drawable hidden before the hold is restored hidden', () => {
+test('a drawable that was already presented and becomes unready again is a blink', () => {
+  const manager = createResidencyManager({ requestRoots: () => {} });
+  // First life: a small resident draw, so the drawable has been presented.
+  manager.beginFrame();
+  const first = geometryWith(1024);
+  const mesh = drawable();
+  assert.equal(manager.admitGeometry(mesh, first), true);
+  manager.noteDrawn(mesh, first);
+  // Second life: a new, over-budget geometry replaces it.
+  manager.beginFrame();
+  const replacement = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  assert.equal(manager.admitGeometry(mesh, replacement), false);
+  const snap = manager.snapshot();
+  assert.equal(snap.visibleUnready, 1, 'drawn before, unready now: the blink class');
+  assert.equal(snap.preAdmittedHolds, 0);
+});
+
+test('a drawable hidden before its first presentation stays hidden and is not a blink', () => {
   const manager = createResidencyManager({ requestRoots: () => {} });
   manager.beginFrame();
   const geometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
