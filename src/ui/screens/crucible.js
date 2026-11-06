@@ -21,6 +21,7 @@ import {
   crucibleHullSetupFor,
   crucibleSetupFor,
   crucibleStarterIdForSetup,
+  freshSeed,
   lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
@@ -454,11 +455,8 @@ function hullBlurb(starter) {
   return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
 }
 
-/** A fresh seed for the door. UI-only: the sim's determinism starts once the seed is chosen. */
-function freshSeed() {
-  const now = Date.now() >>> 0;
-  return normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
-}
+// `freshSeed` lives in crucibleLaunch.js — the title's one-press Swarm launch uses the same
+// roll the door does, so the two entries can never drift on what "a new run" means.
 
 function arenaName() {
   const arena = survivalArenaById(CRUCIBLE_ARENA_ID);

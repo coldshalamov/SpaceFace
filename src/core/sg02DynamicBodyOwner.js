@@ -24,6 +24,7 @@ import {
   measureThrusterAuthority,
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
+  hasPhysicsTelemetryRequest,
 } from './physicsAuthority.js';
 import {
   MAX_PROXY_PRIMITIVES,
@@ -4270,7 +4271,9 @@ export class Sg02DynamicBodyOwner {
   }
 
   _publishTelemetry(rec) {
-    if (!this.publishTelemetry) return;
+    // A bounded gameplay reader (e.g. one admitted shutter) still needs measured truth when
+    // whole-world diagnostic telemetry is off in the production browser/worker profile.
+    if (!this.publishTelemetry && !hasPhysicsTelemetryRequest(rec.entity)) return;
     if (!rec.spec.dynamic) return;
     // Retained input record: writePhysicsTelemetry reads every field synchronously into its own
     // frozen publication, so the input literal does not need to be fresh per call.
