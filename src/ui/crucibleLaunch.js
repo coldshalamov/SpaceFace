@@ -103,13 +103,6 @@ export function crucibleSetupFor({
   return result;
 }
 
-/** A fresh seed for a launch that carries no seed of its own. UI-only: the sim's determinism
- *  starts once the seed is chosen. */
-export function freshSeed() {
-  const now = Date.now() >>> 0;
-  return normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
-}
-
 /**
  * The bare-hull launch: any ship in the catalog, an empty fit, and the armory for the kit.
  * `hull:<shipId>` is the door's own starter id for it — never a COMBAT_LAB package id. The

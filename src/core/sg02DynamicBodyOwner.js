@@ -24,7 +24,6 @@ import {
   measureThrusterAuthority,
   resolvePhysicsBodySpec,
   writePhysicsTelemetry,
-  hasPhysicsTelemetryRequest,
 } from './physicsAuthority.js';
 import {
   MAX_PROXY_PRIMITIVES,
@@ -3997,9 +3996,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _publishTelemetry(rec) {
-    // A bounded gameplay reader (e.g. one admitted shutter) still needs measured truth when
-    // whole-world diagnostic telemetry is off in the production browser/worker profile.
-    if (!this.publishTelemetry && !hasPhysicsTelemetryRequest(rec.entity)) return;
+    if (!this.publishTelemetry) return;
     if (!rec.spec.dynamic) return;
     // E2: only bodies a gameplay owner declared it inspects. Two readers exist (Crucible room
     // shutters, Kilnback capital completion); publishing for every dynamic body was ~one frozen
