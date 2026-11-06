@@ -96,6 +96,22 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   sheet + Brood family surface rows (hue, silhouette, mass, protection layers, tell,
   debut wave). Lane S can render the bestiary/HUD identity straight off it; the S1
   fodder band and the sheet agree by test.
+- **S7 tasks 2–3 (in tree, uncommitted):** sheet stat overrides apply at materialization
+  through `applySwarmFeelSpec` (`spec.data.swarmCharacter` + `spec.data.ai.swarmTellFloor`
+  stamps — Lane S reads both). Shared-file hunks claimed, all gated on the cohort flag:
+  `src/ai/combatDoctrine.js` (`SWARM_TELL_FLOOR_TICKS=36`, `cueTicksFor(record)`,
+  `record.swarmTellFloor`, floored cue-age checks — inert for unmarked hulls),
+  `src/systems/aiPorts.js` (`swarmTellFloor` flatten next to `swarmLastStand`),
+  `src/ui/hud.js` (additive `DOCTRINE_TELL_BY_KIND`/`_HINT`/`_ICON` rows for the swarm
+  cue kinds `pack_call`/`wake_mines`/`field_spool`/`sensor_ghost`/`detonator_fuse` —
+  inert for un-emitted kinds), `src/data/swarmMode.js`
+  (`SWARM_PACK_PURSUIT_IDS` drops `choir_zealot` so its authored `escort_screen`
+  runs in Swarm — the ward is the nearest packmate), `src/data/swarmSpecialists.js`
+  (`windupTicks` 30→36, the 0.6 s tell floor). The reaver pack call now reads
+  `data.reinforcements` inside `survivalWave` (the live-route single writer — the
+  legacy ai.js consumer is dead under sg06-tactical): the caller telegraphs
+  `pack_call`, Wasps ride the ordinary stream through a lit gate with `data.calledBy`,
+  and the caller's death scatters them through the authored `forceFlee` egress.
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)

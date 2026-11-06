@@ -392,8 +392,10 @@ export const SWARM_ROSTER = Object.freeze([
 
 export const SWARM_BOSS_ENEMY_ID = 'dreadnought_boss';
 
-/** Mass fodder that stays packed inside a swarm. Adventure keeps the enemy def's own doctrine. */
-export const SWARM_PACK_PURSUIT_IDS = Object.freeze(['wasp_swarmer', 'choir_zealot']);
+/** Mass fodder that stays packed inside a swarm. Adventure keeps the enemy def's own doctrine.
+ * The choir keeps its authored escort_screen: in a pack its ward is the nearest packmate, so
+ * the guardian behavior the sheet promises ships through the existing screen doctrine. */
+export const SWARM_PACK_PURSUIT_IDS = Object.freeze(['wasp_swarmer']);
 
 /**
  * Doctrine stamp for one swarm spawn. Null means "leave the enemy def alone".

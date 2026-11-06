@@ -1262,6 +1262,13 @@ const DOCTRINE_TELL_BY_KIND = Object.freeze({
   attach_spool: 'TETHER',
   weapon_charge: 'CHARGE',
   shield_lance: 'CHARGE',
+  // S7 — the swarm sheet's cue kinds, mapped so every telegraphed cohort ability lands a
+  // HUD chip as well as its in-world tell.
+  pack_call: 'CALL',
+  wake_mines: 'MINES',
+  field_spool: 'ANCHOR',
+  sensor_ghost: 'GHOST',
+  detonator_fuse: 'FUSE',
 });
 const DOCTRINE_TELL_BY_ID = Object.freeze({
   interceptor_flyby: 'FLYBY',
@@ -1275,6 +1282,11 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   CHARGE: 'Close or break LOS',
   LAUNCH: 'Mass inbound — move',
   INCOMING: 'Sidestep or send it back',
+  CALL: 'Kill the caller first',
+  MINES: 'Keep one flank clear',
+  ANCHOR: 'Displace it or stay outside',
+  GHOST: 'It relocates after the shot',
+  FUSE: 'It goes off where it dies',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -1284,6 +1296,11 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
   LAUNCH: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   INCOMING: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  CALL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  MINES: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  ANCHOR: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  GHOST: SEMANTIC_PALETTE.info?.icon || '⚠\uFE0E',
+  FUSE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
 // The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
 // `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
