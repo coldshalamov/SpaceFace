@@ -43,7 +43,7 @@ function freshWard() {
     observedS: 0, blockedS: 0, workS: 0, maintenanceS: 0, maintenancePickupS: 0, maintenancePhase: 'approach',
     commuterLeg: 0, commuterDwellS: 0, commuterWaitS: 0, firstCompletionReceipt: null,
     lastSector: null, lastStepTick: null, firstSeenAtS: null, repairConsumed: false, needsReinstall: false,
-    lampMissing: false, cradleAway: false,
+    lampMissing: false, receiverMissing: false, cradleAway: false,
     obstructionTouchedAtS: null, clearanceLane: 0, tugRouteMode: null, tugRouteStage: 0,
     cradleRouteStage: 0, tugReturnStage: 0,
   };
@@ -567,6 +567,7 @@ export function stepLanternWard(owner, dt) {
   const { lamp, cradle, receiver, obstruction, tug, commuter, maintenance, service_face: face, maintenance_part: part } = bodies;
   const eligibleLamp = isLanternWardWorkpieceEligible(lamp);
   w.lampMissing = !lamp || !eligibleLamp;
+  w.receiverMissing = !receiver;
   w.cradleAway = !cradle || distance(cradle.pos, position(anchor, 'cradle')) > 280;
   if (playerNear(owner, position(anchor, 'cradle'), 240)) {
     w.observedS += dt; if (w.firstSeenAtS == null) w.firstSeenAtS = now(owner);
@@ -590,9 +591,12 @@ export function stepLanternWard(owner, dt) {
   }
   if (playerLine(owner, obstruction)) w.obstructionTouchedAtS = now(owner);
   if (!receiver || !lamp || !eligibleLamp || (!tug && !w.firstCompletionReceipt)) {
-    if (!w.firstCompletionReceipt) w.phase = 'missing';
-    w.workS = 0; setPhase(receiver, 'waiting');
+    // A historic service receipt is not evidence that its circuit is connected now.
+    // Preserve the paid history, but withdraw live success when either original is absent.
+    w.phase = 'missing';
+    w.workS = 0; setPhase(receiver, 'waiting'); setPhase(lamp, 'waiting');
     if (receiver) receiver.data.lanternWardLit = false;
+    if (lamp) lamp.data.lanternWardLit = false;
     if (tug) fly(owner, tug, position(anchor, 'cradle', -40, 28), 7, 4);
     return;
   }
@@ -794,7 +798,8 @@ export function restoreLanternWard(owner, saved) {
   w.firstSeenAtS = Number.isFinite(saved.firstSeenAtS) ? saved.firstSeenAtS : null;
   w.repairConsumed = saved.repairConsumed === true;
   w.needsReinstall = saved.needsReinstall === true;
-  w.lampMissing = saved.lampMissing === true; w.cradleAway = saved.cradleAway === true;
+  w.lampMissing = saved.lampMissing === true; w.receiverMissing = saved.receiverMissing === true;
+  w.cradleAway = saved.cradleAway === true;
   w.obstructionTouchedAtS = Number.isFinite(saved.obstructionTouchedAtS) ? saved.obstructionTouchedAtS : null;
   w.clearanceLane = [-22, 0, 22].includes(saved.clearanceLane) ? saved.clearanceLane : 0;
   w.tugRouteMode = ['cut', 'bypass'].includes(saved.tugRouteMode) ? saved.tugRouteMode : null;
@@ -826,7 +831,9 @@ export function lanternWardCompletionReceipt(owner, receiptId) {
 export function lanternWardStatus(owner) {
   const w = ward(owner), h = w.history;
   return { districtId: LANTERN_WARD_ID, phase: w.phase, blocked: !!w.blocked,
-    installed: w.phase === 'installed', damaged: w.phase === 'damaged', missingLamp: w.lampMissing || w.objects.lamp.lost,
+    installed: w.phase === 'installed' && !w.lampMissing && !w.receiverMissing && !w.objects.lamp.lost && !w.objects.receiver.lost,
+    damaged: w.phase === 'damaged', missingLamp: w.lampMissing || w.objects.lamp.lost,
+    missingReceiver: w.receiverMissing || w.objects.receiver.lost,
     cradleMissing: w.objects.cradle.lost || w.cradleAway, cradleStolen: h.cradleStolen,
     playerHelped: h.playerCleared || h.playerCarried || h.repaired,
     helpedBy: h.playerCarried ? 'physical_carry' : h.playerCleared ? 'cleared_passage' : h.repaired ? 'repair' : null,

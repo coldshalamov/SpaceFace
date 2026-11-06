@@ -16,6 +16,10 @@ export function lanternWardWorkGuidance(state) {
   if (w.objects?.receiver?.lost === true) {
     return result('receiver_lost', 'Household receiving cup lost', 'The household receiving cup was lost. Keep the original lamp safe; Nessa cannot connect it to another fixture.');
   }
+  if (w.receiverMissing === true) {
+    return result('find_receiver', 'Household receiving cup unavailable in the Ward',
+      'The original household receiving cup is unavailable here. Keep the original lamp safe; the same cup must return before Nessa can connect the family circuit.');
+  }
   if (w.lampMissing === true) {
     return result('find_original', 'Original lamp unavailable in the Ward', 'The original Venn Family Lamp, Serial 01, is unavailable here. If it is still intact, return that same lamp to its household seat; another lamp cannot finish the work.');
   }

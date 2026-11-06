@@ -21,7 +21,7 @@ export function lanternWardDialogueFacts(state) {
   if (w?.version !== 1) return null;
   const h = w.history || {};
   const missingLamp = w.lampMissing === true || w.objects?.lamp?.lost === true;
-  const missingReceiver = w.objects?.receiver?.lost === true;
+  const missingReceiver = w.receiverMissing === true || w.objects?.receiver?.lost === true;
   return { districtId: LANTERN_WARD_ID, phase: w.phase === 'installed' && w.needsReinstall ? 'displaced' : w.phase, blocked: w.blocked === true,
     installed: w.phase === 'installed' && !missingLamp && !missingReceiver && !w.needsReinstall,
     damaged: w.phase === 'damaged' && !missingLamp, missingLamp,

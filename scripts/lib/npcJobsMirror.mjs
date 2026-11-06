@@ -61,6 +61,7 @@ export function projectLanternWard(ward) {
   for (const key of WARD_HISTORY_FLAGS) history[key] = ward.history?.[key] === true;
   return { version: 1, phase: typeof ward.phase === 'string' && ward.phase.length < 32 ? ward.phase : null,
     blocked: ward.blocked === true, lampMissing: ward.lampMissing === true || ward.objects?.lamp?.lost === true,
+    receiverMissing: ward.receiverMissing === true || ward.objects?.receiver?.lost === true,
     cradleAway: ward.cradleAway === true, initialized: ward.initialized === true,
     needsReinstall: ward.needsReinstall === true,
     workS: ward.phase === 'connect' && Number.isFinite(ward.workS) ? Math.min(18, Math.max(0, ward.workS)) : 0,
