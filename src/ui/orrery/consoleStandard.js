@@ -23,6 +23,8 @@
 //
 // Tokens only: --dp-* from deckplate/tokens.js and orrery/tokens.js. No new token root.
 
+import { installTypeGovernor } from './typeGovernor.js';
+
 const STYLE_ID = 'sf-console-standard';
 
 export const CONSOLE_STANDARD_CSS = `
@@ -351,4 +353,7 @@ export function injectConsoleStandard(doc = globalThis.document) {
   style.id = STYLE_ID;
   style.textContent = CONSOLE_STANDARD_CSS;
   doc.head.appendChild(style);
+  // CSS cannot cap tracking on a computed text-transform, so the type standard (§2: labels <= .08em,
+  // running text in sentence case) is applied from measured style as screens mount.
+  installTypeGovernor(doc);
 }

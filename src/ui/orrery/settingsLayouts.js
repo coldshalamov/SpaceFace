@@ -664,6 +664,12 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;
     mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important; }
 }
+/* 1101–1500 wide, not short: the same rule as the wide window below — the dial was sized 80vh and pushed
+   190px past the right edge, so body 04 (ASSETS, 3 o'clock) was cut off and the "01 MADE BY" caption
+   printed across the ring. Keep the whole ring in the window, its rim just past the edge. */
+@media (min-width:1101px) and (max-width:1500px) and (min-height:821px) {
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(68vh, 590px); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.04); }
+}
 /* a wide window: body 04 at 3 o'clock stays inside the window (it was cut by the edge), and the reel and the
    SPACEFACE wordmark end short of the ring's outer rim instead of running onto it */
 @media (min-width:1501px) {

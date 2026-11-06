@@ -332,6 +332,12 @@ html body #screens > #sf-techtree.con-research .con-cost dt { align-self:end; }
   html body #screens > #sf-techtree.con-research > .k-corner.con-corner .con-read__n { font-size:clamp(19px, 1.6vw, 21px); }
   html body #screens > #sf-techtree.con-research > .k-corner.con-corner .con-read__w { letter-spacing:.02em; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 650 !important; }
 }
+/* 1281–1560: the corner column is ~330px but its three one-line words need ~380 ("RESEARCH POINTS" ran
+   under UNLOCKED at 1440). Let each word wrap inside its own chip; the chips stay equal height. */
+@media (min-width:1281px) and (max-width:1560px) {
+  html body #screens > #sf-techtree.con-research > .k-corner.con-corner .con-read { min-width:0; }
+  html body #screens > #sf-techtree.con-research > .k-corner.con-corner .con-read__w { white-space:normal; overflow-wrap:normal; text-wrap:balance; }
+}
 @media (forced-colors:active) {
   html body #screens > #sf-techtree.con-research > .con-side::before, html body #screens > #sf-techtree.con-research > .k-title::before { display:none; }
   html body #screens > #sf-techtree.con-research .con-cost__fill { stroke:Highlight; }

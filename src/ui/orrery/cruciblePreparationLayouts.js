@@ -808,6 +808,57 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   /* the "N of 8 fitted" engraving sat under the two-row foot; it rides just above it */
   ${RD} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:var(--orr-hull-count-bottom, 228px) !important; }
 }
+
+/* ── Armory polish (2026-11-06 frontend pass) ───────────────────────────────────────────────────────
+   1. Dealt cards share one skeleton. The art face is a fixed band (it flexed, so a card with a short
+      blurb grew a taller face and its name sat lower than its neighbours'); the blurb takes the slack and
+      the facts pin to the card's foot.
+   2. The head: key and price share the top line and the verb gets its own full line. Squeezed beside them
+      the verb was cut to "SC…", "SU…", "CO…" — a status name is never truncated (STATION_STANDARD §6).
+   3. The shortcut hint on the amber primary key reads dark-on-amber (it was pale-on-amber, ~1.3:1).
+   4. Demo / Hold are real keys (hairline box, hover, focus), not two bare words over a rule.
+   5. The reading's two columns keep a real gutter so the schematic's labels never touch the words. */
+${A} .sf-cru-dealt .sf-cru-dealtface { flex:0 0 auto !important; min-height:140px !important; }
+${A} .sf-cru-dealt .sf-cru-blurb { flex:1 1 auto !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead { flex-wrap:wrap !important; row-gap:2px !important; align-items:center !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-price { margin-left:auto !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-verb { order:3; flex:1 0 100% !important; white-space:normal !important;
+  overflow:visible !important; text-overflow:clip !important; letter-spacing:.06em !important; }
+${A} .k-word--primary .sf-cru-kbd { color:rgb(11 13 16 / .88) !important; background:rgb(11 13 16 / .10) !important;
+  border-color:rgb(11 13 16 / .42) !important; }
+${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word) {
+  display:inline-flex !important; align-items:center; box-sizing:border-box; min-height:34px !important; padding:0 14px !important;
+  font:600 13px/1 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important; letter-spacing:.04em; text-transform:uppercase;
+  color:rgb(${BONE} / .92) !important; background:rgb(${BONE} / .05) !important;
+  border:1px solid rgb(${BONE} / .36) !important; border-radius:2px !important; margin:0 8px 8px 0 !important; }
+${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word):is(:hover, :focus-visible) {
+  color:#fff !important; background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+${A} .orr-armory-reading { gap:40px !important; }
+/* ── Crucible entry (the door), 821–960px tall ─────────────────────────────────────────────────────
+   Mode, stake, arena and zone need ~650px; the panel has ~570 at 900. The Zone row was entirely hidden
+   below the scroll edge and the arena names were cut mid-word, with nothing to say more was there.
+   The ≤820 band below already trims tiles; this is the same grammar one step gentler, so all four rows
+   are on screen at once. */
+@media (min-height:821px) and (max-height:960px) {
+  ${D}.sf-crucible-door .orr-prep-settings.orr-prep-settings.orr-prep-settings { gap:8px !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:4px !important; }
+  ${D}.sf-crucible-door :is(.sf-crd-mode-sub, .sf-crd-stake-sub, .sf-crd-arena-sub, .sf-crd-hull-sub) { margin-top:4px !important; }
+  ${D} .sf-crd-modes button.fh-tile.orr-tile { min-height:78px !important; padding:8px 8px 6px !important; }
+  ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:36px !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:0 !important; padding:7px 8px !important; gap:3px !important; }
+  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
+  ${D} .orr-prep-stake-number { font-size:25px !important; }
+  ${D} .sf-crd-arenas .orr-tile { min-height:0 !important; padding:4px 6px 6px !important; gap:4px !important; }
+  ${D} .sf-crd-arenas .fh-tile-art, ${D} .sf-crd-arenas .fh-tile-art img { height:28px !important; }
+}
+/* a 900px-tall window: the centre column (pip spanner, glyph disc, label, hull jig) needs ~600px and had
+   ~560, so the hull schematic was cropped by the footer. The disc and the jig are trimmed to fit. */
+@media (max-height:960px) {
+  ${A} .orr-armory-visual { gap:14px; }
+  ${A} .orr-armory-item { min-height:170px; height:190px; }
+  ${A} .orr-armory-item > .orr-equipment-glyph { width:140px; height:140px; }
+  ${A} .orr-armory-reading__jig { height:200px !important; min-height:160px; }
+}
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;
