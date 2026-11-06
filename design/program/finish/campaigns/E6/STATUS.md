@@ -50,6 +50,17 @@ Live in-app check (218 entities, flight): 4,962 presented draws, 4,957 resident 
 0 failures, 0 console errors. `visibleUnready` 1 — that body was already on the glass when it was
 first held, which is exactly the class predictive pre-admission is meant to drive to zero.
 
+## Evidence limits
+
+- The probe runs above finished before a foreign in-flight edit landed: `src/data/missions.js`
+  (Lane 5, uncommitted) imports `./kesslerScaleWorksite.js`, which does not exist on disk or in
+  `HEAD`. Any boot-based verification now stalls before flight, so later captures (and the
+  `flight-look.mjs` look capture) could not be produced in this session. That is not an E6 defect
+  and must not be "fixed" in `missions.js` by Lane 3.
+- The look is unchanged by construction (no material, light, camera or geometry was touched), and
+  the probe's own draw census and `appear` counters saw the same picture; a judged capture against
+  `docs/visual-assets/LOOK.md` is still owed once the tree boots again.
+
 ## Open / not done in this session
 
 1. **Shader variant enumeration at build time + persistent program cache**: the mechanisms exist
