@@ -139,9 +139,16 @@ ${A} .con-medal-read__figure { align-items:baseline; }
    Back and clips CAREER off the right edge (offR 76/36/25). Tighten gap, tracking and the hang's
    left margin so all five words clear without the extra foot row that would crush the stage. */
 @media (min-width:561px) and (max-width:699px) and (max-height:519px) {
-  ${A} .k-hang.con-filters { margin-left:clamp(6px, 1vw, 14px) !important; min-width:0; }
+  ${A} .k-hang.con-filters { margin-left:clamp(6px, 1vw, 14px) !important; min-width:0; flex:1 1 0;
+    overflow-x:auto !important; overflow-y:hidden !important; overscroll-behavior-x:contain;
+    scrollbar-width:thin; scroll-padding-inline:10px; }
+  /* The ruler and its counts share the full text width inside the existing navigation scroller. */
+  ${A} .con-filters__scale { min-width:max-content; }
   ${A} .con-filters .k-words { gap:clamp(5px, .9vw, 10px) !important; padding:0 2px !important; }
-  ${A} .con-filters .k-word { font-size:12px !important; letter-spacing:.04em !important; font-stretch:100% !important; min-height:26px; }
+  ${A} .con-filters .k-words > li { flex:none; }
+  ${A} .con-filters .k-word { font-size:12px !important; letter-spacing:.04em !important; font-stretch:100% !important;
+    min-height:26px; scroll-margin-inline:10px; }
+  ${A} .con-filters .k-word:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px; }
 }
 `;
 
@@ -150,7 +157,13 @@ const CSS = STATISTICS + ACHIEVEMENTS;
 export function injectMetaLedgerLayouts(doc = globalThis.document) {
   if (!doc || !doc.head || typeof doc.getElementById !== 'function' || typeof doc.createElement !== 'function') return;
   injectOrrery(doc);
-  if (doc.getElementById(STYLE_ID)) return;
+  const existing = doc.getElementById(STYLE_ID);
+  if (existing) {
+    // Statistics may have installed this shared sheet before the constellation sidecar loaded.
+    // Reusing the node must still honor the caller's post-sidecar cascade ordering.
+    if (doc.head.lastElementChild !== existing) doc.head.appendChild(existing);
+    return;
+  }
   const style = doc.createElement('style');
   style.id = STYLE_ID;
   style.textContent = CSS;
