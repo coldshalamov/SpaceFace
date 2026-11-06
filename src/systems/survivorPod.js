@@ -1286,13 +1286,17 @@ export const survivorPod = {
         && r.carrierWorldRecordId === hull.data.worldRecordId)
       || (!prior && pending.length >= MAX_CAUSAL_SURVIVOR_PODS)) return false;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const captainPodKey = pod.data?.captainPodKey;
     const entry = {
       id: rec.memoryId || `survivor:${pod.id}`, outcome: 'in_transit', entityId: pod.id,
       victimId: rec.victimId, sectorId: rec.sectorId, factionId: rec.factionId,
       carrierWorldRecordId: hull.data.worldRecordId, carrierEntityId: hull.id,
       carrierGeneration: hull.occupantGeneration ?? null,
       lastPos: { x: hull.pos.x, z: hull.pos.z }, lastVel: { x: hull.vel?.x || 0, z: hull.vel?.z || 0 },
-      survivor: { ...rec }, oxygenLeft: Math.max(0, (rec.expireAt || now) - now),
+      // Boarding retires the pod. Its captain binding must travel with the same
+      // durable passenger, not be recovered later from a recycled entity slot.
+      survivor: { ...rec, ...(typeof captainPodKey === 'string' && captainPodKey ? { captainPodKey } : {}) },
+      oxygenLeft: Math.max(0, (rec.expireAt || now) - now),
       pickupReason: detail.reason,
     };
     own.causal.receipts.push(entry);
@@ -1353,7 +1357,12 @@ export const survivorPod = {
       || !row.lastPos || !Number.isFinite(row.lastPos.x) || !Number.isFinite(row.lastPos.z)) return false;
     const existing = (payloadScanList(state) || []).find(e => isCausalSurvivorPod(e)
       && e.data?.survivorPodCausal?.memoryId === row.id);
-    if (existing) { row.outcome = 'adrift'; row.entityId = existing.id; return true; }
+    const captainPodKey = row.survivor?.captainPodKey;
+    if (existing) {
+      if (!existing.data.captainPodKey && typeof captainPodKey === 'string' && captainPodKey)
+        existing.data.captainPodKey = captainPodKey;
+      row.outcome = 'adrift'; row.entityId = existing.id; return true;
+    }
     const pod = spawnPayloadEntity(state, {
       pos: { x: row.lastPos.x + 20, z: row.lastPos.z }, vel: row.lastVel || { x: 0, z: 0 },
       radius: 5, mass: 24, hull: 40, hullMax: 40, factionId: row.factionId,
@@ -1366,6 +1375,7 @@ export const survivorPod = {
       resolved: false };
     pod.flags = { ...pod.flags, persistent: true };
     pod.data.survivorPodCausal = { ...rec };
+    if (typeof captainPodKey === 'string' && captainPodKey) pod.data.captainPodKey = captainPodKey;
     pod.data.tetherRole = 'survivor_pod'; pod.data.masslineTetherable = true;
     pod.data.scanLabel = 'Survivor Pod';
     own.causal.byEntityId[pod.id] = rec;
@@ -1585,6 +1595,8 @@ export const survivorPod = {
       t: rec.resolvedAt,
       ...detail,
     };
+    const captainPodKey = entity?.data?.captainPodKey ?? rec.captainPodKey;
+    if (typeof captainPodKey === 'string' && captainPodKey) receipt.captainPodKey = captainPodKey;
     // Stamped only on a rescue the player towed in (heat's gate for the rescue cooling step).
     if (outcome === 'rescued' && causalRescuePlayerAttributed(detail)) receipt.playerAnswered = true;
     // Stamped only on an abandonment the player plausibly witnessed (the Record's gate; a pod that
