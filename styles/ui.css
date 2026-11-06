@@ -2197,6 +2197,46 @@ html.sf-reduce-motion .sf-drawer--entity .sf-drawer__deck > * { animation: none;
 .orr-replay__transport { position:absolute; left:0; right:0; bottom:22px; z-index:3;
   display:flex; justify-content:center; align-items:center; gap:clamp(18px, 3vw, 44px); }
 html.sf-reduce-motion .orr-replay__pulse { display:none; }
+/* ui-polish-380: opaque lamp curtain + fade apron + short densify for empty-tape
+ * how-to. Soft ui.css veil alone left "Choose FLY TO RECORD…" readable through the
+ * transparent foot top at ≤560 tall (651×461 / 700×461 / 801×461 / 960×500), mashing
+ * the legend against the FLY TO RECORD lamp. Mirror Clips #892 spirit in-place (no
+ * layouts file): denser foot, transport apron, lift/shrink tape so the readout seats
+ * above the curtain. Selectors/IDs unchanged. */
+@media (max-height:560px) {
+  .orr-replay__veil-foot {
+    background:
+      linear-gradient(transparent, rgb(5 7 10 / .62) 22%, rgb(5 7 10 / .94) 55%, rgb(5 7 10 / .98));
+  }
+  .orr-replay__transport {
+    z-index:4; isolation:isolate;
+  }
+  .orr-replay__transport::before {
+    content:""; position:absolute; left:0; right:0; bottom:100%; height:40px;
+    pointer-events:none; z-index:0;
+    background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .88) 55%, rgb(5 7 10 / .98));
+  }
+  .orr-replay__transport > * { position:relative; z-index:1; }
+  .orr-replay__tape { bottom:124px; height:min(100px, 24vh); }
+  .orr-replay__readout {
+    padding:6px 4px;
+    background:linear-gradient(90deg, rgb(5 7 10 / 0), rgb(5 7 10 / .92) 12%, rgb(5 7 10 / .92) 88%, rgb(5 7 10 / 0));
+  }
+}
+/* Phone: same curtain so wrapped how-to cannot paint through the lamp apron. */
+@media (max-width:560px) {
+  .orr-replay__veil-foot {
+    background:
+      linear-gradient(transparent, rgb(5 7 10 / .55) 28%, rgb(5 7 10 / .92) 62%, rgb(5 7 10 / .98));
+  }
+  .orr-replay__transport { z-index:4; isolation:isolate; }
+  .orr-replay__transport::before {
+    content:""; position:absolute; left:0; right:0; bottom:100%; height:48px;
+    pointer-events:none; z-index:0;
+    background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .88) 55%, rgb(5 7 10 / .98));
+  }
+  .orr-replay__transport > * { position:relative; z-index:1; }
+}
 /* Phone widths: the legend wraps to 4-5 lines, taller than the 64px above the
  * playhead, so it grows upward from just above the hand instead of down into it. */
 @media (max-width:560px) {
