@@ -378,9 +378,11 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
 }
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:540px) {
   ${P} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
-  /* the Market's exchange and the Shipworks hull need more than the ~107px the full head leaves: there the head is a
-     scrollport that shows the name and the five readings, the note and the next step one scroll down (as 901–1100 does) */
-  ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth.dp-frame__head {
+  /* #850 gave Market/Shipworks a 150px scrollport head so the body was ~185px; Industry/Factions/Bar/Ledger/Missions
+     stayed on the full ~234px head and a 107px body. Industry's fab chain alone is ~230px and its absolute labels
+     stacked into each other; Factions' standing stage and Bar's hang were the same crush. Same scrollport for every
+     tab: name + five readings visible, note + next step one scroll down (as 901–1100 already does for Market/Shipworks). */
+  ${P} .sxb-berth.dp-frame__head {
     min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
 }
 
