@@ -91,15 +91,15 @@ function setWordShown(button, show) {
   if (!button) return;
   button.hidden = !show;
   if (button.style && typeof button.style.setProperty === 'function') {
-    if (show) button.style.removeProperty('display');
-    else button.style.setProperty('display', 'none', 'important');
+    if (show && typeof button.style.removeProperty === 'function') button.style.removeProperty('display');
+    else if (!show) button.style.setProperty('display', 'none', 'important');
   }
   const li = button.parentElement;
   if (!li || String(li.tagName).toUpperCase() !== 'LI') return;
   li.hidden = !show;
   if (li.style && typeof li.style.setProperty === 'function') {
-    if (show) li.style.removeProperty('display');
-    else li.style.setProperty('display', 'none', 'important');
+    if (show && typeof li.style.removeProperty === 'function') li.style.removeProperty('display');
+    else if (!show) li.style.setProperty('display', 'none', 'important');
   }
 }
 
@@ -989,6 +989,15 @@ export const crucibleDraftScreen = {
     filters.appendChild(search);
     this._search = search;
     this._filters = filters;
+    // S11 — the dealt three are the screen: big authored cards above the shelf, one click to
+    // pick and fit. The catalog waits behind Browse all rather than leading with 107 rows.
+    const dealt = el('section', 'sf-cru-dealt');
+    dealt.setAttribute('role', 'group');
+    dealt.setAttribute('aria-label', 'Dealt offers');
+    dealt.hidden = true;
+    stage.appendChild(dealt);
+    this._dealt = dealt;
+    this._browse = false;
     stage.appendChild(filters);
     // the category words ride a ruled line with the amber index under the open one
     this._filterRow = createStationRow({ row: filters });
@@ -1141,6 +1150,14 @@ export const crucibleDraftScreen = {
     const reroll = addWord(words, word('Re-roll', 'k-word--emph'));
     reroll.addEventListener('click', () => this._requestReroll(ctx));
     this._rerollBtn = reroll;
+    // S11 — the shelf behind the cards. One press opens (or closes) the 107-row catalog; the
+    // dealt three stay on the screen either way.
+    const browse = addWord(words, word('Browse all', 'k-word--emph'));
+    browse.addEventListener('click', () => {
+      this._browse = !this._browse;
+      this.refresh(ctx);
+    });
+    this._browseBtn = browse;
     foot.appendChild(words);
 
     const fine = el('p', 'k-t-fine k-38 sf-cru-fine');
@@ -1170,7 +1187,10 @@ export const crucibleDraftScreen = {
         this.refresh(ctx);
         return;
       }
-      const all = [...cards.querySelectorAll('.sf-cru-card')];
+      const all = [
+        ...(this._dealt && !this._dealt.hidden ? this._dealt.querySelectorAll('.sf-cru-card') : []),
+        ...(cards.hidden ? [] : cards.querySelectorAll('.sf-cru-card')),
+      ];
       const index = '123'.indexOf(event.key);
       if (!inSearch && index >= 0 && all[index]) {
         event.preventDefault();
@@ -1200,6 +1220,12 @@ export const crucibleDraftScreen = {
       if (event.key === 'r' || event.key === 'R') {
         event.preventDefault();
         this._requestReroll(ctx);
+        return;
+      }
+      if (event.key === 'Tab' && this._browseBtn && !this._browseBtn.hidden) {
+        event.preventDefault();
+        this._browse = !this._browse;
+        this.refresh(ctx);
         return;
       }
       if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
@@ -1528,9 +1554,15 @@ export const crucibleDraftScreen = {
     // SWARM-05 §7.3 — Recommended for your build: the owner's three picks lead the shelf
     // once and do not repeat in the catalogue below. Category and search shelves stay the
     // plain catalogue.
-    const recommended = shop && this._category === 'All' && !this._query
+    // S11 — the dealt three leave the rail entirely: they are big cards above it, picked with
+    // one click. The shelf holds every other stock row and waits behind Browse all.
+    const dealtOffers = shop
+      ? offers.filter((offer) => offer.dealt === true && !offer._flying)
+      : [];
+    const dealtIds = new Set(dealtOffers.map((offer) => offer.id));
+    const recommended = shop && this._browse && this._category === 'All' && !this._query
       && owner && typeof owner.recommendedOffers === 'function'
-      ? owner.recommendedOffers().filter((offer) => !offer._flying)
+      ? owner.recommendedOffers().filter((offer) => !offer._flying && !dealtIds.has(offer.id))
       : [];
     const recommendedIds = new Set(recommended.map((offer) => offer.id));
 
@@ -1540,14 +1572,29 @@ export const crucibleDraftScreen = {
     cards.innerHTML = '';
     const visibleOffers = shop
       ? offers
-        .filter(offer => !offer._flying && !recommendedIds.has(offer.id)
+        .filter(offer => !offer._flying && !recommendedIds.has(offer.id) && !dealtIds.has(offer.id)
           && (this._category === 'All' || categoryFor(offer) === this._category)
           && matchesQuery(offer))
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
       : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
+    // Browse closed: the shelf and its instruments stay mounted but out of sight — category,
+    // query and scroll state survive the toggle.
+    const shelfShown = !shop || this._browse || dealtOffers.length === 0;
+    this._filters.hidden = !shelfShown;
+    cards.hidden = !shelfShown;
+    if (this._railScale) this._railScale.hidden = !shelfShown;
+    if (this._dealt) {
+      this._dealt.hidden = dealtOffers.length === 0;
+      this._dealt.innerHTML = '';
+      let dkey = 1;
+      for (const offer of dealtOffers) {
+        this._dealt.appendChild(this._buildDealtCard(context, offer, dkey));
+        dkey += 1;
+      }
+    }
     let lastPrice = null;
     let walletDrawn = false;
-    let key = 1;
+    let key = dealtOffers.length + 1;
     const credits = Number(context.state?.run?.credits) || 0;
     if (recommended.length) {
       const shelfHead = el('p', 'orr-rail-divider', 'Recommended for your build');
@@ -1601,12 +1648,18 @@ export const crucibleDraftScreen = {
       empty.appendChild(clear); cards.appendChild(empty);
     }
     this._note.textContent = notice || lines.notice || '';
-    this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
+    this._offersById = new Map([...dealtOffers, ...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
+    if (this._browseBtn) {
+      setWordShown(this._browseBtn, shop);
+      setKeyLabel(this._browseBtn, this._browse ? 'Back to the cards' : 'Browse all', 'Tab', 'Tab');
+    }
     if (this._reading) {
-      this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
+      this._reading.el.hidden = !shop || !(dealtOffers.length || visibleOffers.length || recommended.length);
       const keep = this._offersById.get(this._reading.offerId);
-      const first = keep || visibleOffers.find((offer) => offer.available) || recommended[0] || visibleOffers[0];
+      const first = keep || dealtOffers.find((offer) => offer.available)
+        || visibleOffers.find((offer) => offer.available) || recommended[0]
+        || dealtOffers[0] || visibleOffers[0];
       if (shop && first) this._paintReading(context, first);
     }
 
@@ -1892,6 +1945,64 @@ export const crucibleDraftScreen = {
 
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
   // at sub-title size, the blurb as a sentence, the slot in fine print. The whole block is the button.
+  /**
+   * S11 — one of the dealt three: a tall card the draft is actually about. Big glyph, the
+   * authored verb, one sentence, the price; ONE click picks and fits. The shelf row beside it
+   * stays inspect-then-confirm because a 107-row list is browsed, not chosen at a glance.
+   */
+  _buildDealtCard(ctx, offer, keyNumber) {
+    const lines = offerCardLines(offer, ctx.state);
+    const card = el('button', 'sf-cru-card sf-cru-card--dealt');
+    card.type = 'button';
+    card.dataset.offerId = offer.id;
+    const glyph = equipmentSvg(offer);
+    if (glyph) {
+      const face = el('div', 'sf-cru-dealtface');
+      face.setAttribute('aria-hidden', 'true');
+      face.appendChild(glyph);
+      card.appendChild(face);
+    }
+    const head = el('div', 'sf-cru-cardhead');
+    const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
+    key.setAttribute('aria-hidden', 'true');
+    head.appendChild(key);
+    head.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
+    if (Number.isFinite(offer.price)) {
+      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
+    }
+    card.appendChild(head);
+    card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
+    card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
+    if (lines.activation) card.appendChild(el('p', 'k-text k-t-data sf-cru-activation', lines.activation));
+    if (offer.unavailableReason && !offer.purchased) {
+      card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
+    }
+    card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
+    card.classList.toggle('is-unavail', !offer.available && !offer.purchased);
+    card.classList.toggle('is-fitted', !!offer.purchased);
+    if (!offer.available && !offer.purchased) card.setAttribute('aria-disabled', 'true');
+    card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${Number.isFinite(offer.price) ? `${offer.price} credits.` : ''} ${offer.unavailableReason || lines.slot}`);
+    card.title = [lines.verb, lines.name, lines.blurb, offer.replacesName ? `Replaces ${offer.replacesName}` : '']
+      .filter(Boolean).join('. ');
+    card.addEventListener('click', () => {
+      const live = this._offersById?.get(offer.id) || offer;
+      if (this._purchasePending) return;
+      this._paintReading(ctx, live);
+      // One click picks and fits — the card carries its price and its reason up front, so the
+      // arm-confirm dance the shelf needs would only stand between the player and the pick.
+      if (!live.available || live.purchased) return;
+      this._purchaseArmed = false;
+      this._purchasePending = true;
+      this._visualArmory?.pending?.(live);
+      try {
+        this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: live.id });
+      } finally {
+        this._purchasePending = false;
+      }
+    });
+    return card;
+  },
+
   _buildCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
     const card = el('button', 'sf-cru-card');

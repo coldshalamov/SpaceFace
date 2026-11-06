@@ -130,6 +130,26 @@ ${A} .sf-cru-card .sf-cru-verb { display:block !important; grid-column:2 !import
 ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { display:none !important; }
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
+/* S11 — the dealt three: tall authored cards above the shelf, ~360px wide and tall enough to
+   hold the glyph, the verb, the name, one sentence and the price. One click picks and fits;
+   the shelf rail stays a dense browse surface behind Browse all. */
+${A} .sf-cru-dealt { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:14px !important; flex:none !important; margin:0 0 16px !important; }
+${A} .sf-cru-dealt[hidden] { display:none !important; }
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:6px !important; min-height:360px !important; height:auto !important; width:100% !important; padding:14px 16px 12px !important; margin:0 !important; border:1px solid var(--dp-line) !important; border-radius:2px !important; background:rgb(12 13 16 / .55) !important; text-align:left !important; cursor:pointer !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt:hover, ${A} .sf-cru-dealt .sf-cru-card--dealt:focus-visible { border-color:var(--dp-hand) !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface { display:grid !important; place-items:center !important; min-height:150px !important; flex:1 1 auto !important; border-bottom:1px solid var(--dp-line-faint) !important; margin-bottom:4px !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph, ${A} .sf-cru-dealt .sf-cru-dealtface > svg { width:132px !important; height:132px !important; opacity:.92; }
+${A} .sf-cru-dealt .sf-cru-cardhead { display:flex !important; align-items:baseline !important; gap:10px !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-key { display:inline !important; font:500 12px/1 var(--dp-face-numeral) !important; color:var(--dp-ink-dim) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-verb { flex:1 1 auto !important; font:600 13px/1.2 var(--dp-face-label) !important; letter-spacing:.14em !important; color:var(--dp-hand) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-price { font:600 15px/1 var(--dp-face-numeral) !important; color:var(--dp-ink) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-name { font:700 clamp(18px,1.5vw,24px)/1.1 var(--dp-face-display,'Archivo') !important; letter-spacing:-.015em !important; color:var(--dp-ink) !important; margin:2px 0 !important; overflow-wrap:anywhere !important; }
+${A} .sf-cru-dealt .sf-cru-blurb { display:block !important; font:400 14px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink-dim) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-slot, ${A} .sf-cru-dealt .sf-cru-afford, ${A} .sf-cru-dealt .sf-cru-activation { display:block !important; margin:2px 0 0 !important; }
+${A} .sf-cru-dealt .sf-cru-slot { font:400 12px/1.4 var(--dp-face-label) !important; color:var(--dp-ink-dim) !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt.is-unavail { opacity:.55 !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt.is-fitted { border-color:var(--dp-line-faint) !important; opacity:.6 !important; }
+${A} .sf-cru-stage > .sf-cru-cards[hidden] { display:none !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
 /* Doubled .orr-armory-reading.orr-armory-reading is a deliberate specificity bump so these !important reading rules win over earlier stage layout. */
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }

@@ -543,7 +543,23 @@ export const survivalDraft = {
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     this._wave = run.wave;
     this._resolved = false;
-    this._offers = preferRoleCounterOffers(offers, this.state);
+    const swarmDraft = isSwarmRuleset(run.ruleset);
+    // S11 — in a swarm armory the written cards are the screen: three authored offers dealt on
+    // top of the same shelf the armory always stocked. The dealt draw shares the shelf's seed
+    // and reroll stream (round N is the same replay law), just the authored pool and count 3.
+    let dealt = [];
+    this._dealtIds = null;
+    this._dealtInput = null;
+    if (swarmDraft) {
+      this._dealtInput = { ...this._draftInput, pool: 'authored', count: SURVIVAL_DRAFT_CHOICES };
+      const dealtResult = offerDraft(this._dealtInput);
+      dealt = (dealtResult && dealtResult.ok && Array.isArray(dealtResult.offers) ? dealtResult.offers : [])
+        .map((offer) => ({ ...offer, dealt: true }));
+      this._dealtIds = new Set(dealt.map((offer) => offer.id));
+    }
+    this._offers = preferRoleCounterOffers(offers, this.state)
+      .filter((offer) => !(this._dealtIds && this._dealtIds.has(offer.id)));
+    this._offers = dealt.concat(this._offers);
     // Named syntheses ride the armory list, gated to swarm: the gauntlet draft grants its pick
     // outright and has no run wallet, so "explicit conversion and cost" cannot exist there.
     // The extras are appended BEFORE the empty check: a bare hull stocks an empty fitting shelf
@@ -672,7 +688,9 @@ export const survivalDraft = {
         const credits = Number.isFinite(run.credits) ? run.credits : 0;
         const base = { open: true, wave, rerolls, price, credits };
         const next = this._peekOffers(rerolls + 1);
-        const changes = next.some((entry) => !(this._offers || []).some((shown) => shown.id === entry.id));
+        const changes = this._dealtIds
+          ? next.some((entry) => !this._dealtIds.has(entry.id))
+          : next.some((entry) => !(this._offers || []).some((shown) => shown.id === entry.id));
         if (!changes) {
           const info = { ...base, available: false, reason: 'pool_exhausted' };
           return { ...info, note: this._rerollRefusalText(info) };
@@ -706,7 +724,9 @@ export const survivalDraft = {
     // Peek at the round the money would buy. Refusing to charge for cards the player has already
     // been shown is the difference between a price and a tax.
     const next = this._peekOffers(rerolls + 1);
-    const changes = next.some((entry) => !offers.some((shown) => shown.id === entry.id));
+    const changes = this._dealtIds
+      ? next.some((entry) => !this._dealtIds.has(entry.id))
+      : next.some((entry) => !offers.some((shown) => shown.id === entry.id));
     // The unavailable wording is built HERE so the sentence a player reads before pressing is the
     // same sentence they read after pressing. Two spellings of one refusal is how a surface starts
     // sounding like it is arguing with itself.
@@ -845,7 +865,10 @@ export const survivalDraft = {
     // is belt and braces: keep the standing offers rather than blanking a surface the run waits on.
     if (offers.length === 0) return;
     this._rerolls = pending.next;
-    this._offers = preferRoleCounterOffers(offers, this.state);
+    // S11 — the dealt cards stay on top: the counter-match reorder runs inside the shelf, not
+    // over it, or a matching stock row would deal above the three the press actually bought.
+    this._offers = offers.filter((offer) => offer.dealt === true)
+      .concat(preferRoleCounterOffers(offers.filter((offer) => offer.dealt !== true), this.state));
     this._notice = null;
     this._emit('run:draftRerolled', {
       wave: pending.wave,
@@ -891,8 +914,11 @@ export const survivalDraft = {
 
   /** Replay the draft's own inputs at a given round. Pure: no state is touched by a peek. */
   _peekOffers(rerollCount) {
-    if (!this._draftInput) return [];
-    const result = offerDraft({ ...this._draftInput, rerollCount });
+    const peekInput = this._dealtInput || this._draftInput;
+    if (!peekInput) return [];
+    // S11 — a swarm re-roll buys new CARDS, not a new shelf: the peek is the dealt three's
+    // next round, the armory stock underneath stays put.
+    const result = offerDraft({ ...peekInput, rerollCount });
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     const preferred = preferRoleCounterOffers(offers, this.state);
     // A peek must see the shelf the contract would actually deal — an unfiltered peek would
@@ -1201,8 +1227,21 @@ export const survivalDraft = {
     let offers = this._peekOffers(nextCount);
     const run = liveSurvivalRun(this.state);
     if (run && isSwarmRuleset(run.ruleset)) {
+      // S11 — the peek is the next dealt three; the shelf stays the stock the player already
+      // priced. Old dealt rows, re-derived extras and carried holds swap out by id, never by
+      // position, so a mid-armory loadout change cannot strand a row in the wrong column.
+      const dealt = offers.map((offer) => ({ ...offer, dealt: true }));
+      const newIds = new Set(dealt.map((offer) => offer.id));
+      const shelf = (this._offers || []).filter((offer) =>
+        !(this._dealtIds && this._dealtIds.has(offer.id))
+        && !newIds.has(offer.id)
+        && offer.kind !== EVOLUTION_OFFER_KIND
+        && offer.kind !== SWARM_HULL_OFFER_KIND
+        && offer.kind !== SWARM_SERVICE_OFFER_KIND
+        && offer.lockedIn !== true);
+      this._dealtIds = newIds;
       const loadout = this._activeLoadout();
-      offers = offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
+      offers = dealt.concat(shelf, this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
       for (const [id, carry] of this._lockedInto || []) {
         if (!offers.some((offer) => offer.id === id)) offers.unshift({ ...carry });
       }
