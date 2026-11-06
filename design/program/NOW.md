@@ -138,3 +138,88 @@ Lane 2 of `finish/MASTER_PLAN.md` is active. Diagnosis memo:
 Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/X1/DIAGNOSIS.md`,
 `finish/campaigns/X3/DIAGNOSIS.md`, `finish/campaigns/X4/DIAGNOSIS.md`,
 `finish/campaigns/X5/DIAGNOSIS.md`. X2 is gated on the owner approving X1's lineup.
+
+<!-- Lane 5 WORLD — W1 implementation phase claims, 2026-11-06 (owner approved "build all the things") -->
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| W1 implementation | Lane 5 | `src/data/missions.js` (JOURNEY_ACTS table + storyBeatTitle act prefix), `src/systems/missions.js` (act-turn toast prefix, journeyAct import), `src/ui/station/stationMissionModel.js` (story-first recommendation), `src/systems/stationContacts.js` (March reconciliation listener + handler), `finish/campaigns/W1/*` | Single writers preserved: spine/waypoints untouched. Heist re-posting re-scoped: scenes are Tethys-physical — correction recorded in JOURNEY.md; facility variants are W2 work. |
+
+<!-- Lane 3 RENDERER (master plan) - E6 landed, E7 diagnosed, 2026-11-06 -->
+## Lane 3 RENDERER - master-plan campaign E6 (landed) / E7 (diagnosed)
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| E6 one residency manager | Lane 3 | `src/render/residencyManager.js`, `src/render/bloom.js` (draw guard), `src/render/renderer.js` (manager wiring + build-gate callsite), `test/residency-manager.test.mjs`, `test/bloom-unready-draw-guard.test.mjs` (contract update), `design/program/finish/campaigns/E6/*`, `E7/DIAGNOSIS.md` | Landed on master. `src/render/renderer.js` still carries a foreign uncommitted hunk (`isStartupPackagedContactEntity`) that is NOT mine - leave it. Lane 3 does not edit `partsLibrary.js`, `lod.js`, `wholeShipLodPolicy.js`, `rigidOpaqueBatch.js`, `precompile.js`, `vfx.js`, `render/vfx/*`, `broodPresentation.js`, `feel.js`, or the camera files. |
+
+## Lane 2 (SIM CORE) — E2 hot path, 2026-11-06
+
+**Claims (this batch):** `src/core/simStepProfiler.js`, `src/core/simCoreFlags.js`,
+`src/core/authoritativeSimStep.js`, `src/core/sim.js`, `src/core/physics.js`,
+`src/core/physicsAuthority.js`, `src/core/sg02DynamicBodyOwner.js`, `src/core/simSnapshot.js`,
+`scripts/lib/simWorkerHost.mjs`, `src/systems/economy.js`, `src/systems/survivalArena.js`,
+`src/systems/runawayKilnRuntime.js`, `scripts/probe-sim-step.mjs`,
+`scripts/probe-step-acceptance.mjs`, `design/program/finish/campaigns/E2`, `E4`.
+
+- **Landed:** permanent per-system step profiler (worker + main-lane + Node, allocation per tick,
+  exportable), sub-phase timers in `physics`/`sg02`/`economy`, demand-gated physics telemetry, lazy
+  SG-02 snapshot, economy cycle-lookup de-dupe, matched A/B measurement switchboard. Numbers and
+  evidence: `design/program/finish/campaigns/E2/STATUS.md`.
+- **47-A determinism:** hash byte-identical to `test/47a.telemetry.save-v23.expected.json` with every
+  shipped flag on (bisected per flag).
+- **Held back, needs a decision:** economy spike slicing is implemented and measured
+  (130–150 ms → ~3 ms/call) but changes the 47-A hash, so it needs one versioned reference
+  (`save-v24`) before it can ship. `simCoreFlags.economySlicing` is the switch.
+- **Blocker for further measurement, not mine:** the working-tree `src/data/missions.js` is a foreign
+  in-flight rewrite importing `./kesslerScaleWorksite.js` and `./captainStandingOrders.js` (both live
+  in `src/systems/`), so every Node boot and `test/authoritative-manifest.test.mjs` /
+  `test/sim-clock-catchup.test.mjs` fail at import. HEAD's `src/data/missions.js` is a pure-data
+  module; the working-tree copy is the mission-system duplicate. Whoever owns it should finish or
+  revert it.
+- **Lane F:** `src/core/sg02DynamicBodyOwner.js` touched only to add profiler phase marks and the
+  telemetry opt-in check; Swarm feel profile values untouched. S1/S7 are landed, so the file is
+  claimed here per the collision map.
+
+<!-- Lane 5 WORLD — foreign-refactor defect note, 2026-11-06 ~13:00 UTC -->
+**Defect note (Lane 5):** `src/data/missions.js` was overwritten in the working tree with a copy
+of `src/systems/missions.js` (unclaimed in this file; no owner listed). The copy broke the module
+graph for every consumer of `src/data/missions.js` (all story tests, station screens, game boot):
+(a) 27 `'./X'` imports resolved to `src/data/X` which do not exist, (b) a self-import block asks
+`../data/missions.js` for the pure-data exports (`MISSION_TUNING`, `STORY_BEATS`, `OFFER_MIX`, …)
+that the overwrite removed from the tree. Lane 5 repaired (a) mechanically (23 rewrites to
+`../systems/X`, one `./journeyActs.js` kept, kessler path fixed twice — it reverted once under an
+external editor) and moved its W1 act table to the new dependency-free `src/data/journeyActs.js`
+so both missions files import it directly. Repair of (b) — the missing pure-data definitions — is
+the refactor owner's call: either restore `src/data/missions.js` from HEAD and re-apply the
+Journey framing, or complete the intended merge. Until (b) is fixed, tests importing missions and
+the ordinary boot are down for everyone. Lane 5 holds `data/missions.js` untouched from here and
+waits to run its checks.
+
+<!-- Lane 4 SHIP (master plan) - active claims, 2026-11-06 -->
+## Lane 4 SHIP - master-plan campaigns P1, P2, P4, P3
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| P1 the Ship Sheet | Lane 4 | `src/ui/ship/shipStats.js`, `src/ui/ship/shipSheet.js`, `src/ui/station/screens/shipworks.js`, `src/ui/screens/newGame.js`, `src/ui/starterAirCard.js`, `test/ship-stats.test.mjs`, `finish/campaigns/P1/*` | Landed. Shipworks and THE SHIP are one shared stage, so both read the same sheet. |
+| P2 parts that explain themselves | Lane 4 | `src/ui/ship/partFacts.js`, `src/ui/station/screens/shipworks.js`, `finish/campaigns/P2/*` | Landed: role, sentence, Mk I/II/III, intent ordering. Preview clips and duplicate merging are the remaining work, named in P2/STATUS.md. |
+| P4 fits you can see | Lane 4 | `src/ui/ship/partVisuals.js`, `finish/campaigns/P4/*` | Part-to-mount table + socket resolver only. **Deliberately does not edit `src/render/partsLibrary.js`** (perf in flight). P4's lineup verify is NOT met. |
+| P3 one pilot, one progression | Lane 4 | `finish/campaigns/P3/*` | Doc phase only. `PILOT_TREE.md` is ready and **STOPPED for the owner's approval** before any `src/` edit. |
+
+**Published for SWARM lane S (do not edit `crucible.js` / `crucibleDraft.js`):** the one ship stat
+model is `src/ui/ship/shipStats.js` - `shipStatSheet({ shipId, fittings, player })` returns the six
+1-10 stats, `shipStatDelta(before, after)` the green/red tenth deltas, and the build identity. The
+Crucible Ship & Kit and the Swarm shop should read it instead of printing derived engineering
+numbers. Part facts for a shop card are `src/ui/ship/partFacts.js` (`partFacts(id)` → role, sentence,
+tier, intent, previewId). Mounts for those fits are `src/ui/ship/partVisuals.js`.
+
+**For Lane 3 (RENDERER):** `partVisualsForFittings({ shipId, fittings })` returns
+`{ mounts: [{ id, kind, socket, socketIndex, scale, tint, glow }], sheen }` reading the hull GLB's own
+socket names through `data/modelTruth.js`. One call site in the parts admission path mounts them.
+
+# P0 blocker reported by Lane 4 (not mine to fix)
+
+`src/systems/ships.js` cannot be imported: `Cannot access 'SHIP_BY_ID' before initialization`.
+Reproduce with `node -e "import('./src/systems/ships.js')"`. Cause: a circular import through
+`src/world/tallyThreeIdentity.js`, which evaluates `makeShipEntitySpec(T.assessorShipId)` at module
+top level (commit `3e6223770f3c`, another lane). Every consumer of `systems/ships.js` throws -
+including the Ship Sheet and, by the same chain, game boot and the UI bench. The owning lane needs
+to make that constant lazy (a getter, or a call inside the exported functions).
