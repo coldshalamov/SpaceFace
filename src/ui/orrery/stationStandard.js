@@ -384,6 +384,55 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
     min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
 }
 
+/* 651–800 wide × 461–800 tall: the same four-band crush #850 closed at 801–900 — name, a 232px purse card over
+   the vitals strip (which wrapped LEDGER and MUNITIONS), then the mechanic's note, the next step and both signs —
+   so at 700×461 the tab body was 0px tall and at 800×720 ~73px. The purse rides the name's row beside the palette
+   key, the five readings stand on ONE ruled row (tighter fr tracks than 801–900: 636–736px of content), the note
+   and the next step share a row, and the signs run on one clamped line (folded away at ≤540 tall): the head is
+   ~220px. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:"title purse" "crown crown" "tape handoff" "signs signs" !important;
+    grid-template-rows:max-content max-content max-content max-content !important; align-content:start !important;
+    column-gap:10px !important; row-gap:5px !important; max-height:none !important; }
+  ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
+    min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    align-items:center !important; gap:0 8px !important; margin:0 94px 0 0 !important; padding:3px 9px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
+    grid-template-columns:minmax(0,170fr) minmax(0,95fr) minmax(0,90fr) minmax(0,120fr) minmax(0,118fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 10px !important; margin:0 !important; padding:5px 10px 6px !important;
+    width:auto !important; max-width:none !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
+    margin:3px 0 0 !important; gap:3px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:22px !important; padding:1px 5px !important; }
+  ${P} .sxb-crown .sxb-vital--note, ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { text-align:left !important; align-items:flex-start !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { margin:0 !important; white-space:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; display:flex !important; gap:0 24px !important; padding-top:3px !important; }
+  ${P} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden !important; }
+  ${P} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+}
+/* …and at ≤540 tall in this band the signs fold away (as Market does at 960×540 / #850 at 801–900); every tab's
+   head is a 150px scrollport so Industry/Factions/Bar keep a working body (scoped max-width:800 — does not
+   collide with #856's 801–900 every-tab scrollport). */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:540px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  ${P} .sxb-berth.dp-frame__head {
+    min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
+}
+
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */
 ${P} .sx-mkt__list { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important;
