@@ -274,6 +274,10 @@ function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null,
  *                      request that cannot be honored keeps the warn-and-
  *                      fallback transfer channel; the quiet default just
  *                      declines to the same fallback.
+ *   ?simStall=60,60,60,400
+ *                    — E1 stall-injection harness: a repeating cycle of worker-side
+ *                      stalls (ms, blocking the worker event loop like a heavy step)
+ *                      applied per local-clock tick. Diagnostic only; absent = none.
  *   localStorage sf.domainProfile or the diagnostic Electron environment
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
  * Returns { lane, sab, domainProfile, warnings[] }.
@@ -320,8 +324,7 @@ export function resolveSimLaneFlags(search) {
     warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
     sab = false;
   }
-  let requestedDomainProfile = params && params.get('domainProfile');
-  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
+  let requestedDomainProfile = params && params.get('domainProfile');  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
     try { requestedDomainProfile = localStorage.getItem('sf.domainProfile'); } catch (_) { /* storage gated */ }
   }
   requestedDomainProfile = typeof requestedDomainProfile === 'string'
@@ -332,8 +335,26 @@ export function resolveSimLaneFlags(search) {
   } else if (requestedDomainProfile) {
     warnings.push(`unrecognized domainProfile='${requestedDomainProfile}' — station profile serves by default`);
   }
+  // E1 stall harness: a repeating cycle of worker-side stalls in ms, one entry per
+  // local-clock tick. `?simStall=400` stalls every tick; `60,60,60,400` stalls one in four.
+  const stallParam = params ? params.get('simStall') : null;
+  let simStall = null;
+  if (stallParam != null && stallParam !== '') {
+    const cycle = [];
+    for (const raw of stallParam.split(',')) {
+      const ms = Number(raw);
+      if (!Number.isFinite(ms) || ms < 0 || ms > 2000) {
+        warnings.push(`unrecognized simStall entry '${raw}' — ignored`);
+        continue;
+      }
+      if (cycle.length < 16) cycle.push(ms);
+    }
+    if (cycle.length) simStall = cycle;
+    else warnings.push(`simStall='${stallParam}' produced no usable entries — no stalls injected`);
+  }
   return {
-    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null, warnings,
+    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null,
+    simStall, warnings,
   };
 }
 
@@ -650,6 +671,7 @@ export function createSimLaneRuntime({
   let ready = false;
   let replyCount = 0;
   let workerLastReplyWork = null;
+  let workerSystemProfile = null;
   let postedDirectives = 0;
   let postedSteps = 0;
   let droppedEnvelopes = 0;
@@ -1024,11 +1046,19 @@ export function createSimLaneRuntime({
       domainDiffMs: cost(msg.domainDiffMs),
       boundaryMs: cost(msg.boundaryMs),
       journalRecords: Number.isSafeInteger(msg.pack?.count) ? msg.pack.count : 0,
+      stepsExecuted: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
+      stepsRequested: Number.isSafeInteger(msg.stepsRequested) ? msg.stepsRequested : null,
       entityVitals: Array.isArray(msg.entityVitals) ? msg.entityVitals.length : 0,
       domainUpdates: Array.isArray(msg.domainUpdates) ? msg.domainUpdates.length : 0,
       domainShipBytes: cost(msg.domainShipBytes),
       events: Array.isArray(msg.events) ? msg.events.length : 0,
     };
+    // E2 per-system profile rides a bounded summary, one per simulated second, only when the
+    // worker realm was asked to measure (`?simProfile=1`). Kept beside the cost block so
+    // `simLaneDiag()` is the single place a probe reads worker truth from.
+    if (msg.systemProfile && typeof msg.systemProfile === 'object') {
+      workerSystemProfile = msg.systemProfile;
+    }
     if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
 
     // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
@@ -1205,6 +1235,8 @@ export function createSimLaneRuntime({
         shedInputPublishes: bounded(d.shedInputPublishes),
         shedCommands: bounded(d.shedCommands),
         staleAckRecoveries: bounded(d.staleAckRecoveries),
+        stallApplications: bounded(d.stallApplications),
+        stallTotalMs: bounded(d.stallTotalMs, Number.MAX_SAFE_INTEGER),
       };
     }
 
@@ -2284,9 +2316,11 @@ export function createSimLaneRuntime({
         workerPumpShedSteps,
         domainProfile: resolved.domainProfile || 'station',
         domainProfileRequested: resolved.domainProfileRequested,
+        simStallCycle: resolved.simStall || null,
         laneReady: ready,
         replyCount,
         workerLastReplyWork,
+        workerSystemProfile,
         workerApplyMs,
         workerApplyMaxMs,
         workerApplyOver100,
@@ -2362,6 +2396,18 @@ export function createSimLaneRuntime({
     // worker binds it for journal packs. Attach locally so busy-bit release
     // works on evicted SAB-backed packs.
     sabArena: resolved.sab ? createLaneSabJournalArena() : null,
+    // E1 stall harness: the worker blocks its event loop for these ms values in cycle
+    // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
+    simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,
+    // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
+    // allocation and ride a bounded summary back on the reply (one per simulated second).
+    systemProfile: (() => {
+      try {
+        return typeof globalThis !== 'undefined' && globalThis.location
+          ? new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+          : false;
+      } catch (_) { return false; }
+    })(),
   };
   const readyPromise = new Promise((resolve, reject) => {
     pending.set(initSeq, { kind: 'init', resolve, reject });

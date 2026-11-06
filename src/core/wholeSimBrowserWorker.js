@@ -147,6 +147,11 @@ const localClock = {
   stepCount: 0,
   shedStepCount: 0,
   commandCount: 0,
+  // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
+  stallCycle: null,
+  stallIndex: 0,
+  stallApplications: 0,
+  stallTotalMs: 0,
   // A slow authoritative tick must not leave one promise per timer turn queued
   // behind the shared directive chain. The next tick samples the elapsed wall
   // interval and applies the normal catch-up/shedding policy instead.
@@ -158,6 +163,38 @@ const localClock = {
 function localNowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
+}
+
+// ---- E1 stall-injection harness (?simStall=) ----------------------------------------
+// The faithful emulation of a heavy authoritative step is a BLOCKED worker event loop:
+// no timers, no messages, no reply until the stall elapses — exactly what Rapier's
+// 458 ms worst step does. Atomics.wait inside a DedicatedWorker blocks without spinning;
+// the busy loop is the fallback where SAB/wait is unavailable.
+let stallWaitCell = null;
+
+function stallBlock(ms) {
+  try {
+    if (typeof SharedArrayBuffer === 'function' && typeof Atomics !== 'undefined'
+      && typeof Atomics.wait === 'function') {
+      if (!stallWaitCell) stallWaitCell = new Int32Array(new SharedArrayBuffer(4));
+      Atomics.wait(stallWaitCell, 0, 0, ms);
+      return;
+    }
+  } catch (_) { /* not blockable here — busy wait below */ }
+  const until = localNowMs() + ms;
+  while (localNowMs() < until) { /* emulate the step's CPU occupancy */ }
+}
+
+function runInjectedStall() {
+  const cycle = localClock.stallCycle;
+  if (!cycle || !cycle.length || localClock.stopped) return;
+  const ms = cycle[localClock.stallIndex % cycle.length];
+  localClock.stallIndex++;
+  if (!(ms > 0)) return;
+  const started = localNowMs();
+  stallBlock(ms);
+  localClock.stallApplications++;
+  localClock.stallTotalMs += localNowMs() - started;
 }
 
 // Keep timer wakeups on the fixed-step deadline rather than adding a full
@@ -694,6 +731,10 @@ async function publishLocalReply(reply) {
 
 async function runLocalClockTick(force = false, explicitSteps = 0, publishReply = true) {
   if (!localClock.enabled || localClock.stopped) return;
+  // The injected stall is part of this tick's wall cost: it elapses BEFORE the elapsed
+  // interval is measured, so the accumulator owes the blocked time and the existing
+  // catch-up/shed policy sees exactly what a heavy step produces.
+  runInjectedStall();
   const now = localNowMs();
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
   if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
@@ -792,6 +833,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     shedInputPublishes: localClock.shedInputPublishCount || 0,
     shedCommands: localClock.shedCommandCount || 0,
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
+    stallApplications: localClock.stallApplications || 0,
+    stallTotalMs: localClock.stallTotalMs || 0,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
     backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
@@ -1036,6 +1079,12 @@ async function dispatchDirective(msg) {
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.stopped = false;
+      // E1 stall harness (?simStall=): the main lane ships the requested cycle on init.
+      localClock.stallCycle = Array.isArray(msg.simStall) && msg.simStall.length
+        ? msg.simStall : null;
+      localClock.stallIndex = 0;
+      localClock.stallApplications = 0;
+      localClock.stallTotalMs = 0;
       localClock.scale = Number.isFinite(msg.timeScale) ? Math.max(0, msg.timeScale) : 0;
       refreshLocalClockScale(msg.timeScale);
       localClock.lifecycleGeneration = Number.isSafeInteger(msg.generation) ? msg.generation : 0;

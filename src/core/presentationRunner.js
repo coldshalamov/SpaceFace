@@ -407,6 +407,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     ? globalThis.location.search : '')) {
     frameTruth.setOverlayVisible(true);
   }
+  // Name the active stall script in the trace so before/after exports self-identify.
+  try {
+    const stallParam = new URLSearchParams(typeof globalThis.location !== 'undefined'
+      ? globalThis.location.search : '').get('simStall');
+    if (stallParam) frameTruth.note = `simStall=${stallParam}`;
+  } catch (_) { /* note is cosmetic */ }
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
   }
@@ -1253,6 +1259,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
     if (frameDt > 0.25) frameDt = 0.25;
     last = now;
+    // Declared at frame scope so the finally's frame-truth ingest can read the present cost
+    // even when the present threw (the value then is the last measured one, or 0).
+    let presentationMs = 0;
 
     try {
       perf = ensurePerfRuntime(state);
@@ -1305,7 +1314,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       //
       // Only a restore frame presents without advancing: its picture must go out before the
       // clock restarts. A draw throw must not undo the sim that already ran this callback.
-      let presentationMs = 0;
       let presentationError = null;
       _stepCapArgs.frameDt = frameDt;
       _stepCapArgs.fixedDt = fixedDt;

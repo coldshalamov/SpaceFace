@@ -62,3 +62,20 @@ test('frame truth query-param gate and hotkey-free node import', async () => {
   assert.equal(frameTruthRequestedByParam(''), false);
   assert.equal(frameTruthRequestedByParam('not-a-url'), false);
 });
+
+test('E1 stall harness flag: cycle parsed, bounded, invalid entries warned', async () => {
+  const { resolveSimLaneFlags } = await import('../src/core/simLaneMain.js');
+  const cycle = resolveSimLaneFlags('?simStall=60,60,60,400');
+  assert.deepEqual(cycle.simStall, [60, 60, 60, 400]);
+  assert.equal(cycle.warnings.length, 0);
+  const constant = resolveSimLaneFlags('?simStall=400');
+  assert.deepEqual(constant.simStall, [400]);
+  const absent = resolveSimLaneFlags('?simLane=worker');
+  assert.equal(absent.simStall, null);
+  const mixed = resolveSimLaneFlags('?simStall=100,bogus,3000,50');
+  assert.deepEqual(mixed.simStall, [100, 50], 'invalid entries skipped');
+  assert.equal(mixed.warnings.length, 2);
+  // Entries beyond 16 are dropped, never unbounded.
+  const long = resolveSimLaneFlags(`?simStall=${Array.from({ length: 40 }, (_, i) => i % 200).join(',')}`);
+  assert.equal(long.simStall.length, 16);
+});
