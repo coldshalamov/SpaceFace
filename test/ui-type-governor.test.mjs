@@ -26,7 +26,19 @@ test('type already inside the standard is left alone', () => {
 test('a poster-width label (wdth 112+) is set at normal width and keeps its weight', () => {
   const patch = governType(label({ wdth: 125, weight: 800, letterSpacingPx: 12 * 0.06 }));
   assert.equal(patch['font-stretch'], '100%');
-  assert.match(patch['font-variation-settings'], /"wdth" 100, "wght" 700/); // weight capped at 700 for labels
+  assert.match(patch['font-variation-settings'], /"wdth" 100, "wght" 800/); // weight within the 800 cap is kept
+});
+
+test('an interactive label keeps its own width and weight (its hover/selected state changes them)', () => {
+  const patch = governType(label({ wdth: 125, weight: 900, interactive: true, letterSpacingPx: 12 * 0.2 }));
+  assert.equal(patch['letter-spacing'], `${TYPE_GOVERNOR.trackingSmall}em`);
+  assert.equal(patch['font-variation-settings'], undefined);
+  assert.equal(patch['font-stretch'], undefined);
+});
+
+test('a static label at wght 900 keeps most of its weight (cap is 800)', () => {
+  const patch = governType(label({ wdth: 125, weight: 900, letterSpacingPx: 12 * 0.06 }));
+  assert.match(patch['font-variation-settings'], /"wght" 800/);
 });
 
 test('wide axes at display sizes are not touched (the screen title keeps its width)', () => {
