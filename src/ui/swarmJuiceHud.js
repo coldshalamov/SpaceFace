@@ -100,6 +100,7 @@ export const swarmJuiceHud = {
     this._unsubs.push(this.bus.on('run:waveStarted', () => this._onFight()));
     this._unsubs.push(this.bus.on('run:started', () => this._resetModel()));
     this._unsubs.push(this.bus.on('run:ended', () => this._resetModel()));
+    this._unsubs.push(this.bus.on('swarm:scoreboardToggle', () => this._onScoreboardToggle()));
   },
 
   destroy() {
@@ -131,6 +132,7 @@ export const swarmJuiceHud = {
     this._bossHp = null;
     this._bossDownUntil = 0;
     this._shatter = null;
+    this._boardOn = false;
     this._level = 'full';
   },
 
@@ -219,6 +221,16 @@ export const swarmJuiceHud = {
           if (on) this._text(node, `${row.label}  ${row.value}`);
         });
       }
+    } else if (this._boardOn) {
+      // S5: Tab holds the scoreboard — the live round's honest numbers on the tally card.
+      dom.tally.hidden = false;
+      this._text(dom.tallyTitle, `ROUND ${run.wave || 1}`);
+      const rows = [`WAVE ${run.wave || 1}`];
+      if (this._chainBest > 0) rows.push(`BEST CHAIN ×${this._chainBest}`);
+      dom.tallyRows.forEach((node, i) => {
+        node.hidden = i >= rows.length;
+        if (rows[i]) this._text(node, rows[i]);
+      });
     } else {
       dom.tally.hidden = true;
     }
@@ -369,6 +381,11 @@ export const swarmJuiceHud = {
     if (!p || !Array.isArray(p.tally)) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._clear = { wave: p.wave || 0, rows: p.tally, at: now };
+  },
+
+  // S5: Tab toggles the scoreboard — the live round's numbers pinned on the tally card.
+  _onScoreboardToggle() {
+    this._boardOn = !this._boardOn;
   },
 
   _onBossIntro(p) {

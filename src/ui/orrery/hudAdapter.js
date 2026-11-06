@@ -23,8 +23,10 @@ import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCust
 import { SHIPS } from '../../data/ships.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
+import { isSwarmControls, swarmRailSlotAllowed, SWARM_LINE_KEY_LABEL } from '../../data/swarmControls.js';
 import { travelFlag } from '../../data/featureFlags.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
+import { heldPower } from '../../systems/powerVerbs.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
@@ -143,6 +145,8 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   });
   const out = {};
   for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
+    // S5: the Swarm bar is six icons — the five powers and the Line; travel/gyre/cloak stay off it.
+    if (!swarmRailSlotAllowed(state, slot.index)) continue;
     const r = rail[slot.index] || {};
     const pe = presented.entries[PRESENTED_ID[slot.index]];
     const st = RAIL_STATE[r.state] || 'ready';
@@ -151,6 +155,12 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
     const entry = { state: st, key: labels[slot.index] || '', arsenalId };
+    // S5: the Swarm bar draws icons only — key number + radial cooldown, no words (aria keeps
+    // the names). The Line socket wears RMB: the tether verb has no keyboard code in Swarm.
+    if (isSwarmControls(state)) {
+      entry.iconOnly = true;
+      if (slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
+    }
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack

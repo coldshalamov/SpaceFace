@@ -105,7 +105,9 @@ export function createSwarmCallinsDirector(ctx) {
       this._lances = [];
       this._allies = [];
       this._domes = [];
+      this._queuedCallins = [];
       this._prevBomb = false;
+      this._prevCallin = false;
     },
 
     destroy() {
@@ -141,6 +143,22 @@ export function createSwarmCallinsDirector(ctx) {
       this._expireDomes(st);
       this._expireAllies(st);
       this._readBombPress(st, run);
+      this._readCallinPress(st, run);
+    },
+
+    /** S5: a bought called charge waits on the player — Q deploys the next one on the pile. */
+    queueCallin(callinId) {
+      if (callinId) this._queuedCallins.push(callinId);
+      return true;
+    },
+
+    _readCallinPress(st, run) {
+      const actions = st.input && st.input.actions;
+      const pressed = !!(actions && actions.callIn === true);
+      const edge = pressed && !this._prevCallin;
+      this._prevCallin = pressed;
+      if (!edge || !this._queuedCallins.length) return;
+      this.callIn(st, run, this._queuedCallins.shift());
     },
 
     // ---- the stocked charges (SW-01 smart bomb, SW-03 orbital lance) ------------------------

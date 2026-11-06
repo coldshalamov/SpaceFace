@@ -620,9 +620,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
       const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
       if (sk.labelText !== label && sk.labelNode) {
-        sk.labelText = label; sk.labelNode.textContent = label;
+        sk.labelText = label;
+        // S5: icon-only sockets (the Swarm bar) draw no word — the name stays on aria + tip.
+        const shown = st.iconOnly ? '' : label;
+        sk.labelNode.textContent = shown;
         // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
-        sk.shortLabelNode.textContent = label.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
+        sk.shortLabelNode.textContent = shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
           .replace(/^Shove · Pushes away\b/i, 'Shove · Push away');
       }
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is

@@ -1373,16 +1373,14 @@ export const survivalArena = {
 
   // ---- install --------------------------------------------------------------
 
-  /** SEED-SW-04..07 — a bought call-in charge deploys as soon as the ledger records it. */
+  /** SEED-SW-04..07 / S5 — a bought call-in charge queues for the player's Q press. */
   _onCallinRecorded(payload) {
     const record = payload && payload.record;
     if (!record || record.kind !== 'swarm_callin') return;
     const called = record.callinId === 'turret_drop' || record.callinId === 'drone_wing'
       || record.callinId === 'shield_dome' || record.callinId === 'decoy';
     if (!called || !this._callins) return;
-    const run = this._liveSwarmRun ? this._liveSwarmRun(this.state) : (this.state && this.state.run);
-    if (!run) return;
-    this._callins.callIn(this.state, run, record.callinId);
+    this._callins.queueCallin(record.callinId);
   },
 
   _onWavePlanned(payload) {
