@@ -1,3 +1,4 @@
+import { ceresFurnaceInspectionItem, ceresFurnaceInspectionReceipt } from '../missions/ceresFurnaceAftermath.js';
 // stationSideEventDirector.js — BP-11 packet A6 "Station Side-Events", the SEEDED DIRECTOR.
 // (See design/revamp/detail/A_sector_station.md packet A6.)
 //
@@ -40,6 +41,7 @@ const MIN_SPACING_S = 25;       // min gap between fired side-events at a statio
 const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
 const MAX_SEEN_BUOY_RECEIPTS = 10;
+const MAX_SEEN_CERES_INSPECTIONS = 10;
 const RECEIVING_CONTEXT_BY_STEP = Object.freeze({
   1: '44-C receiving check — berth intake',
   2: 'Claim-rim receiving check — berth intake',
@@ -124,6 +126,7 @@ export const stationSideEventDirector = {
     s.anchorId = stationKey(station);
     this._planStation(state, station, now);
     this._planBuoyReceiving(state, station, now);
+    this._planCeresFurnaceInspection(state, station, now);
     this._pump(state, station, now);
   },
 
@@ -202,6 +205,22 @@ export const stationSideEventDirector = {
     s.pending.push(item);
   },
 
+  // One bounded follow-through for the exact retired Ceres worksite. This is a second identity
+  // in the existing director, not another observer/scene: the Helios planner filters only its
+  // receivingMissionId tag and therefore cannot discard this inspection's separate tag.
+  _planCeresFurnaceInspection(state, station, now) {
+    const s = ensureState(state);
+    const receipt = ceresFurnaceInspectionReceipt(state, now);
+    const currentMissionId = receipt && !hasSeenCeresInspection(s, receipt.missionId)
+      ? receipt.missionId : null;
+    s.pending = s.pending.filter(item => !item.ceresFurnaceMissionId
+      || item.ceresFurnaceMissionId === currentMissionId);
+    const item = ceresFurnaceInspectionItem(state, station, now);
+    if (!item || hasSeenCeresInspection(s, item.ceresFurnaceMissionId)
+      || s.pending.some(pending => pending.ceresFurnaceMissionId === item.ceresFurnaceMissionId)) return;
+    s.pending.push(item);
+  },
+
   // Fire at most one due item for the CURRENT anchor per beat, spaced by MIN_SPACING_S.
   _pump(state, station, now) {
     const s = ensureState(state);
@@ -218,6 +237,18 @@ export const stationSideEventDirector = {
     if (idx < 0) return;
 
     const item = s.pending[idx];
+    if (item.ceresFurnaceMissionId) {
+      if (hasSeenCeresInspection(s, item.ceresFurnaceMissionId)) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      const current = ceresFurnaceInspectionItem(state, station, now);
+      if (!current || current.ceresFurnaceMissionId !== item.ceresFurnaceMissionId) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      item.durationS = current.durationS;
+    }
     if (item.receivingMissionId) {
       if (hasSeenBuoyReceiving(s, item.receivingMissionId)) {
         s.pending.splice(idx, 1);
@@ -254,6 +285,7 @@ export const stationSideEventDirector = {
     if ((item.budget | 0) <= 0) {
       const emitted = this._emitSeam(item, station, geom, []); // cosmetic: seam only, no budget, no entity
       if (emitted && item.receivingMissionId) rememberBuoyReceiving(s, item.receivingMissionId);
+      if (emitted && item.ceresFurnaceMissionId) rememberCeresInspection(s, item.ceresFurnaceMissionId);
       s.nextFireAt = now + MIN_SPACING_S;
       return;
     }
@@ -314,6 +346,7 @@ export const stationSideEventDirector = {
       from: { x: geom.from.x, z: geom.from.z },
       to: { x: geom.to.x, z: geom.to.z },
       entityIds: entityIds || [],
+      ...(item.ceresFurnaceMissionId ? { ceresFurnaceMissionId: item.ceresFurnaceMissionId } : {}),
       ...(item.receivingMissionId ? {
         contextLabel: item.contextLabel || '44-C receiving check — berth intake',
         receivingMissionId: item.receivingMissionId,
@@ -454,6 +487,7 @@ function freshState() {
     nextFireAt: 0,
     active: {},
     buoyReceivingSeenMissionIds: [],
+    ceresFurnaceInspectionSeenMissionIds: [],
   };
 }
 
@@ -470,6 +504,24 @@ function rememberBuoyReceiving(s, missionId) {
   if (s.buoyReceivingSeenMissionIds.length > MAX_SEEN_BUOY_RECEIPTS) {
     s.buoyReceivingSeenMissionIds.splice(0,
       s.buoyReceivingSeenMissionIds.length - MAX_SEEN_BUOY_RECEIPTS);
+  }
+}
+
+function hasSeenCeresInspection(s, missionId) {
+  return typeof missionId === 'string' && !!missionId
+    && Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)
+    && s.ceresFurnaceInspectionSeenMissionIds.includes(missionId);
+}
+
+function rememberCeresInspection(s, missionId) {
+  if (typeof missionId !== 'string' || !missionId) return;
+  if (!Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)) s.ceresFurnaceInspectionSeenMissionIds = [];
+  if (!s.ceresFurnaceInspectionSeenMissionIds.includes(missionId)) {
+    s.ceresFurnaceInspectionSeenMissionIds.push(missionId);
+  }
+  if (s.ceresFurnaceInspectionSeenMissionIds.length > MAX_SEEN_CERES_INSPECTIONS) {
+    s.ceresFurnaceInspectionSeenMissionIds.splice(0,
+      s.ceresFurnaceInspectionSeenMissionIds.length - MAX_SEEN_CERES_INSPECTIONS);
   }
 }
 
@@ -496,9 +548,23 @@ export function ensureState(state) {
     s.buoyReceivingSeenMissionIds = [...new Set(s.buoyReceivingSeenMissionIds
       .filter((id) => typeof id === 'string' && id))].slice(-MAX_SEEN_BUOY_RECEIPTS);
   }
+  if (!Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)) s.ceresFurnaceInspectionSeenMissionIds = [];
+  else if (!isValidCeresInspectionSeenList(s.ceresFurnaceInspectionSeenMissionIds)) {
+    s.ceresFurnaceInspectionSeenMissionIds = [...new Set(s.ceresFurnaceInspectionSeenMissionIds
+      .filter((id) => typeof id === 'string' && id))].slice(-MAX_SEEN_CERES_INSPECTIONS);
+  }
   if (!('anchorId' in s)) s.anchorId = null;
   if (!Number.isFinite(s.nextFireAt)) s.nextFireAt = 0;
   return s;
+}
+
+function isValidCeresInspectionSeenList(ids) {
+  if (!Array.isArray(ids) || ids.length > MAX_SEEN_CERES_INSPECTIONS) return false;
+  for (let i = 0; i < ids.length; i++) {
+    if (typeof ids[i] !== 'string' || !ids[i]) return false;
+    for (let j = 0; j < i; j++) if (ids[j] === ids[i]) return false;
+  }
+  return true;
 }
 
 function countActive(s) {

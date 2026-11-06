@@ -1065,6 +1065,14 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     background:none !important; }
   ${W} .sx-sw-verb { font-size:12px !important; letter-spacing:.1em !important; }
 }
+/* Once readings join the short desktop's normal flow, retire the absolute-seat offsets
+   and height cap from station.css. A relative top:112px paints them over the following controls. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__main > .sx-sw__stats {
+    top:auto !important; bottom:auto !important; height:auto !important;
+    min-height:0 !important; max-height:none !important;
+  }
+}
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { flex-basis:340px !important; height:340px !important; min-height:340px !important; }
   ${W}.orr-sw--jig .sx-sw__main > .sx-sw__side { position:relative !important; inset:auto !important; transform:none !important;
@@ -1335,8 +1343,53 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
+  /* Preserve the independently scrolling readings while reserving a larger gap below the hero. */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:112px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
+
+}
+/* Short desktop readings and their save action share the existing scroll owner. */
+@media (min-width:901px) and (max-width:1366px) and (max-height:800px) {
+  /* The short reading window cannot fit a sticky action above every hero row. Keep the
+     action in its existing scroll flow so every reading and Save Fit remain reachable. */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats .sx-sw-band--presets {
+    position:relative !important; inset:auto !important; margin-top:8px !important;
+    background:rgb(8 10 13 / .98) !important; padding-top:2px !important; padding-bottom:2px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-preset--save { scroll-margin-block:12px !important; }
+}
+/* The identity line must clear Save Fit throughout the short desktop range. Start at 1001px:
+   the adjacent 1001–1100 layout uses the same jig but otherwise kept the old three-row hero. */
+@media (min-width:1001px) and (max-width:1366px) and (min-height:641px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bands {
+    display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:2px 14px !important; align-items:end !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero { padding-bottom:1px !important; min-width:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] {
+    grid-column:1 / -1 !important; order:0 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n {
+    font-size:30px !important; line-height:1 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__w { margin-top:1px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] {
+    grid-column:1 / -1 !important; order:1 !important; display:flex !important; flex-direction:row !important;
+    align-items:baseline !important; gap:8px !important; padding:2px 0 3px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] .k-hero__n {
+    font-size:14px !important; letter-spacing:.08em !important; white-space:nowrap !important; line-height:1.1 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] .k-hero__w {
+    margin-top:0 !important; font-size:12px !important; letter-spacing:.14em !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='power'] { order:2 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='capability'] { order:3 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='condition'] { order:4 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) .k-hero__n {
+    font-size:15px !important; line-height:1.05 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) .k-hero__w { margin-top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) { padding-bottom:0 !important; }
 }
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */

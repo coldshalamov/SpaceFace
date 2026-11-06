@@ -34,8 +34,8 @@ function isDriftingDebris(e) {
 
 /**
  * Pure: re-point a planned salvo onto the room's drifting rocks. Returns
- * { points, vels } — vels[i] is the rock's velocity for a rock-anchored point, null for a
- * wake point (the ordinary deploy law keeps those). No writes; the caller stores both.
+ * { points, anchors } — anchors[i] identifies the selected rock, or null for a wake point.
+ * The verb refreshes live drift forecasts and samples velocity at deployment. No entity writes.
  */
 export function anchorSalvoToDriftingDebris(state, entity, wakePoints, count) {
   const points = Array.isArray(wakePoints) ? wakePoints.map((point) => ({ ...point })) : [];
@@ -88,10 +88,10 @@ function liveDriftingDebris(state, id) {
 
 function activeSpecialistMineCount(state, ownerId) {
   const entities = Array.isArray(state.entityList) ? state.entityList
-    : Array.isArray(state.entityIndex?.mines) ? state.entityIndex.mines : [];
+    : state.entities?.values() || state.entityIndex?.mines || [];
   let count = 0;
   for (const item of entities) {
-    if (item?.alive === true && item.type === 'mine' && item.ownerId === ownerId
+    if (item?.alive === true && item.type === 'mine' && (item.ownerId === ownerId || item.data?.ownerId === ownerId)
       && item.data?.swarmSpecialistMine === true) count++;
   }
   return count;
@@ -120,83 +120,138 @@ export function mineLayerWakePoint(entity) {
   };
 }
 
-export function applyMineLayerVerb({ state, entity, doctrinePhase, tick, doctrineStartedTick = tick, placeMine }) {
+function endSwarmJackalSalvo(view, tick) {
+  if (view.phase !== 'windup' && view.phase !== 'active' && !view.salvoPoints) return;
+  view.salvoPoints = null;
+  view.salvoAnchors = null;
+  view.salvoNextReleaseTick = null;
+  view.salvoWave = null;
+  view.phase = 'recovery';
+  view.phaseStartedAt = tick;
+  view.phaseEndsAt = tick + SWARM_SPECIALIST_TUNING.jackal.recoveryTicks;
+  view.nextSalvoTick = tick + SWARM_SPECIALIST_TUNING.jackal.cooldownTicks;
+}
+
+// The same live points reach the worker projection throughout the warning and the release.
+// A drifting carrier cannot move the eventual mine somewhere the forecast never followed.
+function refreshJackalForecast(state, entity, view) {
+  for (let index = view.salvoCursor; index < view.salvoPoints.length; index++) {
+    const anchorId = view.salvoAnchors?.[index];
+    if (anchorId == null) continue;
+    const anchor = liveDriftingDebris(state, anchorId);
+    if (anchor) view.salvoPoints[index] = pointOnDebrisSkin(anchor, entity);
+    else view.salvoAnchors[index] = null; // The last visible point is the fallback, not a new target.
+  }
+}
+
+function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }) {
+  const tuning = SWARM_SPECIALIST_TUNING.jackal;
+  const data = entity.data;
+  let view = data.swarmSpecialist;
+  if (!view || view.kind !== 'jackal') {
+    view = data.swarmSpecialist = { kind: 'jackal', phase: 'idle', phaseStartedAt: tick,
+      phaseEndsAt: null, salvoPoints: null, salvoAnchors: null, salvoCursor: 0, nextSalvoTick: 0 };
+  }
+  if (view.phase === 'recovery' && tick >= view.phaseEndsAt) {
+    view.phase = 'idle'; view.phaseStartedAt = tick; view.phaseEndsAt = null;
+  }
+  const outsideWave = Number.isInteger(state.run?.wave) && Number.isInteger(data.runWave)
+    && state.run.wave !== data.runWave;
+  const oldCommitment = Number.isInteger(view.salvoWave) && Number.isInteger(data.runWave)
+    && view.salvoWave !== data.runWave;
+  if (!isSwarmSpecialistRun(state) || state.run.phase !== 'active' || outsideWave || oldCommitment
+    || data.disabled === true || data.stunned === true) {
+    endSwarmJackalSalvo(view, tick);
+    return null;
+  }
+  if (doctrinePhase !== 'wake_cue' && doctrinePhase !== 'mine_drop') {
+    endSwarmJackalSalvo(view, tick);
+    return null;
+  }
+  if (doctrinePhase === 'wake_cue') {
+    // Returning to a new cue after an interrupted drop never resumes the old payload.
+    if (view.phase === 'active') endSwarmJackalSalvo(view, tick);
+    if (!view.salvoPoints && tick >= (view.nextSalvoTick || 0)
+      && activeSpecialistMineCount(state, entity.id) < tuning.mineCap) {
+      const planned = anchorSalvoToDriftingDebris(state, entity,
+        swarmMineWakeSalvoLayout(entity, tuning.salvoCount), tuning.salvoCount);
+      view.salvoPoints = planned.points;
+      view.salvoAnchors = planned.anchors;
+      view.salvoCursor = 0;
+      view.salvoWave = data.runWave;
+      // Start when this geometry is first published. A stale doctrine timestamp cannot
+      // backdate the warning after a cooldown, skipped AI update, or restored phase.
+      view.salvoStartedAt = tick;
+      view.salvoNextReleaseTick = tick + tuning.windupTicks;
+      view.phase = 'windup';
+      view.phaseStartedAt = tick;
+      view.phaseEndsAt = tick + tuning.windupTicks;
+    }
+    if (Array.isArray(view.salvoPoints)) refreshJackalForecast(state, entity, view);
+    return null;
+  }
+  if (!Array.isArray(view.salvoPoints)) return null;
+  // Older saves used remaining-count or cue-relative cadence. Adopt their unspent slots,
+  // but never compress an unknown release interval into an immediate burst on Continue.
+  if (!Number.isInteger(view.salvoCursor)) view.salvoCursor = Number.isInteger(view.salvoRemaining)
+    ? Math.max(0, view.salvoPoints.length - view.salvoRemaining) : 0;
+  if (!Number.isFinite(view.salvoNextReleaseTick)) {
+    if (view.phase === 'active') {
+      view.salvoNextReleaseTick = tick + tuning.salvoSpacingTicks;
+      view.phaseStartedAt = tick;
+      view.phaseEndsAt = tick + tuning.activeTicks;
+    } else view.salvoNextReleaseTick = Number.isFinite(view.phaseEndsAt)
+      ? view.phaseEndsAt : tick + tuning.windupTicks;
+  }
+  refreshJackalForecast(state, entity, view);
+  if (view.phase === 'windup') {
+    if (tick < view.salvoNextReleaseTick) return null;
+    view.phase = 'active'; view.phaseStartedAt = tick; view.phaseEndsAt = tick + tuning.activeTicks;
+  }
+  if (view.phase !== 'active') return null;
+  if (tick >= view.phaseEndsAt || view.salvoCursor >= view.salvoPoints.length
+    || activeSpecialistMineCount(state, entity.id) >= tuning.mineCap) {
+    endSwarmJackalSalvo(view, tick);
+    return null;
+  }
+  if (typeof placeMine !== 'function' || tick < view.salvoNextReleaseTick) return null;
+  const index = view.salvoCursor;
+  const position = view.salvoPoints[index];
+  const anchor = liveDriftingDebris(state, view.salvoAnchors?.[index]);
+  const mine = placeMine({
+    ownerId: entity.id,
+    pos: { x: position.x, z: position.z },
+    // A rock-carried seed uses its carrier's current drift. Ordinary wake seeds retain
+    // the existing owner-velocity law; the canonical mine owner still handles physics.
+    ...(anchor ? { vel: { x: anchor.vel.x, z: anchor.vel.z } } : {}),
+    team: entity.team,
+    factionId: entity.factionId || null,
+    telegraph: index === 0,
+    swarmSpecialistMine: true,
+    swarmWave: data.runWave,
+    armDelayS: tuning.armDelayTicks / 60,
+    triggerRadius: tuning.triggerRadius,
+    blastDamage: tuning.blastDamage,
+    hull: tuning.mineHull,
+    lifetimeS: tuning.lifetimeTicks / 60,
+  });
+  if (mine) {
+    view.salvoCursor = index + 1;
+    view.salvoNextReleaseTick = tick + tuning.salvoSpacingTicks;
+    if (view.salvoCursor >= view.salvoPoints.length) endSwarmJackalSalvo(view, tick);
+  }
+  return mine;
+}
+
+export function applyMineLayerVerb({ state, entity, doctrinePhase, tick, placeMine }) {
   if (!state || !entity || entity.alive === false) return null;
-  if (typeof placeMine !== 'function') return null;
   const data = entity.data || (entity.data = {});
   const enemyId = data.lootTableId || data.enemyTypeId;
-  if (isSwarmSpecialistRun(state) && data.runCohort === 'survival' && enemyId === 'mine_layer_jackal') {
-    const tuning = SWARM_SPECIALIST_TUNING.jackal;
-    let specialist = data.swarmSpecialist;
-    if (!specialist || specialist.kind !== 'jackal') {
-      specialist = data.swarmSpecialist = { kind: 'jackal', phase: 'idle', phaseStartedAt: tick,
-        salvoPoints: null, salvoAnchors: null, salvoCursor: 0, nextSalvoTick: 0 };
-    }
-    if (doctrinePhase === 'wake_cue') {
-      if (!specialist.salvoPoints && tick >= (specialist.nextSalvoTick || 0)
-        && activeSpecialistMineCount(state, entity.id) < tuning.mineCap) {
-        const anchored = anchorSalvoToDriftingDebris(
-          state, entity,
-          swarmMineWakeSalvoLayout(entity, tuning.salvoCount),
-          tuning.salvoCount,
-        );
-        specialist.salvoPoints = anchored.points;
-        specialist.salvoAnchors = anchored.anchors;
-        specialist.salvoCursor = 0;
-        specialist.salvoStartedAt = doctrineStartedTick;
-        specialist.phase = 'windup';
-        specialist.phaseStartedAt = doctrineStartedTick;
-        specialist.phaseEndsAt = doctrineStartedTick + tuning.windupTicks;
-      }
-      return null;
-    }
-    if (doctrinePhase !== 'mine_drop' || !Array.isArray(specialist.salvoPoints)) return null;
-    const index = specialist.salvoCursor | 0;
-    const dueTick = specialist.salvoStartedAt + index * tuning.salvoSpacingTicks;
-    if (index >= specialist.salvoPoints.length || tick < dueTick) return null;
-    specialist.phase = 'active';
-    let position = specialist.salvoPoints[index];
-    let carriedVel = null;
-    const anchorId = Array.isArray(specialist.salvoAnchors) ? specialist.salvoAnchors[index] : null;
-    const anchor = liveDriftingDebris(state, anchorId);
-    if (anchor) {
-      // The wake cue is a 30-tick warning: a selected rock may travel far from the preview
-      // point before the first mine is actually laid. Re-sample its live skin and velocity at
-      // the ordinary mine-drop owner boundary so the seed appears in the moving debris field.
-      position = pointOnDebrisSkin(anchor, entity);
-      specialist.salvoPoints[index] = position;
-      carriedVel = { x: anchor.vel.x, z: anchor.vel.z };
-    }
-    const mine = placeMine({
-      ownerId: entity.id,
-      pos: { x: position.x, z: position.z },
-      // A rock-anchored seed rides that rock's drift (VERB-32's explicit-vel override); a
-      // wake seed passes no vel, so the ordinary owner-velocity deploy law stays.
-      ...(carriedVel ? { vel: { x: carriedVel.x, z: carriedVel.z } } : {}),
-      team: entity.team,
-      factionId: entity.factionId || null,
-      telegraph: index === 0,
-      swarmSpecialistMine: true,
-      swarmWave: data.runWave,
-      armDelayS: tuning.armDelayTicks / 60,
-      triggerRadius: tuning.triggerRadius,
-      blastDamage: tuning.blastDamage,
-      hull: tuning.mineHull,
-      lifetimeS: tuning.lifetimeTicks / 60,
-    });
-    if (mine) {
-      specialist.salvoCursor = index + 1;
-      if (specialist.salvoCursor >= specialist.salvoPoints.length) {
-        specialist.salvoPoints = null;
-        specialist.salvoAnchors = null;
-        specialist.phase = 'recovery';
-        specialist.phaseStartedAt = tick;
-        specialist.phaseEndsAt = tick + tuning.recoveryTicks;
-        specialist.nextSalvoTick = tick + tuning.cooldownTicks;
-      }
-    }
-    return mine;
+  if (state.run?.kind === 'survival' && state.run.ruleset === 'swarm'
+    && data.runCohort === 'survival' && enemyId === 'mine_layer_jackal') {
+    return applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine });
   }
+  if (typeof placeMine !== 'function') return null;
   if (doctrinePhase !== 'mine_drop') return null;
   const last = Number.isFinite(data._mineLayerLastDropTick) ? data._mineLayerLastDropTick : -Infinity;
   if (tick - last < MINE_DROP_INTERVAL_TICKS) return null;

@@ -386,8 +386,7 @@ test('the real mortar blast centered on an open aperture remains area damage', (
     cfg: { blastRadius: 80, blastDmg: 10, impulse: 0 } }, h.state);
   const hit = receipts.find(row => row.input.targetId === h.target.id);
   assert.ok(hit, 'the actual scheduled blast reaches the Kraken');
-  assert.equal(hit.input.packet.source.kind, 'weapon', 'splash keeps canonical weapon provenance');
-  assert.equal(hit.input.packet.flags.splash, true);
+  assert.equal(hit.input.packet.source.kind, 'weapon_splash');
   assert.equal(hit.result.rawTotal, 10);
   assert.equal(hit.result.ironKrakenCoreFactor, undefined);
   assert.equal(h.cues.length, 0);

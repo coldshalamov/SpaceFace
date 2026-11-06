@@ -84,3 +84,44 @@ test('the first forty observed seconds stay wordless; saved return dialogue foll
   assert.equal(f.events.length, count, 'completed work leaves the channel quiet');
   f.system.destroy();
 });
+
+test('ordinary route hail re-reads the service state after the offer and gives the next physical action', () => {
+  const f = fixture(), w = f.state.npcJobs.lanternWard;
+  w.phase = 'blocked'; w.blocked = true;
+  const offer = f.offer();
+  assert.match(offer.lines.at(-1), /Two ways/);
+  w.phase = 'connect'; w.workS = 9;
+  const before = structuredClone(w);
+  f.bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: 2, choice: 'route' });
+  const response = f.events.find(e => e.name === 'contactHail:response')?.payload;
+  assert.match(response.lines[0], /seating both contacts/);
+  assert.doesNotMatch(response.lines[0], /fallen mast/);
+  assert.match(response.lines[1], /three brass strokes/);
+  assert.deepEqual(w, before, 'guidance is a projection, not a service or reward command');
+  assert.equal(f.repairCalls.length, 0);
+  f.system.destroy();
+});
+
+test('return hail exposes recovery after a completed lamp is displaced', () => {
+  const f = fixture(), w = f.state.npcJobs.lanternWard;
+  w.phase = 'displaced'; w.blocked = false; w.needsReinstall = true;
+  w.history = { installations: 1, recovered: true, lampStolen: true };
+  const offer = f.offer();
+  assert.match(offer.lines.at(-1), /circuit interrupted/);
+  f.bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: 2, choice: 'route' });
+  const response = f.events.find(e => e.name === 'contactHail:response')?.payload;
+  assert.match(response.lines[0], /same lamp.*release your Massline.*previous service remains recorded/);
+  assert.equal(w.history.installations, 1);
+  f.system.destroy();
+});
+
+
+test('a lost original closes the repair action even when the last saved phase was damaged', () => {
+  const f = fixture(), w = f.state.npcJobs.lanternWard;
+  w.phase = 'damaged'; w.objects.lamp = { lost: true };
+  const offer = f.offer();
+  assert.equal(offer.actions.some(action => action.id === LANTERN_WARD_REPAIR_ACTION), false);
+  assert.match(offer.lines.at(-1), /Original family lamp lost/);
+  assert.doesNotMatch(offer.lines[1], /One electronics unit/);
+  f.system.destroy();
+});

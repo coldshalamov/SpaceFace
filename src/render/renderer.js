@@ -478,7 +478,7 @@ import {
   shouldSliceFlightAdmission,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
-import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import {
   bindEnvironmentToStandardMaterials,
   bindEnvironmentToStandardMaterialsSteps,
@@ -8339,6 +8339,19 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   const disposeGpu = !contextLost;
   const scene = owner.scene || null;
   const state = owner.state || null;
+  const openingHulkHold = owner._openingHulkKeyWarmHold;
+  try { openingHulkHold?.release?.({ contextLost }); } catch (_) { /* best-effort candidate cleanup */ }
+  // The native compile has already issued renderer.compile synchronously; any remaining promise
+  // only polls program wrappers. Retire a pending candidate before native renderer disposal so
+  // its program lease cannot be orphaned. Context loss passes through as an abandon operation.
+  try { openingHulkHold?.candidate?.retire?.(true, { contextLost }); } catch (_) { /* teardown continues */ }
+  if (openingHulkHold?.receipt && state?.render?.openingHulkKeyWarm === openingHulkHold.receipt) {
+    state.render.openingHulkKeyWarm = null;
+  }
+  const openingHulkResource = owner._openingHulkKeyWarmResource;
+  try { openingHulkResource?.retire?.(true, { contextLost }); } catch (_) { /* teardown continues */ }
+  owner._openingHulkKeyWarmResource = null;
+  owner._openingHulkKeyWarmReceiptOwner = null;
 
   // A publish queued just before teardown would drain after clearRendererStateReferences nulls
   // the references it guards on — flush it synchronously so the teardown-time snapshot lands.
@@ -8673,6 +8686,14 @@ export function warmHullFilesForSpecs(specs) {
 // spawnable catalog is intentionally excluded here; it belongs to the explicit Crucible/Swarm
 // roster warm and the armory dwell, not an ordinary opening.
 function openingWarmHullFilesForState(state) {
+  return warmHullFilesForSpecs(openingWarmShipSpecsForState(state));
+}
+
+// The opening cast's ship specs (see openingWarmHullFilesForState). The opening warm also mints
+// one hulk exemplar per resolved hulk file from these: a lane freighter killed right after the
+// veil lifts otherwise composes its place-slot hulk (double-sided Forge barge / express-liner
+// surfaces and their shadow-depth twin) and links those programs in flight.
+function openingWarmShipSpecsForState(state) {
   const specs = [];
   try {
     specs.push(...collectFirstFlightCookEntities(state));
@@ -8708,7 +8729,7 @@ function openingWarmHullFilesForState(state) {
       data: { lootTableId: row.archetype },
     });
   }
-  return warmHullFilesForSpecs(specs);
+  return specs;
 }
 
 const PRESENTATION_TEXTURE_KEYS = Object.freeze([
@@ -22203,7 +22224,11 @@ export const render = {
         // program sweep never sees. One exemplar per roster ship runs the real attach → deaden →
         // fit → pipeline path so the first mid-round kill finds blueprint, programs and buffers
         // already resident instead of linking inside the fight (the +4 wreck_PackagedBody links).
-        for (const spec of hulkExemplarSpecsForShips(shipSpecs, `${specPrefix}hulk:`)) {
+        // Opening: no whole-hulk minting (it cost ~4.7 s of load and still missed keys when
+        // the freighter wasn't in the opening cast); _warmOpeningHulkProgramKeys compiles
+        // the exact double-sided hulk programs instead.
+        const hulkShipSpecs = profile === 'opening' ? [] : shipSpecs;
+        for (const spec of hulkExemplarSpecsForShips(hulkShipSpecs, `${specPrefix}hulk:`)) {
           await paceIfDue();
           try {
             const hulk = this.vf.build(spec);
@@ -22411,7 +22436,182 @@ export const render = {
     }
     if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root, warm);
     if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
+    if (profile === 'opening') this._warmOpeningHulkProgramKeys();
     return warm;
+  },
+
+  /**
+   * A lane freighter killed just after the veil lifts publishes its 'place'-slot hulk; its
+   * double-sided Forge hull surface (illustrated surface v19, layers 8388688/150531) is the one
+   * program that still linked in flight (lt12-lt14 master: 212-2114 ms, lift+1.6..9.8 s; the
+   * Forge_* label is just whichever hull material reached it first). The batched variants and
+   * the shadow-depth twin never linked post-lift in those runs, so only this key is warmed:
+   * one tiny mesh, compiled against the live scene, then its first use (the driver's deferred
+   * link) taken behind the loading shell on an idle frame. Program sharing is by cache key, so
+   * the real hulk material later finds the program resident and never links its own copy.
+   */
+  _warmOpeningHulkProgramKeys() {
+    const { renderer, scene, state } = this;
+    const render = state && state.render;
+    const camera = this.cam && this.cam.obj;
+    if (!renderer || !scene || !camera || !render || this._contextLost === true
+      || this._rendererResourcesDisposed === true || this._rendererLifecycle?.isActive?.() === false
+      || state.mode !== 'loading' || Number.isFinite(render.firstPlayableFrameAt)) return null;
+    const generation = render.admissionRunGeneration;
+    const context = state.contextRestoreSeq;
+    const world = state.world;
+    const current = render.openingHulkKeyWarm;
+    const currentOwner = this._openingHulkKeyWarmReceiptOwner;
+    if (current && current.issued && currentOwner?.receipt === current
+      && currentOwner.renderer === renderer && currentOwner.world === world
+      && currentOwner.generation === generation && currentOwner.context === context) return current;
+    const previousHold = this._openingHulkKeyWarmHold;
+    if (previousHold && typeof previousHold.release === 'function') previousHold.release();
+
+    const t0 = performance.now();
+    const receipt = { issued: true, issuedAt: Math.round(t0), ms: 0, linkMs: null, keys: [], error: null, generation, context };
+    const receiptOwner = { receipt, renderer, world, generation, context };
+    render.openingHulkKeyWarm = receipt;
+    this._openingHulkKeyWarmReceiptOwner = receiptOwner;
+    const textures = [];
+    const texture = (srgb) => {
+      const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+      textures.push(t);
+      return t;
+    };
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    const group = new THREE.Group();
+    group.name = 'SF_OpeningHulkKeyWarm';
+    let material = null;
+    let hold = null;
+    let compileSettled = false;
+    let geometryReleased = false;
+    const candidate = { renderer, context, material: null, textures, retired: false, retire: null };
+    candidate.retire = (force = false, { contextLost = false } = {}) => {
+      if (candidate.retired || (!force && this._openingHulkKeyWarmResource === candidate)) return;
+      candidate.retired = true;
+      const abandonGpu = contextLost || this._contextLost === true || state.contextRestoreSeq !== context
+        || this.renderer !== renderer;
+      if (!abandonGpu) {
+        try { candidate.material?.dispose?.(); } catch (_) { /* best-effort candidate cleanup */ }
+        for (const t of textures) { try { t.dispose(); } catch (_) { /* best effort */ } }
+      }
+      candidate.material = null;
+      textures.length = 0;
+    };
+    const retireCandidate = () => candidate.retire(false);
+    const release = ({ contextLost = false } = {}) => {
+      if (!hold) return;
+      hold.releaseRequested = true;
+      if (this._openingHulkKeyWarmHold === hold) this._openingHulkKeyWarmHold = null;
+      try {
+        const abandonGpu = contextLost || this._contextLost === true || state.contextRestoreSeq !== context
+          || this.renderer !== renderer;
+        if (hold.group) for (const child of hold.group.children.slice()) hold.group.remove(child);
+        if (!geometryReleased && !abandonGpu) hold.geometry?.dispose?.();
+        geometryReleased = true;
+        hold.group = null;
+        hold.geometry = null;
+        if (compileSettled) {
+          if (this._openingHulkKeyWarmResource !== candidate) retireCandidate();
+          hold.material = null;
+          hold.textures = null;
+          hold.released = true;
+          receipt.released = Math.round(performance.now());
+        }
+      } catch (error) { receipt.releaseError = String(error && error.message || error); }
+    };
+    const owns = () => this.state === state && state.render === render && this.scene === scene
+      && this.renderer === renderer && this.cam?.obj === camera && this._contextLost !== true
+      && this._rendererResourcesDisposed !== true && this._rendererLifecycle?.isActive?.() !== false
+      && state.world === world && state.contextRestoreSeq === context
+      && render.admissionRunGeneration === generation && render.openingHulkKeyWarm === receipt
+      && this._openingHulkKeyWarmReceiptOwner === receiptOwner
+      && this._openingHulkKeyWarmHold === hold && state.mode === 'loading'
+      && !Number.isFinite(render.firstPlayableFrameAt);
+    const idle = (fn) => {
+      const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback : null;
+      const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
+      if (raf && ric) raf(() => ric(fn, { timeout: 250 }));
+      else setTimeout(fn, 0);
+    };
+    try {
+      // Forge hull surface: map, ao, normal, emissive, metalness, roughness; illustrated
+      // surface; dithered; double-sided as the hulk is.
+      material = new THREE.MeshStandardMaterial({
+        map: texture(true), aoMap: texture(false), normalMap: texture(false),
+        metalnessMap: texture(false), roughnessMap: texture(false), emissiveMap: texture(true),
+      });
+      material.name = 'SF_OpeningHulkKeyWarm';
+      material.side = THREE.DoubleSide;
+      material.dithering = true;
+      installIllustratedSurface(material);
+      candidate.material = material;
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      group.add(mesh);
+      hold = { group, material, textures, geometry, receipt, release, candidate, released: false };
+      this._openingHulkKeyWarmHold = hold;
+      const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      const programsOf = () => {
+        const out = [];
+        let progs = null;
+        try { progs = renderer.properties?.get?.(material)?.programs || null; } catch (_) { return out; }
+        if (progs && typeof progs.values === 'function') for (const p of progs.values()) if (p && !out.includes(p)) out.push(p);
+        return out;
+      };
+      const firstUse = (programs) => {
+        if (!owns()) { release(); return; }
+        receipt.keys = programs.map((p) => p.cacheKey);
+        receipt.useMs = [];
+        let i = 0;
+        const step = () => {
+          if (!owns()) { release(); return; }
+          if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); release(); return; }
+          const program = programs[i++];
+          const u0 = performance.now();
+          try { program.getUniforms(); } catch (_) { /* reported through the link ledger */ }
+          receipt.useMs.push(Math.round(performance.now() - u0));
+          idle(step);
+        };
+        idle(step);
+      };
+      Promise.resolve(work).then(() => {
+        compileSettled = true;
+        if (!owns()) { release(); return; }
+        const programs = programsOf();
+        if (programs.length === 0) {
+          receipt.error = 'compile completed without an acquired program key';
+          release();
+          return;
+        }
+        // Compilation has acquired the candidate's program references. Promote it first, then
+        // retire the previous renderer/context pin so both old and new are never lost mid-handoff.
+        const previous = this._openingHulkKeyWarmResource;
+        this._openingHulkKeyWarmResource = candidate;
+        if (previous && previous !== candidate && previous.renderer === renderer && previous.context === context) {
+          previous.retire?.(true);
+        }
+        receipt.linkMs = Math.round(performance.now() - t0);
+        firstUse(programs);
+      }, (error) => {
+        compileSettled = true;
+        receipt.error = String(error && error.message || error);
+        release();
+      });
+    } catch (error) {
+      compileSettled = true;
+      receipt.error = String(error && error.message || error);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      release();
+    }
+    return receipt;
   },
 
   /**
@@ -24297,6 +24497,23 @@ export const render = {
       if (render) render.openingBargeWarm = { ...receipt };
       return true;
     };
+    // True when every barge-family material under the subject already has a linked program.
+    const bargeFamilyLinked = (subject) => {
+      const properties = nativeRenderer && nativeRenderer.properties;
+      if (!properties || typeof properties.get !== 'function') return false;
+      let linked = true;
+      subject.traverse((object) => {
+        if (!linked || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!material || !BARGE_FAMILY.test(material.name || '')) continue;
+          let program = null;
+          try { program = properties.get(material).currentProgram || null; } catch (_) { program = null; }
+          if (!program) { linked = false; return; }
+        }
+      });
+      return linked;
+    };
     const carriesBargeFamily = (subject) => {
       let hit = false;
       subject.traverse((object) => {
@@ -24317,14 +24534,22 @@ export const render = {
       if (!await waitForWarmAttachments(this, warm, owned)) return;
       if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
-      if (liveCookCovers()) return publish('live-cook-covers');
+      // Pre-lift program warm (perf/prelift-program-warm): the live cook's post-opening pass
+      // does not reliably reach these sections before the veil's drain cap, and the first
+      // wreck that publishes after lift then links the double-sided barge-family program in
+      // flight (2.2-3.1 s on software GL). Keep the single pass under the live cook too, but
+      // only for sections whose barge materials still have no linked program, so a cook that
+      // already covered them costs a property read per material.
+      const covered = liveCookCovers();
+      receipt.liveCookCovered = covered;
+      receipt.skippedLinked = 0;
       const touch = render && render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
         for (const child of [...root.children]) {
           if (!loading()) break;
           if (!child.userData || child.userData.authoredAssetState !== 'authored') continue;
           if (!carriesBargeFamily(child)) continue;
-          if (liveCookCovers()) return publish('live-cook-covers');
+          if (bargeFamilyLinked(child)) { receipt.skippedLinked += 1; continue; }
           try {
             await touch(child);
             // The touch may yield across teardown, a context restore, or a new admission run.

@@ -1101,6 +1101,21 @@ export const fields = {
         this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason: FIELD_END_REASONS.destroyed });
         continue;
       }
+      // The force owner must honor incapacitation even when tactical AI skips this hull.
+      // Latch interruption once so repeated disabled ticks cannot postpone recovery forever.
+      if (rec.swarmSpecialist === true && (entity.data?.disabled === true
+        || entity.data?.stunned === true || entity.hull <= 0)) {
+        rec.armed = false;
+        const view = entity.data?.swarmSpecialist;
+        if (view && !view.interrupted) {
+          view.interrupted = true;
+          view.interruptedAt = state.tick | 0;
+          view.phase = 'recovery';
+          view.phaseStartedAt = view.interruptedAt;
+          view.phaseEndsAt = view.interruptedAt + SWARM_SPECIALIST_TUNING.anchor.recoveryTicks;
+        }
+        if (view) view.anchorActive = false;
+      }
       this._kernel.update(fieldId, {
         center: { x: entity.pos.x, z: entity.pos.z },
         // SF-049: `armed` is the doctrine cycle's gate (default true for hull-record rebuilds).

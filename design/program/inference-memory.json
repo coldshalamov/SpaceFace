@@ -1690,6 +1690,19 @@
       "integration": "live",
       "commit": "d82ae72db1f5",
       "verification": "focused_green"
+    },
+    {
+      "id": "inf-distress-assist",
+      "date": "2026-11-05",
+      "wf": "WF-08",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Answering a mayday puts the nav mark on the broadcasting hull and the hull answers. A far scan names the range and puts the card back.",
+      "fingerprint": "verb=answer,subject=distress-mayday,sector=flight,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "3a12034fc4e352d3db7b0e0a488534624f3d02f1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

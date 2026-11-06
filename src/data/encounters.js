@@ -361,6 +361,11 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Mayday! Stranded, debris field. Any hull nearby?',
     'Emergency! Power lost, beacon weak. Please respond!',
   ]),
+  distress_assist_ack: Object.freeze([
+    'Answer heard. Hold on. Come in on the bearing.',
+    'Copy that hail. We are still here. The mark is live.',
+    'Someone answered. Keep coming. We cannot move.',
+  ]),
   distress_rescued_ack: Object.freeze([
     'You came. Thought nobody would.',
     'Did not think anyone would answer that hail.',

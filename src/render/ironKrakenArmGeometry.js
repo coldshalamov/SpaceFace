@@ -66,7 +66,8 @@ function fastener(black,metal,angle,y,radius=1.008,size=.026) {
  *   sleeveLength is approximately its diameter; squashing Y makes these broad shields beads.
  * - joint / jointMetal / jointRed: around the link boundary, X/Z scale(radius*.73); the rig
  *   lengthens the first four hydraulic bays in Y to expose the large shoulder mechanisms.
- * - sucker / suckerCore: a 2-by-2 cluster, +Z outward, X lateral, Y axial. Uniform scale(radius*.8).
+ * - sucker / suckerCore: a 2-by-2 cluster, +Z outward, X lateral, Y axial. Uniform scale(radius*.8)
+ *   at the four large shoulders, radius*.55 along the fine tail so cups clear adjacent sleeves.
  *   Its four circular cups form two rows without allocating four scene nodes or stretching discs.
  * All outputs are single-material merged buffers; shared() stamps the caller's cache ownership.
  * `detail:'distant'` retains the same transforms and nine keys. The stripe and sleeveDetail
@@ -109,7 +110,7 @@ export function buildIronKrakenArmGeometry({shared,detail='full'}={}) {
 
   // Articulating black gimbal between shields: round center, two end clevises, four hydraulic
   // barrels, and a transverse axle. Everything here remains exterior, exposed mechanical work.
-  const ball=new THREE.SphereGeometry(.66,distant?6:8,distant?3:4);ball.scale(1,.84,1);parts.joint.push(ball);
+  const ball=new THREE.SphereGeometry(.42,distant?6:8,distant?3:4);ball.scale(1,.84,1);parts.joint.push(ball);
   parts.joint.push(move(cylinder(.87,.10,distant?8:12),0,-.445,0),move(cylinder(.83,.10,distant?8:12),0,.445,0));
   parts.joint.push(move(cylinder(.21,1.79,distant?6:8),0,0,0,0,0,Math.PI/2));
   for(const angle of [Math.PI/4,Math.PI*3/4,Math.PI*5/4,Math.PI*7/4]) {
@@ -129,15 +130,22 @@ export function buildIronKrakenArmGeometry({shared,detail='full'}={}) {
 
   // Four small cups per sleeve, two rows. Each has a dark backing, a dished throat and a thin
   // red working rim. +Z is the face; the rig rotates this cluster toward its underside (-dorsal).
-  const cupProfile=distant?[[.315,-.04],[.315,.115],[0,.025]]
-    :[[0,-.04],[.315,-.04],[.315,.115],[.15,.025],[0,.025]];
+  const cupProfile=distant?[[.39,-.04],[.39,.115],[0,.025]]
+    :[[0,-.04],[.39,-.04],[.39,.115],[.19,.025],[0,.025]];
   for(const x of [-.49,.49])for(const y of [-.48,.48]) {
     parts.suckerCore.push(move(lathe(cupProfile,8),x,y,0,Math.PI/2));
-    const rim=distant?new THREE.RingGeometry(.245,.297,8):new THREE.TorusGeometry(.271,.026,3,8);
-    parts.sucker.push(move(rim,x,y,.126));
+    const rim=distant?new THREE.RingGeometry(.235,.377,8):lathe([[.235,.111],[.377,.111],[.388,.126],[.37,.143],[.235,.143]],8);
+    if(!distant)rim.rotateX(Math.PI/2);
+    parts.sucker.push(move(rim,x,y,distant?.126:0));
   }
 
   const result={};
+  // A true spherical bearing at every FK endpoint keeps the joint connected when adjacent
+  // sleeves bend in different directions. The hydraulic bridge is separately fitted between
+  // the actual sleeve ends by the rig; stretching one joint along the outgoing link left gaps.
+  const bearing=new THREE.SphereGeometry(1,distant?6:8,distant?4:6);
+  bearing.computeBoundingBox();bearing.computeBoundingSphere();
+  result.pivot=shared(bearing,`arm_endpoint_bearing${distant?'_distant':''}`);
   for(const [key,geometryParts] of Object.entries(parts)) {
     const name=`arm_${key}${distant?'_distant':''}`;
     if(!geometryParts.length) {

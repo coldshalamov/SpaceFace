@@ -75,6 +75,7 @@ import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
+import { bindIronKrakenAudio } from './ironKrakenAudio.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
@@ -2632,6 +2633,7 @@ export const audio = {
 
   init(ctx) {
     this.rt?._commissionCueDispose?.();
+    this.rt?._ironKrakenAudioDispose?.();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -2933,11 +2935,14 @@ export const audio = {
     ));
     // weapons:mineArmed had a picture and no sound. The arming click is the
     // mine's own recipe, quieter than the blast that comes later.
-    bus.on('weapons:mineArmed', (p) => playAdmittedEarCue(
-      this,
-      mineArmedCue(p),
-      this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0,
-    ));
+    const playMineArmedCue = (p) => {
+      const mine = p?.mineId != null ? this.state?.entities?.get?.(p.mineId) : null;
+      playAdmittedEarCue(this, mineArmedCue(p ? { ...p, pos: p.pos || mine?.pos } : p),
+        Number.isFinite(this.state?.tick) ? this.state.tick : 0);
+    };
+    // Canonical and player-action receipts share the existing per-mine admission key.
+    bus.on('mines:armed', playMineArmedCue);
+    bus.on('weapons:mineArmed', playMineArmedCue);
     // combat:warded had no listener. The hull hit on the same tick is the damage
     // voice; this is the catch — a shield hit, not the collapse pop, and one
     // per escort so a beam cannot machine-gun it.
@@ -3188,6 +3193,7 @@ export const audio = {
     });
     bus.on('audio:cue', (p) => this._onCue(p));
     rt._trailerScoreDispose = bindTrailerScore(this);
+    rt._ironKrakenAudioDispose = bindIronKrakenAudio(this);
     bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
     bus.on('tether:broken', (p) => {
@@ -3480,6 +3486,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._ironKrakenAudioDispose?.();
+    rt._ironKrakenAudioDispose = null;
     rt._commissionCueDispose?.();
     rt._commissionCueDispose = null;
     this._unbindOutputDeviceFollow();

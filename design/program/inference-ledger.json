@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceLedger.v1",
-  "updated": "2026-10-15",
+  "updated": "2026-11-05",
   "domains": {
     "WF-01": {
       "grade": "A",
@@ -121,11 +121,22 @@
       "next": ""
     },
     "WF-08": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "B",
+      "updated": "2026-11-05",
+      "inspections": [
+        {
+          "date": "2026-11-05",
+          "atCommit": "0a914690b2c657965cb224c155a41e5cf13d0cb5",
+          "paths": [
+            "src/systems/encounterScripts.js",
+            "src/systems/encounterDirector.js",
+            "src/data/encounters.js"
+          ],
+          "finding": "Distress card on seed 4242: Assist used to dismiss the offer and leave the sky unchanged. Assist now marks the broadcasting hull through the nav slot, the hull answers, and arrival still starts the fight. Scan inside 1500 WU reads once; past that it names the range and re-offers. The rest of the mission board was not re-walked. Focused 3/3 plus the distress lamp and one-voice checks."
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "A different activity whose place or people are thin, not another dead choice button."
     },
     "WF-09": {
       "grade": "A",

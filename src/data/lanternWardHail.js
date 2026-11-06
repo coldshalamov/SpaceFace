@@ -3,6 +3,7 @@
 import { selectLanternWardDialogue } from '../missions/lanternWardStory.js';
 import { LANTERN_WARD_ID, LANTERN_WARD_SECTOR } from './lanternWardLayout.js';
 import { LANTERN_WARD_RECORD_IDS as IDS } from './lanternWardHardware.js';
+import { lanternWardWorkGuidance } from './lanternWardGuidance.js';
 
 export const LANTERN_WARD_REPAIR_ACTION = 'lantern_repair';
 
@@ -19,10 +20,13 @@ export function lanternWardDialogueFacts(state) {
   const w = state?.npcJobs?.lanternWard;
   if (w?.version !== 1) return null;
   const h = w.history || {};
-  return { districtId: LANTERN_WARD_ID, phase: w.phase, blocked: w.blocked === true,
-    installed: w.phase === 'installed', damaged: w.phase === 'damaged',
-    missingLamp: w.lampMissing === true || w.objects?.lamp?.lost === true,
-    cradleMissing: w.cradleAway === true || w.objects?.cradle?.lost === true,
+  const missingLamp = w.lampMissing === true || w.objects?.lamp?.lost === true;
+  const missingReceiver = w.objects?.receiver?.lost === true;
+  return { districtId: LANTERN_WARD_ID, phase: w.phase === 'installed' && w.needsReinstall ? 'displaced' : w.phase, blocked: w.blocked === true,
+    installed: w.phase === 'installed' && !missingLamp && !missingReceiver && !w.needsReinstall,
+    damaged: w.phase === 'damaged' && !missingLamp, missingLamp,
+    cradleMissing: w.objects?.cradle?.lost === true || w.cradleAway === true,
+    missingReceiver,
     cradleStolen: h.cradleStolen === true, playerHelped: h.playerCleared || h.playerCarried || h.repaired,
     ignored: h.ignored === true, repaired: h.repaired === true, history: h,
   };
@@ -35,9 +39,10 @@ export function lanternWardHailOffer(state, availability, requestId, expiresAt) 
   const line = selectLanternWardDialogue(status, { revisit });
   return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
     lanternWardHail: true, worldRecordId: IDS.tug,
-    lines: ['NESSA VENN · LAST WATCH ELECTRICAL', line.text],
-    actions: [{ id: 'status', label: 'HOW IS THE WORK?' }, { id: 'route', label: 'WHAT NEEDS MOVING?' },
-      ...(status?.damaged && !status?.missingLamp ? [{ id: LANTERN_WARD_REPAIR_ACTION, label: 'FIT CONTACTS · 1 ELECTRONICS' }] : [])],
+    // The scanner intentionally transports two lines; keep the live briefing in its body.
+    lines: ['NESSA VENN · LAST WATCH ELECTRICAL', `${line.text} ${lanternWardWorkGuidance(state).status}.`],
+    actions: [{ id: 'status', label: 'HOW IS THE WORK?' }, { id: 'route', label: 'NEXT STEP / DIRECTIONS' },
+      ...(status?.damaged ? [{ id: LANTERN_WARD_REPAIR_ACTION, label: 'FIT CONTACTS · 1 ELECTRONICS' }] : [])],
   };
 }
 
@@ -53,18 +58,14 @@ export function lanternWardHailResponse(state, offer, choice, repairResult = nul
         ? 'One electronics unit from trade or salvage. Bring it in your hold; the damaged lamp stays here.'
         : 'Bring the damaged original alongside my launch and match speed. I need the lamp, the spare contacts and room to work.';
   } else if (id === 'route') {
-    line = status?.missingLamp ? 'The original Venn lamp is unavailable. Its household seat must wait; another lamp will not do.'
-      : status?.damaged ? 'Bring one ELECTRONICS in your hold. Keep the original lamp slow beside my launch, hail me and choose FIT CONTACTS.'
-      : status?.phase === 'displaced' ? 'Bring the same Venn lamp back to the household seat with three brass strokes. Release your Massline near it and give me room to connect it.'
-      : status?.installed ? 'The Venn household lamp is connected. The separate public memorial stays dark.'
-      : status?.cradleMissing ? 'The cradle is away. The Venn lamp needs its cradle or a lift to the household seat with three brass strokes; release your Massline near it and give me room to connect it.'
-      : status?.phase === 'missing' ? 'The service cannot continue with its equipment or operator unavailable. The household seat must wait.'
-      : status?.blocked ? 'Use Line (Massline) to clear the fallen mast, or tow the loaded cradle around the south rim. I will connect the Venn lamp at its three-brass-stroke household seat. Release your line nearby and give me room.'
-      : 'Bring the Venn lamp near its household seat with three brass strokes. Release your Massline and give me room to connect it. The separate public memorial stays dark.';
+    return { requestId: offer.requestId, targetId: offer.targetId, kind: 'worker', choice: id,
+      expiresAt: (state.simTime || 0) + 12, lines: lanternWardWorkGuidance(state).lines };
   } else if (id === 'status') {
     line = selectLanternWardDialogue(status, {
       revisit: (state.missions?.lanternWardConversation?.visits || 0) > 1,
     }).text;
+    return { requestId: offer.requestId, targetId: offer.targetId, kind: 'worker', choice: id,
+      expiresAt: (state.simTime || 0) + 7, lines: [line, lanternWardWorkGuidance(state).status] };
   }
   return line ? { requestId: offer.requestId, targetId: offer.targetId, kind: 'worker', choice: id,
     expiresAt: (state.simTime || 0) + 7, lines: [line] } : null;

@@ -459,7 +459,11 @@ function krakenMotionFrame(state, e) {
   return JSON.stringify({ actorId: e.id, ownerLife: e.occupantGeneration ?? null,
     fightId: marker.fightId, encounterId: fight.encounterId, clock: fight.clock,
     phase: fight.phase, nextAt: fight.nextAt, suspended: !!fight.suspended, terminal: !!fight.terminal,
-    cast: fight.cast ? { beatId: fight.cast.beatId, startedAt: fight.cast.startedAt } : null,
+    cast: fight.cast ? { id: fight.cast.id, beatId: fight.cast.beatId, startedAt: fight.cast.startedAt,
+      heading: fight.cast.heading, fired: fight.cast.fired === true, shapes: fight.cast.shapes } : null,
+    recovery: fight.recovery ? { beatId: fight.recovery.beatId, startedAt: fight.recovery.startedAt,
+      durationTicks: fight.recovery.durationTicks, heading: fight.recovery.heading,
+      cancelled: fight.recovery.cancelled === true } : null,
     plates: Array.isArray(fight.plates) ? fight.plates.filter(p => p.id === 'mantle_port' || p.id === 'mantle_starboard')
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
@@ -1848,7 +1852,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!json) return { ok: false, reason: 'import-empty' };
         // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
         // drain before publishing a verdict; a nested Promise cannot cross postMessage.
-        const result = await s.importString(json, (args && args.slot) || 'quick');
+        // An omitted destination belongs to the canonical owner's first-empty-slot policy.
+        const result = await s.importString(json, args && args.slot);
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
       }],

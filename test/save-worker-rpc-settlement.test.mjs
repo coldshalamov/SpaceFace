@@ -103,7 +103,7 @@ test('latest Continue uses the same real gzip owner through the cloned command/r
   } finally { main.release(); lane.shutdown(); }
 });
 
-test('FileReader import callback preserves the settled owner verdict and legacy/rejected acknowledgements', async () => {
+test('FileReader import callback requires settled owner success, including explicit legacy owner results', async () => {
   const originalReader = globalThis.FileReader;
   const originalSink = laneCommandSink();
   const sent = [];
@@ -121,9 +121,12 @@ test('FileReader import callback preserves the settled owner verdict and legacy/
       [{ ok: true, result: false }, false],
       [{ ok: true, result: true }, true],
       [{ ok: false }, false],
-      [{ ok: true }, true],
+      [{ ok: true }, false],
+      [{ ok: true, result: {} }, false],
+      [undefined, false],
+      [null, false],
       [false, false],
-      [true, true],
+      [true, false],
     ]) {
       installSimCommandSink((descriptor) => {
         sent.push(structuredClone(descriptor));
@@ -132,7 +135,7 @@ test('FileReader import callback preserves the settled owner verdict and legacy/
       const result = await new Promise((resolve) => save.importFile({ text: '{"fixture":"callback"}' }, resolve));
       assert.equal(result, expected, `callback for ${JSON.stringify(owner)}`);
       assert.equal(sent.at(-1).op, 'saveImport');
-      assert.deepEqual(sent.at(-1).args, { json: '{"fixture":"callback"}', slot: 'quick' });
+      assert.deepEqual(sent.at(-1).args, { json: '{"fixture":"callback"}', slot: null });
     }
     installSimCommandSink(() => Promise.reject(new Error('worker unavailable')));
     assert.equal(await new Promise((resolve) => save.importFile({ text: '{}' }, resolve)), false);

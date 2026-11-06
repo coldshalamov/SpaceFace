@@ -888,6 +888,11 @@ ${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
 }
 
 /* ================================ ROUND 3: INDUSTRY ========================================= */
+/* At the 651px edge the split-work column leaves the chain at 319px, below its authored
+   minimum. Bound this tab's gutter by the shared rhythm so the stage retains drawable width. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${T} .sx-ind { column-gap:calc(var(--dp-rhythm) - 2px) !important; }
+}
 /* the chain is the reading: the needs ledger under it says nothing the drawing does not, so it yields while the chain stands */
 ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-inputs, ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-col-k { display:none !important; }
 ${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
@@ -2360,6 +2365,20 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
 @media (min-width:651px) and (max-width:900px) and (min-height:641px) and (max-height:800px) {
   ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+}
+/* Narrow Industry labels use the stage bounds, not a desktop-width translated box.
+   The short layout keeps its reason and product in one right-hand column, separated
+   vertically; taller windows retain the reason above the process ring. Wrapped product
+   names remain in the existing scrollable stage rather than losing letters at its edge. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { left:auto !important; right:0 !important; width:42% !important; max-width:42% !important; transform:translateY(8px) !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { white-space:normal !important; overflow-wrap:anywhere !important; }
+}
+@media (min-width:651px) and (max-width:800px) and (min-height:641px) and (max-height:800px) {
+  ${D} .orr-ind-chain { height:296px !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { top:4px !important; width:min(320px, calc(100% - 40px)) !important; max-width:none !important; transform:translateX(-50%) !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count, .orr-chain__verb, .orr-chain__verb > *) { max-width:100% !important; box-sizing:border-box; white-space:normal !important; overflow-wrap:anywhere !important; }
 }
 /* Missions on short desktops: the tracked job is the one row the player chose, so it keeps its height and
    the board window above (which already scrolls and snaps to a whole row) is the part that yields. */

@@ -39,7 +39,7 @@ const {
 } = await import('../src/render/visualFactory.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');
 const { makeRescueCastSpecs } = await import('../src/onboarding/rescueOpening.js');
-const { render: renderSystem, warmHullFilesForSpecs } = await import('../src/render/renderer.js');
+const { render: renderSystem, warmHullFilesForSpecs, disposeRendererOwnedResources } = await import('../src/render/renderer.js');
 const { scriptedOnboardingRosterRows } = await import('../src/render/saveEnvelopeSectorWarm.js');
 
 const RENDERER_SOURCE = readFileSync(
@@ -340,4 +340,369 @@ test('wreck and asteroid exemplar helpers still cover the intro bodies', () => {
     assert.ok(spec.id.startsWith('test-warm:wreck:'), 'prefixed admission id');
     assert.equal(spec.type, 'wreck');
   }
+});
+
+test('opening warm compiles the exact double-sided hulk program keys instead of minting hulks', () => {
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(src, /function openingWarmHullFilesForState\(state\) \{\s*return warmHullFilesForSpecs\(openingWarmShipSpecsForState\(state\)\);/);
+  assert.match(src, /const hulkShipSpecs = profile === 'opening' \? \[\] : shipSpecs;/);
+  assert.match(src, /if \(profile === 'opening'\) this\._warmOpeningHulkProgramKeys\(\);/);
+  const body = src.slice(src.indexOf('  _warmOpeningHulkProgramKeys() {'));
+  assert.match(body, /material\.side = THREE\.DoubleSide;/);
+  assert.match(body, /installIllustratedSurface\(material\);/);
+  // Trimmed to the one key that linked post-lift (lt12-lt14): no batched or depth-twin variants.
+  assert.doesNotMatch(body.slice(0, body.indexOf('return receipt;')), /BatchedMesh|MeshDepthMaterial/);
+  // First use runs one program per idle frame and stops once the shell is gone.
+  assert.match(body, /requestIdleCallback/);
+  const releaseBody = body.slice(body.indexOf('const release = ('), body.indexOf('const idle = ('));
+  assert.match(releaseBody, /hold\.geometry\?\.dispose\?\.\(\);/);
+  assert.doesNotMatch(releaseBody, /material[s]?\S*\.dispose\(/, 'materials must not dispose: that would release the warmed programs');
+});
+
+
+test('stale opening hulk compile completion cannot release or use the replacement warm owner', async () => {
+  assert.equal(typeof renderSystem._warmOpeningHulkProgramKeys, 'function');
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldRic = globalThis.requestIdleCallback;
+  const rafQueue = [], idleQueue = [];
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.requestIdleCallback = (fn) => { idleQueue.push(fn); return idleQueue.length; };
+  try {
+    const drainFirstUseFrame = () => {
+      const raf = rafQueue.shift();
+      assert.equal(typeof raf, 'function', 'first-use work must queue its next animation frame');
+      raf();
+      const idle = idleQueue.shift();
+      assert.equal(typeof idle, 'function', 'first-use work must queue on the idle lane');
+      idle();
+    };
+    const pending = [];
+    let firstUseCalls = 0;
+    const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() { firstUseCalls += 1; } }]]);
+    const state = {
+      mode: 'loading', world: {}, contextRestoreSeq: 1,
+      render: { admissionRunGeneration: 1, firstPlayableFrameAt: null },
+    };
+    const owner = {
+      state,
+      scene: new THREE.Scene(),
+      cam: { obj: new THREE.PerspectiveCamera() },
+      renderer: { properties: { get: () => ({ programs }) } },
+      _openingHulkKeyWarmHold: null,
+      _selectPostRoute: () => 'test-route',
+      _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+    };
+
+    const oldReceipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    assert.equal(renderSystem._warmOpeningHulkProgramKeys.call(owner), oldReceipt,
+      'duplicate requests share one issued warm per admission owner');
+    assert.equal(pending.length, 1, 'same-owner reuse does not compile another material');
+    const oldHold = owner._openingHulkKeyWarmHold;
+    let oldMaterialDisposals = 0;
+    oldHold.material.addEventListener('dispose', () => { oldMaterialDisposals += 1; });
+    state.render.admissionRunGeneration = 2;
+    const newReceipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    const newHold = owner._openingHulkKeyWarmHold;
+    assert.notEqual(newReceipt, oldReceipt);
+    assert.notEqual(newHold, oldHold);
+    assert.equal(oldHold.released, false, 'candidate buffers wait for the async compile before final retirement');
+
+    pending[0].resolve();
+    await Promise.resolve();
+    assert.equal(owner._openingHulkKeyWarmHold, newHold, 'stale completion cannot clear the replacement hold');
+    assert.notEqual(newHold.released, true, 'stale completion cannot release the replacement hold');
+    assert.equal(oldReceipt.linkMs, null, 'stale completion cannot run first-use work');
+    assert.equal(firstUseCalls, 0);
+    assert.equal(oldMaterialDisposals, 1, 'stale compile retires only its candidate material when it settles');
+
+    const newMaterial = newHold.material;
+    let newMaterialDisposals = 0;
+    newMaterial.addEventListener('dispose', () => { newMaterialDisposals += 1; });
+    pending[1].resolve();
+    await Promise.resolve();
+    assert.equal(newReceipt.error, null);
+    assert.equal(newHold.released, false, 'private geometry remains until both first-use idle turns complete');
+    assert.equal(rafQueue.length, 1, 'active compile queues its first-use animation frame');
+    drainFirstUseFrame();
+    assert.equal(firstUseCalls, 1, 'first idle turn touches the acquired program once');
+    assert.equal(newHold.released, false, 'one idle touch does not finish the multi-key first-use walk');
+    drainFirstUseFrame();
+    assert.equal(newHold.released, true, 'the active owner releases its private geometry after first use');
+    assert.equal(owner._openingHulkKeyWarmHold, null);
+    assert.equal(owner._openingHulkKeyWarmResource.material, newMaterial, 'the compiled material is retained as one renderer/context program pin');
+    assert.equal(newMaterialDisposals, 0);
+    assert.equal(firstUseCalls, 1);
+    assert.equal(renderSystem._warmOpeningHulkProgramKeys.call(owner), newReceipt,
+      'completed same-owner receipt remains idempotent after its transient hold is released');
+    assert.equal(pending.length, 2, 'completed receipt reuse does not mint another program-cache reference');
+
+    state.render.admissionRunGeneration = 3;
+    const thirdReceipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    const thirdHold = owner._openingHulkKeyWarmHold;
+    const thirdMaterial = thirdHold.material;
+    assert.notEqual(thirdMaterial, newMaterial, 'a new generation compiles a replacement candidate');
+    assert.equal(newMaterialDisposals, 0, 'the previous pin stays alive until replacement has acquired its key');
+    pending[2].resolve();
+    await Promise.resolve();
+    assert.equal(owner._openingHulkKeyWarmResource.material, thirdMaterial);
+    assert.equal(newMaterialDisposals, 1, 'successful replacement retires the old pin exactly once');
+    assert.equal(rafQueue.length, 1, 'replacement compile queues its own first-use animation frame');
+    drainFirstUseFrame();
+    drainFirstUseFrame();
+    assert.equal(thirdHold.released, true);
+    assert.equal(renderSystem._warmOpeningHulkProgramKeys.call(owner), thirdReceipt);
+    assert.equal(pending.length, 3, 'completed receipt remains idempotent in the replacement generation');
+
+    state.render.admissionRunGeneration = 4;
+    const livePin = owner._openingHulkKeyWarmResource;
+    const noKeyReceipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    const noKeyHold = owner._openingHulkKeyWarmHold;
+    programs.clear();
+    pending[3].resolve();
+    await Promise.resolve();
+    assert.match(noKeyReceipt.error, /without an acquired program key/);
+    assert.equal(noKeyReceipt.linkMs, null, 'an empty program map is not a completed warm');
+    assert.equal(owner._openingHulkKeyWarmResource, livePin, 'no-key candidate cannot displace the retained program pin');
+    assert.equal(noKeyHold.released, true);
+    programs.set('hulk', { cacheKey: 'hulk-key', getUniforms() { firstUseCalls += 1; } });
+
+    let pinDisposals = 0;
+    let textureDisposals = 0;
+    thirdMaterial.addEventListener('dispose', () => { pinDisposals += 1; });
+    for (const texture of owner._openingHulkKeyWarmResource.textures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+    disposeRendererOwnedResources(owner);
+    assert.equal(pinDisposals, 1, 'live renderer teardown releases its retained material pin');
+    assert.equal(textureDisposals, 6, 'live renderer teardown releases all six warm textures');
+    assert.equal(owner._openingHulkKeyWarmResource, null);
+  } finally {
+    if (oldRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = oldRaf;
+    if (oldRic === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = oldRic;
+  }
+});
+
+test('compile rejection releases its own hold and a released loading owner cannot first-use later', async () => {
+  const pending = [];
+  let firstUseCalls = 0;
+  const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() { firstUseCalls += 1; } }]]);
+  const state = {
+    mode: 'loading', world: {}, contextRestoreSeq: 4,
+    render: { admissionRunGeneration: 9, firstPlayableFrameAt: null },
+  };
+  const owner = {
+    state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+    renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+    _selectPostRoute: () => 'test-route',
+    _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+  };
+  const receipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+  const hold = owner._openingHulkKeyWarmHold;
+  pending[0].reject(new Error('compile rejected'));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.match(receipt.error, /compile rejected/);
+  assert.equal(hold.released, true);
+  assert.equal(owner._openingHulkKeyWarmHold, null);
+
+  // A fresh compile may finish, but a released/non-loading owner cannot issue the deferred
+  // program touch on a later timer turn.
+  state.render.admissionRunGeneration = 10;
+  const later = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+  const laterHold = owner._openingHulkKeyWarmHold;
+  state.mode = 'flight';
+  pending[1].resolve();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(later.linkMs, null);
+  assert.equal(laterHold.released, true);
+  assert.equal(firstUseCalls, 0);
+});
+
+
+
+test('a stale queued first-use cannot double-retire a pin already replaced by a newer generation', async () => {
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldRic = globalThis.requestIdleCallback;
+  const rafQueue = [], idleQueue = [];
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.requestIdleCallback = (fn) => { idleQueue.push(fn); return idleQueue.length; };
+  try {
+    const pending = [];
+    const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() {} }]]);
+    const state = {
+      mode: 'loading', world: {}, contextRestoreSeq: 7,
+      render: { admissionRunGeneration: 1, firstPlayableFrameAt: null },
+    };
+    const owner = {
+      state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+      renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+      _selectPostRoute: () => 'test-route',
+      _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+    };
+    renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    const firstHold = owner._openingHulkKeyWarmHold;
+    const firstMaterial = firstHold.material;
+    const firstTextures = [...firstHold.textures];
+    let materialDisposals = 0, textureDisposals = 0;
+    firstMaterial.addEventListener('dispose', () => { materialDisposals += 1; });
+    for (const texture of firstTextures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+    pending[0].resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(rafQueue.length, 1, 'first generation queues deferred first-use');
+
+    state.render.admissionRunGeneration = 2;
+    renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    pending[1].resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(owner._openingHulkKeyWarmResource.material, owner._openingHulkKeyWarmHold.material);
+    assert.equal(materialDisposals, 1, 'new successful candidate retires the previous program pin once');
+    assert.equal(textureDisposals, 6, 'old pin textures are retired once on replacement');
+
+    rafQueue[0]();
+    idleQueue[0]();
+    assert.equal(materialDisposals, 1, 'old idle callback cannot dispose the replaced pin again');
+    assert.equal(textureDisposals, 6, 'old idle callback cannot dispose its textures twice');
+    assert.equal(owner._openingHulkKeyWarmResource.material, owner._openingHulkKeyWarmHold.material,
+      'newer program pin remains active after stale first-use callback');
+  } finally {
+    if (oldRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = oldRaf;
+    if (oldRic === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = oldRic;
+  }
+});
+
+test('a lost or replaced WebGL owner abandons its stale warm without GPU disposal or first use', async () => {
+  const pending = [];
+  let firstUseCalls = 0;
+  const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() { firstUseCalls += 1; } }]]);
+  const state = {
+    mode: 'loading', world: {}, contextRestoreSeq: 12,
+    render: { admissionRunGeneration: 22, firstPlayableFrameAt: null },
+  };
+  const owner = {
+    state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+    renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+    _selectPostRoute: () => 'test-route',
+    _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+  };
+  const receipt = renderSystem._warmOpeningHulkProgramKeys.call(owner);
+  const hold = owner._openingHulkKeyWarmHold;
+  let textureDisposals = 0;
+  let geometryDisposals = 0;
+  let materialDisposals = 0;
+  hold.material.addEventListener('dispose', () => { materialDisposals += 1; });
+  for (const texture of hold.textures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+  hold.geometry.addEventListener('dispose', () => { geometryDisposals += 1; });
+  owner._contextLost = true;
+  state.contextRestoreSeq += 1;
+  pending[0].resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(receipt.linkMs, null);
+  assert.equal(hold.released, true);
+  assert.equal(textureDisposals, 0, 'lost-context textures are abandoned without dispose events');
+  assert.equal(geometryDisposals, 0, 'lost-context geometry is abandoned without dispose events');
+  assert.equal(materialDisposals, 0, 'lost-context candidate materials are abandoned without dispose events');
+  assert.equal(firstUseCalls, 0, 'lost-context programs are never touched');
+});
+
+
+test('live teardown retires a settled candidate before its deferred idle first-use', async () => {
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldRic = globalThis.requestIdleCallback;
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.requestIdleCallback = () => 1;
+  try {
+    const pending = [];
+    const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() {} }]]);
+    const state = {
+      mode: 'loading', world: {}, contextRestoreSeq: 33,
+      render: { admissionRunGeneration: 44, firstPlayableFrameAt: null },
+    };
+    const owner = {
+      state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+      renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+      _selectPostRoute: () => 'test-route',
+      _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+    };
+    renderSystem._warmOpeningHulkProgramKeys.call(owner);
+    const hold = owner._openingHulkKeyWarmHold;
+    const material = hold.material;
+    const geometry = hold.geometry;
+    let materialDisposals = 0, geometryDisposals = 0, textureDisposals = 0;
+    material.addEventListener('dispose', () => { materialDisposals += 1; });
+    geometry.addEventListener('dispose', () => { geometryDisposals += 1; });
+    for (const texture of hold.textures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+    pending[0].resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(owner._openingHulkKeyWarmResource.material, material, 'compile has promoted the candidate pin');
+    assert.equal(hold.released, false, 'deferred first-use still owns its transient hold');
+    disposeRendererOwnedResources(owner);
+    assert.equal(materialDisposals, 1, 'live teardown releases the active material pin before renderer disposal');
+    assert.equal(geometryDisposals, 1, 'live teardown releases transient geometry');
+    assert.equal(textureDisposals, 6, 'live teardown releases candidate textures');
+    assert.equal(owner._openingHulkKeyWarmResource, null);
+    assert.equal(state.render.openingHulkKeyWarm, null, 'teardown clears the issued receipt');
+  } finally {
+    if (oldRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = oldRaf;
+    if (oldRic === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = oldRic;
+  }
+});
+
+
+test('teardown force-retires a compile-pending candidate before native renderer disposal', async () => {
+  const pending = [];
+  const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() {} }]]);
+  const state = {
+    mode: 'loading', world: {}, contextRestoreSeq: 61,
+    render: { admissionRunGeneration: 72, firstPlayableFrameAt: null },
+  };
+  const owner = {
+    state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+    renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+    _selectPostRoute: () => 'test-route',
+    _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+  };
+  renderSystem._warmOpeningHulkProgramKeys.call(owner);
+  const hold = owner._openingHulkKeyWarmHold;
+  let materialDisposals = 0, geometryDisposals = 0, textureDisposals = 0;
+  hold.material.addEventListener('dispose', () => { materialDisposals += 1; });
+  hold.geometry.addEventListener('dispose', () => { geometryDisposals += 1; });
+  for (const texture of hold.textures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+  disposeRendererOwnedResources(owner);
+  assert.equal(materialDisposals, 1, 'pending candidate material lease retires before renderer disposal');
+  assert.equal(geometryDisposals, 1);
+  assert.equal(textureDisposals, 6);
+  pending[0].resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(materialDisposals, 1, 'late completion is idempotent after forced teardown retirement');
+  assert.equal(geometryDisposals, 1);
+  assert.equal(textureDisposals, 6);
+});
+
+test('explicit contextLost teardown abandons candidate handles even before owner loss flag changes', () => {
+  const pending = [];
+  const programs = new Map([['hulk', { cacheKey: 'hulk-key', getUniforms() {} }]]);
+  const state = {
+    mode: 'loading', world: {}, contextRestoreSeq: 81,
+    render: { admissionRunGeneration: 92, firstPlayableFrameAt: null },
+  };
+  const owner = {
+    state, scene: new THREE.Scene(), cam: { obj: new THREE.PerspectiveCamera() },
+    renderer: { properties: { get: () => ({ programs }) } }, _openingHulkKeyWarmHold: null,
+    _selectPostRoute: () => 'test-route',
+    _compilePostRoute: () => new Promise((resolve, reject) => pending.push({ resolve, reject })),
+  };
+  renderSystem._warmOpeningHulkProgramKeys.call(owner);
+  const hold = owner._openingHulkKeyWarmHold;
+  let materialDisposals = 0, geometryDisposals = 0, textureDisposals = 0;
+  hold.material.addEventListener('dispose', () => { materialDisposals += 1; });
+  hold.geometry.addEventListener('dispose', () => { geometryDisposals += 1; });
+  for (const texture of hold.textures) texture.addEventListener('dispose', () => { textureDisposals += 1; });
+  disposeRendererOwnedResources(owner, { contextLost: true });
+  assert.equal(materialDisposals, 0);
+  assert.equal(geometryDisposals, 0);
+  assert.equal(textureDisposals, 0);
+  assert.equal(hold.candidate.retired, true, 'dead-context references are dropped immediately');
 });

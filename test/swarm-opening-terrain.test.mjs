@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { swarmArenaTierForRun, swarmArenaDebrisLayout } from '../src/data/swarmArenaLadder.js';
 import { swarmOpeningTerrainStage as stageFor, planSwarmOpeningTerrain as plan } from '../src/data/swarmOpeningTerrain.js';
 
-const layout = { target: 14, inner: 115, outer: 340, safeRadius: 120,
-  separation: 34, sizeMinWu: 4.5, sizeMaxWu: 9 };
+const layout = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 1, ratingT: 0 }));
 const stage = wave => stageFor({ arenaId: 'helios_core', wave, lineTier: 0 });
 const options = wave => ({ stage: stage(wave), anchor: { x: 0, z: 0 }, layout, want: 14 });
 
-test('first three courts expand without blocking the nose/rear escape lane or tier bounds', () => {
+test('first three courts add distinct banks inside the tier and leave the bank-only escape strip', () => {
   for (const [wave, count] of [[1, 8], [2, 11], [3, 14]]) {
     const spots = plan(options(wave));
     assert.equal(spots.length, count);
@@ -27,7 +27,9 @@ test('first three courts expand without blocking the nose/rear escape lane or ti
   assert.equal(flank.length, 3, 'surviving first room is not duplicated or relocated');
   const outer = plan({ ...options(3), existing: near.concat(flank) });
   assert.equal(outer.length, 3);
-  assert.ok(Math.max(...outer.map(p => Math.hypot(p.x, p.z))) > Math.max(...near.map(p => Math.hypot(p.x, p.z))));
+  assert.equal(new Set(near.concat(flank, outer).map(p => p.openingTerrainSlot)).size, 14);
+  assert.ok(near.concat(flank, outer).every(p => Math.hypot(p.x, p.z) <= 300),
+    'expansion adds reachable banks, rather than moving their centers outside the T0 band');
 });
 
 test('variants, upgraded lines and later rounds retain their established director', () => {
@@ -58,7 +60,7 @@ function arenaHarness({ source, clearance = true, pocket = false } = {}) {
   const emitted = [];
   Object.assign(bindings, {
     swarmOpeningTerrainStage: stageFor, planSwarmOpeningTerrain: plan,
-    swarmArenaTierForRun: () => ({ lineTier: 0 }), swarmArenaDebrisLayout: () => layout,
+    swarmArenaTierForRun, swarmArenaDebrisLayout: () => layout,
     mulberry32: () => () => 0.5, validateRunState: () => ({ ok: true }), isSwarmRuleset: x => x === 'swarm',
     indexedShipLikeScan: () => [], indexedTypeScan: () => [],
     ENVIRONMENT_FAMILIES: ['rock', 'metal', 'crystal', 'volatile', 'debris', 'cryo', 'calcite'],
