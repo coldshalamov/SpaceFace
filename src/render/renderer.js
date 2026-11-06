@@ -1207,7 +1207,7 @@ const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 // reconcile. An early poll only fires once the re-arm is at least half spent (≤8/s).
 const RENDER_RESIDENCY_EARLY_POLL_FLOOR_S = RENDER_RESIDENCY_POLL_SECONDS / 2;
 /** Hold-exempt discovery cadence: fast enough for the rescue set piece, slow enough to skip the scan. */
-const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
+const HOLD_EXEMPT_COLLECT_SECONDS = 0.2;
 // Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
 // sector-exit sweep was the sole release point for — inside one sector every archetype ever
 // admitted stayed GPU-resident forever. A slow sweep with an idle-age gate keeps short oscillation
@@ -3754,6 +3754,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       let cycleKickStarted = 0;
       if (iterator) {
         let done = false;
+        let collectStride = 0;
         for (;;) {
           let step;
           try {
@@ -3769,8 +3770,10 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
             return 0;
           }
           if (step.done) { done = true; break; }
-          if (now() - started >= sliceMs
-              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          // Row-granular steps: read the clock every 8th row, not every row.
+          if ((++collectStride & 7) === 0
+              && (now() - started >= sliceMs
+                || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         }
         if (!done) break;
       }
@@ -3829,8 +3832,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       // and zero kick (a hold could queue exempt builds that never landed).
       let commitSteps = 0;
       while (owner._holdExemptEnqueueIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptEnqueueIter.next();
@@ -3852,8 +3856,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
       }
       while (owner._holdExemptKickIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptKickIter.next();
@@ -26739,6 +26744,7 @@ export const render = {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,
+        { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
       );
       // The starvation floor still consults the forced wallet — a spent frame
       // defers the forced start (keeping the late streak armed) instead of
@@ -26859,6 +26865,7 @@ export const render = {
           const resumedGate = shouldStartHeavyAdmissionEventually(
             this.state && this.state.render && this.state.render.lastPresentDtMs,
             this._meshBuildLateSkips,
+            { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
           );
           const resumedStartAllowed = resumedGate.start
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
@@ -30284,8 +30291,18 @@ export const render = {
       this._activityFrame = null;
       this._activityFrameTick = null;
       if (this.state.render) this.state.render.activityFrame = null;
-    } else if (this._activityFrameTick !== activityTick
+    } else if ((this._activityFrameTick !== activityTick
+        && (this._activityFrame == null
+          || this._activityFrameTick == null
+          || activityTick < this._activityFrameTick
+          || activityTick - this._activityFrameTick >= 4
+          || this._activityFrameIndexVersion !== entityIndexVersion(this.state)
+          || this._activityFrameListLen !== (this.state.entityList ? this.state.entityList.length : -1)))
         || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
+      // Presentation-side reclassification of the mirrored state (the worker classifies
+      // authoritatively): rerun at most every 4 ticks unless membership changed.
+      this._activityFrameIndexVersion = entityIndexVersion(this.state);
+      this._activityFrameListLen = this.state.entityList ? this.state.entityList.length : -1;
       tryPresentedCall(this, 'activity-frame', () => {
         publishActivityFrame(this, getActivityFrame(this.state));
       });
@@ -30337,7 +30354,8 @@ export const render = {
         this._snapshotPresentationSequence = this._snapshotFence.sequence;
       }
       this.syncEntityViews(alpha);
-      if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
+      if (this.state && this.state.render) this.state.render.interpolationAlpha = Number.isFinite(this._snapshotPresentationAlpha)
+        ? Math.max(0, Math.min(1, this._snapshotPresentationAlpha)) : alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
         // The player hull was just posed from the snapshot fence; hand the camera that exact
         // presented position so follow/lookahead/safe-rect never track a narrower sim-tick window

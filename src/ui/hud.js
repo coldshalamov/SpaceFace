@@ -1920,6 +1920,7 @@ export function createHud(ctx, alerts) {
   const hudUnsubscribers = [];
   // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
   let receiptLanePlacementDirty = true;
+  let receiptIdleSlowTicks = 0;
   function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
@@ -5942,7 +5943,21 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) invalidateReceiptLane();
+    if (slow) {
+      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+      // receipt-lane content is live.
+      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
+        || (alertsEl && alertsEl.childElementCount > 0)
+        || externalFlightCaptions.size > 0
+        || (caption && !caption.hidden && caption.classList.contains('show'));
+      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+      if (laneBusy || receiptIdleSlowTicks >= 5) {
+        receiptIdleSlowTicks = 0;
+        invalidateReceiptLane();
+      }
+    }
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 

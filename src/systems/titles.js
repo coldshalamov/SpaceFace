@@ -27,6 +27,18 @@ import { journalFor } from '../combat/stuntEvidence.js';
 import { adventureStunts, boundStuntNarrative, completeWitness, deliverWitnessReports, incidentIdentity, observeStuntWitnesses, qualifyStuntTitles, sampledStuntWitnesses, sendWitnessReports } from '../combat/stuntWitnesses.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
+function witnessSweepDue(state) {
+  const tick = state && state.tick;
+  if (!(state && state.runtime && state.runtime.profileId === 'production')) return true;
+  if (!Number.isInteger(tick) || tick % 30 === 0) return true;
+  const roots = journalFor(state)?.roots;
+  if (!roots || !roots.size) return true;
+  for (const root of roots.values()) {
+    if (root && root.actorId === state.playerId && tick >= root.tick && tick <= root.tick + 480) return true;
+  }
+  return false;
+}
+
 function finiteInteger(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
@@ -678,7 +690,9 @@ export function createTitlesSystem() {
 
     update(_dt, state = this.state) {
       if (state) this.state = state;
-      observeStuntWitnesses(this.state);
+      // The witness sweep only has work while a player-rooted stunt is inside its 480-tick
+      // window; otherwise it just prunes expired episodes, which a 2 Hz pass handles.
+      if (witnessSweepDue(this.state)) observeStuntWitnesses(this.state);
       deliverWitnessReports(this.state, this.bus);
       if (!this._activeEntityIds.size) return;
       const own = currentThunderchildState(this.state);

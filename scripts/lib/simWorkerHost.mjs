@@ -2518,6 +2518,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let completedTick = null;
     let journalStart = host.committedJournalSequence;
     if (production) host.inputPublishes.length = 0;
+    // Work budget: the local-clock catch-up path (workBudgetMs set by the
+    // worker pump) may stop early once the reply has consumed its share of the
+    // frame — un-executed steps behave like shed debt so the world slows down
+    // instead of compounding one heavy step into a multi-hundred-ms reply.
+    // Explicit-step directives carry no budget and always run exactly.
+    const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0
+      ? msg.workBudgetMs * 1e6
+      : null;
+    let stepsExecuted = 0;
     for (let s = 0; s < steps; s++) {
       if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
@@ -2526,6 +2535,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         update47aScenarioActorIntents(state);
         sim.step(SIM_DT);
       }
+      stepsExecuted++;
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -2538,6 +2548,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           flightBackend: 'legacy',
         });
       }
+      if (workBudgetNs != null && s + 1 < steps
+          && (nowNs() - workStart) >= workBudgetNs) break;
     }
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
@@ -2633,12 +2645,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.lastInputSeq = lastPublish.inputSeq;
       host.lastInputWallMs = lastPublish.inputWallMs;
     }
-    if (steps > 0) {
+    if (stepsExecuted > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
-    host.tickCount += steps;
+    host.tickCount += stepsExecuted;
 
     const packStart = nowNs();
     let pack;
@@ -2766,6 +2778,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
+      stepsRequested: steps,
+      stepsExecuted,
       boundaryMs,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,

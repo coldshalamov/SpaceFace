@@ -1630,11 +1630,13 @@ function appendWellObstacles(state, observer, range, contacts, freeze) {
 // physical footprint to navigation, keeping threat, cloak and target selection unchanged.
 function appendDressingObstacles(state, observer, range, contacts, attachmentIndex, freeze) {
   for (const row of currentSolidDressingRows(state)) {
-    if (!row || row.id === observer.id || contacts.some(contact => contact.id === row.id)) continue;
+    if (!row || row.id === observer.id) continue;
     const radius = physicalObstacleRadius(row);
     if (!(radius > 0)) continue;
     const dx = row.pos.x - observer.pos.x, dz = row.pos.z - observer.pos.z;
     if (dx * dx + dz * dz > (range + radius) ** 2) continue;
+    // Range gate first: the duplicate scan only runs for the few rows actually in reach.
+    if (contacts.some(contact => contact.id === row.id)) continue;
     const base = buildContactBase(state, row, null, attachmentIndex, ContactKind.HAZARD, freeze, null);
     contacts.push({ ...base, radius, planarRadius: radius, team: null, targetId: null,
       objectiveValue: 0, fortifyTarget: false, tags: COLD_DRESSING_TAGS, confidence: 1, threat: 0, hostile: false });

@@ -667,7 +667,7 @@ function loadKestrelThrusterTextures() {
 }
 
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
-const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
+const PARTICLE_CAP = { low: 1500, med: 2000, medium: 2000, high: 4000 };
 const PARTICLE_POSITION = 0;
 const PARTICLE_COLOR = 1;
 const PARTICLE_SIZE = 2;
@@ -1039,6 +1039,7 @@ const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
 // Row 493: the held-key preview re-plans this often; between plans its rings follow their bodies.
 const VFX_POWER_PREVIEW_HZ = 15;
+const VFX_FIELD_GEOM_HZ = 30;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -10591,7 +10592,15 @@ export const vfx = {
       if (!this._fieldFlowRelevant()) return;
       this._initFieldGeometry();
     }
-    if (this._fieldGeom) return this._fieldGeom.update(dt, this.state);
+    if (this._fieldGeom) {
+      // 30 Hz is enough for swept-surface growth; accumulated dt keeps envelopes in time.
+      // Only a steady, already-live field is throttled; wake/retire transitions run every frame.
+      const live = this._fieldGeomLast && this._fieldGeomLast.surfaces > 0 && this._fieldFlowRelevant();
+      const step = live ? this._consumeCadence('_cadenceFieldGeom', dt, VFX_FIELD_GEOM_HZ) : dt;
+      if (!live) this._cadenceFieldGeom = 0;
+      if (!live || step > 0) this._fieldGeomLast = this._fieldGeom.update(step, this.state);
+      return this._fieldGeomLast;
+    }
   },
 
   // Gyre Snare presentation: the published state.gyreSnare mirror owns existence —

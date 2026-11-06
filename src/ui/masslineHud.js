@@ -1353,7 +1353,13 @@ export const masslineHud = {
 
     const ml2 = state.massline2 || EMPTY_HUD_OBJECT;
     // Winch heat can change while the other HUD mirrors remain byte-for-byte quiet.
-    this._lineStrainReadout?.update(state, player, w2s);
+    // The readout reads viewport size (forced layout) and follows the hull; 30 Hz is
+    // visually identical and halves that layout flush. Hidden-to-shown transitions still
+    // land within one extra frame.
+    this._strainFlip = !this._strainFlip;
+    if (this._strainFlip || !this._lineStrainReadout?.root || this._lineStrainReadout.root.hidden) {
+      this._lineStrainReadout?.update(state, player, w2s);
+    }
     let obstacles = EMPTY_FLIGHT_OBSTACLES;
     try { obstacles = this.registry?.get?.('ui')?.hud?.getFlightTextObstacles?.() || obstacles; }
     catch (_) { /* The optional presentation owner may be rebuilding. */ }
