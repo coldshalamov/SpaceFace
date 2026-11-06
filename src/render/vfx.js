@@ -155,6 +155,17 @@ import {
   broodBurstPlan,
   BROOD_BURST_PRIORITY,
 } from './vfx/broodBurstRead.js';
+import {
+  isMineStrikeMoment,
+  isMineTurnMoment,
+  mineStrikeHue,
+  mineStrikeColorCss,
+  mineStrikePlan,
+  mineTurnPlan,
+  MINE_STRIKE_PRIORITY,
+} from './vfx/mineStrikeRead.js';
+// The strike scrape's fixed scatter fan (radians off the contact bearing).
+const MINE_STRIKE_SCATTER_FAN = Object.freeze([-0.45, 0.1, 0.6]);
 import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
@@ -2980,6 +2991,10 @@ export const vfx = {
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('bombs:destroyed', (p) => this._onBombDestroyed(p));
+    // inf-fence-strike-read: the fence answers the throw on the glass — a strike's contact
+    // scrape keyed to the throw's speed and custody, and a field-turned mine's claim beat.
+    add('mines:struck', (p) => this._onMineStruck(p));
+    add('mines:turned', (p) => this._onMineTurned(p));
     // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
     // small surface read — the wave becomes a sequence of responses, nearest first.
     add('combat:shockwavePass', (p) => this._onShockwavePass(p));
@@ -10203,6 +10218,62 @@ export const vfx = {
       this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.24, 0.6, 1.7, 0.42, 0.0, '#3f6b28',
         (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, 1, null, BROOD_BURST_PRIORITY);
     }
+  },
+
+  // inf-fence-strike-read: a strike is the CONTACT — the reason a thrown mass tripped the
+  // fence — so the beat plays between the mine and the body that hit it, stretched along the
+  // throw, in the custody's own hue, keyed to the strike speed. The star outlives the scrape
+  // 3:1; the ordinary snap/blast receipts the same tick already carry the explosion side.
+  // The body may be dead by the time the bus delivers (it took the blast), so its live
+  // position is a courtesy read, not a gate — the receipt's mine position is the truth.
+  _onMineStruck(p) {
+    if (!isMineStrikeMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const body = p.bodyId != null ? this._ent(p.bodyId) : null;
+    const contact = (body && body.pos && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z))
+      ? {
+        x: pos.x + (body.pos.x - pos.x) * 0.5,
+        z: pos.z + (body.pos.z - pos.z) * 0.5,
+      }
+      : pos;
+    const along = (body && body.pos && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z))
+      ? Math.atan2(contact.z - pos.z, contact.x - pos.x)
+      : null;
+    const hue = mineStrikeHue(p.custody);
+    const plan = mineStrikePlan(p.speed, hue, along);
+    const vent = mineStrikeColorCss(hue);
+    this._spawnSprite(SPR_FLASH, contact.x, 0.4, contact.z, plan.contact.life, plan.contact.size0,
+      plan.contact.size1, plan.contact.op0, 0.0, plan.contact.color, 0, 0, 1,
+      plan.contact.along, MINE_STRIKE_PRIORITY);
+    if (plan.scrape) {
+      // Sparks scatter downrange of the throw on a fixed fan (no per-event randomness —
+      // the same strike replays the same scrape).
+      for (let i = 0; i < MINE_STRIKE_SCATTER_FAN.length; i++) {
+        const bearing = along + MINE_STRIKE_SCATTER_FAN[i];
+        this._spawnSprite(SPR_PUFF, contact.x, 0.3, contact.z, plan.scrape.life, plan.scrape.size0,
+          plan.scrape.size1, plan.scrape.op0, 0.0, vent,
+          Math.cos(bearing) * plan.scrape.drift,
+          Math.sin(bearing) * plan.scrape.drift,
+          1, null, MINE_STRIKE_PRIORITY);
+      }
+    }
+    this._spawnSprite(SPR_FLASH, contact.x, 0.5, contact.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, 0.0, plan.star.color, 0, 0, 1, null, MINE_STRIKE_PRIORITY);
+    this._eventLight({ x: contact.x, z: contact.z }, 'impact',
+      { color: vent, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-fence-strike-read: the field-turned mine claims the pilot's side — one quiet claim
+  // beat in the armed/claim cyan on the mine itself. Nothing exploded yet; this is the
+  // allegiance flip the band line names, on the glass.
+  _onMineTurned(p) {
+    if (!isMineTurnMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const plan = mineTurnPlan();
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.claim.life, plan.claim.size0,
+      plan.claim.size1, plan.claim.op0, 0.0, plan.claim.color, 0, 0, 1, null, MINE_STRIKE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'impact',
+      { color: plan.claim.color, peak: plan.light.peak, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
