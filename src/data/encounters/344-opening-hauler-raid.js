@@ -6,17 +6,27 @@
 // next free order rather than slotting in by theme.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { combatFlag } from '../featureFlags.js';
-import { addSalvage } from '../../systems/cargo.js';
+import { addSalvage, salvageScrapValue } from '../../systems/cargo.js';
 
 /** The plate the hauler names when the raiders are actually down. Legal scrap; any dock cashes the bay. */
 const OPENING_RAID_PLATE_ID = 'cmdty_comp_hullplate';
 
-function depositOpeningRaidPlate(state) {
+function settleOpeningRaidPlate(d, state) {
   // Instance profile wins, same as the other combat readers. legacy47a keeps the bay off
   // so a frozen golden never grows a salvage field. No player means there is no bay to fill.
   const features = state?.runtime?.features;
-  if (!state?.player || !combatFlag('salvageBay', features)) return 0;
-  return addSalvage(state, OPENING_RAID_PLATE_ID, 1);
+  if (!state?.player || !combatFlag('salvageBay', features)) return '';
+  if (addSalvage(state, OPENING_RAID_PLATE_ID, 1) === 1) {
+    return " Their plate's in your bay — any dock pays.";
+  }
+  // A full bay must not erase an earned reward or produce a fictional deposit. The
+  // hauler buys the refused plate at the dock's scrap price through the credit owner.
+  const value = salvageScrapValue(state, OPENING_RAID_PLATE_ID, 1);
+  if (value > 0) {
+    d.grant(value, 'convoy:plate_overflow');
+    return ` Your bay is full, so we bought the plate for ${value} cr. Payment transferred.`;
+  }
+  return ' Your bay could not take the plate; we kept it aboard.';
 }
 
 export const encounterOrder = 344;
@@ -569,10 +579,10 @@ export const runtime = Object.freeze({
       }
       d.grant(250, 'convoy:guard');
       d.rep('faction_mts', 5, 'hauler_rescued');
-      depositOpeningRaidPlate(state);
+      const plateReceipt = settleOpeningRaidPlate(d, state);
       d.emit('comms:log', {
         from: 'MTS HAULER',
-        text: 'All raiders down! Thank you for the assist, pilot. Hazard pay transferred. Their plate\'s in your bay — any dock pays.',
+        text: `All raiders down! Thank you for the assist, pilot. Hazard pay transferred.${plateReceipt}`,
         kind: 'encounter',
       });
       releaseAdoptedCarrier(d, live);

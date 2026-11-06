@@ -20,7 +20,7 @@ function playerState(features) {
   };
 }
 
-function drive({ hauler, raiders, raiderEscaped = false, now = 20, features = PRODUCTION_FEATURES, custody = true }) {
+function drive({ hauler, raiders, raiderEscaped = false, now = 20, features = PRODUCTION_FEATURES, custody = true, player = {}, content }) {
   const logs = [];
   const live = {
     phase: 'conflict',
@@ -44,12 +44,14 @@ function drive({ hauler, raiders, raiderEscaped = false, now = 20, features = PR
       return outcome;
     },
     emit(event, payload) { logs.push({ event, payload }); },
-    grant() {},
+    grant(amount, reason) { logs.push({ event: 'grant', amount, reason }); },
     rep() {},
   };
   const state = playerState(features);
+  Object.assign(state.player, player);
+  if (content) state.content = content;
   runtime.tick(d, live, state, now);
-  return { live, logs, state };
+  return { live, logs, state, director: d };
 }
 
 function plateQty(state) {
@@ -74,6 +76,7 @@ test('seed 4242: legacy profile and the unpaid endings leave the bay empty', () 
   const legacy = drive({ hauler: 1, raiders: 0, features: LEGACY47A_FEATURES });
   assert.equal(legacy.live.outcome, 'defended');
   assert.equal(legacy.state.player.salvageBay, undefined);
+  assert.doesNotMatch(legacy.logs.find((row) => row.event === 'comms:log').payload.text, /plate's in your bay/);
 
   for (const ending of [
     { hauler: 0, raiders: 1, raiderEscaped: true, outcome: 'robbed' },
@@ -85,6 +88,30 @@ test('seed 4242: legacy profile and the unpaid endings leave the bay empty', () 
     assert.equal(row.live.outcome, ending.outcome);
     assert.equal(plateQty(row.state), 0, ending.outcome);
   }
+});
+
+test('a full salvage bay receives the plate value once, without invented cargo or lost rewards', () => {
+  const row = drive({ hauler: 1, raiders: 0,
+    player: { salvageBay: { items: { cmdty_ore_iron: 600 }, usedVolume: 600 } } });
+  assert.equal(plateQty(row.state), 0);
+  assert.equal(row.state.player.salvageBay.usedVolume, 600);
+  assert.equal(row.state.player.salvageBay.items.cmdty_ore_iron, 600);
+  assert.deepEqual(row.logs.filter((entry) => entry.event === 'grant'), [
+    { event: 'grant', amount: 250, reason: 'convoy:guard' },
+    { event: 'grant', amount: 65, reason: 'convoy:plate_overflow' },
+  ]);
+  assert.match(row.logs.find((entry) => entry.event === 'comms:log').payload.text, /bay is full.*65 cr/);
+  runtime.tick(row.director, row.live, row.state, 21);
+  assert.equal(row.logs.filter((entry) => entry.event === 'grant').length, 2);
+});
+
+test('overflow settlement values the plate through the active commodity content', () => {
+  const row = drive({ hauler: 1, raiders: 0,
+    player: { salvageBay: { items: {}, usedVolume: 600 } },
+    content: { commodities: { [PLATE]: { basePrice: 200, volPerU: 0.7, massPerU: 1, legality: 'legal' } } },
+  });
+  assert.equal(row.logs.find((entry) => entry.reason === 'convoy:plate_overflow').amount, 120);
+  assert.equal(plateQty(row.state), 0);
 });
 
 test('seed 4242: a physical escape pays hazard pay and does not invent a plate', () => {

@@ -666,6 +666,17 @@ export function addSalvage(state, commodityId, qty) {
   return accepted;
 }
 
+/** Quote legal scrap using the same active commodity registry and rounding as dock cash-in. */
+export function salvageScrapValue(state, commodityId, qty) {
+  const def = defOf(state, commodityId);
+  const units = finiteWholePickupAmount(qty);
+  const price = Number(def?.basePrice);
+  if (!def || (def.legality && def.legality !== 'legal') || units <= 0
+      || !Number.isFinite(price) || price <= 0) return 0;
+  const value = Math.floor(units * price * SALVAGE_BAY.saleRate);
+  return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
 /** Empty the bay and say what it was worth at the scrap rate. Returns { units, credits, lots } or null when empty. */
 export function cashInSalvage(state, { includeIllicit = false } = {}) {
   const bay = state && state.player && state.player.salvageBay;
