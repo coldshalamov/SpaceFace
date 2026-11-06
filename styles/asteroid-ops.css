@@ -1148,11 +1148,12 @@ html:not([data-locale="en-US"]) .aw-alert {
   max-width: 100%;
 }
 
-/* Narrow desktop window (≤600 wide, not the phone layout — e.g. 390×844): the one-row crest
-   ran its status line and the Log / Leave keys off the right edge, so there was no visible
-   way out. Like the phone sheet (mobileScreenLayouts.js), the name and the keys hold the
-   first row and the readings wrap underneath. */
-@media (max-width: 600px) {
+/* Narrow + densify short-desktop (≤800 wide, not the phone layout — e.g. 390×844 / 700×461):
+   the one-row crest ran its status line and the Log / Leave keys off the right edge, so there
+   was no visible way out. At 700×461 LeaveEsc sat past the right edge (Esc offR ~30); 801 was
+   already clear. Like the phone sheet (mobileScreenLayouts.js), the name and the keys hold the
+   first row and the readings wrap underneath. Band raised 600→800 for densify 651–800. */
+@media (max-width: 800px) {
   html:not([data-sf-mobile="1"]) .ast-screen > .aw-crest {
     flex: 0 0 auto;
     min-height: 40px;
