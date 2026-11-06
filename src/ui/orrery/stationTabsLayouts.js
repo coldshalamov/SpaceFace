@@ -2366,14 +2366,37 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
   ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
 }
-/* Narrow Industry labels use the stage bounds, not a desktop-width translated box.
-   The short layout keeps its reason and product in one right-hand column, separated
-   vertically; taller windows retain the reason above the process ring. Wrapped product
-   names remain in the existing scrollable stage rather than losing letters at its edge. */
+/* At 700×461 the variable-height remedy was pinned over the output node and
+   the translated product reading ran into the stage fade. Let those existing DOM
+   readings reserve their own rows around the drawing; the stage remains the one
+   detail scroller, with its terminal action above the 20px fold at maximum scroll. */
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) {
-  ${D} .orr-ind-chain .orr-chain__label.is-below { left:auto !important; right:0 !important; width:42% !important; max-width:42% !important; transform:translateY(8px) !important; }
-  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .sx-ind__stage { padding-bottom:24px !important; scroll-padding-block:12px 24px; }
+  ${D} .sx-fab { --orr-ind-flow-readings:1; display:flex !important; flex-direction:column; gap:0;
+    height:auto !important; min-height:100%; min-width:0; box-sizing:border-box; padding-bottom:0 !important; }
+  ${D} .sx-fab > .orr-ind-chain { flex:none; margin:12px 0 !important; }
+  ${D} .sx-fab > :is(.sx-fab-chain-reason, .sx-fab-chain-output) {
+    position:static !important; inset:auto !important; transform:none !important; flex:none;
+    width:auto !important; max-width:100% !important; min-width:0; align-self:stretch;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important;
+  }
+  ${D} .sx-fab > .sx-fab-chain-reason { align-items:flex-start; gap:4px; margin:8px 0 0 !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__reason { font-size:17px !important; line-height:1.2 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__verb { max-width:100%; margin:0 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__blocknote { font-size:12px !important; line-height:1.3 !important; white-space:normal !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout { min-height:28px !important; max-width:100% !important;
+    margin:6px 0 0 !important; padding:4px 8px !important; box-sizing:border-box;
+    font-size:12px !important; line-height:1.3 !important; white-space:normal !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important; }
+  ${D} .sx-fab > .sx-fab-chain-output { flex-direction:row; align-items:baseline; gap:12px; margin:0 !important; }
+  ${D} .sx-fab-chain-output .orr-chain__qty { font-size:30px !important; line-height:1 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-output .orr-chain__unit { min-width:0; font-size:12px !important; line-height:1.3 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab > .sx-fab-foot { position:static !important; inset:auto !important; transform:none !important;
+    align-self:stretch; margin:12px 0 0 !important; }
 }
+/* Taller narrow windows retain the reason above the process ring. */
 @media (min-width:651px) and (max-width:800px) and (min-height:641px) and (max-height:800px) {
   ${D} .orr-ind-chain { height:296px !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { top:4px !important; width:min(320px, calc(100% - 40px)) !important; max-width:none !important; transform:translateX(-50%) !important; }
