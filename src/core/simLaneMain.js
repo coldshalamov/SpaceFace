@@ -919,11 +919,12 @@ export function createSimLaneRuntime({
     if (workerClockMode === 'worker-local') {
       // Input/UI batches are a valid projection boundary. RPC-only batches
       // deliberately stay projection-free and preserve the command FIFO.
-      // DOM events flush on a short coalescing window — OS key repeats and the
-      // paired mousemove/pointermove listeners otherwise mint one transport post
-      // per raw event.
-      if (d.kind === 'domEvent') scheduleDomEventFlush();
-      else flushDirectives({ projectCursor: false });
+      // High-rate DOM streams flush on a short coalescing window — the paired
+      // mousemove/pointermove listeners and drag-resizes otherwise mint one
+      // transport post per raw event. Discrete user actions (keys, buttons,
+      // blur) stay zero-latency and drag queued stream rows along.
+      if (d.kind === 'domEvent' && DOM_COALESCED_TYPES.has(d.d?.type)) scheduleDomEventFlush();
+      else flushDirectives({ projectCursor: d.kind === 'domEvent' });
     }
     // Input/UI descriptors should not wait for the next render callback while the worker owns
     // the clock. A single disposable zero-delay wake preserves FIFO order and coalesces pointer
@@ -1016,6 +1017,9 @@ export function createSimLaneRuntime({
     const cost = (value) => Number.isFinite(value) && value >= 0 ? value : null;
     workerLastReplyWork = {
       workMs: cost(msg.workMs),
+      drainMs: cost(msg.drainMs),
+      stepsMs: cost(msg.stepsMs),
+      tailMs: cost(msg.tailMs),
       packMs: cost(msg.packMs),
       domainDiffMs: cost(msg.domainDiffMs),
       boundaryMs: cost(msg.boundaryMs),
@@ -1049,6 +1053,7 @@ export function createSimLaneRuntime({
     let journalLo = -1;
     let journalHi = -1;
     let rebuildApplied = false;
+    const phaseStart = nowMs();
     if (msg.journalFullRebuild === true && msg.pack) {
       rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
@@ -1076,7 +1081,9 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
+    const mirrorDone = nowMs();
     reconcileEntities();
+    const reconcileDone = nowMs();
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
     // suppressed — otherwise a forwarded type would echo right back.
@@ -1145,6 +1152,9 @@ export function createSimLaneRuntime({
         }
       }
     }
+    workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
+    workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
 
     if (Array.isArray(msg.rpcAcks) && msg.rpcAcks.length) {
       for (const ack of msg.rpcAcks) {
@@ -1184,6 +1194,7 @@ export function createSimLaneRuntime({
         pendingCommands: bounded(d.pendingCommands, 4096),
         appliedCommandSequence: bounded(d.appliedCommandSequence),
         awaitingAck: d.awaitingAck === true,
+        unacked: bounded(d.unacked, 64),
         backpressured: d.backpressured === true,
         retainedRows: bounded(d.retainedRows),
         retainedVitals: bounded(d.retainedVitals),
@@ -1345,6 +1356,7 @@ export function createSimLaneRuntime({
   // now coalesce onto a short window: the first event still posts immediately
   // (edge latency preserved) and the trailing burst ships once per window.
   const DOM_EVENT_FLUSH_MIN_MS = 8;
+  const DOM_COALESCED_TYPES = new Set(['mousemove', 'pointermove', 'resize', 'touchFrame']);
   // Held-key repeats only matter to the worker as a kbm-liveness stamp (a quiet
   // pad must not steal the helm mid-hold). One repeat per heartbeat window keeps
   // the stamp fresh without paying full transport cost at OS repeat rate.

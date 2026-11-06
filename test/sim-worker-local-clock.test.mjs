@@ -941,24 +941,41 @@ test('DOM input batches coalesce onto one transport post per window', async (t) 
   });
   const postsAfterFirst = f.posts.length;
 
-  // A held-key/pointer burst inside the window mints no new posts — each raw
+  // A pointer-stream burst inside the window mints no new posts — each raw
   // event used to pay a gamepad sample, raycast, camera payload, and post.
-  laneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
-  laneDomEvent({ type: 'keydown', code: 'BracketLeft', pressed: true });
   laneDomEvent({ type: 'mousemove', clientX: 100, clientY: 100 });
   laneDomEvent({ type: 'pointermove', clientX: 100, clientY: 100 });
-  assert.equal(f.posts.length, postsAfterFirst, 'burst inside the window coalesces');
+  laneDomEvent({ type: 'mousemove', clientX: 101, clientY: 100 });
+  assert.equal(f.posts.length, postsAfterFirst, 'stream burst inside the window coalesces');
 
-  // The trailing flush ships every queued envelope in one command.
+  // Discrete user actions bypass the window entirely: a held turn key posts on
+  // its leading edge and drags the queued stream rows into the same command.
+  laneDomEvent({ type: 'keydown', code: 'KeyW', pressed: true });
+  const dragged = f.posts.at(-1);
+  assert.equal(dragged.kind, 'clockCommand', 'discrete input still posts immediately');
+  assert.notEqual(dragged.commandSequence, first.commandSequence);
+  assert.equal(dragged.commands.filter((env) => env.t === 'dom').length, 4,
+    'the immediate post carries the coalesced stream envelopes ahead of the key');
+  f.receive({
+    kind: 'clockTick', clockSequence: 2, commandSequence: dragged.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: dragged.commandSequence },
+    stateTick: 2, simTime: 2 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  const postsAfterKey = f.posts.length;
+
+  laneDomEvent({ type: 'pointermove', clientX: 102, clientY: 100 });
+  assert.equal(f.posts.length, postsAfterKey, 'a fresh stream event re-enters the window');
+
+  // The trailing flush ships the queued envelope.
   t.mock.timers.tick(9);
   const batched = f.posts.at(-1);
   assert.equal(batched.kind, 'clockCommand');
-  assert.notEqual(batched.commandSequence, first.commandSequence);
-  assert.equal(batched.commands.filter((env) => env.t === 'dom').length, 4);
+  assert.equal(batched.commands.filter((env) => env.t === 'dom').length, 1);
 
   // An event outside the window posts on the leading edge again.
   f.receive({
-    kind: 'clockTick', clockSequence: 2, commandSequence: batched.commandSequence,
+    kind: 'clockTick', clockSequence: 3, commandSequence: batched.commandSequence,
     clockDiagnostics: { appliedCommandSequence: batched.commandSequence },
     stateTick: 2, simTime: 2 / 60, clockAccumulator: 0,
     journalStart: 0, journalEnd: 0, pack: emptyPack(),

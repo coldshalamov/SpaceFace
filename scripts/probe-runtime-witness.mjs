@@ -84,6 +84,7 @@ const CPU_PROFILE = process.argv.includes('--cpu-profile') || CPU_PROFILE_FROM_L
 const TETHER_BOOST_STRESS = process.argv.includes('--tether-boost-stress');
 const TETHER_HOLD_STRESS = process.argv.includes('--tether-hold-stress');
 const TETHER_STRESS = process.argv.includes('--tether-stress') || TETHER_BOOST_STRESS || TETHER_HOLD_STRESS;
+const TURN_STRESS = process.argv.includes('--turn-stress');
 const FOCUS_RECOVERY_STRESS = process.argv.includes('--focus-recovery-stress');
 const BACKGROUND_FLIGHT_STRESS = process.argv.includes('--background-flight-stress');
 const SAVE_TETHER_STRESS = process.argv.includes('--save-tether-stress');
@@ -3655,6 +3656,9 @@ try {
   }
   await page.keyboard.down('KeyW');
   if (TETHER_BOOST_STRESS) await page.keyboard.down('ShiftLeft');
+  // The reported freeze trigger is multi-key: thrust + yaw + boost held together
+  // sweeps the ship through dense contact fields while key-repeat traffic flows.
+  if (TURN_STRESS) await page.keyboard.down('KeyA');
   if (COMBAT_STRESS) {
     const viewport = page.viewportSize() || { width: 1280, height: 720 };
     await page.mouse.move(viewport.width * 0.5, viewport.height * 0.25);

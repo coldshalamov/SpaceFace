@@ -33852,7 +33852,7 @@ function applyRendererSize(renderer, state) {
     && state.render?.renderGraphUnavailable !== true
     && !renderGraphDynResBlocked(state);
   const configuredScale = finiteInRange(vd.renderScale, 0.5, 2, 1);
-  const scale = graphOwnsScale ? 1 : (relief ? Math.min(configuredScale, 0.75) : configuredScale);
+  const scale = graphOwnsScale ? 1 : (relief ? Math.min(configuredScale, 0.9) : configuredScale);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
   // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale

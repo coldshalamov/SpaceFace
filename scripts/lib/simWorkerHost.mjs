@@ -2509,6 +2509,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
     const production = host.profile === 'production';
     reconcileLaneComponentSelection(state);
+    // Phase split for the lane's freeze forensics: workMs alone cannot tell a
+    // contact-storm step batch from a command drain or a vitals/pack tail.
+    const drainNs = nowNs() - workStart;
+    const stepsStartNs = nowNs();
 
     // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
     if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
@@ -2649,6 +2653,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
+    const stepsNs = nowNs() - stepsStartNs;
     host.totalWorkNs += workNs;
     host.tickCount += stepsExecuted;
 
@@ -2777,6 +2782,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       storageOps: drainStorageOps(),
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
+      drainMs: Number(drainNs) / 1e6,
+      stepsMs: Number(stepsNs) / 1e6,
+      tailMs: (Number(boundaryMs) * 1e6 - Number(drainNs) - Number(stepsNs) - Number(packNs)) / 1e6,
       packMs: Number(packNs) / 1e6,
       stepsRequested: steps,
       stepsExecuted,
