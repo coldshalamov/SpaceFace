@@ -21,6 +21,14 @@ export const PACKED_BYTES_PER_JOURNAL_EVENT = 12;
 /** Commits of byte counts kept for p50/p95 reporting. Preallocated — no per-frame allocation. */
 export const PACK_BYTES_RING = 64;
 
+// E10/E1 diagnostic seam: the fence instance lives inside the renderer, so the most recent
+// fence registers itself here for the frame-truth recorder (and any future probe). Read-only —
+// registration must never affect presentation.
+let latestCreatedFence = null;
+export function getLatestSnapshotFence() {
+  return latestCreatedFence;
+}
+
 function readonlyColumns(columns) {
   // Ownership is the immutability boundary: only the writer slot can call
   // write(), and commit rotates to another slot before the next pack. Do not
@@ -187,7 +195,7 @@ export function createSnapshotFence(options = {}) {
   let rateWallS = 0;
   let rateSimS = 0;
 
-  return {
+  const fence = {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
       const buffer = buffers[write];
       buffer.writable.beginFrame(expectedCount, slotCapacity);
@@ -306,13 +314,42 @@ export function createSnapshotFence(options = {}) {
         if (next > cap) next = cap;
         presentedTime = Math.max(presentedTime, next);
       }
-      presentedSequence = current.sequence;
-      presentedEpoch = current.poseEpoch;
-      presentedSnapshotTime = current.simTime;
-      if (!(span > 0)) return 1;
-      const alpha = (presentedTime - prior.simTime) / span;
-      return alpha < 0 ? 0 : alpha;
-    },
+    presentedSequence = current.sequence;
+    presentedEpoch = current.poseEpoch;
+    presentedSnapshotTime = current.simTime;
+    if (!(span > 0)) return 1;
+    const alpha = (presentedTime - prior.simTime) / span;
+    return alpha < 0 ? 0 : alpha;
+  },
+  // E10 playout telemetry: how far the presented clock runs behind (delay) or ahead
+  // (extrapolation) of the newest committed pack, and how deep the comparable history is.
+  // Fields grow as E1 lands the delayed clock; unknown fields stay null until then.
+  getPlayoutDiagnostics() {
+    const current = latest >= 0 ? buffers[latest].published : null;
+    const prior = this.previousSnapshot();
+    if (!current) {
+      return {
+        delayMs: null,
+        extrapolateMs: null,
+        bufferDepthPacks: 0,
+        presentedTimeS: NaN,
+        latestSimTimeS: NaN,
+        playbackRate: 1,
+        packCount,
+      };
+    }
+    const presented = Number.isFinite(presentedTime) ? presentedTime : current.simTime;
+    const depth = prior ? 1 : 0;
+    return {
+      delayMs: Number.isFinite(current.simTime) ? Math.max(0, (current.simTime - presented) * 1000) : null,
+      extrapolateMs: Number.isFinite(current.simTime) ? Math.max(0, (presented - current.simTime) * 1000) : null,
+      bufferDepthPacks: depth,
+      presentedTimeS: presented,
+      latestSimTimeS: current.simTime,
+      playbackRate: presentationRate,
+      packCount,
+    };
+  },
     get sequence() { return sequence; },
     get packCount() { return packCount; },
     /** Bytes packed by the most recent commit. 0 before the first pack. */
@@ -337,6 +374,8 @@ export function createSnapshotFence(options = {}) {
       };
     },
   };
+  latestCreatedFence = fence;
+  return fence;
 }
 
 export function snapshotIndexOf(snapshot, entityId) {

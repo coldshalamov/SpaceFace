@@ -4,6 +4,8 @@ import { collectCameraWitness } from '../render/cameraWitness.js';
 // order never changes while the game runs: a loop that simulates first on some frames and draws
 // first on others shows the world at a moment it has already shown, then leaps.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { ensureFrameTruth, frameTruthRequestedByParam } from './frameTruth.js';
+import { getLatestSnapshotFence } from '../render/snapshotFence.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import {
   HITCH_CATCHUP_STEPS,
@@ -398,12 +400,21 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const witness = createRuntimeWitness({ nowMs, readSample: readWitnessSample,
     readCamera: () => collectCameraWitness(state) });
   state.runtimeWitness = witness;
+  // E10 frame truth: one always-on recorder fed once per presented frame below, plus the
+  // dev overlay (?frameTruth=1 or Ctrl+Alt+F) and the JSON trace export (Ctrl+Alt+J).
+  const frameTruth = ensureFrameTruth(state);
+  if (frameTruthRequestedByParam(typeof globalThis.location !== 'undefined'
+    ? globalThis.location.search : '')) {
+    frameTruth.setOverlayVisible(true);
+  }
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
   }
   let previousMotionSample = null;
   let lastMotionHoldReportMs = -Infinity;
   let motionHoldReports = 0;
+  // E10: 1 Hz heap-sample gate for the frame-truth recorder (see the frame finally block).
+  let frameTruthHeapLastAtMs = 0;
   function captureWitness() {
     try {
       const sample = witness.observe(state, {
@@ -1482,6 +1493,47 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         if (perf && typeof perf.recordFrameCallback === 'function') {
           perf.recordFrameCallback(measureNow() - callbackStart);
+        }
+        // E10 frame truth: one preallocated ring row per presented frame. Every probe
+        // read here already exists; a missing one records as 0 and never aborts the loop.
+        if (renderedSnapshot || diagnostics.stepsThisFrame > 0) {
+          const laneSample = simulationRunner.getFrameTruthSample?.() || null;
+          const fence = getLatestSnapshotFence();
+          const playout = fence && typeof fence.getPlayoutDiagnostics === 'function'
+            ? fence.getPlayoutDiagnostics() : null;
+          const renderInfo = state.render && state.render.diagnostics
+            ? state.render.diagnostics.info : null;
+          // performance.memory builds a MemoryInfo (~50–90 µs in Chromium) — sample it at 1 Hz,
+          // never per frame, and only when the browser exposes it.
+          let heapMB = null;
+          if (now - frameTruthHeapLastAtMs >= 1000) {
+            frameTruthHeapLastAtMs = now;
+            const memory = typeof performance !== 'undefined' ? performance.memory : null;
+            heapMB = memory && Number.isFinite(memory.usedJSHeapSize)
+              ? memory.usedJSHeapSize / 1048576 : null;
+          }
+          const playerRow = state.entities && Number.isSafeInteger(state.playerId)
+            ? (state.entities.get(state.playerId) || null) : null;
+          frameTruth.ingestFrame({
+            frameDtMs: frameDt * 1000,
+            callbackMs: measureNow() - callbackStart,
+            presentMs: presentationMs,
+            steps: diagnostics.stepsThisFrame,
+            simTimeS: state.simTime,
+            tick: state.tick,
+            replyAgeMs: laneSample ? laneSample.replyAgeMs : null,
+            workerWorkMs: laneSample ? laneSample.workerWorkMs : null,
+            workerStepsMs: laneSample ? laneSample.workerStepsMs : null,
+            workerPackMs: laneSample ? laneSample.workerPackMs : null,
+            applyMs: laneSample ? laneSample.applyMs : null,
+            playoutDelayMs: playout ? playout.delayMs : null,
+            extrapolateMs: playout ? playout.extrapolateMs : null,
+            bufferDepthPacks: playout ? playout.bufferDepthPacks : null,
+            playerRow,
+            drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
+            trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,
+            heapMB,
+          });
         }
         // In the same `finally` as recordFrameCallback so a frame that threw still closes its
         // counter frame. Without this an error would fold two frames' counts into one and

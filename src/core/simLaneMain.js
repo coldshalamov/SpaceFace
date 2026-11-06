@@ -1617,6 +1617,21 @@ export function createSimLaneRuntime({
       if (workerApplyMs > workerApplyMaxMs) workerApplyMaxMs = workerApplyMs;
       if (workerApplyMs > 100) workerApplyOver100++;
       lastAppliedAtMs = nowMs();
+      // E10 frame truth: the authoritative cost chain recorded per reply (2–10 Hz).
+      const frameTruth = state && state.frameTruth;
+      if (frameTruth && frameTruth.__frameTruthV1) {
+        const work = workerLastReplyWork || {};
+        frameTruth.noteWorkerReply({
+          wallMs: lastAppliedAtMs,
+          workMs: work.workMs,
+          stepsMs: work.stepsMs,
+          packMs: work.packMs,
+          applyMs: workerApplyMs,
+          steps: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
+          journalRecords: work.journalRecords,
+          events: work.events,
+        });
+      }
     }
   }
 
@@ -2227,6 +2242,17 @@ export function createSimLaneRuntime({
       + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
     isClosed: () => laneClosed,
     close,
+    // E10 frame truth: a per-presented-frame sampler that allocates one small object instead
+    // of the full getDiagnostics() shape (which builds nested maps per call).
+    getFrameTruthSample() {
+      return {
+        workerWorkMs: workerLastReplyWork ? workerLastReplyWork.workMs : null,
+        workerStepsMs: workerLastReplyWork ? workerLastReplyWork.stepsMs : null,
+        workerPackMs: workerLastReplyWork ? workerLastReplyWork.packMs : null,
+        applyMs: workerApplyMs,
+        replyAgeMs: lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
+      };
+    },
     getDiagnostics() {
       return {
         closed: laneClosed,
