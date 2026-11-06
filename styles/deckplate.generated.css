@@ -3064,7 +3064,6 @@ html body #screens > .k-screen.of-codex:not(.sx-observatory) .k-hang .k-row { mi
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .k-hang .k-row .k-row__name { font-size:15px; line-height:1.25; }
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .k-hang .k-row .k-row__sub { margin-top:1px; font-size:12px; line-height:1.25; }
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .sf-codex-entry { min-height:0; max-width:min(920px, 100%); padding-bottom:4px; }
-html body #screens > .k-screen.of-codex:not(.sx-observatory) .sf-codex-entry:has(> .cx-reader__mark) > :not(.cx-reader__mark):not(.cx-reader__turn):not(img) { margin-right:calc(140px * var(--dp-s) + 28px); }
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .sf-codex-entry > img { display:block; width:100%; object-fit:cover; margin-bottom:14px; }
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .cx-reader__filed { margin:0 0 10px; font-family:var(--dp-face-etch); font-variation-settings:"wght" 720, "wdth" 74; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink-mute); }
 html body #screens > .k-screen.of-codex:not(.sx-observatory) .cx-reader__mark { position:absolute; top:10px; right:14px; }

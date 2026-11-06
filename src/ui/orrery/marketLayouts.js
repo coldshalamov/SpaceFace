@@ -656,7 +656,9 @@ const CSS_TAIL = `
 }
 /* The short desktop register needs the width of a five-digit Sell figure; the tall-phone band
    keeps its own narrower columns and two-line commodity rows. */
-@media (max-width:1100px) and (max-height:800px) {
+/* Keep the five-digit Sell column on short landscape screens and narrow desktops. Portrait phone
+   headings retain the 36px stock geometry; widening there collapsed SELL and STOCK together. */
+@media (max-width:650px) and (max-height:600px) and (orientation:landscape), (min-width:651px) and (max-width:1100px) and (max-height:800px) {
   ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
 }
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
