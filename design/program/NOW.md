@@ -96,3 +96,10 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   sheet + Brood family surface rows (hue, silhouette, mass, protection layers, tell,
   debut wave). Lane S can render the bestiary/HUD identity straight off it; the S1
   fodder band and the sheet agree by test.
+
+<!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
+## Lane 5 WORLD — master-plan campaign W1 (doc phase)
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| W1 the Journey (diagnosis + inventory + Journey doc) | Lane 5 | NEW `finish/campaigns/W1/*` (DIAGNOSIS.md, inventory/*, JOURNEY.md, STATUS.md), append-only section in this file | Doc phase stops for owner approval before any src/ edit. No Swarm files, no lane-4 progression files. |
