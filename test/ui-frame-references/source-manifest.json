@@ -1,5 +1,5 @@
 {
-  "index.html": "9af2d14b55337af50c584c92c50e3111fef9d82fd5f156ceabd8c860a57c318e",
+  "index.html": "1e7c144959430ef79d202d7f423cee17dc454db453b3ac19fdbd59caccda1c7e",
   "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
   "src/ui/accessibilityChecklist.js": "fdd418a7b41399d92802e2df4e43eb7ce1cf7062e02284140a1e87fa249afab2",
   "src/ui/adventureDecisions.js": "64515d1003ba5f3999fbed224fcff460a27e3cc04afd8de7d56fc1f1a4f63d26",
@@ -196,7 +196,7 @@
   "src/ui/orrery/ledgerTape.js": "e7af086e6d2bb731b28123f9bec88cfc4d686f48bc1f121aca3d3e830c81d296",
   "src/ui/orrery/logbookLayouts.js": "524e68e72d1f6f4133c30f4e663998ec6b6fc0e2ca13b6beeb5f944f2e9851a6",
   "src/ui/orrery/manifestLayouts.js": "e9a96c7c1fac184f58d20c1f7a31cabca502044faf4e664fec7663dd40bfa85b",
-  "src/ui/orrery/marketLayouts.js": "9b55e1fdd0341527a05f60a0bc82a137f9cccff12fbd77c5f9aa8ddadc7ff784",
+  "src/ui/orrery/marketLayouts.js": "f800b532c88622bb178d14b20e97cbd5762e02444003a8f78084f783ee0708d5",
   "src/ui/orrery/mission-logLayouts.js": "2a94e0be0bc9f89a4479f677a2d422054754356081ec741d0080888b94666e3d",
   "src/ui/orrery/mobileScreenLayouts.js": "f932672107c256eb4abc88c02aaf7b18678c8473d9657c3205936526fc0ae347",
   "src/ui/orrery/motion.js": "d6b91527f27e6cf6eef7f514a17105d37975d3f936596d987f72f20e15eb0878",
