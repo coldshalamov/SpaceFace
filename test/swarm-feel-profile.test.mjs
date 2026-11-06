@@ -1,4 +1,4 @@
-// S1 — the Swarm feel profile. Gate semantics, the deploy-time Pull/Shove phase table,
+// S1 � the Swarm feel profile. Gate semantics, the deploy-time Pull/Shove phase table,
 // the dying window override, the materialization stamp, the contact-owner bound rule,
 // and the fodder TTK contract. Every Adventure path must read unchanged.
 import assert from 'node:assert/strict';
@@ -10,6 +10,8 @@ import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { compactNativeAttestationTables } from '../src/save/nativeAttestationTables.js';
+import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { dyingWindowS } from '../src/combat/lifecycle.js';
 import { applyFieldLifecycle, fields } from '../src/systems/fields.js';
@@ -37,7 +39,7 @@ test('swarmFeel resolves only inside a live Swarm run', () => {
   const feel = swarmFeel({ run: swarmRun('active') });
   assert.equal(feel, SWARM_FEEL_PROFILE);
   assert.equal(swarmFeel({ run: swarmRun('draft') }), SWARM_FEEL_PROFILE,
-    'the shop phase is still a live Swarm run — deploys between waves keep the profile');
+    'the shop phase is still a live Swarm run � deploys between waves keep the profile');
   assert.throws(() => { feel.contact.impactTransferDv = 1; }, TypeError, 'profile is frozen');
 });
 
@@ -49,14 +51,14 @@ test('dyingWindowS: the feel gate bursts light hulls and caps mediums, heavies u
   // Medium (50t) caps at the profile window even with a big overkill-free law value.
   const medium = dyingWindowS({ mass: 50, radius: 18, feel });
   assert.ok(medium > 0 && medium <= feel.dying.mediumWindowS, `medium cap ${medium}`);
-  // Heavy (300t) keeps the authored law — big deaths still earn their window.
+  // Heavy (300t) keeps the authored law � big deaths still earn their window.
   assert.equal(
     dyingWindowS({ mass: 300, radius: 30, feel }),
     dyingWindowS({ mass: 300, radius: 30 }),
     'heavy dying window unchanged by the profile',
   );
-  // Adventure: no feel input → the whole law is bit-identical.
-  assert.equal(dyingWindowS({ mass: 16, radius: 12 }), dyingWindowS({ mass: 16, radius: 12 }));
+  // Adventure: no feel input �  the whole law is bit-identical.
+  assert.equal(dyingWindowS({ mass: 16, radius: 12 }), 0.55, 'Adventure keeps the authored anchor');
   assert.ok(dyingWindowS({ mass: 16, radius: 12 }) > 0, 'baseline light window is authored');
 });
 
@@ -78,7 +80,7 @@ test('applySwarmFeelSpec stamps the spec, overrides contact material, rewrites f
   const corsair = { hull: 220, hullMax: 220, shield: 90, shieldMax: 90, shieldRegenRate: 9, armorHp: 20, armorMax: 20, armorFlat: 1, data: {} };
   applySwarmFeelSpec(corsair, 'corsair_raider', feel);
   assert.equal(corsair.data[SWARM_FEEL_STAMP], true, 'non-fodder hulls are still stamped');
-  assert.equal(corsair.hull, 220, 'non-fodder keeps authored hull — formidable is never HP');
+  assert.equal(corsair.hull, 220, 'non-fodder keeps authored hull � formidable is never HP');
   assert.equal(corsair.shield, 90);
 });
 
@@ -133,7 +135,7 @@ test('materializeWaveBatch stamps every Swarm hostile and leaves unswarmed specs
   });
   assert.equal(receiptA.admitted, 2);
   for (const e of adventureSpawned) {
-    assert.notEqual(e.data[SWARM_FEEL_STAMP], true, 'no run → no stamp');
+    assert.notEqual(e.data[SWARM_FEEL_STAMP], true, 'no run �  no stamp');
     assert.ok(e.hull > 20, 'Adventure wasp keeps its authored hull');
   }
 });
@@ -168,7 +170,7 @@ test('Swarm field deploy registers the profile phase table and profile cooldown'
   assert.equal(dep.swarmFeelPhases.punchStrengthMult, SWARM_FEEL_PROFILE.pull.yankStrengthMult);
   const kernelRec = sys._kernel.get(fieldId);
   assert.equal(kernelRec.swarmFeelPhases, undefined,
-    'the kernel record stays normalized — phases live on the deployed receipt');
+    'the kernel record stays normalized � phases live on the deployed receipt');
   assert.equal(state.fields.cooldowns.well, state.simTime + SWARM_FEEL_PROFILE.pull.cooldownS,
     'Swarm pull recharges on the profile cooldown');
   assert.equal(kernelRec.expireAt, state.simTime + SWARM_FEEL_PROFILE.pull.yankS + SWARM_FEEL_PROFILE.pull.holdS,
@@ -197,7 +199,7 @@ test('Swarm field deploy registers the profile phase table and profile cooldown'
   assert.equal(adventure.fields.cooldowns.well, adventure.simTime + FIELD_DEFS.well.cooldownS);
 });
 
-test('Swarm deployed phases: well yank→hold, repulsor punch→fading berm', () => {
+test('Swarm deployed phases: well yank� hold, repulsor punch� fading berm', () => {
   const feel = SWARM_FEEL_PROFILE;
   const wellDef = FIELD_DEFS.well;
   const repDef = FIELD_DEFS.repulsor;
@@ -229,7 +231,7 @@ test('Swarm deployed phases: well yank→hold, repulsor punch→fading berm', ()
   sys._deployRadial(state, state.fields, 'well');
   const wellId = Object.keys(state.fields.deployed)[0];
   const deployAt = state.simTime;
-  // Mid-yank: 3x strength, 0.35x damping — the convergence spike.
+  // Mid-yank: 3x strength, 0.35x damping � the convergence spike.
   sys._applySwarmDeployedPhases(state, state.fields, deployAt + feel.pull.yankS * 0.5);
   let rec = sys._kernel.get(wellId);
   assert.ok(Math.abs(rec.strength - wellDef.strength * feel.pull.yankStrengthMult) < 1e-9);
@@ -316,10 +318,10 @@ test('every public starter kit kills fodder inside the profile budget', () => {
       const ttk = hull / weapon.dps;
       table.push({ kit: kitId, weapon: weapon.id, enemy: enemyId, ttk: +ttk.toFixed(3) });
       assert.ok(ttk <= SWARM_FEEL_PROFILE.fodder.killSAtMidRange,
-        `${kitId} (${weapon.id}, ${weapon.dps} dps) kills ${enemyId} in ${ttk.toFixed(3)}s — over the ${SWARM_FEEL_PROFILE.fodder.killSAtMidRange}s bar`);
+        `${kitId} (${weapon.id}, ${weapon.dps} dps) kills ${enemyId} in ${ttk.toFixed(3)}s � over the ${SWARM_FEEL_PROFILE.fodder.killSAtMidRange}s bar`);
     }
   }
-  // TTK table for the commit record — printed so the tuning note ships with the numbers.
+  // TTK table for the commit record � printed so the tuning note ships with the numbers.
   console.table(table);
 });
 
@@ -368,4 +370,101 @@ test('full run: wave-one hostiles materialize stamped through the real pipeline'
   assert.ok(spawned.length > 0, 'wave one materialized');
   const stamped = spawned.filter((e) => e.data && e.data[SWARM_FEEL_STAMP] === true);
   assert.ok(stamped.length > 0, 'hostiles carry the profile stamp');
+});
+
+// Native owner seams: exercise receipt production and persistence, not just the bound helper.
+function feelCraft(id, x, stamped = true) {
+  return {
+    id, occupantGeneration: id, type: 'ship', alive: true, radius: 6, mass: 24,
+    pos: { x, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+    data: stamped ? { [SWARM_FEEL_STAMP]: true } : {},
+    physicsBody: { schemaVersion: 1, radius: 6, mass: 24, inertiaY: 48,
+      dynamic: true, material: 'ship', ccd: false },
+  };
+}
+
+async function nativeFeelPair(t, stampedPartner = true) {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  t.after(() => owner.dispose());
+  const entities = [feelCraft(1, 0), feelCraft(2, 500, stampedPartner)];
+  owner.syncFromEntities(entities);
+  owner.step(DT);
+  owner.drainContactImpacts();
+  return { owner, entities };
+}
+
+function capturePair(owner) {
+  const [a, b] = [owner.records.get(1), owner.records.get(2)];
+  const queue = owner._eventQueue;
+  owner._eventQueue = { drainContactForceEvents(cb) {
+    cb({ collider1: () => a.colliders[0].handle, collider2: () => b.colliders[0].handle,
+      totalForceMagnitude: () => 6e6, maxForceDirection: () => ({ x: 1, y: 0, z: 0 }) });
+  } };
+  try { return owner._captureContactImpacts()[0]; }
+  finally { owner._eventQueue = queue; }
+}
+
+test('contact receipts keep the overlap cap until a stamped victim sees a real projectile impact', async (t) => {
+  const { owner } = await nativeFeelPair(t);
+  const [a, b] = [owner.records.get(1), owner.records.get(2)];
+  a._impulseStampTick = b._impulseStampTick = owner.tick;
+  let receipt = capturePair(owner);
+  assert.equal(receipt.preSolveClosingSpeed, 0);
+  assert.equal(receipt.impulse, 24 * 40, 'soft thrown contacts cannot inflate the damage receipt');
+  b.expected.vx = -60;
+  receipt = capturePair(owner);
+  assert.equal(receipt.preSolveClosingSpeed, 60);
+  assert.equal(receipt.impulse, 24 * SWARM_FEEL_PROFILE.contact.impactTransferDv);
+  b.expected.vx = 0;
+  b._tumbling = true;
+  receipt = capturePair(owner);
+  assert.equal(receipt.impulse, 24 * 40, 'a tumbling partner still needs a real impact on the stamped victim');
+  delete a.entity.data[SWARM_FEEL_STAMP];
+  receipt = capturePair(owner);
+  assert.equal(receipt.impulse, 24 * 160, 'unstamped bodies retain the old tumble-pair receipt semantics');
+});
+
+test('throw provenance ignores zero impulses and expires on the same tick in receipts and recovery', async (t) => {
+  const { owner, entities } = await nativeFeelPair(t);
+  queuePhysicsImpulse(entities[1], { x: 0, y: 0, z: 0 });
+  owner.step(DT);
+  owner.drainContactImpacts();
+  const a = owner.records.get(1), b = owner.records.get(2);
+  const contact = SWARM_FEEL_PROFILE.contact;
+  assert.equal(owner._swarmProjectilePartner(b, contact), false, 'a no-op did not throw the body');
+  const stamp = owner.tick;
+  a._impulseStampTick = b._impulseStampTick = stamp;
+  b.expected.vx = -60;
+  owner.tick = stamp + Math.round(contact.thrownProvenanceS * 60) - 1;
+  assert.equal(capturePair(owner).impulse, 24 * contact.impactTransferDv, 'last eligible solve');
+  owner.tick += 1;
+  assert.equal(capturePair(owner).impulse, 24 * 40, 'the next solve cannot use expired provenance');
+  owner.tick += 1; // the post-solve recovery sees the completed tick
+  owner._stepContactReceipts = [{ aId: 1, bId: 2, preSolveClosingSpeed: 60 }];
+  assert.equal(owner._victimDvBound(a), 40);
+  b._impulseStampTick = owner.tick + 1;
+  assert.equal(owner._victimDvBound(a), 40, 'future provenance cannot qualify');
+});
+
+test('recent throws survive native canonicalization and scalar reconstruction without refreshing their age', async (t) => {
+  const { owner, entities } = await nativeFeelPair(t, false);
+  queuePhysicsImpulse(entities[1], { x: 2400, y: 0, z: 0 });
+  owner.step(DT);
+  owner.drainContactImpacts();
+  const stamp = owner.records.get(2)._impulseStampTick;
+  const saved = owner.exportWorldSnapshot();
+  assert.ok(saved);
+  assert.ok(compactNativeAttestationTables(saved), 'throw metadata stays inside the native save envelope');
+  assert.equal(owner.canonicalizeWorldSnapshot(saved), true);
+  assert.equal(owner.records.get(2)._impulseStampTick, stamp, 'exact adoption retains the impulse clock');
+  const elapsed = owner.tick - stamp;
+  for (const paced of [false, true]) {
+    const options = { contactEpisodeSnapshot: saved, contactEpisodeTick: saved.tick };
+    if (paced) for (const _ of owner.rebuildWorldFromEntitiesSteps(entities, options)) { /* drain paced rebuild */ }
+    else owner.rebuildWorldFromEntities(entities, options);
+    assert.equal(owner.tick - owner.records.get(2)._impulseStampTick, elapsed, 'fallback carries age into its new owner clock');
+    owner._stepContactReceipts = [{ aId: 1, bId: 2, preSolveClosingSpeed: 60 }];
+    assert.equal(owner._victimDvBound(owner.records.get(1)), SWARM_FEEL_PROFILE.contact.impactTransferDv);
+    owner._stepContactReceipts = null;
+  }
 });

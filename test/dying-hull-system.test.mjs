@@ -294,6 +294,12 @@ test('a heavier hull fails longer and sheds fragments through the fracture owner
   const piecesBefore = h.state.entityList.filter((e) => e.data && e.data.collisionTearOff).length;
   killByGunfire(h, a);
   killByGunfire(h, b);
+  // The production dying pass runs later in this same sim tick, after combat.
+  h.dyingSystem.update(DT, h.state);
+  const immediate = events(h, 'dyingHull:ruptured');
+  assert.equal(immediate.length, 1, 'only the light hull ruptures on the kill tick');
+  assert.equal(immediate[0].tick, h.state.tick);
+  assert.equal(immediate[0].payload.victimId, a.id);
   h.tick(1);
   const [lightBegin, heavyBegin] = events(h, 'dyingHull:begin').map((e) => e.payload);
   assert.equal(lightBegin.tier, 'light');

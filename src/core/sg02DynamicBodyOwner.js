@@ -561,7 +561,11 @@ export class Sg02DynamicBodyOwner {
         createdCanSleep: rec._createdCanSleep === true,
         sleepAllowed: rec._sleepAllowed ?? null,
         contactEpisode: { lastTick: rec._playerContactLastTick ?? null,
-          cumulativeDeltaV: rec._playerContactCumulativeDeltaV ?? 0 },
+          cumulativeDeltaV: rec._playerContactCumulativeDeltaV ?? 0,
+          // S1: recent-throw provenance survives save/load as an AGE, so a body thrown just
+          // before the save still reads thrown for the rest of the provenance window.
+          ...(Number.isSafeInteger(rec._impulseStampTick) && rec._impulseStampTick <= this.tick
+            ? { impulseAgeTicks: this.tick - rec._impulseStampTick } : {}) },
       };
     }
     const attachments = {};
@@ -734,6 +738,11 @@ export class Sg02DynamicBodyOwner {
           || saved.contactEpisode.cumulativeDeltaV < 0) throw new Error('invalid_contact_episode');
         rec._playerContactLastTick = saved.contactEpisode.lastTick;
         rec._playerContactCumulativeDeltaV = saved.contactEpisode.cumulativeDeltaV;
+        if (saved.contactEpisode.impulseAgeTicks != null) {
+          if (!Number.isSafeInteger(saved.contactEpisode.impulseAgeTicks)
+            || saved.contactEpisode.impulseAgeTicks < 0) throw new Error('invalid_contact_episode');
+          rec._impulseStampTick = candidate.tick - saved.contactEpisode.impulseAgeTicks;
+        }
         claimed.add(entity.id); handles.add(handle); remapped.set(savedId, entity.id);
       }
       if (claimed.size !== live.length) throw new Error('unclaimed_current_body');
@@ -817,6 +826,9 @@ export class Sg02DynamicBodyOwner {
       frameOrigin: options.frameOrigin || this._frameOrigin,
       frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
     });
+    // The rebuilt owner's step clock continues, never rewinds: throw provenance and contact
+    // episodes are stamped in tick space, so a zeroed clock would read live stamps as future.
+    candidate.tick = Math.max(this.tick, contactRestore ? contactRestore.tick : 0);
     try {
       // Construction may move coincident spawns. Stage those mirrors too so a later
       // native construction failure cannot mutate entities belonging to the old owner.
@@ -897,6 +909,8 @@ export class Sg02DynamicBodyOwner {
       frameOrigin: options.frameOrigin || this._frameOrigin,
       frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
     });
+    // The rebuilt owner's step clock continues, never rewinds (see rebuildWorldFromEntities).
+    candidate.tick = Math.max(this.tick, contactRestore ? contactRestore.tick : 0);
     let committed = false;
     try {
       // Construction may move coincident spawns. Stage those mirrors too so a later
@@ -952,13 +966,19 @@ export class Sg02DynamicBodyOwner {
       if (id == null) continue;
       const rec = byId.get(String(id));
       const entity = rec?.entity, original = originalContracts.get(entity);
-      if (!entity || entity.alive === false || entity.isPlayer !== true || !rec.spec.dynamic
+      if (!entity || entity.alive === false || !rec.spec.dynamic
         || !original || !entities.includes(entity) || original.life !== entity.occupantGeneration
         || original.spec !== entity.physicsBody || original.data !== entity.data) continue;
       if (mirrors.some(mirror => mirror.entity === entity.pos || mirror.entity === entity.prevPos)) continue;
       if (!remap && (!Number.isSafeInteger(saved?.sourceLife) || saved.sourceLife <= 0
         || occupantGenerationOf(entity) !== saved.sourceLife)) continue;
       const episode = saved?.contactEpisode;
+      // S1: recent-throw provenance survives rebuild for ANY body (thrown rocks and hulls are
+      // not players) — restored as a stamp behind the restore tick, never a refreshed window.
+      if (Number.isSafeInteger(episode?.impulseAgeTicks) && episode.impulseAgeTicks >= 0) {
+        rec._impulseStampTick = tick - episode.impulseAgeTicks;
+      }
+      if (entity.isPlayer !== true) continue;
       if (!episode || !Number.isSafeInteger(episode.lastTick) || episode.lastTick < 0
         || episode.lastTick > tick || tick - episode.lastTick > PLAYER_CONTACT_EVENT_BRIDGE_TICKS
         || !Number.isFinite(episode.cumulativeDeltaV) || episode.cumulativeDeltaV < 0) continue;
@@ -2157,13 +2177,14 @@ export class Sg02DynamicBodyOwner {
 
   // S1/P2 — does a contact partner qualify as a projectile under the profile? Tumbling, or
   // carrying impulse provenance inside the thrown window (a queued impulse moved it recently).
-  _swarmProjectilePartner(other, contact) {
+  _swarmProjectilePartner(other, contact, tick = this.tick) {
     if (!other || !contact) return false;
     if (other._tumbling === true) return true;
     const stamp = other._impulseStampTick;
-    return Number.isFinite(stamp)
-      && (this.tick - stamp) <= Math.max(0, Math.round(contact.thrownProvenanceS * 60));
+    return Number.isSafeInteger(stamp) && stamp <= tick
+      && (tick - stamp) < Math.max(1, Math.round(contact.thrownProvenanceS * 60));
   }
+
 
   // S1/P2 — the dv bound one body's own-contact response may carry. Adventure keeps the
   // tumble-or-40 law exactly. A stamped Swarm body keeps the full transfer bound when it is
@@ -3423,15 +3444,45 @@ export class Sg02DynamicBodyOwner {
       if (!(rawImpulse > 0)) return;
       // Scalar running min; identical to Math.min(...dynamicCaps) including NaN propagation.
       let cap = Infinity;
+      const direction = event.maxForceDirection();
+      const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
+      const a = aFirst ? recA : recB;
+      const b = aFirst ? recB : recA;
+      const aExpected = a.expected;
+      const bExpected = b.expected;
+      const aKinematics = a.kinematics;
+      const bKinematics = b.kinematics;
+      const aVx = a.spec.dynamic ? finite(aExpected && aExpected.vx) : 0;
+      const aVz = a.spec.dynamic ? finite(aExpected && aExpected.vz) : 0;
+      const bVx = b.spec.dynamic ? finite(bExpected && bExpected.vx) : 0;
+      const bVz = b.spec.dynamic ? finite(bExpected && bExpected.vz) : 0;
+      const nABx = finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x);
+      const nABz = finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z);
+      const rawNormal = normalizePlanarDirection(direction);
+      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
+        ? { x: -rawNormal.x, z: -rawNormal.z }
+        : rawNormal;
+      // S1/P2: the pair's real impact speed — the same inputs the receipt reports below.
+      const pairClosing = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
       // A contact with a hull that has lost its helm is a projectile hit: the raised bound applies to
       // BOTH sides, or the struck hull's own 40 WU/s per-tick bound would truncate the knock.
       // The player's own record keeps the ordinary bound: its per-contact delta-V feeds the fragile-cargo
       // and camera-trauma receipts, and a fling must not raise what a hit on the player costs it.
       const tumbleContact = recA._tumbling === true || recB._tumbling === true;
-      // S1/P2: a stamped victim's cap also rises when the partner is impulse-thrown, so a
-      // thrown rock or break-up chunk knocks the pack as hard as a tumbling hull does.
-      const raisedA = tumbleContact || this._swarmProjectilePartner(recB, swarmFeelContact(recA.entity));
-      const raisedB = tumbleContact || this._swarmProjectilePartner(recA, swarmFeelContact(recB.entity));
+      // S1/P2: unstamped bodies keep the legacy rule — any tumbling partner is a projectile
+      // hit. A stamped Swarm victim needs MORE: a projectile partner (tumbling or
+      // impulse-thrown) AND a real pre-solve impact, so a resting thrown body or a
+      // slow-drifting tumble cannot inflate the receipt. Same bar as _victimDvBound.
+      const contactA = swarmFeelContact(recA.entity);
+      const contactB = swarmFeelContact(recB.entity);
+      const raisedA = contactA
+        ? (recA._tumbling === true
+          || (this._swarmProjectilePartner(recB, contactA) && pairClosing >= contactA.impactMinClosing))
+        : tumbleContact;
+      const raisedB = contactB
+        ? (recB._tumbling === true
+          || (this._swarmProjectilePartner(recA, contactB) && pairClosing >= contactB.impactMinClosing))
+        : tumbleContact;
       if (recA.spec.dynamic) {
         cap = Math.min(cap, effectiveMass(recA)
           * (raisedA && !(recA.entity && recA.entity.isPlayer === true)
@@ -3446,7 +3497,6 @@ export class Sg02DynamicBodyOwner {
       const boundedImpulse = Math.min(rawImpulse, cap);
       if (!(boundedImpulse > 0)) return;
 
-      const direction = event.maxForceDirection();
       const translationA = recA.body.translation();
       const translationB = recB.body.translation();
       pointScratch.x = (finite(translationA.x) + finite(translationB.x)) * 0.5;
@@ -3455,19 +3505,6 @@ export class Sg02DynamicBodyOwner {
         this.world.contactPair(ownedA.collider, ownedB.collider, this._contactManifoldCb);
       }
       const global = frameToGlobal(pointScratch, this._frameOrigin, this._globalScratch);
-      const aFirst = compareIds(recA.entity.id, recB.entity.id) <= 0;
-      const a = aFirst ? recA : recB;
-      const b = aFirst ? recB : recA;
-      const aExpected = a.expected;
-      const bExpected = b.expected;
-      const aKinematics = a.kinematics;
-      const bKinematics = b.kinematics;
-      const aVx = a.spec.dynamic ? finite(aExpected && aExpected.vx) : 0;
-      const aVz = a.spec.dynamic ? finite(aExpected && aExpected.vz) : 0;
-      const bVx = b.spec.dynamic ? finite(bExpected && bExpected.vx) : 0;
-      const bVz = b.spec.dynamic ? finite(bExpected && bExpected.vz) : 0;
-      const nABx = finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x);
-      const nABz = finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z);
       const causalActorId = directContactCausalActorId(
         a.entity.id,
         b.entity.id,
@@ -3493,15 +3530,11 @@ export class Sg02DynamicBodyOwner {
       // against it. nAB (computed above from the pair kinematics) is the positional a→b axis;
       // the flip keeps the solver's true normal direction and fixes only which half it names.
       // A degenerate axis (co-located kinematics) stays unflipped — nothing honest to sign.
-      const rawNormal = normalizePlanarDirection(direction);
-      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
-        ? { x: -rawNormal.x, z: -rawNormal.z }
-        : rawNormal;
       // A compound hull's center can lie far along the wall from the actual surface the
       // player is driving into. Classify its stopping response by that surface normal;
       // the centroid axis otherwise mistakes native wall braking for an external shove
       // and restores thrust velocity while the solver correctly keeps the hull outside.
-      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
+      const closingSpeed = pairClosing;
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const preSolveClosingNormal = existing && closingSpeed <= finite(existing.preSolveClosingSpeed, -Infinity)
         ? (existing.preSolveClosingNormal || existing.normal)
@@ -3733,7 +3766,7 @@ export class Sg02DynamicBodyOwner {
       rec.body.applyImpulse(planeForceInto(impulse, _planeForceScratch), true);
       // S1: impulse provenance — a queued impulse moved this body, so it reads as "thrown"
       // for the bowling-pin rule inside the provenance window. Cost is one int per impulse.
-      rec._impulseStampTick = this.tick;
+      if (Math.hypot(finite(impulse.x), finite(impulse.z)) > 0) rec._impulseStampTick = this.tick;
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
@@ -5630,9 +5663,13 @@ function retainPlayerContactRestore(options) {
     if (targets.has(String(target))) return null;
     targets.add(String(target));
   }
-  // Retain only player gameplay-budget claims, never opaque solver bytes or unrelated bodies.
+  // Retain only gameplay-budget claims, never opaque solver bytes or unrelated bodies:
+  // player contact episodes, and any body carrying live S1 throw provenance (a stamped
+  // impulse age is itself the claim's reason to exist).
   // The table validator bounds traversal and excludes accessors/nonfinite values before cloning.
-  const claims = payload.bodyOrder.filter(id => payload.bodies[id]?.identity?.isPlayer === true)
+  const claims = payload.bodyOrder.filter(id => payload.bodies[id]?.identity?.isPlayer === true
+    || (Number.isSafeInteger(payload.bodies[id]?.contactEpisode?.impulseAgeTicks)
+      && payload.bodies[id].contactEpisode.impulseAgeTicks >= 0))
     .map(id => { const saved = payload.bodies[id]; return [id, nativePlain({
       identity: saved.identity, sourceLife: saved.sourceLife, state: saved.state,
       contract: saved.contract, contactEpisode: saved.contactEpisode,
