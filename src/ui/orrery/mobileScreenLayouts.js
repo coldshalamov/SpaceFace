@@ -265,6 +265,19 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__label { max-width:55%; white-space:normal !important; }
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
+  /* Industry blocked reason: chainBeam seats the compact reason at xProc with an inline 320px width
+     and white-space:nowrap at 22px, so "Needs refinery" ran ~21–36px past the right edge at 360–390
+     phone widths (the 55% label box clipped its parent, but overflow:visible let the nowrap word
+     paint past the viewport). Own the chain's full width and let the reason wrap. */
+  ${B} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) {
+    left:0 !important; right:0 !important; width:auto !important; max-width:100% !important;
+    white-space:normal !important; text-align:left !important; }
+  ${B} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb {
+    align-items:flex-start !important; text-align:left !important; max-width:100% !important; }
+  ${B} .orr-ind-chain .orr-chain__reason,
+  ${B} .orr-ind-chain .orr-chain__reason.is-compact {
+    white-space:normal !important; overflow-wrap:anywhere !important; max-width:100% !important;
+    font-size:18px !important; letter-spacing:.1em !important; line-height:1.15 !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
   /* Contract dossier: a phone-sized title and reward, and ACCEPT docks on a full-width opaque band so the
      dossier scrolls under it instead of through it. Over 800px tall only:
