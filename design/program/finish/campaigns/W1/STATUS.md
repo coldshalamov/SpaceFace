@@ -34,3 +34,13 @@
 
 `design/program/finish/campaigns/W1/**` + append-only Lane 5 section in `design/program/NOW.md`.
 No other paths touched. No Swarm, Lane-4, or Lane-6 files read for edit.
+
+## Publish state
+
+Published to origin/master (paths-only procedure): W1 diagnosis/inventory/Journey/STATUS +
+inventory files + the NOW.md Lane 5 section. Incident recorded for honesty: the first paths-only
+publish flattened the `W1/` directory into `W1*` names (ls-tree directory pathspec + index-info
+quirk); repaired in commit 616aecbc (restore 7 correct paths, delete 7 flattened ones; verified
+diff). Remote tree verified: exactly `design/program/finish/campaigns/W1/**`, 7 files. Lesson for
+the next paths-only publish: use `git ls-tree -r HEAD -- <path>` (recursive, blob entries only) —
+never a directory pathspec.
