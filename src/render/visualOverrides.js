@@ -1,6 +1,7 @@
 import { cinderglassJobLatchPaint } from '../features/cinderglassJob/physical.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
@@ -944,6 +945,11 @@ export function packagedPropSpec(entity) {
     return { file: 'places/place_lane_beacon.glb', slot: 'place', radius: 14, hideImmediately: true };
   }
   if (entity.type === 'payload' && !data.distressBeacon && !data.rescuePriority) {
+    // The finite Ward machinery already has its production body from visualFactory.
+    // Replacing that graph with the ambient cargo pod hides its sockets, live brace
+    // and lamp, and gives the rendered object a different collision silhouette.
+    // Explicit authored recipes above retain their normal admission priority.
+    if (isLanternWardHardwareEntity(entity)) return null;
     return {
       file: GENERIC_TOW_PACKAGED_PROP.file,
       slot: GENERIC_TOW_PACKAGED_PROP.slot,

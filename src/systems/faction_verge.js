@@ -52,6 +52,7 @@ import {
   VERGE_BARKS,
 } from '../data/factions/vergelayers.js';
 import { rankForState } from './factions.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 
@@ -1882,13 +1883,15 @@ export const vergeCourt = {
       return;
     }
     this._tickDirectives(state, dt);
-    this._tickMeasureEngines(state);
+    // Mass weigh-ins are an O(machines x bodies) census of stamps that only change on refit.
+    if (strideDt(this, 'measure', dt, 8, state) > 0) this._tickMeasureEngines(state);
     this._tickAppeal(state);
     this._tickJury(state);
     this._tickLineTrial(state);
     // Border authority: posture first so the rings answer with the standing in hand.
     this._tickTreatment(state);
-    this._tickCheckpoints(state, dt);
+    const cpDt = strideDt(this, 'checkpoints', dt, 3, state);
+    if (cpDt > 0) this._tickCheckpoints(state, cpDt);
     this._tickPermits(state, dt);
     this._tickEscort(state, dt);
     this._tickPursuit(state, dt);

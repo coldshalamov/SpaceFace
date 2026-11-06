@@ -3305,6 +3305,7 @@ export const aftermathWrecks = {
     let entity = null;
     if (typeof placeMine === 'function') {
       entity = placeMine({
+        ownerId: null,
         pos: { x: pos.x, z: pos.z },
         team: 1,
         factionId: 'faction_reach',

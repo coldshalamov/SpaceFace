@@ -7,6 +7,7 @@ import { createIronKrakenWreckVisual, ironKrakenWreckProfileFor } from './ironKr
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
+import { buildLanternWardVisual, isLanternWardBody } from './lanternWardVisuals.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -76,6 +77,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { isSurvivorPodEntity, MAYDAY_LAMP_COLOR, MAYDAY_LAMP_CORE_COLOR } from './survivorPodVisual.js';
+import { worthTierFor, worthReadFor } from './pickupWorthRead.js';
 import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
@@ -2406,7 +2409,7 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     if (def.variant === 'ice') {
-      return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+      const material = new THREE.MeshPhysicalMaterial({
         color,
         roughness: 0.06,
         metalness: 0.0,
@@ -2421,7 +2424,20 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         clearcoatRoughness: 0.08,
         envMapIntensity: 1.15,
         fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK);
+      });
+      // Ordinary world ice keeps its colour/specular skin without re-rendering the whole
+      // opaque scene for screen-space refraction. Retain the exact source params for the
+      // bounded pilot comparison; authored hero/ship/station materials use other owners.
+      material.userData.spacefaceTransmissionBudget = {
+        family: 'ordinary-ice', strategy: 'environment-alpha',
+        original: { transmission: material.transmission, opacity: material.opacity,
+          transparent: material.transparent, depthWrite: material.depthWrite },
+      };
+      material.transmission = 0;
+      material.opacity = Math.min(material.opacity, 0.72);
+      material.transparent = true;
+      material.depthWrite = false;
+      return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -2532,22 +2548,32 @@ function buildAsteroid(e) {
   } else if (!opticKind && def.variant === 'gas') {
     const hull = new THREE.Mesh(
       geo,
-      getMaterial('ast:gashull', () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#2d6a52'),
-        roughness: 0.42,
-        metalness: 0,
-        transmission: 0.88,
-        ior: 1.04,
-        thickness: 3.6,
-        attenuationColor: new THREE.Color('#3dff9a'),
-        attenuationDistance: 2.1,
-        emissive: new THREE.Color('#10a060'),
-        emissiveIntensity: 0.28,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        fog: true,
-      }), SHARED_MATERIAL_ROLE.ROCK)),
+      getMaterial('ast:gashull', () => {
+        const material = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color('#2d6a52'),
+          roughness: 0.42,
+          metalness: 0,
+          transmission: 0.88,
+          ior: 1.04,
+          thickness: 3.6,
+          attenuationColor: new THREE.Color('#3dff9a'),
+          attenuationDistance: 2.1,
+          emissive: new THREE.Color('#10a060'),
+          emissiveIntensity: 0.28,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          fog: true,
+        });
+        material.userData.spacefaceTransmissionBudget = {
+          family: 'ordinary-gas', strategy: 'environment-alpha',
+          original: { transmission: material.transmission, opacity: material.opacity,
+            transparent: material.transparent, depthWrite: material.depthWrite },
+        };
+        material.transmission = 0;
+        material.opacity = Math.min(material.opacity, 0.70);
+        return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
+      }),
     );
     hull.scale.setScalar(R * 1.22);
     hull.userData.spacefaceTags = { greeble: true };
@@ -3816,6 +3842,11 @@ function buildPickup(e) {
   // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
   // that is not a known commodity keep the original octahedron.
   const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
+  // inf-pod-worth: the drop's light answers what the lot is worth (pickupWorthRead.js reads
+  // commodityId + amount off the sim's own data). Junk rests dimmer, plain keeps today's read,
+  // rich burns hotter and builds the double band below.
+  const worthTier = worthTierFor(e && e.data);
+  const worth = worthReadFor(worthTier);
   const gem = new THREE.Mesh(
     shapeName
       ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
@@ -3845,6 +3876,26 @@ function buildPickup(e) {
   g.userData.pickupHalo = halo;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // The worth tier rides userData so the pose pass (pickupMotionPresentation) can grade the
+  // ring's floor/kick without re-reading the price table every frame.
+  g.userData.worthTier = worthTier;
+  // Rich lots build the double band: a second, tighter ring the eye reads as "that one"
+  // across the field. Posed by pickupMotionPresentation against the outer ring's clock.
+  if (worth.doubleBand) {
+    const band = new THREE.Mesh(
+      getGeometry('pickup:worthband', () => new THREE.TorusGeometry(0.95, 0.03, 6, 24)),
+      getMaterial(`pickupworthband:${color}`, () => new THREE.MeshBasicMaterial({
+        color: new THREE.Color(color), transparent: true, opacity: 0.4,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })),
+    );
+    band.material = band.material.clone();
+    band.scale.setScalar(R);
+    band.userData.baseScale = R;
+    band.frustumCulled = false;
+    g.add(band);
+    g.userData.worthBand = band;
+  }
   // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
   // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
@@ -3854,10 +3905,11 @@ function buildPickup(e) {
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
   // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
   // The breathe carries farther than it used to: at flight-camera range the old ±28% never
-  // separated a live drop from dark scenery.
+  // separated a live drop from dark scenery. The worth read scales the heat: junk rests dim,
+  // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.material.emissiveIntensity = 1.6 * (1 + 0.45 * Math.sin(t * 3 + ph));
+    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * (1 + 0.45 * Math.sin(t * 3 + ph));
   };
   return g;
 }
@@ -4442,21 +4494,156 @@ export function* instantiatePackagedPrimitivesSteps(record, parent, options = {}
     }
   }
   const primitives = (record && record.primitives) || [];
+  // Same-material opaque leaves collapse into one mesh (shared cached geometry per record):
+  // a hulk fragment is ~50 leaves over ~12 materials. The flat route bakes every transform
+  // and binds no pivots, so nothing addresses a leaf by name.
+  const mergeable = includeAllLods ? null : new Map();
   for (let i = 0; i < primitives.length; i++) {
     if (i > 0 && (i % 128) === 0) yield;
     const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!includeAllLods && !isLod0Primitive(primitive)) continue;
-    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
-    mesh.name = primitive.name || 'PackagedPrimitive';
     if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
     else if (Array.isArray(primitive.matrix) && primitive.matrix.length === 16) tmp.fromArray(primitive.matrix);
     else tmp.identity();
+    // A mirrored leaf relies on three flipping the front face from the mesh matrix; baked vertices would not.
+    if (mergeable && tmp.determinant() > 0 && isMergeablePackagedPrimitive(primitive)) {
+      let list = mergeable.get(primitive.material);
+      if (!list) { list = []; mergeable.set(primitive.material, list); }
+      list.push({ primitive, matrix: tmp.clone() });
+      continue;
+    }
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name || 'PackagedPrimitive';
     mesh.applyMatrix4(tmp);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
   }
+  if (!mergeable) return;
+  for (const [material, list] of mergeable) {
+    yield;
+    const merged = list.length > 1 ? mergedPackagedGeometry(record, material, list) : null;
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.name = `${list[0].primitive.name || 'PackagedPrimitive'}+${list.length}`;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      continue;
+    }
+    for (const { primitive, matrix } of list) {
+      const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+      mesh.name = primitive.name || 'PackagedPrimitive';
+      mesh.applyMatrix4(matrix);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+    }
+  }
+}
+
+function isMergeablePackagedPrimitive(primitive) {
+  const material = primitive.material, geometry = primitive.geometry;
+  if (Array.isArray(material) || !geometry.isBufferGeometry || !geometry.getAttribute('position')) return false;
+  if (material.transparent === true || material.depthWrite === false || material.blending !== THREE.NormalBlending
+      || (material.transmission || 0) > 0) return false;
+  if (geometry.groups.length > 0 || geometry.drawRange.start !== 0 || geometry.drawRange.count !== Infinity) return false;
+  if (geometry.getAttribute('skinIndex') || (geometry.morphAttributes && geometry.morphAttributes.position)) return false;
+  if (/collision/i.test(String(primitive.name || ''))) return false;
+  return true;
+}
+
+// Cached per decoded record + material so every wreck of one file shares a single GPU upload.
+// A bounded LRU really disposes the oldest; a disposed entry still drawn just re-uploads.
+const _packagedMergeCache = new WeakMap();
+const _packagedMergeLru = [];
+const PACKAGED_MERGE_LRU_MAX = 96;
+
+function mergedPackagedGeometry(record, material, list) {
+  if (!record || typeof record !== 'object') return null;
+  let byMaterial = _packagedMergeCache.get(record);
+  if (!byMaterial) { byMaterial = new Map(); _packagedMergeCache.set(record, byMaterial); }
+  const sig = `${list.length}:${list.map((item) => item.primitive.name).join('|')}`;
+  let entry = byMaterial.get(material);
+  if (entry && entry.sig === sig) return entry.geometry;
+  const geometry = mergePackagedLeafGeometries(list);
+  if (!geometry) return null;
+  geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true };
+  const realDispose = geometry.dispose.bind(geometry);
+  geometry.dispose = () => {};
+  entry = { sig, geometry, realDispose };
+  byMaterial.set(material, entry);
+  _packagedMergeLru.push(entry);
+  if (_packagedMergeLru.length > PACKAGED_MERGE_LRU_MAX) {
+    const old = _packagedMergeLru.shift();
+    try { old.realDispose(); } catch (_) { /* best effort */ }
+  }
+  return geometry;
+}
+
+const _mergeV = new THREE.Vector3();
+const _mergeN = new THREE.Vector3();
+const _mergeNormalMatrix = new THREE.Matrix3();
+
+// Bakes each leaf's matrix into float vertex data. Reads through getX() so quantized
+// (normalized Int16/Int8) glTF attributes decode instead of clamping.
+function mergePackagedLeafGeometries(list) {
+  const first = list[0].primitive.geometry;
+  const names = Object.keys(first.attributes).sort();
+  const indexed = !!first.index;
+  let vertexTotal = 0, indexTotal = 0;
+  for (const { primitive } of list) {
+    const g = primitive.geometry;
+    const other = Object.keys(g.attributes).sort();
+    if (other.length !== names.length || other.some((n, i) => n !== names[i]) || !!g.index !== indexed) return null;
+    for (const n of names) {
+      const a = g.attributes[n];
+      if (a.isInterleavedBufferAttribute === true || a.itemSize !== first.attributes[n].itemSize) return null;
+    }
+    vertexTotal += g.attributes.position.count;
+    if (indexed) indexTotal += g.index.count;
+  }
+  if (vertexTotal > 4000000) return null;
+  const out = {};
+  for (const n of names) out[n] = new Float32Array(vertexTotal * first.attributes[n].itemSize);
+  const index = indexed ? new Uint32Array(indexTotal) : null;
+  let vOffset = 0, iOffset = 0;
+  for (const { primitive, matrix } of list) {
+    const g = primitive.geometry;
+    const count = g.attributes.position.count;
+    _mergeNormalMatrix.getNormalMatrix(matrix);
+    for (const n of names) {
+      const a = g.attributes[n], size = a.itemSize, dst = out[n];
+      for (let v = 0; v < count; v++) {
+        const o = (vOffset + v) * size;
+        if (n === 'position') {
+          _mergeV.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix4(matrix);
+          dst[o] = _mergeV.x; dst[o + 1] = _mergeV.y; dst[o + 2] = _mergeV.z;
+        } else if (n === 'normal') {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).applyMatrix3(_mergeNormalMatrix).normalize();
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z;
+        } else if (n === 'tangent' && size === 4) {
+          _mergeN.set(a.getX(v), a.getY(v), a.getZ(v)).transformDirection(matrix);
+          dst[o] = _mergeN.x; dst[o + 1] = _mergeN.y; dst[o + 2] = _mergeN.z; dst[o + 3] = a.getW(v);
+        } else {
+          for (let c = 0; c < size; c++) dst[o + c] = c === 0 ? a.getX(v) : c === 1 ? a.getY(v) : c === 2 ? a.getZ(v) : a.getW(v);
+        }
+      }
+    }
+    if (indexed) {
+      const src = g.index;
+      for (let k = 0; k < src.count; k++) index[iOffset + k] = src.getX(k) + vOffset;
+      iOffset += src.count;
+    }
+    vOffset += count;
+  }
+  const merged = new THREE.BufferGeometry();
+  for (const n of names) merged.setAttribute(n, new THREE.BufferAttribute(out[n], first.attributes[n].itemSize));
+  if (index) merged.setIndex(new THREE.BufferAttribute(index, 1));
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+  return merged;
 }
 
 export function fitPackagedGroup(group, targetRadius) {
@@ -5220,14 +5407,19 @@ function buildDrone(e) {
   const R = e.radius || 4;
   const pal = resolvePalette(e);
   const g = new THREE.Group();
-  const core = new THREE.Mesh(getGeometry('drone:core', () => new THREE.OctahedronGeometry(0.6, 0)), hullMaterial(pal));
+  // Core + both arms share one hull material: one cached unit-space merged body is a single
+  // draw instead of three. Only the emissive glow stays separate (different material).
+  const core = new THREE.Mesh(getGeometry('drone:body', () => {
+    const parts = [new THREE.OctahedronGeometry(0.6, 0)];
+    for (const sgn of [1, -1]) {
+      parts.push(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2).translate(0, 0, sgn * 0.5));
+    }
+    const flat = parts.map((part) => (part.index ? part.toNonIndexed() : part));
+    return mergeGeometries(flat, false) || flat[0];
+  }), hullMaterial(pal));
   core.scale.setScalar(R); g.add(core);
   const glow = new THREE.Mesh(getGeometry('drone:glow', () => new THREE.SphereGeometry(0.22, 8, 6)), emissiveMaterial(pal.accent, 2.2));
   glow.scale.setScalar(R); g.add(glow);
-  for (const sgn of [1, -1]) {
-    const arm = new THREE.Mesh(getGeometry('drone:arm', () => new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2)), hullMaterial(pal));
-    arm.position.set(0, 0, sgn * R * 0.5); arm.scale.setScalar(R); g.add(arm);
-  }
   g.userData.kind = 'drone';
   return attachPackagedBody(g, DRONE_PACKAGED_FILE, e);
 }
@@ -6932,7 +7124,92 @@ function buildBroodRemainVisual(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// SURVIVOR EJECTION POD — a mayday is a person, not cargo (inf-mayday-pod).
+// The causal eject loop (src/systems/survivorPod.js) used to render through the generic
+// sealed-cargo canister, so a 180-second oxygen mayday was visually just another freight
+// drop in the field. The lifeboat composes from survivorPodVisual.js decisions: a blunt
+// capsule with a viewport on the nose, a retro block on the tail, a foam crash collar, and
+// a distress lamp mast running the two-short-one-long group. The lamp's strobe is painted
+// per-frame by ordnanceMotionPresentation on the CLONED lamp material this factory hands
+// over via userData.survivorMaydayLamp (per-pod material, so pods never share a strobe —
+// the shared-material pose contract stays intact). userData carries the payload contract
+// intact so tether, scan and loot owners keep working unchanged.
+// ---------------------------------------------------------------------------------------------
+function buildSurvivorPod(e) {
+  const R = Math.max(1, (e && e.radius) || 5);
+  const g = new THREE.Group();
+  const shell = getMaterial('survivorpod:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x9aa4ac, roughness: 0.52, metalness: 0.38, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const collar = getMaterial('survivorpod:collar', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2e3438, roughness: 0.85, metalness: 0.2,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const retro = getMaterial('survivorpod:retro', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x46515a, roughness: 0.6, metalness: 0.55,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const viewport = getMaterial('survivorpod:viewport', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x1d2b30, emissive: new THREE.Color(MAYDAY_LAMP_CORE_COLOR), emissiveIntensity: 0.9,
+    roughness: 0.25, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const body = new THREE.Group();
+  body.name = 'SurvivorPodBody';
+  const add = (geoKey, geoBuild, material, name, pos) => {
+    const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+    m.name = name;
+    if (pos) m.position.set(pos[0], pos[1], pos[2]);
+    m.frustumCulled = false;
+    body.add(m);
+    return m;
+  };
+  // Blunt capsule along X — barrel, rounded nose, and the tail the retro block bolts to.
+  add('survivorpod:barrel', () => new THREE.CylinderGeometry(0.34, 0.36, 0.92, 10).rotateZ(Math.PI / 2),
+    shell, 'SurvivorPodBarrel', [0, 0, 0]);
+  add('survivorpod:nose', () => new THREE.SphereGeometry(0.34, 10, 8),
+    shell, 'SurvivorPodNose', [0.46, 0, 0]);
+  // The viewport: a ringed eye on the nose with a warm burn behind it — the lamp's steady
+    // read between strobe groups (maydayViewportBurn paints the cloned lamp, this glass is the
+    // always-lit promise that someone is alive in here).
+  add('survivorpod:viewportring', () => new THREE.TorusGeometry(0.16, 0.035, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodViewportRing', [0.62, 0, 0]);
+  add('survivorpod:viewportglass', () => new THREE.SphereGeometry(0.13, 8, 6),
+    viewport, 'SurvivorPodViewportGlass', [0.6, 0, 0]);
+  // Foam crash collar around the mid — a thrown lifeboat, not a machined cargo drum.
+  add('survivorpod:crashcollar', () => new THREE.TorusGeometry(0.4, 0.075, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodCrashCollar', [0, 0, 0]);
+  // Retro block on the tail: the burn that flung it clear, dead since.
+  add('survivorpod:retroblock', () => new THREE.BoxGeometry(0.22, 0.42, 0.42),
+    retro, 'SurvivorPodRetroBlock', [-0.52, 0, 0]);
+  // Distress lamp mast on top: warning red (the luminaire family's warning color), per-pod
+  // cloned so the two-short-one-long group phases per pod.
+  add('survivorpod:mast', () => new THREE.CylinderGeometry(0.025, 0.035, 0.3, 6),
+    retro, 'SurvivorPodLampMast', [-0.1, 0.49, 0]);
+  const lampMat = getMaterial('survivorpod:lamp', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2a0f0c, emissive: new THREE.Color(MAYDAY_LAMP_COLOR), emissiveIntensity: 1.2,
+    roughness: 0.4, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
+  add('survivorpod:lamp', () => new THREE.SphereGeometry(0.09, 8, 6),
+    lampMat, 'SurvivorPodDistressLamp', [-0.1, 0.66, 0]);
+  body.scale.setScalar(R);
+  g.add(body);
+  const causal = (e && e.data && e.data.survivorPodCausal) || null;
+  g.userData.survivorMaydayLamp = {
+    material: lampMat,
+    ejectedAt: causal ? causal.ejectedAt : (e && e.data && e.data.ejectedAt),
+    expireAt: causal ? causal.expireAt : (e && e.data && e.data.expireAt),
+    phase: (hashId(e && e.id) % 256) / 256,
+  };
+  g.userData.kind = 'payload';
+  g.userData.interactionKind = 'payload';
+  g.userData.visualLanguage = 'ejection-lifeboat';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // A pod from a killed crew is a lifeboat with a mayday to shout, never a canister.
+  if (isSurvivorPodEntity(e)) return buildSurvivorPod(e);
   // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
   // the silhouette is the hazard warning at chase distance.
   if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
@@ -6977,6 +7254,21 @@ function buildPayload(e) {
   );
   transponder.position.y = 0.47;
   g.add(transponder);
+  // inf-jettison-claim: a pod YOU jettisoned holds a brief claim window on its transponder —
+  // the sim stamps playerJettisonOrigin (only when the owner is this player) and embargoes
+  // the re-pickup. The lamp is a per-pod CLONE handed to the pose pass via userData (the
+  // mayday-lamp grammar) — the shared transponder material is never touched, so ordinary
+  // payloads keep one static light and pay nothing.
+  if (e && e.data && e.data.playerJettisonOrigin
+      && Number.isFinite(Number(e.data.pickupEmbargoUntil))) {
+    const claimMat = transponder.material.clone();
+    transponder.material = claimMat;
+    g.userData.jettisonClaimLamp = {
+      material: claimMat,
+      until: Number(e.data.pickupEmbargoUntil),
+      base: claimMat.emissiveIntensity,
+    };
+  }
   g.scale.setScalar(R);
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
@@ -7065,6 +7357,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
     readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
+      if (isLanternWardBody(e)) return stampBuiltVisual(buildLanternWardVisual(e));
       try {
         if (!e) return null;
         // This mission keeps asteroid physics for the existing massline impact contract.

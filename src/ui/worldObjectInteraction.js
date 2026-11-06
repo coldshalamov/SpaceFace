@@ -572,7 +572,12 @@ export function createWorldObjectInteraction(ctx, screenManager) {
           || Math.abs(pt.y - lastRepickY) > 0.5;
         // Without a ResizeObserver the cached bounds can lie at any time; only the
         // observed path may sit out a repick.
-        if (moved || !viewportObserved || repickIdleS >= 0.125) {
+        // Raycasting the whole scene is the expensive part of this tick. Pointer drift
+        // repicks at ~7 Hz; a jump (> 48 px), layout change, or first pick is immediate.
+        const sweep = lastRepickX == null || viewportInvalidated
+          || Math.abs(pt.x - lastRepickX) > 48
+          || Math.abs(pt.y - lastRepickY) > 48;
+        if ((moved && (sweep || repickIdleS >= 0.14)) || !viewportObserved || repickIdleS >= 0.125) {
           repickIdleS = 0;
           const deliberateMove = viewportInvalidated || lastRepickX == null
             || Math.abs(pt.x - lastRepickX) > HOVER_SWEEP_MOVE_PX

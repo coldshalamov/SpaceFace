@@ -307,7 +307,12 @@ export class Sg02DynamicBodyOwner {
     this.world.timestep = this.fixedDt;
     if (this.world.integrationParameters) {
       this.world.integrationParameters.maxCcdSubsteps = 4;
-      this.world.integrationParameters.numSolverIterations = 12;
+      // Smooth Program (owner direction): 12 solver iterations ≈ doubled the cost of every
+      // Rapier step while a 2.5D game never stacks deep piles. 6 keeps tethers/contacts stable
+      // and is the largest single measured saving left in the step. A save written under a
+      // different count is refused by the native runtime contract and takes the designed
+      // scalar-rebuild path — that IS the migration; no envelope/schema bump required.
+      this.world.integrationParameters.numSolverIterations = 6;
       this.world.integrationParameters.normalizedPredictionDistance = 3.5;
       this.world.integrationParameters.contact_natural_frequency = 240;
     }

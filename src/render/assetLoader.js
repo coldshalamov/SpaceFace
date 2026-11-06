@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { installAuthoredPackedOrmOnPrimitives } from './packedOrmShader.js';
 import { prepareHullLayoutGeometry } from './illustratedHullLayout.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import {
@@ -1490,12 +1491,19 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       }
       return null;
     });
-    if (!record || runtime.retiring || !authoredConsumerIsActive(options)) return null;
+    if (!record || runtime.retiring) return null;
+    const stalePackage = record.renderPackage
+      && (record.renderPackage.evicted === true || record.renderPackage.released === true);
+    if (stalePackage) {
+      // Only this exact source task may be retired; a later generation owns its own request.
+      // Cache validity belongs to the package, not the observer's lifetime. A departed
+      // observer still retires an unmountable record, but must not start or join its retry.
+      if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+    }
+    if (!authoredConsumerIsActive(options)) return null;
     if (handoffResidency && handoffResidency.isOwnerReleased(options.residencyOwner)) return null;
     if (handoff && !handoff.shouldDecode()) return null;
-    if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
-      // Only this exact source task may be retired; a later generation owns its own request.
-      if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+    if (stalePackage) {
       if (handoff) handoff.cancel('stale-cache-hit');
       return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
     }
@@ -1715,6 +1723,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
     slot: expectedSlot || metadata.slot || null,
   });
+  installAuthoredPackedOrmOnPrimitives(primitives);
   canonicalizeObjectSurfaceProgramKeys(scene);
 
   const ktx2Textures = new Set();
@@ -1940,6 +1949,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
     }
   }
+  installAuthoredPackedOrmOnPrimitives(primitives);
   canonicalizeObjectSurfaceProgramKeys(scene);
   const materialProfile = { materials: profiled.size, roles: profiledRoles };
 

@@ -2641,6 +2641,7 @@ export const encounterDirector = {
     this.emit('encounter:choiceOffered', {
       encounterId: live.id, kind: live.shapeId,
       title: live.shape.title || live.zoneName || humanizeId(live.shapeId, 'Encounter'),
+      detail: live.shape.primaryLine || null,
       options, deadlineAt,
       timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
     });

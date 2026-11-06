@@ -490,11 +490,31 @@ export function createPackageDetachManifest(loaded, options = {}) {
  */
 export function computePlainFloat32Bounds(geometry) {
   const position = geometry && geometry.attributes && geometry.attributes.position;
-  if (!position || position.isInterleavedBufferAttribute || position.normalized
-    || position.itemSize !== 3 || !(position.array instanceof Float32Array)) return false;
+  if (!position || position.isInterleavedBufferAttribute || position.itemSize !== 3) return false;
+  // Quantized (KHR_mesh_quantization) normalized integer positions are the common release case;
+  // three's generic path pays getX/getY/getZ + denormalize per vertex. Dequantize into a scratch
+  // Float32Array once (same math as MathUtils.denormalize) and reuse the plain loops below.
+  let a = position.array;
+  if (!(a instanceof Float32Array)) {
+    let div = 0;
+    let lo = -Infinity;
+    if (position.normalized) {
+      if (a instanceof Uint16Array) { div = 65535; lo = 0; }
+      else if (a instanceof Int16Array) { div = 32767; lo = -1; }
+      else if (a instanceof Uint8Array) { div = 255; lo = 0; }
+      else if (a instanceof Int8Array) { div = 127; lo = -1; }
+    }
+    if (!div) return false;
+    const src = a;
+    a = new Float64Array(position.count * 3);
+    if (position.count * 3 > src.length) return false;
+    for (let i = 0, m = a.length; i < m; i++) {
+      const v = src[i] / div;
+      a[i] = v < lo ? lo : v;
+    }
+  } else if (position.normalized) return false;
   if (geometry.morphAttributes && geometry.morphAttributes.position
     && geometry.morphAttributes.position.length) return false;
-  const a = position.array;
   const n = position.count * 3;
   if (n > a.length) return false;
   if (!geometry.boundingBox) geometry.boundingBox = new Box3();

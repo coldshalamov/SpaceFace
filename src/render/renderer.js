@@ -1,4 +1,5 @@
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
+import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
@@ -179,6 +180,7 @@ import {
   authoredCompositionFingerprintForEntity,
   authoredCriticalVisualReadiness,
   authoredPrewarmRequestsForEntities,
+  initialWholeShipLodForBoundary,
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
   collectAuthoredInstancePoolRoots,
   collectPreparedAuthoredCompileRoots,
@@ -240,7 +242,7 @@ import {
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from './wholeShipLodPolicy.js';
+import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION, isOrdinaryLodShip } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -333,7 +335,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel, projectedShipDiameterPx, createShipLodState } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -1029,6 +1031,7 @@ const _submitVisibilityOptions = {
   authoredPending: false,
   resolvingMarker: false,
   geometryPending: false,
+  standInResident: false,
   activityFrame: null,
   entityId: null,
   ledgerRow: false,
@@ -1205,7 +1208,7 @@ const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 // reconcile. An early poll only fires once the re-arm is at least half spent (≤8/s).
 const RENDER_RESIDENCY_EARLY_POLL_FLOOR_S = RENDER_RESIDENCY_POLL_SECONDS / 2;
 /** Hold-exempt discovery cadence: fast enough for the rescue set piece, slow enough to skip the scan. */
-const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
+const HOLD_EXEMPT_COLLECT_SECONDS = 0.2;
 // Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
 // sector-exit sweep was the sole release point for — inside one sector every archetype ever
 // admitted stayed GPU-resident forever. A slow sweep with an idle-age gate keeps short oscillation
@@ -3752,6 +3755,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       let cycleKickStarted = 0;
       if (iterator) {
         let done = false;
+        let collectStride = 0;
         for (;;) {
           let step;
           try {
@@ -3767,8 +3771,10 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
             return 0;
           }
           if (step.done) { done = true; break; }
-          if (now() - started >= sliceMs
-              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          // Row-granular steps: read the clock every 8th row, not every row.
+          if ((++collectStride & 7) === 0
+              && (now() - started >= sliceMs
+                || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         }
         if (!done) break;
       }
@@ -3827,8 +3833,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       // and zero kick (a hold could queue exempt builds that never landed).
       let commitSteps = 0;
       while (owner._holdExemptEnqueueIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptEnqueueIter.next();
@@ -3850,8 +3857,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
       }
       while (owner._holdExemptKickIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptKickIter.next();
@@ -4548,6 +4556,36 @@ export function authoredPendingBoundarySubmitsStandIn(mesh) {
   if (userData.authoredPendingFallbackDrawn === true) return true;
   return userData.authoredGeologySkin === true;
 }
+
+/**
+ * True when a pending root is currently drawing an already-resident, already-linked proxy: its
+ * resolving marker / admission stand-in is visible, parented under the root, shares the cached
+ * flat materials, and every other visible drawable under the root already has uploaded buffers.
+ * Such a root must stay on the glass through its pipelinesPending / geometryPending latches (the
+ * latches describe the hidden authored body, not the proxy) so first arrival shows the proxy
+ * instead of nothing. Only evaluated for roots that carry a pending latch.
+ */
+export function rootDrawsResidentStandIn(mesh) {
+  const userData = mesh && mesh.userData;
+  if (!userData) return false;
+  const marker = userData.resolvingMarker;
+  if (!marker || marker.visible === false || marker.parent !== mesh) return false;
+  if (!isAuthoredPendingStatus(userData.authoredAssetState)) return false;
+  if (hasUnresidentGeometry(marker)) return false;
+  const stack = [mesh];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object || object.visible === false) continue;
+    if (object !== marker && object.geometry && object.geometry.userData
+        && object.geometry.userData.spacefaceGpuResident !== true
+        && (object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
+    if (object === marker) continue;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return true;
+}
+
 
 function markAuthoredGeologyFallbackAdmitted(subject) {
   const userData = subject && subject.userData;
@@ -8924,6 +8962,21 @@ const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_RIG', rigId: 'hull', bindingId: 'hull_core',
 });
 
+// Each sibling is pinned to its own package hash and the same verified source motion bank.
+const RIGID_ASHLINE_LOD_IDENTITIES = new Map([
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: 'dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d' })],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: '1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631' })],
+]);
+function rigidAshlineIdentityForUrl(owner, url) {
+  if (url === RIGID_ASHLINE_HULL_URL) return owner._ashlineHullBatchEnabled === false
+    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  if (owner._ashlineHullBatchEnabled === false) return null;
+  return url === RIGID_ASHLINE_RIG_HULL_URL ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
+    : RIGID_ASHLINE_LOD_IDENTITIES.get(url) || null;
+}
+
 export function isRigidOpaqueAshlineCohortRoot(owner, root) {
   const data = root?.userData, id = data?.presentationEntityId;
   if (id == null || !root.parent || owner?._meshes?.get?.(id) !== root) return false;
@@ -8938,7 +8991,8 @@ export function isRigidOpaqueAshlineCohortRoot(owner, root) {
     && entity.occupantGeneration != null
     && data.presentationOccupantGeneration === entity.occupantGeneration
     && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error')
-    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.includes(RIGID_ASHLINE_HULL_URL);
+    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.some((url) =>
+      url === RIGID_ASHLINE_HULL_URL || (RIGID_ASHLINE_LOD_IDENTITIES.get(url)?.sourceAssetId === RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId));
 }
 
 function rigidOpaqueAshlineSourceRoot(owner, source) {
@@ -8946,9 +9000,9 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
   const body = RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name);
   if ((!retro && !body) || source.isMesh !== true
       || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
-  if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
-  const expected = owner._ashlineHullBatchEnabled === false
-    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = body ? rigidAshlineIdentityForUrl(owner, url) : null;
+  if (body && (!expected || expected.sourceAssetId !== RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId)) return null;
   let packageMatched = retro;
   for (let node = source; node; node = node.parent) {
     const identity = node.userData?.spacefaceRenderPackage;
@@ -8957,20 +9011,20 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
           || identity.contentHash !== expected.packageContentHash) return null;
       packageMatched = true;
     }
-    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)
+        && (!body || node.userData.authoredSlots.hull.includes(url))) return node;
   }
   return null;
 }
 
 function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
   if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
-  const rig = source.userData?.spacefacePartUrl === RIGID_ASHLINE_RIG_HULL_URL;
-  if (rig && owner._ashlineHullBatchEnabled === false) return false;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = rigidAshlineIdentityForUrl(owner, url);
+  if (!expected) return false;
+  const rig = expected.sourceAssetId === RIGID_ASHLINE_RIG_MOTION_IDENTITY.sourceAssetId;
   const root = rig ? rigidOpaqueShipSourceRoot(owner, source) : rigidOpaqueAshlineSourceRoot(owner, source);
-  if (!root) return false;
-  const expected = rig ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
-    : owner._ashlineHullBatchEnabled === false
-      ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  if (!root || (rig && !root.userData?.authoredSlots?.hull?.includes(url))) return false;
   let matched = null;
   for (let node = source; node; node = node.parent) {
     const controllers = node.userData?.authoredMotionControllers;
@@ -9092,7 +9146,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       || rigidOpaqueAshlineSourceRoot(owner, source) != null
       || rigidOpaqueShipSourceRoot(owner, source) != null
     : undefined;
-  return createRetainedRigidOpaqueBatchController({
+  const controller = createRetainedRigidOpaqueBatchController({
     scene,
     capturePreparationGuard: defaultCohort ? () => {
       const renderState = state.render, world = state.world;
@@ -9103,6 +9157,8 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const recovery = owner._contextRecovery;
       const recoveryGeneration = recovery?.generation, recoveryLosses = recovery?.losses;
       const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
+      const depthEpoch = shadowCensusEpoch();
+      const depthOff = rigidBatchDepthProvenOff(owner, depthEpoch);
       const paint = renderState?.firstPlayableFrameAt;
       return () => defaultRigidBatchOwnerResident(owner)
         && owner.scene === scene && owner.state === state && state.render === renderState && state.world === world
@@ -9112,6 +9168,8 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
         && owner._contextRecovery === recovery && recovery?.generation === recoveryGeneration
         && recovery?.losses === recoveryLosses
         && (owner._rigidOpaqueBatchPictureEpoch || 0) === pictureEpoch
+        && (!depthOff || (shadowCensusEpoch() === depthEpoch
+          && rigidBatchDepthProvenOff(owner, depthEpoch)))
         && renderState?.firstPlayableFrameAt === paint;
     } : undefined,
     supported: owner?._opaqueBatchSupported === true,
@@ -9166,6 +9224,11 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
           // The loading facade otherwise returns a skipped receipt and queues detached ambient
           // work. This finite default cohort must finish compile/residency/exact touch before seal.
           openingRequired: defaultCohort && loading,
+          // Batch compilation is on-glass deadline work: the cohort's sources draw individually
+          // every presented frame until this commits, so it rides the urgent lane ahead of queued
+          // ambient mounts rather than joining the FIFO it exists to drain. The paced-wallet
+          // ledger gate still bounds the burst when the frame is already spent.
+          urgent: state.mode === 'flight',
           debugBy: 'rigid-opaque-batch',
           onPreparationLeg: context.reportLeg,
           isActive,
@@ -9181,6 +9244,11 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       return { ready: true };
     },
   });
+  const unsubscribeShadowWarm = subscribeRigidBatchShadowWarm(owner.renderer,
+    () => controller.setShadowDepthDisabled(false));
+  const dispose = controller.dispose.bind(controller);
+  controller.dispose = () => { unsubscribeShadowWarm(); return dispose(); };
+  return controller;
 }
 
 const WARM_GROWTH_AXIS_X = new THREE.Vector3(1, 0, 0);
@@ -19372,6 +19440,10 @@ export const render = {
     if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
     this._videoSettingsOff = onBus('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
+      if (p.key == null || p.key === 'shadows' || p.key === 'nocturne'
+          || p.key === 'nocturneShadows') {
+        this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+      }
       this._authoredPreparationEpoch++;
       this._sectorBoundaryPreparations?.abortAll('video-settings-changed-during-sector-prewarm');
       const vd = state.settings.video;
@@ -19533,6 +19605,7 @@ export const render = {
         playerId: state.playerId,
         playerPos: player && player.pos,
         viewportHeight: this.viewport && this.viewport.height,
+        initialLodForEntity: (entity) => initialWholeShipLodForBoundary(entity, this._meshes?.get(entity.id)),
       });
     };
     const reviseSectorPrewarmPopulation = (record, count = 1) => {
@@ -26707,6 +26780,7 @@ export const render = {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,
+        { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
       );
       // The starvation floor still consults the forced wallet — a spent frame
       // defers the forced start (keeping the late streak armed) instead of
@@ -26827,6 +26901,7 @@ export const render = {
           const resumedGate = shouldStartHeavyAdmissionEventually(
             this.state && this.state.render && this.state.render.lastPresentDtMs,
             this._meshBuildLateSkips,
+            { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
           );
           const resumedStartAllowed = resumedGate.start
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
@@ -27980,6 +28055,9 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
+          || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
+          && rootDrawsResidentStandIn(mesh);
         _submitVisibilityOptions.activityFrame = this._activityFrame;
         _submitVisibilityOptions.entityId = entityId;
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
@@ -28132,7 +28210,12 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = presentedLodWidthPx(
+        const shipFamily = typeName === 'ship' && userData.wholeShipLodFamilyInstalled === true;
+        const sampledShip = typeName === 'ship' && !!entity && !isPlayer
+          && posed && isOrdinaryLodShip(entity);
+        const projectedPx = shipFamily && !posed ? Infinity : (shipFamily || sampledShip) ? projectedShipDiameterPx(
+          mesh.position, Math.max(lodRadius, (Number(entity?.radius) || 0) * 2), this.cam && this.cam.obj, this.viewport,
+        ) : presentedLodWidthPx(
           userData,
           mesh.position,
           lodRadius,
@@ -28141,15 +28224,45 @@ export const render = {
           isPlayer,
           typeName,
         );
+        if (sampledShip) {
+          const sample = userData.initialShipLodSample || (userData.initialShipLodSample = {});
+          sample.entity = entity;
+          sample.px = projectedPx;
+          sample.at = performance.now();
+          sample.protectedBody = entityIsMissionCritical(entity, this.state);
+          sample.camera = this.cam?.obj || null;
+          sample.viewport = this.viewport;
+          sample.width = this.viewport?.width;
+          sample.height = this.viewport?.height;
+          const view = sample.camera?.matrixWorldInverse?.elements;
+          const projection = sample.camera?.projectionMatrix?.elements;
+          if (view && projection) {
+            if (!sample.view) sample.view = new Float64Array(16);
+            if (!sample.projection) sample.projection = new Float64Array(16);
+            sample.view.set(view);
+            sample.projection.set(projection);
+          }
+        } else if (typeName === 'ship' && userData.initialShipLodSample) {
+          userData.initialShipLodSample = null;
+        }
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
+          const protectedShip = shipFamily && (isPlayer || !isOrdinaryLodShip(entity)
+            || entityIsMissionCritical(entity, this.state));
+          if (shipFamily && !userData.shipLodSelection) userData.shipLodSelection = createShipLodState(userData.wholeShipLodActiveLevel);
+          const desiredLod = shipFamily
+            ? userData.shipLodSelection.resolve(projectedPx, this.state.simTime, protectedShip)
+            : resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
-          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
-            userData.updateLod(lodLevel);
-            userData._appliedLodLevel = lodLevel;
+          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== desiredLod
+              || (shipFamily && !userData.wholeShipLodTransitionPromise
+                && userData.wholeShipLodActiveLevel !== desiredLod
+                && performance.now() >= (userData.wholeShipLodRetryAfter || 0))) {
+            userData.updateLod(desiredLod);
+            userData._appliedLodLevel = desiredLod;
           }
+          lodLevel = shipFamily ? (userData.wholeShipLodActiveLevel || 'lod0') : desiredLod;
         }
         // Keeper masks remain correctness at every LOD and decorative sleep cadence.
         if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
@@ -28253,6 +28366,9 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
+          || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
+          && rootDrawsResidentStandIn(mesh);
         _submitVisibilityOptions.activityFrame = this._activityFrame;
         _submitVisibilityOptions.entityId = entityId;
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
@@ -28301,7 +28417,7 @@ export const render = {
         // Visible interactive and hero roots retain their authored per-frame presentation closures.
         // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
-        const farSpeck = lodLevel === 'lod2' && !isPlayer;
+        const farSpeck = lodLevel === 'lod2' && !isPlayer && !shipFamily;
         if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
         if (entity) this._syncNemesisHullPresentation?.(entity, mesh);
         if (isPlayer && entity && this._livingHullPresentation) {
@@ -28808,6 +28924,12 @@ export const render = {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
+    if (this._rigidOpaqueBatchDefaultCohort === true && this._shadowSettingOn === false
+        && this.state?.settings?.video?.shadows === false) {
+      this._shadowCensusForFrame?.();
+    }
+    controller.setShadowDepthDisabled(this._rigidOpaqueBatchDefaultCohort === true
+      && rigidBatchDepthProvenOff(this, shadowCensusEpoch()));
     if (this._rigidOpaqueBatchDefaultCohort === true && !defaultRigidBatchMayPrepare(this)) return;
     // The default waits until the first picture is painted and its graph hold is released.
     // The explicit bench probe retains its existing loading exclusion.
@@ -30211,8 +30333,18 @@ export const render = {
       this._activityFrame = null;
       this._activityFrameTick = null;
       if (this.state.render) this.state.render.activityFrame = null;
-    } else if (this._activityFrameTick !== activityTick
+    } else if ((this._activityFrameTick !== activityTick
+        && (this._activityFrame == null
+          || this._activityFrameTick == null
+          || activityTick < this._activityFrameTick
+          || activityTick - this._activityFrameTick >= 4
+          || this._activityFrameIndexVersion !== entityIndexVersion(this.state)
+          || this._activityFrameListLen !== (this.state.entityList ? this.state.entityList.length : -1)))
         || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
+      // Presentation-side reclassification of the mirrored state (the worker classifies
+      // authoritatively): rerun at most every 4 ticks unless membership changed.
+      this._activityFrameIndexVersion = entityIndexVersion(this.state);
+      this._activityFrameListLen = this.state.entityList ? this.state.entityList.length : -1;
       tryPresentedCall(this, 'activity-frame', () => {
         publishActivityFrame(this, getActivityFrame(this.state));
       });
@@ -30264,7 +30396,8 @@ export const render = {
         this._snapshotPresentationSequence = this._snapshotFence.sequence;
       }
       this.syncEntityViews(alpha);
-      if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
+      if (this.state && this.state.render) this.state.render.interpolationAlpha = Number.isFinite(this._snapshotPresentationAlpha)
+        ? Math.max(0, Math.min(1, this._snapshotPresentationAlpha)) : alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
         // The player hull was just posed from the snapshot fence; hand the camera that exact
         // presented position so follow/lookahead/safe-rect never track a narrower sim-tick window
@@ -32921,6 +33054,10 @@ export const render = {
     }
     // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
     if (scene === this.scene) this._nocturne?.flush(camera);
+    // Check the final light budget after flush and before any post-route world draw.
+    if (scene === this.scene && !rigidBatchDepthProvenOff(this, shadowCensusEpoch())) {
+      this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+    }
     // Photo is a final presentation override: Nocturne's held world exposure must not replace
     // the slider, and the slider must not advance or rewrite that world's adaptation state.
     const photo = scene === this.scene && this.state?.render?.photoMode;
@@ -33277,8 +33414,10 @@ export const render = {
     const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
       const disp = displayPixelFootprint();
-      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
       if (typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(dyn);
+      // Size/scale transitions publish active content before the display gate is reconciled.
+      // setSize reserves the post pool before opening admission; later Auto bands reuse it.
+      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
     }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
@@ -33718,7 +33857,7 @@ function applyRendererSize(renderer, state) {
 
 // The display's native pixel footprint: CSS viewport × devicePixelRatio. This is the size the
 // browser upscales the drawing buffer to — the CAS gate (src/render/cas.js) compares the actual
-// drawing buffer against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
+// active content against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
 // or supersampled one does not. Reuses _drawSize-style module state; _applySize can run per
 // frame under the dynamic-resolution controller, so this must not allocate.
 const _displayFootprint = { x: 0, y: 0 };

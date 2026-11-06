@@ -53,8 +53,8 @@ test('Swarm keeps one physical cause while accounting events do not crowd it', (
 test('world accounting receipts remain in the flight register outside Swarm', () => {
   for (const run of [null, { kind: 'survival', phase: 'active', ruleset: 'classic' }]) {
     const { bus, owner } = mount(run);
-    bus.emit('aftermathWreck:recorded', {});
-    bus.emit('lossLedger:recorded', {});
+    bus.emit('aftermathWreck:recorded', run ? {} : { source: 'player:death', playerWreck: true });
+    bus.emit('lossLedger:recorded', run ? {} : { source: 'player:death', assetId: 1 });
     owner.update(0);
     assert.match(calloutTextFor(owner.root), /WRECK RECORDED/);
     assert.match(calloutTextFor(owner.root), /LOSS RECORDED/);

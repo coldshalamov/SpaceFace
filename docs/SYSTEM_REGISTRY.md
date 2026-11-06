@@ -25,13 +25,13 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 
 | Slot | Likely file | Lines | Emits (count) | Subscribes (count) | Top events |
 |---|---|---|---|---|---|
-| `input` | `systems/input.js` | 2521 | 2 | 2 | `drill:beginRejected`×1, `input:worldGestureCancelled`×1 |
+| `input` | `systems/input.js` | 2517 | 2 | 2 | `drill:beginRejected`×1, `input:worldGestureCancelled`×1 |
 | `autoTargetAssist` | `systems/autoTargetAssist.js` | 294 | 0 | 5 | — |
 | `flybyFocus` | `systems/flybyFocus.js` | 546 | 5 | 1 | `flybyFocus:cancel`×1, `flybyFocus:end`×1, `flybyFocus:start`×1 |
 | `bulletTime` | `systems/bulletTime.js` | 417 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
 | `cloak` | `systems/cloak.js` | 415 | 5 | 9 | `audio:cue`×2, `cloak:engaged`×1, `cloak:dropped`×1 |
 | `lawSecurity` | `systems/lawSecurity.js` | 8743 | 0 | 33 | — |
-| `scanner` | `systems/scanner.js` | 2217 | 28 | 13 | `ui:setCourse`×3, `signal:tracked`×2, `contactHail:response`×2 |
+| `scanner` | `systems/scanner.js` | 2222 | 28 | 13 | `ui:setCourse`×3, `signal:tracked`×2, `contactHail:response`×2 |
 | `spectrum` | `systems/spectrum/index.js` | 332 | 4 | 0 | `signal:scanResults`×2, `signal:investigating`×1, `spectrum:resolved`×1 |
 | `scanReveal` | `systems/scanReveal.js` | 1626 | 8 | 3 | `economy:grantCredits`×2, `scan:shipRevealed`×1, `scan:capabilityVerdicts`×1 |
 | `buildIdentity` | `systems/buildIdentity.js` | 355 | 1 | 2 | `buildIdentity:revealed`×1 |
@@ -47,7 +47,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `mothlight` | `systems/mothlight.js` | 339 | 3 | 0 | `mothlight:lampReleased`×1, `mothlight:phase`×1, `mothlight:identified`×1 |
 | `palletJack` | `systems/palletJack.js` | 533 | 5 | 0 | `palletJack:phase`×1, `palletJack:released`×1, `palletJack:offer`×1 |
 | `secondRinse` | `systems/secondRinse.js` | 274 | 0 | 0 | — |
-| `ai` | `systems/tacticalAI.js` (+ legacy) | 1658 | 7 | 0 | `ai:telegraph`×4, `ai:doctrinePhase`×2, `audio:cue`×1 |
+| `ai` | `systems/tacticalAI.js` (+ legacy) | 1735 | 7 | 0 | `ai:telegraph`×4, `ai:doctrinePhase`×2, `audio:cue`×1 |
 | `barkDirector` | `systems/barkDirector.js` | 3867 | 5 | 53 | `audio:cue`×2, `npc:hailed`×2, `barkDirector:voice`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 863 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
@@ -56,7 +56,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `orbitalGallery` | `gallery/orbital/system.js` | 151 | 0 | 0 | — |
 | `kineticLeague` | `sports/kineticLeague/live.js` | 277 | 0 | 0 | — |
 | `heroManeuvers` | `systems/heroManeuvers.js` | 787 | 4 | 0 | `audio:cue`×4 |
-| `flight` | `systems/flightV3.js` (+ legacy) | 2339 | 11 | 11 | `ship:boostStop`×2, `nav:autopilot`×2, `ship:boostStart`×1 |
+| `flight` | `systems/flightV3.js` (+ legacy) | 2344 | 11 | 11 | `ship:boostStop`×2, `nav:autopilot`×2, `ship:boostStart`×1 |
 | `cruise` | `systems/cruise.js` | 357 | 6 | 6 | `cruise:wrestleStarted`×1, `cruise:engaged`×1, `cruise:wrestleEscaped`×1 |
 | `redKite` | `systems/redKite.js` | 318 | 5 | 0 | `ui:setCourse`×1, `redKite:offer`×1, `redKite:started`×1 |
 | `ilexArk` | `systems/ilexArk.js` | 273 | 6 | 0 | `ui:setCourse`×1, `ilexArk:vaultReleased`×1, `ilexArk:accepted`×1 |
@@ -71,7 +71,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `environmentMaterials` | `systems/environmentMaterials.js` | 523 | 2 | 1 | `emergent:audio`×1, `asteroid:chunked`×1 |
 | `impulseCharges` | `systems/impulseCharges.js` | 1527 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 627 | 17 | 0 | `audio:cue`×5, `presentation:vfxCue`×5, `hullBurst:hit`×3 |
-| `mines` | `systems/mines.js` | 491 | 15 | 8 | `mines:armed`×3, `voice:say`×2, `mines:released`×2 |
+| `mines` | `systems/mines.js` | 494 | 15 | 8 | `mines:armed`×3, `voice:say`×2, `mines:released`×2 |
 | `massSeed` | `systems/massSeed.js` | 683 | 23 | 4 | `presentation:vfxCue`×4, `massSeed:collapsing`×4, `massSeed:collapsed`×4 |
 | `uniqueLootAbilities` | `systems/uniqueLootAbilities.js` | 589 | 3 | 5 | `uniqueLoot:paleCoilBlink`×1, `uniqueLoot:nestbreakerSplit`×1, `uniqueLoot:choirBellPulse`×1 |
 | `dockingCorridor` | `systems/dockingCorridor.js` | 361 | 0 | 4 | — |
@@ -98,7 +98,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `latchNine` | `systems/latchNine.js` | 150 | 0 | 0 | — |
 | `combat` | `systems/combat.js` | 1661 | 19 | 10 | `camera:shake`×3, `economy:grantCredits`×3, `player:death`×2 |
 | `combatOutcome` | `systems/combatOutcome.js` | 651 | 6 | 20 | `combat:aftermathChoices`×3, `combat:aftermathChosen`×1, `combat:outcome`×1 |
-| `aftermathWrecks` | `systems/aftermathWrecks.js` | 3512 | 26 | 23 | `aftermathWreck:retired`×3, `news:headline`×2, `news:publish`×2 |
+| `aftermathWrecks` | `systems/aftermathWrecks.js` | 3513 | 26 | 23 | `aftermathWreck:retired`×3, `news:headline`×2, `news:publish`×2 |
 | `dyingHull` | `systems/dyingHull.js` | 475 | 4 | 2 | `dyingHull:lost`×2, `dyingHull:begin`×1, `dyingHull:ruptured`×1 |
 | `titles` | `systems/titles.js` | 1268 | 0 | 13 | — |
 | `wingMorale` | `systems/wingMorale.js` | 442 | 5 | 3 | `ai:formationBroken`×1, `wingMorale:broken`×1, `ai:flee`×1 |
@@ -114,7 +114,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `masslineSnares` | `systems/masslineSnares.js` | 896 | 8 | 5 | `massline:snareDeployed`×2, `massline:snareArmed`×1, `ai:telegraph`×1 |
 | `masslineThrow` | `systems/masslineThrow.js` | 877 | 9 | 4 | `audio:cue`×3, `massline:releaseCancelled`×1, `massline:releaseWindow`×1 |
 | `masslineImpactDamage` | `systems/masslineImpactDamage.js` | 154 | 0 | 3 | — |
-| `lootShards` | `systems/lootShards.js` | 1328 | 8 | 4 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
+| `lootShards` | `systems/lootShards.js` | 1331 | 8 | 4 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
 | `terrainAnchors` | `systems/terrainAnchors.js` | 456 | 1 | 6 | `terrainAnchors:replenished`×1 |
 | `jettisonImpulse` | `systems/jettisonImpulse.js` | 95 | 1 | 1 | `audio:cue`×1 |
 | `lineHeads` | `systems/lineHeads.js` | 499 | 5 | 2 | `lineHead:breakerSplit`×1, `audio:cue`×1, `lineHead:sealed`×1 |
@@ -131,7 +131,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `crafting` | `systems/crafting.js` | 497 | 10 | 0 | `craft:queueChanged`×4, `audio:cue`×3, `craft:complete`×2 |
 | `economy` | `systems/economy.js` | 6837 | 64 | 43 | `service:completed`×8, `credits:changed`×4, `faction:repDelta`×3 |
 | `intervention` | `systems/intervention.js` | 591 | 5 | 2 | `intervention:logged`×1, `camera:shake`×1, `intervention:available`×1 |
-| `world` | `systems/world.js` | 8660 | 87 | 62 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
+| `world` | `systems/world.js` | 8709 | 87 | 62 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
 | `heistFacilities` | `systems/heistFacilities.js` | 3933 | 23 | 8 | `heist:launchScheduleReceipt`×4, `heist:counterweightSceneReceipt`×4, `heist:launchCue`×2 |
 | `regionalEcology` | `systems/regionalEcology.js` | 454 | 0 | 0 | — |
 | `tensionDirector` | `systems/tensionDirector.js` | 296 | 0 | 0 | — |
@@ -194,16 +194,16 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `borrowedVoice` | `systems/borrowedVoice.js` | 246 | 3 | 0 | `borrowedVoice:fragmentRecovered`×1, `borrowedVoice:offer`×1, `borrowedVoice:dispositionAccepted`×1 |
 | `borrowedSun` | `systems/borrowedSun.js` | 1556 | 37 | 0 | `borrowedSun:debtSettled`×3, `economy:chargeCredits`×2, `borrowedSun:shadowLapsed`×2 |
 | `salvageOutfits` | `features/salvageOutfits/index.js` | 612 | 11 | 0 | `salvageOutfits:offer`×3, `salvageOutfits:radio`×1, `comms:log`×1 |
-| `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 7411 | 26 | 19 | `npcJobs:towAssistLost`×3, `npcjobs:loadEmpty`×2, `economy:chargeCredits`×2 |
+| `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 7432 | 26 | 21 | `npcJobs:towAssistLost`×3, `npcjobs:loadEmpty`×2, `economy:chargeCredits`×2 |
 | `cinderglassJob` | `features/cinderglassJob/runtime.js` | 480 | 10 | 0 | `cinderglassJob:servicePrompt`×2, `cinderglassJob:fact`×2, `ui:setCourse`×2 |
-| `missions` | `systems/missions.js` | 7033 | 85 | 103 | `mission:updated`×34, `comms:popup`×5, `nav:waypoint`×4 |
+| `missions` | `systems/missions.js` | 7039 | 85 | 104 | `mission:updated`×34, `comms:popup`×5, `nav:waypoint`×4 |
 | `careerOrigins` | `careers/origins/careerOrigins.js` | 1329 | 0 | 0 | — |
 | `careerLadders` | `careers/ladders/careerLadders.js` | 366 | 0 | 0 | — |
 | `liveCareerLadderBranches` | `careers/ladders/liveCareerLadderBranches.js` | 206 | 0 | 0 | — |
 | `story` | `systems/story.js` | 2744 | 50 | 53 | `graffiti:show`×6, `hud:phase`×4, `endgame:ineligible`×4 |
 | `scenarioRuntime` | `systems/scenarioRuntime.js` | 854 | 9 | 5 | `scenario:loaded`×1, `scenario:factsInitialized`×1, `scenario:actorBindings`×1 |
 | `swarmArena` | `systems/swarmArena.js` | 2275 | 0 | 9 | — |
-| `survivalWave` | `systems/survivalWave.js` | 1988 | 0 | 8 | — |
+| `survivalWave` | `systems/survivalWave.js` | 2000 | 0 | 8 | — |
 | `survivalRun` | `systems/survivalRun.js` | 1074 | 1 | 14 | `run:transitionRequested`×1 |
 | `swarmChain` | `systems/swarmChain.js` | 412 | 0 | 3 | — |
 | `killReplay` | `systems/killReplay.js` | 431 | 0 | 5 | — |
@@ -244,7 +244,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `worldClock` | `systems/worldClock.js` | 221 | 6 | 0 | `calendar:stormSeason`×1, `calendar:festival`×1, `calendar:marketDay`×1 |
 | `worldPressure` | `systems/worldPressure.js` | 454 | 13 | 0 | `sectorsim:impulse`×2, `comms:log`×2, `worldPressure:tideChanged`×1 |
 | `lineProgression` | `systems/lineProgression.js` | 244 | 2 | 4 | `line:recordStamped`×1, `line:classChanged`×1 |
-| `save` | `save/saveSystem.js` | 10438 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
+| `save` | `save/saveSystem.js` | 10382 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
 
 ## Render-phase order (every animation frame)
 

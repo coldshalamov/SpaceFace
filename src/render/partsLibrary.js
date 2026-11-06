@@ -84,7 +84,8 @@ import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packaged
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, attachAuthoredMotionDriverSteps, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
-import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
+import { installSingleSamplePackedOrmShader } from './packedOrmShader.js';
+export { installSingleSamplePackedOrmShader } from './packedOrmShader.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent, postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
@@ -119,10 +120,12 @@ import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
   canInstallWholeShipLodFamily,
+  isOrdinaryLodShip,
+  initialShipLodFromProjection,
+  initialShipLodStillSafe,
   lodFileFromFamily,
   normalizeRequestedLod,
   resolveLiveWholeShipLodTransition,
-  selectPrewarmLodLevel,
   shouldCommitWholeShipLodLoad,
   WHOLE_SHIP_LOD_RUNTIME_DEMOTION,
 } from './wholeShipLodPolicy.js';
@@ -166,7 +169,7 @@ import {
 } from './flightReadySet.js';
 import { entityPresenceRadius, PRESENTATION_TIER } from '../world/activityClassification.js';
 import { ledgerAwarePos } from '../world/presentationSources.js';
-import { canonicalizeObjectSurfaceProgramKeys, canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -252,7 +255,9 @@ import {
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
   canonicalizeAuthoredProgramState,
+  canonicalProgramsLinked,
   mountCanonicalProgramSpecimens,
+  noteCanonicalProgramsLinked,
   settleCanonicalProgramSpecimens,
 } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
@@ -260,6 +265,7 @@ import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../d
 import { STORMSHIFT_RECEIVER_COLLISION, STORMSHIFT_RECEIVER_SOLIDS, STORMSHIFT_RECEIVER_SOURCE_SCALE } from '../data/stormshiftReceiverCollision.js';
 import {
   entityRequiresAuthoredPresentation,
+  entityIsMissionCritical,
   hasExplicitAuthoredGeologyPresentation,
   hasExplicitAuthoredPayloadPresentation,
   PRESENTATION_ADMISSION,
@@ -1713,18 +1719,8 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
 
     let plan = {};
     if (entity.type === 'ship') {
-      let lodLevel = options.lodLevel;
-      if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
-        lodLevel = 'lod0';
-        // The projection only feeds selectPrewarmLodLevel's pick — which pins 'lod0' while
-        // runtime demotion is off — so spend it only when demotion can answer differently.
-        if (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true) {
-          const radius = Number(entity.radius) || 8;
-          const px = (radius / Math.max(entityDeadlineRank, 0.001))
-            * (Number(options.viewportHeight) || 800);
-          lodLevel = selectPrewarmLodLevel(px);
-        }
-      }
+      const lodLevel = options.lodLevel || (typeof options.initialLodForEntity === 'function'
+        ? options.initialLodForEntity(entity) : 'lod0');
       plan = authoredPreloadPlanForEntity(entity, {
         ...options,
         lodLevel,
@@ -2523,6 +2519,50 @@ export function wholeShipLodFileForEntity(entity, level, options = {}) {
     || selection.file;
 }
 
+function initialShipProjectionCurrent(sample, state) {
+  const camera = sample?.camera, viewport = sample?.viewport;
+  if (!camera || !viewport || !(sample.width > 0) || !(sample.height > 0)
+      || viewport.width !== sample.width || viewport.height !== sample.height
+      || (state?.camera?.obj && state.camera.obj !== camera)
+      || (state?.render?.viewport && (state.render.viewport.width !== sample.width
+        || state.render.viewport.height !== sample.height))) return false;
+  const view = camera.matrixWorldInverse?.elements, projection = camera.projectionMatrix?.elements;
+  if (!view || !projection || sample.view?.length !== 16 || sample.projection?.length !== 16) return false;
+  for (let i = 0; i < 16; i++) {
+    if (view[i] !== sample.view[i] || projection[i] !== sample.projection[i]) return false;
+  }
+  return true;
+}
+
+/** Only a recent projection of this exact boundary and actor can select a cheap first body. */
+export function initialWholeShipLodForBoundary(entity, boundary, now = monotonicNow()) {
+  const sample = boundary?.userData?.initialShipLodSample;
+  const state = authoredRuntimeState();
+  if (!isOrdinaryLodShip(entity) || !sample || sample.entity !== entity
+      || sample.protectedBody || entityIsMissionCritical(entity, state)
+      || !Number.isFinite(sample.at) || now < sample.at || now - sample.at > 250
+      || !initialShipProjectionCurrent(sample, state)) return 'lod0';
+  const visual = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
+  const family = visual?.lodFamily;
+  if (!family || family.lod0 !== visual.file || !packagedLiveWholeShipFile(family.lod1)
+      || !packagedLiveWholeShipFile(family.lod2)) return 'lod0';
+  return initialShipLodFromProjection(sample.px);
+}
+
+export function initialWholeShipLodPublicationSafe(entity, boundary, level, file, now = monotonicNow()) {
+  if (level === 'lod0') return true;
+  const sample = boundary?.userData?.initialShipLodSample;
+  const state = authoredRuntimeState();
+  if (!isOrdinaryLodShip(entity) || !sample || sample.entity !== entity
+      || sample.protectedBody || entityIsMissionCritical(entity, state)
+      || !Number.isFinite(sample.at) || now < sample.at || now - sample.at > 250
+      || !initialShipProjectionCurrent(sample, state)) return false;
+  const visual = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
+  return !!visual?.lodFamily && visual.lodFamily.lod0 === visual.file
+    && packagedLiveWholeShipFile(visual.lodFamily[level]) === file
+    && initialShipLodStillSafe(level, sample.px);
+}
+
 export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
   const file = wholeShipLodFileForEntity(entity, level, options);
@@ -3009,6 +3049,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
 
   let active = fallbackRoot;
+  let hasCommittedAuthoredRoot = false;
   boundary.userData.updateDamageState = (liveEntity, now) => {
     const fn = active && active.userData && active.userData.updateDamageState;
     if (typeof fn === 'function') fn(liveEntity, now);
@@ -3091,6 +3132,18 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
       ...requestOptions,
     };
+    if (!requestOptions.lodLevel && !upgradeOptions.bootstrapPlan && !upgradeOptions.forceWholeShipFile
+        && upgradeOptions.deferBoundaryPublication !== true
+        && !hasCommittedAuthoredRoot
+        && !boundary.userData.wholeShipLodFamilyInstalled) {
+      const level = initialWholeShipLodForBoundary(liveEntity, boundary);
+      if (level !== 'lod0') {
+        upgradeOptions.lodLevel = level;
+        upgradeOptions.initialLodFile = wholeShipLodFileForEntity(liveEntity, level, upgradeOptions);
+        upgradeOptions.initialLodFingerprint = authoredCompositionFingerprintForEntity(liveEntity);
+        upgradeOptions.deferPackagePoolActivation = true;
+      }
+    }
     boundary.userData.authoredAssetState = 'loading';
     boundary.userData.authoredUpgradeRequestedAt = Date.now();
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
@@ -3112,6 +3165,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         active = next;
         syncActiveSurface(boundary, active);
         if (next !== fallbackRoot) {
+          hasCommittedAuthoredRoot = true;
           // Commit detached the procedural substrate — drop the references that would otherwise
           // keep that island reachable through the retained request/update/LOD closures, and let
           // `fallbackRoot` track the live interior root a later commit should remove.
@@ -3589,6 +3643,9 @@ async function commitAuthoredCargoCapsuleBoundary(
       }
     }
     boundary.userData.authoredAssetState = 'authored';
+    // Provably-linked program set — same-family boundaries can now take the resident
+    // fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // The first in-frame cull consult would otherwise pay Box3.setFromObject
     // O(subtree) inside syncEntityViews — stamp the envelope + motion pad
     // here, inside the paced commit tail, under the caller-visible key.
@@ -4706,6 +4763,9 @@ export async function commitAuthoredPlaceBoundary(
       recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
+    // Provably-linked program set — same-family boundaries can now take the resident
+    // fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // Same commit-tail stamp as the ship/cargo publishes: keep the first
     // envelope measure out of the presented cull pass (bounds-carrying rows
     // skip it — only the pad stamps).
@@ -5919,97 +5979,6 @@ function specializeWreckCathedralClosedSurfaces(sources) {
   };
 }
 
-export function installSingleSamplePackedOrmShader(material) {
-  if (!material || material.userData?.spacefacePackedOrmSingleSample === true) return material;
-  const orm = material.roughnessMap;
-  if (!sameTextureSamplingForPackedOrm(orm, material.metalnessMap)
-      || !sameTextureSamplingForPackedOrm(orm, material.aoMap)) return material;
-
-  const originalOnBeforeCompile = material.onBeforeCompile;
-  const originalProgramCacheKey = material.customProgramCacheKey();
-  material.onBeforeCompile = function packedOrmSingleSampleShader(shader, renderer) {
-    if (typeof originalOnBeforeCompile === 'function') {
-      originalOnBeforeCompile.call(this, shader, renderer);
-    }
-    const replacements = [
-      [
-        '#include <roughnessmap_fragment>',
-        [
-          'float roughnessFactor = roughness;',
-          '#ifdef USE_ROUGHNESSMAP',
-          '\tvec4 sfPackedOrmTexel = texture2D( roughnessMap, vRoughnessMapUv );',
-          '\troughnessFactor *= sfPackedOrmTexel.g;',
-          '#endif',
-        ].join('\n'),
-      ],
-      [
-        '#include <metalnessmap_fragment>',
-        [
-          'float metalnessFactor = metalness;',
-          '#ifdef USE_METALNESSMAP',
-          '\tmetalnessFactor *= sfPackedOrmTexel.b;',
-          '#endif',
-        ].join('\n'),
-      ],
-      [
-        '#include <aomap_fragment>',
-        [
-          '#ifdef USE_AOMAP',
-          '\tfloat ambientOcclusion = ( sfPackedOrmTexel.r - 1.0 ) * aoMapIntensity + 1.0;',
-          '\treflectedLight.indirectDiffuse *= ambientOcclusion;',
-          '\t#if defined( USE_CLEARCOAT )',
-          '\t\tclearcoatSpecularIndirect *= ambientOcclusion;',
-          '\t#endif',
-          '\t#if defined( USE_SHEEN )',
-          '\t\tsheenSpecularIndirect *= ambientOcclusion;',
-          '\t#endif',
-          '\t#if defined( USE_ENVMAP ) && defined( STANDARD )',
-          '\t\tfloat dotNV = saturate( dot( geometryNormal, geometryViewDir ) );',
-          '\t\treflectedLight.indirectSpecular *= computeSpecularOcclusion( dotNV, ambientOcclusion, material.roughness );',
-          '\t#endif',
-          '#endif',
-        ].join('\n'),
-      ],
-    ];
-    for (const [needle, replacement] of replacements) {
-      if (!shader.fragmentShader.includes(needle)) {
-        throw new Error(`[render] packed-ORM shader contract changed: missing ${needle}`);
-      }
-      shader.fragmentShader = shader.fragmentShader.replace(needle, replacement);
-    }
-  };
-  registerGeometryPreservingShaderHook(material.onBeforeCompile, originalOnBeforeCompile);
-  material.customProgramCacheKey = () => canonicalizeSurfaceProgramFamilyKey(
-    originalProgramCacheKey,
-    'spaceface-packed-orm-single-sample-v1',
-  );
-  material.userData = {
-    ...(material.userData || {}),
-    spacefacePackedOrmSingleSample: true,
-    spacefacePackedOrmTextureSamples: 1,
-  };
-  material.needsUpdate = true;
-  return material;
-}
-
-function sameTextureSamplingForPackedOrm(left, right) {
-  if (!left || !right || (left.channel || 0) !== (right.channel || 0)) return false;
-  const sameSource = left === right
-    || (left.source && left.source === right.source)
-    || (left.image && left.image === right.image);
-  if (!sameSource || left.flipY !== right.flipY || left.wrapS !== right.wrapS || left.wrapT !== right.wrapT) {
-    return false;
-  }
-  if (left.matrixAutoUpdate && typeof left.updateMatrix === 'function') left.updateMatrix();
-  if (right.matrixAutoUpdate && typeof right.updateMatrix === 'function') right.updateMatrix();
-  const leftMatrix = left.matrix?.elements || [];
-  const rightMatrix = right.matrix?.elements || [];
-  if (leftMatrix.length !== rightMatrix.length) return false;
-  for (let i = 0; i < leftMatrix.length; i += 1) {
-    if (Math.abs(leftMatrix[i] - rightMatrix[i]) > 1e-6) return false;
-  }
-  return true;
-}
 
 function normalizePlacePropBindings(bindings) {
   for (const plume of bindings.drivePlumes) {
@@ -9161,14 +9130,20 @@ export function authoredCriticalVisualReadiness(state) {
         status: authoredAssetState(entity),
         hook: typeof (root && root.userData && root.userData.requestAuthoredUpgrade) === 'function',
         promised: !!(root && root.userData && root.userData.authoredUpgradePromise),
+        unbuildable: entity && entity._noMesh === true,
       };
     });
+  // A `_noMesh` stamp means the build queue gave up permanently — the row can
+  // never receive a hook or a promise, so counting it as pending reports a
+  // wait that can never end. It stays in openingAssets for diagnostics.
   const openingPending = openingAssets.filter((entry) => (
     !isFlightReadyStatus(entry.status)
     && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const openingPipelinePending = openingAssets.filter((entry) => (
     !authoredPipelineStaged(entry.status) && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const gateIds = new Set(
     entityList.filter((entity) => isOpeningFlightGateEntity(entity, state)).map((entity) => entity.id),
@@ -9392,6 +9367,16 @@ export async function prepareAuthoredVisualPipelines(root, options = {}, phaseOb
   const poolCandidateTwinMount = await pacePolicyWalk(
     () => mountPackagePoolCandidateInstancedTwins(root),
   );
+  // Resident-program fast lane: canonicalization and the specimen mounts above have fixed
+  // this boundary's program axes, so a repeat-archetype subject (the swarm crowd, traffic
+  // families) can now prove every program it needs already linked through an earlier
+  // admission. Its remaining stages are cache-hit binds and bookkeeping — pacing them
+  // across presents only serializes seconds of queue wall-time behind the flight lane.
+  // The verdict lives on the job's own options so the compile, residency, publication
+  // and commit/dispose legs all unpace for this subject only.
+  if (options.yieldBetweenGpuStages === true && canonicalProgramsLinked(root)) {
+    options.yieldBetweenGpuStages = false;
+  }
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
@@ -9735,6 +9720,14 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
           boundary, fallbackRoot, entity, library, scene, options, setActive, authored,
           installedPreparedDisposer,
         );
+        if (!swapped && options.initialLodRetry === true && !staleAuthoredRunVerdict(boundary, options)) {
+          const retryOptions = {
+            ...options, lodLevel: 'lod0', initialLodFile: null, initialLodRetry: false,
+          };
+          delete retryOptions.bootstrapPlan;
+          delete retryOptions.forceWholeShipFile;
+          return await upgradeBoundary(boundary, fallbackRoot, boundaryLiveEntity(boundary, entity), renderer, scene, retryOptions, setActive);
+        }
         if (swapped) {
           // The LOD-family install is its own O(family) leg — let it land in the
           // presented window after the graft+publish tail rather than riding
@@ -9939,6 +9932,11 @@ async function disposePreparedAuthoredShip(authored) {
     }
     catch (error) { cleanupErrors.push(error); }
   };
+  // Pool registrations belong to this composed root, even though their stable owner is the
+  // shared boundary. Releasing the boundary here would also kill its visible sibling.
+  for (const release of authored.packagePoolReleases || EMPTY_ARRAY) {
+    await attempt(release, release);
+  }
   for (const instance of authored.renderPackageInstances || EMPTY_ARRAY) {
     await attempt(instance, () => instance?.dispose?.('authored-ship-preparation-failed'));
   }
@@ -10229,29 +10227,32 @@ export function queuePacedDetachedTeardown(root, iter) {
   return true;
 }
 
-export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
-  const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
-  const family = selection && selection.lodFamily;
-  if (!canInstallWholeShipLodFamily(entity, selection)) return false;
+export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity) return false;
+  let selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
+  let family = selection && selection.lodFamily;
+  const eligible = canInstallWholeShipLodFamily(entity, selection) && isOrdinaryLodShip(entity)
+    && !!packagedLiveWholeShipFile(family?.lod1) && !!packagedLiveWholeShipFile(family?.lod2);
   if (boundary.userData.wholeShipLodFamilyInstalled) {
     // The commit already swapped a fresh root in; a refresh failure must not reject this
     // admission — the stale retained roots stay covered by the teardown hook.
     try {
       const refresh = boundary.userData.refreshWholeShipLodFamily;
-      if (typeof refresh === 'function') refresh(options.committedAuthored || null);
+      if (typeof refresh === 'function') refresh(options.committedAuthored || null, options.lodLevel, selection, eligible);
     } catch (error) {
       dedupWarn('partsLibrary:lod-family-refresh', '[partsLibrary] whole-ship LOD family refresh failed', error);
     }
     return false;
   }
+  if (!eligible) return false;
 
   const roots = Object.create(null);
   // Composed authored records carry resources that live outside the node tree (package-instance
   // pins, flight-template holds, owner-local GPU objects); keep them per resident level so
   // teardown can release them even after a swap detached the level's root.
   const retainedComposed = new Map();
-  let activeLevel = 'lod0';
+  let activeLevel = normalizeRequestedLod(options.lodLevel);
   let pendingLevel = null;
+  let requestGeneration = 0;
   // Whole-ship LOD demotions are intentionally started from the normal per-frame selector, but
   // their async replacement must remain visible to the startup first-picture barrier. Keep the
   // exact in-flight transition on the stable boundary; this does not change when steady-flight
@@ -10265,16 +10266,18 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     }
     return boundary.children && boundary.children[0] || null;
   };
-  roots.lod0 = findActiveRoot();
-  if (!roots.lod0) return false;
-  if (options.committedAuthored && options.committedAuthored.root === roots.lod0) {
-    retainedComposed.set('lod0', options.committedAuthored);
+  roots[activeLevel] = findActiveRoot();
+  if (!roots[activeLevel]) return false;
+  if (options.committedAuthored && options.committedAuthored.root === roots[activeLevel]) {
+    retainedComposed.set(activeLevel, options.committedAuthored);
   }
 
   const baseUpdate = boundary.userData.updateLod;
   boundary.userData.wholeShipLodFamily = family;
   boundary.userData.wholeShipLodFamilyInstalled = true;
-  boundary.userData.wholeShipLodActiveLevel = 'lod0';
+  boundary.userData.wholeShipLodActiveLevel = activeLevel;
+  delete boundary.userData.shipLodSelection;
+  boundary.userData._appliedLodLevel = undefined;
   // The publish-time envelope stamp keyed on lodLevel='' — re-key it under the
   // real level now or the first cull consult re-measures in-frame anyway.
   primeDrawnCullStamps(boundary);
@@ -10305,6 +10308,8 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   // to take the identical per-node disposal, then its composed record releases authored-level
   // pins once the traversal has finished.
   boundary.userData.disposeWholeShipLodRetained = () => {
+    requestGeneration++;
+    pendingLevel = null;
     for (const level of Object.keys(roots)) {
       const root = roots[level];
       const composed = retainedComposed.get(level) || null;
@@ -10319,11 +10324,14 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
   // A re-commit swaps in a fresh authored root while this controller persists. Every retained
   // root belongs to the superseded admission — dispose it rather than retaining both generations
   // — then rebind lod0 to the freshly committed root.
-  boundary.userData.refreshWholeShipLodFamily = (committedAuthored = null) => {
+  boundary.userData.refreshWholeShipLodFamily = (committedAuthored = null, committedLevel = 'lod0', nextSelection = selection, nextEligible = true) => {
     // A re-commit supersedes every in-flight demotion: clearing pendingLevel fails the queued
     // load's own commit check (its root disposes through the lost-race path instead of ever
     // swapping over this generation), and the promise slot is reset to match.
     pendingLevel = null;
+    requestGeneration++;
+    boundary.userData._appliedLodLevel = undefined;
+    delete boundary.userData.shipLodSelection;
     transitionPromise = null;
     boundary.userData.wholeShipLodTransitionPromise = null;
     const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
@@ -10346,9 +10354,20 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       }
     }
     const fresh = findActiveRoot();
-    roots.lod0 = fresh;
+    selection = nextSelection;
+    family = selection?.lodFamily || null;
+    boundary.userData.wholeShipLodFamily = family;
+    if (!nextEligible) {
+      boundary.userData.wholeShipLodFamilyInstalled = false;
+      boundary.userData.updateLod = baseUpdate;
+      boundary.userData.wholeShipLodActiveLevel = null;
+      if (detachedAny) invalidateShadowCasterPolicy(boundary);
+      return false;
+    }
+    activeLevel = normalizeRequestedLod(committedLevel);
+    roots[activeLevel] = fresh;
     if (committedAuthored && committedAuthored.root === fresh) {
-      retainedComposed.set('lod0', committedAuthored);
+      retainedComposed.set(activeLevel, committedAuthored);
     }
     if (detachedAny) {
       // Stale retained roots carried withheld depth-stage bookkeeping keyed on a
@@ -10357,14 +10376,17 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       // re-forcing flags on meshes that no longer exist.
       invalidateShadowCasterPolicy(boundary);
     }
-    activeLevel = 'lod0';
-    boundary.userData.wholeShipLodActiveLevel = 'lod0';
+    boundary.userData.wholeShipLodActiveLevel = activeLevel;
     return !!fresh;
   };
 
   const swapTo = (level) => {
     const next = roots[level];
     if (!next) return false;
+    const nextComposed = retainedComposed.get(level);
+    for (const admission of nextComposed?.packagePoolAdmissions || EMPTY_ARRAY) {
+      activateRenderPackagePoolAdmission(admission);
+    }
     const prev = roots[activeLevel];
     let shadowTreeChanged = false;
     const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
@@ -10390,6 +10412,8 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       invalidateShadowCasterPolicy(boundary);
     }
     if (typeof setActive === 'function') setActive(next);
+    boundary.userData.__socketCache = new Map();
+    primeDrawnCullStamps(boundary);
     // setActive → syncActiveSurface points boundary.userData.lod at the incoming root's own
     // resolver, which holds whatever level it last resolved — fresh roots wake at lod0. Seed it
     // with the level now presented and the outgoing resolver's px, or a hull parked inside the
@@ -10402,21 +10426,30 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     }
     activeLevel = level;
     boundary.userData.wholeShipLodActiveLevel = level;
+    boundary.userData._appliedLodLevel = undefined;
+    if (typeof boundary.userData.updateDamageState === 'function') {
+      const state = options.state || authoredRuntimeState();
+      boundary.userData.updateDamageState(boundaryLiveEntity(boundary, entity), Number(state?.simTime) || 0);
+    }
     return true;
   };
 
   boundary.userData.updateLod = (level) => {
     // Teardown clears the retained map; a dead boundary's selector must not schedule new loads.
-    if (!roots.lod0) return;
+    if (!roots[activeLevel]) return;
     const requested = normalizeRequestedLod(level);
-    if (typeof baseUpdate === 'function') baseUpdate(requested);
-    // Runtime demotion is off (wholeShipLodPolicy.js): a 'load' resolves to 'keep', so a live ship
-    // never admits a second file on the glass. Already-resident levels may still swap (instant).
-    const transition = resolveLiveWholeShipLodTransition(activeLevel, requested, {
-      residentReady: !!roots[requested],
+    const liveEntity = boundaryLiveEntity(boundary, entity);
+    const safeRequested = isOrdinaryLodShip(liveEntity) ? requested : 'lod0';
+    boundary.userData.wholeShipLodDesiredLevel = safeRequested;
+    if (typeof baseUpdate === 'function') baseUpdate(activeLevel);
+    // The visible root stays in place while its exact sibling is prepared hidden.
+    const transition = resolveLiveWholeShipLodTransition(activeLevel, safeRequested, {
+      residentReady: !!roots[safeRequested],
       pendingLevel,
       attached: !!boundary.parent,
+      allowLoad: true,
     });
+    if (pendingLevel && pendingLevel !== transition.pendingLevel) requestGeneration++;
     pendingLevel = transition.pendingLevel;
     if (transition.action === 'swap') {
       swapTo(transition.level);
@@ -10427,13 +10460,30 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     const scene = options.scene || boundary.parent;
     if (!renderer || !scene) {
       pendingLevel = null;
+      boundary.userData.wholeShipLodRetryAfter = monotonicNow() + 2000;
       return;
     }
-    const file = packagedLiveWholeShipFile(family[requested]);
+    const file = packagedLiveWholeShipFile(family[safeRequested]);
     if (!file) {
       pendingLevel = null;
+      boundary.userData.wholeShipLodRetryAfter = monotonicNow() + 2000;
       return;
     }
+    const requestedLevel = safeRequested;
+    const generation = ++requestGeneration;
+    const admissionEpoch = boundary.userData.admissionEpoch;
+    const paletteSignature = JSON.stringify(paletteFor(liveEntity));
+    const stillWanted = () => generation === requestGeneration
+      && admissionEpoch === boundary.userData.admissionEpoch
+      && isAuthoredAdmissionBoundaryCurrent(options)
+      && (typeof options.isResidencyOwnerActive !== 'function' || options.isResidencyOwnerActive())
+      && boundary.userData.wholeShipLodDesiredLevel === requestedLevel
+      && (requestedLevel === 'lod0' || isOrdinaryLodShip(boundaryLiveEntity(boundary, entity)))
+      && (requestedLevel === 'lod0' || initialWholeShipLodPublicationSafe(
+        boundaryLiveEntity(boundary, entity), boundary, requestedLevel, file))
+      && shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, boundaryBelongsToScene(boundary, scene))
+      && JSON.stringify(paletteFor(boundaryLiveEntity(boundary, entity))) === paletteSignature
+      && wholeShipVisualForEntity(boundaryLiveEntity(boundary, entity), { ...options, requiredWholeShip: true })?.file === selection.file;
     const lodLoad = (async () => {
       // Hoisted so the catch can still dispose a root abandoned by a mid-prepare throw.
       let composed = null;
@@ -10442,25 +10492,28 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
           ...options,
           requiredWholeShip: true,
           forceWholeShipFile: file,
-          bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
+          bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requestedLevel, options),
           libraryScope: 'whole-ship-lod-family',
           residencyRole: 'whole-ship-lod-family',
           // The demoted level composes outside the admission pipeline: without the boundary as
           // residency owner the package is only cache/bootstrap-owned and a sweep can evict it
           // between load and createInstance ("must be retained before creating an instance").
           residencyOwner: boundary,
-          // A demotion is presentation-path work on a live boundary: splice its plan decode ahead
-          // of queued ambient prefetch/runway entries so deep lookahead cannot delay the swap.
-          admissionDeadline: true,
+          // A visible LOD0 remains available during demotion; do not rush a fleet of sibling
+          // decodes ahead of actual on-screen admissions. Promotions retain priority.
+          admissionDeadline: requestedLevel === 'lod0',
+          admissionVisible: requestedLevel === 'lod0',
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();
         if (publicationWait) await publicationWait;
-        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
+        if (!stillWanted()) return;
         composed = await buildComposedShipAsync(entity, library, scene, boundary, {
           ...options,
           requiredWholeShip: true,
           forceWholeShipFile: file,
           residencyRole: 'whole-ship-lod-family',
+          admissionDeadline: requestedLevel === 'lod0',
+          admissionVisible: requestedLevel === 'lod0',
         });
         if (!composed || !composed.root) {
           composed = null;
@@ -10471,8 +10524,12 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
         // programs link and its buffers upload inside the first frame it is drawn — a measured
         // bloomScene brick. Compile and upload it while still hidden, then swap. Compile uses the
         // shared flight admission path, which slices across presents in flight.
-        await prepareAuthoredShipVisualPipelines(composed, options);
-        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) {
+        await prepareAuthoredShipVisualPipelines(composed, {
+          ...options, deferPackagePoolActivation: true,
+          admissionDeadline: requestedLevel === 'lod0',
+          admissionVisible: requestedLevel === 'lod0',
+        });
+        if (!stillWanted()) {
           // Lost the race after the upload: the root is fully live in renderer memory but will
           // never be swapped in. Dispose it — returning here used to leak every uploaded
           // buffer/geometry of this demotion attempt (D24 growth with no residency owner).
@@ -10480,12 +10537,16 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
           composed = null;
           return;
         }
-        roots[requested] = composed.root;
-        retainedComposed.set(requested, composed);
-        if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
+        roots[requestedLevel] = composed.root;
+        retainedComposed.set(requestedLevel, composed);
+        if (stillWanted()) swapTo(requestedLevel);
       } catch (error) {
         // A throw after compose abandons the same uploaded root — dispose before logging.
         if (composed) {
+          if (roots[requestedLevel] === composed.root && activeLevel !== requestedLevel) {
+            delete roots[requestedLevel];
+            retainedComposed.delete(requestedLevel);
+          }
           await disposeAbandonedWholeShipLodRoot(composed);
           composed = null;
         }
@@ -10509,7 +10570,10 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
           dedupWarn('partsLibrary:lod-demotion', '[partsLibrary] whole-ship LOD demotion failed; keeping active level', error, { causes });
         }
       } finally {
-        if (pendingLevel === requested) pendingLevel = null;
+        if (generation === requestGeneration && pendingLevel === requestedLevel) pendingLevel = null;
+        if (generation === requestGeneration) {
+          boundary.userData.wholeShipLodRetryAfter = monotonicNow() + 2000;
+        }
       }
     })();
     transitionPromise = lodLoad;
@@ -10649,7 +10713,7 @@ async function commitAuthoredBoundary(
   const oldHull = fallbackRoot.userData && fallbackRoot.userData.hull;
   const newHull = authored.root.userData && authored.root.userData.hull;
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
-  primeAuthoredState(authored.root, fallbackRoot, entity);
+  primeAuthoredState(authored.root, fallbackRoot, entity, options.lodLevel);
 
   // Pace pre-graft compute separately from the atomic graft + publication.
   // The mounted root and its admission bookkeeping must share one ownership
@@ -10667,6 +10731,22 @@ async function commitAuthoredBoundary(
       || !boundary.parent) {
     await disposePreparedShip(authored);
     return false;
+  }
+
+  if (options.initialLodFile) {
+    const currentEntity = boundaryLiveEntity(boundary, entity);
+    if (!isAuthoredAdmissionBoundaryCurrent(options) || options.asyncAdmission?.signal.aborted
+        || (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive())
+        || !boundaryBelongsToScene(boundary, scene)) {
+      await disposePreparedShip(authored);
+      return false;
+    }
+    if (options.initialLodFingerprint !== authoredCompositionFingerprintForEntity(currentEntity)
+        || !initialWholeShipLodPublicationSafe(currentEntity, boundary, options.lodLevel, options.initialLodFile)) {
+      await disposePreparedShip(authored);
+      options.initialLodRetry = true;
+      return false;
+    }
   }
 
   // Publish exactly one identity after the authored payload and bindings exist. The hidden substrate
@@ -10725,6 +10805,10 @@ async function commitAuthoredBoundary(
       recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
+    // This boundary's program set is now provably linked (the exact-target touch above
+    // paid any residual variant) — record the signatures so same-family boundaries can
+    // take the resident fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // The publish key is final for non-family rows; a whole-ship LOD family
     // mints its level after this commit and re-stamps there. Stamping now
     // still covers the pre-install consult window.
@@ -10844,16 +10928,16 @@ function suppressAuthoredReadableSilhouette(authoredRoot) {
 }
 
 
-export function primeAuthoredState(authoredRoot, fallbackRoot, entity) {
+export function primeAuthoredState(authoredRoot, fallbackRoot, entity, lodLevel = 'lod0') {
   const previousLod = fallbackRoot.userData && fallbackRoot.userData.lod;
   const nextLod = authoredRoot.userData && authoredRoot.userData.lod;
   // Admission and the live renderer must present the same ship body. Replaying
   // the old proxy's small pixel width demoted the authored root before its first
   // paint, then the renderer promoted it again on the next frame.
   if (nextLod && typeof nextLod.adopt === 'function') {
-    nextLod.adopt('lod0', previousLod && previousLod.lastPx);
+    nextLod.adopt(normalizeRequestedLod(lodLevel), previousLod && previousLod.lastPx);
   }
-  if (typeof authoredRoot.userData.updateLod === 'function') authoredRoot.userData.updateLod('lod0');
+  if (typeof authoredRoot.userData.updateLod === 'function') authoredRoot.userData.updateLod(normalizeRequestedLod(lodLevel));
   if (typeof authoredRoot.userData.updateDamageState === 'function') {
     const now = globalThis.performance && typeof globalThis.performance.now === 'function'
       ? globalThis.performance.now() : Date.now();
@@ -11852,6 +11936,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     fallbackParts,
     wholeShip,
     packagePoolAdmissions: [...bindings.packagePoolAdmissions],
+    packagePoolReleases: bindings.packagePoolReleases,
     ownerLocalObjects: [...ownerLocalObjects],
     ownerLocalGeometries: [...ownerLocalGeometries],
     ownerLocalMaterials: [...ownerLocalMaterials],
@@ -11915,6 +12000,13 @@ function composeYield() {
   return Promise.resolve();
 }
 
+async function releaseComposedPoolRegistrations(releases) {
+  if (!(releases instanceof Set) || !releases.size) return;
+  const results = await Promise.allSettled([...releases].map(release => Promise.resolve().then(release)));
+  const errors = results.filter(result => result.status === 'rejected').map(result => result.reason);
+  if (errors.length) throw new AggregateError(errors, 'Composed pool cleanup failed');
+}
+
 async function buildComposedShipAsync(entity, library, scene, ownerBoundary, options = {}) {
   // The trace carries the partially built root back out if the run is early-returned so the
   // driver can dispose it — the generator itself stays untouched by the abort (the sync driver
@@ -11935,6 +12027,7 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   // live per slice so a mid-compose admission join boosts the remaining tail immediately.
   const frameBudgetMs = () => (options.admissionVisible === true || options.admissionDeadline === true)
     ? COMPOSE_FRAME_MS_URGENT : COMPOSE_FRAME_MS;
+  try {
   let step = steps.next();
   while (!step.done) {
     const sliceMs = now() - sliceStarted;
@@ -11953,15 +12046,8 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
         || (ownerBoundary && !ownerBoundary.parent)) {
         try { steps.return(undefined); } catch { /* generator teardown is best-effort */ }
         if (composeTrace.root) {
-          // Cancel pool admissions the aborted run claimed — slot release stays owner-bound, but a
-          // cancelled admission stops prepare/activate from doing GPU work for a dead run and lets
-          // the retirement path reclaim the slots early instead of at boundary teardown.
-          const poolAdmissions = composeTrace.bindings && composeTrace.bindings.packagePoolAdmissions;
-          if (poolAdmissions instanceof Set) {
-            for (const admission of poolAdmissions) {
-              if (admission) admission.cancelled = true;
-            }
-          }
+          // Admissions can include other boundaries: release only this partial composition.
+          await releaseComposedPoolRegistrations(composeTrace.bindings?.packagePoolReleases);
           const partial = composeTrace.root;
           for (let preScan = disposeAbortPartialPreScanSteps(partial); ;) {
             if (preScan.next().done) break;
@@ -11985,6 +12071,25 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   }
   notePacedFrameSpend(now() - sliceStarted);
   return step.value;
+  } catch (error) {
+    let cleanupError = null;
+    try { await releaseComposedPoolRegistrations(composeTrace.bindings?.packagePoolReleases); }
+    catch (cause) { cleanupError = cause; }
+    if (composeTrace.root) {
+      const partial = composeTrace.root;
+      for (let preScan = disposeAbortPartialPreScanSteps(partial); ;) {
+        if (preScan.next().done) break;
+        await composeYield();
+      }
+      const partialState = options.state || (options.renderer && options.renderer.state) || null;
+      if (!queuePacedDetachedTeardown(partial, disposeDetachedObjectSteps(partial, partialState))) {
+        disposeDetachedObject(partial, partialState);
+      }
+      composeTrace.root = null;
+    }
+    if (cleanupError) throw new AggregateError([error, cleanupError], 'Composed ship failed and pool cleanup failed');
+    throw error;
+  }
 }
 
 // Async driver for the place/capsule build Steps twins — same contract as
@@ -12630,8 +12735,9 @@ function* instantiateFlightRootTemplateSteps(
     return root;
   } finally {
     if (!adopted) {
-      for (const admission of partial.bindings?.packagePoolAdmissions || EMPTY_ARRAY) {
-        if (admission) admission.cancelled = true;
+      for (const release of partial.bindings?.packagePoolReleases || EMPTY_ARRAY) {
+        try { Promise.resolve(release()).catch(error => console.info('[partsLibrary] template pool cleanup failed', error)); }
+        catch (error) { console.info('[partsLibrary] template pool cleanup failed', error); }
       }
       if (partial.root) {
         // The cached path has not returned to composedShipSteps, so no outer
@@ -12807,6 +12913,7 @@ function* instantiateFlightRootTemplateBodySteps(
     fallbackParts: [...(entry.fallbackParts || EMPTY_ARRAY)],
     wholeShip: entry.wholeShip === true,
     packagePoolAdmissions: [...bindings.packagePoolAdmissions],
+    packagePoolReleases: bindings.packagePoolReleases,
     ownerLocalObjects: [],
     ownerLocalGeometries: [],
     ownerLocalMaterials: [...ownerLocalMaterials],
@@ -12904,6 +13011,10 @@ function restoreFlightTemplateBindings(root, paths, supplemental = null) {
   }
   for (const admission of supplemental?.packagePoolAdmissions || EMPTY_ARRAY) {
     bindings.packagePoolAdmissions.add(admission);
+  }
+  // A parked candidate can be promoted after composition returns. Share the live set.
+  if (supplemental?.packagePoolReleases instanceof Set) {
+    bindings.packagePoolReleases = supplemental.packagePoolReleases;
   }
   // Package subtrees recreated for a template instance re-bind their motion controllers into
   // the supplemental set — merge them so the ship driver drives the LIVE pivots, not the paths
@@ -14683,6 +14794,7 @@ function* instantiatePartSteps(record, parent, placement, palette, scene, owner,
       const allocation = allocateInstance(scene, owner, object, primitive.geometry, material, primitive.name, {
         deferNewChunkPublication: deferChunk,
         deferProxyActivation: deferChunk,
+        releaseScope: bindings?.packagePoolReleases,
       });
       if (allocation && allocation.admission) {
         if (bindings && bindings.packagePoolAdmissions instanceof Set) {
@@ -14771,6 +14883,7 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
       palette,
       tagsByName,
       poolAdmissions: bindings.packagePoolAdmissions,
+      poolReleases: bindings.packagePoolReleases,
     })
     : null;
   const mergePackageMeshes = staticBatches
@@ -14828,7 +14941,7 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
 
     if (object.isMesh) {
       if (object.visible === false) continue;
-      stampGeometryBatchKey(object.geometry, `${record.assetId || record.url}|${object.name}`);
+      stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, object.name));
       const primitive = { material: object.material, tags };
       if (object.userData?.spacefacePackageMaterialPrepared !== true) {
         object.material = requiresPerShipMesh(primitive)
@@ -14887,8 +15000,16 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
   return partRoot;
 }
 
+// Sibling packages intentionally keep the same runtime asset ID and node names, but their
+// geometry differs. Bind pool geometry to its source URL and package content identity.
+function renderPackageGeometryIdentity(record, name) {
+  const source = record?.url || record?.renderPackage?.sourceUrl || record?.assetId || 'PackageShip';
+  const content = record?.renderPackage?.contentHash || '';
+  return `${source}|${content}|${name || 'Mesh'}`;
+}
+
 function createRenderPackageShipNodeFactory({
-  scene, owner, record, palette, tagsByName, poolAdmissions,
+  scene, owner, record, palette, tagsByName, poolAdmissions, poolReleases,
 }) {
   return ({ source }) => {
     const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
@@ -14896,7 +15017,7 @@ function createRenderPackageShipNodeFactory({
 
     const material = sharedMaterialFor(source.material, tags, palette);
     const object = source.clone(false);
-    stampGeometryBatchKey(object.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+    stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, source.name));
     object.material = material;
     object.userData = {
       ...(object.userData || {}),
@@ -14910,6 +15031,7 @@ function createRenderPackageShipNodeFactory({
       material,
       `${record.assetId || 'PackageShip'}_${source.name || 'Mesh'}`,
       poolAdmissions,
+      poolReleases,
     );
   };
 }
@@ -14989,7 +15111,7 @@ export async function warmRenderPackageShipPool(scene, record, witnessPairs, opt
       // Pool identity prefers the geometry's first-writer-wins batch stamp — stamp BEFORE
       // keying so this check reads the same identity admitRenderPackageShipPoolCandidate
       // will compute (and the same one a primitives-path stamp already established).
-      stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+      stampGeometryBatchKey(source.geometry, renderPackageGeometryIdentity(record, source.name));
       const key = instancePoolKey(source.geometry, material);
       if (uniqueKeys.has(key)) continue;
       if (packagePoolSlots(poolState && poolState.pools.get(key)).length > 0) continue;
@@ -15084,7 +15206,7 @@ export function paletteWarmSubjectsForRecord(record, palette) {
     const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
     if (!canPoolRenderPackageShipMesh(source, tags)) continue;
     const material = sharedMaterialFor(source.material, tags, palette || {});
-    stampGeometryBatchKey(source.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
+    stampGeometryBatchKey(source.geometry, renderPackageGeometryIdentity(record, source.name));
     const key = instancePoolKey(source.geometry, material);
     if (uniqueKeys.has(key)) continue;
     uniqueKeys.set(key, { geometry: source.geometry, material });
@@ -15223,14 +15345,14 @@ function swarmRosterEnemyDefs() {
 }
 
 function admitRenderPackageShipPoolCandidate(
-  scene, owner, object, geometry, material, label, poolAdmissions,
+  scene, owner, object, geometry, material, label, poolAdmissions, poolReleases = null,
 ) {
   const state = sceneState(scene);
   const key = instancePoolKey(geometry, material);
   const pool = state.pools.get(key) || null;
   const hasPackageSlots = packagePoolSlots(pool).length > 0;
   const first = state.packageCandidates.get(key) || null;
-  const nextCandidate = createPackagePoolCandidate(key, owner, object, geometry, material, label);
+  const nextCandidate = createPackagePoolCandidate(key, owner, object, geometry, material, label, poolReleases);
 
   if (!hasPackageSlots && !first) {
     installPackagePoolCandidate(state, nextCandidate);
@@ -15263,6 +15385,7 @@ function admitRenderPackageShipPoolCandidate(
           deferProxyActivation: deferNewChunkPublication,
           activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key),
           packageCandidate: first,
+          releaseScope: first.releaseScope,
         },
       ));
     }
@@ -15271,6 +15394,7 @@ function admitRenderPackageShipPoolCandidate(
       deferProxyActivation: deferNewChunkPublication,
       activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key),
       packageCandidate: nextCandidate,
+      releaseScope: poolReleases,
     }));
 
     const immediateByChunk = new Map();
@@ -15393,8 +15517,8 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
   });
 }
 
-function createPackagePoolCandidate(key, owner, object, geometry, material, label) {
-  return { key, owner, object, geometry, material, label };
+function createPackagePoolCandidate(key, owner, object, geometry, material, label, releaseScope = null) {
+  return { key, owner, object, geometry, material, label, releaseScope };
 }
 
 function installPackagePoolCandidate(state, candidate) {
@@ -15404,11 +15528,11 @@ function installPackagePoolCandidate(state, candidate) {
   candidate.object.userData.spacefaceInstancePoolKey = candidate.key;
   if (candidate.releaseRegistered !== true) {
     candidate.releaseRegistered = true;
-    registerOwnerRelease(candidate.owner, () => {
+    registerScopedPoolRelease(candidate.owner, () => {
       if (state.packageCandidates.get(candidate.key) === candidate) {
         state.packageCandidates.delete(candidate.key);
       }
-    });
+    }, candidate.releaseScope);
   }
   return true;
 }
@@ -15656,6 +15780,7 @@ function createBindings() {
     lod: { lod0: [], lod1: [], lod2: [] },
     lodDynamicDetails: [],
     packagePoolAdmissions: new Set(),
+    packagePoolReleases: new Set(),
     // ANI-00: MOTION_* pivots found while specializing (tests/debug), and the per-instance
     // authored-motion controllers bound from the package's verified motion bank.
     motionGroups: [],
@@ -15918,18 +16043,24 @@ function allocateInstance(scene, owner, proxy, geometry, material, label, option
         ));
       }
     } else {
-      releaseInstanceSlot(state, pool, slot, { retirements });
+      releaseInstanceSlot(state, pool, slot, { retirements, keepReleaseRegistration: true });
     }
     return retirements.length ? Promise.all(retirements) : true;
   };
-  const rollback = () => releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
+  let registration;
   try {
-    registerOwnerRelease(owner, release);
+    registration = registerScopedPoolRelease(owner, release, options.releaseScope);
+    slot.releaseRegistration = registration;
   } catch (error) {
     release();
     throw error;
   }
-  return { release, rollback, admission, slot };
+  const rollback = () => {
+    const result = releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
+    registration.forget();
+    return result;
+  };
+  return { release: registration.release, rollback, admission, slot };
 }
 
 function releaseInstanceSlot(state, pool, slot, options = {}) {
@@ -15958,6 +16089,7 @@ function releaseInstanceSlot(state, pool, slot, options = {}) {
     const collapsed = options.skipPackageCollapse !== true && collapsePackagePoolIfUnique(state, pool, options);
     if (!collapsed) retireInstancePoolIfEmpty(state, pool, options);
   }
+  if (options.keepReleaseRegistration !== true) slot.releaseRegistration?.forget();
   return true;
 }
 
@@ -16782,6 +16914,25 @@ function isOwnerInCullContext(owner, context, stats) {
   const visible = (dx * dx + dy * dy + dz * dz <= far * far) && context.frustum.intersectsSphere(CULL_SPHERE);
   if (!visible && stats) stats.culledInstanceSlots++;
   return visible;
+}
+
+// A registration belongs both to the stable boundary and to the particular composed root.
+// Forget both references only after successful release; failed async retirement stays retryable.
+function registerScopedPoolRelease(owner, cleanup, scope) {
+  let unregister = null;
+  const forget = () => {
+    if (unregister) { unregister(); unregister = null; }
+    if (scope instanceof Set) scope.delete(release);
+  };
+  const release = () => {
+    const result = cleanup();
+    if (result && typeof result.then === 'function') return Promise.resolve(result).then(value => { forget(); return value; });
+    forget();
+    return result;
+  };
+  unregister = registerOwnerRelease(owner, release);
+  if (scope instanceof Set) scope.add(release);
+  return { release, forget };
 }
 
 export function registerOwnerRelease(owner, release) {

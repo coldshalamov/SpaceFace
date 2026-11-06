@@ -590,6 +590,10 @@ export const flightV3 = {
       input.brake = true;
       input.drawFlight = input.travelDrive = undefined;
     }
+    // Only the live manual helm opts into bounded back-thrust. Automatic/path/hero
+    // controllers retain their own counterthrust and brake leases; NPC packets never inherit it.
+    input.manualReverse = isPlayer && !saucer && !gridHeld && !pathActive && !heroManeuverActive
+      && !(autopilot && autopilot.active) && playerFlightControlsActive(state, entity);
     _stepArgs.dt = dt;
     _stepArgs.body = body;
     _stepArgs.input = input;
@@ -1440,7 +1444,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.boost = boost && !gridHeld;
   o.boostPressed = o.boost && !previousBoost;
   o.boostReleased = !o.boost && previousBoost;
-  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn);
   o.assistMode = resolveAssistMode(entity, state, raw);
   o.drawFlight = isPlayer && !gridHeld && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist
@@ -1451,6 +1455,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.unvectoredCruiseSteering = undefined;
   // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
   o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
+  o.manualReverse = false;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;

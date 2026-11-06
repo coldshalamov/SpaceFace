@@ -14,12 +14,16 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 **November5 source integration:** c4b88c85acd4 connects canonical course momentum/receiver guidance,
 seven briefings and earned-result comparisons, and prioritizes the real current course objective.
-Compressed Load cards now retain scar truth; restored seed identity arrives with the actual worker
-receipt. The Counterweight adapter now preserves the full110-reader autosave capture, and invalid
+Canonical gzip decoding and the default facade connection32c014 retain scar truth in focused checks;
+this persistence repair is landed and out of the critical path. Restored seed identity
+arrives with the actual worker receipt. The Counterweight adapter preserves the full110-reader autosave capture, and invalid
 plans refuse before encoding. Focused integration checks pass; actual flown courses remain open.
-The genuine Ring pilot's latest414u approach/eleven-scar/grudge save is preserved for the repaired
-candidate. Lantern Ward PR840 is a separate active31-path integration, with native/ordinary work
-still pending; it is not covered by the c4b88 baseline. See NOW for exact live writers.
+The genuine Ring pilot's later24-scar/Edda exportf21f262f… is preserved separately from beginner QA. Source
+8398e7c8d2b1 connects truthful unscored Mouth/ribs guidance and keeps explicit saved venue courses
+ahead of automatic mission guidance. Lantern Ward PR840 is integrated with finite service,180CR
+once-only settlement, real repair purchase, Massline alternative and loss/custody/Continue checks
+passing. Ordinary Ward arrival and changed Ring flying remain open; these changes are not covered
+by the c4b88 baseline. See NOW for exact live writers.
 
 **Active connected batch,2026-11-03:** ordinary Adventure exposed47-A's missing recovery marker
 and false delivery focus. Source now binds the actual field/slot, publishes the recovery/delivery
@@ -848,6 +852,77 @@ Inbox addition: test/infer-p05-patrol-hostility-live.test.mjs fails on the curre
 ("0 shots") — the rig loads combatDoctrine.js/physics.js, both carrying large uncommitted
 edits from the active integration thread; left for the owning thread (same pattern as the
 two Inbox lines above).
+Inbox addition (wave 6): scripts/check-localization-reachability.mjs times out on the current
+tree (puppeteer click intercepted by a lingering sf-confirm overlay) — pre-existing, owning
+lane localization/tools; node-test localization suites pass 18/18.
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-title-greeting (WF-09): a NEW title you earn is named by the keeper at your next dock —
+  once, in the earn verb's own flavor; delivery-gated stamp, ladder behavior for older
+  titles, save round-trip proven (449fa14beee2).
+- inf-berth-voice (WF-13 repair): the yard answers its own verbs — a paid order stamps taken
+  (deeper, quieter dock clunk), the self-serve decant pours on the pressure-release hiss
+  scaled by cells moved, and a refused decant refuses out loud on the capacity-refusal voice;
+  captions name the two moments with no toast of their own. Includes the required
+  audio-contract repair (two committed emissions missing from EMITTED_CUES; check passes at
+  94 cues) (c829fb7760d6).
+- inf-decant-quote (WF-14): the Decant key names the fuel it will move before you press it,
+  and when the pour is unreachable it names which refusal is coming in the accessible name —
+  promise and pour agree by construction (347bd0cf962f).
+Verified already deep, wave 6: dock social second voice (keeper line + arrival recognition
+bands + INF-074 rescue memory), the yard's eye (dock-home vitals + departure chip), empty
+states on clean surfaces (achievements/statistics/comms/ledger/evidence all speak).
+
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-rescue-tow-voice (WF-13): the pod you tow home talks — a grip on the latch, the air
+  clock read once per threshold, silence the moment the cable lets go; each line rides the
+  arbiter floor with the same voiceId, spent lines stamp the persistent causal record so
+  save/restore never re-speaks (09d54617ae49).
+- inf-adrift-confession (WF-16): a hull that loses its drive tells the band while it is still
+  a person with a problem — one confession per episode on the combat:subsystemDisabled seam
+  everyone else already reads, in its own faction register, naming the sector so the mayday
+  is actionable (770aefd940c8).
+- inf-completion-standing (WF-06): handing in a contract names the standing it bought in the
+  moment the pay lands — "· +15 MERIDIAN standing" on the toast, the payer's debrief opens
+  with it; the number is factions' own applied delta after clamps and run seals, so softened
+  gains read honestly and a sealed run claims nothing (ae276501aa79).
+Verified already deep, wave 7: career rank-up world answer (ladder-completed audio payoff),
+market trade-verb audio (needs avoid-listed screens), giver favor lines (giver-voice deep).
+Inbox additions (wave 7, both pre-existing at HEAD, verified by owner-swap):
+1. test/captain-rescue-production-continue.test.mjs fails — fixture deps lack
+   ensureLocaleReady (main.js finalizeLoadedGame gained it in e934dd13aafb). Owner:
+   localization/main-finalizer thread.
+2. test/missions-player-truth-fixes.test.mjs — two 47-A tests fail identically with the
+   pre-edit missions.js too; landed with 8398e7c8d2b1 (lantern-ward), which postdates the
+   test. Owner: lantern-ward/missions story integration.
+
+Implemented and focused-tested, waves 8 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-tow-work-voice (WF-01, controller direct): a hired tug speaks its own two milestones —
+  the hook and the delivery — instead of a fee and a silent cable drag; arbiter floor +
+  matching radio receipts, stamps gate re-attaches, no corpus rows (b7d8ab4bb85a).
+- inf-war-desk (WF-04, controller direct): docking into a faction at war, the desk names the
+  rival — the same conflict truth the chart's war front renders, posture repeating per visit
+  like every recognition band; cold and tense pairs stay quiet (a06f15a5b3a9).
+- inf-rescue-desk-answer (WF-13 integration): the station that takes a rescued pod answers
+  the delivery once — a bunk offered, the debt named — the ambulance crew answers a handoff,
+  ransom keeps the fence's voice; same seam as the tow voice, once per rescue, pod-scoped
+  (13de58fe5c40; also localizes the owner's adjacent raw copy).
+- inf-war-ledger-page (WF-16): a war the player leaned on files a dated page in the Ship's
+  Ledger — front, houses, the turn — from factions' own durable flip stamp; NPC-only flips
+  and pre-stamp saves file nothing (bc31c1a7d72a).
+- inf-standing-reason-words (WF-09 repair): the standing register reads every deed back as
+  words — mayday answered, fled the border, choir offering — instead of raw reason ids;
+  the never-a-raw-id law is now pinned by a source-scan test (1a54592ab63c).
+Verified already deep, wave 8: bar history register (inf-bar-regular's ladder), career desk
+acknowledgment (comms/news announce rank crossings; a band ticket is another thread's
+in-flight work), rescue world answers (rescuedWorkerReturn + fence ransom verified deep),
+standing why-surface (factionHistoryLines ring deep).
+Inbox addition (wave 8): test/fb-hitchhiking-named.test.mjs "the flight HUD path mounts the
+layer" fails at HEAD — clean hud.js (9dec955de450) added onFlightTextGeometryChange to the
+stunt-callout mount and the test's regex expects the old call. Owner: HUD/geometry thread.
 
 ## Traps
 

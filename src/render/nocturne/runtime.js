@@ -6,10 +6,10 @@ import { NocturneDirector } from './director.js';
 import { NocturneContent } from './content.js';
 import { NocturneHeadlightSources } from './headlightSources.js';
 import { createNocturneAtmosphere } from './atmosphere.js';
-import { bindNocturneScene, createLogicalLight, unbindNocturneScene } from './bridge.js';
+import { NOCTURNE_GPU_POINTS, bindNocturneScene, createLogicalLight, unbindNocturneScene } from './bridge.js';
 import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
 
-export const NOCTURNE_GPU_POINTS = 8;
+export { NOCTURNE_GPU_POINTS };
 export const NOCTURNE_QUALITY = Object.freeze({
   integrated: Object.freeze({ shadowResolution: 256, shadowHz: 10 }),
   balanced: Object.freeze({ shadowResolution: 512, shadowHz: 15 }),

@@ -1269,8 +1269,52 @@ function drawRangePlate(g, metrics, range, expanded) {
   g.restore();
 }
 
+// The heat ring is the costliest single layer (clip + huge-arc fill + dashed stroke). Its look is a pure
+// function of the dial-space geometry, so keep the last render on an offscreen layer and blit it while the
+// ring has moved less than half a pixel (hovering, slow drift, mining). Fast flight misses and repaints.
+const heatLayer = { canvas: null, ctx: null, key: '', owner: null };
 function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   if (!zone || !zone.active || !(zone.radius > 0) || !(zone.level > 0)) return;
+  const target = g.canvas;
+  if (!target || typeof document === 'undefined' || typeof g.getTransform !== 'function') {
+    drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius);
+    return;
+  }
+  const zx = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
+  const zz = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
+  const dx = zx - playerX;
+  const dz = zz - playerZ;
+  const outside = dx * dx + dz * dz > zone.radius * zone.radius;
+  const remaining = outside && (zone.clearAfterS || 0) > 0
+    ? Math.max(0, Math.ceil(zone.clearAfterS - (zone.outsideS || 0))) : 0;
+  const key = [Math.round((center - dx * scale) * 2), Math.round((center - dz * scale) * 2),
+    Math.round(Math.max(2, zone.radius * scale) * 2), outside ? 1 : 0, zone.level, remaining,
+    center, radius, target.width, target.height].join('|');
+  if (!heatLayer.canvas || heatLayer.owner !== target || heatLayer.canvas.width !== target.width
+    || heatLayer.canvas.height !== target.height) {
+    heatLayer.canvas = heatLayer.canvas || document.createElement('canvas');
+    heatLayer.canvas.width = target.width;
+    heatLayer.canvas.height = target.height;
+    heatLayer.ctx = heatLayer.canvas.getContext('2d');
+    heatLayer.owner = target;
+    heatLayer.key = '';
+  }
+  const lg = heatLayer.ctx;
+  if (!lg) { drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius); return; }
+  if (heatLayer.key !== key) {
+    lg.setTransform(1, 0, 0, 1, 0, 0);
+    lg.clearRect(0, 0, heatLayer.canvas.width, heatLayer.canvas.height);
+    lg.setTransform(g.getTransform());
+    drawHeatZoneDirect(lg, zone, playerX, playerZ, scale, center, radius);
+    heatLayer.key = key;
+  }
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.drawImage(heatLayer.canvas, 0, 0);
+  g.restore();
+}
+
+function drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius) {
   const zoneX = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
   const zoneZ = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
   const dx = zoneX - playerX;
@@ -1291,11 +1335,37 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.fillStyle = 'rgba(255,84,112,0.03)';
   g.strokeStyle = outside ? 'rgba(255,205,95,0.68)' : 'rgba(255,84,112,0.58)';
   g.lineWidth = outside ? 1.25 : 1;
-  g.setLineDash(outside ? [7, 4] : [4, 5]);
-  g.beginPath();
-  g.arc(x, y, zoneRadius, 0, Math.PI * 2);
-  g.fill();
-  g.stroke();
+  const dash = outside ? [7, 4] : [4, 5];
+  const toDial = Math.hypot(center - x, center - y);
+  if (toDial + radius < zoneRadius - 2) {
+    // Dial wholly inside the zone: no ring visible, just the tint.
+    g.fillRect(center - radius, center - radius, radius * 2, radius * 2);
+  } else {
+    g.beginPath();
+    g.arc(x, y, zoneRadius, 0, Math.PI * 2);
+    g.fill();
+    // Dashing a huge circle is expensive; stroke only the arc that can reach the dial.
+    let a0 = 0;
+    let a1 = Math.PI * 2;
+    let offset = 0;
+    if (zoneRadius > radius * 3 && toDial > 1e-3) {
+      const cosA = (zoneRadius * zoneRadius + toDial * toDial - radius * radius) / (2 * zoneRadius * toDial);
+      if (cosA > -1 && cosA < 1) {
+        const half = Math.min(Math.PI, Math.acos(cosA) + 0.05);
+        const mid = Math.atan2(center - y, center - x);
+        a0 = mid - half;
+        a1 = mid + half;
+        const period = dash[0] + dash[1];
+        offset = -(((a0 * zoneRadius) % period) + period) % period;
+      }
+    }
+    g.setLineDash(dash);
+    g.lineDashOffset = a1 - a0 < Math.PI * 2 ? offset : 0;
+    g.beginPath();
+    g.arc(x, y, zoneRadius, a0, a1);
+    g.stroke();
+    g.lineDashOffset = 0;
+  }
   g.setLineDash([]);
   g.restore();
 

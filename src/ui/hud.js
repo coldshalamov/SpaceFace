@@ -47,6 +47,7 @@ import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterw
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { livingWorkStatusText } from '../data/contactHail.js';
@@ -94,6 +95,7 @@ import {
 import {
   fillActiveMassCouplingTargets,
   MAX_MOMENTUM_SINK_OVERLAYS,
+  momentumSinkAttribution,
 } from './momentumSinkOverlay.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -810,6 +812,16 @@ export function flightDestinationSurface(state, command) {
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
+    const entry = crackerRunEntryGuidance(state, wp);
+    if (entry) {
+      const mouth = { pos: entry.mouth.pos };
+      const reading = mtReadingsLine(objectiveBearingGlyph(state, mouth),
+        objectiveTravelReadout(state, mouth).distanceText, '');
+      const entryReading = mtReadingsLine(objectiveBearingGlyph(state, entry.entry),
+        objectiveTravelReadout(state, entry.entry).distanceText, '');
+      return { show: true, urgent: false,
+        line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
+    }
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
     const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
@@ -1908,6 +1920,7 @@ export function createHud(ctx, alerts) {
   const hudUnsubscribers = [];
   // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
   let receiptLanePlacementDirty = true;
+  let receiptIdleSlowTicks = 0;
   function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
@@ -1939,7 +1952,7 @@ export function createHud(ctx, alerts) {
   // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
   // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
   // layer's update returns false and stops listening for frames when nothing is on screen.
-  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateAndPlaceHudOverlays });
+  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry });
 
   // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
   // step can change that height, so both ResizeObserver and resize publish the same value.
@@ -2694,9 +2707,13 @@ export function createHud(ctx, alerts) {
     marker.setAttribute('role', 'img');
     marker.innerHTML = '<div class="sf-momentum-sink__bracket" aria-hidden="true"></div>'
       + '<div class="sf-momentum-sink__axis" aria-hidden="true"></div>'
-      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · YOUR FRAME · <span>0s</span></div>';
+      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · '
+      + '<span class="sf-momentum-sink__src">YOUR FRAME</span> · '
+      + '<span class="sf-momentum-sink__t">0s</span></div>';
     root.appendChild(marker);
-    momentumSinkOverlays.push({ marker, remaining: marker.querySelector('span'), seconds: -1 });
+    momentumSinkOverlays.push({ marker, source: marker.querySelector('.sf-momentum-sink__src'),
+      remaining: marker.querySelector('.sf-momentum-sink__t'), seconds: -1,
+      sourceText: null, hostile: null, aria: null });
   }
 
   function updateMomentumSinkOverlays(player) {
@@ -2720,10 +2737,26 @@ export function createHud(ctx, alerts) {
       const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
       const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
       const seconds = active ? Math.max(0, Math.ceil((active.expiresTick - tick) / 60)) : 0;
-      if (overlay.seconds !== seconds) {
+      // A hostile hauler (the Kraken's wake trawl) writes its own id onto the pilot's frame —
+      // the marker names it and wears the hostile slot instead of claiming YOUR FRAME.
+      const attribution = momentumSinkAttribution(state, active, player.id);
+      if (overlay.sourceText !== attribution.label) {
+        overlay.sourceText = attribution.label;
+        setText(overlay.source, attribution.label);
+      }
+      if (overlay.hostile !== attribution.hostile) {
+        overlay.hostile = attribution.hostile;
+        if (attribution.hostile) overlay.marker.dataset.relation = 'hostile';
+        else overlay.marker.removeAttribute('data-relation');
+      }
+      const aria = attribution.hostile
+        ? `Momentum Sink inbound${attribution.label === 'INBOUND' ? ' from a hostile frame' : ` from ${attribution.label}`}, ${seconds} seconds remaining`
+        : `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`;
+      if (overlay.seconds !== seconds || overlay.aria !== aria) {
         overlay.seconds = seconds;
+        overlay.aria = aria;
         setText(overlay.remaining, `${seconds}s`);
-        overlay.marker.setAttribute('aria-label', `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`);
+        overlay.marker.setAttribute('aria-label', aria);
       }
       stampMarkLive(overlay.marker);
       setClass(overlay.marker, 'visible', true);
@@ -5910,7 +5943,21 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) invalidateReceiptLane();
+    if (slow) {
+      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+      // receipt-lane content is live.
+      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
+        || (alertsEl && alertsEl.childElementCount > 0)
+        || externalFlightCaptions.size > 0
+        || (caption && !caption.hidden && caption.classList.contains('show'));
+      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+      if (laneBusy || receiptIdleSlowTicks >= 5) {
+        receiptIdleSlowTicks = 0;
+        invalidateReceiptLane();
+      }
+    }
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 
@@ -6150,7 +6197,7 @@ export function createHud(ctx, alerts) {
   };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
-    const box = el.getBoundingClientRect();
+    const box = readReceiptRect(el);
     return box && box.width > 0 && box.height > 0 ? box : null;
   }
   function invalidateObjectiveEdgeBoxes() {
@@ -6158,6 +6205,14 @@ export function createHud(ctx, alerts) {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
+  }
+  function invalidateTransientOverlayGeometry() {
+    // A fixed callout appearing/moving cannot change the structural HUD plates. Keep their
+    // settled boxes, but place new text/alerts in the same pre-paint turn as before.
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
@@ -6179,19 +6234,23 @@ export function createHud(ctx, alerts) {
     // read when the HUD layout changes, not on every slow presentation frame.
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     objectiveEdgeBoxes.railEl = railEl;
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
+    // Finish the read batch before publishing a CSS variable that can dirty the HUD subtree.
     // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
     // decisions sit left of the dock column instead of growing over the target card. The dock's
     // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
     if (objectiveEdgeBoxes.right && typeof document !== 'undefined'
       && document.documentElement && document.documentElement.style
       && typeof document.documentElement.style.setProperty === 'function') {
-      document.documentElement.style.setProperty(
-        '--sf-rightdock-left', `${Math.round(objectiveEdgeBoxes.right.left)}px`);
+      const value = `${Math.round(objectiveEdgeBoxes.right.left)}px`;
+      const style = document.documentElement.style;
+      if (style.getPropertyValue?.('--sf-rightdock-left') !== value) {
+        style.setProperty('--sf-rightdock-left', value);
+      }
     }
-    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
-    objectiveEdgeBoxes.orreryEl = orreryEl;
-    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
-    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
   // Other persistent UI owners may register a short-lived flight caption. Keep those captions in
@@ -6220,6 +6279,13 @@ export function createHud(ctx, alerts) {
 
   function refreshFlightTextObstacleSnapshot() {
     if (!flightTextObstaclesStale) return;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
     const measured = objectiveEdgeObstacles();
     const entries = [];
     const seen = new Set();
@@ -6239,7 +6305,8 @@ export function createHud(ctx, alerts) {
             || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
         } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
       }
-      const rect = cachedRect || el.getBoundingClientRect?.();
+      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
+      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
       if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
       seen.add(el);
       entries.push({ owner, rect });
@@ -6258,12 +6325,12 @@ export function createHud(ctx, alerts) {
       ['receipt', '.sf-toast:not(.sf-toast--out)'],
     ];
     for (const [owner, selector] of rootGroups) {
-      for (const el of root.querySelectorAll?.(selector) || []) add(owner, el);
+      for (const el of qsa(root, selector)) add(owner, el);
     }
     add('caption', caption);
     for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
-    for (const el of document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || []) add('alert', el);
-    for (const el of document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || []) add('stunt', el);
+    for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
+    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
     for (const el of externalFlightCaptions) add('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
       add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
@@ -6281,7 +6348,11 @@ export function createHud(ctx, alerts) {
   let touchOverlayOwner = null;
   let touchOverlayObserver = null;
   if (typeof ResizeObserver === 'function') {
-    overlayLayoutObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
+    overlayLayoutObserver = new ResizeObserver(entries => {
+      if (entries.length && entries.every(entry => externalFlightCaptions.has(entry.target))) {
+        invalidateTransientOverlayGeometry();
+      } else invalidateAndPlaceHudOverlays();
+    });
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     if (railEl) overlayLayoutObserver.observe(railEl);
     if (rightDock) overlayLayoutObserver.observe(rightDock);
@@ -6298,6 +6369,14 @@ export function createHud(ctx, alerts) {
   function responsiveOverlayObstacles() {
     // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
     // instruments rather than the desktop vitals rectangle that mobile flight replaces.
+    if (receiptGeometryRects?.resp) return receiptGeometryRects.resp;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
     const touch = document.getElementById('sf-touch-overlay');
     if (touch !== touchOverlayOwner) {
       touchOverlayObserver?.disconnect();
@@ -6312,12 +6391,13 @@ export function createHud(ctx, alerts) {
       }
     }
     const elements = [
-      ...root.querySelectorAll?.('#race-tape') || [],
-      ...root.querySelectorAll?.('#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded') || [],
+      ...qsa(root, '#race-tape'),
+      ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
       ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
     ];
+    const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {
-      if (!elements.includes(el)) {
+      if (!elementSet.has(el)) {
         overlayLayoutObserver?.unobserve(el);
         responsiveOverlayElements.delete(el);
       }
@@ -6328,6 +6408,7 @@ export function createHud(ctx, alerts) {
         overlayLayoutObserver?.observe(el);
       }
     }
+    if (receiptGeometryRects) receiptGeometryRects.resp = elements;
     return elements;
   }
 
@@ -6396,14 +6477,15 @@ export function createHud(ctx, alerts) {
     }
     return slot;
   }
-  // Diagnostic comparison is local to this HUD. Geometry never survives a flush, and a real
-  // placement write ends the current read stage before another owner can consume its boxes.
+  // Diagnostic comparison is local to this HUD. Geometry never survives a flush. Out-of-flow
+  // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
   function setReceiptPlacementMode(mode) {
     if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
     receiptPlacementMode = mode;
     receiptGeometryRects?.clear();
+    if (receiptGeometryRects) receiptGeometryRects.bm = null;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
@@ -6421,13 +6503,42 @@ export function createHud(ctx, alerts) {
       // Keep the old lane writer coherent when the diagnostic switches back to original.
       if (el._sfStyle) el._sfStyle[prop] = value;
       if (el.style[prop] === value) return;
-      // These are scoped placement writes. Pointer/opacity changes do not move boxes; all
-      // other writes conservatively discard the entire stage, including ancestor geometry.
-      if (prop !== 'pointerEvents' && prop !== 'opacity') receiptGeometryRects?.clear();
+      if (prop !== 'pointerEvents' && prop !== 'opacity' && receiptGeometryRects) {
+        // Only these absolute/fixed overlay roots are independent of sibling layout. Their
+        // descendants (receipt/alert cards) and ancestors must still be measured after writes.
+        const isolated = el === caption || el === toastsLaneEl || el === alertsEl
+          || (externalFlightCaptions.has(el)
+            && (el.style.position === 'absolute' || el.style.position === 'fixed'));
+        receiptGeometryRects.bm = null;
+        if (!isolated) receiptGeometryRects.clear();
+        else for (const cached of receiptGeometryRects.keys()) {
+          if (cached === el || el.contains?.(cached) || cached.contains?.(el)) {
+            receiptGeometryRects.delete(cached);
+          }
+        }
+      }
     }
     el.style[prop] = value;
   }
   function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false, ignoreFlightGhost = false) {
+    // Inside one flush the selector walks and the band solve are pure functions of the DOM and the
+    // measured rects. Both memos live on the flush's rect Map; any geometry-changing write drops them.
+    const flushCache = receiptPlacementMode === 'shared' && !(excludedElement instanceof Set)
+      ? receiptGeometryRects : null;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
+    const memoKey = flushCache ? [slot.x, slot.width, h, includeLiveCaptionsAndToasts, ignoreFlightGhost,
+      yieldedFlightVisuals.size, externalFlightCaptions.size] : null;
+    if (flushCache && flushCache.bm) {
+      const hit = flushCache.bm.find((m) => m.layout === layout && m.ex === excludedElement
+        && m.key.every((v, n) => v === memoKey[n]));
+      if (hit) return hit.bands.map((band) => ({ ...band }));
+    }
     const measured = objectiveEdgeObstacles();
     const responsive = responsiveOverlayObstacles();
     const responsiveRects = new Map(responsive.map(el => [el, readReceiptRect(el)]));
@@ -6436,15 +6547,15 @@ export function createHud(ctx, alerts) {
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
     const candidates = [
-      ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
-      ...document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || [],
-      ...(hasTouchControls ? root.querySelectorAll?.('.sf-leftcontext') || [] : []),
-      ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
+      ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
+      ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
+      ...qsa(document, '#alerts > .sf-alert:not([hidden])'),
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
-      ...(radarYielded ? root.querySelectorAll?.('.sf-rightdock > *') || [] : []),
+      ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
     ];
     if (includeLiveCaptionsAndToasts) {
-      candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
+      candidates.push(...qsa(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
     }
     const blockers = candidates.map((el) => {
       if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
@@ -6505,7 +6616,10 @@ export function createHud(ctx, alerts) {
         }
       }
     }
-    return bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+    const result = bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+    if (flushCache) (flushCache.bm || (flushCache.bm = [])).push({ layout, ex: excludedElement, key: memoKey,
+      bands: result.map((band) => ({ ...band })) });
+    return result;
   }
   const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
     'overflowY', 'transform', 'pointerEvents', 'boxSizing'];
@@ -6630,26 +6744,22 @@ export function createHud(ctx, alerts) {
       let placement = null;
       for (const candidate of slots) {
         // Wrapping changes height: measure only after applying this lane's actual width.
-        setReceiptStyle(el, 'width', 'fit-content');
-        setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-        setReceiptStyle(el, 'maxHeight', 'none');
+        prepareReceiptCaptionSize(candidate, el);
         const bands = freeOverlayBands(candidate, h, layout, el, true);
         const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
         const band = bands.find((available) => available.bottom - available.top >= height + 8);
-        if (band) { placement = { slot: candidate, band }; break; }
+        if (band) { placement = { slot: candidate, band, height }; break; }
         if ((!mobile || el.dataset?.flightCritical === 'true') && bands[0]
             && (!placement || (el.dataset?.flightCritical === 'true'
               && bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top))) {
-          placement = { slot: candidate, band: bands[0] };
+          placement = { slot: candidate, band: bands[0], height };
         }
       }
       if (!placement && mobile && el.dataset?.flightCritical === 'true') {
         // The teaching ghost is decorative; a time-limited authority notice takes
         // priority when a small screen cannot fit both alongside the controls.
         for (const candidate of slots) {
-          setReceiptStyle(el, 'width', 'fit-content');
-          setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-          setReceiptStyle(el, 'maxHeight', 'none');
+          prepareReceiptCaptionSize(candidate, el);
           const bands = freeOverlayBands(candidate, h, layout, el, true, true);
           if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
             placement = { slot: candidate, band: bands[0] };
@@ -6698,7 +6808,9 @@ export function createHud(ctx, alerts) {
         continue;
       }
       el.style.opacity = externalCaptionOpacity.get(el) || '';
-      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band);
+      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band,
+        receiptPlacementMode === 'shared' && el.style.maxWidth === `${Math.round(placement.slot.width)}px`
+          ? placement.height ?? null : null);
     }
   }
   function clearExternalFlightCaptionPlacement(el) {
@@ -6788,15 +6900,15 @@ export function createHud(ctx, alerts) {
     }
     write(laneRoot, 'pointerEvents', 'none');
   }
-  function prepareReceiptCaptionSize(captionSlot) {
-    setReceiptStyle(caption, 'width', 'fit-content');
-    setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+  function prepareReceiptCaptionSize(captionSlot, target = caption) {
+    setReceiptStyle(target, 'width', 'fit-content');
+    setReceiptStyle(target, 'maxWidth', `${Math.round(captionSlot.width)}px`);
     // Visible overflow has no scrollbar and scrollHeight still reports the full text. Keep a
     // settled cap rather than toggling it none -> px on every flush; reset a scrolling caption.
-    if (receiptPlacementMode === 'original' || caption.style.overflowY !== 'visible') {
-      setReceiptStyle(caption, 'maxHeight', 'none');
+    if (receiptPlacementMode === 'original' || target.style.overflowY !== 'visible') {
+      setReceiptStyle(target, 'maxHeight', 'none');
     }
-    setReceiptStyle(caption, 'overflowY', 'visible');
+    setReceiptStyle(target, 'overflowY', 'visible');
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');

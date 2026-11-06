@@ -226,6 +226,37 @@ export function createWorldObjectPicker(env) {
   let candCount = 0;
   const scratchMeshes = [];
   const hits = [];
+  // Hover picking runs every few frames while the pointer drifts. Brute-force triangle tests on
+  // dense hull/station leaves dominated the main thread (~2 s per 30 s of flight), so leaves above
+  // this triangle count are picked against their local bounding box instead. Ships and stations
+  // are built from many leaves, so the union of leaf boxes still follows the silhouette closely.
+  const BOX_PICK_TRIANGLES = 1200;
+  const localRay = new THREE.Ray();
+  const invLeaf = new THREE.Matrix4();
+  const boxHit = new THREE.Vector3();
+  function leafTriangleCount(geo) {
+    if (!geo) return 0;
+    if (geo.index) return geo.index.count / 3;
+    const pos = geo.attributes && geo.attributes.position;
+    return pos ? pos.count / 3 : 0;
+  }
+  function boxPick(leaf, out) {
+    const geo = leaf.geometry;
+    if (!geo.boundingBox) {
+      try { geo.computeBoundingBox(); } catch (_) { return false; }
+    }
+    if (!geo.boundingBox) return false;
+    invLeaf.copy(leaf.matrixWorld).invert();
+    localRay.copy(raycaster.ray).applyMatrix4(invLeaf);
+    if (!localRay.intersectBox(geo.boundingBox, boxHit)) return false;
+    boxHit.applyMatrix4(leaf.matrixWorld);
+    const distance = boxHit.distanceTo(raycaster.ray.origin);
+    if (distance < raycaster.near || distance > raycaster.far) return false;
+    out.distance = distance;
+    out.point = boxHit.clone();
+    return true;
+  }
+  const boxRec = { distance: 0, point: null };
   const leafCache = new WeakMap();
   const result = { entity: null, leaf: null, distance: 0, point: null, approx: false };
   const bestRec = { entity: null, leaf: null, distance: 0, point: null };
@@ -452,16 +483,20 @@ export function createWorldObjectPicker(env) {
       // Once a nearer surface has won past the tie band, a candidate whose earliest possible
       // contact already loses can never produce a winning or tying hit — skip its triangles.
       if (haveBest && c.near > bestRec.distance + TIE_EPSILON_WU) continue;
-      const scratch = scratchFor(i);
-      scratch.geometry = c.leaf.geometry;
-      scratch.material = c.leaf.material || scratch.material;
-      scratch.matrix.copy(c.leaf.matrixWorld);
-      scratch.matrixWorld.copy(c.leaf.matrixWorld);
       hits.length = 0;
-      try {
-        scratch.raycast(raycaster, hits);
-      } catch (_) {
-        continue;
+      if (leafTriangleCount(c.leaf.geometry) > BOX_PICK_TRIANGLES) {
+        if (boxPick(c.leaf, boxRec)) hits.push(boxRec);
+      } else {
+        const scratch = scratchFor(i);
+        scratch.geometry = c.leaf.geometry;
+        scratch.material = c.leaf.material || scratch.material;
+        scratch.matrix.copy(c.leaf.matrixWorld);
+        scratch.matrixWorld.copy(c.leaf.matrixWorld);
+        try {
+          scratch.raycast(raycaster, hits);
+        } catch (_) {
+          continue;
+        }
       }
       for (const h of hits) {
         if (!h || !Number.isFinite(h.distance)) continue;

@@ -1,4 +1,5 @@
 import { playerBearingHyphen } from '../core/playerCompass.js';
+import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { pallasShiftStatus } from './pallasWorkShift.js';
 import { heliosFreightHailLine } from './heliosFreightHail.js';
@@ -1095,6 +1096,8 @@ function patrolGrievanceHail(state, entity) {
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
+  if (lantern) return lantern;
   if (availability.kind === 'variance_adjustment') {
     const target = availability.entity;
     if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
@@ -1925,6 +1928,7 @@ function priorityCourierStatusText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
+  if (offer?.lanternWardHail) return lanternWardHailResponse(state, offer, choice, authority.lanternRepair);
   if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
     && offer.kind !== 'ace' && offer.kind !== 'variance_adjustment')) {
     return null;

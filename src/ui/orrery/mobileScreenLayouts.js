@@ -265,6 +265,41 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__label { max-width:55%; white-space:normal !important; }
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
+  /* Industry's blocked reason inherits a 320px nowrap seat from chainBeam. Keep its authored
+     xProc anchor, center the compact label on that ring, and wrap within the chain rather than
+     letting its first line collide with the input label or spill past the phone. */
+  ${B} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) {
+    width:min(320px, calc(100% - 40px)) !important; max-width:calc(100% - 40px) !important;
+    transform:translateX(-50%) !important; white-space:normal !important; text-align:center !important;
+    align-items:center !important;
+  }
+  ${B} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb {
+    align-items:center !important; text-align:center !important; max-width:100% !important;
+  }
+  ${B} .orr-ind-chain .orr-chain__reason,
+  ${B} .orr-ind-chain .orr-chain__reason.is-compact {
+    white-space:normal !important; overflow-wrap:normal !important; word-break:keep-all !important;
+    max-width:100% !important; font-size:18px !important; letter-spacing:.1em !important; line-height:1.15 !important;
+    text-align:center !important;
+  }
+  /* The input-side Source action has a compact visual label, but keeps a glass-sized hit target. */
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) {
+    width:min(78px, 22vw) !important; max-width:78px !important; white-space:normal !important;
+  }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__name {
+    font-size:12px !important; line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere !important;
+  }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__count {
+    letter-spacing:.06em !important; font-size:12px !important; line-height:1.2 !important;
+  }
+  ${B} .orr-ind-chain .orr-chain__label.is-left:has(.orr-chain__name) .orr-chain__source {
+    display:inline-flex !important; align-items:flex-start !important; text-align:left !important;
+    box-sizing:border-box !important; width:100% !important; min-width:44px !important; min-height:44px !important;
+    height:auto !important; padding:4px 0 !important; border:0 !important; border-radius:0 !important;
+    background:transparent !important; background-image:none !important; font-size:12px !important;
+    letter-spacing:.06em !important; line-height:1.2 !important; white-space:normal !important;
+    overflow-wrap:anywhere !important; color:rgb(236 230 216 / .82) !important;
+  }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
   /* Contract dossier: a phone-sized title and reward, and ACCEPT docks on a full-width opaque band so the
      dossier scrolls under it instead of through it. Over 800px tall only:

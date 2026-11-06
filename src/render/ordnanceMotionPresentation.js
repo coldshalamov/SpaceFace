@@ -27,6 +27,9 @@
 // Shared materials are never touched — strobes ride scale pings, not emissive. Render-only,
 // determinism-safe, zero per-frame allocation.
 
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
+import { resolveMaydayLamp, maydayViewportBurn } from './survivorPodVisual.js';
+
 function hashId(id) {
   const s = String(id == null ? '' : id);
   let h = 0x811c9dc5;
@@ -160,8 +163,53 @@ const CLAIM_LEAN_RANGE_WU = 220;
 const CLAIM_LEAN_MAX_RAD = 0.06;
 const BEACON_WARN_S = 8;       // expireAt inside this window reads as "lease nearly up"
 
+// inf-jettison-claim — the pod YOU jettisoned reads as yours-just-lost, then goes public.
+//
+// The sim's story is already honest: a deliberate dump spawns the pod aft at eject speed,
+// stamps it yours (`data.playerJettisonOrigin` — set only when the owner IS this player) and
+// embargoes the re-pickup for a brief window (`data.pickupEmbargoUntil`), so you cannot
+// re-scoop what you just dropped. The picture contradicted both: the pod joined anonymous
+// drift the same frame — a dark canister whose only light is a static shared transponder
+// material, indistinguishable from any other drifting payload. A moment later you cannot
+// even tell your own dropped lot from the field.
+//
+// The claim read rides the pod's own transponder voice (visualFactory hands a per-pod
+// CLONE via userData.jettisonClaimLamp — the shared-material contract is untouched, the
+// mayday-lamp grammar): a hot parting beat as it leaves your hold, easing to a steady claim
+// burn (the pod resting, still yours) for the embargo window, then relaxing to the
+// anonymous read exactly when the sim makes it public. Nothing strobes; reducedFlash drops
+// the spike and keeps the steady claim. Anonymous payloads never get a clone — zero cost.
+
+/** The steady claim burn above the transponder's authored base, while the window is live. */
+export const JETTISON_CLAIM_STEADY_GAIN = 0.55;
+/** The parting beat's peak above the steady burn, decaying as the pod clears your hold. */
+export const JETTISON_CLAIM_SPIKE_GAIN = 1.6;
+/** The parting beat's decay rate (per second) — roughly a one-second tail. */
+export const JETTISON_CLAIM_SPIKE_DECAY = 2.2;
+
+/**
+ * The claim lamp's emissiveIntensity for a player-jettisoned pod, or null once the embargo
+ * has lapsed (the caller writes the base back and retires the lamp). Pure function of
+ * (simTime, spawnAgeS, until, reducedFlash, base) — test-seam, no allocation. A pod whose
+ * spawn moment the tracker never saw (restored save, cold pose) reads the steady claim
+ * without the spike rather than inventing a birth.
+ */
+export function resolveJettisonClaimBurn(simTime, spawnAgeS, until, reducedFlash, base) {
+  const b = Number.isFinite(base) ? base : 0.8;
+  const u = Number.isFinite(until) ? until : NaN;
+  if (!Number.isFinite(u) || (Number.isFinite(simTime) && simTime >= u)) return null;
+  const age = Number.isFinite(spawnAgeS) && spawnAgeS >= 0 ? spawnAgeS : Infinity;
+  const spike = (reducedFlash || !Number.isFinite(age))
+    ? 0
+    : Math.exp(-age * JETTISON_CLAIM_SPIKE_DECAY) * JETTISON_CLAIM_SPIKE_GAIN;
+  return b + JETTISON_CLAIM_STEADY_GAIN + spike;
+}
+
 export function createOrdnanceMotionTracker() {
   const states = new Map();
+  // Track our writes on the actual render object: a pooled mesh can change IDs,
+  // and a new mesh with an old ID must not inherit the former body's scale.
+  const meshMotion = new WeakMap();
   let busSubscribers = [];
   let lastSimTime = 0;
   const swayScratch = { x: 0, z: 0 };
@@ -275,11 +323,39 @@ export function createOrdnanceMotionTracker() {
     const kind = String(entity.type || '');
     const cfg = resolveOrdnanceKindConfig(kind);
     if (!cfg) return;
+    lastSimTime = simTime;
+    if (isLanternWardHardwareEntity(entity)) {
+      // These finite workpieces use the native planar pose, including while
+      // towed. Cosmetic tumble/unfold would move their visible sockets away
+      // from the real clamp and turn fixed seats edge-on after their own update.
+      const previous = meshMotion.get(mesh);
+      let changed = false;
+      if (mesh.rotation && (mesh.rotation.x !== 0 || mesh.rotation.z !== 0)) {
+        mesh.rotation.x = 0; mesh.rotation.z = 0; changed = true;
+      }
+      if (previous?.scaleDirty && mesh.scale) {
+        mesh.scale.x = previous.scaleX;
+        mesh.scale.y = previous.scaleY;
+        mesh.scale.z = previous.scaleZ;
+        changed = true;
+      }
+      if (previous && states.get(previous.id) === previous.record) states.delete(previous.id);
+      states.delete(entity.id);
+      meshMotion.delete(mesh);
+      if (changed && mesh.matrixAutoUpdate === false && typeof mesh.updateMatrix === 'function') mesh.updateMatrix();
+      return;
+    }
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id, kind);
+    let presented = meshMotion.get(mesh);
+    if (!presented) {
+      presented = { id: entity.id, record: rec, scaleDirty: false, scaleX: 0, scaleY: 0, scaleZ: 0 };
+      meshMotion.set(mesh, presented);
+    } else {
+      presented.id = entity.id; presented.record = rec;
+    }
     const reducedMotion = a11y && (a11y.reducedMotion === true || a11y.motionReduce === true);
     const reducedFlash = a11y && (a11y.reducedFlash === true || a11y.flashReduce === true);
-    lastSimTime = simTime;
     const data = entity.data || {};
     const radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : cfg.sizeRef;
 
@@ -421,6 +497,11 @@ export function createOrdnanceMotionTracker() {
 
     if (mesh.scale && mesh.userData
         && (scaleMul !== 1 || rec.scaleDirty)) {
+      if (!presented.scaleDirty) {
+        presented.scaleX = mesh.scale.x;
+        presented.scaleY = mesh.scale.y;
+        presented.scaleZ = mesh.scale.z;
+      }
       if (!(rec.baseScaleX > 0)) {
         rec.baseScaleX = Number.isFinite(mesh.scale.x) ? mesh.scale.x : 1;
         rec.baseScaleY = Number.isFinite(mesh.scale.y) ? mesh.scale.y : 1;
@@ -433,6 +514,39 @@ export function createOrdnanceMotionTracker() {
       else if (typeof mesh.scale.setScalar === 'function') mesh.scale.setScalar(tx);
       else { mesh.scale.x = tx; mesh.scale.y = ty; mesh.scale.z = tz; }
       rec.scaleDirty = scaleMul !== 1;
+      presented.scaleDirty = rec.scaleDirty;
+    }
+
+    // Mayday lamp (inf-mayday-pod): a survivor pod's distress beacon shouts its two-short-
+    // one-long group here, painted onto the CLONED lamp material the factory handed over in
+    // userData.survivorMaydayLamp. The shared-material contract is untouched — this material
+    // is per-pod by construction, so no sibling payload ever inherits the strobe. Sim-time
+    // keyed, zero allocation, and one userData compare for every ordinary payload.
+    if (kind === 'payload' && mesh.userData && mesh.userData.survivorMaydayLamp) {
+      const lamp = mesh.userData.survivorMaydayLamp;
+      // flashReduce: steady viewport burn only — a distress beacon stays legible without
+      // strobing. reducedMotion alone halves the gain; the rhythm never silences.
+      const gain = reducedFlash ? 0 : (reducedMotion ? 0.5 : 1);
+      const sample = resolveMaydayLamp(simTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain);
+      const burn = maydayViewportBurn(sample.flash);
+      if (lamp.material && lamp.material.emissiveIntensity !== burn) {
+        lamp.material.emissiveIntensity = burn;
+      }
+    }
+
+    // inf-jettison-claim: a pod you jettisoned holds its claim window on the transponder —
+    // the parting beat easing into a steady claim burn, then the anonymous read exactly
+    // when the sim makes the pod public. The lamp record retires at the lapse so settled
+    // pods stop paying the compare. Survivor pods never carry this stamp.
+    if (kind === 'payload' && mesh.userData && mesh.userData.jettisonClaimLamp) {
+      const lamp = mesh.userData.jettisonClaimLamp;
+      const spawnAge = rec.materializeT0 >= 0 ? simTime - rec.materializeT0 : -1;
+      const burn = resolveJettisonClaimBurn(simTime, spawnAge, lamp.until, reducedFlash, lamp.base);
+      const target = burn == null ? lamp.base : burn;
+      if (lamp.material && lamp.material.emissiveIntensity !== target) {
+        lamp.material.emissiveIntensity = target;
+      }
+      if (burn == null) delete mesh.userData.jettisonClaimLamp;
     }
   }
 

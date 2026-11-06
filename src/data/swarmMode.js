@@ -1050,12 +1050,15 @@ export const SWARM_ACT = freezeDeep({
   //                           fodder already inbound are fuse or payload, the player's
   //                           choice.
   //   r3 shutter_lane_close — THE COMPOSITION UNDER A FIRE CAP. Warden + anchor on one
-  //                           bearing, jackal + tether on another — four specialists, two
-  //                           links, one kill order — inside the room that already sweeps
-  //                           the arrival lane and mines its mouth. `shooterCap` bounds
-  //                           the simultaneous guns so the board stays readable: the wave
-  //                           owner clears at most three cohort hulls to fire at once
-  //                           instead of the wave table's eight.
+  //                           bearing, jackal + tether on another, a full breath apart —
+  //                           four specialists, two links, one kill order — while the room
+  //                           sweeps and mines the lane the opening burst chose (the pairs
+  //                           work their own gates). `shooterCap` bounds the simultaneous
+  //                           cohort GUNS so the board stays readable: the wave owner
+  //                           clears at most three hulls to fire at once instead of the
+  //                           wave table's eight. Specialist verbs — mines, tether, the
+  //                           snare ring — are not guns and stay unbounded; the stagger,
+  //                           not the cap, is what keeps an escape window open.
   32: {
     id: SWARM_ACT_BREAKER_YARD_ID,
     round: 1,
@@ -1094,17 +1097,18 @@ export const SWARM_ACT = freezeDeep({
     // composition already asks for a kill order, so the room never opens more guns at
     // once than the player can read. Absent on other rounds — the wave table rules there.
     shooterCap: 3,
-    question: 'Two linked pairs land inside a closing lane — which link breaks first?',
+    question: 'The lane closes on the fodder while two linked pairs land their own bearings — which link breaks first?',
     streamBias: 'fodder',
     packages: freezeDeep([
       { enemyId: 'wasp_swarmer', count: 5, gateIndex: 0, atTick: 0 },
       { enemyId: 'choir_zealot', count: 4, gateIndex: 2, atTick: 12 },
-      // Two linked pairs, two bearings: the guard link and the lane crew land a breath
-      // apart so each pair reads as its own event before the board is full.
+      // Two linked pairs, two bearings, a full breath apart: the guarded anchor reads as
+      // its own event and the mine lane is down before the jackal's pack lands — an
+      // escape window stays open through the stack.
       { enemyId: 'warden_escort', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
       { enemyId: 'field_anchor_controller', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
-      { enemyId: 'mine_layer_jackal', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 90, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
-      { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 90, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      { enemyId: 'mine_layer_jackal', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 120, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 120, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
     ]),
   },
 });

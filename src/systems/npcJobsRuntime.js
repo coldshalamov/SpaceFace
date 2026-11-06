@@ -9,10 +9,17 @@ import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import {
+  stepLanternWard, serializeLanternWard, restoreLanternWard,
+  clearLanternWardControls, lanternWardCompletionReceipt, lanternWardStatus,
+  repairLanternWardLamp,
+  noteLanternWardInteraction,
+} from './lanternWardWork.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { isScrapSweeperJob, resolveSweeperPickup } from './scrapSweeperOps.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+import { localizeText } from '../localization/sourceText.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -389,6 +396,15 @@ const TOW_ASSIST_KINDS = new Set([NPC_JOB_KIND.HAULER, NPC_JOB_KIND.TENDER, NPC_
 const TOW_ASSIST_APPROACH_WU = 140;
 const TOW_ASSIST_DELIVER_WU = 110;
 const TOW_ASSIST_TIMEOUT_S = 240;
+
+// ── Tow work voice ── the crew you hired names its own two milestones ──────────────────────────
+// A hired tug spoke at grant (the fee toast) and at loss, but the hook and the delivery — the
+// two moments the player is waiting through — said nothing, so the lease read as a fee and a
+// silent cable drag. Two lines, once each, in the hired crew's register, through the arbiter
+// floor plus a barkDirector:voice receipt so a queued line never sounds early and a dropped
+// line never sounds at all. No corpus rows: delivered bark WAVs are positionally indexed.
+const TOW_HOOK_TEXT = () => localizeText('Got it on the line. Hauling it in.');
+const TOW_DELIVERED_TEXT = () => localizeText('Delivered. Weigh it and pay the crew.');
 
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
@@ -1191,6 +1207,8 @@ export const npcJobsRuntime = {
       // (_isJobThreat only fears the wanted), so shot workers kept drilling while the
       // player hosed them down. Damage with the player's signature interrupts directly.
       this.bus.on('combat:damage', (p) => this._onPlayerDamage(p || {}));
+      this.bus.on('combat:damage', (p) => noteLanternWardInteraction(this, p, 'damage'));
+      this.bus.on('physics:impact', (p) => noteLanternWardInteraction(this, p, 'impact'));
       // INF-U8: the player's own breakdown dispatches the nearest working tender.
       // INF-WF01: the same drive-death seam also answers NPC crews — routed by target.
       this.bus.on('combat:subsystemDisabled', (p) => this._onDriveDown(p || {}));
@@ -1236,6 +1254,7 @@ export const npcJobsRuntime = {
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
         // PQ-195.04: read-only berth service projection for the flight HUD and focused tests.
         berthStatus: () => this.berthStatus(),
+        lanternWardStatus: () => this.lanternWardStatus(),
         ceresTenderOwnsFlight: (entity) => this._ceresTenderOwnsFlight(entity),
         // INF-WF01: read-only crew-response projection for focused tests (detached scalars).
         crewResponseOwnsFlight: (entity) => this._crewResponseOwnsFlight(entity),
@@ -2403,7 +2422,9 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
+    clearLanternWardControls(this);
     this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {}, revision: 0 };
+    restoreLanternWard(this, null);
     this._invalidateJobIds();
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
@@ -3866,6 +3887,8 @@ export const npcJobsRuntime = {
     this._goneIndexDirty = true;
     entry.towOwnerRef = hull;
     entry.towTargetRef = target;
+    // The hook is the moment the hire becomes a person on a cable — the crew says so, once.
+    this._attachTowAssistHookSpeak(entry, hull, jobId, { orchard });
     if (hull.data) {
       hull.data.npcTowAttachmentId = attachment.id;
       hull.data.npcTowJobId = jobId;
@@ -3878,9 +3901,64 @@ export const npcJobsRuntime = {
     return true;
   },
 
+  // Hook-site law: only a real hired assist speaks, orchard dispatches carry their own yard
+  // voice, and the stamp keeps a re-attach (line snapped, re-latched) from re-speaking.
+  _attachTowAssistHookSpeak(entry, hull, jobId, { orchard }) {
+    if (orchard || !entry || !entry.towAssist || entry.towHookSpoken) return;
+    entry.towHookSpoken = true;
+    this._speakTowWorkLine(entry, hull, TOW_HOOK_TEXT(), `towHook:${jobId}`);
+  },
+
+  // The audible route, same contract as the rescue tow's voice: the arbiter floor (say) plus a
+  // barkDirector:voice receipt carrying the same id as voiceId, so the radio voice schedules on
+  // the real floor — a queued line never sounds early and a dropped line never sounds at all.
+  _speakTowWorkLine(entry, hull, text, id) {
+    if (!hull || hull.alive === false) return;
+    const factionId = hull.factionId || 'neutral';
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'barkDirector',
+        ttl: 4,
+        id,
+        factionId,
+        valid: () => {
+          const e = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+            ? this.state.entities.get(hull.id) : null;
+          return !!e && e.alive !== false;
+        },
+      });
+    } else if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('barkDirector:voice', {
+        situation: 'tow-assist',
+        text,
+        factionId,
+        voiceId: id,
+        importance: 0.45,
+        entityId: hull.id,
+        t: Number(this.state && this.state.simTime) || 0,
+      });
+    }
+  },
+
   _finishTowAssist(entry, jobId, reason) {
     const assist = entry.towAssist;
     if (!assist) return;
+    // The delivery is the payoff moment of the hire — the crew names it before the lease tears
+    // down. Orchard dispatches carry their own yard voice and stay out of this register.
+    if (reason === 'delivered' && !entry.orchardAssist && !entry.towDeliveredSpoken) {
+      entry.towDeliveredSpoken = true;
+      const hull = entry.towOwnerRef
+        || (this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(entry.entityId)
+          : null);
+      this._speakTowWorkLine(entry, hull, TOW_DELIVERED_TEXT(), `towDelivered:${jobId}`);
+    }
     clearOrchardTowLease(this.state,entry.orchardLease);
     entry.towAssist = null;
     this._clearTugAttachment(entry, `npc_tow_assist_${reason}`);
@@ -4400,6 +4478,7 @@ export const npcJobsRuntime = {
       return; // scenery only matters in flight (mirrors traffic)
     }
     stepCeresWorkfleet(this,dt);
+    stepLanternWard(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepOncallTenderReturn();
     this._stepYardPending();
@@ -5717,7 +5796,7 @@ export const npcJobsRuntime = {
       const hull = this.state.entities.get(entry.entityId);
       if (hull && hull.pos) {
         const radiusSq = RESUME_RADIUS * RESUME_RADIUS;
-        for (const candidate of this.state.entities.values()) {
+        for (const candidate of this._threatCandidates()) {
           if (!this._isJobThreat(candidate, hull) || !candidate.pos || candidate.id === hull.id) continue;
           const dx = candidate.pos.x - hull.pos.x;
           const dz = candidate.pos.z - hull.pos.z;
@@ -5769,7 +5848,7 @@ export const npcJobsRuntime = {
         || (threat && threat.data && threat.data.isWingman === true);
       const text = shotByPlayer
         ? `${kindLabel} back to work. Watch your fire.`
-        : `${kindLabel} back to work — thanks for the cover.`;
+        : `${kindLabel} back to work.`;
       try {
         this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
       } catch { /* advisory only */ }
@@ -6835,6 +6914,40 @@ export const npcJobsRuntime = {
   },
 
   /**
+   * Live ship candidates for the threat scans, rebuilt at most once per tick per
+   * index version. `_isJobThreat` only ever returns true for ships, so walking
+   * the full `entities.values()` (rocks, wrecks, payloads) per call multiplied
+   * the resume/threat checks by an order of magnitude for nothing.
+   */
+  _threatCandidates() {
+    const state = this.state;
+    const index = state && state.entityIndex;
+    const entities = state && state.entities;
+    const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+    const tick = Number.isSafeInteger(state && state.tick) ? state.tick : null;
+    const cache = this._threatCandidateCache;
+    if (cache && cache.tick === tick && cache.indexVersion === indexVersion) return cache.list;
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && (Array.isArray(index.ships) || Array.isArray(index.shipLike));
+    const source = indexed
+      ? (Array.isArray(index.ships) ? index.ships : index.shipLike)
+      : (entities && typeof entities.values === 'function' ? entities.values() : []);
+    const list = [];
+    for (const entity of source) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      // The index lanes track entityList, which a raw `entities.delete()` does not prune:
+      // the removed ship can linger here with `alive` still true where the old map scan
+      // could not see it. Membership must come from the map, not the lane row.
+      if (entities && typeof entities.get === 'function' && entities.get(entity.id) !== entity) continue;
+      list.push(entity);
+    }
+    // Without an index version there is no cheap membership signal — keep the
+    // legacy fresh-scan semantics rather than hide a mid-tick spawn or map delete.
+    if (indexed && indexVersion != null) this._threatCandidateCache = { tick, indexVersion, list };
+    return list;
+  },
+
+  /**
    * SF-082: the remembered threat is off the hull's resume ring — but is a hostile parked on
    * the stop this job would resume into? Any live job threat within the guard ring of the
    * pending stop closes the leg (not just the one that first interrupted — a second pirate on
@@ -6872,7 +6985,7 @@ export const npcJobsRuntime = {
     const len2 = lx * lx + lz * lz;
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
-    for (const entity of this.state.entities.values()) {
+    for (const entity of this._threatCandidates()) {
       if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const t = len2 > 1e-9
         ? Math.max(0, Math.min(1,
@@ -6893,7 +7006,7 @@ export const npcJobsRuntime = {
     if (!pos || !this.state.entities) return null;
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
-    for (const entity of this.state.entities.values()) {
+    for (const entity of this._threatCandidates()) {
       if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const dx = entity.pos.x - pos.x;
       const dz = entity.pos.z - pos.z;
@@ -7212,9 +7325,16 @@ export const npcJobsRuntime = {
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
+  // Physical receipts are retrieved from this owner; a bus payload is not service truth.
+  lanternWardReceipt(receiptId) { return lanternWardCompletionReceipt(this, receiptId); },
+  lanternWardStatus() { return lanternWardStatus(this); },
+  lanternWardRepair(target) { return repairLanternWardLamp(this, target); },
+
   serialize() {
     const byId = this._byId();
     const out = { byId: {} };
+    const ward = serializeLanternWard(this);
+    if (ward) out.lanternWard = ward;
     if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
@@ -7277,6 +7397,7 @@ export const npcJobsRuntime = {
   // between those record boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
     clearCeresWorkfleetControls(this.state);
+    clearLanternWardControls(this);
     this._crewResponse = null;
     this._crewLastT = -Infinity;
     this._crewScanNextT = 0;
@@ -7354,6 +7475,7 @@ export const npcJobsRuntime = {
       yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
+    restoreLanternWard(this, data?.lanternWard ?? null);
     const ceresWorkfleet=restoreCeresWorkfleetJob(data?.ceresWorkfleet);
     if(ceresWorkfleet)this.state.npcJobs.ceresWorkfleet=ceresWorkfleet;
     this._invalidateJobIds();
