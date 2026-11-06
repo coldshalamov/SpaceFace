@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listShotIds, resolveShot } from './lib/uiBenchCatalog.mjs';
 import { parseBenchArgs, runUiBenchBatch } from './lib/uiBenchBatch.mjs';
+import { createBenchArrival } from './lib/uiBenchArrival.mjs';
 
 try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* yield to the game */ }
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -59,8 +60,8 @@ async function shoot(page, id, outDir, base) {
   const phone = args.phone ? '&phone=1' : '';
   const extra = args.query ? `&${args.query}` : '';
   const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${phone}${extra}${bg}`;
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: args.timeoutMs });
-  await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: args.timeoutMs });
+  const restoreArrival = await createBenchArrival(page, url, { timeoutMs: args.timeoutMs });
+  await restoreArrival();
   await settleAnimations(page);
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file, timeout: args.timeoutMs });
@@ -79,7 +80,7 @@ async function shoot(page, id, outDir, base) {
   let findingCount = printFindings(report);
   console.log('  Open this PNG and look at it.');
   if (args.probe) await probe(page, args.probe);
-  const walked = args.walk ? await walk(page, id, outDir) : null;
+  const walked = args.walk ? await walk(page, id, outDir, restoreArrival) : null;
   findingCount += walked?.actions.reduce((n, row) => n + (row.controlReachability?.length || 0), 0) || 0;
   return { ok: !walked || walked.complete, report, effectiveMode, findingCount, file: path.relative(ROOT, file), walk: walked,
     visualReview: 'required; empty geometry findings do not prove a good picture' };
@@ -167,7 +168,7 @@ async function probe(page, selector) {
   }
 }
 
-async function walk(page, id, outDir) {
+async function walk(page, id, outDir, restoreArrival) {
   const controls = await page.evaluate(() => window.BENCH.controls());
   const limit = Math.min(controls.length, args.max), actions = [], errors = [];
   console.log(`  controls: ${controls.length}${controls.length > limit ? ` (trying ${limit}; --max= raises it)` : ''}`);
@@ -177,8 +178,9 @@ async function walk(page, id, outDir) {
     const row = { index, identity, inventoryLabel, status: 'untried' };
     actions.push(row);
     try {
-      // Always reset arrival, including the first control, then settle entrance animations.
-      await page.evaluate(shotId => window.BENCH.goto(shotId), id);
+      // A mount is navigation, not isolation: screen singletons, owners and their state survive
+      // BENCH.goto. Start each control in a fresh document at the exact original fixture URL.
+      await restoreArrival();
       await settleAnimations(page);
       const arrival = await page.evaluate(() => window.BENCH.signature());
       const hoveredControl = await controlFromInventory(page, 'hover', inventory);
@@ -200,7 +202,7 @@ async function walk(page, id, outDir) {
         await page.screenshot({ path: hoverFile, timeout: args.timeoutMs });
         row.hoverFile = path.relative(ROOT, hoverFile);
         console.log(`  ${name} hover  ${hoverEffect}  ${row.hoverFile}`);
-        await page.evaluate(shotId => window.BENCH.goto(shotId), id);
+        await restoreArrival();
         await settleAnimations(page);
       }
       const beforeClick = await page.evaluate(() => window.BENCH.signature());
