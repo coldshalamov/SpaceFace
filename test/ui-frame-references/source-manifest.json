@@ -224,7 +224,7 @@
   "src/ui/orrery/settingsLayouts.js": "14f63ea6b9d8ff18a1d31a68bd3a61965ab09381e42b4db3db1421398c114573",
   "src/ui/orrery/settingsPreview.js": "8ecb63a182c2ff1a61a9586c61337e2796f423ed15103c1e1a866476a0104ec7",
   "src/ui/orrery/shipLayouts.js": "04decb846553faa5fde6cc94bf48716deb8f8fb1057c993a3988859ff36da747",
-  "src/ui/orrery/shipworksLayouts.js": "5e1e5ddf36a14822d859b29c140f5abebe2e4b49c97f99c2f048c470c5cf7ee0",
+  "src/ui/orrery/shipworksLayouts.js": "3867accaa32b8d52166bab883fd585cd0978ff5d6c0db40595b48d839d9090db",
   "src/ui/orrery/slotJig.js": "d0e59cb67cb2beea0e46a16b29933656ce1b46d19744f04cd0759a713f5a6660",
   "src/ui/orrery/speedDial.js": "afeb6340c00df19cda2785a6d62f4793204a5cc92877477f42c8386f6b488ea6",
   "src/ui/orrery/station-contractsLayouts.js": "0e21b6f50351565570b4341a9e6ce77541f6f39dc447110d6f15c42e437a4224",

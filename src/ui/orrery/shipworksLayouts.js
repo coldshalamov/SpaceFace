@@ -1335,9 +1335,43 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
+  /* A little more reading height at 1280×720; roster row still clears the stats head. */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:112px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:2px !important; padding-bottom:2px !important; }
+  /* Keep Generalist BUILD clear of the pinned Save Fit lamp: densify the hero stack and
+     park identity as a one-line full-width row under top speed (not a third stacked hero
+     that lands inside the sticky band at 1280×720). */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bands {
+    grid-template-columns:1fr 1fr !important; gap:2px 14px !important; align-items:end !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero { padding-bottom:1px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] { grid-column:1 / -1 !important; order:1 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:30px !important; line-height:1 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__w { margin-top:1px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] {
+    grid-column:1 / -1 !important; order:2 !important; display:flex !important; flex-direction:row !important;
+    align-items:baseline !important; gap:8px !important; padding:2px 0 3px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] .k-hero__n {
+    font-size:14px !important; letter-spacing:.08em !important; white-space:nowrap !important; line-height:1.1 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='identity'] .k-hero__w {
+    margin-top:0 !important; font-size:12px !important; letter-spacing:.14em !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='power'] { order:3 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='capability'] { order:4 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='condition'] { order:5 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) .k-hero__n {
+    font-size:15px !important; line-height:1.05 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) .k-hero__w {
+    margin-top:0 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability']) {
+    padding-bottom:0 !important;
+  }
 }
+
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
