@@ -703,11 +703,15 @@ Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VIS
   are keys), Armory (aligned cards, no `SC…` truncation, readable Esc hint, keys, hull schematic
   not cropped), Research chips, Credits dial, New Game stat sheet (<1561px), Chart verbs, Save/Load
   badge line. Verified with `ui-bench` at 1440×900 + 1920×1080, zero geometry findings on the touched set.
-  **Open (next sitting):** hull-ring "LINE / winch speed" reading sits on the right arc at 1440 in
-  New Game (label x is computed from an earlier box than the arc); `src/ui/ship/shipSheet.js` owns its
+  Same day, round 4: hull-ring side readings may use the window margin beside the stage (LINE no longer
+  sits on its arc at 1440); Missions prints the objective on the card and the recommended action, not
+  also on the selected row; Shipworks hull-sheet column fades at the foot while more is below.
+  Type governor reviewed: it no longer writes width/weight on interactive elements (that froze their
+  selected/hover states) and works in time slices (`typeGovernorStats()`).
+  **Open (next sitting):** flight-cluster HULL/SHIELD/ARMOR figures cross the hull ring in `flightCluster.js`
+  (another agent had it uncommitted, so the HUD cluster got no pass); `src/ui/ship/shipSheet.js` owns its
   own stylesheet, so `check-ui-screen-imports` fails (another lane's new file — material belongs in
-  `deckplate/`); Shipworks left column scrolls with no edge fade; flight HUD files were mid-edit by
-  another agent so the HUD got no pass; Missions screen prints the objective three times.
+  `deckplate/`); Shipworks right-hand readout grid sits ~2px past the panel foot at 900px tall.
 
 ### Wave W2 — an economy you can play and a long game that lasts
 - **Row 544 W-ECONOMY** — travel ≤ 50 % of time, a play-changing purchase every 15–25 minutes, pay by the tonne.
