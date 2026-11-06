@@ -55,17 +55,23 @@ test('Struck Bell emission binds the dedicated runtime rather than free choice s
   assert.ok(!source.includes('compileVignette'));
 });
 
-test('Struck Bell helper has exactly one low-priority canonical preload and a real export', () => {
+test('struckBellRuntime stays executable behind the lazy full-registry boot boundary', async () => {
+  const encounter = await import('../src/data/encounters/925-scene-struck-bell.js');
+  assert.equal(typeof encounter.runtime.fire, 'function', 'emitted encounter exposes its dedicated runtime');
+  assert.equal(typeof encounter.runtime.tick, 'function');
+  assert.equal(typeof encounter.runtime.choose, 'function');
+  assert.equal(Object.isFrozen(encounter.runtime), true, 'the encounter runtime contract is immutable');
+
+  const { buildEncounterCatalog } = await import('../src/data/encounters/catalog.js');
+  assert.equal(buildEncounterCatalog([encounter])[encounter.default.id], encounter.default,
+    'the actual authored module is accepted by the production catalog');
+
   const html = read('index.html');
   const links = [...html.matchAll(/<link\s+[^>]*rel="modulepreload"[^>]*>/g)].map(match => match[0]);
-  const index = links.findIndex(link => link.includes('href="./src/systems/struckBellRuntime.js"'));
-  assert.ok(index > 0);
-  assert.equal(links.filter(link => link.includes('href="./src/systems/struckBellRuntime.js"')).length, 1);
-  assert.match(links[index], /fetchpriority="low"/);
-  const href = link => link.match(/href="([^"]+)"/)[1];
-  assert.ok(href(links[index - 1]) < href(links[index]));
-  assert.ok(href(links[index]) < href(links[index + 1]));
-  assert.match(read('src/systems/struckBellRuntime.js'), /export function createStruckBellRuntime/);
+  assert.equal(links.filter(link => link.includes('href="./src/systems/struckBellRuntime.js"')).length, 0,
+    'lazy world runtime is not manually promoted into the eager preload block');
+  assert.equal(links.some(link => link.includes('href="./src/core/registry.js"')), false,
+    'the full simulation registry remains outside the eager presentation boot wave');
 });
 
 test('Struck Bell runtime and generation gates remain separately reachable from check', () => {

@@ -141,7 +141,10 @@ const SANDBOX_LAYOUTS_CSS = `
    = two rows. */
 .sf-sandbox-tiles {
   display: flex; flex-direction: column; position: relative; margin: calc(var(--dp-u) * 6) 0 0 -14px;
-  padding: 0 0 0 42px;
+  /* Keep the last scenario and its focus clear of the permanent 60px bottom fade.
+     Border-box sizing preserves the existing height budget above Launch. */
+  box-sizing: border-box; padding: 0 0 64px 42px;
+  scroll-padding-block: 8px 64px;
   max-height: max(160px, calc(100% - var(--sf-sandbox-peek)));
   overflow-y: auto; overflow-x: hidden;
   scrollbar-width: thin; scrollbar-color: var(--dp-metal-4) transparent;
@@ -517,6 +520,7 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
 @media (max-height: 390px) {
   .sf-sandbox-tiles {
     margin-top: 8px; max-height: none; overflow-y: visible;
+    padding-bottom: 0; scroll-padding-bottom: 0;
     -webkit-mask-image: none; mask-image: none;
   }
   .sf-sandbox-dial { display: none; }

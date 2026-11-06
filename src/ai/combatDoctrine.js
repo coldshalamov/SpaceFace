@@ -1235,7 +1235,10 @@ function updateCapitalBroadside(record, tick, self, distance) {
  * a rapid sequence of flank→flare→strike→extend beats instead of the raider flyby's long cycles.
  */
 function updatePackPursuit(record, tick, self, target, distance, perception) {
-  const wound = woundedSubsystemFraction(self);
+  // S10 last-three commit: a hull the wave marker says must come to the pilot never buys
+  // a wounded retreat — the whole point of the commit is that the fight ends here.
+  const committed = !!(self && (self.swarmLastStand === true || (self.ai && self.ai.swarmLastStand === true)));
+  const wound = committed ? 1 : woundedSubsystemFraction(self);
   // Hysteresis: a repaired-above-exit hull re-arms its one fallback; until then the spent wound
   // cannot re-trigger, so a crippled hull fights hurt instead of flickering press/retreat.
   if (wound >= PACK_WOUND_EXIT_FRACTION) {
@@ -1247,7 +1250,9 @@ function updatePackPursuit(record, tick, self, target, distance, perception) {
     }
     record.fallbackArmed = true;
   }
-  if (record.phase === 'retreat') {
+  if (record.phase === 'retreat' && committed) {
+    enter(record, 'press', tick, null);
+  } else if (record.phase === 'retreat') {
     // Allies move — re-resolve the anchor from current perception every tick rather than chasing
     // the position the packmate occupied when the run began.
     const anchor = retreatAnchorFor(self, target, perception);
@@ -1629,7 +1634,11 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       faceTarget = true;
       maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
     }
-    preferredRange = packOrbitRangeFor(record);
+    // S10 last-three commit: a marked hull presses the innermost ring — the edge
+    // pointers and the pursuit are the promise that nothing waits off-frame.
+    preferredRange = self && (self.swarmLastStand === true || (self.ai && self.ai.swarmLastStand === true))
+      ? PACK_ORBIT_RANGE_WU * (1 + PACK_ORBIT_RING_OFFSETS[0])
+      : packOrbitRangeFor(record);
     if (phase === 'press') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
     formationLocked = phase === 'ingress' || phase === 'reform';
