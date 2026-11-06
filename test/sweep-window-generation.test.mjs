@@ -56,15 +56,21 @@ test('Sweep Window emission keeps its earned receipt and runtime binding', () =>
   assert.ok(!source.includes('The sweep read an empty lane.'));
 });
 
-test('Sweep Window helper has one low-priority preload in canonical order', () => {
+test('sweepWindowRuntime stays executable behind the lazy full-registry boot boundary', async () => {
+  const encounter = await import('../src/data/encounters/922-scene-sweep-window.js');
+  assert.equal(typeof encounter.runtime.fire, 'function', 'emitted encounter exposes its dedicated runtime');
+  assert.equal(typeof encounter.runtime.tick, 'function');
+  assert.equal(typeof encounter.runtime.choose, 'function');
+  assert.equal(Object.isFrozen(encounter.runtime), true, 'the encounter runtime contract is immutable');
+
+  const { buildEncounterCatalog } = await import('../src/data/encounters/catalog.js');
+  assert.equal(buildEncounterCatalog([encounter])[encounter.default.id], encounter.default,
+    'the actual authored module is accepted by the production catalog');
+
   const html = read('index.html');
   const links = [...html.matchAll(/<link\s+[^>]*rel="modulepreload"[^>]*>/g)].map(match => match[0]);
-  const index = links.findIndex(link => link.includes('href="./src/systems/sweepWindowRuntime.js"'));
-  assert.ok(index > 0);
-  assert.equal(links.filter(link => link.includes('href="./src/systems/sweepWindowRuntime.js"')).length, 1);
-  assert.match(links[index], /fetchpriority="low"/);
-  const href = link => link.match(/href="([^"]+)"/)[1];
-  assert.ok(href(links[index - 1]) < href(links[index]));
-  assert.ok(href(links[index]) < href(links[index + 1]));
-  assert.ok(read('src/systems/sweepWindowRuntime.js').includes('export function createSweepWindowRuntime'));
+  assert.equal(links.filter(link => link.includes('href="./src/systems/sweepWindowRuntime.js"')).length, 0,
+    'lazy world runtime is not manually promoted into the eager preload block');
+  assert.equal(links.some(link => link.includes('href="./src/core/registry.js"')), false,
+    'the full simulation registry remains outside the eager presentation boot wave');
 });
