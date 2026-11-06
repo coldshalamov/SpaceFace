@@ -978,6 +978,16 @@ Verified already true, wave 10: the war's economic footprint (stationConditions 
 live-war blockade on the berth's contested sector — buy ×1.2, fuel rationed to 60%, service
 chips say so), rank-ladder comms/ledger answers. Recorded, not built: a war surcharge in the
 STANDING price layer would lie (the honest route runs through economy.js quote reasons).
+Inbox addition (closing, 2026-11-06): the uncommitted src/data/missions.js refactor (2681 →
+7106 lines, whole import block uncommitted, stalled ~25 min) introduces an import cycle —
+techVerbLadder.js imports missions.js (pre-existing line 16), the refactored missions.js
+pulls route modules that reach economy.js, and economy's top-level
+HUNTER_COMBAT_CR_PER_HOUR reads VERB_LADDER_RATES while techVerbLadder is still suspended at
+its missions import → TDZ at economy.js:6617; every sim-chain test and check:massline:heads
+fail until it lands or the cycle breaks. NOT repaired by the controller: the file is another
+thread's live feature. Next step for its owner: break the economy edge (defer the
+VERB_LADDER_RATES read out of economy's top level, or drop techVerbLadder's barrel import of
+missions.js), then land; check:baseline to confirm.
 
 With wave 10 the INFERENCE 100 program's row count reads 100 recorded production units
 across the three boards — every row with its own production commit, focused green suite, and
