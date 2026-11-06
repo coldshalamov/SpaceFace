@@ -11,8 +11,8 @@
 //      red is threat only, ice is data in motion only, and amber leads only as the Hand. The marks
 //      already differ by shape (the kit glyph) and word (the name + key label) — the non-colour
 //      channel the rubric requires — so the tints bought identification at the price of the law.
-//      They are retired HERE at rest; armed and live keys keep their amber (the Hand family), and
-//      cooling / locked / empty keys read as dimmed bone, never coloured.
+//      They are retired HERE at rest; armed, live, active, and firing keys ignite with their full
+//      power hue, and cooling / locked / empty keys read as dimmed bone, never coloured.
 //   2. Hover, focus-visible and press are authored for every socket (P4/P6): the ring warms to the
 //      bright bone, its bloom twin deepens (geometry, never a filter), the mark lifts, the label
 //      comes to full ink; keyboard focus draws the 2 px bone bracket round the socket; press
@@ -33,9 +33,9 @@ import { injectOrrery } from './tokens.js';
 const STYLE_ID = 'orr-power-rail-layouts';
 
 // The one rest-state mark rule: bone ink for every power, except where a state already speaks
-// (armed/live amber). (0,6,0) against the Cluster tint rules' (0,3,0) — wins wherever both match,
+// (armed/live amber or active/firing power color). (0,6,0) against the Cluster tint rules' (0,3,0) — wins wherever both match,
 // and does not match the state rules it must not beat.
-const REST_MARK = '.orr-cluster .orr-cluster__key[data-power]:not(.is-armed):not(.is-live) .orr-cluster__icon';
+const REST_MARK = '.orr-cluster .orr-cluster__key[data-power]:not(.is-armed):not(.is-live):not(.is-active):not(.is-held):not(.is-firing) .orr-cluster__icon';
 // A socket answers the cursor only while its verb could fire: cooling, locked and empty sockets
 // keep their dim authored states under the pointer.
 const ANSWERING = '.orr-cluster .orr-cluster__key:hover:not(.is-cooldown):not(.is-locked):not(.is-empty)';
@@ -45,7 +45,7 @@ const CSS = `
 /* ---- 1. rest light: warm bone, the law of the instrument ---------------------------------------- */
 ${REST_MARK} { color:var(--dp-ink, #e8e2d4); }
 /* collapsed nodes keep their quieter mark (flightCluster sets .66); the unfolded key is full */
-.orr-cluster .orr-cluster__key.is-node[data-power]:not(.is-armed):not(.is-live) .orr-cluster__icon { opacity:.66; }
+.orr-cluster .orr-cluster__key.is-node[data-power]:not(.is-armed):not(.is-live):not(.is-active):not(.is-held):not(.is-firing) .orr-cluster__icon { opacity:.66; }
 
 /* ---- 2. the socket answers ---------------------------------------------------------------------- */
 /* hover: the ring warms one step of bone, its bloom twin deepens — light rising, never a glow
@@ -66,6 +66,9 @@ ${ANSWERING_NODE} .orr-cluster__icon { opacity:.88; }
 .orr-cluster .orr-cluster__key:focus-visible svg circle.orr-bloom { opacity:.42; }
 .orr-cluster .orr-cluster__key:focus-visible .orr-cluster__keytag { color:var(--dp-ink, #e8e2d4); }
 .orr-cluster .orr-cluster__key:focus-visible .orr-cluster__keytag b { color:var(--dp-phos, #dfeeff); }
+
+/* active, held, firing states: signature brilliance */
+.orr-cluster .orr-cluster__key:is(.is-active, .is-held, .is-firing) .orr-cluster__icon { opacity:1 !important; }
 
 /* press: the socket presses (transform only, on the snap-short beat) */
 .orr-cluster .orr-cluster__key svg { transform-origin:center; transition:transform .13s var(--dp-ease-out, ease-out); }

@@ -206,7 +206,59 @@ const CSS = `
 .orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
 @keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:none; } }
 .orr-cluster.is-arriving .orr-cluster__fade, .orr-cluster.is-arriving .orr-cluster__key { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse, html.sf-reduce-motion .orr-cluster__key.is-armed { animation:none !important; }
+
+.orr-cluster__key:focus-visible { outline: 2px solid var(--dp-ice, #8cd5ff); outline-offset: 3px; }
+.orr-cluster__key[data-power="pull"] { --orr-power-col: var(--dp-pull, #7fe5ff); }
+.orr-cluster__key[data-power="shove"] { --orr-power-col: var(--dp-shove, #ffd470); }
+.orr-power-pin, .orr-cluster__key[data-power="pin"] { --orr-power-col: var(--dp-pin, #b29eff); }
+.orr-cluster__key[data-power="bomb"] { --orr-power-col: var(--dp-bomb, #ff7a6b); }
+.orr-cluster__key[data-power="rig"] { --orr-power-col: var(--dp-rig, #5beba0); }
+.orr-cluster__key[data-power="line"] { --orr-power-col: var(--dp-line, #8be9fd); }
+.orr-cluster__key[data-power="gyre"] { --orr-power-col: var(--dp-gyre, #e0a3ff); }
+.orr-cluster__key[data-power="cloak"] { --orr-power-col: var(--dp-cloak, #a8c0ff); }
+
+.orr-cluster__key.is-active,
+.orr-cluster__key.is-held,
+.orr-cluster__key.is-firing {
+  filter: drop-shadow(0 0 10px var(--orr-power-col, var(--dp-hand, #f2b950)));
+}
+.orr-cluster__key.is-active .orr-cluster__icon,
+.orr-cluster__key.is-held .orr-cluster__icon,
+.orr-cluster__key.is-firing .orr-cluster__icon {
+  background-color: var(--orr-power-col, var(--dp-hand, #f2b950)) !important;
+  box-shadow: 0 0 14px var(--orr-power-col, var(--dp-hand, #f2b950));
+}
+.orr-cluster__key.is-active .orr-cluster__keytag b,
+.orr-cluster__key.is-held .orr-cluster__keytag b,
+.orr-cluster__key.is-firing .orr-cluster__keytag b {
+  border-color: var(--orr-power-col, var(--dp-hand, #f2b950));
+  color: #fff;
+  background: rgba(242, 185, 80, 0.28);
+  box-shadow: 0 0 10px var(--orr-power-col, var(--dp-hand, #f2b950));
+}
+.orr-cluster__key.is-firing {
+  animation: orr-key-firing-burst 0.35s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+.orr-cluster__key.is-firing .orr-pulse-ring {
+  stroke: var(--orr-power-col, var(--dp-hand, #f2b950));
+  animation: orr-key-pulse-expand 0.4s ease-out forwards;
+}
+@keyframes orr-key-firing-burst {
+  0% { transform: scale(1.18); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes orr-key-pulse-expand {
+  0% { transform: scale(1); opacity: 0.9; stroke-width: 4px; }
+  100% { transform: scale(2.2); opacity: 0; stroke-width: 0.5px; }
+}
+@media (forced-colors: active) {
+  .orr-cluster__key:focus-visible { outline: 2px solid Highlight; }
+  .orr-cluster__key.is-active,
+  .orr-cluster__key.is-held,
+  .orr-cluster__key.is-firing { outline: 2px solid SelectedItem; }
+}
+html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse, html.sf-reduce-motion .orr-cluster__key.is-armed, html.sf-reduce-motion .orr-cluster__key.is-firing, html.sf-reduce-motion .orr-pulse-ring { animation:none !important; }
 `;
 
 function injectStyle(doc = globalThis.document) {
@@ -262,7 +314,7 @@ const f1 = (n) => n.toFixed(1);
  * @param {object} o
  * @param {{name:string, icon:string, slots:{key:string,name:string,icon:string}[]}[]} o.groups
  */
-export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null } = {}) {
+export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null, onActivateSocket = null } = {}) {
   injectStyle();
   const root = el('section', 'orr-cluster');
   root.setAttribute('aria-label', 'Ship status');
@@ -433,9 +485,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // one bank of words that says what the verb does, which keys fire it, and why it is not ready —
   // revealed on hover AND keyboard focus by the shared mechanism (whyReveal.js). The same words
   // carry the accessible name while no tip is on screen.
-  const mkSocket = ({ node, icon, label, sub, id = '', tip = '', power = '' }) => {
+  const mkSocket = ({ node, icon, label, sub, id = '', tip = '', power = '', slotRef = null, groupRef = null }) => {
     const k = el('div', `orr-cluster__key${node ? ' is-node' : ''}`);
     k.setAttribute('tabindex', '0');
+    k.setAttribute('role', 'button');
+    k.setAttribute('aria-pressed', 'false');
     k.addEventListener('pointerdown', (e) => passPressToFlight(e));
     k.addEventListener('mousedown', (e) => {
       passPressToFlight(e);
@@ -445,6 +499,21 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     });
     // no browser menu over a readout either: the right button is the mining beam
     k.addEventListener('contextmenu', (e) => { if (e && typeof e.preventDefault === 'function') e.preventDefault(); });
+
+    const triggerActivation = () => {
+      if (typeof onActivateSocket === 'function') {
+        const targetSlot = slotRef || (groupRef && groupRef.slots && groupRef.slots[0]);
+        onActivateSocket({ id, power, node, slot: targetSlot });
+      }
+    };
+    k.addEventListener('click', () => { triggerActivation(); });
+    k.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        triggerActivation();
+      }
+    });
+
     if (id) k.setAttribute(node ? 'data-group' : 'data-slot', id);
     if (power) k.setAttribute('data-power', power);
     if (tip) k.setAttribute('data-why', tip);
@@ -452,11 +521,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
     const bloomTwin = svg('circle', { r: r0, class: 'orr-bloom orr-bone', 'stroke-width': 5, opacity: '.20', fill: 'none' });
+    const pulseRing = svg('circle', { r: r0, class: 'orr-pulse-ring', 'stroke-width': 2, fill: 'none', opacity: 0 });
     const coreCircle = svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1.5, fill: 'rgb(5 7 10 / .34)' });
     const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': node ? 1.6 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.8' });
     const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 6, fill: 'none', opacity: 0 });
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
-    ks.append(bloomTwin, coreCircle, cd, armedB, armed);
+    ks.append(bloomTwin, pulseRing, coreCircle, cd, armedB, armed);
     k.appendChild(ks);
     const ic = el('span', 'orr-cluster__icon');
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
@@ -477,7 +547,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, shortLabelNode, keyNode };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, shortLabelNode, keyNode, slot: slotRef, group: groupRef };
   };
 
   let openGroup = -1;
@@ -496,7 +566,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       if (hiddenGroups.has(gi)) return;
       if (gi === armedGroup) {
         group.slots.forEach((slot) => {
-          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id, power: slot.power || '' });
+          const sk = mkSocket({ node: false, icon: slot.icon, label: slot.name, sub: slot.key, id: slot.id, power: slot.power || '', slotRef: slot });
           const [x, y] = at(R.crescent, a);
           place(sk.el, x, y);
           sockets.push({ ...sk, slot, angle: a });
@@ -506,7 +576,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         });
         a += 2;
       } else {
-        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '', power: group.power || '' });
+        const sk = mkSocket({ node: true, icon: group.icon, label: group.name, sub: group.slots.map((sl) => sl.key).join(' '), id: group.name, tip: group.tip || '', power: group.power || '', groupRef: group });
         const [x, y] = at(R.crescent, a);
         place(sk.el, x, y);
         sockets.push({ ...sk, group, angle: a });
@@ -617,13 +687,19 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       if (g.slots.length && g.slots.every((sl) => (slotStates[sid(sl)] || {}).hidden === true)) { nextHidden.add(gi); nextHiddenSig += `${gi},`; }
     });
     if (nextHiddenSig !== hiddenSig) { hiddenSig = nextHiddenSig; hiddenGroups = nextHidden; keysChanged = true; }
+    let activeGroup = -1;
     let armedGroup = -1;
     groups.forEach((g, gi) => g.slots.forEach((sl) => {
       const st = slotStates[sid(sl)] || {};
-      // A passive latch (the cloak stays on for minutes) must not hold the Hand's seat from the verb in use.
-      if (st.state === 'armed' && st.passive !== true && !hiddenGroups.has(gi)) { armedGroup = gi; handSlot = sid(sl); }
+      if ((st.active === true || st.firing === true) && !hiddenGroups.has(gi)) {
+        activeGroup = gi;
+        handSlot = sid(sl);
+      } else if (st.state === 'armed' && st.passive !== true && !hiddenGroups.has(gi)) {
+        armedGroup = gi;
+        if (activeGroup < 0) handSlot = sid(sl);
+      }
     }));
-    let openTo = armedGroup;
+    let openTo = activeGroup >= 0 ? activeGroup : armedGroup;
     if (openTo < 0) openTo = Math.max(0, groups.findIndex((g) => g.slots.some((sl) => sid(sl) === handSlot)));
     if (openTo !== openGroup || keysChanged) { openGroup = openTo; layoutCrescent(openTo); }
     let handAngle = null;
@@ -635,6 +711,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       const st = slotStates[sid(slot)] || {};
       const state = st.state || 'ready';
       const live = st.live === true;
+      const active = st.active === true;
+      const firing = st.firing === true;
+      const held = st.held === true;
       const arsenalId = st.arsenalId || '';
       if (sk.arsenalId !== arsenalId) {
         sk.arsenalId = arsenalId;
@@ -645,12 +724,16 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         // With no authored drawing the socket keeps the generic kit mark and SAYS so (dim, family).
         sk.iconEl.setAttribute('data-glyph-source', authored ? 'authored' : 'family');
       }
-      if (sk.state !== state || sk.live !== live) {
+      if (sk.state !== state || sk.live !== live || sk.active !== active || sk.firing !== firing || sk.held !== held) {
         sk.state = state;
         sk.live = live;
-        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}`;
-        sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
-        sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
+        sk.active = active;
+        sk.firing = firing;
+        sk.held = held;
+        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
+        sk.armed.setAttribute('opacity', (state === 'armed' || active || firing) ? '1' : '0');
+        sk.armedB.setAttribute('opacity', (state === 'armed' || active || firing) ? '.34' : '0');
+        sk.el.setAttribute('aria-pressed', (state === 'armed' || active || firing) ? 'true' : 'false');
       }
       sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
       const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
@@ -669,20 +752,32 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
       // rewritten only when the words change: a settled frame still writes nothing.
       const tip = st.tip || (node ? sk.group.tip || '' : '');
-      if (sk.tip !== tip) {
+      if (sk.tip !== tip || sk.tipActive !== active || sk.tipFiring !== firing) {
         sk.tip = tip;
+        sk.tipActive = active;
+        sk.tipFiring = firing;
         if (tip) sk.el.setAttribute('data-why', tip);
         else sk.el.removeAttribute('data-why');
-        sk.el.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${sk.label}`);
+        const statusPhrase = firing ? 'Activating. ' : (active ? 'Active. ' : '');
+        sk.el.setAttribute('aria-label', `${statusPhrase}${tip ? tip.replace(/\n/g, '. ') : `${sk.label}`}`);
       }
       return state;
     };
     for (const sk of sockets) {
       if (sk.slot) {
         const state = paintSocket(sk, sk.slot, false);
-        if (handAngle == null || sid(sk.slot) === handSlot) { handAngle = sk.angle; handArmed = state === 'armed'; }
+        const st = slotStates[sid(sk.slot)] || {};
+        if (handAngle == null || sid(sk.slot) === handSlot) {
+          handAngle = sk.angle;
+          handArmed = state === 'armed' || st.active === true || st.firing === true;
+        }
       } else if (sk.group.slots.length === 1) {
-        paintSocket(sk, sk.group.slots[0], true);
+        const state = paintSocket(sk, sk.group.slots[0], true);
+        const st = slotStates[sid(sk.group.slots[0])] || {};
+        if (handAngle == null || sid(sk.group.slots[0]) === handSlot) {
+          handAngle = sk.angle;
+          handArmed = state === 'armed' || st.active === true || st.firing === true;
+        }
       } else {
         const readiness = sk.group.slots.reduce((m, sl) => {
           const st = slotStates[sid(sl)] || {};

@@ -55,6 +55,18 @@ const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether:
 const SLOT_ARSENAL = Object.freeze({ 0: 'power_travel_burn', 1: 'field_well_standard', 2: 'field_repulsor_standard',
   3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
 const PRESENTED_ID = Object.freeze({ 0: 'travel', 1: 'pull', 2: 'shove', 3: 'pin', 4: 'bomb', 5: 'rig', 6: 'line', 7: 'gyre', 8: 'cloak' });
+const VERB_TO_SLOT = Object.freeze({
+  travel: 0, travelBurn: 0,
+  pull: 1, deployWell: 1,
+  shove: 2, deployRepulsor: 2, chargeDetonate: 2,
+  pin: 3, deployMassSeed: 3,
+  bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4,
+  rig: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
+  line: 6, tether: 6,
+  gyre: 7, gyreSnare: 7,
+  cloak: 8,
+});
+
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
 export function buildOrdnanceGroups(bindings) {
@@ -148,6 +160,10 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   bindings ??= readClusterBindings(state);
   const labels = resolveSlotLabels(bindings);
   const keys = resolveSlotKeys(bindings);
+  const held = options.held !== undefined ? options.held : heldPower(state);
+  const firingUntil = options.firingUntil;
+  const nowWall = options.nowWall || (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
+  const acts = state && state.input && state.input.actions;
   // The presentation reads the same remappable binding table; a caller's override wins per action.
   const presented = presentationFor(state).read(state, {
     rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings },
@@ -166,12 +182,10 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
     const entry = { state: st, key: labels[slot.index] || '', arsenalId };
-    // S5: the Swarm bar draws icons only — key number + radial cooldown, no words (aria keeps
-    // the names). The Line socket wears RMB: the tether verb has no keyboard code in Swarm.
-    if (isSwarmControls(state)) {
-      entry.iconOnly = true;
-      if (slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
-    }
+    // S5 + X3: the flight rail draws icons and key caps, no words — the names live on the
+    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
+    entry.iconOnly = true;
+    if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
@@ -180,6 +194,30 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     if (r.absent === true) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
+
+    // Active & firing states: lighting up upon pressing number keys or hold-to-preview
+    const isHeld = (held && VERB_TO_SLOT[held] === slot.index)
+      || (slot.index === 1 && acts?.pull?.held === true)
+      || (slot.index === 2 && acts?.shove?.held === true)
+      || (slot.index === 3 && acts?.pin?.held === true)
+      || (slot.index === 4 && acts?.bomb?.held === true)
+      || (slot.index === 5 && acts?.rig?.held === true)
+      || (slot.index === 6 && (acts?.massline?.held === true || acts?.massline?.source != null))
+      || (slot.index === 7 && acts?.gyreSnare === true);
+
+    const isFiring = (firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
+      || (slot.index === 1 && (acts?.pull?.pressed === true || acts?.deployWell === true))
+      || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true || acts?.chargeDetonate === true))
+      || (slot.index === 3 && (acts?.pin?.pressed === true || acts?.deployMassSeed === true))
+      || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true))
+      || (slot.index === 5 && (acts?.rig?.pressed === true || acts?.toggleClearingCone === true || acts?.toggleSkimCollector === true))
+      || (slot.index === 6 && (acts?.tetherFire === true || acts?.massline?.latch === true))
+      || (slot.index === 7 && acts?.gyreSnare === true)
+      || (slot.index === 8 && acts?.cloakToggle === true);
+
+    if (isHeld) entry.held = true;
+    if (isFiring) entry.firing = true;
+    if (isHeld || isFiring) entry.active = true;
     // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
     // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
     if (pe && slot.index >= 1) entry.label = pe.label;
@@ -361,6 +399,36 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const customName = customNameForActiveHull(state);
   const host = document.createElement('div');
   host.className = 'orr-hud-cluster';
+
+  const firingUntil = new Map();
+  const FLASH_DURATION_MS = 400;
+  let lastActiveSig = '';
+
+  const onActivateSocket = ({ id, power, slot }) => {
+    const slotIdx = Number(id) || (slot && Number(slot.id)) || 0;
+    const action = slot?.action || power || (slotIdx === 1 ? 'pull' : slotIdx === 2 ? 'shove' : slotIdx === 3 ? 'pin' : slotIdx === 4 ? 'bomb' : slotIdx === 5 ? 'rig' : slotIdx === 6 ? 'tether' : '');
+    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    if (slotIdx > 0) {
+      firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
+    }
+    if (action && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      const codes = resolveActionCodes(state, action);
+      const code = (codes && codes[0]) || (slotIdx >= 1 && slotIdx <= 5 ? `Digit${slotIdx}` : null);
+      if (code) {
+        const Ctor = typeof KeyboardEvent === 'function' ? KeyboardEvent
+          : (typeof window.KeyboardEvent === 'function' ? window.KeyboardEvent : null);
+        const downEvt = Ctor ? new Ctor('keydown', { code, bubbles: true }) : { type: 'keydown', code, bubbles: true };
+        window.dispatchEvent(downEvt);
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            const upEvt = Ctor ? new Ctor('keyup', { code, bubbles: true }) : { type: 'keyup', code, bubbles: true };
+            window.dispatchEvent(upEvt);
+          }
+        }, 120);
+      }
+    }
+  };
+
   const cluster = createFlightCluster({
     shipId: defId,
     name: customName || defName,
@@ -368,6 +436,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
     groups: buildOrdnanceGroups(readClusterBindings(state)),
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
+    onActivateSocket,
   });
   host.appendChild(cluster.el);
   root.appendChild(host);

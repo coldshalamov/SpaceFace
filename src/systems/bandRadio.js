@@ -94,6 +94,10 @@ export function numbersBearingDue(programSeed, sequence) {
   return (hash32(programSeed || 1, 'band-numbers-drop', sequence | 0) % NUMBERS_DROP_DENOMINATOR) === 0;
 }
 
+// inf-band-rank: the career ids the ladder kernel completes (src/careers/ladders/*Defs.js). Only
+// these map onto an authored `player.rank_*` band key; anything else is not a rank.
+const BAND_RANK_CAREER_IDS = new Set(['hauler', 'hunter', 'prospector']);
+
 export function deriveBandEventKeys(event, payload = {}, state = {}) {
   if (event === 'sector:enter') {
     // Crossing the closure: the Vael keep their space sealed; a civilian hull entering it is a
@@ -121,6 +125,13 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // The Margin reports the kill only when the player's hull did it — a hunter downed by another
     // party is the bond office's story, not the Tessera's.
     return payload.byPlayer === true ? ['player.downed_hunter'] : [];
+  }
+  if (event === 'career:ladder:completed') {
+    // inf-band-rank: a finished career ladder is a rank the institutions print tickets for. The
+    // ladders are the player's own careers (hauler / hunter / prospector) and the ladder kernel
+    // grants its completion receipt exactly once, so the key opens once per career per save. An
+    // unknown career id is nobody's rank and stays off the band.
+    return BAND_RANK_CAREER_IDS.has(payload.careerId) ? [`player.rank_${payload.careerId}`] : [];
   }
   if (event === 'entity:killed') {
     // The ordinary kill — a hostile wing downed in a running fight — is the deed the band never
@@ -223,7 +234,7 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed', 'career:ladder:completed']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {
