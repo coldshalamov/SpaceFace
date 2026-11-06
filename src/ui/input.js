@@ -13,6 +13,7 @@ import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './con
 import { getPromptDeck } from './promptDeck.js';
 import {
   BINDINGS,
+  flightHudFocusShortcut,
   setPromptDevice,
   setGamepadPromptBindings,
   setGamepadGlyphSet,
@@ -280,11 +281,12 @@ function sharesRow(a, b) {
   return Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > 0;
 }
 
-export function createUiInput(ctx, screenManager) {
+export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
   let dockInRange = false;
   let dockStationId = null;
+  let flightHudFocus = null;
   const unsubscribers = [];
 
   // Gamepad UI navigation state.
@@ -397,6 +399,100 @@ export function createUiInput(ctx, screenManager) {
     return !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
   }
 
+  const flightControlSelector = 'button, summary, a[href], input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [tabindex]';
+  function flightHudControl(t) {
+    const hud = document.getElementById?.('hud');
+    if (!hud || !t || typeof hud.contains !== 'function' || !hud.contains(t)
+        || typeof t.closest !== 'function') return null;
+    const control = t.closest(flightControlSelector);
+    return control && hud.contains(control) ? control : null;
+  }
+
+  function availableFlightControl(control) {
+    if (!control || control.isConnected === false || control.disabled || control.hidden || control.inert
+        || control.getAttribute?.('aria-disabled') === 'true'
+        || Number(control.getAttribute?.('tabindex')) < 0) return false;
+    const hud = document.getElementById?.('hud');
+    if (!hud || !hud.contains?.(control)) return false;
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      if (node.hidden || node.inert || node.getAttribute?.('aria-hidden') === 'true') return false;
+      const style = node.style;
+      if (style && (style.display === 'none' || style.visibility === 'hidden'
+          || (style.opacity != null && style.opacity !== '' && Number(style.opacity) === 0))) return false;
+    }
+    return true;
+  }
+
+  function visibleFlightControl(control) {
+    if (!availableFlightControl(control)) return false;
+    const hud = document.getElementById?.('hud');
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      const style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(node) : null;
+      if (style && (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0)) return false;
+    }
+    return typeof control.getClientRects !== 'function' || control.getClientRects().length > 0;
+  }
+
+  function validateFlightHudFocus(checkComputedVisibility = false) {
+    if (flightHudFocus && (state.mode !== 'flight' || screenManager.isOpen()
+        || !(checkComputedVisibility ? visibleFlightControl(flightHudFocus) : availableFlightControl(flightHudFocus)))) {
+      if (document.activeElement === flightHudFocus) flightHudFocus.blur?.();
+      flightHudFocus = null;
+    } else if (flightHudFocus && document.activeElement !== flightHudFocus) {
+      flightHudFocus = null;
+    }
+  }
+  function onFlightHudResize() { if (flightHudFocus) validateFlightHudFocus(true); }
+
+  function onFlightHudFocusIn(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()) return;
+    const control = flightHudControl(ev.target);
+    if (!control) return;
+    const enteredFromHud = !!flightHudControl(ev.relatedTarget);
+    flightHudFocus = control;
+    if (!enteredFromHud) {
+      // The same owner/facade handles the main and worker lanes. Drop held flight inputs before
+      // a focused button can receive Space or before a key released over it strands thrust.
+      ctx.registry?.get?.('input')?.releaseHeldControls?.('flight-hud-focus');
+    }
+  }
+
+  function onFlightHudFocusKeyDown(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()
+        || isUiInteractionFenced(state) || isTextEntryTarget(ev.target)) return;
+    const control = flightHudControl(ev.target) || flightHudControl(document.activeElement);
+    const shortcut = flightHudFocusShortcut(state);
+    const focusShortcut = shortcut.available && (ev.key === shortcut.code || ev.code === shortcut.code)
+      && !!ev.ctrlKey === shortcut.ctrl && !!ev.altKey === shortcut.alt && !ev.shiftKey && !ev.metaKey;
+    if (focusShortcut && ev.repeat && control) {
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (focusShortcut && !ev.repeat) {
+      if (control) {
+        control.blur?.();
+        flightHudFocus = null;
+      } else {
+        const hud = document.getElementById?.('hud');
+        const target = Array.from(hud?.querySelectorAll?.(flightControlSelector) || [])
+          .find((el) => visibleFlightControl(el));
+        if (!target || typeof target.focus !== 'function') return;
+        target.focus();
+        if (document.activeElement !== target) return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (control && ev.key === 'Escape') {
+      control.blur?.();
+      flightHudFocus = null;
+      ev.preventDefault();
+      ev.stopPropagation?.();
+    }
+  }
+
   function closeActiveModal(def) {
     const locked = (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked);
     if (locked) return false; // root title / mid-transaction screens trap ESC
@@ -453,6 +549,14 @@ export function createUiInput(ctx, screenManager) {
           catch (e) { dedupError('uiInput.screen-escape', '[uiInput] screen onEscape error:', e); }
         }
         closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'ship' && key === 'F2') {
+        ev.preventDefault();
+        if (!ev.repeat) {
+          closeActiveModal(def);
+          bus.emit('audio:cue', { id: 'ui_back' });
+        }
         return;
       }
       // Map toggle (M/N) must still close the map when search (or any text field) is focused.
@@ -530,6 +634,13 @@ export function createUiInput(ctx, screenManager) {
 
     if (textEntry) return;
 
+    // A deliberately focused flight control owns its native Tab/Enter/Space and other keys.
+    // Do not prevent their defaults; only keep document/window flight shortcuts from firing.
+    if (state.mode === 'flight' && flightHudControl(t)) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      return;
+    }
+
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
 
@@ -584,6 +695,12 @@ export function createUiInput(ctx, screenManager) {
 
     switch (key) {
       case 'Escape':
+        if (shipScreenRequest.isShipScreenRequestPending?.()) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          shipScreenRequest.cancelShipScreenRequest?.();
+          return;
+        }
         if (state.ui && state.ui.commsBacklogOpen) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -660,11 +777,12 @@ export function createUiInput(ctx, screenManager) {
         }
         return;
       case 'F2':
-        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). Pausing by owner ruling —
-        // full-depth strategic screen. F1 (help) and F7 (debug) are the adjacent literal precedents.
+        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). uiRoot owns its
+        // demand-loaded registration so a repeated F2 can cancel a still-pending open.
+        if (ev.repeat) return;
         ev.preventDefault();
-        screenManager.pushScreen('ship');
-        bus.emit('audio:cue', { id: 'ui_open' });
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        shipScreenRequest.toggleShipScreenRequest?.();
         return;
       case 'F3':
         // THE FOOTPRINT (grammar §10.5; build map §11.12 J10). Pausing instrument, same ruling.
@@ -1008,6 +1126,9 @@ export function createUiInput(ctx, screenManager) {
     'touchstart', 'touchend', 'wheel',
   ];
   document.addEventListener('keydown', onBlackoutKeyDown, true);
+  document.addEventListener('keydown', onFlightHudFocusKeyDown, true);
+  document.addEventListener('focusin', onFlightHudFocusIn);
+  window.addEventListener('resize', onFlightHudResize);
   for (const type of blackoutPointerEvents) {
     document.addEventListener(type, onBlackoutPointerEvent, { capture: true, passive: false });
   }
@@ -1397,6 +1518,7 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function tick(dt) {
+    if (flightHudFocus) validateFlightHudFocus();
     // Gesture capture must own the sample itself. Applying this after gp.tick commits the
     // first modifier as a solo press, and eats the first ordinary press after cancellation.
     if (gp) gp.captureMode = !!getGamepadCaptureHandler();
@@ -1435,6 +1557,9 @@ export function createUiInput(ctx, screenManager) {
     doDock, undock, tick,
     dispose() {
       document.removeEventListener('keydown', onBlackoutKeyDown, true);
+      document.removeEventListener('keydown', onFlightHudFocusKeyDown, true);
+      document.removeEventListener('focusin', onFlightHudFocusIn);
+      window.removeEventListener('resize', onFlightHudResize);
       for (const type of blackoutPointerEvents) {
         document.removeEventListener(type, onBlackoutPointerEvent, true);
       }

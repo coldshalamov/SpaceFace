@@ -29,9 +29,11 @@
 // `helix:docketChoice` intents. The Bureau re-checks reach, the instrument and credits.
 
 import { getPromptDeck } from './promptDeck.js';
-import { wantedClearClause } from './wantedReason.js';
+import { wantedClearClause, wantedReasonText } from './wantedReason.js';
 import { SECTORS } from '../data/sectors.js';
-import { isPlayerWanted } from '../systems/heat.js';
+import { isPlayerWanted, heatLevelFor } from '../systems/heat.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+import { FINE_WHY_COPY, lawDeskLine } from '../data/lawDeskCopy.js';
 
 const DECK_ID = 'impound-pay';
 const FINE_DECK_ID = 'law-fine';
@@ -476,10 +478,41 @@ export function fineWarrantDetail(offer, state) {
   const clock = (typeof heat === 'number' && isPlayerWanted({ player: { heat } }))
     ? wantedClearClause(heat)
     : '';
+  const explanation = fineWhyClause(state, offer);
+  const why = explanation ? `${clock ? '. ' : ' '}${explanation}` : '';
   if (offer && offer.status === 'working') {
-    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}`;
+    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}${why}`;
   }
-  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}`;
+  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}${why}`;
+}
+
+/**
+ * inf-fine-why — the fine card's why clause: what the number is made of and what it answers
+ * for. The composition is the law's own price (LAW_DOCK_FINE_BASE_CR plus one
+ * LAW_DOCK_FINE_PER_LEVEL_CR step per heat band). A card uses its retained assessed step only
+ * when those parts match its actual bill; legacy or custom bills do not invent a breakdown. The
+ * trace is the heat owner's convicting-incident record rendered by the same no-false-witness
+ * helper the flight alert uses (suspicion without a receipt names nothing, never a witness
+ * claim). Unknown parts are omitted; a clean or sub-threshold sheet gets no clause at all.
+ * Pure read; never mutates state.
+ */
+export function fineWhyClause(state, assessment = null) {
+  const heat = state && state.player ? Number(state.player.heat) : 0;
+  const liveLevel = heatLevelFor(heat);
+  if (!(liveLevel > 0)) return '';
+  const level = assessment ? Number(assessment.heatLevel) : liveLevel;
+  const baseCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_BASE_CR)) || 0);
+  const perLevelCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_PER_LEVEL_CR)) || 0);
+  const parts = [];
+  if (Number.isInteger(level) && level > 0
+    && (!assessment || Number(assessment.amount) === baseCr + perLevelCr * level)) {
+    parts.push(lawDeskLine(FINE_WHY_COPY.price, { base: baseCr, perStep: perLevelCr, step: level }));
+  }
+  const trace = wantedReasonText(null, state && state.player);
+  if (trace) parts.push(lawDeskLine(FINE_WHY_COPY.answersFor, {
+    trace: trace.replace(/^ · /, ' ').replace(/\.+$/, ''),
+  }));
+  return parts.join('').trim();
 }
 
 // Station display name for the card sender — authored geography first, else a bare desk.

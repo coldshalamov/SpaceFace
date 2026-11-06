@@ -105,6 +105,11 @@ test('viewport parser preserves phone/default/single and adds a deduplicated mat
   assert.throws(() => parseBenchArgs(['--viewport=0x600']));
   assert.throws(() => parseBenchArgs(['--viewport=960x540', '--viewports=1920x1080']));
   assert.throws(() => parseBenchArgs(['--timeout-ms=Infinity']));
+  const media = parseBenchArgs(['--reduced-motion=reduce', '--forced-colors=active']);
+  assert.equal(media['reduced-motion'], 'reduce');
+  assert.equal(media['forced-colors'], 'active');
+  assert.throws(() => parseBenchArgs(['--reduced-motion=yes']));
+  assert.throws(() => parseBenchArgs(['--forced-colors=yes']));
 });
 
 function rig(t, { launchError = false, closeError = false, cancelOnClose = false } = {}) {

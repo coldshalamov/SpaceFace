@@ -11,6 +11,9 @@ import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool, heatForWeaponVariant, CONTACT_MARK_KINDS } from './contactMarks.js';
+import { createScarHistory, noteHullScorchStrike, resetScarHistory } from './scarHistory.js';
+import { resolveScarSkid, scarSkidSize } from './scarDirection.js';
+import { findScarSeat, reinforceScarSeat } from './scarSeats.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
@@ -180,13 +183,16 @@ export class WeaponVfxPresenter {
     this.distortionProducers = [this.distortion, this.wellDistortion];
     this.lights = new WeaponLightPool(this.scene);
     this.scorches = new HullScorchPool(this.scene);
+    // Sustained-fire accounting: hulls under sustained fire keep their last marks (scarHistory.js).
+    this._scarHistory = createScarHistory();
     this.quarks = new QuarksVfxSystem({ scene: this.scene });
     this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false, boundKey: null };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
     this._surfacePoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
-    this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, surfaceX: 0, surfaceY: 0, surfaceZ: 0, surfaceRadius: 0 };
+    this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, surfaceX: 0, surfaceY: 0, surfaceZ: 0, surfaceRadius: 0, skidX: 0, skidY: 0, skidZ: 0 };
+    this._scarSkid = { skidX: 0, skidY: 0, skidZ: 0, stretch: 1, grazing: 0 };
     this._lastPlayerSurfaceSplashAt = -Infinity;
     this._nearMissPlayerLocal = { x: 0, z: 0 };
     this._nearMissLocal = { x: 0, z: 0 };
@@ -385,27 +391,71 @@ export class WeaponVfxPresenter {
       if (slot >= 0) this._lastPlayerSurfaceSplashAt = now;
     }
     if (!hitShield && recipe.hull.scorch && !splashPlan) {
-      const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
+      // SCAR SKID — the lasting mark carries the incoming shot's bearing: a grazing hit smears
+      // downrange, a head-on strike stays round. Resolved from the same normal + approach truth
+      // the discharge fan slants with, stored hull-local, zeroed to the legacy mark on failure.
       const scorch = this._flashSpec(recipe.hull.scorchLife, 1.8, 1.15, 1);
-      this.scorches.spawn({
-        targetId: payload.targetId,
-        localX: captured.x,
-        localY: captured.y,
-        localZ: captured.z,
-        nx: captured.nx,
-        ny: captured.ny,
-        nz: captured.nz,
-        attached: captured.attached === true,
-        boundKey: captured.boundKey,
-        width: scorch.size0,
-        height: scorch.size1,
-        life: scorch.life,
-        opacity: scorch.opacity0,
-        heat: heatForWeaponVariant(recipe.variant),
-        r: _color.r,
-        g: _color.g,
-        b: _color.b,
-      });
+      const skid = resolveScarSkid(nx, 0.08, nz, ax, 0, az, this._scarSkid ||= {});
+      const skidSize = scarSkidSize(scorch.size0, scorch.size1, skid.stretch, this._scarSkidSize ||= {});
+      const captured = this._captureTargetLocal(
+        payload.targetId, world.x, y, world.z, nx, 0.08, nz,
+        skid.skidX, skid.skidY, skid.skidZ,
+      );
+      // SCAR SEATS — a strike landing inside an existing kept seat is absorbed by that wound
+      // instead of spawning another sibling mark: the seat widens a step, reheats under the
+      // fresh hit, and creeps along the fire path. An absorbed strike never spawns and never
+      // touches the history book, so the kept-slot accounting stays exact.
+      const seatIndex = findScarSeat(
+        this.scorches.slots,
+        payload.targetId,
+        captured.boundKey,
+        captured.x, captured.y, captured.z,
+      );
+      if (seatIndex >= 0) {
+        reinforceScarSeat(this.scorches.slots[seatIndex], captured.x, captured.y, captured.z);
+      } else {
+        // SCAR HISTORY — a hull under sustained fire keeps its last marks: once the book counts
+        // SCAR_HISTORY_AFTER_HITS bare-hull strikes, this and later hits cool to charcoal and
+        // stay target-bound for the fight (the pool's persistent path: evict-transient-first,
+        // fade floor, retained across dispose), instead of every hull reading brand-new after
+        // ~5 s. Skipped for absorbed strikes so the kept-slot accounting stays exact.
+        const history = noteHullScorchStrike(
+          this._scarHistory,
+          payload.targetId,
+          now,
+          (grant) => {
+            const s = this.scorches.slots[grant.slot];
+            return !!s && s.alive === 1 && s.targetId === payload.targetId
+              && s.boundKey === captured.boundKey;
+          },
+          captured.boundKey,
+        );
+        const spawned = this.scorches.spawn({
+          targetId: payload.targetId,
+          localX: captured.x,
+          localY: captured.y,
+          localZ: captured.z,
+          nx: captured.nx,
+          ny: captured.ny,
+          nz: captured.nz,
+          attached: captured.attached === true,
+          boundKey: captured.boundKey,
+          width: skidSize.width,
+          height: skidSize.height,
+          skidX: captured.skidX,
+          skidY: captured.skidY,
+          skidZ: captured.skidZ,
+          stretch: skid.stretch,
+          life: history.persistent ? history.life : scorch.life,
+          opacity: scorch.opacity0,
+          heat: heatForWeaponVariant(recipe.variant),
+          persistent: history.persistent === true,
+          r: _color.r,
+          g: _color.g,
+          b: _color.b,
+        });
+        if (spawned >= 0 && history.grantRef) history.grantRef.slot = spawned;
+      }
     }
     if (a11y.eventLightPeakScale > 0) {
       const hitLight = hitLightForVariant(recipe.variant);
@@ -846,13 +896,15 @@ export class WeaponVfxPresenter {
     return this._socketScratch;
   }
 
-  _captureTargetLocal(targetId, worldX, worldY, worldZ, nx, ny, nz) {
+  _captureTargetLocal(targetId, worldX, worldY, worldZ, nx, ny, nz, skidX = 0, skidY = 0, skidZ = 0) {
     const mesh = targetId != null ? this._mesh(targetId) : null;
     const out = this._targetScratch;
     out.boundKey = null;
+    out.skidX = 0; out.skidY = 0; out.skidZ = 0;
     if (!mesh) {
       out.x = worldX; out.y = worldY; out.z = worldZ;
       out.nx = nx; out.ny = ny; out.nz = nz; out.attached = false;
+      out.skidX = skidX; out.skidY = skidY; out.skidZ = skidZ;
       return out;
     }
     const anchor = markAnchor(mesh);
@@ -861,8 +913,14 @@ export class WeaponVfxPresenter {
     anchor.getWorldQuaternion(_worldQuat);
     _invQuat.copy(_worldQuat).invert();
     _axis.set(nx, ny, nz).applyQuaternion(_invQuat);
+    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
+    if (skidX !== 0 || skidY !== 0 || skidZ !== 0) {
+      // The skid is stored hull-local so it turns with the hull, exactly like the seat normal.
+      _axis.set(skidX, skidY, skidZ).applyQuaternion(_invQuat);
+      out.skidX = _axis.x; out.skidY = _axis.y; out.skidZ = _axis.z;
+    }
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
-    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z; out.attached = true;
+    out.attached = true;
     const key = mesh.userData && mesh.userData.sfStableEntityKey;
     out.boundKey = key != null ? key : null;
     return out;
@@ -880,6 +938,14 @@ export class WeaponVfxPresenter {
     _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(_worldQuat);
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
     out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
+    if (slot.skidX !== 0 || slot.skidY !== 0 || slot.skidZ !== 0) {
+      // The skid rides the hull: rotate it with the same quaternion as the seat normal
+      // (inf-scar-skid) so a scarred hull turning away still shows the hit's true bearing.
+      _axis.set(slot.skidX, slot.skidY, slot.skidZ).applyQuaternion(_worldQuat);
+      out.skidX = _axis.x; out.skidY = _axis.y; out.skidZ = _axis.z;
+    } else {
+      out.skidX = 0; out.skidY = 0; out.skidZ = 0;
+    }
     return out;
   }
 
@@ -960,6 +1026,7 @@ export class WeaponVfxPresenter {
       const out = this._scorchPoseScratch;
       out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
       out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
+      out.skidX = slot.skidX; out.skidY = slot.skidY; out.skidZ = slot.skidZ;
       return out;
     }
     const mesh = this._mesh(slot.targetId);
@@ -1178,6 +1245,7 @@ export class WeaponVfxPresenter {
     this._presenterQuietFieldsLen = -1;
     this._detachGraph(this._graph);
     this._graph = null;
+    resetScarHistory(this._scarHistory);
     clearShieldContacts();
     this.bolts.dispose();
     this.discharges.dispose();

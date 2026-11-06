@@ -1,3 +1,4 @@
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,6 +16,7 @@ import { createBorrowedVoiceVisualDriver, BORROWED_VOICE_FAN_NODES,
 
 const near = (a, b) => assert(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
 const bankFor = key => JSON.parse(readFileSync(new URL(`../assets/ships/motions/borrowed-voice-${key}.motion.json`, import.meta.url)));
+const WORLD_CENTER=sectorLocalToGlobalForSector(C.center,C.sectorId);
 function fixture(key = 'a') {
   const native = { tick: 880, _simTick: 120, records: new Map(), staticRecords: new Map() };
   const physics = { name: 'physics', init() { this._sg02 = native; } };
@@ -22,7 +24,7 @@ function fixture(key = 'a') {
   state.mode = 'flight'; state.tick = 120; state.simTime = 2; state.world.currentSectorId = C.sectorId;
   state.world.alienEcology = { revelation: 2 };
   const player = sim.spawn({ type: 'ship', radius: 1, mass: 12, hull: 100,
-    pos: { x: C.center.x + 3, z: C.center.z - 6 }, data: {} }); state.playerId = player.id;
+    pos: { x: WORLD_CENTER.x + 3, z: WORLD_CENTER.z - 6 }, data: {} }); state.playerId = player.id;
   const owner = sim.registry.get('borrowedVoice'); owner.update(1 / 60, state);
   const ring = owner._find('ring'), a = owner._find('a');
   a.pos.set(ring.pos.x + 7, 0, ring.pos.z); a.rot = Math.PI;

@@ -1,4 +1,5 @@
 // FILTER ON THE DERELICT FIELD — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Ceres Refinery card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
@@ -29,17 +30,17 @@ const spec = {
     {
       "id": "a",
       "label": "Answer the call",
-      "playerLine": "I have the filter call. Send its last clean bearing."
+      "playerLine": "I have the filter call. Send its last graded bearing."
     },
     {
       "id": "b",
       "label": "Hold a lamp",
-      "playerLine": "I can hold a lamp outside the caller’s approach."
+      "playerLine": "I’ll hold a lamp off the caller’s approach. Lamps are free."
     },
     {
       "id": "c",
       "label": "Leave the call",
-      "playerLine": "I cannot answer. Keep my hull clear of derelict field."
+      "playerLine": "I can’t answer. File my hull clear of the field."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +53,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: A distress call names the filter near derelict field. Answer or stand clear.",
+      "line": "FOREMAN: Distress call off the field names a filter. Answer, or the Board files it.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +68,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The distress tone repeats on the same damaged second.",
+      "line": "The distress tone repeats on the same damaged second, shift-stamped and patient.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +82,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "FOREMAN leaves the rescue channel open after the call ends.",
+      "line": "FOREMAN leaves the rescue channel open. Open channels are how the belt grieves.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +96,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The filter has a serial someone still loves.",
+      "line": "The filter was sold twice. Both buyers signed. Neither surfaced.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +110,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "Full burn changes the distance, not how derelict field sounds.",
+      "line": "The Board logs the call beside the tonnage, in the same tidy hand.",
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +131,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Holding. The count finishes when it finishes.",
+      "line": "FOREMAN: Holding. Rescue keeps the shift; the shift keeps the books.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +149,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Call answered. The bearing stopped moving while you listened.",
+      "line": "Call answered. The bearing stopped moving, and the Board stamped it received.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +176,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Lamp held. FOREMAN took the caller through the marked gap.",
+      "line": "Lamp held. FOREMAN walked the caller through the gap, line by line.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +196,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left. The filter call stayed open on their board.",
+      "line": "You left. The filter call stayed open, filed under pending, patiently.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +247,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "FILTER ON THE DERELICT FIELD",
-  "primaryLine": "FOREMAN: A distress call names the filter near derelict field. Answer or stand clear.",
+  "primaryLine": "FOREMAN: Distress call off the field names a filter. Answer, or the Board files it.",
   "factionId": "faction_dmc",
   "choices": [
     {
       "id": "a",
       "label": "Answer the call",
-      "playerLine": "I have the filter call. Send its last clean bearing."
+      "playerLine": "I have the filter call. Send its last graded bearing."
     },
     {
       "id": "b",
       "label": "Hold a lamp",
-      "playerLine": "I can hold a lamp outside the caller’s approach."
+      "playerLine": "I’ll hold a lamp off the caller’s approach. Lamps are free."
     },
     {
       "id": "c",
       "label": "Leave the call",
-      "playerLine": "I cannot answer. Keep my hull clear of derelict field."
+      "playerLine": "I can’t answer. File my hull clear of the field."
     }
   ],
   "timeoutChoice": "c",

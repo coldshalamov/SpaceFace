@@ -32,12 +32,12 @@ test('the penalty is the factor flight actually scales by', () => {
 test('a light load reads full thrust with its mass stated', () => {
   const derived = laden(0);
   assert.equal(cargoHandlingNote(derived), null, 'no consequence at design mass');
-  assert.equal(cargoMassLine(derived), 'Mass: 0 / design 32', 'mass still stated');
+  assert.equal(cargoMassLine(derived), 'Mass: 0 / design 35', 'mass still stated');
 });
 
 test('a full-volume load of feathers earns no penalty', () => {
   // The helper takes no volume input at all: only mass bends the readout, so volume
-  // can fill without consequence. Feathers are mass 0.5 on a 32-design hull.
+  // can fill without consequence. Feathers are mass 0.5 on a 35-design hull.
   const derived = laden(0.5);
   assert.equal(cargoHandlingNote(derived), null, 'volume never invents a penalty');
 });

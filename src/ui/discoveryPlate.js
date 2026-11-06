@@ -3,14 +3,14 @@
 // Canonical discovery records live in world.discovery (POIs/sites), player.uniqueWrecks.bearings
 // (historic wrecks), and aceMemory (rare flagships). This module only listens to their
 // first-contact receipts — discovery:plateUnlocked, uniqueWreck:bearingFixed, and
-// aceMemory:transition 'encountered' — and slides a 3 s glass plate in from the HUD edge.
-// It writes no gameplay state; "tucks into the Codex" is already true because the records are
-// durable before the event fires.
+// aceMemory:transition 'encountered' — and queues a quiet receipt for the existing HUD lane.
+// It writes no gameplay state; Codex records are durable before the event fires.
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
+import { presentReceipt } from '../core/receiptPresenter.js';
 
-const PLATE_TTL_MS = 3000;
-const PLATE_FADE_MS = 320;
 const QUEUE_MAX = 3;
+const RECEIPT_SPACING_MS = 3500;
+const QUIET_SPEED = 30;
 
 function humanizeId(value) {
   const s = String(value || '').replace(/[_:.-]+/g, ' ').trim();
@@ -27,56 +27,33 @@ export function createDiscoveryPlate(ctx) {
   const getState = typeof ctx === 'object' && ctx && ctx.state !== undefined
     ? () => ctx.state
     : (typeof ctx === 'function' ? ctx : () => null);
-  if (!bus || typeof bus.on !== 'function' || typeof document === 'undefined') {
-    return { tick() {}, push() {}, destroy() {} };
-  }
-
-  const el = document.createElement('div');
-  el.className = 'sf-discovery-plate';
-  el.setAttribute('role', 'status');
-  el.setAttribute('aria-live', 'polite');
-  el.style.display = 'none';
-  el.innerHTML =
-    '<div class="sf-discovery-plate__frame">'
-    + '<div class="sf-discovery-plate__kicker"></div>'
-    + '<div class="sf-discovery-plate__title"></div>'
-    + '<div class="sf-discovery-plate__meta"></div>'
-    + '</div>';
-  const kickerEl = el.querySelector('.sf-discovery-plate__kicker');
-  const titleEl = el.querySelector('.sf-discovery-plate__title');
-  const metaEl = el.querySelector('.sf-discovery-plate__meta');
-
+  if (!bus || typeof bus.on !== 'function') return { tick() {}, push() {}, destroy() {} };
   const queue = [];
   const seen = new Set();
-  let active = null; // { born, ttl, leaving }
-  let unsubs = null;
-
-  function ensureConnected() {
-    if (el.isConnected) return;
-    const host = document.getElementById('hud') || document.body;
-    if (host) host.appendChild(el);
-  }
-
-  function show(rec, now) {
-    ensureConnected();
-    kickerEl.textContent = rec.kicker;
-    titleEl.textContent = rec.title;
-    metaEl.textContent = rec.meta || '';
-    el.style.display = 'block';
-    el.classList.remove('sf-discovery-plate--out');
-    // Next frame so the slide-in transition actually plays from the parked transform.
-    requestAnimationFrame(() => el.classList.add('sf-discovery-plate--in'));
-    active = { born: now, ttl: PLATE_TTL_MS, leaving: false, key: rec.key };
-  }
+  let nextReceiptAt = 0;
+  let destroyed = false;
 
   function push(rec) {
-    if (!rec || !rec.title) return;
+    if (destroyed || !rec || !rec.title) return;
     const key = rec.key || `${rec.kicker}|${rec.title}`;
     if (seen.has(key)) return;
-    if (active && active.key === key) return;
-    if (queue.length >= QUEUE_MAX) queue.shift();
     seen.add(key);
+    if (queue.length >= QUEUE_MAX) queue.shift();
     queue.push({ ...rec, key });
+  }
+
+  // The receipt lane already yields to combat. Delay nonurgent discoveries while the
+  // player is handling a line, maneuvering, or carrying significant momentum as well.
+  function quietForDiscovery(state) {
+    if (!state || state.mode !== 'flight' || state.ui?.docked) return false;
+    const job = typeof document !== 'undefined' ? document.body?.dataset?.sfHudJob : '';
+    if (job === 'fight' || job === 'hurt' || job === 'latch' || state.player?.tether?.active) return false;
+    const input = state.input || {};
+    if (input.boost || input.fire || input.brake || Math.abs(input.moveX || 0) > 0.1
+      || Math.abs(input.moveZ || 0) > 0.1 || Math.abs(input.turnIntent || 0) > 0.1) return false;
+    const player = state.entities?.get?.(state.playerId);
+    const vel = player?.vel;
+    return !vel || Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0) < QUIET_SPEED;
   }
 
   function resolvePoiPlate(p) {
@@ -134,7 +111,7 @@ export function createDiscoveryPlate(ctx) {
     });
   }
 
-  unsubs = [
+  const unsubs = [
     bus.on('discovery:plateUnlocked', onPlateUnlocked),
     bus.on('uniqueWreck:bearingFixed', onWreckFixed),
     bus.on('aceMemory:transition', onAceTransition),
@@ -143,27 +120,19 @@ export function createDiscoveryPlate(ctx) {
   return {
     push,
     tick() {
-      if (!active && !queue.length) return;
+      if (destroyed || !queue.length || !quietForDiscovery(getState())) return;
       const now = performance.now();
-      if (!active) { show(queue.shift(), now); return; }
-      const age = now - active.born;
-      if (!active.leaving && age >= active.ttl) {
-        active.leaving = true;
-        el.classList.remove('sf-discovery-plate--in');
-        el.classList.add('sf-discovery-plate--out');
-      }
-      if (age >= active.ttl + PLATE_FADE_MS) {
-        el.style.display = 'none';
-        el.classList.remove('sf-discovery-plate--in', 'sf-discovery-plate--out');
-        active = null;
+      if (now < nextReceiptAt) return;
+      const rec = queue[0];
+      if (presentReceipt({ text: `Discovery: ${rec.title} · saved to Codex`, kind: 'info', ttl: 4, silent: true })) {
+        queue.shift();
+        nextReceiptAt = now + RECEIPT_SPACING_MS;
       }
     },
     destroy() {
-      if (unsubs) for (const off of unsubs) { if (typeof off === 'function') off(); }
-      unsubs = null;
+      destroyed = true;
+      for (const off of unsubs) if (typeof off === 'function') off();
       queue.length = 0;
-      active = null;
-      if (el.parentNode) el.parentNode.removeChild(el);
     },
   };
 }

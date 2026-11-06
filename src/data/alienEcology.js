@@ -285,9 +285,14 @@ export const ALIEN_SITES = Object.freeze({
     center: Object.freeze({ x: -2200, z: 900 }),
     arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 460 }),
     arrivalLines: Object.freeze({
-      long: 'Long-range return: a freighter still holding reactor standby — crew manifest empty.',
-      mid: 'Heat plume against the cold field. Surface contacts shift toward your drive signature.',
-      close: 'The hull breathes warm air through open seams. The things feeding on it notice you.',
+      long: 'Long-range return: an abandoned freighter, reactor on standby.',
+      mid: 'Heat escapes through seams in the cargo hull.',
+      close: 'Growth gathers along the warm hull. Scan to read the standby.',
+    }),
+    arrivalLinesOffline: Object.freeze({
+      long: 'Long-range return: an abandoned freighter, standby cut.',
+      mid: 'The cargo hull seams are cold.',
+      close: 'Growth gathers along the cold hull. Scan to review the standby before restoring it.',
     }),
     faunaCast: Object.freeze({
       hull_leech: 3,

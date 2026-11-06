@@ -7,6 +7,9 @@ import {
   enqueueBoundaryUpgrade,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   resumeAuthoredUpgradeQueueAfterOpening,
+  resumeAuthoredUpgradeQueueForLoadingHulls,
+  describeAuthoredUpgradeQueue,
+  cancelAuthoredUpgradeQueue,
 } from '../src/render/partsLibrary.js';
 import {
   prepareStartupGpuResidency,
@@ -122,4 +125,75 @@ test('Continue drains one queued heavy root through geometry residency before fi
     /resumeAuthoredUpgradeQueueAfterOpening\(scene\)/,
     'the ordinary authored queue must resume only after first-paint release',
   );
+});
+
+test('loading hulls-only cohort skips leftover FX in flight and admits a queued hull', async () => {
+  const priorWindow = globalThis.window;
+  const priorRaf = globalThis.requestAnimationFrame;
+  const scheduledFrames = [];
+  const scene = new THREE.Scene();
+  const fxBoundary = new THREE.Group();
+  const hullBoundary = new THREE.Group();
+  scene.add(fxBoundary, hullBoundary);
+  let finishFx;
+  let hullStarted = false;
+  try {
+    globalThis.window = {
+      SF: {
+        state: {
+          mode: 'loading',
+          playerId: 1,
+          entities: new Map([[1, { id: 1, type: 'ship', isPlayer: true, alive: true, pos: { x: 0, z: 0 } }]]),
+          render: {
+            scene,
+            firstPlayableFrameAt: null,
+            deferNoncriticalMeshStreaming: true,
+          },
+        },
+      },
+    };
+    globalThis.requestAnimationFrame = (callback) => {
+      scheduledFrames.push(callback);
+      return scheduledFrames.length;
+    };
+
+    const fxDone = enqueueBoundaryUpgrade(scene, {
+      boundary: fxBoundary,
+      entity: { id: 90, type: 'fx', alive: true, pos: { x: 50000, z: 0 } },
+      run: () => new Promise((resolve) => { finishFx = resolve; }),
+    });
+    // Start the ambient FX job before the hulls-only hold engages.
+    scheduledFrames.shift()(0);
+    await Promise.resolve();
+    assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
+
+    assert.equal(resumeAuthoredUpgradeQueueForLoadingHulls(scene), true);
+
+    const hullDone = enqueueBoundaryUpgrade(scene, {
+      boundary: hullBoundary,
+      entity: { id: 1, type: 'ship', isPlayer: true, alive: true, pos: { x: 0, z: 0 } },
+      run: async () => { hullStarted = true; return true; },
+    });
+
+    let finished = false;
+    const cohortPromise = prepareFirstQueuedAuthoredBoundaryForOpening(scene).then((cohort) => {
+      finished = true;
+      return cohort;
+    });
+    // Leftover FX must not own the barrier: the hull cohort resolves without finishing FX.
+    for (let i = 0; i < 40; i++) await Promise.resolve();
+    assert.equal(finished, true, 'opening cohort must not wait on leftover FX');
+    const cohort = await cohortPromise;
+    assert.equal(cohort.prepared, true);
+    assert.equal(hullStarted, true, 'queued player hull must admit past leftover FX');
+    assert.equal(describeAuthoredUpgradeQueue(scene).openingHeld, true);
+
+    finishFx();
+    await fxDone;
+    await hullDone;
+  } finally {
+    cancelAuthoredUpgradeQueue(scene, 'test-reset');
+    globalThis.window = priorWindow;
+    globalThis.requestAnimationFrame = priorRaf;
+  }
 });

@@ -142,6 +142,7 @@ test('a loss larger than the manifest takes the personal units it should, and no
 
 function openingWorld(seed = 47) {
   const state = createGameState(seed);
+  state.world.currentSectorId = 'sector_helios_prime';
   state.mode = 'flight';
   state.simTime = 10;
   state.playerId = 1;

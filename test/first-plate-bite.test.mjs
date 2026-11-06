@@ -81,6 +81,12 @@ function boot() {
       bus.emit('combat:damage', payload);
       return payload;
     },
+    // Same-tick hint bursts queue FIFO: firstCombat claims the 7 s HUD window on this same
+    // damage event, so firstHullBite lands deferred and only speaks once the sim has stepped
+    // past that window (onboarding drains the queue on its 0.2 s cadence).
+    drain(seconds = 9) {
+      sim.runTicks(Math.ceil(seconds * 60));
+    },
     restore() {
       try { sim.registry.get('onboarding').destroy(); } catch (_) { /* harness only */ }
       sim.dispose();
@@ -98,6 +104,7 @@ test('first plate bite: the first hit that reaches the hull names the berth fix 
   try {
     assert.equal(h.state.meta.seed, 4242);
     h.hit();
+    h.drain();
     assert.equal(h.biteHints().length, 1, 'the first hull bite produces one hint');
     assert.equal(h.biteHints()[0].text, LINE, 'the table line, verbatim');
     assert.equal(h.biteHints()[0].entityId, 424242, 'the receipt attaches to the attacker');
@@ -117,6 +124,7 @@ test('first plate bite: shield-only and armor-only hits never spend the lesson',
     assert.equal(h.biteHints().length, 0, 'no plate reached means no lesson');
     assert.equal(h.state.player.hints.firstHullBite, undefined, 'the lesson stays unspent');
     h.hit();
+    h.drain();
     assert.equal(h.biteHints().length, 1, 'the first real bite still teaches');
   } finally { h.restore(); }
 });
@@ -130,6 +138,7 @@ test('first plate bite: a killing hit stays quiet — the defeat screen owns tha
     h.hit({ hullDamage: 100, after: { hull: -4 } });
     assert.equal(h.biteHints().length, 0, 'overkill is still the defeat screen\'s moment');
     h.hit({ hullDamage: 5, after: { hull: 95 } });
+    h.drain();
     assert.equal(h.biteHints().length, 1, 'a surviving bite still teaches once');
     assert.equal(h.state.player.hints.firstHullBite, true);
   } finally { h.restore(); }
@@ -151,6 +160,7 @@ test('first plate bite: the staged rail, hints-off, and somebody else\'s hull st
     h.hit({ isPlayer: false, targetId: 999 });
     assert.equal(h.biteHints().length, 0, 'another hull\'s damage does not teach the player');
     h.hit({ isPlayer: false });
+    h.drain();
     assert.equal(h.biteHints().length, 1, 'the player\'s own bite still teaches once');
   } finally { h.restore(); }
 });

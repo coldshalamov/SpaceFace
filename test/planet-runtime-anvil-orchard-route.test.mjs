@@ -61,6 +61,9 @@ test('Anvil normal producer admits one authored Orchard frame and routes finite 
     t.collector.vel.x = 0;
     t.collector.vel.z = 70;
     t.collector.data.itinerary.phase = 'collect';
+    // The fixture moved the collector directly; refresh the same spatial owner the
+    // production planet query uses before sampling its current position.
+    t.state.spatialHash.rebuild(t.state.entityList);
     t.planet._tickShips(SIM_DT, t.state, t.state.planet, PLANET_SITE);
     const observer = t.sim.spawn({ type: 'ship', isPlayer: true, collides: false, physicsBody: false,
       pos: { x: t.collector.pos.x + 50, z: t.collector.pos.z + 5 }, hull: 100 });

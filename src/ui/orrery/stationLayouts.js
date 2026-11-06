@@ -336,6 +336,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-crown .sxb-vitals:has(> .sxb-vital [data-vital-act][aria-disabled="true"]) { column-gap:2px !important; }
   ${S} .sxb-vital { min-width:max-content !important; width:auto !important; }
   ${S} .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts { position:static !important; width:auto !important; }
+  /* LEDGER's word reading (CREDIT LINE OPEN) ran ~70px past its cell over MUNITIONS' numerals: it sets on two
+     short lines inside its own cell, as it does at 651–699 */
+  ${S} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:normal !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${S} .sxb-crown .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; line-height:1.25 !important; letter-spacing:.12em !important; }
   ${S} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; }
   ${S} .sxb-tape .sxb-event { width:auto !important; max-width:100% !important; min-width:0 !important; }
   /* the next-step card: its title on one line with its count, the sentence under it */
@@ -406,6 +410,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:4px !important;
     display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important; }
   ${D} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+}
+/* At 960×540 with a live contract and full station copy, a 44vh head left the Market register
+   only 22px of scrollport, so the last good remained clipped even after scrolling. Give the
+   scrollable head 32vh and reserve 200px for the tab body so the register keeps a useful viewport. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${D} { grid-template-rows:minmax(0, 32vh) minmax(200px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:32vh !important; overflow-y:auto !important; overflow-x:hidden !important; }
 }
 /* …and at 1101–1280 the crown column was the strip's 326px cap, so the five dials wrapped 2·2·1 into a
    ~330px tower: CREDIT LINE OPEN ran off the right edge and, at 540 tall, LEDGER's DRAW and the

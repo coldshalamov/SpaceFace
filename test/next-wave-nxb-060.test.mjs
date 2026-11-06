@@ -365,7 +365,7 @@ test('the opening budgets stay the existing ceilings and a failed package does n
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const loader = readFileSync(new URL('../src/render/renderPackageLoader.js', import.meta.url), 'utf8');
   assert.match(readiness, /Math\.max\(timeoutMs, 360000\)/);
-  assert.match(readiness, /Math\.max\(timeoutMs, 120000\)/);
+  assert.match(readiness, /Math\.max\(timeoutMs, openingGateBudgetMs\(120000\)\)/);
   // 1e75f5b68 added the settle-tail options argument to the same opening budget; startupPacing
   // (2026-10-23) device-scales that ceiling so handsets meet it. The bounded fail-closed
   // expression, not the old fixed literal, is the contract this pin guards.

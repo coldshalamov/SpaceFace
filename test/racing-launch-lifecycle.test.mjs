@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
+import { resetRunState } from '../src/core/newGameBoot.js';
 import { createBus } from '../src/core/eventBus.js';
 import { save } from '../src/save/saveSystem.js';
 import { raceLevelById, racingOfferFor, startLineFor } from '../src/data/raceLevels.js';
@@ -31,6 +32,9 @@ test('physics challenge launch waits for real boot, preserves campaign slots and
     h.bus.emit('game:started', {});
     await Promise.resolve();
     assert.equal(enters.length, 1, 'an ordinary New Game cancels the pending venue');
+    assert.equal(h.saveHost._campaignSaveSuppressed(), true, 'a request alone has not replaced temporary state');
+    resetRunState(h.state, { seed: 239 });
+    h.bus.emit('game:newGame', {});
     assert.equal(h.saveHost._campaignSaveSuppressed(), false);
     h.state.physicsVenue = { active: true };
     assert.equal(h.saveHost.save('quick'), false, 'direct venue entry also protects campaign custody');
@@ -138,7 +142,10 @@ test('rejected or thrown temporary arming exits under quarantine and invalidates
     assert.equal(h.events.some(e => e.event === 'save:started'), false);
     assert.ok(h.events.some(e => e.event === 'race:launchFailed'));
     h.bus.emit('game:new', {});
-    assert.equal(h.saveHost._campaignSaveSuppressed(), false, 'ordinary New Game releases quarantine');
+    assert.equal(h.saveHost._campaignSaveSuppressed(), true, 'an attempted New Game retains quarantine');
+    resetRunState(h.state, { seed: 239 });
+    h.bus.emit('game:newGame', {});
+    assert.equal(h.saveHost._campaignSaveSuppressed(), false, 'replacement by ordinary New Game releases quarantine');
     if (options.relocate === false) assert.ok(h.events.some(e => e.event === 'mission:abandon'));
   }
 });

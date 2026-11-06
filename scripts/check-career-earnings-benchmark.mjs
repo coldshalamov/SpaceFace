@@ -27,7 +27,7 @@ import { SECTORS, dangerTier } from '../src/data/sectors.js';
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { TECH_NODES } from '../src/data/tech.js';
-import { ORIGIN_ROLE_KITS } from '../src/careers/origins/careerOriginContracts.js';
+import { ORIGIN_ROLE_KITS, careerStarterModuleIds } from '../src/careers/origins/careerOriginContracts.js';
 import {
   FIELD_DEPLETION_RECOVERY_PER_S,
   fieldMemoryReadout,
@@ -357,7 +357,7 @@ function loadoutPlan(career, phase = 'starter') {
     return {
       shipId: starter ? NEW_GAME.shipId : 'ship_mule',
       required: starter
-        ? [...NEW_GAME.fittedModules, kit.defId]
+        ? careerStarterModuleIds(career)
         : ['wpn_pulse_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
       minCargo: starter ? 40 : 120,
     };
@@ -366,7 +366,7 @@ function loadoutPlan(career, phase = 'starter') {
     return {
       shipId: starter ? NEW_GAME.shipId : 'ship_wasp',
       required: starter
-        ? [...NEW_GAME.fittedModules, kit.defId]
+        ? careerStarterModuleIds(career)
         : ['wpn_pulse_laser_s', 'wpn_autocannon_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
       minCargo: starter ? 40 : 10,
     };
@@ -374,7 +374,7 @@ function loadoutPlan(career, phase = 'starter') {
   return {
     shipId: starter ? NEW_GAME.shipId : 'ship_pelican',
     required: starter
-      ? [...NEW_GAME.fittedModules, kit.defId]
+      ? careerStarterModuleIds(career)
       : ['wpn_pulse_laser_s', 'mod_mining_laser_s', 'mod_engine_ion_m', 'mod_shield_booster_s', kit.defId],
     minCargo: starter ? 40 : 55,
   };

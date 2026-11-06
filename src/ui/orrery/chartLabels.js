@@ -22,6 +22,77 @@ function rectDiscOverlap(rect, disc, gap = 0) {
   return (disc.x - cx) ** 2 + (disc.y - cy) ** 2 < r * r;
 }
 
+// Static broad phase for the many mark-disc checks made for every possible seat. It only
+// chooses candidates; the original geometric predicate still decides every collision. Huge or
+// non-finite discs and queries take a bounded linear fallback instead of expanding the grid.
+class DiscCollisionIndex {
+  constructor(discs) {
+    this.discs = discs;
+    this.columns = new Map();
+    this.overflow = [];
+    this.seen = new Uint32Array(discs.length);
+    this.stamp = 0;
+    for (let i = 0; i < discs.length; i += 1) {
+      const d = discs[i];
+      // Include the largest disc padding used by the indexed predicates, including string coercion.
+      const r = Math.max(Number(d.r), Number(d.r + 1), Number(d.r + 2), Number(d.r + 5), Number(d.r + 6));
+      const range = this.range(Number(d.x) - r, Number(d.y) - r, Number(d.x) + r, Number(d.y) + r);
+      if (!range) { this.overflow.push(i); continue; }
+      for (let x = range[0]; x <= range[2]; x += 1) {
+        let column = this.columns.get(x);
+        if (!column) { column = new Map(); this.columns.set(x, column); }
+        for (let y = range[1]; y <= range[3]; y += 1) {
+          let cell = column.get(y);
+          if (!cell) { cell = []; column.set(y, cell); }
+          cell.push(i);
+        }
+      }
+    }
+  }
+
+  range(x0, y0, x1, y1) {
+    const a = Math.floor(x0 / 64), b = Math.floor(y0 / 64);
+    const c = Math.floor(x1 / 64), d = Math.floor(y1 / 64);
+    if (![a, b, c, d].every(Number.isSafeInteger) || c < a || d < b
+      || (c - a + 1) * (d - b + 1) > 256) return null;
+    return [a, b, c, d];
+  }
+
+  some(rect, pad, predicate, ordered = false) {
+    const range = this.range(rect.x - pad, rect.y - pad,
+      rect.x + rect.width + pad, rect.y + rect.height + pad);
+    if (!range) return this.discs.some(predicate);
+    this.stamp = (this.stamp + 1) >>> 0;
+    if (!this.stamp) { this.seen.fill(0); this.stamp = 1; }
+    const stamp = this.stamp;
+    const matches = ordered ? [] : null;
+    for (const i of this.overflow) {
+      this.seen[i] = stamp;
+      if (ordered) matches.push(i);
+      else if (predicate(this.discs[i])) return true;
+    }
+    for (let x = range[0]; x <= range[2]; x += 1) {
+      const column = this.columns.get(x);
+      if (!column) continue;
+      for (let y = range[1]; y <= range[3]; y += 1) {
+        const cell = column.get(y);
+        if (!cell) continue;
+        for (const i of cell) {
+          if (this.seen[i] === stamp) continue;
+          this.seen[i] = stamp;
+          if (ordered) matches.push(i);
+          else if (predicate(this.discs[i])) return true;
+        }
+      }
+    }
+    if (ordered) {
+      matches.sort((a, b) => a - b);
+      for (const i of matches) if (predicate(this.discs[i])) return true;
+    }
+    return false;
+  }
+}
+
 function rectInside(rect, bounds, inset = 0) {
   return rect.x >= bounds.x + inset && rect.y >= bounds.y + inset
     && rect.x + rect.width <= bounds.x + bounds.width - inset
@@ -276,6 +347,8 @@ export function placeChartLabels(candidates, env = {}) {
   // Every candidate's own mark is an obstacle for every label (its own included: words beside a
   // mark, never over it).
   const anchorDiscs = list.map((c) => ({ id: c.id, x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) - 1, area: !!c.area }));
+  const anchorIndex = new DiscCollisionIndex(anchorDiscs);
+  const discIndex = new DiscCollisionIndex(discs);
   const occupied = reserved.slice();
   const placedLeaders = [];
   // where each laid leader ends: no other name may stand nearer that end than its own words
@@ -316,10 +389,8 @@ export function placeChartLabels(candidates, env = {}) {
       // a name that belongs inside a ring (a region of the sector) stays inside it
       if (c.within && c.within.r > 0 && !rectInsideDisc(rect, c.within, Number(c.within.clear) || 12)) bad += 4;
       for (const o of occupied) if (rectsOverlap(rect, o, gap)) { bad += 3; break; }
-      for (const d of anchorDiscs) {
-        if (rectDiscOverlap(rect, d, 1)) { bad += 3; break; }
-      }
-      for (const d of discs) if (rectDiscOverlap(rect, d, 2)) { bad += 2; break; }
+      if (anchorIndex.some(rect, 0, (d) => rectDiscOverlap(rect, d, 1))) bad += 3;
+      if (discIndex.some(rect, 0, (d) => rectDiscOverlap(rect, d, 2))) bad += 2;
       for (const ring of rings) {
         if (seat.side === 'inside' && ring.x === c.inside.x && ring.y === c.inside.y && ring.r === c.inside.r) continue;
         if (!rectCrossesRing(rect, ring)) continue;
@@ -347,21 +418,20 @@ export function placeChartLabels(candidates, env = {}) {
         for (const sg of segs) {
           for (const o of occupied) if (segmentHitsRect(sg.x1, sg.y1, sg.x2, sg.y2, o)) { hit = true; break; }
           if (hit) break;
-          for (const d of anchorDiscs) {
-            if (d.id === c.id) continue;
+          const segmentBox = { x: Math.min(sg.x1, sg.x2), y: Math.min(sg.y1, sg.y2),
+            width: Math.abs(sg.x2 - sg.x1), height: Math.abs(sg.y2 - sg.y1) };
+          // Area discs add cost until the first hard hit, so retain original insertion order here.
+          hit = anchorIndex.some(segmentBox, 6, (d) => {
+            if (d.id === c.id) return false;
             if (d.area) {
-              // an area (a field) may be crossed where nothing else serves, never started in
               if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 2)) cost += 16;
-              if (Math.hypot(seat.leader.sx - d.x, seat.leader.sy - d.y) < d.r + 4) { hit = true; break; }
-              continue;
+              return Math.hypot(seat.leader.sx - d.x, seat.leader.sy - d.y) < d.r + 4;
             }
-            if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 6)) { hit = true; break; }
-          }
+            return segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 6);
+          }, true);
           if (hit) break;
-          for (const d of discs) {
-            if (Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
-            if (segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 5)) { hit = true; break; }
-          }
+          hit = discIndex.some(segmentBox, 5, (d) => !(Math.hypot(d.x - c.x, d.y - c.y) < 1.5)
+            && segmentHitsDisc(sg.x1, sg.y1, sg.x2, sg.y2, d, 5));
           if (hit) break;
           for (const ls of placedLeaders) if (segmentsNear(sg, ls, 6)) { hit = true; break; }
           if (hit) break;
@@ -377,16 +447,12 @@ export function placeChartLabels(candidates, env = {}) {
         const own = rectDiscGap(rect, { x: c.x, y: c.y, r: Math.max(2, Number(c.anchorRadius) || 2) });
         // an area (a field) owns a wide rim: its words need only sit clearly nearer it than any mark
         const margin = c.area ? 4 : 5;
-        let rival = false;
-        for (const d of anchorDiscs) {
-          if (d.id === c.id || Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
-          if (rectDiscGap(rect, d) < own + margin) { rival = true; break; }
-        }
+        const rivalGap = own + margin;
+        let rival = anchorIndex.some(rect, rivalGap, (d) => d.id !== c.id
+          && !(Math.hypot(d.x - c.x, d.y - c.y) < 1.5) && rectDiscGap(rect, d) < rivalGap);
         if (!rival) {
-          for (const d of discs) {
-            if (Math.hypot(d.x - c.x, d.y - c.y) < 1.5) continue;
-            if (rectDiscGap(rect, d) < own + margin) { rival = true; break; }
-          }
+          rival = discIndex.some(rect, rivalGap, (d) => !(Math.hypot(d.x - c.x, d.y - c.y) < 1.5)
+            && rectDiscGap(rect, d) < rivalGap);
         }
         if (rival) bad += 1;
       }

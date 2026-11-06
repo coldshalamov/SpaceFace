@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder as RuntimeMeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { encodeRenderPackageGlb } from '../scripts/lib/renderPackageStorage.mjs';
+import { collectRepeatedKtx2PayloadHashes, encodeRenderPackageGlb, externalizeRenderPackageKtx2 } from '../scripts/lib/renderPackageStorage.mjs';
 
 async function fixture() {
   await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready]);
@@ -39,6 +42,98 @@ test('ordinary package output remains byte-identical', async () => {
   const { io, doc } = await fixture();
   const expected = Buffer.from(await io.writeBinary(doc));
   assert.deepEqual(await encodeRenderPackageGlb(io, doc), expected);
+});
+
+test('shared KTX2 extraction preserves exact bytes and emits a package-relative content URI', async () => {
+  const { io } = await fixture();
+  const doc = new Document();
+  doc.createBuffer();
+  const payload = Buffer.alloc(512, 0x37);
+  payload.set([0xab, 0x4b, 0x54, 0x58, 1, 2, 3]);
+  doc.createTexture('shared').setMimeType('image/ktx2').setImage(new Uint8Array(payload));
+  const original = Buffer.from(await io.writeBinary(doc));
+  const refused = externalizeRenderPackageKtx2(original, new Set());
+  assert.deepEqual(refused.bytes, original, 'unique textures are left embedded under the shared-only policy');
+  assert.deepEqual(refused.resources, []);
+  const { bytes: externalizedBytes, resources: [resource] } = externalizeRenderPackageKtx2(original);
+  assert.equal(resource.uri, `../_shared/images/${resource.sha256}.ktx2`);
+  assert.deepEqual(resource.bytes, payload);
+  const jsonLength = externalizedBytes.readUInt32LE(12);
+  const json = JSON.parse(externalizedBytes.toString('utf8', 20, 20 + jsonLength));
+  assert.equal(json.images.find((entry) => entry.name === 'shared').uri, resource.uri);
+  assert.equal('bufferView' in json.images.find((entry) => entry.name === 'shared'), false);
+  assert.ok(externalizedBytes.length < original.length, 'removing the image bufferView reduces the package body');
+});
+
+test('odd KTX2 bytes before retained float and meshopt data preserve four-byte alignment', () => {
+  const image = Buffer.from([0xab, 0x4b, 0x54, 0x58, 0x09]);
+  const binary = Buffer.alloc(28, 0);
+  image.copy(binary, 0);
+  const floatValues = Buffer.from(new Float32Array([1.25, -2.5, 9]).buffer);
+  floatValues.copy(binary, 8);
+  Buffer.from([11, 12, 13, 14, 15, 16, 17, 18]).copy(binary, 20);
+  const json = {
+    asset: { version: '2.0' },
+    buffers: [{ byteLength: binary.length }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: image.length },
+      { buffer: 0, byteOffset: 8, byteLength: 12 },
+      { buffer: 0, byteOffset: 20, byteLength: 8, extensions: {
+        EXT_meshopt_compression: { buffer: 0, byteOffset: 20, byteLength: 8, byteStride: 4, count: 2, mode: 'ATTRIBUTES' },
+      } },
+    ],
+    accessors: [{ bufferView: 1, componentType: 5126, count: 3, type: 'SCALAR' }],
+    images: [{ mimeType: 'image/ktx2', bufferView: 0 }],
+  };
+  const jsonBytes = Buffer.from(JSON.stringify(json));
+  const paddedJson = Buffer.concat([jsonBytes, Buffer.alloc((4 - jsonBytes.length % 4) % 4, 0x20)]);
+  const out = Buffer.alloc(12 + 8 + paddedJson.length + 8 + binary.length);
+  out.writeUInt32LE(0x46546c67, 0); out.writeUInt32LE(2, 4); out.writeUInt32LE(out.length, 8);
+  out.writeUInt32LE(paddedJson.length, 12); out.writeUInt32LE(0x4e4f534a, 16); paddedJson.copy(out, 20);
+  const binHeader = 20 + paddedJson.length;
+  out.writeUInt32LE(binary.length, binHeader); out.writeUInt32LE(0x004e4942, binHeader + 4);
+  binary.copy(out, binHeader + 8);
+
+  const result = externalizeRenderPackageKtx2(out);
+  const jsonLength = result.bytes.readUInt32LE(12);
+  const compactJson = JSON.parse(result.bytes.toString('utf8', 20, 20 + jsonLength));
+  const compactBinHeader = 20 + jsonLength;
+  const compactBinary = result.bytes.subarray(compactBinHeader + 8, compactBinHeader + 8 + result.bytes.readUInt32LE(compactBinHeader));
+  assert.deepEqual(compactBinary, binary.subarray(8), 'only image bytes and their alignment padding are removed');
+  assert.equal(compactJson.bufferViews[0].byteOffset, 0);
+  assert.equal(compactJson.bufferViews[1].byteOffset, 12);
+  assert.equal(compactJson.bufferViews[1].extensions.EXT_meshopt_compression.byteOffset, 12);
+  assert.ok(compactJson.bufferViews.every((view) => view.byteOffset % 4 === 0));
+  assert.equal(compactJson.accessors[0].bufferView, 0);
+});
+
+test('only exact KTX2 payloads explicitly shared by multiple packages are externalized', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-ktx2-shared-'));
+  const payload = Buffer.from([0xab, 0x4b, 0x54, 0x58, 9, 8, 7]);
+  const sha = createHash('sha256').update(payload).digest('hex');
+  const makeGlb = () => {
+    const json = Buffer.from(JSON.stringify({
+      asset: { version: '2.0' },
+      buffers: [{ byteLength: payload.length }],
+      bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: payload.length }],
+      images: [{ mimeType: 'image/ktx2', bufferView: 0 }],
+    }));
+    const jsonPad = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)]);
+    const binPad = Buffer.concat([payload, Buffer.alloc((4 - payload.length % 4) % 4)]);
+    const out = Buffer.alloc(12 + 8 + jsonPad.length + 8 + binPad.length);
+    out.writeUInt32LE(0x46546c67, 0); out.writeUInt32LE(2, 4); out.writeUInt32LE(out.length, 8);
+    out.writeUInt32LE(jsonPad.length, 12); out.writeUInt32LE(0x4e4f534a, 16); jsonPad.copy(out, 20);
+    const binHeader = 20 + jsonPad.length; out.writeUInt32LE(binPad.length, binHeader);
+    out.writeUInt32LE(0x004e4942, binHeader + 4); binPad.copy(out, binHeader + 8);
+    return out;
+  };
+  try {
+    await writeFile(join(root, 'a.glb'), makeGlb());
+    await writeFile(join(root, 'b.glb'), makeGlb());
+    const hashes = await collectRepeatedKtx2PayloadHashes([join(root, 'a.glb'), join(root, 'b.glb')]);
+    assert.deepEqual([...hashes], [sha]);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('oversized float-normal package retains exact positions, UVs, topology and runtime markers', async () => {

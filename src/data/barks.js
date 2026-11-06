@@ -2354,6 +2354,41 @@ export function surrenderBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// Intervention voices describe only the response, not a crime, chase, relationship or claim.
+// Object text fields keep every selected line visible to the localization extractor.
+export const PATROL_INTERVENTION_HAILS = Object.freeze({
+  faction_scn: Object.freeze({ name: 'CONCORD PATROL', lines: Object.freeze([
+    { text: 'Patrol interceptor on scene. All vessels, keep your distance.' },
+    { text: 'Concord interceptor responding. Hold your fire and give us room.' },
+    { text: 'Patrol on scene. Keep the lane clear while we respond.' },
+  ]) }),
+  faction_mts: Object.freeze({ name: 'MERIDIAN TRADE', lines: Object.freeze([
+    { text: 'Meridian watch responding. Give us room, friends.' },
+    { text: 'Security on scene. Let us keep this lane in one piece.' },
+    { text: 'Meridian interceptor here. Easy on the triggers, everyone.' },
+  ]) }),
+  faction_dmc: Object.freeze({ name: 'DRIFT COLLECTIVE', lines: Object.freeze([
+    { text: 'Collective watch on scene. Give us some working room.' },
+    { text: 'Yard watch responding. Easy with those guns, please.' },
+    { text: 'Collective interceptor here. Everybody give us space.' },
+  ]) }),
+  faction_free: Object.freeze({ name: 'FREE FRONTIER', lines: Object.freeze([
+    { text: 'Frontier watch here. Give us room to help, friend.' },
+    { text: 'Mutual cover responding. Easy on the triggers, everyone.' },
+    { text: 'Frontier interceptor on scene. Keep a little space between us.' },
+  ]) }),
+  unknown: Object.freeze({ name: 'PATROL INTERCEPTOR', lines: Object.freeze([
+    { text: 'Interceptor responding. All vessels, give us room.' },
+    { text: 'Patrol on scene. Keep your distance while we respond.' },
+    { text: 'Interceptor here. Easy on the triggers, everyone.' },
+  ]) }),
+});
+
+export function patrolInterventionHailFor(jurisdiction) {
+  return (jurisdiction && Object.hasOwn(PATROL_INTERVENTION_HAILS, jurisdiction)
+    && PATROL_INTERVENTION_HAILS[jurisdiction]) || PATROL_INTERVENTION_HAILS.unknown;
+}
+
 // ── Post-escape taunt: the pursuit resolved as escaped ────────────────────────────────────────
 //
 // Event line, not a BARK_SITUATION. When a pursuit resolves with the player away, the former
@@ -2657,6 +2692,27 @@ export const THROWN_WRECK_BARKS = Object.freeze([
 export function thrownWreckBarkFor(index) {
   const line = THROWN_WRECK_BARKS[pickIndex(index, THROWN_WRECK_BARKS.length)] || THROWN_WRECK_BARKS[0];
   return typeof line === 'string' && line.length ? line : null;
+}
+
+// ── A failing hull confesses before it is a distress mission ──────────────────────────────────
+//
+// Spoken by the hull whose main drive just died (`combat:subsystemDisabled`, barkDirector, once
+// per drive-down episode, inside combat-radio reach): "we are not going anywhere" reaches the
+// band while the hull is still a person with a problem, not a posthumous distress or a silent
+// slab a tender silently drags. One register for every faction — the drive did this, not a
+// grudge. `{place}` is the sector the hull is adrift in, so the mayday names where to look.
+export const ADRIFT_CONFESSION_BARKS = Object.freeze([
+  'Drive\'s dead. We are adrift at {place} — hull\'s fine, heading\'s gone.',
+  'We\'ve lost the drive. Drifting at {place}; this is not a drill.',
+  'Main drive just quit. We are a rock now, {place} — anybody close?',
+  'No drive, no steer. Adrift at {place}. Somebody log that.',
+]);
+
+export function adriftConfessionBarkFor(index, place) {
+  const line = ADRIFT_CONFESSION_BARKS[pickIndex(index, ADRIFT_CONFESSION_BARKS.length)] || ADRIFT_CONFESSION_BARKS[0];
+  if (typeof line !== 'string' || !line.length) return null;
+  const where = typeof place === 'string' && place.length ? place : 'the drift';
+  return line.replace('{place}', where);
 }
 
 // ── Dock control remembers the pilot (THE WORLD REMEMBERS, U-E) ──────────────────────────────

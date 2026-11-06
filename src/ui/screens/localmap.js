@@ -374,6 +374,10 @@ const LOCALMAP_STYLE = `
   #sf-localmap .lm-objective { left: var(--sp-2); right: var(--sp-2); top: 58px; width: auto; max-width: none; min-width: 0; }
   #sf-localmap .lm-routes { right: var(--sp-2); left: var(--sp-2); top: auto; bottom: 54px; width: auto; max-height: 25%; }
 }
+/* The legend wraps to three rows on a phone-width window; the routes ladder must stand above all of them. */
+@media (max-width: 560px) {
+  #sf-localmap .lm-routes { bottom: 86px; max-height: 20%; }
+}
 @media (prefers-reduced-motion: reduce) {
   #sf-localmap, #sf-localmap * { animation: none; transition: none; }
 }

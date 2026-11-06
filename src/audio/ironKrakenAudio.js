@@ -1,15 +1,17 @@
+import { ironKrakenPresentationFightById } from '../data/ironKrakenPresentation.js';
+
 // Score receipts own the timing. This adapter only asks the existing audio owner for a voice.
 // Finite phrases, bounded dedupe, no scheduler, context, gameplay mutation or catch-up playback.
 const SCORES = new Set(['capital_boss_iron_kraken', 'capital_boss_iron_kraken_colossus']);
-const ATTACKS = Object.freeze({ arm_rake: 'sfx_kraken_rake', siphon_jet: 'sfx_kraken_jet', ink_ring: 'sfx_kraken_ink' });
-const CHARGE_RATE = Object.freeze({ arm_rake: .95, siphon_jet: .78, ink_ring: 1.18 });
+const ATTACKS = Object.freeze({ arm_rake: 'sfx_kraken_rake', mantle_trawl: 'sfx_kraken_rake', siphon_jet: 'sfx_kraken_jet', ink_ring: 'sfx_kraken_ink' });
+const CHARGE_RATE = Object.freeze({ arm_rake: .95, mantle_trawl: .68, siphon_jet: .78, ink_ring: 1.18 });
 export const IRON_KRAKEN_AUDIO_MEMORY_LIMIT = 64;
 const finitePosition = pos => Number.isFinite(pos?.x) && Number.isFinite(pos?.z);
 
 /** Pure routing. A stale producer receipt cannot restart a removed cast or announce a fake hit. */
 export function resolveIronKrakenAudioCue(state, event, payload) {
   if (!payload || !SCORES.has(payload.encounterId) || typeof payload.fightId !== 'string') return null;
-  const fight = state?.capitalBossEncounters?.fights?.[payload.fightId];
+  const fight = ironKrakenPresentationFightById(state, payload.fightId);
   if (!fight || fight.encounterId !== payload.encounterId || fight.suspended || fight.terminal) return null;
   const boss = state.entities?.get?.(fight.bossId);
   if (!boss || boss.alive === false || (Number.isFinite(boss.hull) && boss.hull <= 0) || !finitePosition(boss.pos)) return null;
@@ -25,6 +27,7 @@ export function resolveIronKrakenAudioCue(state, event, payload) {
     } else {
       if (fight.phase !== 'active' || cast.fired !== true) return null;
       stage = 'attack'; recipeId = ATTACKS[payload.beatId]; gain = payload.beatId === 'siphon_jet' ? .82 : .72;
+      if (payload.beatId === 'mantle_trawl') rate = .74;
     }
   } else if (event === 'capitalBoss:recovery' || event === 'capitalBoss:countered') {
     const recovery = fight.recovery;

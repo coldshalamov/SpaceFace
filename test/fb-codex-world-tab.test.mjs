@@ -138,7 +138,9 @@ test('fb-037: the World tab renders its entries through the same entry path ever
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: worldState() });
-    assert.equal(codexScreen._sections.length, 6, 'the four world sections plus decoded clauses and named losses');
+    assert.equal(codexScreen._sections.length, 63,
+      'the four world sections, decoded clauses, named losses, the sealed side, the gate receipt,'
+      + ' and the fifty-five special-500 receipt sections (batches 12, 13, 14 and 14b)');
     assert.equal(codexScreen._entries.length, 5, 'the named loss also earns its memorial entry');
     assert.ok(codexScreen._entries.some(entry => entry.id === 'world:dead:f1'));
     for (const entry of codexScreen._entries) {

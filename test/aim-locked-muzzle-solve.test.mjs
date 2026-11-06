@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { launchVelocity, refineLeadForLaunch, solveLeadAngle, weapons } from '../src/systems/weapons.js';
@@ -51,10 +50,24 @@ test('the mount solve leads from the real muzzle, not the hull centre', () => {
   assert.ok(centreMiss > 5, `hull-centre lead from an off-axis mount misses by the offset, got ${centreMiss}`);
 });
 
-test('locked player shots use the mount solve; NPC locked shots keep the hull-centre lead', () => {
-  const source = readFileSync(new URL('../src/systems/weapons.js', import.meta.url), 'utf8');
-  assert.match(source,
-    /if \(!mountGate && forceTarget && forceTarget\.pos\) \{[\s\S]*?fixedAim = isPlayer\s*\? this\._arcadeMountAngle\(e, w, forceTarget, mountProjSpeed\)\s*: this\._leadAngle\(e, forceTarget, mountProjSpeed\);/);
+test('target-bound fixed shots use the mount solution for players and NPCs', () => {
+  for (const isPlayer of [true, false]) {
+    const system = Object.create(weapons), expected = 0.37;
+    let fired = null, calls = 0;
+    system._releaseMomentumSinkIfReady = () => false;
+    system._arcadeMountAngle = () => { calls++; return expected; };
+    system._hardpointDir = (_entity, _weapon, angle) => angle;
+    system._attackSpecFor = () => null;
+    system._emitProjectileVolley = (_entity, _weapon, _def, direction) => { fired = direction; };
+    system._muzzle = () => ({ x: 0, z: 0 });
+    system.bus = { emit() {} };
+    const entity = { id: isPlayer ? 1 : 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, data: {} };
+    const target = { id: 3, pos: { x: 100, z: 20 }, vel: { x: 0, z: 0 } };
+    const state = { playerId: 1, input: {}, settings: { gameplay: { controlScheme: 'pilot' } } };
+    system._serviceProjectileWeapon(entity, {}, { tracking: 'fixed', projSpeed: 320 }, isPlayer, 10, 0.016, state, 0, target);
+    assert.equal(calls, 1);
+    assert.equal(fired, expected);
+  }
 });
 
 test('rounds fly straight: the bullet launch has no target input', () => {

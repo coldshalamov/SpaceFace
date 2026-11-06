@@ -12,12 +12,24 @@ import {
   applyFieldLifecycle,
   FIELD_DISSIPATE_S,
   FIELD_WINDUP_S,
+  activeFieldSnapshot,
+  fieldBodyProfile,
   fieldLifecyclePhase,
 } from '../src/systems/fields.js';
+import * as fieldReaders from '../src/core/fields/fieldReadModel.js';
 import { fieldHud } from '../src/ui/fieldHud.js';
 
 const DEPLOYED = 10;
 const EXPIRES = 19;
+
+test('legacy field exports share the canonical readers and snapshot identity', () => {
+  assert.equal(fieldLifecyclePhase, fieldReaders.fieldLifecyclePhase);
+  assert.equal(fieldBodyProfile, fieldReaders.fieldBodyProfile);
+  assert.equal(activeFieldSnapshot, fieldReaders.activeFieldSnapshot);
+  assert.equal(activeFieldSnapshot({}), activeFieldSnapshot({}), 'the empty snapshot remains shared');
+  const snapshot = [{ kind: 'well' }];
+  assert.equal(activeFieldSnapshot({ fields: { snapshot } }), snapshot, 'published snapshots are not cloned');
+});
 
 function well(strength = 240) {
   return {

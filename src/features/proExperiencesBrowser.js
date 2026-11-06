@@ -4,8 +4,13 @@ import { createRigWorkshopView } from './rigWorkshop/view.js';
 import { presentShipbreakingYardFrame, releaseShipbreakingYardPresentation } from './shipbreakingYard/browser.js';
 import { createSalvageTenderPromptSystem } from './salvageTender/prompts.js';
 import { updateSalvageTenderPresentation, releaseSalvageTenderPresentation } from './salvageTender/presentation.js';
+import { createCounterweightCircuitPromptSystem } from './counterweightCircuit/prompts.js';
+import { updateCounterweightCircuitPresentation, releaseCounterweightCircuitPresentation } from './counterweightCircuit/presentation.js';
 import { mountSalvageOutfitsPresentation } from './salvageOutfits/integration.js';
 import { createIndustrialDisastersPresentation } from './industrialDisasters/presentationAdapter.js';
+import { createCinderglassJobPromptSystem } from './cinderglassJob/presentation.js';
+import { createBreakwaterSpurPromptSystem, mountBreakwaterSpurPresentation } from './breakwaterSpur/presentation.js';
+import * as THREE from 'three';
 
 const OWNERS = new WeakMap();
 const signature = offer => offer ? JSON.stringify(offer) : '';
@@ -16,12 +21,25 @@ export function mountProExperiencesBrowser(ctx = {}) {
   const { state, bus } = ctx;
   if (!state || !bus) return null;
   OWNERS.get(state)?.destroy();
-  const tender = createSalvageTenderPromptSystem();
-  tender.init(ctx);
+  // The full and worker presentation registries already own these adapters. UI initializes
+  // before them, so borrow the registered instance and let its lifecycle initialize it once.
+  // Standalone mounts without a registry retain their own prompt lifecycle.
+  const registeredTender = ctx.registry?.get?.('salvageTenderPrompt');
+  const registeredCircuit = ctx.registry?.get?.('counterweightCircuitPrompt');
+  const registeredBreakwater = ctx.registry?.get?.('breakwaterSpurPrompt');
+  const tender = registeredTender || createSalvageTenderPromptSystem();
+  const circuit = registeredCircuit || createCounterweightCircuitPromptSystem();
+  const breakwater = registeredBreakwater || createBreakwaterSpurPromptSystem();
+  if (!registeredTender) tender.init(ctx);
+  if (!registeredCircuit) circuit.init(ctx);
+  if (!registeredBreakwater) breakwater.init(ctx);
+  const registeredCinderglass = ctx.registry?.get?.('cinderglassJobPrompt');
+  const cinderglass = registeredCinderglass || createCinderglassJobPromptSystem();
+  if (!registeredCinderglass) cinderglass.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
   const off = [];
-  let disaster = null, rig = null, scene = null, renderer = null, destroyed = false;
-  let uiElapsed = 0, tenderSignature;
+  let disaster = null, rig = null, breakwaterWorld = null, scene = null, renderer = null, destroyed = false;
+  let uiElapsed = 0, tenderSignature, circuitSignature, breakwaterSignature;
   const on = (event, fn) => {
     const remove = bus.on(event, fn);
     off.push(typeof remove === 'function' ? remove : () => bus.off?.(event, fn));
@@ -29,24 +47,28 @@ export function mountProExperiencesBrowser(ctx = {}) {
   // Live receipts win over an older mirror. A closed choice must not reappear while
   // a queued worker command waits for its next authoritative snapshot.
   on('salvageTender:offer', offer => { tenderSignature = signature(offer); });
-  const reset = () => { tender.close(); releaseWorld(); };
+  on('counterweightCircuit:offer', offer => { circuitSignature = signature(offer); });
+  on('breakwaterSpur:offer', offer => { breakwaterSignature = signature(offer); });
+  const reset = () => { tender.close(); circuit.close(); breakwater.close(); cinderglass.close(); releaseWorld(); };
   for (const event of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(event, reset);
 
   function releaseWorld() {
-    disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; scene = renderer = null;
+    disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null; scene = renderer = null;
     releaseSalvageTenderPresentation(state);
     releaseShipbreakingYardPresentation(state);
+    releaseCounterweightCircuitPresentation(state);
   }
   function ensureDisaster() {
     const nextScene = state.render?.scene, nextRenderer = state.render?.renderer;
     if (!nextScene?.add) return null;
     if (disaster && (scene !== nextScene || renderer !== nextRenderer)) {
-      disaster.dispose(); disaster = null; rig?.destroy(); rig = null;
+      disaster.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null;
     }
     if (!disaster) {
       scene = nextScene; renderer = nextRenderer;
       disaster = createIndustrialDisastersPresentation({ ...ctx, scene, renderer });
       rig = createRigWorkshopView({ state, bus, scene });
+      breakwaterWorld = mountBreakwaterSpurPresentation({ ...ctx, scene, THREE });
     }
     return disaster;
   }
@@ -54,6 +76,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
     frame(dt, currentState = state, hudVisible = true) {
       if (destroyed || currentState !== state) return;
       outfits?.draw(currentState, hudVisible);
+      cinderglass.frame(dt, currentState, hudVisible);
       // Domain mirrors recover offers across a worker attach or UI remount. Ordinary
       // main-sim events remain the immediate route, with no registry-facade calls.
       uiElapsed += Number.isFinite(dt) && dt > 0 ? dt : 0;
@@ -66,11 +89,28 @@ export function mountProExperiencesBrowser(ctx = {}) {
         if (offer && state.mode === 'flight' && !state.ui?.docked) tender.offer(offer);
         else tender.close();
       }
+      const breakwaterOffer = state.breakwaterSpurOffer || null;
+      const nextBreakwaterSignature = signature(breakwaterOffer);
+      if (nextBreakwaterSignature !== breakwaterSignature) {
+        breakwaterSignature = nextBreakwaterSignature;
+        if (breakwaterOffer && state.mode === 'flight' && !state.ui?.docked) breakwater.offer(breakwaterOffer);
+        else breakwater.close();
+      }
+      // Same mirror discipline for the circuit registrar's deck.
+      const circuitOffer = state.counterweightCircuitOffer || null;
+      const nextCircuitSignature = signature(circuitOffer);
+      if (nextCircuitSignature !== circuitSignature) {
+        circuitSignature = nextCircuitSignature;
+        if (circuitOffer && state.mode === 'flight' && !state.ui?.docked) circuit.offer(circuitOffer);
+        else circuit.close();
+      }
     },
     present(alpha = 1) {
       if (destroyed) return;
       ensureDisaster()?.update(alpha);
       rig?.frame(1 / 60, state);
+      breakwaterWorld?.update(alpha);
+      updateCounterweightCircuitPresentation(state, bus);
     },
     releaseWorld,
     destroy() {
@@ -78,7 +118,11 @@ export function mountProExperiencesBrowser(ctx = {}) {
       destroyed = true;
       for (const remove of off) remove();
       off.length = 0;
-      tender.destroy(); outfits?.destroy(); releaseWorld();
+      if (registeredTender) tender.close(); else tender.destroy();
+      if (registeredCircuit) circuit.close(); else circuit.destroy();
+      if (registeredBreakwater) breakwater.close(); else breakwater.destroy();
+      if (registeredCinderglass) cinderglass.close(); else cinderglass.destroy();
+      outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },
   };

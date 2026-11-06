@@ -1,6 +1,8 @@
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { applyCaptainRouteMemory } from './captainMemory.js';
+import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { CINDER_RUN_COURIER_CONTACT_ID, NAMED_LANE_CONTACTS, PASSENGER_LINER_ITINERARY_KIND, PASSENGER_LINER_SERVICE, PASSENGER_LINER_SERVICE_SCHEMA, PRIORITY_COURIER_ITINERARY_KIND, PRIORITY_COURIER_JOB_SCHEMA, PRIORITY_COURIER_SERVICE, PRIORITY_COURIER_SERVICE_SCHEMA, carryPassengerLinerLastOutcome, isPassengerLinerItinerary, isPriorityCourierItinerary, pickNamedLaneContact } from '../data/laneContacts.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { deferredEnterNow } from '../core/sectorEnterDefer.js';
@@ -19,22 +21,53 @@ export const trafficJobOps = {
   // Other roles keep their ambient stepper. Builds the route from the same in-sector stations /
   // asteroids the ambient steppers already use, so no new spawn fountain and no new geometry authority.
   _maybeAssignJob(ent, role, originStation, target, stations, sectorId) {
+    // Rescue lifters need the traffic responder. A generic tender job otherwise owns their
+    // steering forever and prevents them from answering a mayday.
+    if (role === 'rescue') return;
     // Helios' existing ore barge gathers the cutter's loose ore; it is not a second miner.
     if (role === 'ore_carrier' && sectorId === 'sector_helios_prime') return;
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
     if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
     if (ent.data.worldSiteTrafficHookId || ent.data.claimTravelTrafficHookId) return; // infrastructure owns this slot
+    // An existing miner job and hold belong to the old shift, including after Continue.
+    if (role === 'prospector' && ent.data.jobId) return;
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (!spec) return;
     applyCaptainRouteMemory(this.state, ent, spec);
     const jobId = assign(ent, spec);
+    if (jobId && spec.payload?.prospectorField) {
+      const entry = this.helpers.npcJobs.get(jobId);
+      const rock = this.state.entities.get(spec.payload.prospectorField.targetId);
+      if (entry?.job?.payload?.prospectorField && rock
+          && occupantGenerationOf(rock) === spec.payload.prospectorField.generation) {
+        entry._prospectorTarget = { entity: rock, data: rock.data, generation: occupantGenerationOf(rock) };
+      }
+    }
     if (jobId && (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner')) {
       // A commissioned barge departs empty. Its real cargo is created only when a materialized work
       // stop completes, so scanners never show a miner carrying random market goods outbound.
       const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === ent.id);
       this._setTrafficManifest(ent, rec, this._buildMinerManifest(ent, 0, null, 0, role));
     }
+  },
+
+  _releaseLegacyRescueJob(entity, rec) {
+    if (!entity || entity.alive === false || rec?.role !== 'rescue'
+      || entity.data?.trafficRole !== 'rescue' || !entity.data.worldRecordId) return false;
+    const id = entity.data.jobId;
+    const jobs = this.helpers?.npcJobs;
+    if (!id || typeof jobs?.get !== 'function' || typeof jobs?.release !== 'function'
+      || typeof jobs?.controlClaim !== 'function' || jobs.controlClaim(id)) return false;
+    const entry = jobs.get(id);
+    if (!entry || entry.entityId !== entity.id || entry.worldRecordId !== entity.data.worldRecordId
+      || entry.job?.kind !== 'tender' || (entry.entityRef && entry.entityRef !== entity)
+      || entity.data.worldSiteTrafficHookId || entity.data.claimTravelTrafficHookId
+      || entity.data.claimDepotId || entry.towAssist || entry.job.payload
+      || !Array.isArray(entry.job.route) || entry.job.route.length !== 2
+      || !String(entry.job.route[0]?.id || '').startsWith('berth:')
+      || !String(entry.job.route[1]?.id || '').startsWith('client:')) return false;
+    return jobs.release(id) === true;
   },
 
   _buildJobSpec(role, ent, originStation, target, stations, sectorId) {
@@ -70,6 +103,27 @@ export const trafficJobOps = {
           },
         },
       };
+    }
+    if (role === 'prospector') {
+      const id = this._pickWorkableAsteroidNear(this.state, home, 0);
+      const rock = id == null ? null : promoteAsteroidFieldRock(this.state, id, this.helpers, 'npc-prospect');
+      const data = rock?.data, generation = occupantGenerationOf(rock);
+      if (!rock || rock.alive === false || !rock.pos || !data?.fieldId || generation == null
+          || data.siteAnchored || data.opticStructureId || data.respawnAt != null || data.isChunk
+          || (rock.homeSectorId && rock.homeSectorId !== sectorId)) return null;
+      // World owns the durable source. A job must not promise a resumable reading of a
+      // transient body for which the resource owner cannot establish an exact record.
+      const source = this._registry?.get?.('world')?.persistResourceBody?.(rock);
+      if (!source || source.outcome !== 'active' || source.sectorId !== sectorId
+          || source.fieldId !== data.fieldId || !source.slotId || !source.recordId
+          || this.state.world?.resourceBodies?.byId?.[source.recordId] !== source) return null;
+      const pos = { x: rock.pos.x, z: rock.pos.z };
+      return { kind: 'surveyor', sectorId, speed: 30, workS: 8,
+        route: [{ id: 'prospect:departure', pos: { ...pos } }, { id: 'prospect:face', pos: { ...pos } }],
+        payload: { prospectorField: { targetId: rock.id, generation, fieldId: data.fieldId, sectorId,
+          sourceRecordId: source.recordId, sourceIdentityKey: source.identityKey,
+          sourceSlotId: source.slotId, sourceSeed: source.sourceSeed,
+          commissionedAt: Number(this.state.simTime) || 0 } } };
     }
     if (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner') {
       // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit
@@ -605,7 +659,9 @@ export const trafficJobOps = {
     const route = itinerary.state === 'DIVERTING'
       ? `${stationName(origin, itinerary.originStationId)} RETURN`
       : `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
-    const status = this._passengerLinerStatusLabel(itinerary);
+    const status = rec && rec.towYielding === true
+      ? 'YIELDING FOR TOW'
+      : this._passengerLinerStatusLabel(itinerary);
     entity.data.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     entity.data.passengerLinerState = itinerary.state;
     entity.data.hitchable = massline2Flag('hitchhiking') === true;
@@ -617,6 +673,88 @@ export const trafficJobOps = {
     if (!entity.data.callsign) entity.data.callsign = 'HELIOS-LINE';
     rec.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     rec.itinerary = itinerary;
+  },
+
+  // A boarding Helios liner yields only to a live NPC tow whose attachment identity is still
+  // joined on both physical bodies. A job's intended target by itself is not a tow: the line has
+  // to be attached, and the tow segment has to cross this berth's actual approach envelope.
+  _passengerLinerTowAtBerth(station) {
+    if (!station || !station.pos || !this.state || !this.state.entities) return false;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof getJob !== 'function') return false;
+    const records = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(records)) return false;
+    const stationRadius = Math.max(
+      Number(station.radius) || 0,
+      Number(station.data && station.data.dockRadius) || 0,
+    );
+    for (const rec of records) {
+      if (!rec || rec.role !== 'tug') continue;
+      const tug = liveEntity(this.state, rec.id);
+      const jobId = tug && tug.data && tug.data.jobId;
+      if (!tug || !tug.pos || typeof jobId !== 'string' || !jobId) continue;
+      const entry = getJob(jobId);
+      const job = entry && entry.job;
+      const payload = job && job.payload;
+      if (!entry || entry.entityId !== tug.id || entry.worldRecordId !== tug.data.worldRecordId
+        || job.id !== jobId || job.kind !== 'hauler' || !payload || payload.role !== 'tug'
+        || entry.towAttachmentId == null || entry.towTargetId == null
+        || payload.towTargetId !== entry.towTargetId) continue;
+      const attachmentId = entry.towAttachmentId;
+      const ownerJobId = `job:${entry.worldRecordId}`;
+      if (tug.data.npcTowAttachmentId !== attachmentId || tug.data.npcTowJobId !== ownerJobId) continue;
+      const target = liveEntity(this.state, entry.towTargetId);
+      if (!target || !target.pos || !target.data
+        || target.data.npcTowAttachmentId !== attachmentId
+        || target.data.npcTowedByJobId !== ownerJobId) continue;
+
+      // NPC job entries and entity markers survive saves, but neither proves that the
+      // constraint was restored into the current physics owner. Require the canonical combat
+      // attachment, its generation-fenced semantic contract, and a live physics telemetry read.
+      const combat = this._registry && this._registry.get && this._registry.get('combat');
+      const kernel = combat && combat.kernel;
+      const attachments = kernel && kernel.attachments;
+      const attachment = attachments && typeof attachments.get === 'function'
+        ? attachments.get(attachmentId) : null;
+      const describeAttachment = kernel && kernel.describeCombatPhysicsAttachment;
+      const physics = this.helpers && this.helpers.combatPhysics;
+      const getTelemetry = physics && physics.getAttachmentTelemetry;
+      if (!attachment || attachment.id !== attachmentId || attachment.state !== 'active'
+        || attachment.ownerId !== tug.id || attachment.targetId !== target.id
+        || attachment.defId !== 'tether_standard' || attachment.controlMode !== 'npc_tow'
+        || tug.occupantGeneration == null || target.occupantGeneration == null
+        || attachment.ownerGeneration !== tug.occupantGeneration
+        || attachment.targetGeneration !== target.occupantGeneration
+        || typeof describeAttachment !== 'function' || !describeAttachment.call(kernel, attachmentId)
+        || typeof getTelemetry !== 'function') continue;
+      let telemetry = null;
+      try {
+        telemetry = getTelemetry.call(physics, {
+          attachmentId,
+          physicsHandle: attachment.physicsHandle,
+          tick: this.state.tick,
+        });
+      } catch (_) {
+        telemetry = null;
+      }
+      if (!telemetry || telemetry.attachmentId !== attachmentId) continue;
+
+      const dx = target.pos.x - tug.pos.x;
+      const dz = target.pos.z - tug.pos.z;
+      const length2 = dx * dx + dz * dz;
+      const projection = length2 > 0
+        ? Math.max(0, Math.min(1,
+          ((station.pos.x - tug.pos.x) * dx + (station.pos.z - tug.pos.z) * dz) / length2))
+        : 0;
+      const closestX = tug.pos.x + dx * projection;
+      const closestZ = tug.pos.z + dz * projection;
+      const clearance = stationRadius + (Number(tug.radius) || 0)
+        + (Number(target.radius) || 0) + 80;
+      const sx = station.pos.x - closestX;
+      const sz = station.pos.z - closestZ;
+      if (sx * sx + sz * sz <= clearance * clearance) return true;
+    }
+    return false;
   },
 
   _syncPassengerLinerWorldRecord(entity) {
@@ -886,18 +1024,38 @@ export const trafficJobOps = {
         itinerary.delayedBy = null;
       }
       this._advancePassengerLinerAssist(entity, rec, itinerary, dt);
+      const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+      const towYielding = itinerary.state === 'BOARDING'
+        && now >= itinerary.departureAt
+        && this._passengerLinerTowAtBerth(origin);
+      if (towYielding) {
+        const nextDeparture = now + Math.max(0, Number(dt) || 0);
+        itinerary.departureAt = Math.max(itinerary.departureAt, nextDeparture);
+        itinerary.dwellUntil = Math.max(itinerary.dwellUntil, itinerary.departureAt);
+        const changed = rec.towYielding !== true;
+        rec.towYielding = true;
+        rec.targetId = origin ? origin.id : rec.targetId;
+        setIntent(entity, 0, 0, false, true, null, entity.rot || 0);
+        if (entity.data && entity.data.intent) entity.data.intent.brake = true;
+        this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+        if (changed) this._syncPassengerLinerWorldRecord(entity);
+        return true;
+      }
+      const endedTowYield = rec.towYielding === true;
+      rec.towYielding = false;
       if (itinerary.state === 'BOARDING' && now >= itinerary.departureAt) {
         itinerary.state = 'EN_ROUTE';
         itinerary.custody.state = 'ONBOARD';
         itinerary.departedAt = now;
       }
       if (itinerary.state !== 'EN_ROUTE') {
-        const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
         rec.targetId = origin ? origin.id : rec.targetId;
         setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
         this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+        if (endedTowYield) this._syncPassengerLinerWorldRecord(entity);
         return true;
       }
+      if (endedTowYield) this._syncPassengerLinerWorldRecord(entity);
     }
     if (itinerary.state === 'EN_ROUTE' && incident
       && itinerary.originStationId === 'station_helios'

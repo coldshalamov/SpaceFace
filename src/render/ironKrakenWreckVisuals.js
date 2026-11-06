@@ -179,6 +179,7 @@ export function createIronKrakenWreckVisual(entity) {
   };
   root.userData.disposeIronKrakenWreck = () => {
     root.userData.detachAuthoredMotion();
+    root.traverse(part => { if (part.castShadow) part.castShadow = false; });
     root.removeFromParent();
   };
   return root;

@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9bebf908161363ec18d4fea738b1254f1367bee3ebaf19cf3ee5fb6f781f8505",
+  "contentHash": "91de3d6cce0984757b1a47080315071727066737d2df2bcd5cc35338001bda0f",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-c-lod2.node.lod2-motion-borrowed-voice-receiver-brushedmetal.dynamic",
@@ -1248,14 +1248,14 @@
       "uri": "borrowed_voice_c_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 338288,
-    "sha256": "f326da9af6696f970ce7d4d21ad90c2057589bb41214022af26c2db2899a6d58",
+    "bytes": 338344,
+    "sha256": "e604c199241f71205d09355e00cf7c3ae74a566e736fd950b9a533f43e091822",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1357,6 +1357,117 @@
       },
       {
         "matrix": [
+          0.20241260528564453,
+          0,
+          0,
+          0,
+          0,
+          0.20241260528564453,
+          0,
+          0,
+          0,
+          0,
+          0.20241260528564453,
+          0,
+          1.0763444304466248,
+          1.3079744577407837,
+          0.00011724233627319336,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_BrushedMetal",
+        "planIndex": 9,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_BrushedMetal",
+            "recordIds": [
+              "sf.render.borrowed-voice-c-lod2.node.lod2-motion-borrowed-voice-receiver-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.23879478871822357,
+          0,
+          0,
+          0,
+          0,
+          0.23879478871822357,
+          0,
+          0,
+          0,
+          0,
+          0.23879478871822357,
+          0,
+          1.0763444304466248,
+          1.3079744577407837,
+          0.08038578927516937,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_MechanicalDark",
+        "planIndex": 11,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_MechanicalDark",
+            "recordIds": [
+              "sf.render.borrowed-voice-c-lod2.node.lod2-motion-borrowed-voice-receiver-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5352190732955933,
+          0,
+          0,
+          0,
+          0,
+          0.5352190732955933,
+          0,
+          0,
+          0,
+          0,
+          0.5352190732955933,
+          0,
+          1.1088774502277374,
+          1.2825771570205688,
+          0.17108780145645142,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_Stone",
+        "planIndex": 13,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_Stone",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_Stone",
+            "recordIds": [
+              "sf.render.borrowed-voice-c-lod2.node.lod2-motion-borrowed-voice-receiver-stone"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1375,7 +1486,7 @@
           1
         ],
         "name": "SOCKET_Borrowed_Receiver",
-        "planIndex": 12,
+        "planIndex": 15,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1427,7 +1538,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 13,
+        "planIndex": 16,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1479,7 +1590,7 @@
           1
         ],
         "name": "SOCKET_Massline",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1546,17 +1657,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 10,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
         "role": "geology"
       }
     ],
@@ -1566,7 +1677,7 @@
       "sha256": "976babd0ebdc4a756ca3c1ef01bebef45aec0bd194f06ea80c6b57df143355ef",
       "uri": "assets/ships/motions/borrowed-voice-c.motion.json"
     },
-    "nodeCount": 15,
+    "nodeCount": 18,
     "primitives": [
       {
         "canopy": false,
@@ -1723,8 +1834,8 @@
           0.00011724233627319336,
           1
         ],
-        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_BrushedMetal",
-        "planIndex": 9,
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_BrushedMetal_1",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -1752,8 +1863,8 @@
           0.08038578927516937,
           1
         ],
-        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_MechanicalDark",
-        "planIndex": 10,
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_MechanicalDark_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -1781,8 +1892,8 @@
           0.17108780145645142,
           1
         ],
-        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_Stone",
-        "planIndex": 11,
+        "name": "LOD2_MOTION_BORROWED_VOICE_RECEIVER_Stone_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -1795,7 +1906,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_c_lod2.glb"
   },
-  "runtimeHash": "1e848ae060c691a4e5c8860b454067c4f8671108cfd8247c5e8e63bfdb373ec5",
+  "runtimeHash": "98efdffb2cc67a3cd4e88e836c760f92a58583d8ff10a657f16c5638ebdd043d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

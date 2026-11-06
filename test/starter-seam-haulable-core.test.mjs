@@ -60,6 +60,13 @@ function starterFieldRocks(state) {
   return field.rocks.filter((rec) => rec.data && rec.data.fieldId === STARTER_FIELD);
 }
 
+function starterFieldBoulders(state) {
+  const authoredIds = new Set((starterFieldDef()?.boulders || []).map((row) => row.id));
+  // Rock-ladder bedrock also uses the durable authoredBoulderId field. Keep this tutorial check
+  // scoped to the three explicitly authored seam bodies rather than counting those tier rungs.
+  return starterFieldRocks(state).filter((rec) => authoredIds.has(rec.data?.authoredBoulderId));
+}
+
 test('the claim authors exactly three heavy boulders whose yields each fracture a haulable core', () => {
   const fdef = starterFieldDef();
   assert.ok(fdef, 'f_helios_starter exists');
@@ -91,10 +98,11 @@ test('the claim authors exactly three heavy boulders whose yields each fracture 
 test('entering Helios on seed 4242 materializes the boulders beside the untouched common scatter', () => {
   const { state } = bootHelios();
   const rocks = starterFieldRocks(state);
-  const boulders = rocks.filter((rec) => rec.data.authoredBoulderId);
-  const scatter = rocks.filter((rec) => !rec.data.authoredBoulderId);
+  const boulders = starterFieldBoulders(state);
+  const authoredIds = new Set((starterFieldDef()?.boulders || []).map((row) => row.id));
+  const scatter = rocks.filter((rec) => !authoredIds.has(rec.data?.authoredBoulderId));
 
-  assert.equal(boulders.length, 3, 'every authored boulder materializes with the sector');
+  assert.equal(boulders.length, 3, 'each named starter-seam boulder materializes with the sector');
   const fdef = starterFieldDef();
   for (const rec of boulders) {
     const authored = fdef.boulders.find((row) => row.id === rec.data.authoredBoulderId);
@@ -119,7 +127,7 @@ test('entering Helios on seed 4242 materializes the boulders beside the untouche
 
 test('cutting the largest boulder fractures a core the tag arms, routed to Ceres Refinery', () => {
   const { sim, state, helpers } = bootHelios();
-  const boulders = starterFieldRocks(state).filter((rec) => rec.data.authoredBoulderId);
+  const boulders = starterFieldBoulders(state);
   const largest = boulders.reduce((best, rec) => ((rec.radius || 0) > (best.radius || 0) ? rec : best));
   assert.equal(largest.data.authoredBoulderId, 'helios_boulder_mass', 'the largest is the authored mass');
 

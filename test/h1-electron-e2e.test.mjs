@@ -6,8 +6,10 @@ import { readFileSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
 const source = () => readFileSync(new URL('scripts/check-h1-electron-e2e.mjs', ROOT), 'utf8');
+// The recorded failure document lives under design/archive/ since the 2026-10-28 H0 razor
+// archived the dated roadmap evidence tree; the regression contract it proves is unchanged.
 const recordedFailure = () => JSON.parse(readFileSync(new URL(
-  'design/program/roadmap/evidence/h1/row8-electron-e2e/failure-state.json',
+  'design/archive/program/roadmap/evidence/h1/row8-electron-e2e/failure-state.json',
   ROOT,
 ), 'utf8'));
 const recordedStationVisibilityFailure = () => JSON.parse(readFileSync(new URL(

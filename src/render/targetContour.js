@@ -13,7 +13,7 @@
 // not from the weapons-written gunTargetId mirror. That makes the mark generation-safe (a recycled
 // id is not the picked body) and sensor-true (a cloak-hidden hull gets no mark).
 
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
 

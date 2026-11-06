@@ -285,7 +285,8 @@ test('rescue craft tracks the live caller, links up once, and hands off cleanly'
     pos: { x: caller.pos.x + 10, z: caller.pos.z },
     vel: { x: 0, z: 0 },
     radius: 6,
-    data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod' },
+    data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod',
+      survivorPodCausal: { victimId: caller.id, memoryId: 'mayday:caller', expireAt: 500 } },
     flags: {},
   });
   caller.alive = false;
@@ -315,4 +316,78 @@ test('rescue craft tracks the live caller, links up once, and hands off cleanly'
   traffic.update(0.1, state);
   assert.ok(rescueRec.violenceAlarmed, 'the cutter is alarmed by nearby combat');
   assert.equal(rescueEnt.data.intent.moveZ, 1, 'flee beats standing by');
+});
+
+function addIncidentPod(addEntity, id, x, victimId = id + 1000) {
+  return addEntity({ id, type: 'payload', alive: true, pos: { x, z: 0 }, vel: { x: 0, z: 0 },
+    data: { payloadType: 'survivor_pod', survivorPodCausal: {
+      entityId: id, victimId, memoryId: `incident:${id}`, phase: 'adrift', resolved: false, expireAt: 500,
+    } }, flags: {} });
+}
+
+test('indexed standby scans only payloads, then responds to the actual pod', () => {
+  const { state, addEntity } = bootHarness();
+  const { rescueEnt, rescueRec } = addRescueCraft(state, 591, 100, 0, 'Lifter');
+  const caller = addEntity({ id: 592, type: 'ship', alive: true, pos: { x: 130, z: 0 },
+    hull: 10, hullMax: 100, data: { trafficRole: 'hauler' }, flags: {} });
+  Object.assign(rescueRec, { rescueTargetType: 'disabled', rescueTargetId: caller.id });
+  const payloads = [];
+  const unexpectedScan = () => { throw new Error('unrelated entity bucket visited'); };
+  state.entityIndex = { payloads, get shipLike() { return unexpectedScan(); },
+    get stations() { return unexpectedScan(); }, get wrecks() { return unexpectedScan(); },
+    get pickups() { return unexpectedScan(); } };
+  traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+  assert.equal(rescueRec.civilianReaction, 'standby_disabled');
+  const pod = addIncidentPod(addEntity, 593, 450);
+  payloads.push(pod);
+  traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+  assert.equal(rescueRec.rescueTargetType, 'pod');
+  assert.equal(rescueRec.rescueTargetId, pod.id);
+  assert.equal(rescueRec.civilianReaction, 'responding_survivor');
+  traffic.destroy(); survivorPod.destroy();
+});
+
+test('a disabled or distress standby yields to an unattended survivor and keeps its chosen target', () => {
+  for (const kind of ['disabled', 'distress']) {
+    const { state, addEntity } = bootHarness();
+    const { rescueEnt, rescueRec } = addRescueCraft(state, 601, 100, 0, 'Lifter');
+    const caller = addEntity({ id: 602, type: 'ship', alive: true, pos: { x: 130, z: 0 },
+      hull: 10, hullMax: 100, data: { trafficRole: 'hauler', lastDistressSimT: state.simTime }, flags: {} });
+    Object.assign(rescueRec, kind === 'disabled'
+      ? { rescueTargetType: 'disabled', rescueTargetId: caller.id }
+      : { rescueTargetType: 'distress', rescueCallerId: caller.id, rescueTargetPos: { ...caller.pos } });
+    traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+    assert.ok(['standby_disabled', 'standing_by_caller'].includes(rescueRec.civilianReaction));
+    const pod = addIncidentPod(addEntity, 603, 450, 604);
+    traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+    assert.equal(rescueRec.rescueTargetType, 'pod', kind);
+    assert.equal(rescueRec.rescueTargetId, pod.id, kind);
+    assert.equal(rescueRec.civilianReaction, 'responding_survivor');
+    assert.equal(rescueEnt.data.intent.moveZ, 1);
+    addIncidentPod(addEntity, 605, 180, 606);
+    traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+    assert.equal(rescueRec.rescueTargetId, pod.id, 'a nearer new pod does not interrupt an active approach');
+    traffic.destroy(); survivorPod.destroy();
+  }
+});
+
+test('player-towed and another lifter’s chosen pod are not taken as unattended targets', () => {
+  const { state, addEntity } = bootHarness();
+  const { rescueEnt, rescueRec } = addRescueCraft(state, 611, 100, 0, 'Lifter one');
+  const other = addRescueCraft(state, 612, 100, 0, 'Lifter two');
+  const caller = addEntity({ id: 613, type: 'ship', alive: true, pos: { x: 130, z: 0 },
+    hull: 10, hullMax: 100, data: { trafficRole: 'hauler' }, flags: {} });
+  Object.assign(rescueRec, { rescueTargetType: 'disabled', rescueTargetId: caller.id });
+  const playerPod = addIncidentPod(addEntity, 614, 180);
+  const reservedPod = addIncidentPod(addEntity, 615, 200);
+  const availablePod = addIncidentPod(addEntity, 616, 230);
+  state.player.tether = { active: true, targetId: playerPod.id };
+  Object.assign(other.rescueRec, { rescueTargetType: 'pod', rescueTargetId: reservedPod.id });
+  traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+  assert.equal(rescueRec.rescueTargetId, availablePod.id);
+  state.player.tether.targetId = availablePod.id;
+  traffic._stepRescue(rescueEnt, rescueRec, [], state, 0.1);
+  assert.notEqual(rescueRec.rescueTargetId, availablePod.id, 'an active player line ends autonomous pursuit');
+  assert.equal(other.rescueRec.rescueTargetId, reservedPod.id);
+  traffic.destroy(); survivorPod.destroy();
 });

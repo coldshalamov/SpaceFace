@@ -275,6 +275,16 @@ function tutorialFlightHintsOff(state) {
   return !!(gameplay && gameplay.tutorialHints === false);
 }
 
+// The first-flight reminder is presentation, not tutorial progression. It yields after the
+// pilot has demonstrated both flight and braking, or has traveled out of the starting system.
+function tutorialFlightRelevant(state) {
+  const ob = state?.onboarding, pace = ob?.pace;
+  const sector = state?.world?.currentSectorId;
+  return !!(ob?.active && !ob.finished && !pace?.flownBefore
+    && !(Number.isFinite(pace?.fastAtS) && Number.isFinite(pace?.slowAtS))
+    && (!sector || sector === 'sector_helios_prime') && !tutorialFlightHintsOff(state));
+}
+
 /** True on the first free flight of a new game, before the card has been spent. */
 export function tutorialFlightMoment(state) {
   if (!state || state.mode !== 'flight') return false;
@@ -286,9 +296,7 @@ export function tutorialFlightMoment(state) {
   // The current opening objective is already the one on-screen instruction. Do not spend the
   // teach-once flight-controls hint while that objective owns attention.
   if (openingInstructionSolo(state)) return false;
-  const ob = state.onboarding;
-  if (!ob || ob.active !== true || ob.finished === true) return false;
-  if (ob.pace && ob.pace.flownBefore === true) return false;
+  if (!tutorialFlightRelevant(state)) return false;
   return shouldShowFirstUseHint(state.player && state.player.hints, 'firstFlight');
 }
 
@@ -303,7 +311,7 @@ function ensureTutorialFlightCardStyle(doc) {
   if (!style) return;
   style.id = 'sf-tutorial-flight-card-style';
   if (style.setAttribute) style.setAttribute('id', 'sf-tutorial-flight-card-style');
-  style.textContent = '.sf-tutorial-flight-card{position:absolute;left:50%;top:18%;transform:translateX(-50%);max-width:min(42rem,86vw);pointer-events:none;z-index:30;text-align:center;line-height:1.35;}';
+  style.textContent = '.sf-tutorial-flight-card{position:absolute;left:50%;top:18%;transform:translateX(-50%);box-sizing:border-box;max-width:min(42rem,86vw);padding:.45rem .7rem;background:var(--dp-glass-deep,rgb(6 8 12 / .82));color:var(--dp-ink,#e8e2d4);text-shadow:var(--dp-text-legible,0 1px 0 rgb(0 0 0 / .5));pointer-events:none;z-index:30;text-align:center;line-height:1.35;}';
   const parent = doc.head || doc.body || doc.documentElement;
   if (parent && parent.appendChild) parent.appendChild(style);
 }
@@ -323,7 +331,7 @@ export function syncTutorialFlightCard(state, doc, hudLayout = null) {
     existing.hidden = true;
     return null;
   }
-  if (openingInstructionSolo(state)) {
+  if (openingInstructionSolo(state) || !tutorialFlightRelevant(state)) {
     if (existing) existing.hidden = true;
     return null;
   }

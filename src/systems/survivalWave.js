@@ -54,6 +54,7 @@ import {
   materializeWaveBatch,
 } from './waveMaterialization.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
@@ -240,7 +241,7 @@ export const survivalWave = {
     this._dispatchDue();
     this._shapeSwarmFire();
     this._reinforceSwarm(run);
-    this._releaseStragglers();
+    this._commitStragglers();
     this._commitLastStand();
     this._tickCircuitObjective();
     this._publishWaveProgress();
@@ -1267,11 +1268,31 @@ export const survivalWave = {
     if (quiet) return;
     const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
     const character = this._characterFightId && state.capitalBossEncounters?.fights?.[this._characterFightId];
-    // A character's readable move earns breathing room from its henchmen: two other
-    // shooters during the tell/attack, four while the mantle is open. Population is unchanged.
-    const cap = character && !character.terminal && !character.suspended
-      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], character.phase === 'recovery' ? 5 : 3)
+    // LW-04 — an authored act may carry its own simultaneous-fire budget on the plan. It is a
+    // ceiling on the wave table's number, never a raise, and the character's clamps still
+    // apply on top of it. Absent or non-positive means the legacy cap, byte-identical.
+    const authored = this._swarm && Number.isInteger(this._swarm.shooterCap) && this._swarm.shooterCap > 0
+      ? this._swarm.shooterCap
+      : null;
+    const waveCap = authored != null
+      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], authored)
       : SWARM_SHOOTERS_BY_WAVE[index];
+    // A character's readable move earns breathing room from its henchmen: three cohort
+    // shooters during the tell/attack, five while the mantle is open. Population is unchanged.
+    // LW-05 — a Kraken-sourced momentum sink outlives its cast into that open window: while the
+    // player is still hauled to the boss's frame the wave stays at tell/attack volume through
+    // recovery. Only the character's own boss extends it — a sink from any other attacker, or
+    // one already expired, restores the ordinary recovery budget.
+    const playerRuntime = state.combat && state.combat.entities
+      ? state.combat.entities[state.playerId] : null;
+    const sink = playerRuntime && playerRuntime.statuses
+      ? playerRuntime.statuses[MOMENTUM_SINK_STATUS_ID] : null;
+    const tick = Number.isInteger(state.tick) ? state.tick : Math.floor(now * 60);
+    const krakenGrip = !!sink && !!character && sink.attackerId === character.bossId
+      && (sink.expiresTick | 0) > tick;
+    const cap = character && !character.terminal && !character.suspended
+      ? Math.min(waveCap, character.phase === 'recovery' && !krakenGrip ? 5 : 3)
+      : waveCap;
     rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
     for (let i = 0; i < rank.length; i++) {
       if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
@@ -1501,26 +1522,21 @@ export const survivalWave = {
   },
 
   /**
-   * Pack bodies left far behind a pilot who has outrun them (no drag: a new pilot drifts
-   * thousands of units without meaning to) would otherwise hold a won round open forever.
-   * Once a body has stayed past the leash — well off screen — for the grace window, it breaks
-   * off and leaves the field: removed out of sight, resolved by the destroyed receipt, never
-   * paid out as a kill. There is no head-count gate: three or five stranded hulls are just
-   * as far off screen as one, and a count gate left exactly those rounds open forever.
+   * A pilot can outrun the pack by thousands of units. Distant survivors commit to pursuit
+   * after a grace window; they remain physical members of the wave and must still be resolved.
    */
-  _releaseStragglers() {
+  _commitStragglers() {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
     // The ledger gate guards the arrival phase only: while the wave is still inside its
     // authored duration, outstanding quota may still be inbound. Past that budget the quota
     // is debt, not arrival — a stalled ledger (a pending batch retrying a refused arrival,
-    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) is
-    // produced BY the tail this tool exists to clear, so it cannot be allowed to disarm it.
+    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) must
+    // not prevent a distant survivor from committing to the fight.
     const pastBudget = !(this._elapsedSeconds() < this._durationSeconds());
     if ((this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length))
       && !pastBudget) return;
-    const helpers = this.helpers;
     const state = this.state;
-    if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
+    if (!state || !state.entities) return;
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
@@ -1537,7 +1553,10 @@ export const survivalWave = {
       if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
       if (!this._isCohortMemberActionable(id, member)) continue;
       member.strayTicks = (member.strayTicks || 0) + 1;
-      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
+      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS && data.ai && data.ai.swarmLastStand !== true) {
+        data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+        data.ai.swarmLastStand = true;
+      }
     }
   },
 
@@ -1545,7 +1564,7 @@ export const survivalWave = {
     if (!this._cohort || this._cohort.size === 0) return;
     const swarmKillRound = !!(this._swarm && this._swarm.killTarget);
     if (swarmKillRound) {
-      // Same stalemate as the straggler gate above: inside the finite duration the ledger
+      // Same stalemate as the distant pursuit above: inside the finite duration the ledger
       // check is already implied by the clock; past it, owed quota is debt. A late tail
       // commits regardless of what the stream still owes — it still has to be killed, and
       // _checkCleared still waits for the full quota before clearing.

@@ -323,6 +323,11 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
+  /* the mixer shrinks to ~220px here but its hub kept the 1280 numeral, so 55 % and MASTER · OUT sat
+     across the rings: a smaller numeral, a tighter caption, and a dark well under both */
+  ${S} .orr-set-mixer__hub { gap:4px; padding:10px 12px; background:radial-gradient(closest-side, rgb(5 7 10 / .88) 62%, rgb(5 7 10 / 0)); }
+  ${S} .orr-set-mixer__out { font-size:34px; }
+  ${S} .orr-set-mixer__outlab { letter-spacing:.12em; }
 }
 
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale folded into the zoom), as the station does */
@@ -1011,10 +1016,27 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
     pane.dataset.orrScroll = '1';
     const edge = () => pane.classList.toggle('is-scrolled', (pane.scrollTop || 0) > 4);
     pane.addEventListener('scroll', edge, { passive: true });
+    // A pointer focuses its button between down and up. Scrolling at that point can move the
+    // button out from under the pointer, so let the pointer complete without moving the pane.
+    let pointerFocus = false;
+    pane.addEventListener('pointerdown', () => { pointerFocus = true; }, true);
+    pane.addEventListener('pointerup', () => { pointerFocus = false; }, true);
+    pane.addEventListener('pointercancel', () => { pointerFocus = false; }, true);
+    pane.addEventListener('keydown', () => { pointerFocus = false; }, true);
     pane.addEventListener('focusin', (ev) => {
+      const fromPointer = pointerFocus;
+      pointerFocus = false;
+      if (fromPointer) return;
       const row = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.k-row') : null;
-      if (row && typeof row.scrollIntoView === 'function') {
-        try { row.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* layout-less */ }
+      if (row && typeof row.getBoundingClientRect === 'function' && typeof pane.getBoundingClientRect === 'function') {
+        // Scroll only this pane vertically. scrollIntoView also scrolls horizontal ancestors and
+        // can move a whole segmented control while focus is being assigned.
+        const box = row.getBoundingClientRect();
+        const viewport = pane.getBoundingClientRect();
+        const above = box.top - (viewport.top + 40);
+        const below = box.bottom - (viewport.bottom - 80);
+        const delta = above < 0 ? above : below > 0 ? below : 0;
+        if (delta) pane.scrollTop += delta;
       }
     });
     edge();

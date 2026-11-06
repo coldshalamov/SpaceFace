@@ -64,6 +64,7 @@ test('seed 4242 production stranger earns latch and raid milestones within budge
   t.after(() => runtime.dispose());
   const { state, bus } = runtime;
   const events = [];
+  const raidLatchAttempts = [];
   bus.on('firsthour:milestone', (p) => events.push({ ev: 'milestone',
     milestone: p.milestone, sim: p.atS, cause: p.cause }));
   state.mode = 'flight';
@@ -99,6 +100,17 @@ test('seed 4242 production stranger earns latch and raid milestones within budge
   for (let frame = 0; frame <= 181 * 60; frame++) {
     pilot.step(dt, state.tick);
     const input = state.input;
+    const raid = state.onboarding && state.onboarding.raid;
+    const massline = input.actions.massline;
+    if (raid && raid.active && massline && massline.latch) {
+      const selected = state.masslineAcquisition && state.masslineAcquisition.selected;
+      raidLatchAttempts.push({
+        intendedId: raid.ids && raid.ids.raider,
+        selectedId: selected && selected.targetId,
+        selectedStatus: selected && selected.status,
+        tetherMode: input.tetherMode || null,
+      });
+    }
     // input.js mirrors the completed command packet into the tether press edge.
     input.actions.tetherFire = !!input.actions.massline?.latch;
     if (!events.some((e) => e.ev === 'input') && (input.moveX || input.moveZ || input.turnIntent
@@ -111,7 +123,120 @@ test('seed 4242 production stranger earns latch and raid milestones within budge
   }
   trace.samples.push({ sim: state.simTime });
   const verdict = checkFirstHourBudget(trace);
-  t.diagnostic(JSON.stringify({ verdict, events }));
+  assert.ok(raidLatchAttempts.length > 0, 'the pilot should issue a raider latch attempt');
+  assert.ok(raidLatchAttempts.every((attempt) => attempt.selectedStatus === 'ready'
+    && attempt.selectedId === attempt.intendedId && attempt.tetherMode == null),
+  `raider latch attempts must use the matching ready scored receipt: ${JSON.stringify(raidLatchAttempts.slice(0, 8))}`);
+  const failureSnapshot = verdict.status === 'PASS' ? null : (() => {
+    const onboarding = state.onboarding || {};
+    const rescue = onboarding.rescue || null;
+    const raid = onboarding.raid || null;
+    const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
+    const raidRaider = raid && raid.ids && raid.ids.raider != null && state.entities
+      ? state.entities.get(raid.ids.raider) : null;
+    const raidRaiderAi = raidRaider && raidRaider.data && raidRaider.data.ai;
+    const pose = (id) => {
+      const entity = id != null && state.entities ? state.entities.get(id) : null;
+      if (!entity) return null;
+      const vector = (value) => value && Number.isFinite(value.x) && Number.isFinite(value.z)
+        ? { x: value.x, z: value.z } : null;
+      return {
+        id: entity.id,
+        type: entity.type || null,
+        alive: entity.alive !== false,
+        pos: vector(entity.pos),
+        vel: vector(entity.vel),
+        radius: Number.isFinite(entity.radius) ? entity.radius : null,
+      };
+    };
+    const input = state.input || {};
+    const actions = input.actions || {};
+    const waypoint = state.nav && state.nav.waypoint;
+    const vector = (value) => value && Number.isFinite(value.x) && Number.isFinite(value.z)
+      ? { x: value.x, z: value.z } : null;
+    return {
+      simTime: state.simTime,
+      tick: state.tick,
+      onboarding: {
+        active: onboarding.active === true,
+        finished: onboarding.finished === true,
+        currentBeat: Number.isInteger(onboarding.currentBeat) ? onboarding.currentBeat : null,
+        beatAction: typeof onboarding.beatAction === 'string' ? onboarding.beatAction.slice(0, 120) : null,
+        beatDoneAt: {
+          tether: Number.isFinite(onboarding.beatDoneAt && onboarding.beatDoneAt.tether)
+            ? onboarding.beatDoneAt.tether : null,
+          raid: Number.isFinite(onboarding.beatDoneAt && onboarding.beatDoneAt.raid)
+            ? onboarding.beatDoneAt.raid : null,
+        },
+        tetherReeled: onboarding.tetherReeled === true,
+        rescue: rescue ? {
+          active: rescue.active === true,
+          current: rescue.current || null,
+          completed: rescue.completed === true,
+          swing: rescue.beats && rescue.beats.swing ? {
+            state: rescue.beats.swing.state || null,
+            fails: Number(rescue.beats.swing.fails) || 0,
+            doneAt: Number.isFinite(rescue.beats.swing.doneAt) ? rescue.beats.swing.doneAt : null,
+          } : null,
+          rockLatched: rescue.rockLatched === true,
+          rockReeled: rescue.rockReeled === true,
+          rockReleasedAfterReel: rescue.rockReleasedAfterReel === true,
+          ids: { rock: rescue.ids && rescue.ids.rock, derelict: rescue.ids && rescue.ids.derelict },
+        } : null,
+        raid: raid ? {
+          active: raid.active === true,
+          enteredAt: Number.isFinite(raid.enteredAt) ? raid.enteredAt : null,
+          ids: { raider: raid.ids && raid.ids.raider, throwRock: raid.ids && raid.ids.throwRock },
+        } : null,
+      },
+      player: player ? {
+        id: player.id,
+        alive: player.alive !== false,
+        pos: vector(player.pos),
+        vel: vector(player.vel),
+        tether: state.player && state.player.tether ? {
+          active: state.player.tether.active === true,
+          targetId: state.player.tether.targetId ?? null,
+        } : null,
+      } : null,
+      actors: {
+        rescueRock: pose(rescue && rescue.ids && rescue.ids.rock),
+        rescueDerelict: pose(rescue && rescue.ids && rescue.ids.derelict),
+        raidRaider: pose(raid && raid.ids && raid.ids.raider),
+        raidRaiderAi: raidRaiderAi ? {
+          fsm: typeof raidRaiderAi.fsm === 'string' ? raidRaiderAi.fsm.slice(0, 40) : null,
+          activityKind: raidRaiderAi.activity && typeof raidRaiderAi.activity.kind === 'string'
+            ? raidRaiderAi.activity.kind.slice(0, 40) : null,
+        } : null,
+        raidThrowRock: pose(raid && raid.ids && raid.ids.throwRock),
+      },
+      waypoint: waypoint ? {
+        kind: waypoint.kind || null,
+        label: typeof waypoint.label === 'string' ? waypoint.label.slice(0, 100) : null,
+        reason: typeof waypoint.reason === 'string' ? waypoint.reason.slice(0, 120) : null,
+        pos: vector(waypoint.pos),
+      } : null,
+      lastPilotInput: {
+        moveX: Number.isFinite(input.moveX) ? input.moveX : null,
+        moveZ: Number.isFinite(input.moveZ) ? input.moveZ : null,
+        turnIntent: Number.isFinite(input.turnIntent) ? input.turnIntent : null,
+        brake: input.brake === true,
+        boost: input.boost === true,
+        fire: input.fire === true,
+        fireGroup: Number.isFinite(input.fireGroup) ? input.fireGroup : null,
+        aimAngle: Number.isFinite(input.aimAngle) ? input.aimAngle : null,
+        aimWorld: vector(input.aimWorld),
+        tetherMode: input.tetherMode || null,
+        massline: actions.massline ? {
+          latch: actions.massline.latch === true,
+          cut: actions.massline.cut === true,
+          lineControl: actions.massline.lineControl === true,
+          lineLength: Number.isFinite(actions.massline.lineLength) ? actions.massline.lineLength : null,
+        } : null,
+      },
+    };
+  })();
+  t.diagnostic(JSON.stringify({ verdict, events, failureSnapshot }));
   assert.equal(verdict.status, 'PASS');
   assert.ok(events.some((e) => e.milestone === 'attach'));
   assert.ok(events.some((e) => e.milestone === 'momentumKill'));

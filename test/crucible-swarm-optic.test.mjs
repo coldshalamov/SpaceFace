@@ -70,6 +70,25 @@ function opticRocks(h) {
   return h.state.entityList.filter((e) => e.data && e.data[SWARM_OPTIC_TAG]);
 }
 
+// swarmArena's separateOpticLatticeBodies expands the translated layout when authored cells are
+// wider than their grid step (e.g. Helios's r34 stones on the 64-cell): native circles must not
+// launch interpenetrating. The stamp's expected positions run through the same expansion here so
+// this still proves stamp == recipe topology + admitted geometry, cell for cell.
+function separatedBodies(bodies) {
+  let scale = 1;
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      if (!(distance > 1e-6)) return null;
+      const required = Math.max(0, Number(a.radius) || 0) + Math.max(0, Number(b.radius) || 0) + 8;
+      if (distance < required) scale = Math.max(scale, required / distance);
+    }
+  }
+  if (scale <= 1) return bodies;
+  return bodies.map((body) => ({ ...body, x: body.x * scale, z: body.z * scale }));
+}
+
 function cellsOf(layout) {
   const map = new Map();
   for (const body of layout.bodies) map.set(`${body.ix},${body.iz}`, body.material);
@@ -208,8 +227,9 @@ test('a wave-1 stamp matches compileSwarmOptic, and a second wave does not doubl
     const optics = opticRocks(h);
     assert.equal(optics.length, layout.bodies.length, `${arenaId} wave-1 stamp count`);
 
-    // Every compiled cell is a live collider at anchor + origin + cell offset.
-    for (const body of layout.bodies) {
+    // Every compiled cell is a live collider at anchor + origin + (separated) cell offset.
+    const expectedBodies = separatedBodies(layout.bodies);
+    for (const body of expectedBodies) {
       const wx = h.player.pos.x + layout.origin.x + body.x;
       const wz = h.player.pos.z + layout.origin.z + body.z;
       const rock = optics.find((e) => Math.abs(e.pos.x - wx) < 1e-6 && Math.abs(e.pos.z - wz) < 1e-6);

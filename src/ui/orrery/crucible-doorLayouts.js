@@ -48,6 +48,11 @@ export const CRUCIBLE_DOOR_LAYOUT_CSS = `
    128px keeps four faces in the ~610px column of a 1366-wide window where 150px fell back to
    three plus an orphaned Daily; long words wrap inside the tile like the arena names do. */
 ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)) !important; }
+@media (min-width:901px) and (max-width:1100px) {
+  ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(88px, 1fr)) !important; }
+}
+${D} .sf-crd-mode-sub { display:block !important; white-space:normal !important; overflow:visible !important;
+  text-overflow:clip !important; -webkit-line-clamp:unset !important; }
 /* the arena strip is one calm row of named stops — all seven at either bench width (80px keeps
    seven inside the ~625px a 1366-wide window gives the row once the strip's gaps are paid;
    at 1920 auto-fit stretches them exactly as wide as the old 99px rule did) */
@@ -133,15 +138,7 @@ ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) { background:none !important; border:0
   border-radius:0 !important; padding:0 0 0 8px !important; color:rgb(${BONE} / .45) !important;
   font-size:12px !important; letter-spacing:.14em !important; }
 ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(${BONE} / .3) !important; }
-/* the deckplate back key's ESC chip is re-boxed by the prep sheet (all:unset + border at
-   (1,9,1)); the crucible family's own voice is the bare glyph — ORRERY.md's pause grammar and
-   screenLayouts' .sf-back strip both say so — so this out-specifies it */
-${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important;
-  display:inline-block !important; margin-left:14px !important; padding:0 !important;
-  font:600 12px var(--dp-face-label, "Archivo") !important; letter-spacing:.06em !important;
-  line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .45) !important;
-  background:none !important; border:0 !important; border-radius:0 !important;
-  box-shadow:none !important; vertical-align:baseline !important; }
+/* The back key keeps the prep sheet's bordered keycap; other foot hints remain bare. */
 /* a short hero: the purse hairline collides with the arena line above it — the words climb and
    the rule retires (the 750 numeral still carries the purse) */
 @media (max-height:820px) {

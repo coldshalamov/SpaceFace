@@ -10,6 +10,7 @@
 // Run: node --test test/w533-books-0-2.test.mjs
 
 import assert from 'node:assert/strict';
+import { admitMarkedSampleYield } from './helpers/pr825-sample-admission.mjs';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
@@ -224,7 +225,7 @@ check('B0: mine → skim scene → dock plays Cold Start in order', () => {
   const b0 = state.missions.active.find((m) => m.storyTag === 'campaign47a:b0:recovery');
   assert.ok(b0, 'cold-start contract installed');
 
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   assert.equal(b0.params.sampleRecovered, true, 'sample aboard');
   assert.equal(state.story.beatIndex, 0);
   assert.equal(h.skimResolved.length, 0, 'skim has not fired on the spot');
@@ -257,7 +258,7 @@ check('B0: mine → skim scene → dock plays Cold Start in order', () => {
 check('B0: jumping the lane still resolves the Skim at the Pit (dock fallback)', () => {
   const h = makeHarness(48);
   const { state, bus } = h;
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.skimResolved.length, 1, 'skim resolved inline at dock');
   assert.equal(h.skimResolved[0].where, 'dock');
@@ -267,7 +268,7 @@ check('B0: jumping the lane still resolves the Skim at the Pit (dock fallback)',
 // ── BOOK ONE: Honest Work — alloy run, Scale 4, the infested hauler. ───────────
 function reachB1(h) {
   const { state, bus } = h;
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  admitMarkedSampleYield(h);
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 1);
 }

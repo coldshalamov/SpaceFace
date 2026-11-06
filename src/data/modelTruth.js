@@ -138,6 +138,11 @@ export function loadModelTruthCensus(assetUrl = null) {
   return censusLoadPromise;
 }
 
+/** Read-only readiness check for synchronous callers that can use a temporary fallback. */
+export function isModelTruthCensusLoaded() {
+  return censusData !== null;
+}
+
 // MODEL SUBSTANCE TRUTH TABLE (Rapier SG-02 live collider truth — READ-ONLY data).
 //
 // Verified live behavior (do not re-litigate; encode it):

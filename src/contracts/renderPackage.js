@@ -29,7 +29,8 @@ const PACKAGE_KEYS = new Set([
   'runtime', 'runtimeHash',
 ]);
 const COMPILER_KEYS = new Set(['name', 'version']);
-const RENDER_KEYS = new Set(['uri', 'sha256', 'bytes']);
+const RENDER_KEYS = new Set(['uri', 'sha256', 'bytes', 'resources']);
+const RENDER_RESOURCE_KEYS = new Set(['uri', 'mimeType', 'sha256', 'bytes']);
 const PROVENANCE_KEYS = new Set(['sourceGlb', 'sourceManifest', 'semantics']);
 const PROVENANCE_FILE_KEYS = new Set(['uri', 'sha256', 'bytes']);
 const PROVENANCE_SEMANTICS_KEYS = new Set(['sha256']);
@@ -273,15 +274,17 @@ export function renderPackageContentIdentity(value) {
   const sourceGlb = isPlainObject(provenance.sourceGlb) ? provenance.sourceGlb : {};
   const sourceManifest = isPlainObject(provenance.sourceManifest) ? provenance.sourceManifest : null;
   const semantics = isPlainObject(provenance.semantics) ? provenance.semantics : {};
+  const renderIdentity = {
+    sha256: render.sha256,
+    bytes: render.bytes,
+  };
+  if (Array.isArray(render.resources)) renderIdentity.resources = render.resources;
   return stableJsonValue({
     schema: value.schema,
     assetId: value.assetId,
     kind: value.kind,
     compiler: value.compiler,
-    render: {
-      sha256: render.sha256,
-      bytes: render.bytes,
-    },
+    render: renderIdentity,
     provenance: {
       sourceGlb: {
         sha256: sourceGlb.sha256,
@@ -309,14 +312,16 @@ export function renderPackageRuntimeIdentity(value) {
   if (!isPlainObject(value)) throw new TypeError('Render package runtime identity requires a plain object.');
   if (!isPlainObject(value.runtime)) throw new TypeError('Render package runtime identity requires a runtime table.');
   const render = isPlainObject(value.render) ? value.render : {};
+  const renderIdentity = {
+    sha256: render.sha256,
+    bytes: render.bytes,
+  };
+  if (Array.isArray(render.resources)) renderIdentity.resources = render.resources;
   return stableJsonValue({
     schema: 'spaceface.renderPackageRuntimeBinding.v1',
     assetId: value.assetId,
     contentHash: value.contentHash,
-    render: {
-      sha256: render.sha256,
-      bytes: render.bytes,
-    },
+    render: renderIdentity,
     runtime: value.runtime,
   });
 }
@@ -369,6 +374,34 @@ function validateRenderFile(value, path, issue) {
   validateUri(value.uri, `${path}.uri`, issue);
   validateSha256(value.sha256, `${path}.sha256`, issue);
   validateByteCount(value.bytes, `${path}.bytes`, issue);
+  if (value.resources !== undefined) {
+    if (!Array.isArray(value.resources)) {
+      issue(`${path}.resources`, 'type', 'render resources must be an array when present');
+    } else {
+      let priorUri = '';
+      const seen = new Set();
+      value.resources.forEach((resource, index) => {
+        const resourcePath = `${path}.resources[${index}]`;
+        if (!isPlainObject(resource)) return issue(resourcePath, 'type', 'render resource must be a plain object');
+        rejectUnknownKeys(resource, RENDER_RESOURCE_KEYS, resourcePath, issue);
+        validateUri(resource.uri, `${resourcePath}.uri`, issue);
+        validateSha256(resource.sha256, `${resourcePath}.sha256`, issue);
+        validateByteCount(resource.bytes, `${resourcePath}.bytes`, issue);
+        if (resource.mimeType !== 'image/ktx2') issue(`${resourcePath}.mimeType`, 'mime', 'external render resources must use image/ktx2');
+        const match = typeof resource.uri === 'string'
+          ? /^\.\.\/_shared\/images\/([a-f0-9]{64})\.ktx2$/.exec(resource.uri)
+          : null;
+        if (!match) issue(`${resourcePath}.uri`, 'resource-uri', 'external KTX2 resource URI must match ../_shared/images/<sha256>.ktx2');
+        else if (resource.sha256 !== match[1]) issue(`${resourcePath}.sha256`, 'resource-hash', 'external KTX2 URI hash must match its SHA-256');
+        if (typeof resource.uri === 'string') {
+          if (seen.has(resource.uri)) issue(`${resourcePath}.uri`, 'unique', 'render resource URIs must be unique');
+          if (priorUri && resource.uri <= priorUri) issue(`${resourcePath}.uri`, 'order', 'render resources must be sorted by URI');
+          seen.add(resource.uri);
+          priorUri = resource.uri;
+        }
+      });
+    }
+  }
 }
 
 function validateProvenance(value, path, issue) {

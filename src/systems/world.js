@@ -45,7 +45,10 @@ import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
-import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { WORLD_ONE_OFFS, crackerRunLoadRecovery } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { VX_FREE_DRIVE_SECTOR_ID, VX_FREE_DRIVE_POI, vxFreeDrivePoisFor,
+  vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+  from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
 import { FACTION_BERTHS } from '../data/factionBerths.js'; // CR-BERTH-1 faction berths
@@ -119,6 +122,7 @@ import {
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
+import { tetherMemorialPresentation } from '../data/tetherMemorialPresentation.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -190,8 +194,8 @@ import {
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
-import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
-import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
+import { presentationEntityIdForCourseTarget, resolveContract47aRecoveryTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -210,6 +214,8 @@ import {
 } from '../world/dressingTable.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
+import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
 import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
@@ -260,8 +266,15 @@ import { removeCargo } from './cargo.js';
 import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
+  releaseActivityPhysicsInterest,
+  requestActivityPhysicsInterest,
+} from '../world/activityRuntime.js';
+import {
+  catchUpFarRecord,
   dropFarActorSector,
   farActorHoldsWorldRecord,
+  findFarActorForTargetIdentity,
+  promoteFarActorForTargetIdentity,
   resetFarActors,
   restoreFarActorTable,
   serializeFarActorTable,
@@ -326,11 +339,27 @@ const CACHE_PAYOFF_OFFSET = Object.freeze({ x: 26, z: -18 });
 const STUCK_OFFER_S = 8;
 const STUCK_DISPLACEMENT_WU = 3;
 const STUCK_SPEED_EPS_WU_S = 4;
+const ADOPTED_SALVOR_LATCH_HANDOFF_S = 3;
+const ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU = 200;
 const TOW_BERTH_CLEARANCE_WU = 140;
 // A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
 // floored so a starter hull still owes a real service call-out.
 const TOW_FEE_MIN_CR = 120;
 const TOW_FEE_RECOVERY_FRAC = 0.125;
+
+function sameAdoptedSalvorTargetIdentity(a, b) {
+  if (!a || !b || a.kind !== b.kind) return false;
+  if (a.kind === 'worldRecord') return typeof a.worldRecordId === 'string'
+    && a.worldRecordId.length > 0 && a.worldRecordId === b.worldRecordId;
+  if (a.kind === 'marker') return typeof a.markerId === 'string'
+    && a.markerId.length > 0 && a.markerId === b.markerId;
+  if (a.kind === 'salvagePoint') return typeof a.salvagePointId === 'string'
+    && a.salvagePointId.length > 0 && a.salvagePointId === b.salvagePointId
+    && typeof a.sourceKey === 'string' && a.sourceKey.length > 0 && a.sourceKey === b.sourceKey;
+  if (a.kind === 'salvorTarget') return typeof a.key === 'string'
+    && a.key.length > 0 && a.key === b.key;
+  return false;
+}
 
 // Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
 function setVecXZTow(vec, x, z) {
@@ -623,10 +652,12 @@ export const world = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    if (this.state) this._clearAdoptedSalvorApproachState(this.state);
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._resourceBodyRestoreJobs = null;
 
     const state = this.state;
     const bus = this.bus;
@@ -649,6 +680,7 @@ export const world = {
       state.world.sectors = {};
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
+    this._registerFreeDriveRingPoi();
     if (!state.world.discovery) state.world.discovery = {};
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
@@ -659,7 +691,7 @@ export const world = {
     state.world.resourceWork = normalizeResourceWorkState(state.world.resourceWork);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
-    ensureResourceBodies(state.world);
+    ensureResourceBodies(state.world, { npcJobs: state.npcJobs });
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
     state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
 
@@ -682,6 +714,9 @@ export const world = {
     this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
     this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
     this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
+    this._adoptedSalvorMaterializationRequests = new Map(); // jobId → one bounded, exact-target approach request
+    this._adoptedSalvorApproachHolds = new Map(); // jobId → bounded native-latch residency handoff
+    this._adoptedSalvorLeaseClock = Number.isFinite(ctx.state.simTime) ? ctx.state.simTime : 0;
     // Floating-origin scratch (allocation-free no-shift path).
     this._frameOriginScratch = { x: 0, z: 0 };
     // Ensure coordinate membrane defaults exist even if state was hand-built.
@@ -724,6 +759,7 @@ export const world = {
     bus.on('entity:destroyed', (p) => handleMachineTokenDestroyed(this, p || {}));
     bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
+      this._clearAdoptedSalvorApproachState(this.state);
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
       // The loaded save carries its own simTime; stamps taken against the pre-load clock are
@@ -768,6 +804,22 @@ export const world = {
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
       handleMachineTokenDestroyed(this, p || {}, true);
       noteFoldAberrantKilled(this, p || {});
+    });
+    bus.on('salvage:completed', (p) => {
+      const entity = p && this.state.entities.get(p.wreckId);
+      const recovery = crackerRunLoadRecovery(entity);
+      if (!recovery || entity.alive !== false || entity.data?._salvaged !== true
+          || entity.occupantGeneration !== p.sourceGeneration
+          || entity.data.worldRecordId !== p.worldRecordId
+          || p.worldRecordId !== stableRecordId(this.state.meta?.seed || 1,
+            entity.data.homeSectorId, RECORD_KIND.WRECK, entity.data.identityKey)
+          || p.loot?.[recovery.commodityId] !== recovery.amount
+          || Object.values(entity.data.salvagePool || {}).some(qty => qty !== 0)) return;
+      const prior = this.state.world.records?.byId?.[p.worldRecordId];
+      if (prior?.alive === false || prior?.outcome === 'destroyed' || prior?.outcome === 'defeated') return;
+      // Use the existing durable retirement owner, without a lethal event,
+      // kill reward, or law attribution. Core removes this consumed mesh next.
+      this._onDurableEntityKilled({ id: entity.id });
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -1128,6 +1180,7 @@ export const world = {
 
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
+      this._clearAdoptedSalvorApproachState(state);
       // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
       // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
       // hold beat inside that gap would still see the old epoch as live and mint into
@@ -1638,7 +1691,10 @@ export const world = {
     // materialize — promoting it re-walked the entire record bag a second time in one
     // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
     // or stripped since still run the full promote below.
-    if (active.fullExtrasBuilt === true) return;
+    if (active.fullExtrasBuilt === true) {
+      this._spawnFreeDriveRing(sector, active, { metadataOnly: true });
+      return;
+    }
     // Rematerialize durable combat/convoy/mission records first (idempotent).
     const rematerialized = this._rematerializeSectorRecords(
       sectorId,
@@ -2000,10 +2056,11 @@ export const world = {
       registerEntityWorldRecordId(state && state.entityIndex, e);
     };
     forEachLivingWorldActor(state, capture);
-    // The authored starter buoy is a payload, outside the actor view. Keep every other
-    // payload on its existing persistence path, and never capture a future actor twice.
+    // These exact finite work payloads sit outside the actor view. All other payloads
+    // retain their existing persistence paths, and an actor is never captured twice.
     for (const e of indexedTypeScan(state, 'payloads')) {
-      if (e?.type === 'payload' && !isLivingWorldActor(e) && starterBuoyRecordMarker(e)) capture(e);
+      if (e?.type === 'payload' && !isLivingWorldActor(e)
+          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e))) capture(e);
     }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
@@ -2224,6 +2281,13 @@ export const world = {
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
+    // `captureEntityRecord` uses this birth stamp to preserve createdTick on the next
+    // residency capture. A rematerialized record has no fresh birth: losing the stamp here
+    // made the next eviction rewrite its age to the current tick (and restarted age-based
+    // aftermath/retention behavior after every Continue).
+    if (ent.data && Number.isFinite(advanced.createdTick)) {
+      ent.data.recordCreatedTick = advanced.createdTick;
+    }
     // bindEntityToRecord stamps data.worldRecordId post-append — register it so the index's
     // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
     // of waiting on a fallback-walk reseed (which can't bump the lane or the count).
@@ -2609,6 +2673,7 @@ export const world = {
   _arrangerForSector(sector, active) {
     if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
     const reservations = [];
+    reservations.push(...lanternWardReservations(this, sector, active));
     // Machine adapters materialize after scatter; reserve the same authored envelopes
     // used by ladder bedrock before any native body can be born inside their skins.
     for (const machine of killMachinesForSector(sector.id)) {
@@ -2660,6 +2725,10 @@ export const world = {
         });
       }
     }
+    // VX-02 Cracker Run: authored lane discs keep seeded scatter out of the ring's rib
+    // corridor, apron, chute and refuge lines, the same protection machines and boulders get.
+    reservations.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const heliosFace = heliosOpeningFaceBinding(sector.id, 'f_helios_starter', 1,
       (localPos) => this._toGlobal(localPos, sector.id));
     if (heliosFace) {
@@ -3050,6 +3119,9 @@ export const world = {
       blockers.push({ pos: machine.anvil.pos,
         radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
     }
+    // Keep fresh ladder bedrock out of the same authored lanes as arranged scatter.
+    blockers.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
     for (let tier = 0; tier <= 4; tier++) {
       for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
@@ -3086,10 +3158,19 @@ export const world = {
     }
   },
 
+  _resourceBodyRetentionOptions() {
+    return { npcJobs: this._resourceBodyRestoreJobs || this.state?.npcJobs };
+  },
+
+  finishResourceBodyRestore() {
+    this._resourceBodyRestoreJobs = null;
+  },
+
   _restoreResourceBody(ent) {
     if (!ent || ent.type !== 'asteroid') return ent;
     const state = this.state;
-    const bag = ensureResourceBodies(state.world);
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
     if (rec.outcome === 'destroyed') {
@@ -3110,7 +3191,7 @@ export const world = {
         && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
     }) || rec;
     applyResourceBodyToEntity(ent, advanced);
-    upsertResourceBody(bag, advanced);
+    upsertResourceBody(bag, advanced, opts);
     return ent;
   },
 
@@ -3118,17 +3199,19 @@ export const world = {
     if (!entity || entity.type !== 'asteroid') return null;
     const state = this.state;
     const d = entity.data || {};
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const captured = captureResourceBodyRecord(entity, {
       sectorId: entity.homeSectorId || d.homeSectorId || d.sectorId
         || (state.world && state.world.currentSectorId),
       fieldId: d.fieldId,
       slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
       simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
-      previousRecord: d.resourceBodyId ? ensureResourceBodies(state.world).byId[d.resourceBodyId] : null,
-      resourceBag: ensureResourceBodies(state.world),
+      previousRecord: d.resourceBodyId ? bag.byId[d.resourceBodyId] : null,
+      resourceBag: bag,
     });
     if (!captured) return null;
-    const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+    const stored = upsertResourceBody(bag, captured, opts);
     if (stored && entity.data) entity.data.resourceBodyId = stored.recordId;
     return stored;
   },
@@ -3229,13 +3312,17 @@ export const world = {
     const fullPresence = tier === RESIDENCY_TIER.FULL;
     if (!disc.pois) disc.pois = {};
     for (const poi of (sector.pois || [])) {
-      const ang = rng() * Math.PI * 2;
-      const r = wr * (0.2 + rng() * 0.6);
+      // This added navigation identity uses an existing buoy; consume no content RNG, so the
+      // original POIs, dressing and physical bodies retain their established generation stream.
+      const ringNavigation = poi.runtimeOwner === 'vxFreeDriveRing';
+      const ang = ringNavigation ? 0 : rng() * Math.PI * 2;
+      const r = ringNavigation ? 0 : wr * (0.2 + rng() * 0.6);
       const local = poi.pos
         ? { x: poi.pos.x, z: poi.pos.z }
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
       let pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      const earnedMemorial = tetherMemorialPresentation(this.state, poi.id);
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
       // A markerless projection still joins active.pois: sector sweeps mark it discovered and
@@ -3270,6 +3357,7 @@ export const world = {
       const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
       const poiData = {
         poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
+        ...earnedMemorial,
         hidden, gatedBy: poi.gatedBy || null,
         requiresTriangulation: !!triangulation,
         triangulation,
@@ -3368,6 +3456,7 @@ export const world = {
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
+        ...earnedMemorial,
         hidden, claimable: !!poi.claimable,
         ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
         ...(finitePositive(poi.scannerSignalPriority)
@@ -3488,9 +3577,12 @@ export const world = {
     yield 'materialize:dressing-palette';
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     yield 'materialize:dressing-kit';
+    materializeLanternWardDressing(this, sector, active);
+    yield 'materialize:lantern-ward';
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
+    this._spawnFreeDriveRing(sector, active);
     yield 'materialize:dressing-oneoffs';
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
@@ -3621,6 +3713,77 @@ export const world = {
     this._spawnFactionBerths(sector, active);
   },
 
+  // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
+  // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
+  // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
+  _registerFreeDriveRingPoi() {
+    const sector = this.state.world.sectors?.[VX_FREE_DRIVE_SECTOR_ID];
+    if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
+  },
+
+  _spawnFreeDriveRing(sector, active, { metadataOnly = false } = {}) {
+    const structures = vxFreeDriveStructuresFor(sector.id);
+    const markers = vxFreeDriveMarkersFor(sector.id);
+    if (!structures.length || !active?.dressing) return;
+    const table = this.state.world.dressing;
+    let known = 0, needsStamp = false;
+    // Cached FULL promotion is hot. Correct, missing, dead or replaced slots
+    // need no new allocation or write; only an original missing metadata does.
+    for (const slot of active.dressing) {
+      if (!slot.vxFreeDriveId) continue;
+      known++;
+      const body = table?.byId?.get(slot.id);
+      if (body && body === slot._vxFreeDriveOriginal && body.alive !== false
+          && (body.data?.vxFreeDriveId !== slot.vxFreeDriveId
+            || body.data?.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id)) needsStamp = true;
+    }
+    if (known === structures.length + markers.length && !needsStamp) return;
+
+    let metadataChanged = false;
+    const adopt = (source, placeId, name, radius, rot) => {
+      const pos = this._toGlobal(source.localPos, sector.id);
+      let slot = null;
+      for (const candidate of active.dressing) {
+        if (candidate.vxFreeDriveId === source.id) { slot = candidate; break; }
+        // Legacy first adoption uses the world's existing static dressing
+        // identity tuple, never a nearby body or its display name alone.
+        if (!candidate.vxFreeDriveId && candidate.placeId === placeId
+            && candidate.pos?.x === pos.x && candidate.pos?.z === pos.z) slot = candidate;
+      }
+      let body = slot && table?.byId?.get(slot.id);
+      if (!slot) {
+        if (metadataOnly) return;
+        body = this._spawnPlaceProp(active, sector, placeId, pos, {
+          rot, name, radius, worldOneOff: true,
+        });
+        if (!body) return;
+        for (const candidate of active.dressing) if (candidate.id === body.id) { slot = candidate; break; }
+      }
+      if (!slot) return;
+      // An occupied original slot stays occupied even when its body is absent.
+      // No metadata pass replaces a worked/dead body or reuses a recycled id.
+      slot.vxFreeDriveId = source.id;
+      const data = body?.data;
+      if (!body || body.alive === false || body.type !== 'fx'
+          || table?.byId?.get(slot.id) !== body
+          || (this.state.entities?.has(body.id) && this.state.entities.get(body.id) !== body)
+          || (slot._vxFreeDriveOriginal && slot._vxFreeDriveOriginal !== body)
+          || data?.worldDressing !== true || data.worldOneOff !== true
+          || data.placeId !== placeId || data.name !== name || body.radius !== radius
+          || data.homeSectorId !== sector.id || data.sectorId !== sector.id) return;
+      if (!slot._vxFreeDriveOriginal) Object.defineProperty(slot, '_vxFreeDriveOriginal', { value: body });
+      if (data.vxFreeDriveId !== source.id) { data.vxFreeDriveId = source.id; metadataChanged = true; }
+      if (data.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id) {
+        data.vxFreeDrivePoiId = VX_FREE_DRIVE_POI.id; metadataChanged = true;
+      }
+    };
+    for (const structure of structures) adopt(structure, structure.placeId, structure.name, structure.radius, structure.rot);
+    for (const marker of markers) adopt(marker, 'place_nav_buoy', 'Cracker Run marker', 10, 0);
+    // Legacy rows may already have crossed the worker boundary. Their data uses
+    // the existing spawn/rebuild channel, not the pose-only aux delta.
+    if (metadataOnly && metadataChanged) this.helpers.requestPresentationRebuild?.('cracker-run-guidance');
+  },
+
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
     if (!ent) return ent;
     const mass = oneOff.physicalBody.mass;
@@ -3653,6 +3816,19 @@ export const world = {
       masslineTetherable: true,
     });
     this._stampHomeSector(ent, sector.id);
+    if (oneOff.materialRecovery) {
+      // Recovery is atomic: an intact original has paid no contents. A terminal
+      // original never reaches this decoration path (_spawnWorldOneOffs guards it).
+      const { commodityId, amount } = oneOff.materialRecovery;
+      const pool = { [commodityId]: amount };
+      ent.data.debrisCache ??= 'empty';
+      const salvage = this.registry?.get?.('salvageActions');
+      if (salvage?.configureAuthoredWreck) salvage.configureAuthoredWreck(ent, { salvagePool: pool });
+      else {
+        ent.data.authoredSalvagePool = { ...pool };
+        ent.data.salvagePool = pool;
+      }
+    }
     return ent;
   },
 
@@ -4964,6 +5140,7 @@ export const world = {
   // per-tick update: jump state machine, fuel, hazards, POI scan, cooldown
   // =========================================================================================
   update(dt, state) {
+    this._resetAdoptedSalvorApproachOnClockRewind(state);
     if (state.mode !== 'flight') return;
     this._drainResidencyQueue(ARRIVAL_RESIDENCY_BUDGET);
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
@@ -5013,7 +5190,13 @@ export const world = {
     tickBolus(this, dt);
     tickMachineLayer(this, dt);
     tickFoldAberrant(this, dt);
-    tickFarActors(state, this.helpers, this.bus);
+    tickFarActors(state, this.helpers, this.bus,
+      entity => this._retainAdoptedSalvorApproachBody(entity, state));
+    this._pruneAdoptedSalvorApproachHolds(state);
+    // Adopted salvage requests are resolved after the player-centered residency sweep. A newly
+    // promoted hulk therefore remains live through the next physics step, where the existing
+    // Massline/latch owner can claim it before a later far-actor sweep considers shelving it.
+    this._processAdoptedSalvorMaterializationRequests(state);
     // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
     tickOpticFieldRocks(state, this.helpers);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
@@ -5021,6 +5204,276 @@ export const world = {
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
     if (observeTick) requestDecodeRunwayPromote(state, this.helpers);
+  },
+
+  _adoptedSalvorMaterializationContext(request) {
+    const state = this.state;
+    const jobId = request?.jobId;
+    const jobs = state?.npcJobs?.byId;
+    const entry = typeof jobId === 'string' ? jobs?.[jobId] : null;
+    const job = entry?.job;
+    const payload = job?.payload;
+    if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+      || payload.targetIdentity?.kind == null
+      || job.route?.[1]?.id !== `hulk:${payload.targetId}`
+      || [ 'flee', 'complete' ].includes(job.phase)
+      || entry.worldRecordId !== request.workerWorldRecordId) return null;
+    const worker = state.entities?.get?.(entry.entityId);
+    if (!worker || worker.alive === false || worker.data?.jobId !== jobId
+      || worker.data?.worldRecordId !== entry.worldRecordId || !worker.pos) return null;
+    const identity = payload.targetIdentity;
+    const targetType = payload.targetType;
+    const sectorId = entry.sectorId || worker.homeSectorId || worker.data?.homeSectorId
+      || worker.data?.sectorId || state.world?.currentSectorId;
+    if (!sectorId || request.sectorId !== sectorId || request.targetType !== targetType
+      || request.targetIdentity?.kind !== identity.kind) return null;
+    const origin = job.route?.[0];
+    const originId = origin?.id;
+    let validOrigin = originId === 'cut:hold'
+      && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z);
+    if (!validOrigin && typeof originId === 'string' && originId.startsWith('yard:')) {
+      const yardId = originId.slice(5);
+      const active = state.world?.sectorContents?.[sectorId]
+        || (state.world?.currentSectorId === sectorId ? state.world?.activeSector : null);
+      const yard = active?.stations?.find(row => row && row.stationId === yardId);
+      validOrigin = !!yard?.pos && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z)
+        && Number.isFinite(yard.pos.x) && Number.isFinite(yard.pos.z)
+        && Math.hypot(origin.pos.x - yard.pos.x, origin.pos.z - yard.pos.z) <= 0.01;
+    }
+    if (!validOrigin) return null;
+    for (const key of ['worldRecordId', 'markerId', 'salvagePointId', 'sourceKey', 'key']) {
+      if ((request.targetIdentity?.[key] ?? null) !== (identity[key] ?? null)) return null;
+    }
+    const target = findFarActorForTargetIdentity(state, identity, { type: targetType, sectorId });
+    if (!target) return null;
+    const claimant = target.data?.salvorClaimedBy;
+    if (claimant != null && claimant !== entry.worldRecordId) return null;
+    const worldRecordId = target.data?.worldRecordId;
+    if (worldRecordId != null) {
+      const durable = state.world?.records?.byId?.[worldRecordId];
+      if (durable && (durable.recordId !== worldRecordId
+        || durable.sectorId !== sectorId || !recordShouldRematerialize(durable, 'FULL'))) return null;
+    }
+    catchUpFarRecord(target, Number.isFinite(state.simTime) ? state.simTime : 0, state.world?.farActors);
+    const approachBandWU = Number(request.approachBandWU);
+    if (!Number.isFinite(approachBandWU) || approachBandWU <= 0 || approachBandWU > 1000) return null;
+    const distance = Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z);
+    return { entry, job, worker, target, identity, targetType, sectorId, worldRecordId,
+      approachBandWU, distance };
+  },
+
+  _releaseAdoptedSalvorApproachHold(state, jobId, hold) {
+    if (this._adoptedSalvorApproachHolds?.get(jobId) === hold) {
+      this._adoptedSalvorApproachHolds.delete(jobId);
+    }
+    if (hold?.activityLease && hold.activityOwner) {
+      releaseActivityPhysicsInterest(state, hold.activityOwner, hold.activityLease);
+      hold.activityLease = null;
+    }
+  },
+
+  _clearAdoptedSalvorApproachState(state = this.state) {
+    this._adoptedSalvorMaterializationRequests?.clear?.();
+    const holds = this._adoptedSalvorApproachHolds;
+    if (holds instanceof Map) {
+      for (const [jobId, hold] of holds) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      holds.clear();
+    }
+    this._adoptedSalvorLeaseClock = Number.isFinite(state?.simTime) ? state.simTime : 0;
+  },
+
+  _resetAdoptedSalvorApproachOnClockRewind(state = this.state) {
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    if (Number.isFinite(this._adoptedSalvorLeaseClock) && now < this._adoptedSalvorLeaseClock) {
+      this._clearAdoptedSalvorApproachState(state);
+    }
+    this._adoptedSalvorLeaseClock = now;
+  },
+
+  /** Promote the unique existing shelf through the world owner, preserving its normal admission. */
+  promoteFarActorByIdentity(identity, options = {}) {
+    return promoteFarActorForTargetIdentity(this.state, identity, options, this.helpers);
+  },
+
+  /** Resolve a booked far target's current owner pose and enqueue only near physical approach. */
+  requestAdoptedSalvorTargetMaterialization(request = {}) {
+    const context = this._adoptedSalvorMaterializationContext(request);
+    if (!context) return null;
+    if (context.distance <= context.approachBandWU) {
+      const requests = this._adoptedSalvorMaterializationRequests
+        || (this._adoptedSalvorMaterializationRequests = new Map());
+      const previous = requests.get(request.jobId);
+      requests.set(request.jobId, {
+        jobId: request.jobId,
+        workerWorldRecordId: request.workerWorldRecordId,
+        targetIdentity: { ...context.identity },
+        targetType: context.targetType,
+        sectorId: context.sectorId,
+        approachBandWU: context.approachBandWU,
+        nextAttemptAt: previous?.nextAttemptAt || 0,
+      });
+    }
+    return {
+      worldRecordId: context.worldRecordId,
+      pos: { x: context.target.pos.x, z: context.target.pos.z },
+      vel: { x: Number(context.target.vel?.x) || 0, z: Number(context.target.vel?.z) || 0 },
+      radius: context.target.radius,
+      mass: context.target.mass,
+      type: context.target.type,
+      sectorId: context.sectorId,
+      claimant: context.target.data?.salvorClaimedBy || null,
+    };
+  },
+
+  _processAdoptedSalvorMaterializationRequests(state) {
+    const requests = this._adoptedSalvorMaterializationRequests;
+    if (!(requests instanceof Map) || requests.size === 0) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    for (const [jobId, request] of requests) {
+      if (request.nextAttemptAt > now) continue;
+      const context = this._adoptedSalvorMaterializationContext(request);
+      if (!context || context.distance > context.approachBandWU) {
+        requests.delete(jobId);
+        continue;
+      }
+      const entity = promoteFarActorForTargetIdentity(state, request.targetIdentity,
+        { type: request.targetType, sectorId: request.sectorId }, this.helpers);
+      if (entity) {
+        const expiresAt = now + ADOPTED_SALVOR_LATCH_HANDOFF_S;
+        const activityLease = requestActivityPhysicsInterest(state, context.worker, entity, {
+          expiresAt,
+          sectorId: context.sectorId,
+        });
+        if (!activityLease) {
+          request.nextAttemptAt = now + 0.5;
+          continue;
+        }
+        requests.delete(jobId);
+        const holds = this._adoptedSalvorApproachHolds
+          || (this._adoptedSalvorApproachHolds = new Map());
+        holds.set(jobId, {
+          jobId,
+          workerWorldRecordId: request.workerWorldRecordId,
+          workerEntityId: context.worker.id,
+          activityOwner: context.worker,
+          activityLease,
+          targetIdentity: { ...request.targetIdentity },
+          targetEntity: entity,
+          targetGeneration: entity.occupantGeneration ?? null,
+          sectorId: request.sectorId,
+          approachBandWU: request.approachBandWU,
+          expiresAt: now + ADOPTED_SALVOR_LATCH_HANDOFF_S,
+        });
+        this.bus?.emit?.('world:farActorRestored', {
+          id: entity.id, type: entity.type, jobId: entity.data?.jobId ?? null, causeJobId: jobId,
+          trafficRole: entity.data?.trafficRole || null,
+          entity, reason: 'adopted-salvor-approach',
+        });
+        continue;
+      }
+      // A spawn-budget denial leaves the same far record intact; retry at a bounded cadence while
+      // the exact live worker continues approaching. This is a request, never a residency pin.
+      request.nextAttemptAt = now + 0.5;
+    }
+  },
+
+  _retainAdoptedSalvorApproachBody(entity, state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || !entity) return false;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      if (hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      if (hold.targetEntity !== entity || entity.alive === false
+        || (hold.targetGeneration != null && entity.occupantGeneration !== hold.targetGeneration)) continue;
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity.data?.salvagePointId === identity.salvagePointId
+              && entity.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+        || job.phase === 'flee' || job.phase === 'complete'
+        || entry.worldRecordId !== hold.workerWorldRecordId
+        || entry.entityId !== hold.workerEntityId
+        || worker?.alive === false || worker?.data?.jobId !== jobId
+        || worker?.data?.worldRecordId !== hold.workerWorldRecordId
+        || !sameAdoptedSalvorTargetIdentity(currentIdentity, identity) || !matches
+        || sectorId !== hold.sectorId || !worker.pos || !entity.pos) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const distance = Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z);
+      if (!Number.isFinite(distance) || distance > Math.max(hold.approachBandWU,
+        ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (attached) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      return true;
+    }
+    return false;
+  },
+
+  _pruneAdoptedSalvorApproachHolds(state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || holds.size === 0) return;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const entity = hold.targetEntity;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity?.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity?.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity?.data?.salvagePointId === identity.salvagePointId
+              && entity?.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity?.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      const valid = entry && job?.kind === 'salvor' && payload?.role === 'scavenger'
+        && !['flee', 'complete'].includes(job.phase)
+        && entry.worldRecordId === hold.workerWorldRecordId
+        && entry.entityId === hold.workerEntityId
+        && worker?.alive !== false && worker?.data?.jobId === jobId
+        && worker?.data?.worldRecordId === hold.workerWorldRecordId
+        && entity && entity.alive !== false && state.entities?.get?.(entity.id) === entity
+        && (hold.targetGeneration == null || entity.occupantGeneration === hold.targetGeneration)
+        && sameAdoptedSalvorTargetIdentity(currentIdentity, identity) && matches
+        && sectorId === hold.sectorId && worker.pos && entity.pos;
+      const distance = valid ? Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z) : Infinity;
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = valid && entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (!valid || !Number.isFinite(distance)
+        || distance > Math.max(hold.approachBandWU, ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)
+        || attached || hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      }
+    }
   },
 
   _tickAsteroidFieldInteractions(state) {
@@ -6212,6 +6665,13 @@ export const world = {
   _onSetCourse(payload = {}) {
     const pos = sanitizeCoursePos(payload.pos);
     if (pos) {
+      if (payload.recoverySource) {
+        const source = resolveContract47aRecoveryTarget(this.state, payload.missionId, payload.recoverySource);
+        if (!source || !payload.stable || resolveEntitySelection(this.state, payload.stable) !== source
+          || source.id !== payload.targetEntityId) return null;
+        // The UI command crosses a worker boundary: retain its identity, but use the live pose.
+        pos.x = source.pos.x; pos.z = source.pos.z;
+      }
       const label = String(payload.label || payload.reason || 'Autopilot fix');
       const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
       const targetSectorId = typeof payload.targetSectorId === 'string'
@@ -6227,6 +6687,8 @@ export const world = {
         label,
         reason: payload.reason || label,
         pos,
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       let stableTarget = null;
       if (targetEntityId != null) {
@@ -6234,22 +6696,23 @@ export const world = {
         // leave an unprovable bind that a recycled occupant later inherits — the authored pos
         // stays the fail-closed place instead. presentationEntityId already refused the same
         // dead bind two lines above; the id write now agrees with it (review).
-        const bound = liveEntityById(this.state, targetEntityId);
+        const bound = payload.stable ? resolveEntitySelection(this.state, payload.stable)
+          : liveEntityById(this.state, targetEntityId);
         // SF-244: the armed course outlives the commit instant and the core recycles entity
         // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
         // back to the fix) instead of redirecting the burn onto an unrelated body. A live but
         // uncapturable entity binds nothing: the waypoint must not keep a bare recyclable id
         // the autopilot already refused (review).
         if (bound) {
-          stableTarget = captureEntitySelection(bound);
+          stableTarget = payload.stable || captureEntitySelection(bound);
           if (stableTarget) {
-            this.state.nav.waypoint.targetEntityId = targetEntityId;
+            this.state.nav.waypoint.targetEntityId = bound.id;
             this.state.nav.waypoint.stable = stableTarget;
             // INF-056: the course aimed at a live body, so bind the presentation id too — flight
             // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
             // instrument resolves the same moving position through the canonical resolver. The
             // save whitelist drops the field, so a loaded waypoint falls back to pos the same way.
-            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, bound.id);
             if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
           }
         }
@@ -6261,11 +6724,14 @@ export const world = {
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,
-        targetEntityId: stableTarget ? targetEntityId : null,
+        targetEntityId: stableTarget ? this.state.nav.waypoint.targetEntityId : null,
         label,
         arrivalRadius,
         status: 'armed',
+        ...(payload.planetaryApproach === 'planet_tethys_anvil' ? { planetaryApproach: payload.planetaryApproach } : {}),
         ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);
@@ -7793,7 +8259,8 @@ export const world = {
       arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
-      resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
+      resourceBodies: serializeResourceBodyBag(
+        ensureResourceBodies(state.world, this._resourceBodyRetentionOptions()), this._resourceBodyRetentionOptions()),
       // Shelved far actors are durable run state: without them a virtualized NPC rematerializes
       // live on load and the next serialize captures a fat record where the save held a thin one.
       farActors: serializeFarActorTable(state.world.farActors),
@@ -7824,18 +8291,23 @@ export const world = {
     return out;
   },
 
-  deserialize(data) {
-    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  deserialize(data, context) {
+    for (const _ of this.deserializeChunked(data, context)) { /* sync lane: every batch inline */ }
   },
 
   // Generator twin: yields only at section boundaries (between the durable bag restores), never
   // inside a section — the async lane paints between them while every call keeps sync order.
-  *deserializeChunked(data) {
+  *deserializeChunked(data, context) {
     if (!data) return;
+    // World and its resource rows restore before npcJobs. During that interval use the
+    // incoming saved job bag, never the outgoing session's transient jobs.
+    this._resourceBodyRestoreJobs = context ? (context.npcJobs || { byId: {} }) : null;
+    this._clearAdoptedSalvorApproachState(this.state);
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
     state.world.arrangementVersion = arrangementVersion;
+    this._registerFreeDriveRingPoi();
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
     // materializer believe stations/gates are still live and the loaded sector appears empty.
@@ -7862,7 +8334,7 @@ export const world = {
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = yield* normalizeRecordsBagChunked(data.records);
     yield 'world-records';
-    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies, this._resourceBodyRetentionOptions());
     yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
@@ -7909,6 +8381,7 @@ export const world = {
 
   newGame() {
     const state = this.state;
+    this._clearAdoptedSalvorApproachState(state);
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
     // main.startNewGame replaces state.world with a fresh record after system init, so rebuild the
     // mutable ownership/map table here instead of relying on init's now-discarded copy.
@@ -7916,6 +8389,7 @@ export const world = {
     for (const sector of SECTORS) {
       state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
     }
+    this._registerFreeDriveRingPoi();
     state.world.discovery = {};
     state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};

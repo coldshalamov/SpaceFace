@@ -168,6 +168,67 @@ test('T / K / F1 close the matching instrument instead of no-op while it is open
   ui.dispose();
 });
 
+test('F2 delegates Shipworks loading and Escape cancels only a pending open', () => {
+  const listeners = installDomHarness();
+  const state = { mode: 'flight', ui: {}, settings: {} };
+  const emitted = [];
+  const bus = { on() { return () => {}; }, emit(name, payload) { emitted.push([name, payload]); } };
+  const popped = [];
+  const pushed = [];
+  let modal = false;
+  let topId = null;
+  let pending = false;
+  let toggles = 0;
+  let cancels = 0;
+  const screenManager = {
+    isOpen() { return modal; },
+    locked() { return false; },
+    getActiveScreenDef() { return topId ? { id: topId } : null; },
+    popScreen() { popped.push(topId); topId = null; modal = false; },
+    pushScreen(id) { pushed.push(id); },
+  };
+  const input = createUiInput({ state, bus }, screenManager, {
+    isShipScreenRequestPending: () => pending,
+    toggleShipScreenRequest: () => { toggles++; pending = !pending; },
+    cancelShipScreenRequest: () => { cancels++; pending = false; },
+  });
+
+  try {
+    const firstF2 = press(listeners, 'F2', 'F2');
+    assert.equal(firstF2.defaultPrevented, true);
+    assert.equal(toggles, 1, 'F2 delegates one demand-load intent to uiRoot');
+    assert.deepEqual(pushed, [], 'input never pushes the unregistered screen directly');
+
+    let escapedPropagation = false;
+    const escapePending = press(listeners, 'Escape', 'Escape', {
+      stopPropagation() { escapedPropagation = true; },
+    });
+    assert.equal(escapePending.defaultPrevented, true);
+    assert.equal(escapedPropagation, true);
+    assert.equal(cancels, 1);
+    assert.deepEqual(pushed, [], 'Escape cancels the pending import instead of opening Pause');
+
+    press(listeners, 'F2', 'F2');
+    assert.equal(pending, true);
+    press(listeners, 'F2', 'F2');
+    assert.equal(toggles, 3);
+    assert.equal(pending, false, 'a fresh F2 press cancels the outstanding open intent');
+    assert.deepEqual(pushed, [], 'a canceled F2 request still does not open Pause or Ship');
+
+    const escapeFlight = press(listeners, 'Escape', 'Escape');
+    assert.equal(escapeFlight.defaultPrevented, true);
+    assert.deepEqual(pushed, ['pause'], 'ordinary Escape still opens Pause without a pending Ship request');
+
+    modal = true;
+    topId = 'ship';
+    const closeF2 = press(listeners, 'F2', 'F2');
+    assert.equal(closeF2.defaultPrevented, true);
+    assert.deepEqual(popped, ['ship'], 'F2 closes the already-open Ship screen');
+  } finally {
+    input.dispose();
+  }
+});
+
 test('time-trial restart leaves the shared F8 travel key available outside its race context', () => {
   const listeners = installDomHarness();
   const state = { mode: 'flight', ui: {}, settings: {}, missions: { active: [] } };

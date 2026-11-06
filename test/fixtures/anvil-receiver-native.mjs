@@ -91,16 +91,20 @@ export function relocateAnvilObserver(f, watched, reason = 'anvil-receiver-obser
   assert.ok(native && player, 'observer needs actual native geometry');
   const playerRecord = native.records.get(player.id);
   assert.ok(playerRecord, 'observer hull must be admitted before relocation');
-  const bodyPos = playerRecord.body.translation(); let hull = 0;
+  let hull = 0;
   for (const co of playerRecord.colliders) {
-    const shape = co.shape, at = co.translation(); let bound = 0;
+    // Collider world transforms can lag a just-relocated body until the next
+    // physics step. Parent-relative offsets measure the actual fitted hull at
+    // either side of that boundary without including the teleport distance.
+    const shape = co.shape, at = co.translationWrtParent(); let bound = 0;
+    assert.ok(at, 'observer collider must be attached to its native body');
     if (shape.vertices?.length) {
       for (let i = 0; i < shape.vertices.length; i += 3)
         bound = Math.max(bound, Math.hypot(shape.vertices[i], shape.vertices[i + 1], shape.vertices[i + 2]));
     } else if (shape.halfExtents) bound = Math.hypot(shape.halfExtents.x, shape.halfExtents.y, shape.halfExtents.z);
     else if (Number.isFinite(shape.radius)) bound = shape.radius + (shape.halfHeight || 0);
     else assert.fail('unresolved observer collider envelope');
-    hull = Math.max(hull, bound + Math.hypot(at.x - bodyPos.x, at.y - bodyPos.y, at.z - bodyPos.z));
+    hull = Math.max(hull, bound + Math.hypot(at.x, at.y, at.z));
   }
   assert.ok(hull > 0 && Number.isFinite(hull));
   const origin = native._frameOrigin, observerShape = new native.RAPIER.Ball(hull);
@@ -109,11 +113,25 @@ export function relocateAnvilObserver(f, watched, reason = 'anvil-receiver-obser
   const observerVelocity = { x: 0, y: 0, z: 0 };
   const playerTravel = 0;
   const workers = ['collector', 'receiver'].map(role => readAnvilWorker(f, role)).filter(Boolean);
+  const heading = Number.isFinite(watched.data?.intent?.aimAngle)
+    ? watched.data.intent.aimAngle : (Number.isFinite(watched.rot) ? watched.rot : null);
   const rejected = [];
   for (const radius of [180, 300, 450]) for (let i = 0; i < 16; i++) {
     const angle = Math.PI / 2 + i * Math.PI / 8;
     const pos = { x: watched.pos.x + Math.cos(angle) * radius, z: watched.pos.z + Math.sin(angle) * radius };
     const point = { x: pos.x - origin.x, y: 0, z: pos.z - origin.z }; let clearance = Infinity, blocker = null;
+    // A two-second collision sweep alone can choose a clear point directly in
+    // front of a slow worker. Its normal traffic yield then brakes for the
+    // observer, distorting the route without ever producing a contact.
+    if (heading != null) {
+      const dx = pos.x - watched.pos.x, dz = pos.z - watched.pos.z;
+      const forward = dx * Math.cos(heading) + dz * Math.sin(heading);
+      const lateral = Math.abs(-dx * Math.sin(heading) + dz * Math.cos(heading));
+      if (forward > 0 && lateral < hull + 96) {
+        rejected.push({ pos, clearance: null, blocker: { reason: 'observer-forward-corridor' } });
+        continue;
+      }
+    }
     for (const rec of native.records.values()) {
       if (rec.entity.id === player.id) continue;
       const v = rec.body.isDynamic() ? rec.body.linvel() : { x: 0, y: 0, z: 0 };

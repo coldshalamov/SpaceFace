@@ -2,7 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext as runOwnerInNewContext } from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { parse } from '@babel/parser';
 
 import {
   admitReceipt,
@@ -43,6 +45,29 @@ const CSS_SRC = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8
 const COMMS_SRC = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
 const LAW_SRC = readFileSync(new URL('../src/ui/sectorLawPresenter.js', import.meta.url), 'utf8');
 const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.meta.url), 'utf8');
+
+// Isolated nested-owner checks share the real receipt geometry helpers, just as createHud's
+// closure does. No cross-call cache is active here; the dedicated receipt test drives flushes.
+const receiptHelperNames = new Set(['readReceiptRect', 'setReceiptStyle',
+  'prepareReceiptLaneSize', 'prepareReceiptCaptionSize']);
+const receiptHelperOwners = [];
+function collectReceiptHelpers(node) {
+  if (!node || typeof node !== 'object') return;
+  if (node.type === 'FunctionDeclaration' && receiptHelperNames.has(node.id?.name)) {
+    receiptHelperOwners.push(HUD_SRC.slice(node.start, node.end));
+    return;
+  }
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) value.forEach(collectReceiptHelpers);
+    else if (value && typeof value === 'object') collectReceiptHelpers(value);
+  }
+}
+collectReceiptHelpers(parse(HUD_SRC, { sourceType: 'module' }));
+assert.equal(receiptHelperOwners.length, receiptHelperNames.size);
+function runInNewContext(code, context) {
+  return runOwnerInNewContext(`var receiptPlacementMode = 'shared'; var receiptGeometryRects = null;
+    ${receiptHelperOwners.join('\n')};\n${code}`, context);
+}
 
 function installToastDom() {
   const byId = new Map();
@@ -139,6 +164,7 @@ function installSectorLawDom() {
     }
     setAttribute(k, v) { this.attributes.set(k, String(v)); }
     getAttribute(k) { return this.attributes.has(k) ? this.attributes.get(k) : null; }
+    removeAttribute(k) { this.attributes.delete(k); }
     appendChild(child) {
       if (child.parentNode) child.parentNode.removeChild(child);
       child.parentNode = this;
@@ -167,6 +193,7 @@ function installSectorLawDom() {
     getElementById: (id) => byId.get(id) || null,
     createElement: (tag) => new FakeElement(tag),
     querySelector: () => null,
+    documentElement: { dataset: {} },
     head,
     body: { dataset: {} },
     activeElement: null,
@@ -293,6 +320,588 @@ test('receipt lane sits in the HUD layout and misses radar/ship/objective', () =
     assert.deepEqual(lane, layout.receipt);
     assert.equal(receiptOverlapsReserved(layout), false, `${width}x${height} receipt misses reserved HUD`);
   }
+});
+
+test('receipt placement handles visible and hidden captions with external flight captions', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  let declaration = null;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object' || declaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'placeReceiptLane') {
+      declaration = node;
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.ok(declaration, 'the production receipt placement owner is present');
+  const owner = HUD_SRC.slice(declaration.start, declaration.end);
+  let snapshotDeclaration = null;
+  const findSnapshot = (node) => {
+    if (!node || typeof node !== 'object' || snapshotDeclaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'refreshFlightTextObstacleSnapshot') {
+      snapshotDeclaration = node;
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(findSnapshot);
+      else if (value && typeof value === 'object') findSnapshot(value);
+    }
+  };
+  findSnapshot(ast);
+  assert.ok(snapshotDeclaration, 'the production obstacle snapshot owner is present');
+  const refreshFlightTextObstacleSnapshot = runInNewContext(
+    `(${HUD_SRC.slice(snapshotDeclaration.start, snapshotDeclaration.end)})`,
+    { flightTextObstaclesStale: false },
+  );
+
+  for (const { visible, external } of [
+    { visible: true, external: true },
+    { visible: false, external: true },
+    { visible: true, external: false },
+  ]) {
+    const placed = [];
+    let externalPlacements = 0;
+    let readoutPlacements = 0;
+    const receipt = { getBoundingClientRect: () => ({ height: 44 }) };
+    const laneRoot = {
+      style: {},
+      querySelector: () => receipt,
+      querySelectorAll: () => [receipt],
+    };
+    const caption = {
+      hidden: !visible,
+      scrollHeight: 56,
+      style: {},
+      classList: { contains: (name) => name === 'show' && visible },
+      getBoundingClientRect: () => ({ height: 56 }),
+    };
+    const slot = {
+      x: 10, width: 300, captionSlot: { x: 12, width: 120 },
+    };
+    const layout = { receipt: { x: 0, width: 320, height: 50 }, safe: {} };
+    const context = {
+      toastsLaneEl: laneRoot,
+      document: { getElementById: () => laneRoot },
+      window: { innerWidth: 800, innerHeight: 600 },
+      caption,
+      lastReceiptObstacle: null,
+      lastCaptionObstacleVisible: false,
+      externalCaptionsStale: false,
+      externalFlightCaptions: new Set(external ? [{}] : []),
+      placeAlertLaneInSafeBands: () => {},
+      overlaySafeSlot: () => slot,
+      freeOverlayBands: () => [{ top: 0, bottom: 160 }],
+      setStyle: (el, key, value) => { el.style[key] = value; },
+      getComputedStyle: () => ({ rowGap: '0px' }),
+      placeCaptionInSafeSlot: (...args) => placed.push(args),
+      placeExternalFlightCaptions: () => { externalPlacements++; },
+      placeFlightReadouts: () => { readoutPlacements++; },
+      refreshFlightTextObstacleSnapshot,
+    };
+    const placeReceiptLane = runInNewContext(`(${owner})`, context);
+    placeReceiptLane(layout);
+
+    assert.equal(placed.length, visible ? 1 : 0);
+    if (visible) assert.equal(placed[0][2], slot.captionSlot);
+    assert.equal(externalPlacements, 1);
+    assert.equal(readoutPlacements, 1);
+  }
+});
+
+test('caption bands reserve sibling touch controls and refresh only their layout changes', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const names = new Set(['responsiveOverlayObstacles', 'freeOverlayBands',
+    'invalidateObjectiveEdgeBoxes', 'invalidateAndPlaceHudOverlays']);
+  const owners = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(owners.length, names.size);
+  const obstacle = (left, top, width, height) => ({
+    getBoundingClientRect: () => ({ left, top, width, height, right: left + width, bottom: top + height }),
+  });
+  const status = obstacle(14, 14, 176, 124);
+  const pause = obstacle(326, 14, 52, 52);
+  const powers = obstacle(250, 14, 68, 44);
+  const buttons = obstacle(254, 640, 124, 190);
+  const hiddenDock = obstacle(0, 0, 0, 0);
+  const tape = obstacle(250, 64, 128, 62);
+  const touchElements = [status, pause, powers, buttons, hiddenDock];
+  const touch = { querySelectorAll: () => touchElements };
+  const observed = new Set();
+  let observeCalls = 0;
+  let placements = 0;
+  let configObserver;
+  const context = {
+    root: { querySelectorAll: () => [], querySelector: () => true },
+    document: { getElementById: () => touch, querySelectorAll: () => [] },
+    window: { innerWidth: 390 },
+    objectiveEdgeObstacles: () => ({}),
+    externalFlightCaptions: new Set(),
+    yieldedFlightVisuals: new Map(),
+    responsiveOverlayElements: new Set(),
+    overlayLayoutObserver: {
+      observe: (el) => { observed.add(el); observeCalls++; },
+      unobserve: (el) => { observed.delete(el); },
+    },
+    touchOverlayOwner: null,
+    touchOverlayObserver: null,
+    objectiveEdgeBoxes: { stale: false },
+    externalCaptionsStale: false,
+    invalidateReceiptLane: () => { placements++; },
+    MutationObserver: class {
+      constructor(callback) { this.callback = callback; configObserver = this; }
+      observe(el, options) { this.element = el; this.options = options; }
+      disconnect() { this.disconnected = true; }
+    },
+  };
+  // The ordinary selector returns no touch controls: they are outside #hud. Only the
+  // production responsive owner can find and reserve these sibling rectangles.
+  context.root.querySelectorAll = (selector) => selector === '#race-tape' ? [tape] : [];
+  const { freeOverlayBands } = runInNewContext(`${owners.join('\n')}; ({ freeOverlayBands })`, context);
+  const layout = { viewport: { width: 390 } };
+  const slot = { x: 12, width: 366 };
+  const bands = freeOverlayBands(slot, 844, layout);
+  assert.ok(bands.length > 0, 'visible discovery space remains');
+  assert.ok(bands.every((band) => band.top >= 146 && band.bottom <= 632),
+    'all available bands clear ship status, top keys, race tape and lower thumb controls');
+  assert.equal(observed.size, 6, 'each actual instrument is watched, including hidden dock appearance');
+  freeOverlayBands(slot, 844, layout);
+  assert.equal(observeCalls, 6, 'settled captions do not repeatedly register geometry observers');
+  assert.equal(placements, 0, 'reading live controls does not invalidate placement');
+  assert.equal(configObserver.element, touch);
+  assert.deepEqual(Array.from(configObserver.options.attributeFilter), ['data-layout', 'data-lefty', 'style']);
+  assert.equal(configObserver.options.subtree, undefined, 'live speed and meter updates are not observed');
+  configObserver.callback();
+  assert.equal(context.objectiveEdgeBoxes.stale, true);
+  assert.equal(context.externalCaptionsStale, true);
+  assert.equal(placements, 1, 'handedness/scale changes invalidate the caption reservation for the next paint');
+
+  touchElements.splice(touchElements.indexOf(powers), 1);
+  freeOverlayBands(slot, 844, layout);
+  assert.equal(observed.has(powers), false, 'replaced controls release their geometry observer');
+
+  // In landscape the tape sits to the left of the radar, beyond the status strip.
+  const railBands = freeOverlayBands({ x: 250, width: 128 }, 390,
+    { viewport: { width: 844 } });
+  assert.ok(railBands.every((band) => band.top >= 134), 'the compact tape is itself a caption obstacle');
+});
+
+test('the mobile voice lane moves below open Details and View controls, then re-seats after they close', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const wanted = new Set(['freeOverlayBands', 'placeAlertLaneInSafeBands',
+    'restoreAlertLanePlacement', 'invalidateObjectiveEdgeBoxes']);
+  const functions = new Map();
+  let alertStyleDeclaration = '';
+  let setMissionDetailsExpression = '';
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'VariableDeclarator' && node.id?.name === 'setMissionDetails') {
+      setMissionDetailsExpression = HUD_SRC.slice(node.init.start, node.init.end);
+    }
+    if (node.type === 'FunctionDeclaration' && wanted.has(node.id?.name)) {
+      functions.set(node.id.name, HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    if (node.type === 'VariableDeclaration' && node.declarations?.some((item) => item.id?.name === 'ALERT_LANE_STYLE_KEYS')) {
+      alertStyleDeclaration = HUD_SRC.slice(node.start, node.end);
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(functions.size, wanted.size);
+  assert.ok(alertStyleDeclaration);
+  assert.ok(setMissionDetailsExpression, 'Details has a concrete open/close owner');
+
+  const box = (name, left, top, width, height, touch = false) => ({
+    name, isConnected: true, hidden: false, style: {},
+    getBoundingClientRect: () => ({ left, top, width, height, right: left + width, bottom: top + height }),
+    closest: (selector) => touch && selector === '#sf-touch-overlay' ? {} : null,
+    matches: () => false,
+  });
+  const status = box('status', 14, 10, 124, 100, true);
+  const pause = box('pause', 326, 10, 52, 52, true);
+  const powers = box('powers', 250, 14, 68, 44, true);
+  const objective = box('objective', 16, 122, 188, 76);
+  const radar = box('radar', 250, 124, 128, 130);
+  const details = box('details-panel', 8, 112, 280, 172);
+  const view = box('view-options', 192, 109, 186, 141);
+  const touchButtons = box('touch-buttons', 182, 490, 196, 156, true);
+  const card = box('voice-floor', 0, 146, 390, 48);
+  card.className = 'sf-alert sf-alert--floor';
+  card.getAttribute = (key) => key === 'aria-live' ? 'off' : null;
+  const lane = { id: 'alerts', style: {}, scrollHeight: 48,
+    querySelectorAll: () => [card] };
+  const touchRoot = { querySelector: () => touchButtons };
+  let mobileFlight = true;
+  let obstacles = [status, pause, powers, objective, radar, details, view, touchButtons];
+  const context = {
+    alertLanePlacementStale: true, alertLanePlacementActive: false, alertLaneOriginalStyle: null,
+    ALERT_LANE_STYLE_KEYS: undefined,
+    alertsEl: lane,
+    document: { documentElement: { getAttribute: (key) => key === 'data-sf-mobile-flight' ? (mobileFlight ? '1' : '0') : null },
+      defaultView: { getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) },
+      getElementById: (id) => id === 'alerts' ? lane : id === 'sf-touch-overlay' ? touchRoot : null,
+      querySelectorAll: (selector) => selector === '#alerts > .sf-alert:not([hidden])' ? [card] : [] },
+    globalThis: { getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) },
+    window: { innerWidth: 390, innerHeight: 682 },
+    root: { querySelectorAll: (selector) => selector === '.sf-leftcontext' ? [objective] : [],
+      querySelector: () => null },
+    objectiveEdgeBoxes: { stale: false }, externalCaptionsStale: false,
+    flightTextObstaclesStale: false, yieldedFlightVisuals: new Map(), externalFlightCaptions: new Set(),
+    responsiveOverlayObstacles: () => obstacles,
+    objectiveEdgeObstacles: () => ({}),
+    overlaySafeSlot: () => ({ x: 12, width: 366 }),
+    setStyle: (el, key, value) => { if (el.style[key] !== value) el.style[key] = value; },
+  };
+  const { freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes } = runInNewContext(
+    `${alertStyleDeclaration}\n${[...functions.values()].join('\n')}; ({ freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes })`, context);
+  // Bind the production allocator into the placement closure after extracting both owners.
+  context.freeOverlayBands = freeOverlayBands;
+  const detailsState = { hidden: true };
+  const detailsButton = { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; } };
+  let detailPlacementSawStale = false;
+  const detailsContext = {
+    mtDetails: detailsState,
+    mtDetailsButton: detailsButton,
+    mtDetailsClose: { focus() {} },
+    flightTextObstaclesStale: false,
+    alertLanePlacementStale: false,
+    invalidateReceiptLane() { detailPlacementSawStale = detailsContext.alertLanePlacementStale; },
+  };
+  const setMissionDetails = runInNewContext(`(${setMissionDetailsExpression})`, detailsContext);
+  setMissionDetails(true);
+  assert.equal(detailsState.hidden, false);
+  assert.equal(detailsButton.attributes['aria-expanded'], 'true');
+  assert.equal(detailPlacementSawStale, true, 'opening Details invalidates the voice lane for the next paint');
+  setMissionDetails(false);
+  assert.equal(detailsState.hidden, true);
+  assert.equal(detailsButton.attributes['aria-expanded'], 'false');
+  const layout = { viewport: { width: 390 }, safe: { left: 12, width: 366 } };
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  const openedTop = Number.parseFloat(lane.style.top);
+  const openedHeight = Number.parseFloat(lane.style.maxHeight);
+  assert.ok(openedTop >= 288, `voice lane starts below both open panels (${openedTop}px)`);
+  assert.ok(openedTop + openedHeight < 482, 'voice lane clears the lower touch-control band');
+  assert.equal(lane.style.position, 'fixed');
+  assert.equal(lane.style.transform, 'none');
+  assert.equal(card.name, 'voice-floor', 'the existing voice node and full text remain mounted');
+  assert.equal(card.getAttribute('aria-live'), 'off', 'the voice owner retains its live-region contract');
+
+  obstacles = [status, pause, powers, objective, radar, touchButtons];
+  context.alertLanePlacementStale = false;
+  invalidateObjectiveEdgeBoxes();
+  assert.equal(context.alertLanePlacementStale, true, 'layout changes invalidate the cached alert seat');
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  assert.ok(Number.parseFloat(lane.style.top) < openedTop, 'closing Details and View returns the voice to an earlier free band');
+  assert.equal(card.hidden, false, 'the tutorial voice is never discarded to clear the controls');
+  mobileFlight = false;
+  context.alertLanePlacementStale = true;
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  assert.equal(lane.style.position, '', 'the mobile seat is removed when returning to desktop flight');
+  assert.equal(lane.style.transform, '', 'desktop transform policy remains owned by its existing stylesheet');
+});
+
+test('alert lane placement observer ignores its own style writes and cleanup releases the lane', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const names = new Set(['alertLaneStyleMutationIsOwned', 'restoreAlertLanePlacement', 'cleanupAlertLanePlacement']);
+  const declarations = new Map();
+  const constants = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      declarations.set(node.id.name, HUD_SRC.slice(node.start, node.end));
+    }
+    if (node.type === 'VariableDeclaration' && node.declarations?.some((item) =>
+      ['ALERT_LANE_STYLE_KEYS', 'ALERT_LANE_OWNED_CSS_PROPERTIES'].includes(item.id?.name))) {
+      constants.push(HUD_SRC.slice(node.start, node.end));
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(declarations.size, names.size);
+  assert.equal(constants.length, 2);
+  const lane = { style: { position: 'fixed', top: '92px' }, getAttribute: () => lane.styleText };
+  let disconnected = 0;
+  const context = {
+    lane, alertsEl: lane, alertLanePlacementActive: true,
+    alertLaneOriginalStyle: { position: 'absolute', left: '', right: '', top: '', bottom: '', width: '',
+      maxHeight: '', overflowY: '', transform: 'translateY(4px)', pointerEvents: '', boxSizing: '' },
+    alertLaneObserver: { disconnect() { disconnected++; } },
+    setStyle(el, key, value) { el.style[key] = value; },
+  };
+  const harness = runInNewContext(`${constants.join('\n')}\n${declarations.get('restoreAlertLanePlacement')}\n${declarations.get('cleanupAlertLanePlacement')}\n${declarations.get('alertLaneStyleMutationIsOwned')}\n({ cleanupAlertLanePlacement, alertLaneStyleMutationIsOwned })`, context);
+  lane.styleText = 'position:fixed; top:92px; opacity:0.7';
+  const ownPositionChange = { type: 'attributes', target: lane, attributeName: 'style', oldValue: 'position:absolute; top:8px; opacity:0.7' };
+  assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), true,
+    'positioning changes owned by the allocator do not schedule another placement');
+  lane.styleText = 'position: fixed; inset: 484px auto auto 12px; width: 366px; max-height: 174px; overflow-y: visible; transform: none; pointer-events: none; box-sizing: border-box;';
+  const cssomInsetChange = {
+    type: 'attributes', target: lane, attributeName: 'style',
+    oldValue: 'position: fixed; inset: 0px auto auto 12px; width: 366px; max-height: none; overflow-y: visible; transform: none; pointer-events: none; box-sizing: border-box;',
+  };
+  assert.equal(harness.alertLaneStyleMutationIsOwned(cssomInsetChange, lane), true,
+    'CSSOM inset shorthand serialization of allocator-owned side writes is not treated as an external change');
+  lane.styleText = 'position:fixed; top:92px; opacity:0';
+  assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), false,
+    'a lane visibility change remains observable even when the allocator also owns position');
+  assert.equal(harness.alertLaneStyleMutationIsOwned({ ...ownPositionChange, target: {} }, lane), false,
+    'child alert changes continue to refresh the lane');
+  harness.cleanupAlertLanePlacement();
+  assert.equal(disconnected, 1);
+  assert.equal(lane.style.position, 'absolute');
+  assert.equal(lane.style.transform, 'translateY(4px)');
+  assert.equal(context.alertLanePlacementActive, false);
+});
+
+test('short landscape flight text uses the gap between the camera key and radar', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  let declaration;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object' || declaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'overlaySafeSlot') {
+      declaration = HUD_SRC.slice(node.start, node.end);
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.ok(declaration);
+  // The ordinary 844 x 390 phone capture has the camera key at x=168..316
+  // and the radar to its right. Keep the complete text column between them.
+  const key = { left: 168, right: 316, top: 8, bottom: 52, width: 148, height: 44 };
+  const dock = { left: 612, right: 760, top: 95, bottom: 260, width: 148, height: 165 };
+  const keyNode = { isConnected: true, getBoundingClientRect: () => key };
+  const context = {
+    document: { documentElement: { getAttribute: () => '1' } },
+    root: { querySelector: () => keyNode },
+    plateBox: (el) => el?.getBoundingClientRect?.() || null,
+    objectiveEdgeObstacles: () => ({ rail: null, right: dock }),
+  };
+  const place = runInNewContext(`(${declaration})`, context);
+  const slot = place({ safe: { left: 0, right: 844, width: 844 } }, 844, 390);
+  assert.ok(slot.x >= key.right + 8);
+  assert.ok(slot.x + slot.width <= dock.left - 8);
+  assert.ok(slot.width >= 200, 'normal sized text retains a useful line width');
+  assert.equal(slot.captionSlot, undefined, 'captions and receipts share the measured column');
+
+  let bandsDeclaration;
+  const findBands = (node) => {
+    if (!node || typeof node !== 'object' || bandsDeclaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'freeOverlayBands') {
+      bandsDeclaration = HUD_SRC.slice(node.start, node.end);
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(findBands);
+      else if (value && typeof value === 'object') findBands(value);
+    }
+  };
+  findBands(ast);
+  assert.ok(bandsDeclaration);
+  const box = (left, top, width, height) => ({ left, top, width, height,
+    right: left + width, bottom: top + height });
+  const node = (rect, touch = false) => ({ getBoundingClientRect: () => rect,
+    closest: () => touch ? {} : null, matches: () => false });
+  const camera = node(key);
+  const status = node(box(14, 10, 124, 92), true);
+  const pause = node(box(780, 10, 52, 52), true);
+  const radar = node(dock);
+  const alert = node(box(slot.x, 12, slot.width, 24));
+  const receipt = node(box(slot.x, 52, slot.width, 24));
+  context.root.querySelectorAll = (selector) => selector.includes('sf-caption.show') ? [receipt] : [radar];
+  context.document.querySelectorAll = (selector) => selector.startsWith('#alerts') ? [alert] : [];
+  context.responsiveOverlayObstacles = () => [camera, status, pause];
+  context.yieldedFlightVisuals = new Map();
+  context.externalFlightCaptions = new Set();
+  const freeBands = runInNewContext(`(${bandsDeclaration})`, context);
+  const bands = freeBands(slot, 390, { viewport: { width: 844 } }, null, true);
+  assert.ok(bands.some((band) => band.top >= receipt.getBoundingClientRect().bottom
+    && band.bottom - band.top >= 48), 'an additional caption has a separate readable band');
+});
+
+test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
+  const names = new Set(['overlaySafeSlot', 'freeOverlayBands', 'placeExternalFlightCaptions',
+    'placeCaptionInSafeSlot', 'clearExternalFlightCaptionPlacement', 'plateBox']);
+  const owners = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(parse(HUD_SRC, { sourceType: 'module' }));
+  assert.equal(owners.length, names.size);
+  const rect = (x, y, width, height) => ({ x, y, left: x, top: y, width, height,
+    right: x + width, bottom: y + height });
+  const node = (name, box, touch = false) => ({
+    name, isConnected: true, hidden: false, style: {},
+    getBoundingClientRect: () => box,
+    closest: () => touch ? {} : null,
+    matches: () => false,
+  });
+  for (const { lefty, portrait } of [
+    { lefty: false, portrait: true }, { lefty: true, portrait: true },
+    { lefty: false, portrait: false },
+  ]) {
+    // These values came from the natural a473 discovery capture, not estimated corner
+    // anchors. The stale desktop reservations plus these actual instruments returned no band.
+    const w = portrait ? 390 : 844, h = portrait ? 664 : 390;
+    const dock = node('dock', portrait ? rect(151.8125, 196, 226.1875, 229) : rect(518, 80, 236, 229));
+    const objective = node('objective', rect(portrait ? 16 : 91.328125, portrait ? 236 : 110,
+      176.84765625, 82.03125));
+    const thumb = node('thumb', portrait ? rect(lefty ? 12 : 182, 490, 196, 156)
+      : rect(658, 248, 170, 132), true);
+    const status = node('status', rect(14, 10, 124, portrait ? 107.390625 : 92.515625), true);
+    const pause = node('pause', rect(portrait ? 326 : 780, 10, 52, 52), true);
+    const powers = node('powers', portrait ? rect(250, 14, 68, 44) : rect(796, 82, 48, 88), true);
+    const tape = node('tape', portrait ? rect(250, 64, 128, 56) : rect(409, 108, 180, 56));
+    const alert = node('alert', portrait ? rect(10, 146, 370, 38) : rect(232.328125, 22, 379.328125, 23));
+    const receipts = [node('receipt', rect(14, portrait ? 359.203125 : 118, portrait ? 306 : 320, 24.890625)),
+      node('receipt', rect(14, portrait ? 388.09375 : 146.890625, portrait ? 306 : 320, 24.890625))];
+    let blocked = false;
+    const full = node('blocking-decision', rect(0, 0, w, h));
+    full.getBoundingClientRect = () => rect(0, 0, w, blocked === 'short-band' ? h - 64 : h);
+    const discovery = node('discovery', rect(12, 8, 336.53125, 74));
+    discovery.style.opacity = '';
+    discovery.getAttribute = (key) => key === 'aria-live' ? 'polite' : null;
+    const measuredWidths = [];
+    let geometryReads = 0;
+    Object.defineProperty(discovery, 'scrollHeight', { get() {
+      const width = Number.parseFloat(discovery.style.maxWidth);
+      measuredWidths.push(width);
+      return width < 200 ? 148 : 74;
+    } });
+    const touch = { querySelector: () => thumb };
+    const context = {
+      root: {
+        querySelectorAll: selector => selector.includes('sf-caption.show') ? receipts
+          : selector === '.sf-leftcontext' ? [objective] : [dock],
+        querySelector: () => true,
+      },
+      document: { getElementById: () => touch, querySelectorAll: () => blocked ? [alert, full] : [alert] },
+      window: { innerWidth: w, innerHeight: h },
+      objectiveEdgeObstacles: () => ({ right: dock.getBoundingClientRect(), rightEl: dock }),
+      responsiveOverlayObstacles: () => { geometryReads++; return [thumb, status, pause, powers, tape]; },
+      externalFlightCaptions: new Set([discovery]),
+      externalCaptionOpacity: new Map([[discovery, '']]),
+      yieldedFlightVisuals: new Map(),
+      restoreYieldedFlightVisuals() {},
+      externalCaptionsStale: true,
+    };
+    const { placeExternalFlightCaptions, clearExternalFlightCaptionPlacement,
+      freeOverlayBands, overlaySafeSlot } = runInNewContext(
+      `${owners.join('\n')}; ({ placeExternalFlightCaptions, clearExternalFlightCaptionPlacement, freeOverlayBands, overlaySafeSlot })`, context);
+    const layout = resolveObjectiveHudLayout(w, h);
+    placeExternalFlightCaptions(layout, w, h);
+    assert.equal(discovery.style.left, lefty ? '216px' : '12px');
+    assert.equal(discovery.style.top, portrait ? '433px' : '200px');
+    assert.equal(discovery.style.maxWidth, portrait ? '162px' : '320px');
+    assert.equal(discovery.style.maxHeight, portrait ? '223px' : '182px');
+    assert.equal(discovery.style.overflowY, 'visible', 'wrapped discovery fits without clipping or scrolling');
+    assert.equal(measuredWidths[0], portrait ? 162 : 320, 'the candidate width is applied before height measurement');
+    assert.equal(discovery.style.opacity, '', 'authored class fade owns a placed discovery');
+    assert.equal(context.externalCaptionsStale, false, 'settled placement does not keep scanning geometry');
+
+    for (const obstruction of ['short-band', 'no-band']) {
+      blocked = obstruction;
+      context.externalCaptionsStale = true;
+      if (obstruction === 'short-band') {
+        const candidate = overlaySafeSlot(layout, w, h).captionSlot;
+        const bands = freeOverlayBands(candidate, h, layout, discovery, true);
+        assert.equal(bands.length, 1, 'this regression has a nonempty band, not just an exhausted allocator');
+        assert.equal(bands[0].bottom - bands[0].top, 48, 'the band is shorter than the whole wrapped caption');
+      }
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '0', `${obstruction}: the whole wrapped caption must fit`);
+      assert.equal(discovery.style.pointerEvents, 'none');
+      assert.equal(discovery.hidden, false);
+      assert.equal(discovery.style.display, undefined);
+      assert.equal(discovery.getAttribute('aria-live'), 'polite');
+      assert.equal(context.externalCaptionsStale, false, 'deferred placement waits for an actual layout invalidation');
+      const measured = measuredWidths.length, reads = geometryReads;
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(measuredWidths.length, measured, 'a blocked steady frame does not measure wrapped text again');
+      assert.equal(geometryReads, reads, 'a blocked steady frame does not query obstacle geometry again');
+      blocked = false;
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '0', 'space alone does not bypass the cached placement');
+      context.externalCaptionsStale = true; // the real resize/config/receipt/objective invalidation seam
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '', 'an invalidated freed band restores the existing class opacity/fade');
+      assert.equal(discovery.style.top, portrait ? '433px' : '200px');
+    }
+    blocked = true;
+    context.externalCaptionsStale = true;
+    placeExternalFlightCaptions(layout, w, h);
+    clearExternalFlightCaptionPlacement(discovery);
+    assert.equal(discovery.style.opacity, '', 'unregistering a waiting discovery restores paint ownership');
+    assert.equal(context.externalCaptionOpacity.has(discovery), false);
+  }
+});
+
+test('critical notice borrows the objective only when crowded and restores it on reflow', () => {
+  const names = new Set(['placeExternalFlightCaptions', 'restoreYieldedFlightVisuals', 'yieldFlightVisual']);
+  const owners = [];
+  const visit = node => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end)); return;
+    }
+    for (const value of Object.values(node)) Array.isArray(value) ? value.forEach(visit) : visit(value);
+  };
+  visit(parse(HUD_SRC, { sourceType: 'module' }));
+  const objective = { style: { visibility: '' } };
+  const notice = { isConnected: true, hidden: false, dataset: { flightCritical: 'true' },
+    style: {}, scrollHeight: 80, getBoundingClientRect: () => ({ height: 80 }) };
+  const classes = new Set();
+  const touch = { querySelector: () => ({}), classList: { add: v => classes.add(v), remove: v => classes.delete(v) } };
+  let free = false;
+  const context = {
+    root: { querySelectorAll: selector => selector.includes('sf-leftcontext') ? [objective] : [] },
+    document: { getElementById: () => touch },
+    externalFlightCaptions: new Set([notice]), externalCaptionOpacity: new Map([[notice, '']]),
+    yieldedFlightVisuals: new Map(), externalCaptionsStale: true,
+    plateBox: () => ({}), overlaySafeSlot: () => ({ x: 10, width: 200 }),
+    freeOverlayBands: () => free || objective.style.visibility === 'hidden' ? [{ top: 20, bottom: 120 }] : [],
+    placeCaptionInSafeSlot: (el, layout, slot, unused, band) => { el.style.top = String(band.top); },
+  };
+  const { placeExternalFlightCaptions } = runInNewContext(`${owners.join('\n')}; ({ placeExternalFlightCaptions })`, context);
+  placeExternalFlightCaptions({}, 390, 320);
+  assert.equal(objective.style.visibility, 'hidden');
+  assert.equal(notice.style.opacity, '');
+  assert.equal(notice.style.top, '20');
+  free = true; context.externalCaptionsStale = true;
+  placeExternalFlightCaptions({}, 390, 320);
+  assert.equal(objective.style.visibility, '', 'objective returns when a free slot opens');
+  assert.equal(classes.has('mf-notice-priority'), false);
 });
 
 test('first-flight instruction yields space to the right target dock on narrow viewports', () => {
@@ -511,6 +1120,46 @@ test('the opening window anchors to the sim clock at game start, never wall time
     onboarding: { active: false, finished: false, startedAt: 50 },
     nav: { waypoint: { reason: 'x' } },
   }), false);
+});
+
+test('mobile authority notices register and release their existing flight overlay', () => {
+  const dom = installSectorLawDom();
+  try {
+    document.documentElement.dataset.sfMobile = '1';
+    const calls = [];
+    const hud = {
+      registerExternalFlightCaption: (el) => calls.push(['register', el]),
+      refreshExternalFlightCaption: (el) => calls.push(['refresh', el]),
+      releaseExternalFlightCaption: (el) => calls.push(['release', el]),
+    };
+    const state = { mode: 'flight', ui: {}, simTime: 0, world: {}, playerId: 1 };
+    const presenter = createSectorLawPresenter({ state, bus: createBus(), ui: { hud } });
+    assert.equal(presenter.showDirectReceipt({ outcome: 'protected_withdrawal' }), true);
+    assert.equal(presenter.el.parentNode, dom.uiRoot);
+    assert.equal(presenter.el.dataset.flightCritical, 'true');
+    assert.deepEqual(calls.map(([kind]) => kind), ['register']);
+    assert.match(presenter.el.getAttribute('aria-label'), /CONTACT WITHDREW/);
+    state.simTime = 5;
+    presenter.tick();
+    assert.equal(presenter.el.hidden, true, 'receipt retains its existing expiry');
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release']);
+    assert.equal(presenter.renderIncident({ id: 'inc', attackerId: 2, status: 'distress',
+      cause: 'npc_piracy', factionId: 'faction_scn' }), true);
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release', 'register']);
+    presenter.hide();
+    assert.equal(presenter.el.hidden, true);
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release', 'register', 'release']);
+    state.simTime = 30;
+    assert.equal(presenter.showSector('sector_helios'), true);
+    assert.equal(presenter.el.dataset.flightCritical, 'true', 'timed law line retains notice priority');
+    state.simTime += 5;
+    presenter.tick();
+    assert.equal(presenter.el.dataset.lawMode, 'badge');
+    assert.equal(presenter.el.dataset.flightCritical, undefined, 'steady badge does not evict other flight visuals');
+    assert.deepEqual(calls.slice(-3).map(([kind]) => kind), ['register', 'release', 'register'],
+      'the old critical registration is released before normal-priority registration');
+    presenter.destroy();
+  } finally { dom.restore(); }
 });
 
 test('the law paragraph retires during the opening while live incidents still surface', () => {

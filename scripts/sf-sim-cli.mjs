@@ -513,7 +513,7 @@ async function run47a({
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
-  await preparePhysicsBackend(registry, state, physicsBackend);
+  if (!loadEnvelopePath) await preparePhysicsBackend(registry, state, physicsBackend);
   if (loadEnvelopePath) {
     await resumeLoadedEnvelope({
       registry,
@@ -1124,11 +1124,11 @@ function assert47aPhase0Metrics(metrics, options = {}) {
 function usage(code, message) {
   if (message) process.stderr.write(message + '\n');
   process.stderr.write('Usage:\n');
-  process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.save-v23.expected.json --hash --repeat 20 [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs inspect 47a --seed 47 --tick 360 --inputs test/47a.inputs.json [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.save-v23.expected.json --reload-at 600 [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  node scripts/sf-sim.mjs trace 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--events combat.*,story.*] [--limit 500] [--physics-backend custom|rapier|rapier-dynamic] [--load-envelope path] [--write-envelope path]\n');
-  process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
+  process.stderr.write('  node scripts/sf-sim.mjs profile 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json [--expect test/47a.telemetry.save-v23.expected.json] [--reload-at 600] [--physics-backend custom|rapier|rapier-dynamic]\n');
   process.stderr.write('  default physics backend: rapier-dynamic\n');
   process.stderr.write('  Optional: --scenario-contract src/data/scenarios/47a.scenario.json, --tactical-ai, --counter-tether-probe dash|cut\n');
   process.exit(code);

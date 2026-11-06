@@ -1,3 +1,5 @@
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { MAX_PER_SECTOR, CORE_MIN_TRAFFIC, priorityCourierServiceForSector,
   FLEET_BY_FACTION, TRAFFIC_ROLES, CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST,
   CERES_ACTIVITY_CAST_BY_SLOT_ID, sectorHasAuthoredRock, trafficRoleMixForSector,
@@ -14,6 +16,7 @@ import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTall
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
+import { acceptSweeperPickup, dispatchSweeperWork, finishSweeperCycle } from './scrapSweeperOps.js';
 import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 // Ambient NPC traffic (V2 §28b / cut-list #2 visible-haulers). Spawns benign freighter ships that
 // ply station-to-station routes, making populated space feel ALIVE and — now that the economy
@@ -592,7 +595,6 @@ const AMBIENT_NEAR_PERIOD = 2;
 // cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
 // envelope), identity keys are worldRecordSlotId / jobId, and movement stays with npcJobsRuntime.
 const CERES_CAUSAL_CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
-const CERES_CAUSAL_CHAIN_EVENT = 'traffic:ceresCausalChain';
 const CERES_CAUSAL_CHAIN_MAX_CONCURRENT = 2;
 const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
 export const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';
@@ -1781,8 +1783,10 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('save:loaded', () => bindRestoredCharonSupply(this));
     this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p));
+    this.bus.on('npcjobs:cycle', p => finishSweeperCycle(this, p));
     this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p));
     this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => acceptSweeperPickup(this, p));
     this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {}));
@@ -1796,7 +1800,7 @@ export const traffic = {
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
-    this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
+    this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
@@ -2191,7 +2195,10 @@ export const traffic = {
         : def.express
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
-      const manifest = this._assignManifest(ent, role, target, sectorId);
+      const manifest = role === 'sweeper'
+        ? this._emptySalvorManifest(ent, 0)
+        : this._assignManifest(ent, role, target, sectorId);
+      if (role === 'sweeper' && ent.data) ent.data.cargoManifest = manifest;
       this._watchSpawnedTraffic(ent);
       this._active.push(ent.id);
       const rec = {
@@ -3901,6 +3908,7 @@ export const traffic = {
     }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
+    dispatchSweeperWork(this, stations, state.world && state.world.currentSectorId);
     // Even with zero freighters, a wreck can still call a cutter into the sector.
     if ((!list || list.length === 0) || stations.length === 0) {
       if (stations.length > 0) {
@@ -4031,6 +4039,9 @@ export const traffic = {
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
+      // Retire only this exact rescue hull's old unleased generic tender assignment. Until
+      // that owner releases it, the normal job and violence branches remain authoritative.
+      if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
@@ -4067,9 +4078,20 @@ export const traffic = {
       }
       if (stepCharonSupply(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
       if (stepWinnowRecovery(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
-      if (e.data?.itinerary?.kind === 'anvil_work') continue;
-      if (e.data && e.data.jobId) continue;
-      if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
+      if (e.data?.itinerary?.kind === 'anvil_work' || e.data?.jobId || e.data?.claimDepotId) {
+        this._releaseHeatChallengeBrake(e, false);
+        continue; // the job/depot owns its current intent, including any brake
+      }
+      // inf-patrol-challenge — the law owns the fact (lawSecurity stamps data.heatChallenge on
+      // an ambient patrol that acquires a wanted hull); traffic owns the flying. The challenged
+      // hull breaks its station orbit and holds the standoff ring off the wanted hull's beam
+      // until the law releases the stamp. Route work and role behavior wait behind it.
+      if (e.data?.heatChallenge || this._heatChallengeBrakeLeases?.has(e)) {
+        if (this._stepHeatChallenge(e, state)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
+      }
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
@@ -4295,11 +4317,91 @@ export const traffic = {
     setIntent(entity, 0, 1, true, false, null, aim);
   },
 
+  /**
+   * inf-patrol-challenge — fly the standing-heat challenge ring. The law stamped
+   * `data.heatChallenge` on this ambient patrol (its fact, our flying): close onto the
+   * standoff ring around the wanted hull, then hold station there — engines simmering,
+   * nose on the hull — until the law releases the stamp and the route resumes below.
+   * Returns false only when the wanted hull is gone; the ordinary dispatch takes the
+   * hull back and lawSecurity releases the stamp on its own watch.
+   */
+  _stepHeatChallenge(e, state) {
+    const stamp = e.data && e.data.heatChallenge;
+    if (!stamp || stamp.patrolId !== e.id
+        || (stamp.patrolGeneration != null && stamp.patrolGeneration !== occupantGenerationOf(e))) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
+    const wanted = state && state.playerId != null && state.entities
+      ? state.entities.get(state.playerId) : null;
+    if (!wanted || wanted.alive === false || !wanted.pos || !e.pos) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
+    const dx = wanted.pos.x - e.pos.x;
+    const dz = wanted.pos.z - e.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const standoff = Math.max(60, Number(stamp.standoffWu) || 0);
+    const leases = this._heatChallengeBrakeLeases || (this._heatChallengeBrakeLeases = new WeakMap());
+    const old = leases.get(e);
+    if (old && (old.stamp !== stamp || old.intent !== e.data.intent)) this._releaseHeatChallengeBrake(e);
+    if (dist > standoff * 1.15) {
+      // Close the ring at station-keeping speed, never a ramming burn.
+      setIntent(e, 0, 0.45, false, false, null, Math.atan2(dz, dx));
+    } else {
+      // On the ring: hold position facing the hull. The visible pressure is the stop
+      // itself — a patrol sitting off the beam, nose on, while the band names the sheet.
+      setIntent(e, 0, 0, false, false, null, Math.atan2(dz, dx));
+    }
+    const intent = e.data.intent;
+    let lease = leases.get(e);
+    if (!lease) {
+      // The generic save carries the intent. Keep data-only provenance with our borrowed brake
+      // so Continue can return it without making traffic a writer of the law's challenge stamp.
+      const borrow = { token: heatChallengeBrakeToken(stamp),
+        hadBrake: Object.prototype.hasOwnProperty.call(intent, 'brake'), priorBrake: intent.brake };
+      lease = { stamp, intent, generation: occupantGenerationOf(e), borrow };
+      leases.set(e, lease);
+    }
+    intent.brake = dist <= standoff * 1.15;
+    intent.heatChallengeBrakeBorrow = lease.borrow;
+    lease.borrow.writtenBrake = intent.brake;
+    return true;
+  },
+
+  _releaseHeatChallengeBrake(e, restore = true) {
+    const lease = this._heatChallengeBrakeLeases?.get(e);
+    if (!lease) return;
+    this._heatChallengeBrakeLeases.delete(e);
+    const data = e.data;
+    const intent = data && data.intent;
+    // This is a traffic-owned, same-life borrow. A new intent/controller keeps its brake.
+    if (!restore || intent !== lease.intent || occupantGenerationOf(e) !== lease.generation) return;
+    this._restoreHeatChallengeBrake(e, lease.stamp, lease.borrow);
+  },
+
+  _restoreHeatChallengeBrake(e, stamp, borrow = e.data?.intent?.heatChallengeBrakeBorrow) {
+    const data = e.data;
+    const intent = data && data.intent;
+    if (!intent || typeof borrow?.hadBrake !== 'boolean' || typeof borrow.writtenBrake !== 'boolean'
+        || borrow.token !== heatChallengeBrakeToken(stamp) || intent.heatChallengeBrakeBorrow !== borrow
+        || intent.brake !== borrow.writtenBrake || data.jobId || data.claimDepotId
+        || data.itinerary?.kind === 'anvil_work' || data.ai?.securityTargetId != null) return false;
+    if (borrow.hadBrake) intent.brake = borrow.priorBrake;
+    else delete intent.brake;
+    delete intent.heatChallengeBrakeBorrow;
+    return true;
+  },
+
 
 
 
 
 };
+
+function heatChallengeBrakeToken(stamp) {
+  return `${typeof stamp?.patrolId}:${stamp?.patrolId}:${stamp?.patrolGeneration ?? 'unknown'}:${stamp?.episodeId}:${stamp?.since}`;
+}
 
 export function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   const data = e.data || (e.data = {});

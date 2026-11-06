@@ -92,6 +92,28 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__gauges { gap:0 14px !important; }
   ${W} .sx-sw-gauge .k-row__name { letter-spacing:.14em !important; }
 }
+/* Compact flight: the nameplate is in the main flow above a full-width projection stage.
+   The stage keeps real room for hull and labels; the main column scrolls to its lower readings. */
+@media (max-width:1500px) and (max-height:800px) {
+  /* A left callout translates by its own width; an inline box around block text has zero width. */
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:block !important; width:max-content !important; }
+  ${W} .sx-sw__stage > .sx-sw__camera { top:4px !important; bottom:auto !important; display:flex !important; flex-direction:row !important; }
+  ${W} .sx-sw__main { display:flex !important; flex-direction:column !important; gap:8px !important;
+    min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  ${W} .sx-sw__main > .sx-sw__nameplate { position:relative !important; inset:auto !important; flex:none !important;
+    width:100% !important; max-width:none !important; padding:0 !important; }
+  ${W} .sx-sw__main > .sx-sw__nameplate .sx-sw__blurb { max-width:100% !important; font-size:14px !important;
+    line-height:1.4 !important; max-height:none !important; overflow:visible !important; }
+  ${W} .sx-sw__main > .sx-sw__stage { flex:0 0 320px !important; height:320px !important;
+    min-height:320px !important; max-height:none !important; }
+  ${W} .sx-sw__main > .sx-sw__stats { flex:0 0 auto !important; height:auto !important;
+    min-height:0 !important; max-height:none !important; overflow:visible !important; }
+}
+/* The active fleet row has a 230px rail. This tracking keeps its hull name and tier on one line
+   without changing the row's inspection target or selected-state marker. */
+@media (min-width:1101px) {
+  ${W} .sx-sw-row .k-row__sub { letter-spacing:.08em !important; white-space:nowrap; }
+}
 
 /* ---- the bands: one dominant numeral, the rest readings; the chosen band lit by the Hand ------- */
 ${W} .sx-sw-bands { gap:10px 30px !important; align-items:flex-end; }
@@ -324,16 +346,15 @@ ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:15p
   background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
 ${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600 !important; color:${INK} !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
 ${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__role { font-size:12px !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__metrics { font-size:12px !important; color:rgb(${BONE} / .78) !important; }
-${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:12px !important; color:rgb(${BONE} / .7) !important; }
-${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
+${W} .sx-modrow .sx-modrow__meta { display:block !important; font-size:12px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow .sx-modrow__act { display:block !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important;
   min-width:0 !important; height:auto !important; padding:2px 0 !important; font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important;
   text-decoration:none !important; }

@@ -1,22 +1,35 @@
 # Additional creation portfolio — 2026-10-30
 
-## Status: WRONG-PRODUCT DISPATCH / REJECTED
+## Current status: Pro queued; usage limit observed
+
+November5,01:05UTC recheck: the actual regular ChatGPT menu still shows Pro5of5, Locked and Usage limit reached, with Chat selected and Work unselected. No prompt was entered/submitted; only the new empty check tab closed. All five remain unsent. Reset time is unknown; no substitute model/app is authorized.
+
+November4,21:52UTC: all five remain unsent. The integrated Browser is now reachable. A fresh regular
+ChatGPT page had Chat selected and Work unselected; its actual model menu showed **Pro,5of5**, a
+locked power slider and **Usage limit reached**. No prompt was submitted and no alternate model/app
+was used. Only the empty check tab created for this observation was closed. The earlier18:09UTC
+`Browser is not available: iab` result is historical; it does not describe the current browser.
+The quota reset time remains unknown. Refresh the exact remote base and interface packet before
+any later authorized Pro dispatch, and keep main game integration moving meanwhile.
+
+The integrated Browser connects in Codex. On the 2026-11-03 recheck, the actual regular ChatGPT
+page had **Chat** selected, **Work** unselected, and the GPT-6 family. The model/effort menu
+showed **Medium**, a disabled power control and **“Usage limit reached”**. Pro was not available
+in that observed menu. No prompt was submitted and the menu was closed. Correct Pro dispatches
+remain **zero**; all five briefs below remain unsent. Refresh their base/interface packet before dispatch.
+Use the integrated Browser for these new Pro conversations. Work, alternate models and native
+thread creation are not substitutes for this request. Keep the main game integration moving
+while the Pro jobs are blocked by the observed limit.
+
+## Earlier wrong-product attempts: rejected
 
 The five conversations below were created in ChatGPT Work on the default GPT-6.1 Sol Medium model.
 This was the wrong product for the request. **No ChatGPT Pro jobs were dispatched, no Pro artifacts
 are awaited, and none of these Work chats is accepted for the Pro request.** The user intended Pro
-through integrated Browser only. Browser runtime returned `Local browser use is disabled in Work
-settings`; that was not authorization to use ChatGPT Work instead. No further Work prompts or
-Work creation are authorized for this Pro request.
-
-The documented Browser setup is `environment: 'codex-app'` with browser ID `iab`; those were the
-values used. A bounded read of the bundled SDK confirmed that the quoted error is emitted when the
-signed host `browser/access` response fails validation against the expected access grant. Its wording
-does not identify which settings interface controls the response, establish that the visible Browser
-window is broken, or prove that the user's Codex setting is disabled. No documented local setup
-correction was found. The unchanged access call has already failed; repeating it or substituting
-another app/model is not a next action. Correct dispatch still requires access to the intended
-ChatGPT conversation and verification of the actual Pro model control before sending.
+through integrated Browser only. An earlier host-access error did not establish that the user was
+in Work or that their Browser setting was disabled, and did not authorize another product. That
+connection issue is historical; the current observed blocker is the Pro usage limit above.
+No further Work prompts or Work creation are authorized for this Pro request.
 
 All five Work chats were archived through native controls. A later native read confirmed every
 turn completed and every chat is idle; no generation remains active in them. Their chat IDs below

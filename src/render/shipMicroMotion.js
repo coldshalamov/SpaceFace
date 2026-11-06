@@ -71,6 +71,7 @@
 //      the solver IS turning over reads as a body rolling, never a static mannequin.
 
 import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { clampSlideAgainstHulls, deathSlideOffset, DEATH_SLIDE_S } from './deathSlide.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -2604,6 +2605,17 @@ export function createShipMicroMotionTracker() {
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getRecord(entity.id);
     const presenting = wreckMeshPresenting(mesh);
+    const boundHulk = isPhysicsBoundWholeHulk(entity);
+    // Root yaw is supplied by the physics pose. A late binding may arrive after
+    // legacy presentation started, so retire its accumulated nonplanar tilt.
+    if (boundHulk && mesh.rotation) {
+      const rotation = mesh.rotation;
+      const changed = rotation.x !== 0 || rotation.z !== 0 || rec.wreckBoundPlanar === false;
+      rotation.x = 0; rotation.z = 0;
+      if (rec.wreckBoundPlanar === false) rotation.y = -(Number.isFinite(entity.rot) ? entity.rot : 0);
+      if (changed && mesh.matrixAutoUpdate === false && typeof mesh.updateMatrix === 'function') mesh.updateMatrix();
+    }
+    rec.wreckBoundPlanar = boundHulk;
 
     // Wreck materialize/scale-in on the first frame a drawable layer actually presents — the same
     // MATERIALIZE_S ramp ships and drones get on spawn, driven here because updateCraftMicroMotion
@@ -2611,13 +2623,17 @@ export function createShipMicroMotionTracker() {
     // multiplicatively off the captured base.
     if (presenting && rec.wreckPresented !== true) {
       rec.wreckPresented = true;
-      if (rec.materializeT0 < 0) rec.materializeT0 = simTime;
+      if (!boundHulk && rec.materializeT0 < 0) rec.materializeT0 = simTime;
       const base = mesh.scale;
       rec.wreckScaleBaseX = base && Number.isFinite(base.x) ? base.x : 1;
       rec.wreckScaleBaseY = base && Number.isFinite(base.y) ? base.y : 1;
       rec.wreckScaleBaseZ = base && Number.isFinite(base.z) ? base.z : 1;
     }
-    if (rec.materializeT0 >= 0 && mesh.scale) {
+    if (boundHulk && rec.wreckPresented && rec.materializeT0 >= 0 && mesh.scale) {
+      if (typeof mesh.scale.set === 'function') mesh.scale.set(rec.wreckScaleBaseX, rec.wreckScaleBaseY, rec.wreckScaleBaseZ);
+      else { mesh.scale.x = rec.wreckScaleBaseX; mesh.scale.y = rec.wreckScaleBaseY; mesh.scale.z = rec.wreckScaleBaseZ; }
+      rec.materializeT0 = -1;
+    } else if (!boundHulk && rec.materializeT0 >= 0 && mesh.scale) {
       const k = (simTime - rec.materializeT0) / MATERIALIZE_S;
       if (!Number.isFinite(k) || k < 0 || k >= 1) {
         rec.materializeT0 = -1;
@@ -2642,7 +2658,7 @@ export function createShipMicroMotionTracker() {
     }
 
     if (rec.spiralState === 2) {
-      if (rec.spiralY !== 0 && mesh.rotation) mesh.rotation.y += rec.spiralY;
+      if (!boundHulk && rec.spiralY !== 0 && mesh.rotation) mesh.rotation.y += rec.spiralY;
       return true;
     }
     if (rec.spiralState === 0) {
@@ -2686,7 +2702,7 @@ export function createShipMicroMotionTracker() {
       * rec.spiralDir * (reduced ? 0.3 : 1.0);
     const dy = rate * dt;
     rec.spiralY += dy;
-    if (mesh.rotation) {
+    if (!boundHulk && mesh.rotation) {
       // Root yaw is pose-owned (absolute every synced frame): add the running TOTAL so the
       // spin survives the reset. Root pitch/roll persist, so they accumulate directly.
       mesh.rotation.y += rec.spiralY;
@@ -2702,7 +2718,7 @@ export function createShipMicroMotionTracker() {
       const side = rec.spiralRcsSide;
       const bow = (Math.floor(age / 0.18) % 2 === 0) ? 1 : -1;
       const rot = Number.isFinite(entity.rot) ? entity.rot : 0;
-      const a = rot + rec.spiralY;
+      const a = rot + (boundHulk ? 0 : rec.spiralY);
       const ca = Math.cos(a);
       const sa = Math.sin(a);
       const lx = bow * radius * 0.45;

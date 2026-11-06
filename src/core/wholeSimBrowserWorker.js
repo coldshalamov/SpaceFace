@@ -53,6 +53,13 @@ let sabEnv = null;
 // authoritative journal rebuild.
 const LOCAL_FIXED_DT = 1 / 60;
 const LOCAL_MAX_STEPS = 4;
+// Reply work budget for the local accumulator's catch-up batch: once the host
+// has spent this much wall time inside one tick directive it stops early and
+// the un-executed steps count as shed debt. A heavy step then stretches the
+// world into slow motion instead of compounding into a multi-hundred-ms reply.
+// Explicit-step directives (tape/replay/verification) carry no budget and
+// always run exactly the steps requested.
+const LOCAL_WORK_BUDGET_MS = 24;
 const LOCAL_HITCH_CATCHUP_STEPS = 2;
 const LOCAL_MAX_DEBT_SECONDS = 0.25;
 const LOCAL_DURABLE_LIMIT = 4096;
@@ -609,7 +616,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
 
   let steps = 0;
   let shedSteps = 0;
-  if (Number.isSafeInteger(explicitSteps) && explicitSteps > 0) {
+  const hasExplicitSteps = Number.isSafeInteger(explicitSteps) && explicitSteps > 0;
+  if (hasExplicitSteps) {
     steps = Math.min(LOCAL_MAX_STEPS, explicitSteps);
   } else if (localClock.active && localClock.scale > 0) {
     localClock.accumulator += localElapsedSeconds(elapsedMs) * localClock.scale;
@@ -650,10 +658,18 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     seq: `local-directive-${++localClock.directiveTick}`,
     tick: localClock.directiveTick,
     steps,
+    workBudgetMs: hasExplicitSteps ? undefined : LOCAL_WORK_BUDGET_MS,
     commands,
     ackJournalEnd,
     generation: localClock.lifecycleGeneration,
   });
+  // The host may have stopped the catch-up batch early on the work budget; the
+  // debited debt is treated as shed (slow-motion beats a stalled picture).
+  const executed = Number.isSafeInteger(reply.stepsExecuted) ? reply.stepsExecuted : steps;
+  if (executed < steps) {
+    localClock.stepCount += executed - steps;
+    localClock.budgetShedStepCount = (localClock.budgetShedStepCount || 0) + (steps - executed);
+  }
   refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
   // batch must never look consumed to the main lane.
@@ -677,6 +693,7 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     directiveTicks: localClock.directiveTick,
     steps: localClock.stepCount,
     shedSteps: localClock.shedStepCount,
+    budgetShedSteps: localClock.budgetShedStepCount || 0,
     commands: localClock.commandCount,
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
@@ -886,6 +903,8 @@ async function handleLocalClockCommand(msg) {
 async function dispatchDirective(msg) {
   try {
     if (msg.kind === 'init') {
+      // Simulation publishes authored source strings; locale selection belongs to the main
+      // presentation owner. Optional keyed catalogs must not delay this realm's init.
       await loadModelTruthCensus(msg.modelTruthCensusUrl);
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';

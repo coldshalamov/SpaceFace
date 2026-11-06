@@ -123,6 +123,10 @@ const STORY_CALM_GAP_S = 8;
 // Ambient comms cadence: one every 45–90s of flight sim time (the "constant low-grade migraine").
 const AMBIENT_MIN_S = 45;
 const AMBIENT_MAX_S = 90;
+// SP2-188 — the channel respects the reader: a session that ended with every popup read
+// (flag `read_everything`, written by special500ReadEverything) widens the ambient cadence
+// by a quarter — 20% fewer lines an hour. Same table, same shuffle, quieter delivery.
+const AMBIENT_RESPECT_MULT = 1.25;
 // Phase 3 ambient cools to one every 2–4 min (the channel has gone quiet; the system stopped needing to talk).
 const AMBIENT_MIN_S_P3 = 120;
 const AMBIENT_MAX_S_P3 = 240;
@@ -614,7 +618,8 @@ export const story = {
     const p3 = (s.phase || 1) >= 3;
     const lo = p3 ? AMBIENT_MIN_S_P3 : AMBIENT_MIN_S;
     const hi = p3 ? AMBIENT_MAX_S_P3 : AMBIENT_MAX_S;
-    const delay = lo + this._rng() * (hi - lo);
+    let delay = lo + this._rng() * (hi - lo);
+    if (s.flags && s.flags.read_everything != null) delay *= AMBIENT_RESPECT_MULT;
     s.ambientTimerS = delay;
     s.ambientNextAtS = (this.state.simTime || 0) + delay;
   },

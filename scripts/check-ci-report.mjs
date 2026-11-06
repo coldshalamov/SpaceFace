@@ -32,6 +32,13 @@ const COMMAND_TIMEOUT_OVERRIDES_MS = {
   // environment reality the check's own START_TIMEOUT_MS documents: software-GL boot is ~2x a
   // real GPU. Budget the environment, assert the behavior.
   'check-station-tabs': 420000,
+  // 2026-11-05 (PR #845 run 42088841482): after the leftover-FX opening barrier fix, mission
+  // accept+track printed OK and wrote its station-handoff trace, then was SIGKILL'd at the 180s
+  // DEFAULT cap during cleanup (~185s wall). The resolved leaf
+  // (check-mission-accept-handoff-runtime.mjs) carries no playwright/chromium/probe token, so the
+  // browser-text classifier never gave it the LONG class — same trap as check-station-tabs. Cold
+  // software-GL boot already burns most of 180s; budget the environment, assert the behavior.
+  'check-mission-accept-handoff-runtime': 420000,
 };
 const TAIL_LIMIT = 1600;
 

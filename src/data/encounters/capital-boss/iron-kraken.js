@@ -34,7 +34,7 @@ function makeIronKraken(p) {
         recoveryHoldTicks: 60, settleTicks: 30 },
       rangeResponse: { minRange: reach * 1.8, beatId: 'siphon_jet' },
       intro: 'IRON KRAKEN: Salvage claim accepted. Please stop being attached to your ship.',
-      lesson: 'Arms spread: leave the flanks. Arms gather: cross the locked jet. Front core opens: shoot the red aperture.',
+      lesson: 'Arms spread: leave the flanks. Wake paint: stay off the stern. Arms gather: cross the locked jet. Front core opens: shoot the red aperture.',
       lossLesson: 'Leave the painted shape after it locks. The open front core is the next clean shot.',
       victory: 'IRON KRAKEN: Customer disassembly… cancelled.',
       escape: 'IRON KRAKEN: Your salvage appointment remains outstanding.',
@@ -52,12 +52,12 @@ function makeIronKraken(p) {
           physicalStory: 'Flank arms spread, gather for a committed jet, then open the mantle to vent.' },
         { id: 'disassembly', title: 'II · EXPRESS DISASSEMBLY', enter: { hullAtMost: 0.6 },
           bark: 'IRON KRAKEN: You have selected express disassembly.',
-          doctrine: 'capital_broadside', opening: ['ink_ring'], pattern: ['arm_rake', 'siphon_jet', 'ink_ring'],
-          physicalStory: 'A broken ink ring makes approach lanes visible; the same tells and recovery remain fair.' },
+          doctrine: 'capital_broadside', opening: ['mantle_trawl'], pattern: ['mantle_trawl', 'arm_rake', 'siphon_jet', 'ink_ring'],
+          physicalStory: 'A wake trawl opens the act — locked paint behind the hull, the same clear escape; a broken ink ring keeps approach lanes visible.' },
         { id: 'complaint', title: 'III · COMPLAINT DEPARTMENT', enter: { hullAtMost: 0.28 },
           bark: 'IRON KRAKEN: Please direct all complaints into the glowing aperture.',
-          doctrine: 'capital_broadside', opening: ['siphon_jet'], pattern: ['ink_ring', 'siphon_jet', 'arm_rake'],
-          physicalStory: 'The last jets still commit and vent. Damage does not secretly shorten the warning.' },
+          doctrine: 'capital_broadside', opening: ['siphon_jet'], pattern: ['mantle_trawl', 'siphon_jet', 'arm_rake', 'siphon_jet', 'ink_ring'],
+          physicalStory: 'The trawl and the last jets still commit and vent. Damage does not secretly shorten the warning.' },
       ],
       beats: [
         beat({ id: 'arm_rake', title: 'EIGHT-ARM RAKE', cue: 'maw.crossing',
@@ -73,6 +73,20 @@ function makeIronKraken(p) {
           shapes: [lane(0, 0, p.jetLength, r * 2, 0, 'target')],
           packet: packet({ kinetic: colossus ? 30 : 24 }), expose: THROW_WINDOW,
           counter: 'Its arms gather, then a pressure jet fills the locked lane as it lunges. Strafe clear; punish the open front core after the burst.' }),
+        // The wake trawl: the arms drag a bounded scoop behind the hull and haul whatever
+        // they catch toward the braking machine's own frame. Hull-aimed and stern-facing —
+        // the only beat whose paint is not pointed at the player — so the front hemisphere,
+        // where the open-mantle reward position lives, is genuinely clear while it sweeps.
+        // maw.stern is the shared cue family for threats at the hull's rear (ink_ring uses
+        // it too); the generic charge pose plus the painted sector tells the truth — a keel
+        // cue would promise a lunge the braking hull never makes.
+        beat({ id: 'mantle_trawl', title: 'MANTLE TRAWL', cue: 'maw.stern',
+          trackTicks: 24, tellTicks: 120, activeTicks: 60, recoverTicks: recovery,
+          motion: { forward: 0, brake: true },
+          shapes: [sector(Math.PI, 0.8, r * 0.5, reach * 1.15, 'hull')],
+          packet: packet({ kinetic: colossus ? 14 : 8 }, [['status_momentum_sink', 90]]),
+          expose: THROW_WINDOW,
+          counter: 'The trawl arms sweep their salvage net through the machine\'s wake and haul whatever they catch to a standstill against its frame. Stay off the stern while it drags; the grip lifts on its own clock.' }),
         beat({ id: 'ink_ring', title: 'BROKEN INK RING', cue: 'maw.stern',
           trackTicks: 0, tellTicks: 120, activeTicks: 36, recoverTicks: recovery,
           motion: { forward: 0, brake: true },

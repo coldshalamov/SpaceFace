@@ -1,3 +1,4 @@
+import { ironKrakenPresentationFight } from '../data/ironKrakenPresentation.js';
 // Production mechanical octopus reconstructed from the owner's motion/anatomy reference.
 // Shared machined geometry; private instance poses; simulation retains all combat authority.
 import * as THREE from 'three';
@@ -89,6 +90,7 @@ export function ironKrakenAnimationPose(fight, simTime=0, a11y={}, out={}) {
   out.rakeProgress=out.rakeActive?out.activeProgress:recovery?.beatId==='arm_rake'?1:0;
   out.ink = beat?.id==='ink_ring' ? (active?1:charge*.6) : 0;
   out.inkActive = beat?.id==='ink_ring' && active;
+  out.trawl = beat?.id==='mantle_trawl' ? (active?1:charge*.8) : 0;
   // The reference's shell opening is purposeful service travel, not a bloom after every
   // gesture. Ring discharge vents the mantle; every attack exposes the actual front throat.
   out.mantle = out.inkActive?.82:recovery?.beatId==='ink_ring'?release*.92:
@@ -183,8 +185,8 @@ export function createIronKrakenVisual(entity) {
   const cupMeshes=[suckers,suckerCores];
   const shellMeshes=[shell,shellDetail,shellAccent,shellMetal,shellGlass];
   let interior=null,disposed=false,lastTime=null,lastClock=null,lastA11y='',jetBlend=0,mantleBlend=0;
-  let rakeBlend=0,rakeProgress=0,inkCurlBlend=0,inkLiftBlend=0,apertureBlend=0,locomotionBlend=0,turnBlend=0,recoilBlend=0;
-  let cachedFightId=null,previousHull=entity.hull??entity.hp??0;
+  let rakeBlend=0,rakeProgress=0,inkCurlBlend=0,inkLiftBlend=0,apertureBlend=0,locomotionBlend=0,turnBlend=0,recoilBlend=0,trawlBlend=0;
+  let previousHull=entity.hull??entity.hp??0;
   let lastFightId=null,lastPhase=null,lastCastId=null,lastShellMask=-1,lastSuspended=false,lastTerminal=null;
   let detailLevel='close';
   const viewPoint=new THREE.Vector3();
@@ -214,11 +216,7 @@ export function createIronKrakenVisual(entity) {
         detailLevel=next;rig.detailLevel=next;
       }
     }
-    const fights=state?.capitalBossEncounters?.fights;
-    let fight=fights?.[liveEntity.data?.ironKraken?.fightId||cachedFightId];
-    // Fight assignment may arrive after spawn in a worker read model. Resolve it once by its
-    // canonical owner id; never invent a private attack clock when the record already exists.
-    if(!fight&&fights)for(const id in fights)if(fights[id]?.bossId===liveEntity.id){fight=fights[id];cachedFightId=id;break;}
+    const fight=ironKrakenPresentationFight(state,liveEntity);
     const time=Number.isFinite(state?.simTime)?state.simTime:simTime;
     const a11yKey=(a11y.reducedMotion?'m':'')+(a11y.reducedFlash?'f':'');
     ironKrakenAnimationPose(fight,time,a11y,pose);
@@ -250,6 +248,7 @@ export function createIronKrakenVisual(entity) {
     const jetEase=reset||dt===0?1:1-Math.exp(-dt*(pose.jet<jetBlend?3.6:7));
     jetBlend+=(pose.jet-jetBlend)*jetEase;mantleBlend+=(pose.mantle-mantleBlend)*blend;
     rakeBlend+=(pose.rake-rakeBlend)*blend;
+    trawlBlend+=(pose.trawl-trawlBlend)*blend;
     if(reset)rakeProgress=pose.rakeProgress;
     else if(pose.rakeActive)rakeProgress=pose.rakeProgress;
     else if(pose.recovery)rakeProgress=1;
@@ -269,6 +268,7 @@ export function createIronKrakenVisual(entity) {
     motionPose.time=t;motionPose.reducedMotion=pose.reducedMotion;
     motionPose.jet=jetBlend;motionPose.rake=rakeBlend;motionPose.mantle=mantleBlend;
     motionPose.inkCurl=inkCurlBlend;motionPose.inkLift=inkLiftBlend;
+    motionPose.trawl=trawlBlend;
     motionPose.rakeProgress=rakeProgress;motionPose.locomotion=locomotionBlend;
     motionPose.turn=turnBlend;motionPose.recoil=pose.reducedMotion?0:recoilBlend;
     ironKrakenBodyPose(motionPose,bodyPose);
@@ -377,7 +377,8 @@ export function createIronKrakenVisual(entity) {
   };
   // Explicit tooling teardown; live teardown uses detachAuthoredMotion then the normal disposer.
   root.userData.disposeIronKraken=()=>{
-    root.userData.detachAuthoredMotion();glow.dispose();root.removeFromParent();
+    root.userData.detachAuthoredMotion();glow.dispose();
+    root.traverse(part=>{if(part.castShadow)part.castShadow=false;});root.removeFromParent();
   };
   update(entity,0,{});
   return root;

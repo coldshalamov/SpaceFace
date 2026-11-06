@@ -86,6 +86,12 @@ ${P} .orr-arcrail-host .dp-lit__item:not([data-awake]) {
   color:rgb(${BONE} / .86) !important; }
 ${P} .orr-arcrail-host .dp-lit__item--danger:not([data-awake]) {
   color:rgb(255 140 110 / .78) !important; }
+/* ArcRail's active-word !important color outranks the shared dp-lit forced-colors rule.
+   Restore a system text color for every Pause verb so the primary Resume word stays readable. */
+@media (forced-colors:active) {
+  ${P} .orr-arcrail-host .dp-lit__item {
+    color:CanvasText !important; text-shadow:none !important; }
+}
 ${P} .orr-svg text.orr-arcrail__legend { fill:rgb(${BONE} / .92) !important; }
 ${P} .orr-svg .orr-arcrail__head.is-lit text.orr-arcrail__legend { fill:rgb(255 253 248) !important; }
 ${P} .orr-svg .orr-arcrail__lettering, ${P} .orr-svg .orr-arcrail__lettering text {
@@ -93,6 +99,10 @@ ${P} .orr-svg .orr-arcrail__lettering, ${P} .orr-svg .orr-arcrail__lettering tex
 ${P} .orr-svg .orr-arcrail__rule { stroke-opacity:1; }
 
 /* phone column (no dial): group heads + bank verbs clearer */
+/* Keep the column's words legible over the held world on both phones and narrow windows. */
+${PH} > .dp-frame__body {
+  background:linear-gradient(180deg, rgb(4 6 9 / .72), rgb(4 6 9 / .62) 70%, rgb(4 6 9 / .5)) !important;
+  border-radius:4px; box-shadow:0 0 0 10px rgb(4 6 9 / .5) !important; }
 ${PH} .k-words__group {
   color:rgb(${BONE} / .78) !important; letter-spacing:.08em !important;
   margin:calc(14px * var(--dp-s, 1)) 0 6px !important; }
@@ -155,8 +165,9 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    words printed over each other. The brief becomes a top-right reading level with PAUSED and ends
    above the first long bank. */
 @media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px) {
-  ${P} > .sf-pause-brief.orr-brief { top:clamp(40px, 8vh, 52px) !important; margin-top:0 !important;
+  ${P} > .sf-pause-brief.orr-brief { top:clamp(28px, 5vh, 52px) !important; margin-top:0 !important;
     width:min(400px, 42vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { gap:3px !important; }
   ${P} > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child { margin-bottom:6px !important; line-height:16px !important; }
   ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { margin-top:0 !important; }
   ${P} .orr-brief__kind { line-height:14px !important; margin-bottom:2px !important; }
@@ -172,6 +183,14 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
     background:linear-gradient(rgb(${BONE} / .1), rgb(${BONE} / .1)), rgb(6 8 11 / .94) !important; }
   ${P} > .sf-pause-foot .sf-pause-key-verb { text-shadow:0 0 3px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9) !important; }
+}
+
+/* the console standard's lit face gave the brief 16/18px padding, which grew it ~20px past the
+   first long bank again: at 960×540 its Saved line sat over OPERATIONS (AUTOMATION) / LOCAL MAP, and
+   at 1024×768 its bottom edge touched them. In the same short and narrow windows the face keeps a
+   12px inset, and in the shortest ones (rule above) the brief climbs level with PAUSED. */
+@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:800px) {
+  ${P} > .sf-pause-brief.orr-brief { padding:12px 16px !important; }
 }
 
 /* a very short window (≤520 tall, e.g. 800×500): the dial climbs to y≈190, so the brief keeps only
@@ -223,11 +242,19 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-foot__keys { padding:6px 0 7px !important; }
   ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
 }
+/* short desktop (521–640 tall, e.g. 960×540): the dial's outer rings reach y≈480, and the foot sat a
+   48px frame margin + a row gap above the bottom, so ESC / RESUME / P PHOTO printed on the rim. The foot
+   seats on the bottom edge as in the ≤520 rule, so the keycap strip lands below the dial's last ring. */
+@media (min-width:701px) and (min-height:521px) and (max-height:640px) {
+  ${P} { padding-bottom:16px !important; }
+  ${P} > .sf-pause-foot { row-gap:6px !important; min-height:0 !important; padding-top:0 !important; }
+  ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
+}
 /* narrow + very short (≤900 × ≤460, e.g. 844×390): the GAME bank's LOAD reaches x≈465 at y≈160, where
    the brief's Next line began (x 461). The brief climbs level with PAUSED and narrows so it starts right
    of LOAD (x≈485); Next still fits one line and ends above the SHIP bank. */
 @media (min-width:701px) and (max-width:900px) and (max-height:460px) {
-  ${P} > .sf-pause-brief.orr-brief { top:26px !important; width:min(330px, 40vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief { top:18px !important; width:min(330px, 40vw) !important; padding:10px 14px !important; }
 }
 
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */

@@ -5,11 +5,14 @@
 // never direct hull writes or direct Rapier body mutation. Mines carry hull and are
 // shootable (counterplay: destroy before trigger). Telegraph uses cue 'wake_mines'.
 // A Massline throw stamps playerThrown so the mine becomes a grenade against the
-// pack that laid it.
+// pack that laid it. A mine the pilot's own field is moving turns the same way
+// (inf-plow-turn: playerPushed, armed on the spot, the player's credit) — the fence
+// the plow shoves into the pack does not stay loyal to the pack that laid it.
 //
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
 import { scalarHitToDamagePacket, npcCrossfireAdmits } from '../combat/damage.js';
 import { Masks } from '../core/entity.js';
+import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
 
 export const MINE_OWNER_CAP = 6;
 export const MINE_ARM_DELAY_S = 2.0;
@@ -76,6 +79,8 @@ export const mines = {
       this.bus.on('sector:enter', () => this.releaseAll('sector_enter'));
       this.bus.on('game:new', () => this.releaseAll('new_game'));
       this.bus.on('save:loaded', () => this.releaseAll('save_loaded'));
+      this.bus.on('run:waveCleared', () => this.releaseSwarmSpecialistMines('wave_cleared'));
+      this.bus.on('run:ended', () => this.releaseSwarmSpecialistMines('run_ended'));
     }
   },
 
@@ -84,14 +89,17 @@ export const mines = {
    * VERB-32: a mine dropped at speed keeps the deploying ship's velocity at the
    * deploy tick, so laying a screen at cruise works. Explicit `opts.vel`
    * overrides; otherwise the owner's current velocity vector is copied.
-   * @param {{ ownerId: number, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
+   * @param {{ ownerId?: number|null, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
    */
   placeMine(opts = {}) {
     const state = this.state;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return null;
     if (!opts.pos || !Number.isFinite(opts.pos.x) || !Number.isFinite(opts.pos.z)) return null;
-    const ownerId = opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
+    // Omitted ownership keeps the legacy player-placement intent. An explicit
+    // null is environmental ordnance and must never invent player kill credit.
+    const ownerId = opts.ownerId === null ? null
+      : opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
     if (ownerId != null && countOwnerMines(state, ownerId) >= MINE_OWNER_CAP) {
       if (this.bus) this.bus.emit('mines:capReached', { ownerId, cap: MINE_OWNER_CAP });
       // FIGHT-07 — the player's refused press speaks through the voice floor and names the
@@ -146,6 +154,11 @@ export const mines = {
         sectorId: state.world && state.world.currentSectorId || null,
         triggered: false,
         masslineTetherable: true,
+        ...(opts.swarmSpecialistMine === true && isSwarmSpecialistRun(state) ? {
+          swarmSpecialistMine: true,
+          swarmWave: Number.isInteger(opts.swarmWave) ? opts.swarmWave : state.run?.wave ?? null,
+          expiresAt: now + (Number.isFinite(opts.lifetimeS) ? Math.max(0, opts.lifetimeS) : 12),
+        } : {}),
       },
     });
     if (!ent) return null;
@@ -178,11 +191,18 @@ export const mines = {
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});
+      if (data.swarmSpecialistMine === true && Number.isFinite(data.expiresAt) && now >= data.expiresAt) {
+        mine.alive = false;
+        if (this.bus) this.bus.emit('mines:expired', { mineId: mine.id, ownerId: data.ownerId, reason: 'specialist_lifetime' });
+        continue;
+      }
       // Destroyed / hull-depleted mines never trigger (counterplay).
       if (!(mine.hull > 0)) {
         mine.alive = false;
         continue;
       }
+      // The pilot's field may turn this mine before anything else reads its allegiance.
+      this._turnPlayerPushedMine(state, mine, data, now);
       if (!data.armed) {
         if (now >= (data.armedAt || 0)) {
           data.armed = true;
@@ -197,6 +217,53 @@ export const mines = {
       this._triggerMine(state, mine, data, victim);
     }
   },
+
+  /**
+   * inf-plow-turn — the fence law's other half. The wake-corridor counterplay names
+   * "displace the fence with a field/blast" as a physical solution; the Massline throw
+   * already honors that custody (playerThrown → the mine trips on anyone and pays the
+   * player's credit). A mine the PILOT'S OWN FIELD is moving now turns the same way: the
+   * fields owner vouches for whose accepted force moved this body this tick, and when that
+   * force is the player's, the mine becomes the player's grenade — stamped, armed on the
+   * spot, one band line so the turn is readable. An NPC's field never turns an NPC's mine
+   * against its own pack.
+   */
+  _turnPlayerPushedMine(state, mine, data, now) {
+    if (data.playerThrown === true || data.playerPushed === true) return;
+    const playerId = state.playerId;
+    if (playerId == null || data.ownerId === playerId) return;
+    const fieldsSys = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields') : null;
+    if (!fieldsSys || typeof fieldsSys.readAcceptedFieldOwnerIds !== 'function') return;
+    const owners = fieldsSys.readAcceptedFieldOwnerIds(mine);
+    if (!owners || !owners.some((owner) => String(owner) === String(playerId))) return;
+    data.playerPushed = true;
+    data.pushedAt = now;
+    data.pushedBy = playerId;
+    if (!data.armed) {
+      data.armed = true;
+      data.armedAt = now;
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, pushed: true });
+    }
+    if (this.bus) {
+      this.bus.emit('mines:turned', {
+        mineId: mine.id,
+        ownerId: data.ownerId,
+        pushedBy: playerId,
+        pos: { x: mine.pos.x, z: mine.pos.z },
+      });
+      if (!data.turnTold) {
+        data.turnTold = true;
+        this.bus.emit('voice:say', {
+          channel: 'alert',
+          id: 'mine-turned',
+          text: 'Your field turned that mine — it trips on anyone now',
+          ttl: 2.5,
+        });
+      }
+    }
+  },
+
 
   _onThrown(payload) {
     const id = payload && payload.payloadId;
@@ -223,15 +290,33 @@ export const mines = {
     }
   },
 
+  releaseSwarmSpecialistMines(reason = 'release') {
+    const state = this.state;
+    if (!state) return 0;
+    let count = 0;
+    for (const mine of liveMineList(state)) {
+      if (!mine || mine.alive !== true || mine.type !== MINE_TYPE
+        || mine.data?.swarmSpecialistMine !== true) continue;
+      mine.alive = false;
+      count++;
+    }
+    if (count && this.bus) this.bus.emit('mines:released', { count, reason, swarmSpecialist: true });
+    return count;
+  },
+
   _findTriggerVictim(state, mine, data) {
     const r = Number.isFinite(data.triggerRadius) ? Math.max(0, data.triggerRadius) : MINE_TRIGGER_RADIUS;
     const mx = mine.pos.x;
     const mz = mine.pos.z;
     const ownerId = data.ownerId;
     const team = mine.team;
-    const thrown = data.playerThrown === true;
+    // Player custody (inf-plow-turn): a thrown OR field-turned mine trips on any hull — the
+    // short grace is the only kindness the pilot's own hull gets — while a mine still loyal
+    // to its layer keeps the owner/team IFF and the crossfire admission below.
+    const playerOrdnance = data.playerThrown === true || data.playerPushed === true;
     const now = state.simTime || 0;
-    const grace = thrown && (now - (Number(data.thrownAt) || 0) < MINE_THROW_GRACE_S);
+    const grace = playerOrdnance
+      && (now - (Number(data.playerThrown === true ? data.thrownAt : data.pushedAt) || 0)) < MINE_THROW_GRACE_S;
     const playerId = state.playerId;
     let best = null;
     let bestDistance = Infinity;
@@ -239,7 +324,7 @@ export const mines = {
     for (const e of source) {
       if (!e || !e.alive || e.id === mine.id) continue;
       if (!TRIGGER_TYPES.has(e.type)) continue;
-      if (thrown) {
+      if (playerOrdnance) {
         if (grace && e.id === playerId) continue;
       } else {
         if (e.id === ownerId) continue;
@@ -277,7 +362,10 @@ export const mines = {
     });
     // allowAnyTarget not required for ships; mines themselves use hull via projectile:hit path.
     const request = {
-      attackerId: data.ownerId != null ? data.ownerId : mine.id,
+      // A mine in the player's custody (thrown or field-turned) pays the player's credit;
+      // a loyal one stays its layer's ordnance.
+      attackerId: (data.playerThrown === true || data.playerPushed === true) ? state.playerId
+        : data.ownerId != null ? data.ownerId : mine.id,
       targetId: victim.id,
       packet,
       origin: { kind: 'mine', id: mine.id },

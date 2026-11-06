@@ -7,6 +7,7 @@ import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fiel
 import { runSession } from '../src/systems/runSession.js';
 import { fields as fieldOwner } from '../src/systems/fields.js';
 import { swarmFortify } from '../src/systems/swarmFortify.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { applyFragileCargoImpact } from '../src/systems/fragileCargo.js';
 import { fieldBodyProfile } from '../src/systems/fields.js';
 import { swarmFortifyCorridorForGate } from '../src/data/swarmFortify.js';
@@ -430,6 +431,59 @@ test('Repulsor Pylon cadence protects its team-zero pilot and arms the field wit
     fieldOwner._kernel?.clear?.();
     fieldOwner.state = null;
     fieldOwner.bus = null;
+    FIELD_FLAGS.enabled = previousEnabled;
+  }
+});
+
+test('purchased Fortify Gravity Beacon and live Pylon pulse move real Rapier bodies through fields', async () => {
+  const previousEnabled = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  const runDevice = async ({ seed, deviceId, socketId, offsetX, expectedSign, steps }) => {
+    const state = createGameState(seed);
+    state.run = makeRun({ credits: 1000, phase: 'draft' });
+    const sim = createSimulation({ seed, state, systems: [runSession, fieldOwner, swarmFortify, physics] });
+    try {
+      sim.state.mode = 'flight';
+      const physicsOwner = sim.registry.get('physics');
+      assert.equal(await physicsOwner.prepareBackend(sim.state, { initTimeoutMs: 5000 }), true,
+        'the authored device force must reach the real Rapier authority');
+      const player = sim.spawn({
+        type: 'ship', team: 0, alive: true, pos: { x: 0, z: 0 }, radius: 8,
+        factionId: 'faction_player', data: { defId: 'ship_kestrel' },
+      });
+      sim.state.playerId = player.id;
+      sim.bus.emit('run:wavePlanned', { wave: 1 });
+      const fortify = sim.registry.get('swarmFortify');
+      const receipt = fortify.build({
+        requestId: 1, runToken: fortify.getReadModel().runToken, deviceId, socketId,
+      });
+      assert.equal(receipt.accepted, true, `${deviceId} should be purchased through Fortify's run-wallet owner`);
+      const structure = sim.state.entities.get(receipt.structureId);
+      assert.ok(structure?.data?.fieldAnchor, `${deviceId} should register its authored field anchor`);
+      const body = sim.spawn({
+        type: 'wreck', team: 9, pos: { x: structure.pos.x + offsetX, z: structure.pos.z },
+        vel: { x: 0, z: 0 }, radius: 4, collides: true, hull: 40, hullMax: 40,
+        physicsBody: { schemaVersion: 1, radius: 4, mass: 2, inertiaY: 4, dynamic: true, ccd: false, material: 'debris', revision: 0 },
+        data: { majorDebris: true, parentType: 'debris' },
+      });
+      const startX = body.pos.x;
+      sim.state.run.phase = 'active';
+      for (let tick = 0; tick < steps; tick++) sim.step();
+      assert.ok(expectedSign * body.vel.x > 0.5,
+        `${deviceId} should impart its physical ${expectedSign > 0 ? 'outward' : 'inward'} force; velocity=${body.vel.x}`);
+      assert.ok(expectedSign * (body.pos.x - startX) > 0.1,
+        `${deviceId} should move the Rapier body, not only publish a field/read-model effect`);
+    } finally {
+      sim.dispose();
+    }
+  };
+
+  try {
+    await runDevice({ seed: 81201, deviceId: 'gravity_beacon', socketId: 'front-near',
+      offsetX: 65, expectedSign: -1, steps: 45 });
+    await runDevice({ seed: 81202, deviceId: 'repulsor_pylon', socketId: 'port-near',
+      offsetX: 65, expectedSign: 1, steps: 110 });
+  } finally {
     FIELD_FLAGS.enabled = previousEnabled;
   }
 });
@@ -885,4 +939,57 @@ test('four physical Fortify devices coexist and consecutive waves use the latche
     sim.dispose();
     FIELD_FLAGS.enabled = previousFieldsEnabled;
   }
+});
+
+test('a broken Tesla link reports failure and pays to replace its missing physical endpoint', () => {
+  const state = createGameState(1919);
+  state.run = makeRun({ credits: 300 });
+  const sim = createSimulation({ seed: 1919, state, systems: [runSession, fieldOwner, swarmFortify, combat] });
+  try {
+    const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 8 });
+    state.playerId = player.id;
+    sim.bus.emit('run:wavePlanned', { wave: 1 });
+    const owner = sim.registry.get('swarmFortify');
+    const token = owner.getReadModel().runToken;
+    assert.equal(owner.build({ requestId: 1, runToken: token, deviceId: 'tesla_pair', socketId: 'front-near' }).accepted, true);
+    const pair = owner.getReadModel().structures[0];
+    const dead = state.entities.get(pair.entityIds[0]);
+    const survivor = state.entities.get(pair.entityIds[1]);
+    survivor.hull = 50;
+    const location = { ...dead.pos };
+    dead.alive = false;
+    sim.bus.emit('entity:destroyed', { entity: dead });
+    const broken = owner.getReadModel().structures[0];
+    assert.equal(broken.missingEndpoint, true);
+    assert.equal(broken.operational, false);
+    assert.equal(broken.hull, 50);
+    const rock = sim.spawn({ type: 'asteroid', pos: location, radius: 20 });
+    const refused = owner.repair({ requestId: 2, runToken: token, entityId: broken.entityId });
+    assert.equal(refused.reason, 'socket_blocked');
+    assert.equal(state.run.credits, 150);
+    rock.alive = false;
+    const repaired = owner.repair({ requestId: 3, runToken: token, entityId: broken.entityId });
+    assert.equal(repaired.accepted, true);
+    assert.equal(repaired.replaced, true);
+    assert.equal(state.run.credits, 114);
+    const restored = owner.getReadModel().structures[0];
+    assert.equal(restored.operational, true);
+    assert.equal(restored.missingEndpoint, false);
+    assert.equal(restored.entityIds.length, 2);
+    assert.equal(survivor.hull, 50, 'replacement does not silently repair the survivor');
+    const replacement = restored.entityIds.map(id => state.entities.get(id)).find(entity => entity.id !== survivor.id);
+    assert.deepEqual({ x: replacement.pos.x, z: replacement.pos.z }, { x: location.x, z: location.z });
+    assert.equal(replacement.data.swarmFortify.pairId, survivor.data.swarmFortify.pairId);
+    assert.equal(replacement.data.swarmFortify.endpointIndex, dead.data.swarmFortify.endpointIndex);
+    owner.repair({ requestId: 3, runToken: token, entityId: broken.entityId });
+    assert.equal(state.run.credits, 114, 'replay cannot charge twice');
+    state.mode = 'flight';
+    state.run.phase = 'active';
+    const hostile = sim.spawn({ type: 'ship', team: 1, factionId: 'faction_brood', pos: { x: 0, z: -280 },
+      radius: 8, hull: 100, hullMax: 100, shield: 0, armorHp: 0, data: { runCohort: 'survival', runWave: 1,
+        ai: { forcePlayerTarget: true }, combatProfileId: 'combat_profile_standard_ship' } });
+    noteSwarmPilotAction(state);
+    owner.update();
+    assert.ok(hostile.hull < 100, 'the restored physical pair actually arcs through a current-wave hostile');
+  } finally { sim.dispose(); }
 });

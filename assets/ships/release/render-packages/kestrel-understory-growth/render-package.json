@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ddb13f1ba5f2daf7c688951bcf3d4e5a4ab96b76307f847998e807208ad86878",
+  "contentHash": "bfde0e2892dbd2dfb156dd87c3960d61fad9a28ecfa7df33a54492fc326e93b7",
   "dynamicGroups": [
     {
       "id": "sf.render.kestrel-understory-growth.mesh.lod0-hook-drive-core.dynamic",
@@ -10572,14 +10572,14 @@
       "uri": "kestrel_understory_growth.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1460704,
-    "sha256": "23714b4ace55bc74083efd2ce0d3812f112a872aeaa5bbcde3efa2b8f574f119",
+    "bytes": 1461328,
+    "sha256": "1c2f90c45ebfc9a22fa8eb764b21e0b6d9b26d31ed757feb65880400e031d2a9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -10612,6 +10612,663 @@
     "markers": [
       {
         "matrix": [
+          1.2710000276565552,
+          0,
+          0,
+          0,
+          0,
+          1.2710000276565552,
+          0,
+          0,
+          0,
+          0,
+          1.2710000276565552,
+          0,
+          -13.515000343322754,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 7,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.7575000524520874,
+          0,
+          0,
+          0,
+          0,
+          3.7575000524520874,
+          0,
+          0,
+          0,
+          0,
+          3.7575000524520874,
+          0,
+          -7.622499942779541,
+          2.059249997138977,
+          -2.6225000619888306,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          6.300000190734863,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.6000000834465027,
+          0,
+          0,
+          0,
+          0,
+          1.6000000834465027,
+          0,
+          0,
+          0,
+          0,
+          1.6000000834465027,
+          0,
+          -1.4500001072883606,
+          1.2000000476837158,
+          -4.349999785423279,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_POD_Hull_green",
+        "planIndex": 13,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_SECONDARY_POD_Hull_green",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_SECONDARY_POD_Hull_green",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-secondary-pod-hull-green"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.6000000089406967,
+          1.2000000774860382,
+          -4.349999904632568,
+          1
+        ],
+        "name": "LOD0_HOOK_SECONDARY_POD_Warning",
+        "planIndex": 15,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_SECONDARY_POD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_SECONDARY_POD_Warning",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-secondary-pod-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.375,
+          0,
+          0,
+          0,
+          0,
+          0.375,
+          0,
+          0,
+          0,
+          0,
+          0.375,
+          0,
+          -2.200000047683716,
+          2.4749999046325684,
+          0.9000000059604645,
+          1
+        ],
+        "name": "LOD0_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.2710000276565552,
+          0,
+          0,
+          0,
+          0,
+          1.2710000276565552,
+          0,
+          0,
+          0,
+          0,
+          1.2710000276565552,
+          0,
+          -13.515000343322754,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 31,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.7575000524520874,
+          0,
+          0,
+          0,
+          0,
+          3.7575000524520874,
+          0,
+          0,
+          0,
+          0,
+          3.7575000524520874,
+          0,
+          -7.622499942779541,
+          2.059249997138977,
+          -2.6225000619888306,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 33,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          6.300000190734863,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 35,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5962705239653587,
+          0,
+          0,
+          0,
+          0,
+          1.5962705239653587,
+          0,
+          0,
+          0,
+          0,
+          1.5962705239653587,
+          0,
+          -1.4500000849366188,
+          1.1997940242290497,
+          -4.34977912902832,
+          1
+        ],
+        "name": "LOD1_HOOK_SECONDARY_POD_Hull_green",
+        "planIndex": 37,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_SECONDARY_POD_Hull_green",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_SECONDARY_POD_Hull_green",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-secondary-pod-hull-green"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.99809730052948,
+          0,
+          0,
+          0,
+          0,
+          0.99809730052948,
+          0,
+          0,
+          0,
+          0,
+          0.99809730052948,
+          0,
+          -0.5998770743608475,
+          1.1998772025108337,
+          -4.350145936012268,
+          1
+        ],
+        "name": "LOD1_HOOK_SECONDARY_POD_Warning",
+        "planIndex": 39,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_SECONDARY_POD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_SECONDARY_POD_Warning",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-secondary-pod-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.37457847595214844,
+          0,
+          0,
+          0,
+          0,
+          0.37457847595214844,
+          0,
+          0,
+          0,
+          0,
+          0.37457847595214844,
+          0,
+          -2.1999305486679077,
+          2.47497296333313,
+          0.9000914692878723,
+          1
+        ],
+        "name": "LOD1_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 41,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          0,
+          0,
+          0,
+          1.271752953529358,
+          0,
+          -13.514954566955566,
+          -1.1920928955078125e-7,
+          -3.5762786865234375e-7,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 55,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          -6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 57,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -9.199999809265137,
+          0.75,
+          6.300000190734863,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 59,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          0,
+          0,
+          0,
+          1.5941438227891922,
+          0,
+          -1.4513540714979172,
+          1.2000001072883606,
+          -4.348652720451355,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+        "planIndex": 61,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SECONDARY_POD_Hull_green",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-secondary-pod-hull-green"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          0,
+          0,
+          0,
+          0.9935228824615479,
+          0,
+          -0.6000000387430191,
+          1.2000001072883606,
+          -4.3500001430511475,
+          1
+        ],
+        "name": "LOD2_HOOK_SECONDARY_POD_Warning",
+        "planIndex": 63,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SECONDARY_POD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SECONDARY_POD_Warning",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-secondary-pod-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          0,
+          0,
+          0,
+          0.37320995330810547,
+          0,
+          -2.1998345851898193,
+          2.474902391433716,
+          0.9004210829734802,
+          1
+        ],
+        "name": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 65,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -10630,7 +11287,7 @@
           1
         ],
         "name": "MOTION_KESTREL_ARMOR_CAP",
-        "planIndex": 57,
+        "planIndex": 75,
         "tags": {
           "motionGroup": true
         },
@@ -10677,6 +11334,117 @@
       },
       {
         "matrix": [
+          1.746342658996582,
+          0,
+          0,
+          0,
+          0,
+          1.746342658996582,
+          0,
+          0,
+          0,
+          0,
+          1.746342658996582,
+          0,
+          2.246342658996582,
+          0.6899999976158142,
+          -4.6000001430511475,
+          1
+        ],
+        "name": "LOD0_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+        "planIndex": 76,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-motion-kestrel-armor-cap-hook-armor-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.746460646390915,
+          0,
+          0,
+          0,
+          0,
+          1.746460646390915,
+          0,
+          0,
+          0,
+          0,
+          1.746460646390915,
+          0,
+          2.246964246034622,
+          0.6896335482597351,
+          -4.599979877471924,
+          1
+        ],
+        "name": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+        "planIndex": 78,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-motion-kestrel-armor-cap-hook-armor-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.746731773018837,
+          0,
+          0,
+          0,
+          0,
+          1.746731773018837,
+          0,
+          0,
+          0,
+          0,
+          1.746731773018837,
+          0,
+          2.245622143149376,
+          0.6886526346206665,
+          -4.600404381752014,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+        "planIndex": 80,
+        "tags": {
+          "damageRole": "armor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-motion-kestrel-armor-cap-hook-armor-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -10695,7 +11463,7 @@
           1
         ],
         "name": "MOTION_KESTREL_CANOPY",
-        "planIndex": 61,
+        "planIndex": 82,
         "tags": {
           "canopy": true,
           "motionGroup": true
@@ -10761,7 +11529,7 @@
           1
         ],
         "name": "MOTION_KESTREL_DISH",
-        "planIndex": 66,
+        "planIndex": 87,
         "tags": {
           "motionGroup": true
         },
@@ -10826,7 +11594,7 @@
           1
         ],
         "name": "MOTION_KESTREL_DISH_STEM",
-        "planIndex": 67,
+        "planIndex": 88,
         "tags": {
           "motionGroup": true
         },
@@ -10873,6 +11641,228 @@
       },
       {
         "matrix": [
+          0.8566566854715347,
+          0,
+          0,
+          0,
+          0,
+          0.8566566854715347,
+          0,
+          0,
+          0,
+          0,
+          0.8566566854715347,
+          0,
+          -2.238346576690674,
+          3.056584596633911,
+          0.8999999612569809,
+          1
+        ],
+        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 89,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-motion-kestrel-dish-stem-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8563090395182371,
+          0,
+          0,
+          0,
+          0,
+          0.8563090395182371,
+          0,
+          0,
+          0,
+          0,
+          0.8563090395182371,
+          0,
+          -2.238995909690857,
+          3.056682586669922,
+          0.8999999929219484,
+          1
+        ],
+        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 91,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.856937563046813,
+          0,
+          0,
+          0,
+          0,
+          0.856937563046813,
+          0,
+          0,
+          0,
+          0,
+          0.856937563046813,
+          0,
+          -2.238134980201721,
+          3.0562212467193604,
+          0.8999287728220224,
+          1
+        ],
+        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 93,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-motion-kestrel-dish-stem-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.856937563046813,
+          0,
+          0,
+          0,
+          0,
+          0.856937563046813,
+          0,
+          0,
+          0,
+          0,
+          0.856937563046813,
+          0,
+          -2.239069938659668,
+          3.0565320253372192,
+          0.8999287728220224,
+          1
+        ],
+        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 95,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+        "planIndex": 97,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          0,
+          0,
+          0,
+          0.8559686858206987,
+          0,
+          -2.238509953022003,
+          3.057169556617737,
+          0.8997756522148848,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+        "planIndex": 99,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-motion-kestrel-dish-stem-hook-sensor-dish-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -10891,7 +11881,7 @@
           1
         ],
         "name": "MOTION_KESTREL_DISH_FEED",
-        "planIndex": 74,
+        "planIndex": 101,
         "tags": {
           "motionGroup": true
         },
@@ -10938,6 +11928,117 @@
       },
       {
         "matrix": [
+          0.050000011920928955,
+          0,
+          0,
+          0,
+          0,
+          0.050000011920928955,
+          0,
+          0,
+          0,
+          0,
+          0.050000011920928955,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "LOD0_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 102,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "LOD1_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 104,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          0,
+          0,
+          0,
+          0.05000007152557373,
+          0,
+          -2.559999942779541,
+          3.5799999237060547,
+          0.8999999761581421,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+        "planIndex": 106,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-motion-kestrel-dish-feed-hook-sensor-dish-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -10956,7 +12057,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_0",
-        "planIndex": 78,
+        "planIndex": 108,
         "tags": {
           "motionGroup": true
         },
@@ -11021,7 +12122,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_1",
-        "planIndex": 82,
+        "planIndex": 112,
         "tags": {
           "motionGroup": true
         },
@@ -11086,7 +12187,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_2",
-        "planIndex": 86,
+        "planIndex": 116,
         "tags": {
           "motionGroup": true
         },
@@ -11151,7 +12252,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_3",
-        "planIndex": 90,
+        "planIndex": 120,
         "tags": {
           "motionGroup": true
         },
@@ -11216,7 +12317,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_4",
-        "planIndex": 94,
+        "planIndex": 124,
         "tags": {
           "motionGroup": true
         },
@@ -11281,7 +12382,7 @@
           1
         ],
         "name": "MOTION_KESTREL_IRIS_5",
-        "planIndex": 98,
+        "planIndex": 128,
         "tags": {
           "motionGroup": true
         },
@@ -11346,7 +12447,7 @@
           1
         ],
         "name": "MOTION_KESTREL_MINING",
-        "planIndex": 102,
+        "planIndex": 132,
         "tags": {
           "motionGroup": true
         },
@@ -11411,7 +12512,7 @@
           1
         ],
         "name": "MOTION_KESTREL_POD_ARM_SHOULDER",
-        "planIndex": 109,
+        "planIndex": 139,
         "tags": {
           "motionGroup": true
         },
@@ -11476,7 +12577,7 @@
           1
         ],
         "name": "MOTION_KESTREL_POD_ARM_ELBOW",
-        "planIndex": 113,
+        "planIndex": 143,
         "tags": {
           "motionGroup": true
         },
@@ -11541,7 +12642,7 @@
           1
         ],
         "name": "MOTION_KESTREL_POD_HATCH",
-        "planIndex": 123,
+        "planIndex": 153,
         "tags": {
           "motionGroup": true
         },
@@ -11588,6 +12689,117 @@
       },
       {
         "matrix": [
+          0.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          0.5999999642372131,
+          0,
+          0,
+          0,
+          0,
+          0.5999999642372131,
+          0,
+          -2.0999998450279236,
+          1.8799999952316284,
+          -4.349999904632568,
+          1
+        ],
+        "name": "LOD0_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+        "planIndex": 154,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod0-motion-kestrel-pod-hatch-hook-secondary-pod-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5995264053344727,
+          0,
+          0,
+          0,
+          0,
+          0.5995264053344727,
+          0,
+          0,
+          0,
+          0,
+          0.5995264053344727,
+          0,
+          -2.0999761819839478,
+          1.8799999952316284,
+          -4.349999904632568,
+          1
+        ],
+        "name": "LOD1_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+        "planIndex": 156,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod1-motion-kestrel-pod-hatch-hook-secondary-pod-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          0,
+          0,
+          0,
+          0.5989757180213928,
+          0,
+          -2.0999998450279236,
+          1.8799384832382202,
+          -4.349207878112793,
+          1
+        ],
+        "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+        "planIndex": 158,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
+            "recordIds": [
+              "sf.render.kestrel-understory-growth.mesh.lod2-motion-kestrel-pod-hatch-hook-secondary-pod-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -11606,7 +12818,7 @@
           1
         ],
         "name": "MOTION_KESTREL_STRUT_F",
-        "planIndex": 127,
+        "planIndex": 160,
         "tags": {
           "motionGroup": true
         },
@@ -11671,7 +12883,7 @@
           1
         ],
         "name": "MOTION_KESTREL_STRUT_P",
-        "planIndex": 130,
+        "planIndex": 163,
         "tags": {
           "motionGroup": true
         },
@@ -11736,7 +12948,7 @@
           1
         ],
         "name": "MOTION_KESTREL_STRUT_S",
-        "planIndex": 133,
+        "planIndex": 166,
         "tags": {
           "motionGroup": true
         },
@@ -11801,7 +13013,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 136,
+        "planIndex": 169,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -11852,7 +13064,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 137,
+        "planIndex": 170,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -11903,7 +13115,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 138,
+        "planIndex": 171,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -11954,7 +13166,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 139,
+        "planIndex": 172,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12005,7 +13217,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 140,
+        "planIndex": 173,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12056,7 +13268,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 141,
+        "planIndex": 174,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12107,7 +13319,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 142,
+        "planIndex": 175,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12158,7 +13370,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 143,
+        "planIndex": 176,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12209,7 +13421,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 144,
+        "planIndex": 177,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12279,58 +13491,28 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
+        "planIndex": 8,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 10,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -12340,27 +13522,27 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 20,
         "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -12370,17 +13552,17 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "drive"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "signal"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 27,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -12390,7 +13572,7 @@
       {
         "allowTextures": true,
         "planIndex": 29,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -12399,58 +13581,28 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 31,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 32,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 37,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 39,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 40,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 41,
-        "role": "signal"
+        "planIndex": 40,
+        "role": "warning"
       },
       {
         "allowTextures": true,
@@ -12460,7 +13612,7 @@
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -12475,12 +13627,12 @@
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -12490,87 +13642,77 @@
       {
         "allowTextures": true,
         "planIndex": 49,
-        "role": "hull"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 50,
-        "role": "signal"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 52,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 53,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 54,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 55,
-        "role": "geology"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 56,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 58,
+        "planIndex": 52,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 59,
-        "role": "hull"
+        "planIndex": 53,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 60,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 62,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 63,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 64,
-        "role": "glass"
+        "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 65,
-        "role": "glass"
+        "planIndex": 66,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 68,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 69,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -12585,47 +13727,37 @@
       {
         "allowTextures": true,
         "planIndex": 72,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
         "planIndex": 73,
-        "role": "mechanical"
+        "role": "geology"
       },
       {
         "allowTextures": true,
-        "planIndex": 75,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 76,
-        "role": "signal"
+        "planIndex": 74,
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 77,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 79,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 80,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 81,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 83,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -12635,26 +13767,16 @@
       {
         "allowTextures": true,
         "planIndex": 85,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 87,
-        "role": "mechanical"
+        "planIndex": 86,
+        "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 88,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 89,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 91,
+        "planIndex": 90,
         "role": "mechanical"
       },
       {
@@ -12664,12 +13786,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 93,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 95,
+        "planIndex": 94,
         "role": "mechanical"
       },
       {
@@ -12679,12 +13796,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 97,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 99,
+        "planIndex": 98,
         "role": "mechanical"
       },
       {
@@ -12694,18 +13806,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 101,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 103,
         "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 104,
-        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -12714,17 +13816,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 106,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 107,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 108,
+        "planIndex": 109,
         "role": "mechanical"
       },
       {
@@ -12739,13 +13836,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 112,
+        "planIndex": 113,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 114,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -12754,13 +13851,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 116,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 117,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -12774,11 +13866,6 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 120,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 121,
         "role": "mechanical"
       },
@@ -12789,22 +13876,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 124,
-        "role": "hull"
+        "planIndex": 123,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 125,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 126,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 128,
+        "planIndex": 127,
         "role": "mechanical"
       },
       {
@@ -12814,13 +13901,18 @@
       },
       {
         "allowTextures": true,
+        "planIndex": 130,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 131,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 132,
-        "role": "mechanical"
+        "planIndex": 133,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -12830,6 +13922,126 @@
       {
         "allowTextures": true,
         "planIndex": 135,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 136,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 137,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 138,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 140,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 141,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 142,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 144,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 145,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 146,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 147,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 148,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 149,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 150,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 151,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 152,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 155,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 157,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 159,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 161,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 162,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 164,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 165,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 167,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 168,
         "role": "mechanical"
       }
     ],
@@ -12839,7 +14051,7 @@
       "sha256": "583ea36e9cad0014ac6bf891a5a2a2c51eb48eafc3d4642722f697b8e08de4cc",
       "uri": "assets/ships/motions/kestrel-understory-growth.motion.json"
     },
-    "nodeCount": 145,
+    "nodeCount": 178,
     "primitives": [
       {
         "canopy": false,
@@ -12969,8 +14181,8 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_DRIVE_CORE",
-        "planIndex": 7,
+        "name": "LOD0_HOOK_DRIVE_CORE_1",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -13015,8 +14227,8 @@
           -2.6225000619888306,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 8,
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -13043,8 +14255,8 @@
           6.300000190734863,
           1
         ],
-        "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 9,
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -13071,8 +14283,8 @@
           -4.349999785423279,
           1
         ],
-        "name": "LOD0_HOOK_SECONDARY_POD_Hull_green",
-        "planIndex": 10,
+        "name": "LOD0_HOOK_SECONDARY_POD_Hull_green_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -13099,8 +14311,8 @@
           -4.349999904632568,
           1
         ],
-        "name": "LOD0_HOOK_SECONDARY_POD_Warning",
-        "planIndex": 11,
+        "name": "LOD0_HOOK_SECONDARY_POD_Warning_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -13127,8 +14339,8 @@
           0.9000000059604645,
           1
         ],
-        "name": "LOD0_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 12,
+        "name": "LOD0_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -13156,7 +14368,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 13,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13183,7 +14395,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 14,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13210,7 +14422,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 15,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13237,7 +14449,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 16,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13264,7 +14476,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 17,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13291,7 +14503,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 18,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13318,7 +14530,7 @@
           1
         ],
         "name": "LOD0_Stone_moss",
-        "planIndex": 19,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13345,7 +14557,7 @@
           1
         ],
         "name": "LOD0_Stone_mossDeep",
-        "planIndex": 20,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13372,7 +14584,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 21,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -13399,7 +14611,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 22,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13426,7 +14638,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber_beacon",
-        "planIndex": 23,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13453,7 +14665,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal",
-        "planIndex": 24,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13479,8 +14691,8 @@
           0,
           1
         ],
-        "name": "LOD1_HOOK_DRIVE_CORE",
-        "planIndex": 25,
+        "name": "LOD1_HOOK_DRIVE_CORE_1",
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -13525,8 +14737,8 @@
           -2.6225000619888306,
           1
         ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 26,
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -13553,8 +14765,8 @@
           6.300000190734863,
           1
         ],
-        "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 27,
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -13581,8 +14793,8 @@
           -4.34977912902832,
           1
         ],
-        "name": "LOD1_HOOK_SECONDARY_POD_Hull_green",
-        "planIndex": 28,
+        "name": "LOD1_HOOK_SECONDARY_POD_Hull_green_1",
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -13609,8 +14821,8 @@
           -4.350145936012268,
           1
         ],
-        "name": "LOD1_HOOK_SECONDARY_POD_Warning",
-        "planIndex": 29,
+        "name": "LOD1_HOOK_SECONDARY_POD_Warning_1",
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -13637,8 +14849,8 @@
           0.9000914692878723,
           1
         ],
-        "name": "LOD1_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 30,
+        "name": "LOD1_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -13666,7 +14878,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 31,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13693,7 +14905,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan",
-        "planIndex": 32,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13720,7 +14932,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 33,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13747,7 +14959,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 34,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13774,7 +14986,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 35,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13801,7 +15013,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 36,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13828,7 +15040,7 @@
           1
         ],
         "name": "LOD1_Stone_moss",
-        "planIndex": 37,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13855,7 +15067,7 @@
           1
         ],
         "name": "LOD1_Stone_mossDeep",
-        "planIndex": 38,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13882,7 +15094,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 39,
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -13909,7 +15121,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 40,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -13936,7 +15148,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber_beacon",
-        "planIndex": 41,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -13963,7 +15175,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 42,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -13989,8 +15201,8 @@
           -3.5762786865234375e-7,
           1
         ],
-        "name": "LOD2_HOOK_DRIVE_CORE",
-        "planIndex": 43,
+        "name": "LOD2_HOOK_DRIVE_CORE_1",
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -14035,8 +15247,8 @@
           -6.300000190734863,
           1
         ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 44,
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14063,8 +15275,8 @@
           6.300000190734863,
           1
         ],
-        "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 45,
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14091,8 +15303,8 @@
           -4.348652720451355,
           1
         ],
-        "name": "LOD2_HOOK_SECONDARY_POD_Hull_green",
-        "planIndex": 46,
+        "name": "LOD2_HOOK_SECONDARY_POD_Hull_green_1",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -14119,8 +15331,8 @@
           -4.3500001430511475,
           1
         ],
-        "name": "LOD2_HOOK_SECONDARY_POD_Warning",
-        "planIndex": 47,
+        "name": "LOD2_HOOK_SECONDARY_POD_Warning_1",
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -14147,8 +15359,8 @@
           0.9004210829734802,
           1
         ],
-        "name": "LOD2_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 48,
+        "name": "LOD2_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14176,7 +15388,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 49,
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14203,7 +15415,7 @@
           1
         ],
         "name": "LOD2_Lights_Cyan",
-        "planIndex": 50,
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14230,7 +15442,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 51,
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14257,7 +15469,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 52,
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14284,7 +15496,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 53,
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14311,7 +15523,7 @@
           1
         ],
         "name": "LOD2_Stone_moss",
-        "planIndex": 54,
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14338,7 +15550,7 @@
           1
         ],
         "name": "LOD2_Stone_mossDeep",
-        "planIndex": 55,
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14365,7 +15577,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 56,
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -14391,8 +15603,8 @@
           -4.6000001430511475,
           1
         ],
-        "name": "LOD0_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
-        "planIndex": 58,
+        "name": "LOD0_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor_1",
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -14420,8 +15632,8 @@
           -4.599979877471924,
           1
         ],
-        "name": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
-        "planIndex": 59,
+        "name": "LOD1_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor_1",
+        "planIndex": 79,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -14449,8 +15661,8 @@
           -4.600404381752014,
           1
         ],
-        "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor",
-        "planIndex": 60,
+        "name": "LOD2_MOTION_KESTREL_ARMOR_CAP_HOOK_ARMOR_PORT_Armor_1",
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "damageRole": "armor",
@@ -14479,7 +15691,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_CANOPY_CANOPY",
-        "planIndex": 62,
+        "planIndex": 83,
         "tags": {
           "canopy": true,
           "lod": "lod0",
@@ -14507,7 +15719,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_CANOPY_Mechanical",
-        "planIndex": 63,
+        "planIndex": 84,
         "tags": {
           "canopy": true,
           "lod": "lod0",
@@ -14535,7 +15747,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_CANOPY_CANOPY",
-        "planIndex": 64,
+        "planIndex": 85,
         "tags": {
           "canopy": true,
           "lod": "lod1",
@@ -14563,7 +15775,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_CANOPY_CANOPY",
-        "planIndex": 65,
+        "planIndex": 86,
         "tags": {
           "canopy": true,
           "lod": "lod2",
@@ -14590,8 +15802,8 @@
           0.8999999612569809,
           1
         ],
-        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 68,
+        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 90,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14619,8 +15831,8 @@
           0.8999999929219484,
           1
         ],
-        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 69,
+        "name": "LOD0_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 92,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14648,8 +15860,8 @@
           0.8999287728220224,
           1
         ],
-        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 70,
+        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 94,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14677,8 +15889,8 @@
           0.8999287728220224,
           1
         ],
-        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 71,
+        "name": "LOD1_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 96,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14706,8 +15918,8 @@
           0.8997756522148848,
           1
         ],
-        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical",
-        "planIndex": 72,
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_Mechanical_1",
+        "planIndex": 98,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14735,8 +15947,8 @@
           0.8997756522148848,
           1
         ],
-        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark",
-        "planIndex": 73,
+        "name": "LOD2_MOTION_KESTREL_DISH_STEM_HOOK_SENSOR_DISH_MechanicalDark_1",
+        "planIndex": 100,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14764,8 +15976,8 @@
           0.8999999761581421,
           1
         ],
-        "name": "LOD0_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 75,
+        "name": "LOD0_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 103,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14793,8 +16005,8 @@
           0.8999999761581421,
           1
         ],
-        "name": "LOD1_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 76,
+        "name": "LOD1_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 105,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14822,8 +16034,8 @@
           0.8999999761581421,
           1
         ],
-        "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan",
-        "planIndex": 77,
+        "name": "LOD2_MOTION_KESTREL_DISH_FEED_HOOK_SENSOR_DISH_Lights_Cyan_1",
+        "planIndex": 107,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -14852,7 +16064,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark",
-        "planIndex": 79,
+        "planIndex": 109,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -14880,7 +16092,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_0_MechanicalDark",
-        "planIndex": 80,
+        "planIndex": 110,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -14908,7 +16120,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_0_MechanicalDark",
-        "planIndex": 81,
+        "planIndex": 111,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -14936,7 +16148,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_1_MechanicalDark",
-        "planIndex": 83,
+        "planIndex": 113,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -14964,7 +16176,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_1_MechanicalDark",
-        "planIndex": 84,
+        "planIndex": 114,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -14992,7 +16204,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_1_MechanicalDark",
-        "planIndex": 85,
+        "planIndex": 115,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15020,7 +16232,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_2_MechanicalDark",
-        "planIndex": 87,
+        "planIndex": 117,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15048,7 +16260,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_2_MechanicalDark",
-        "planIndex": 88,
+        "planIndex": 118,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15076,7 +16288,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_2_MechanicalDark",
-        "planIndex": 89,
+        "planIndex": 119,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15104,7 +16316,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_3_MechanicalDark",
-        "planIndex": 91,
+        "planIndex": 121,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15132,7 +16344,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_3_MechanicalDark",
-        "planIndex": 92,
+        "planIndex": 122,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15160,7 +16372,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_3_MechanicalDark",
-        "planIndex": 93,
+        "planIndex": 123,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15188,7 +16400,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_4_MechanicalDark",
-        "planIndex": 95,
+        "planIndex": 125,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15216,7 +16428,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_4_MechanicalDark",
-        "planIndex": 96,
+        "planIndex": 126,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15244,7 +16456,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_4_MechanicalDark",
-        "planIndex": 97,
+        "planIndex": 127,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15272,7 +16484,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_IRIS_5_MechanicalDark",
-        "planIndex": 99,
+        "planIndex": 129,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15300,7 +16512,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_IRIS_5_MechanicalDark",
-        "planIndex": 100,
+        "planIndex": 130,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15328,7 +16540,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_IRIS_5_MechanicalDark",
-        "planIndex": 101,
+        "planIndex": 131,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15356,7 +16568,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_MINING_Beacon_Amber",
-        "planIndex": 103,
+        "planIndex": 133,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15384,7 +16596,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_MINING_MechanicalDark",
-        "planIndex": 104,
+        "planIndex": 134,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15412,7 +16624,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_MINING_Beacon_Amber",
-        "planIndex": 105,
+        "planIndex": 135,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15440,7 +16652,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_MINING_MechanicalDark",
-        "planIndex": 106,
+        "planIndex": 136,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15468,7 +16680,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_MINING_Beacon_Amber",
-        "planIndex": 107,
+        "planIndex": 137,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15496,7 +16708,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_MINING_MechanicalDark",
-        "planIndex": 108,
+        "planIndex": 138,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15524,7 +16736,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
-        "planIndex": 110,
+        "planIndex": 140,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15552,7 +16764,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
-        "planIndex": 111,
+        "planIndex": 141,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15580,7 +16792,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical",
-        "planIndex": 112,
+        "planIndex": 142,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15608,7 +16820,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
-        "planIndex": 114,
+        "planIndex": 144,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15636,7 +16848,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
-        "planIndex": 115,
+        "planIndex": 145,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15664,7 +16876,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
-        "planIndex": 116,
+        "planIndex": 146,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15692,7 +16904,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
-        "planIndex": 117,
+        "planIndex": 147,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15720,7 +16932,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
-        "planIndex": 118,
+        "planIndex": 148,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15748,7 +16960,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
-        "planIndex": 119,
+        "planIndex": 149,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15776,7 +16988,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber",
-        "planIndex": 120,
+        "planIndex": 150,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15804,7 +17016,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical",
-        "planIndex": 121,
+        "planIndex": 151,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15832,7 +17044,7 @@
           1
         ],
         "name": "LOD2_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark",
-        "planIndex": 122,
+        "planIndex": 152,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15859,8 +17071,8 @@
           -4.349999904632568,
           1
         ],
-        "name": "LOD0_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
-        "planIndex": 124,
+        "name": "LOD0_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor_1",
+        "planIndex": 155,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -15888,8 +17100,8 @@
           -4.349999904632568,
           1
         ],
-        "name": "LOD1_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
-        "planIndex": 125,
+        "name": "LOD1_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor_1",
+        "planIndex": 157,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -15917,8 +17129,8 @@
           -4.349207878112793,
           1
         ],
-        "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor",
-        "planIndex": 126,
+        "name": "LOD2_MOTION_KESTREL_POD_HATCH_HOOK_SECONDARY_POD_Armor_1",
+        "planIndex": 159,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -15947,7 +17159,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_STRUT_F_MechanicalDark",
-        "planIndex": 128,
+        "planIndex": 161,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15975,7 +17187,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_STRUT_F_MechanicalDark",
-        "planIndex": 129,
+        "planIndex": 162,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16003,7 +17215,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_STRUT_P_MechanicalDark",
-        "planIndex": 131,
+        "planIndex": 164,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16031,7 +17243,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_STRUT_P_MechanicalDark",
-        "planIndex": 132,
+        "planIndex": 165,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16059,7 +17271,7 @@
           1
         ],
         "name": "LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark",
-        "planIndex": 134,
+        "planIndex": 167,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16087,7 +17299,7 @@
           1
         ],
         "name": "LOD1_MOTION_KESTREL_STRUT_S_MechanicalDark",
-        "planIndex": 135,
+        "planIndex": 168,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16099,7 +17311,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kestrel_understory_growth.glb"
   },
-  "runtimeHash": "fefff3a3681363945f81aa3f08c56b4afcb457eab61539c078c21f6b452cfa7e",
+  "runtimeHash": "81153248806387ce36b15b32c6c0b28843b1b7f97877d90c91e640521e6d6940",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

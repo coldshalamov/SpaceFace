@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c205e4d5b5e533063b9298276f8063236f899a2291443494fe4b1e99441693d5",
+  "contentHash": "e0342eff975ac4beb355939ca139fd7454ffe075774e35a705ec5ef6f69af40d",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig-quiet.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4664,14 +4664,14 @@
       "uri": "ashline_rig_quiet.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 946112,
-    "sha256": "8b65e50a5ea9a961d7ab8edde9a1ab114cae88f14f919de967770603617b85d9",
+    "bytes": 946276,
+    "sha256": "98a2b4c25213a577cc547fe5e75675f20b1aac904ba33c38b932d3cd53cacb64",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4769,6 +4769,348 @@
       },
       {
         "matrix": [
+          1.6878308057785034,
+          0,
+          0,
+          0,
+          0,
+          1.6878308057785034,
+          0,
+          0,
+          0,
+          0,
+          1.6878308057785034,
+          0,
+          -7.7774999141693115,
+          0.10000000894069672,
+          1.1920928955078125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 8,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          3,
+          0.6200000047683716,
+          -3.0299999713897705,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0.8999999761581421,
+          0.30000001937150955,
+          2.9700000286102295,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.6868982315063477,
+          0,
+          0,
+          0,
+          0,
+          1.6868982315063477,
+          0,
+          0,
+          0,
+          0,
+          1.6868982315063477,
+          0,
+          -7.777705907821655,
+          0.10000001639127731,
+          4.2829924495890737e-8,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 25,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod1-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          3,
+          0.6200000047683716,
+          -3.0299999713897705,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 27,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod1-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0.8999999761581421,
+          0.30000001937150955,
+          2.9700000286102295,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 29,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod1-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.685076117515564,
+          0,
+          0,
+          0,
+          0,
+          1.685076117515564,
+          0,
+          0,
+          0,
+          0,
+          1.685076117515564,
+          0,
+          -7.778445720672607,
+          0.1000000387430191,
+          -5.203764885663986e-8,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 41,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod2-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          3,
+          0.6200000047683716,
+          -3.0299999713897705,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 43,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod2-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0,
+          0,
+          0,
+          0.07500004768371582,
+          0,
+          0.8999999761581421,
+          0.30000001937150955,
+          2.9700000286102295,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 45,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-quiet.node.lod2-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4787,7 +5129,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 44,
+        "planIndex": 53,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4839,7 +5181,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 45,
+        "planIndex": 54,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4891,7 +5233,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 46,
+        "planIndex": 55,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4943,7 +5285,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 47,
+        "planIndex": 56,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4995,7 +5337,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 48,
+        "planIndex": 57,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5047,7 +5389,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 49,
+        "planIndex": 58,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5099,7 +5441,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 50,
+        "planIndex": 59,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5151,7 +5493,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 51,
+        "planIndex": 60,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5203,7 +5545,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 52,
+        "planIndex": 61,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5255,7 +5597,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 53,
+        "planIndex": 62,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5307,7 +5649,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 54,
+        "planIndex": 63,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5359,7 +5701,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 55,
+        "planIndex": 64,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5429,27 +5771,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 8,
+        "planIndex": 9,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
         "role": "signal"
       },
       {
@@ -5460,87 +5787,72 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "warning"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 22,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
-        "role": "signal"
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 28,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "warning"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5555,56 +5867,86 @@
       {
         "allowTextures": true,
         "planIndex": 33,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "signal"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 39,
+        "planIndex": 38,
         "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 41,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 43,
+        "planIndex": 51,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
         "role": "warning"
       }
     ],
@@ -5614,7 +5956,7 @@
       "sha256": "1b5af46c5e928e86363d9654c2f6c66ac3f9f7ae4a6976c93005d373dc2bd32a",
       "uri": "assets/ships/motions/ashline-rig-quiet.motion.json"
     },
-    "nodeCount": 56,
+    "nodeCount": 65,
     "primitives": [
       {
         "canopy": false,
@@ -5748,8 +6090,8 @@
           1.1920928955078125e-7,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -5795,8 +6137,8 @@
           -3.0299999713897705,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -5824,8 +6166,8 @@
           2.9700000286102295,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -5854,7 +6196,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 11,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -5882,7 +6224,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
-        "planIndex": 12,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -5910,7 +6252,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 13,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -5938,7 +6280,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Livery",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -5966,7 +6308,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 15,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -5994,7 +6336,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6022,7 +6364,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6050,7 +6392,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Armor",
-        "planIndex": 18,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6078,7 +6420,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
-        "planIndex": 19,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6106,7 +6448,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_BrushedMetal",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6134,7 +6476,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_CANOPY",
-        "planIndex": 21,
+        "planIndex": 24,
         "tags": {
           "canopy": true,
           "lod": "lod1",
@@ -6161,8 +6503,8 @@
           4.2829924495890737e-8,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 22,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -6208,8 +6550,8 @@
           -3.0299999713897705,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 23,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6237,8 +6579,8 @@
           2.9700000286102295,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 24,
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6267,7 +6609,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Hull",
-        "planIndex": 25,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6295,7 +6637,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
-        "planIndex": 26,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6323,7 +6665,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 27,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6351,7 +6693,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 28,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6379,7 +6721,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 29,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6407,7 +6749,7 @@
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Warning",
-        "planIndex": 30,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6435,7 +6777,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Armor",
-        "planIndex": 31,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6463,7 +6805,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
-        "planIndex": 32,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6491,7 +6833,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_BrushedMetal",
-        "planIndex": 33,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6519,7 +6861,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_CANOPY",
-        "planIndex": 34,
+        "planIndex": 40,
         "tags": {
           "canopy": true,
           "lod": "lod2",
@@ -6546,8 +6888,8 @@
           -5.203764885663986e-8,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
-        "planIndex": 35,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -6593,8 +6935,8 @@
           -3.0299999713897705,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 36,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6622,8 +6964,8 @@
           2.9700000286102295,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 37,
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -6652,7 +6994,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull",
-        "planIndex": 38,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6680,7 +7022,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
-        "planIndex": 39,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6708,7 +7050,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 40,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6736,7 +7078,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 41,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6764,7 +7106,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 42,
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6792,7 +7134,7 @@
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Warning",
-        "planIndex": 43,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6804,7 +7146,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_quiet.glb"
   },
-  "runtimeHash": "b7190086e567b667b5d1276fe5d30b30c12df24cc6e2f6cd0a000f8efc4684cd",
+  "runtimeHash": "a8ddc49faeea5c7249cb9d64c88c404f2ce3741a59cb3404e4c3d3cd96eb3031",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

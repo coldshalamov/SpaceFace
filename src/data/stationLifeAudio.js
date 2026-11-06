@@ -14,4 +14,10 @@ export const STATION_LIFE_AUDIO_RECIPES = Object.freeze([
   { id: 'ambient_station_shift_bell', category: 'ambient', type: 'oscillator', wave: 'sine',
     baseFreq: 659.255, duration: 1.25, filterType: 'lowpass', filterFreq: 2200,
     gainEnvelope: { attack: .008, decay: .035, sustain: .1, release: 1.2, peak: .3 } },
+  // The market desk's own chime (inf-pa-market-desk): two soft triangle strikes, a fifth
+  // below the watch bell and bandpassed instead of lowpassed — a counter bell, not a watch bell.
+  { id: 'ambient_station_market_chime', category: 'ambient', type: 'oscillator', wave: 'triangle',
+    baseFreq: 523.25, duration: .85, repeatCount: 2, repeatIntervalS: .3,
+    filterType: 'bandpass', filterFreq: 1180, filterQ: 1.4,
+    gainEnvelope: { attack: .012, decay: .09, sustain: .07, release: .62, peak: .17 } },
 ]);

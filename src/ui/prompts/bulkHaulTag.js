@@ -6,7 +6,7 @@
 // it mirrors one guarded prompt into state.ui.bulkHaulTag and optionally renders a tiny DOM tag
 // when a browser HUD exists. It never mutates mining, tether, economy, cargo, or mission state.
 
-import { BULK_HAUL_MIN_U } from '../../systems/mining.js';
+import { BULK_HAUL_MIN_U } from '../../systems/miningBeamTargetingRead.js';
 
 export const BULK_HAUL_TAG_KIND = 'bulk_haul_tag';
 export const BULK_HAUL_TAG_PREFIX = 'TETHER TO HAUL';

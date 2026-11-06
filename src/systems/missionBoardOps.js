@@ -26,7 +26,7 @@ import { AUTHORED_SET_PIECES, AUTHORED_SET_PIECE_SOURCE, AUTHORED_SET_PIECE_TYPE
 import { LANDMARK_QUEST_SOURCE, validateLandmarkQuestOffer } from '../data/landmarkMissions.js';
 import { SET_PIECE_MISSION_SOURCE, buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
 import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js';
-import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
+import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_SOURCE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
 import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE, YARD_BOARD_STATION_ID, YARD_WORK_SOURCE, buildQuietBerthOffer, buildSplitManifestOffer } from '../data/yardContracts.js';
 import { syncWakeHandoffOffer } from './wakeHandoffRuntime.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
@@ -468,7 +468,37 @@ export const missionBoardOps = {
     if ((this.state.missions.active || []).some((m) => m && m.status === 'active' && m.heist)) {
       return false;
     }
-    if (board.slots.some((offer) => offer && offer.type === PQ019C_HEIST_TYPE)) return false;
+    const existing = board.slots.find((offer) => offer && offer.type === PQ019C_HEIST_TYPE);
+    if (existing) {
+      // Observation is durable player-authored progress, not a new offer roll. Refresh only the
+      // standing row's projected case-file copy; keep its identity, placement, terms and any
+      // unrelated params intact. Active heists returned above, so accepted terms never change.
+      if (existing.source !== PQ019C_HEIST_SOURCE) return false;
+      const projected = buildHeistOffer({
+        epoch: existing.epochPosted ?? epoch,
+        attempt: Number.isInteger(existing.heistAttempt) ? existing.heistAttempt : 0,
+        sourceMissionId: existing.recoveryFromMissionId || null,
+        observed: this._heistObserved(),
+      });
+      const currentParams = existing.params && typeof existing.params === 'object' ? existing.params : {};
+      const nextMethods = projected.params.methods;
+      const nextCaseFile = projected.params.caseFile;
+      const currentMethods = Array.isArray(currentParams.methods) ? currentParams.methods : [];
+      const currentCaseFile = currentParams.caseFile || {};
+      const methodsChanged = currentMethods.length !== nextMethods.length
+        || currentMethods.some((method, index) => method !== nextMethods[index]);
+      const caseFileChanged = currentCaseFile.learned !== nextCaseFile.learned
+        || currentCaseFile.total !== nextCaseFile.total
+        || currentCaseFile.cased !== nextCaseFile.cased;
+      if (!methodsChanged && !caseFileChanged && existing.description === projected.description) return false;
+      existing.params = {
+        ...currentParams,
+        methods: nextMethods,
+        caseFile: nextCaseFile,
+      };
+      existing.description = projected.description;
+      return true;
+    }
     // APPEND, never unshift. `_syncEmbodiedStoryOffer` and `_syncSetPieceOpeningOffers` both run
     // before this and both unshift, and `_generateOffers` puts a B4 branch-intro contract at the head
     // of what it returns. A standing black-market contract that claimed the top slot would displace

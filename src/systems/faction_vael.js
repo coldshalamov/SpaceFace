@@ -52,6 +52,7 @@ import VAEL_FACTION, {
 import { hash32 } from '../core/rng.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FACTION_ID = 'faction_vael';
 const TAU = Math.PI * 2;
@@ -2019,11 +2020,30 @@ export const vaelLiens = {
 
   update(dt, state) {
     const v = ensureVaelState(state);
+    // Do not create sector visits or contract traffic in a dormant arena. The
+    // conservative live-work test leaves the original update intact when armed.
+    if (state.run?.kind === 'survival' && !v.pageNine && !v.contractJobActive
+        && !v.invoices.length && !v.writs.length && !v.patrols.length
+        && !v.clauses.length && !v.debtors.length && v.giftPod.entityId == null
+        && !v.book.clauses && !v.book.stains && !v.book.settledCr
+        && !Object.keys(v.liens).length && !Object.keys(v.telegraphs).length
+        && !Object.keys(v.writTelegraphs).length && !Object.keys(v.visits).length
+        && !state.entityList.some((e) => e && (Number(e.data?.lienMass) > 0
+          || (e.alive !== false && (e.factionId === FACTION_ID
+            || e.data?.lineHeadId === VAEL_OVERRIDE_HEAD.id || e.data?.overrideTender === true
+            || e.data?.lienAnchor === true || e.data?.vaelPatrol === true
+            || e.data?.vaelWritTender === true || e.data?.vaelLance === true
+            || e.data?.vaelDebtor === true))))) return;
     const visit = this._visit(state);
-    this._telegraphTenders(state);
+    if (strideDt(this, 'telegraph', dt, 3, state) > 0) this._telegraphTenders(state);
     this._tickAnchors(state, dt);
     this._overrideHead(state, dt);
-    const scan = this._scan(state);
+    // The bucket census is a fast index (rows re-prove ownership): refresh at 20 Hz.
+    if (strideDt(this, 'scan', dt, 3, state) > 0 || !this._scanCache || this._scanState !== state) {
+      this._scanCache = this._scan(state);
+      this._scanState = state;
+    }
+    const scan = this._scanCache;
     this._tickInvoices(state);
     this._tickWrits(state, dt, scan);
     this._tickPatrols(state, dt, scan, visit);

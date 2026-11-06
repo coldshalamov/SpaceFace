@@ -293,6 +293,13 @@ export const special500Director = {
     } else if (e.channel === 'mail') {
       this.bus.emit(p.event || `special500:${e.id}`);
     }
+    if (e.channel === 'spectacle') {
+      // The spectacle leg owner (special500Spectacle) resolves this id against the
+      // presentation registry (src/data/special500/spectacleLegs.js) and plays the
+      // authored moment through the existing presentation owners. The comms:log tell
+      // above stays the noticing line; this emission carries only the identity.
+      this.bus.emit('special500:spectacle', { id: e.id, sectorId: currentSectorId(state) });
+    }
   },
 };
 

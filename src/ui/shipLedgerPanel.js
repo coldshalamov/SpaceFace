@@ -17,6 +17,7 @@ import {
   ledgerEvidenceDetail,
   ledgerEvidencePageTitle,
 } from '../systems/shipLedger.js';
+import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
 
 export function shipLedgerEntryAriaLabel(entry) {
   if (!entry) return 'Empty ship ledger entry';
@@ -243,6 +244,9 @@ export function createShipLedgerPanel(ctx, options = {}) {
   let openerEl = null;
   let linkAnchor = null;        // pageId armed as one end of a tie; null when no tie is in progress
   let detailPageId = null;      // pageId of the open evidence detail (board act target)
+  let boardPending = false;
+  let boardVisible = false;
+  let boardDisposed = false;
 
   function cue() {
     if (ctx && ctx.bus && ctx.bus.emit) ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -536,14 +540,44 @@ export function createShipLedgerPanel(ctx, options = {}) {
     return !!(result && result.ok);
   }
 
+  // The default worker owns the persisted board and its story consequences. In the
+  // main lane the same owner functions remain synchronous; a worker action waits
+  // for its real result and mirrored board before showing a confirmation.
+  function requestBoardAct(action, a, b, okMessage, settled) {
+    if (boardPending) return;
+    const state = ctx && ctx.state;
+    if (!laneCommandSink()) {
+      const fn = { pin: pinEvidence, unpin: unpinEvidence, link: linkEvidence, unlink: unlinkEvidence }[action];
+      const result = fn(state, a, b);
+      if (result.ok && action === 'link' && ctx?.bus) ctx.bus.emit('ledger:evidenceLinked', { a, b });
+      const ok = runBoardAct(result, okMessage);
+      if (settled) settled(ok);
+      return;
+    }
+    boardPending = true;
+    boardSay('Filing…');
+    const failed = () => {
+      boardPending = false;
+      if (!boardVisible || boardDisposed) return;
+      const ok = runBoardAct({ ok: false, reason: 'The ledger could not be reached. Try again.' }, okMessage);
+      if (settled) settled(ok);
+    };
+    let request;
+    try { request = laneRpc('shipLedgerBoard', { action, a, b }); } catch (_) { failed(); return; }
+    Promise.resolve(request).then((ack) => {
+      boardPending = false;
+      if (!boardVisible || boardDisposed) return;
+      const result = ack?.ok && ack.result ? ack.result : { ok: false, reason: 'The ledger could not be reached. Try again.' };
+      const ok = runBoardAct(result, okMessage);
+      if (settled) settled(ok);
+    }, failed);
+  }
+
   function submitTie(other) {
+    if (boardPending) return;
     const anchor = linkAnchor;
     linkAnchor = null;
-    const ok = runBoardAct(linkEvidence(ctx && ctx.state, anchor, other), 'Thread tied.');
-    if (!ok) linkAnchor = anchor;
-    else if (ctx && ctx.bus && ctx.bus.emit) {
-      ctx.bus.emit('ledger:evidenceLinked', { a: anchor, b: other });
-    }
+    requestBoardAct('link', anchor, other, 'Thread tied.', (ok) => { if (!ok) linkAnchor = anchor; });
   }
 
   function onDetailClick(event) {
@@ -557,10 +591,8 @@ export function createShipLedgerPanel(ctx, options = {}) {
     }
     const pin = closest('[data-ledger-pin]');
     if (pin && detailPageId) {
-      const state = ctx && ctx.state;
       const pinned = boardState().pins.includes(detailPageId);
-      const result = pinned ? unpinEvidence(state, detailPageId) : pinEvidence(state, detailPageId);
-      runBoardAct(result, pinned ? 'Unpinned.' : 'Pinned to the board.');
+      requestBoardAct(pinned ? 'unpin' : 'pin', detailPageId, null, pinned ? 'Unpinned.' : 'Pinned to the board.');
       return;
     }
     const tie = closest('[data-ledger-tie]');
@@ -601,13 +633,13 @@ export function createShipLedgerPanel(ctx, options = {}) {
     }
     const unpin = closest('[data-ledger-board-unpin]');
     if (unpin) {
-      runBoardAct(unpinEvidence(ctx && ctx.state, unpin.getAttribute('data-ledger-board-unpin')), 'Unpinned.');
+      requestBoardAct('unpin', unpin.getAttribute('data-ledger-board-unpin'), null, 'Unpinned.');
       return;
     }
     const cut = closest('[data-ledger-board-cut]');
     if (cut) {
       const [a, b] = String(cut.getAttribute('data-ledger-board-cut') || '').split('|');
-      runBoardAct(unlinkEvidence(ctx && ctx.state, a, b), 'Thread cut.');
+      requestBoardAct('unlink', a, b, 'Thread cut.');
       return;
     }
     if (closest('[data-ledger-board-cancel]')) {
@@ -626,17 +658,19 @@ export function createShipLedgerPanel(ctx, options = {}) {
   return {
     el: root,
     get model() { return lastModel; },
-    onShow() { refresh(page); },
+    onShow() { boardVisible = true; refresh(page); },
     refresh,
     openEvidence,
     openEvidenceByPageId,
     closeDetail,
     onHide() {
+      boardVisible = false;
       // No hidden refresh: collapse any open evidence detail and release the image request, but do
       // NOT rebuild the list while the host is hidden.
       closeDetail(false);
     },
     destroy() {
+      boardDisposed = true;
       nav.removeEventListener('click', onNavClick);
       list.removeEventListener('click', onListClick);
       detail.removeEventListener('click', onDetailClick);

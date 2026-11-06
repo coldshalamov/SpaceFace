@@ -3,7 +3,7 @@
 // House seed 4242. Pins both sides of the thruster cap through both seams:
 //   - telemetry (`flightTelemetry.js`) exposes the earned-speed boolean, true only above the cap;
 //   - the HUD velocity model (`hud.js` `buildVelocityReadout`) carries the flag and the velocity
-//     readout marks it (`EARNED`), with plain `WU/S` at or below the cap.
+//     readout marks it (`EARNED`), with plain `u/s` at or below the cap.
 //
 // Do NOT: change the flight law (this file asserts presentation only — no kernel import, no
 // stepPropulsion), add a second gauge (the mark rides the existing readout text).
@@ -71,9 +71,9 @@ test('the HUD velocity model carries the flag and marks the readout', () => {
   assert.equal(at.earnedSpeed, false);
   assert.equal(above.earnedSpeed, true);
   assert.equal(above.thrusterCap, cap, 'the model names the cap it measured against');
-  assert.equal(below.text, `${cap - 5} WU/S`, 'thruster-bought speed reads plain');
-  assert.equal(at.text, `${cap} WU/S`, 'the cap itself reads plain');
-  assert.equal(above.text, `${cap + 5} WU/S · EARNED`, 'earned speed is marked in words, not colour alone');
+  assert.equal(below.text, `${cap - 5} u/s`, 'thruster-bought speed reads plain');
+  assert.equal(at.text, `${cap} u/s`, 'the cap itself reads plain');
+  assert.equal(above.text, `${cap + 5} u/s · EARNED`, 'earned speed is marked in words, not colour alone');
   assert.ok(!below.text.includes('EARNED') && !at.text.includes('EARNED'), 'no mark at or below the cap');
 });
 

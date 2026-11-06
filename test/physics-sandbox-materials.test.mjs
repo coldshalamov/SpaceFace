@@ -7,6 +7,7 @@ import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js'
 import { environmentMaterials, addEnvironmentHeat, queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { ENVIRONMENT_FAMILIES, adventureMaterialFor, environmentMaterialOf, environmentSurfaceData } from '../src/data/environmentMaterials.js';
+import { rockSubstanceForSlot, ROCK_SUBSTANCES } from '../src/data/rockSubstances.js';
 import { swarmArena, SWARM_DEBRIS_TAG } from '../src/systems/swarmArena.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
@@ -76,7 +77,9 @@ test('old material tags infer the five families and mining RNG is independent of
   for (let i = 0; i < 32; i++) {
     const rock = world._spawnAsteroid({ id: 'f_test', type: 'ast_common_rock' }, { _homeSectorId: 'sector_ceres_belt' }, { x: 0, z: 0 }, 400, rng, null, null, null, i);
     for (let draw = 0; draw < 5; draw++) twin(); // angle, distance, ore HP, size, spin
-    assert.equal(rock.data.material, adventureMaterialFor('ast_common_rock', 42, 'f_test', i));
+    // Row 509: the deterministic substance roll owns break-truth material on scatter rocks;
+    // the surface pick is only a base layer the substance may override (applyRockSubstance).
+    assert.equal(rock.data.material, ROCK_SUBSTANCES[rockSubstanceForSlot(42, 'f_test', i)].envMaterial);
     samples.push(rock.data.material);
   }
   assert.equal(rng(), twin(), 'material stamping consumes no extra geology RNG');

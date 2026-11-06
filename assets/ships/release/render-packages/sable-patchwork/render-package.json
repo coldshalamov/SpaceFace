@@ -309,7 +309,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "65c39d3b67b8780377e10430476a84b2346ab2494b023fb57c8cdb883bbf7c1f",
+  "contentHash": "7e6cae8bafba1436a5a15bbd0a74d0f66ed9aa392e8cbe235e1f908d3cdc98bb",
   "dynamicGroups": [
     {
       "id": "sf.render.sable-patchwork.node.lod0-motion-sable-arm-base-armor.dynamic",
@@ -2671,14 +2671,14 @@
       "uri": "sable_patchwork.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 678080,
-    "sha256": "9421bf5762d0d63ad0ec41de46f5a6290c5022be1af9f4c5b082d0ba8df49422",
+    "bytes": 678172,
+    "sha256": "957befa3b4a59e8be3e1c170915e942744f6eb8c4ee9a0484dad15b320be38fa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2785,6 +2785,117 @@
       },
       {
         "matrix": [
+          2.310000002384186,
+          0,
+          0,
+          0,
+          0,
+          2.310000002384186,
+          0,
+          0,
+          0,
+          0,
+          2.310000002384186,
+          0,
+          0.4999999403953552,
+          3.03000009059906,
+          11,
+          1
+        ],
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_Armor",
+        "planIndex": 17,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SABLE_ARM_BASE_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SABLE_ARM_BASE_Armor",
+            "recordIds": [
+              "sf.render.sable-patchwork.node.lod0-motion-sable-arm-base-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5799999237060547,
+          0,
+          0,
+          0,
+          0,
+          0.5799999237060547,
+          0,
+          0,
+          0,
+          0,
+          0.5799999237060547,
+          0,
+          3,
+          3.450000047683716,
+          11,
+          1
+        ],
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_MechanicalDark",
+        "planIndex": 19,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SABLE_ARM_BASE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SABLE_ARM_BASE_MechanicalDark",
+            "recordIds": [
+              "sf.render.sable-patchwork.node.lod0-motion-sable-arm-base-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.5326812267303467,
+          0,
+          0,
+          0,
+          0,
+          2.5326812267303467,
+          0,
+          0,
+          0,
+          0,
+          2.5326812267303467,
+          0,
+          0.5,
+          3.024999976158142,
+          11,
+          1
+        ],
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_Warning",
+        "planIndex": 21,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SABLE_ARM_BASE_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SABLE_ARM_BASE_Warning",
+            "recordIds": [
+              "sf.render.sable-patchwork.node.lod0-motion-sable-arm-base-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2803,7 +2914,7 @@
           1
         ],
         "name": "MOTION_SABLE_ARM_ELBOW",
-        "planIndex": 20,
+        "planIndex": 23,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2855,6 +2966,80 @@
       },
       {
         "matrix": [
+          2.465000033378601,
+          0,
+          0,
+          0,
+          0,
+          2.465000033378601,
+          0,
+          0,
+          0,
+          0,
+          2.465000033378601,
+          0,
+          0.9150000810623169,
+          3.5999999046325684,
+          11,
+          1
+        ],
+        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Armor",
+        "planIndex": 24,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SABLE_ARM_ELBOW_Armor",
+            "recordIds": [
+              "sf.render.sable-patchwork.node.lod0-motion-sable-arm-elbow-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          0,
+          0,
+          0,
+          2,
+          0,
+          1,
+          3.8300000429153442,
+          11,
+          1
+        ],
+        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Warning",
+        "planIndex": 26,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SABLE_ARM_ELBOW_Warning",
+            "recordIds": [
+              "sf.render.sable-patchwork.node.lod0-motion-sable-arm-elbow-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2873,7 +3058,7 @@
           1
         ],
         "name": "MOTION_SABLE_CLAMP_PORT",
-        "planIndex": 23,
+        "planIndex": 28,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -2943,7 +3128,7 @@
           1
         ],
         "name": "MOTION_SABLE_CLAMP_STARBOARD",
-        "planIndex": 25,
+        "planIndex": 30,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -3013,7 +3198,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 27,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3065,7 +3250,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 28,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3117,7 +3302,7 @@
           1
         ],
         "name": "SOCKET_Engine_Port",
-        "planIndex": 29,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3169,7 +3354,7 @@
           1
         ],
         "name": "SOCKET_Engine_Starboard",
-        "planIndex": 30,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3221,7 +3406,7 @@
           1
         ],
         "name": "SOCKET_Service_Item",
-        "planIndex": 31,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3273,7 +3458,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 32,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3388,23 +3573,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 17,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3413,12 +3588,22 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 24,
+        "planIndex": 25,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 26,
+        "planIndex": 27,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
         "role": "hull"
       }
     ],
@@ -3428,7 +3613,7 @@
       "sha256": "0840eb6338227270f90605f3ebabc7f23253ee4861a701553dd8c33805dceb3c",
       "uri": "assets/ships/motions/sable-patchwork.motion.json"
     },
-    "nodeCount": 33,
+    "nodeCount": 38,
     "primitives": [
       {
         "canopy": false,
@@ -3714,8 +3899,8 @@
           11,
           1
         ],
-        "name": "LOD0_MOTION_SABLE_ARM_BASE_Armor",
-        "planIndex": 17,
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_Armor_1",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3743,8 +3928,8 @@
           11,
           1
         ],
-        "name": "LOD0_MOTION_SABLE_ARM_BASE_MechanicalDark",
-        "planIndex": 18,
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_MechanicalDark_1",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3772,8 +3957,8 @@
           11,
           1
         ],
-        "name": "LOD0_MOTION_SABLE_ARM_BASE_Warning",
-        "planIndex": 19,
+        "name": "LOD0_MOTION_SABLE_ARM_BASE_Warning_1",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3801,8 +3986,8 @@
           11,
           1
         ],
-        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Armor",
-        "planIndex": 21,
+        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Armor_1",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3830,8 +4015,8 @@
           11,
           1
         ],
-        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Warning",
-        "planIndex": 22,
+        "name": "LOD0_MOTION_SABLE_ARM_ELBOW_Warning_1",
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3860,7 +4045,7 @@
           1
         ],
         "name": "LOD0_MOTION_SABLE_CLAMP_PORT_Armor",
-        "planIndex": 24,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3889,7 +4074,7 @@
           1
         ],
         "name": "LOD0_MOTION_SABLE_CLAMP_STARBOARD_Armor",
-        "planIndex": 26,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -3902,7 +4087,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/sable_patchwork.glb"
   },
-  "runtimeHash": "bd15b7e5db28a5394732828fb0bce1f0fd16d594b2e9de3d824ee8f664c9798b",
+  "runtimeHash": "fce8aa2730bc32ed6ef8a081564957bbef01bfea9d81ec9f4dde23df26834b47",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

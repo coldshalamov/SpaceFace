@@ -11,6 +11,10 @@ export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 export const BASE_TAPE_PATH = 'test/47a.inputs.json';
 export const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 
+// Enabled only by the paired aggregate child; independent check processes never share results.
+let pairedInspectCache = null;
+export function enablePairedInspectCache() { pairedInspectCache = new Map(); }
+
 export function readJson(relPath) {
   return JSON.parse(readFileSync(join(ROOT, relPath), 'utf8'));
 }
@@ -146,7 +150,10 @@ export function runInspect({
     physicsBackend,
   ];
   if (reloadAt != null) args.push('--reload-at', String(reloadAt));
-  return runSfSim(args);
+  if (!pairedInspectCache) return runSfSim(args);
+  const key = JSON.stringify(args);
+  if (!pairedInspectCache.has(key)) pairedInspectCache.set(key, runSfSim(args));
+  return structuredClone(pairedInspectCache.get(key));
 }
 
 export function execNodeScript(scriptPath) {

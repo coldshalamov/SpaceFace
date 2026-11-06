@@ -971,3 +971,80 @@ test('market history backfill is lifecycle-scoped, bounded on failure, and never
     dom.restore();
   }
 });
+
+
+test('Market holds the exact worker order until its own terminal response', async () => {
+  const dom = installDom();
+  let screen;
+  const calls = [];
+  try {
+    const state = holdState(0, 1);
+    installSimCommandSink(request => {
+      if (request.kind === 'rpc' && request.op === 'economyTrade') {
+        calls.push(request);
+        return new Promise(() => {});
+      }
+      return Promise.resolve({ok: true, result: {histories: {}}});
+    });
+    const opened = openSellWithEventBus(state, { total: 30 });
+    screen = opened.screen;
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(calls.length, 1);
+    const id = calls[0].args.intentId;
+    assert.ok(id);
+    assert.equal(state.ui.marketTradeExpectation.intentId, id);
+    await new Promise(resolve => setTimeout(resolve, 110));
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
+    opened.bus.emit('economy:tradeFailed', {intentId:'market:older', stationId:STATION,
+      commodityId:FOOD, side:'sell', qty:1, reason:'price_changed', liveTotal:25, expectedTotal:30});
+    assert.equal(state.ui.marketTradeExpectation.intentId, id);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
+    opened.bus.emit('economy:tradeFailed', {intentId:id, stationId:STATION,
+      commodityId:FOOD, side:'sell', qty:1, reason:'price_changed', liveTotal:29, expectedTotal:30});
+    assert.equal(state.ui.marketTradeExpectation, null);
+    assert.match(screen.el.querySelector('[data-trade-total]').getAttribute('aria-label'), /29/);
+    assert.equal(state.player.credits, 5000, 'the UI never mutates the wallet');
+    assert.equal(state.player.cargo.items[FOOD], 1, 'a refusal moves no cargo');
+  } finally {
+    screen?.dispose();
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+
+test('unknown Market outcome retries the same worker intent without a second UI trade', async () => {
+  const dom = installDom();
+  let screen;
+  const calls = [];
+  try {
+    const state = holdState(0, 1);
+    installSimCommandSink(request => {
+      if (request.kind !== 'rpc' || request.op !== 'economyTrade') return Promise.resolve({ok:true, result:{histories:{}}});
+      calls.push(request);
+      if (calls.length === 1) return Promise.reject(new Error('reply lost'));
+      return Promise.resolve({ok:true, result:{ok:true, result:{ok:true, duplicate:true, qty:1, total:30}}});
+    });
+    const opened = openSellWithEventBus(state, {total:30});
+    screen = opened.screen;
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    await Promise.resolve(); await Promise.resolve();
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /result is unknown/i);
+    const retry = screen.el.querySelector('[data-go]');
+    assert.equal(retry.disabled, false);
+    retry.click();
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].args.intentId, calls[1].args.intentId);
+    assert.deepEqual(calls[0].args, calls[1].args);
+    const receipt = opened.emitted.find(e => e.name === 'station:marketTradeReceiptRecovered');
+    assert.equal(receipt?.payload.intentId, calls[0].args.intentId);
+    assert.equal(receipt?.payload.qty, 1);
+    assert.equal(state.player.credits, 5000);
+    assert.equal(state.player.cargo.items[FOOD], 1);
+  } finally {
+    screen?.dispose(); uninstallSimCommandSink(); dom.restore();
+  }
+});

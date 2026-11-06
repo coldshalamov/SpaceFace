@@ -3,6 +3,7 @@
 // up, +X is the optical/prow direction. No Three.js, ambient clock, RNG, or per-frame allocation.
 const TAU = Math.PI * 2;
 const EMPTY_POSE = Object.freeze({});
+const wrapPi = angle => Math.atan2(Math.sin(angle), Math.cos(angle));
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const smooth = value => { const t = clamp01(value); return t * t * (3 - 2 * t); };
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
@@ -74,6 +75,8 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const ink = clamp01(pose.ink);
   const inkCurl = finite(pose.inkCurl, (pose.inkActive ? -.64 : .36) * ink);
   const inkLift = finite(pose.inkLift, (pose.inkActive ? -.28 : .65) * ink);
+  // The retained wake trawl opens only aft-rooted arms; front recovery remains clear.
+  const trawlWeight = clamp01(pose.trawl) * smooth((-rootCos + .15) / 1.15);
   const phase = PHASE[index];
   // Independent slow recruitment, followed by a faster wave along the fine chain. The root
   // moves least, the forearm leads, and the terminal curl follows: no synchronized pinwheel.
@@ -84,10 +87,12 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const rakeWeight = rake * flank;
   const activeSweep = Number.isFinite(pose.rakeProgress) ? 2 * smooth(pose.rakeProgress) - 1 : -.5;
   const yaw = angle + (quiet * .025 * Math.sin(time * .83 + phase)
-    + .20 * rake * activeSweep) * (1 - jet);
-  const coilTurns = 6.22 + .20 * Math.sin(index) + curl * .32 + inkCurl * .36;
+    + .20 * rake * activeSweep) * (1 - jet)
+    + wrapPi(angle - Math.PI) * trawlWeight * .4;
+  const coilTurns = (6.22 + .20 * Math.sin(index) + curl * .32 + inkCurl * .36)
+    * (1 - trawlWeight * .5);
   const ventRelax = 1 - mantle * .72;
-  const forearmPitch = SHOULDER_PITCH[index * 4 + 3] * ventRelax - mantle * .08;
+  const forearmPitch = SHOULDER_PITCH[index * 4 + 3] * ventRelax - mantle * .08 - trawlWeight * .30;
   const totalLength = IRON_KRAKEN_ARM_MOTION.chainLength * LENGTH[index];
   const proximalCount = Math.min(PROXIMAL_LENGTHS.length, links);
   let proximalLength = 0;

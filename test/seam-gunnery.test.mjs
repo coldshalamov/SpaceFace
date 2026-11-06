@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { hasBallisticWeapon, leadSolution, primaryProjSpeed } from '../src/ai/gunnery.js';
 import { solveLeadAngle } from '../src/systems/weapons.js';
+import { solveLeadAngle as canonicalLeadAngle } from '../src/combat/leadAngle.js';
 
 function gunship(id, x, z, vel = { x: 0, z: 0 }) {
   return {
@@ -13,6 +14,7 @@ function gunship(id, x, z, vel = { x: 0, z: 0 }) {
 }
 
 test('the HUD lead pip uses the same ballistic solver the fire path uses', () => {
+  assert.equal(solveLeadAngle, canonicalLeadAngle, 'the legacy weapon export is the canonical shared solver');
   const shooter = gunship(1, 0, 0);
   const target = gunship(2, 120, 0, { x: 0, z: 40 });
   const speed = primaryProjSpeed(shooter);

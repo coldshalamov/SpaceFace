@@ -35,9 +35,29 @@ export function prepareHullLayoutGeometry(geometry, matrix, assetId) {
     target.setAttribute('sfHullPosition', source);
   } else {
     const array = new Float32Array(source.count * 3);
-    for (let i = 0; i < source.count; i++) {
-      // BufferAttribute accessors decode normalized/quantized release positions correctly.
-      point.fromBufferAttribute(source, i).applyMatrix4(matrix).toArray(array, i * 3);
+    const data = source.isInterleavedBufferAttribute ? source.data.array : source.array;
+    const stride = source.isInterleavedBufferAttribute ? source.data.stride : source.itemSize;
+    const offset = source.isInterleavedBufferAttribute ? source.offset : 0;
+    const e = matrix.elements;
+    const supported = data instanceof Int16Array || data instanceof Float32Array;
+    if (supported && source.itemSize === 3 && e[3] === 0 && e[7] === 0 && e[11] === 0 && e[15] === 1
+        && (!source.normalized || data instanceof Int16Array)) {
+      // Release meshes use affine transforms and quantized positions. Decode once per
+      // component without the generic accessor/vector dispatch, keeping its exact arithmetic.
+      const normalized = source.normalized;
+      for (let i = 0, j = offset, k = 0; i < source.count; i++, j += stride, k += 3) {
+        const x = normalized ? Math.max(data[j] / 32767, -1) : data[j];
+        const y = normalized ? Math.max(data[j + 1] / 32767, -1) : data[j + 1];
+        const z = normalized ? Math.max(data[j + 2] / 32767, -1) : data[j + 2];
+        array[k] = e[0] * x + e[4] * y + e[8] * z + e[12];
+        array[k + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+        array[k + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+      }
+    } else {
+      // Other encodings and projective matrices retain Three's general decoding path.
+      for (let i = 0; i < source.count; i++) {
+        point.fromBufferAttribute(source, i).applyMatrix4(matrix).toArray(array, i * 3);
+      }
     }
     target.setAttribute('sfHullPosition', new Float32BufferAttribute(array, 3));
   }

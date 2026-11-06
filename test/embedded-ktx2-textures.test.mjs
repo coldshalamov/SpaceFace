@@ -131,6 +131,32 @@ test('non-basisu textures, URI images and a missing loader follow the stock rule
   assert.throws(() => required.loadTexture(0), /setKTX2Loader must be called/);
 });
 
+test('preverified external KTX2 bytes use the existing transcoder and texture-source dedupe path', async () => {
+  resetImageSourceDedupeForTests();
+  const payload = new Uint8Array([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);
+  const ktx2Loader = fakeKtx2Loader();
+  ktx2Loader.parse = (buffer, onLoad) => {
+    assert.deepEqual([...new Uint8Array(buffer)], [...payload]);
+    structuredClone(buffer, { transfer: [buffer] });
+    onLoad(new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4));
+  };
+  const uri = '../_shared/images/abc.ktx2';
+  const parser = fakeParser({
+    ktx2Loader,
+    images: [{ uri, mimeType: 'image/ktx2', extras: { shared: true } }],
+    textures: [{ name: 'sharedAtlas', sampler: 0, extensions: { KHR_texture_basisu: { source: 0 } } }],
+    samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33648 }],
+  });
+  parser.verifiedExternalKtx2Resources = new Map([[uri, payload]]);
+  const texture = await new EmbeddedKtx2TexturePlugin(parser).loadTexture(0);
+  assert.equal(texture.name, 'sharedAtlas');
+  assert.equal(texture.magFilter, THREE.NearestFilter);
+  assert.equal(texture.wrapS, THREE.ClampToEdgeWrapping);
+  assert.equal(texture.wrapT, THREE.MirroredRepeatWrapping);
+  assert.equal(texture.userData.shared, true);
+  assert.deepEqual(ktx2Loader.parsed, []);
+});
+
 test('registered on the vendored GLTFLoader it replaces the built-in KHR_texture_basisu handler', async () => {
   const loader = new GLTFLoader();
   loader.register(registerEmbeddedKtx2Textures);

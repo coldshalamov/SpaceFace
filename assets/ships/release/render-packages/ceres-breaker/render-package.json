@@ -947,7 +947,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2b3378b21f14bad9dc68c43217767cb238ed17f16fd604637078fd3b66ef548e",
+  "contentHash": "51f9d4658a211fde435469f7abfd030079fc1e6e7b981829fc7e9ef49a4e5db4",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker.node.lod0-hook-ceres-thruster-main-port-inner-glow-drive.dynamic",
@@ -11670,14 +11670,14 @@
       "uri": "ceres_breaker.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1671196,
-    "sha256": "0b8c1cbe6e8a797d43f7926881e8f9672849067538cb0887d725b78d77863342",
+    "bytes": 1672676,
+    "sha256": "59e7e910672430e8158e2da846450c8560a4e2e2f6aa9782d498016c0404299a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -11722,6 +11722,228 @@
     "markers": [
       {
         "matrix": [
+          0.27500152587890625,
+          0,
+          0,
+          0,
+          0,
+          0.27500152587890625,
+          0,
+          0,
+          0,
+          0,
+          0.27500152587890625,
+          0,
+          44,
+          4.119999885559082,
+          -28.5,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 39,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.27500152587890625,
+          0,
+          0,
+          0,
+          0,
+          0.27500152587890625,
+          0,
+          0,
+          0,
+          0,
+          0.27500152587890625,
+          0,
+          44,
+          4.119999885559082,
+          28.5,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 41,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2759246826171875,
+          0,
+          0,
+          0,
+          0,
+          0.2759246826171875,
+          0,
+          0,
+          0,
+          0,
+          0.2759246826171875,
+          0,
+          44,
+          4.120000123977661,
+          -28.500000953674316,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 72,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2759246826171875,
+          0,
+          0,
+          0,
+          0,
+          0.2759246826171875,
+          0,
+          0,
+          0,
+          0,
+          0.2759246826171875,
+          0,
+          44,
+          4.120000123977661,
+          28.500000953674316,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 74,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2789897918701172,
+          0,
+          0,
+          0,
+          0,
+          0.2789897918701172,
+          0,
+          0,
+          0,
+          0,
+          0.2789897918701172,
+          0,
+          44.00441551208496,
+          4.114000082015991,
+          -28.4993257522583,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 105,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.27524566650390625,
+          0,
+          0,
+          0,
+          0,
+          0.27524566650390625,
+          0,
+          0,
+          0,
+          0,
+          0.27524566650390625,
+          0,
+          44.00000190734863,
+          4.120000123977661,
+          28.500675201416016,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 107,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "ceres_pre_finished": true,
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -11740,7 +11962,7 @@
           1
         ],
         "name": "MOTION_SHOE_PORT",
-        "planIndex": 78,
+        "planIndex": 114,
         "tags": {
           "motionGroup": true
         },
@@ -11787,6 +12009,546 @@
       },
       {
         "matrix": [
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          14,
+          0,
+          -22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_PORT_Armor",
+        "planIndex": 115,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          14,
+          0.5,
+          -21.519912719726562,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_PORT_BrushedMetal",
+        "planIndex": 117,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.25,
+          0,
+          0,
+          0,
+          0,
+          25.25,
+          0,
+          0,
+          0,
+          0,
+          25.25,
+          0,
+          13.5,
+          0,
+          -22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_PORT_Mechanical",
+        "planIndex": 119,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.75,
+          0,
+          0,
+          0,
+          0,
+          27.75,
+          0,
+          0,
+          0,
+          0,
+          27.75,
+          0,
+          14,
+          0.5,
+          -21.149999618530273,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_PORT_MechanicalDark",
+        "planIndex": 121,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          14,
+          2.25,
+          -22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_PORT_Warning",
+        "planIndex": 123,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          14,
+          0,
+          -22.5,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_PORT_Armor",
+        "planIndex": 125,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.491405487060547,
+          0,
+          0,
+          0,
+          0,
+          27.491405487060547,
+          0,
+          0,
+          0,
+          0,
+          27.491405487060547,
+          0,
+          14.000411987304688,
+          0.4981997013092041,
+          -21.520442008972168,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_PORT_BrushedMetal",
+        "planIndex": 127,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.24546194076538,
+          0,
+          0,
+          0,
+          0,
+          25.24546194076538,
+          0,
+          0,
+          0,
+          0,
+          25.24546194076538,
+          0,
+          13.500120639801025,
+          0.00015026330947875977,
+          -22.500000953674316,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_PORT_Mechanical",
+        "planIndex": 129,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.744666576385498,
+          0,
+          0,
+          0,
+          0,
+          27.744666576385498,
+          0,
+          0,
+          0,
+          0,
+          27.744666576385498,
+          0,
+          14.000065326690674,
+          0.5000099539756775,
+          -21.149846076965332,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_PORT_MechanicalDark",
+        "planIndex": 131,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.494340419769287,
+          0,
+          0,
+          0,
+          0,
+          27.494340419769287,
+          0,
+          0,
+          0,
+          0,
+          27.494340419769287,
+          0,
+          13.999468326568604,
+          2.2500001192092896,
+          -22.5,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_PORT_Warning",
+        "planIndex": 133,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.988346099853516,
+          0,
+          0,
+          0,
+          0,
+          27.988346099853516,
+          0,
+          0,
+          0,
+          0,
+          27.988346099853516,
+          0,
+          14,
+          0.0012087821960449219,
+          -22.50121021270752,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_PORT_Armor",
+        "planIndex": 135,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_PORT_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_PORT_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-port-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.488468170166016,
+          0,
+          0,
+          0,
+          0,
+          27.488468170166016,
+          0,
+          0,
+          0,
+          0,
+          27.488468170166016,
+          0,
+          13.997474670410156,
+          0.49804365634918213,
+          -21.523042678833008,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_PORT_BrushedMetal",
+        "planIndex": 137,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_PORT_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_PORT_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-port-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.23579454421997,
+          0,
+          0,
+          0,
+          0,
+          25.23579454421997,
+          0,
+          0,
+          0,
+          0,
+          25.23579454421997,
+          0,
+          13.499999523162842,
+          0.00045549869537353516,
+          -22.500000953674316,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_PORT_Mechanical",
+        "planIndex": 139,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_PORT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_PORT_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-port-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.733141899108887,
+          0,
+          0,
+          0,
+          0,
+          27.733141899108887,
+          0,
+          0,
+          0,
+          0,
+          27.733141899108887,
+          0,
+          14.000000953674316,
+          0.5000001192092896,
+          -21.15000057220459,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_PORT_MechanicalDark",
+        "planIndex": 141,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_PORT_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_PORT_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-port-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.48940944671631,
+          0,
+          0,
+          0,
+          0,
+          27.48940944671631,
+          0,
+          0,
+          0,
+          0,
+          27.48940944671631,
+          0,
+          14.000676155090332,
+          2.250117540359497,
+          -22.5,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_PORT_Warning",
+        "planIndex": 143,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_PORT_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_PORT_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -11805,7 +12567,7 @@
           1
         ],
         "name": "MOTION_SHOE_RAM_PORT_0",
-        "planIndex": 94,
+        "planIndex": 145,
         "tags": {
           "motionGroup": true
         },
@@ -11864,13 +12626,121 @@
           0,
           1,
           0,
+          -10,
+          0,
+          -26,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+        "planIndex": 146,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.000000476837158,
+          -0.0125809907913208,
+          -26,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+        "planIndex": 148,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.972102642059326,
+          0.012903094291687012,
+          -26,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+        "planIndex": 150,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-port-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           37,
           0,
           -27,
           1
         ],
         "name": "MOTION_SHOE_RAM_PORT_1",
-        "planIndex": 98,
+        "planIndex": 152,
         "tags": {
           "motionGroup": true
         },
@@ -11929,13 +12799,121 @@
           0,
           1,
           0,
+          37,
+          0,
+          -26,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+        "planIndex": 153,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          37.00052452087402,
+          -0.0036892592906951904,
+          -26,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+        "planIndex": 155,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          37.01179504394531,
+          0.014974355697631836,
+          -26,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+        "planIndex": 157,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-port-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -10,
           0,
           27,
           1
         ],
         "name": "MOTION_SHOE_RAM_STARBOARD_0",
-        "planIndex": 102,
+        "planIndex": 159,
         "tags": {
           "motionGroup": true
         },
@@ -11994,13 +12972,121 @@
           0,
           1,
           0,
+          -10,
+          0,
+          26,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 160,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10.000000476837158,
+          0.0125809907913208,
+          26,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 162,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.972102642059326,
+          -0.012903094291687012,
+          26,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+        "planIndex": 164,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-starboard-0-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           37,
           0,
           27,
           1
         ],
         "name": "MOTION_SHOE_RAM_STARBOARD_1",
-        "planIndex": 106,
+        "planIndex": 166,
         "tags": {
           "motionGroup": true
         },
@@ -12059,13 +13145,121 @@
           0,
           1,
           0,
+          37,
+          0,
+          26,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 167,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          37.00052452087402,
+          0.0036892592906951904,
+          26,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 169,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          37.01179504394531,
+          -0.014974355697631836,
+          26,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+        "planIndex": 171,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-ram-starboard-1-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           13.5,
           0,
           22.5,
           1
         ],
         "name": "MOTION_SHOE_STARBOARD",
-        "planIndex": 110,
+        "planIndex": 173,
         "tags": {
           "motionGroup": true
         },
@@ -12112,6 +13306,546 @@
       },
       {
         "matrix": [
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          14,
+          0,
+          22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Armor",
+        "planIndex": 174,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          14,
+          0.5,
+          21.519912719726562,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_STARBOARD_BrushedMetal",
+        "planIndex": 176,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.25,
+          0,
+          0,
+          0,
+          0,
+          25.25,
+          0,
+          0,
+          0,
+          0,
+          25.25,
+          0,
+          13.5,
+          0,
+          22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Mechanical",
+        "planIndex": 178,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.75,
+          0,
+          0,
+          0,
+          0,
+          27.75,
+          0,
+          0,
+          0,
+          0,
+          27.75,
+          0,
+          14,
+          0.5,
+          21.149999618530273,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_STARBOARD_MechanicalDark",
+        "planIndex": 180,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          0,
+          0,
+          0,
+          27.5,
+          0,
+          14,
+          2.25,
+          22.5,
+          1
+        ],
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Warning",
+        "planIndex": 182,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_SHOE_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_SHOE_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod0-motion-shoe-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          0,
+          0,
+          0,
+          28,
+          0,
+          14,
+          0,
+          22.5,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Armor",
+        "planIndex": 184,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.491405487060547,
+          0,
+          0,
+          0,
+          0,
+          27.491405487060547,
+          0,
+          0,
+          0,
+          0,
+          27.491405487060547,
+          0,
+          14.000411987304688,
+          0.4982043504714966,
+          21.520442008972168,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_STARBOARD_BrushedMetal",
+        "planIndex": 186,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.24546194076538,
+          0,
+          0,
+          0,
+          0,
+          25.24546194076538,
+          0,
+          0,
+          0,
+          0,
+          25.24546194076538,
+          0,
+          13.500120639801025,
+          0.0000705718994140625,
+          22.500000953674316,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Mechanical",
+        "planIndex": 188,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.744229793548584,
+          0,
+          0,
+          0,
+          0,
+          27.744229793548584,
+          0,
+          0,
+          0,
+          0,
+          27.744229793548584,
+          0,
+          13.99962854385376,
+          0.499843955039978,
+          21.150155067443848,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_STARBOARD_MechanicalDark",
+        "planIndex": 190,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.494340419769287,
+          0,
+          0,
+          0,
+          0,
+          27.494340419769287,
+          0,
+          0,
+          0,
+          0,
+          27.494340419769287,
+          0,
+          13.999468326568604,
+          2.250303626060486,
+          22.5,
+          1
+        ],
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Warning",
+        "planIndex": 192,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_SHOE_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_SHOE_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod1-motion-shoe-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.988346099853516,
+          0,
+          0,
+          0,
+          0,
+          27.988346099853516,
+          0,
+          0,
+          0,
+          0,
+          27.988346099853516,
+          0,
+          14,
+          -0.0012087821960449219,
+          22.50121021270752,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Armor",
+        "planIndex": 194,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_STARBOARD_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_STARBOARD_Armor",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.488468170166016,
+          0,
+          0,
+          0,
+          0,
+          27.488468170166016,
+          0,
+          0,
+          0,
+          0,
+          27.488468170166016,
+          0,
+          13.997474670410156,
+          0.49837571382522583,
+          21.52327060699463,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_STARBOARD_BrushedMetal",
+        "planIndex": 196,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_STARBOARD_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_STARBOARD_BrushedMetal",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          25.23579454421997,
+          0,
+          0,
+          0,
+          0,
+          25.23579454421997,
+          0,
+          0,
+          0,
+          0,
+          25.23579454421997,
+          0,
+          13.499999523162842,
+          0.00045543909072875977,
+          22.500000953674316,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Mechanical",
+        "planIndex": 198,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_STARBOARD_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_STARBOARD_Mechanical",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.73285961151123,
+          0,
+          0,
+          0,
+          0,
+          27.73285961151123,
+          0,
+          0,
+          0,
+          0,
+          27.73285961151123,
+          0,
+          13.99971866607666,
+          0.4984956681728363,
+          21.149999618530273,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_STARBOARD_MechanicalDark",
+        "planIndex": 200,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_STARBOARD_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_STARBOARD_MechanicalDark",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          27.48940944671631,
+          0,
+          0,
+          0,
+          0,
+          27.48940944671631,
+          0,
+          0,
+          0,
+          0,
+          27.48940944671631,
+          0,
+          14.000676155090332,
+          2.249882698059082,
+          22.5,
+          1
+        ],
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Warning",
+        "planIndex": 202,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_SHOE_STARBOARD_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_SHOE_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.ceres-breaker.node.lod2-motion-shoe-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -12130,7 +13864,7 @@
           1
         ],
         "name": "SOCKET_Bridle_Port",
-        "planIndex": 126,
+        "planIndex": 204,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12182,7 +13916,7 @@
           1
         ],
         "name": "SOCKET_Bridle_Starboard",
-        "planIndex": 127,
+        "planIndex": 205,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12234,7 +13968,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 128,
+        "planIndex": 206,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12286,7 +14020,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_MAIN_PORT_INNER",
-        "planIndex": 129,
+        "planIndex": 207,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12358,7 +14092,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_MAIN_PORT_OUTER",
-        "planIndex": 130,
+        "planIndex": 208,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12430,7 +14164,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_INNER",
-        "planIndex": 131,
+        "planIndex": 209,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12502,7 +14236,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_OUTER",
-        "planIndex": 132,
+        "planIndex": 210,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12574,7 +14308,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RCS_BOW_PORT",
-        "planIndex": 133,
+        "planIndex": 211,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12646,7 +14380,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RCS_BOW_STARBOARD",
-        "planIndex": 134,
+        "planIndex": 212,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12718,7 +14452,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RCS_STERN_PORT",
-        "planIndex": 135,
+        "planIndex": 213,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12790,7 +14524,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RCS_STERN_STARBOARD",
-        "planIndex": 136,
+        "planIndex": 214,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12862,7 +14596,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RETRO_PORT",
-        "planIndex": 137,
+        "planIndex": 215,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -12934,7 +14668,7 @@
           1
         ],
         "name": "SOCKET_CERES_THRUSTER_RETRO_STARBOARD",
-        "planIndex": 138,
+        "planIndex": 216,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13006,7 +14740,7 @@
           1
         ],
         "name": "SOCKET_Cutter_Dock",
-        "planIndex": 139,
+        "planIndex": 217,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13058,7 +14792,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 140,
+        "planIndex": 218,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13110,7 +14844,7 @@
           1
         ],
         "name": "SOCKET_Load_Center",
-        "planIndex": 141,
+        "planIndex": 219,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13162,7 +14896,7 @@
           1
         ],
         "name": "SOCKET_Shoe_Port",
-        "planIndex": 142,
+        "planIndex": 220,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13214,7 +14948,7 @@
           1
         ],
         "name": "SOCKET_Shoe_Starboard",
-        "planIndex": 143,
+        "planIndex": 221,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13266,7 +15000,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 144,
+        "planIndex": 222,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -13395,17 +15129,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 19,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 20,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
         "role": "drive"
       },
       {
@@ -13415,17 +15139,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 23,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 24,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
         "role": "drive"
       },
       {
@@ -13435,182 +15149,112 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 28,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 29,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 30,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "warning"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 37,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 39,
-        "role": "glass"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 41,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 42,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 45,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 48,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 49,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 50,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 51,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 52,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 53,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 54,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 55,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 56,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 57,
+        "planIndex": 48,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 58,
+        "planIndex": 49,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 59,
+        "planIndex": 50,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 60,
+        "planIndex": 51,
         "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 61,
+        "planIndex": 53,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 62,
+        "planIndex": 55,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 59,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
         "role": "drive"
       },
       {
@@ -13620,17 +15264,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 64,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 65,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 66,
         "role": "drive"
       },
       {
@@ -13640,193 +15274,143 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 68,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 69,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 70,
+        "planIndex": 71,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 71,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 72,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 73,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 74,
         "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 75,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 76,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 77,
-        "role": "warning"
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 79,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 80,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 81,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 82,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 83,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 84,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 85,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 86,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 87,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 88,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 89,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 90,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 91,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 92,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 93,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 95,
-        "role": "mechanical"
+        "planIndex": 94,
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 96,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 97,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 99,
-        "role": "mechanical"
+        "planIndex": 98,
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 100,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 101,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 103,
-        "role": "mechanical"
+        "planIndex": 102,
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 104,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 105,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 107,
-        "role": "mechanical"
+        "planIndex": 106,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 108,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 109,
-        "role": "mechanical"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 110,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 111,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -13836,16 +15420,6 @@
       {
         "allowTextures": true,
         "planIndex": 113,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 114,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 115,
         "role": "warning"
       },
       {
@@ -13855,28 +15429,13 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 117,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 118,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 119,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 120,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 121,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -13885,17 +15444,192 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 123,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 124,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 126,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 128,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 125,
+        "planIndex": 130,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 132,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 134,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 136,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 138,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 140,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 142,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 144,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 147,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 149,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 151,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 154,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 156,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 158,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 161,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 163,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 165,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 168,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 170,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 172,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 175,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 177,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 179,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 181,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 183,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 185,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 187,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 189,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 191,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 193,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 195,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 197,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 199,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 201,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 203,
         "role": "warning"
       }
     ],
@@ -13905,7 +15639,7 @@
       "sha256": "eb8c603fec225d44fac27cb77799dfd93979040af66cc2c561d31f8510cc9fd5",
       "uri": "assets/ships/motions/ceres-breaker.motion.json"
     },
-    "nodeCount": 145,
+    "nodeCount": 223,
     "primitives": [
       {
         "canopy": false,
@@ -14035,8 +15769,8 @@
           -21.75,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
-        "planIndex": 19,
+        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive_1",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14062,8 +15796,8 @@
           -26.75,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
-        "planIndex": 20,
+        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive_1",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14089,8 +15823,8 @@
           21.75,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
-        "planIndex": 21,
+        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive_1",
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14116,116 +15850,116 @@
           26.75,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          32.000000953674316,
-          0,
-          -30.320000648498535,
-          1
-        ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          32.000000953674316,
-          0,
-          30.320000648498535,
-          1
-        ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          -32.000000953674316,
-          0,
-          -30.320000648498535,
-          1
-        ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          0,
-          0,
-          0,
-          0.4013395309448242,
-          0,
-          -32.000000953674316,
-          0,
-          30.320000648498535,
-          1
-        ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "name": "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive_1",
         "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          32.000000953674316,
+          0,
+          -30.320000648498535,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive_1",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          32.000000953674316,
+          0,
+          30.320000648498535,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive_1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          -32.000000953674316,
+          0,
+          -30.320000648498535,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          0,
+          0,
+          0,
+          0.4013395309448242,
+          0,
+          -32.000000953674316,
+          0,
+          30.320000648498535,
+          1
+        ],
+        "name": "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive_1",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14251,8 +15985,8 @@
           -27.500000953674316,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
-        "planIndex": 27,
+        "name": "LOD0_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive_1",
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14278,8 +16012,8 @@
           27.499999046325684,
           1
         ],
-        "name": "LOD0_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
-        "planIndex": 28,
+        "name": "LOD0_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive_1",
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14305,8 +16039,8 @@
           -28.5,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 29,
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14333,8 +16067,8 @@
           28.5,
           1
         ],
-        "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 30,
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14362,7 +16096,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 31,
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14389,7 +16123,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 32,
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14416,7 +16150,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 33,
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14443,7 +16177,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 34,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14470,7 +16204,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 35,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -14497,7 +16231,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 36,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14524,7 +16258,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 37,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14551,7 +16285,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal",
-        "planIndex": 38,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14578,7 +16312,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 39,
+        "planIndex": 51,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -14604,8 +16338,8 @@
           -21.75,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
-        "planIndex": 40,
+        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive_1",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14631,8 +16365,8 @@
           -26.75,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
-        "planIndex": 41,
+        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive_1",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14658,8 +16392,8 @@
           21.75,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
-        "planIndex": 42,
+        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive_1",
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14685,8 +16419,8 @@
           26.75,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
-        "planIndex": 43,
+        "name": "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive_1",
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14712,8 +16446,8 @@
           -30.320000648498535,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
-        "planIndex": 44,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive_1",
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14739,8 +16473,8 @@
           30.320000648498535,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
-        "planIndex": 45,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive_1",
+        "planIndex": 63,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14766,8 +16500,8 @@
           -30.320000648498535,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
-        "planIndex": 46,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive_1",
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14793,8 +16527,8 @@
           30.320000648498535,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
-        "planIndex": 47,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive_1",
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14820,8 +16554,8 @@
           -27.500000953674316,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
-        "planIndex": 48,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive_1",
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14847,8 +16581,8 @@
           27.499999046325684,
           1
         ],
-        "name": "LOD1_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
-        "planIndex": 49,
+        "name": "LOD1_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive_1",
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14874,8 +16608,8 @@
           -28.500000953674316,
           1
         ],
-        "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 50,
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14902,8 +16636,8 @@
           28.500000953674316,
           1
         ],
-        "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 51,
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -14931,7 +16665,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 52,
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14958,7 +16692,7 @@
           1
         ],
         "name": "LOD1_Lights_Warm",
-        "planIndex": 53,
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -14985,7 +16719,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 54,
+        "planIndex": 78,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -15012,7 +16746,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 55,
+        "planIndex": 79,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -15039,7 +16773,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 56,
+        "planIndex": 80,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -15066,7 +16800,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 57,
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15093,7 +16827,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 58,
+        "planIndex": 82,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15120,7 +16854,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 59,
+        "planIndex": 83,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15147,7 +16881,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 60,
+        "planIndex": 84,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -15173,8 +16907,8 @@
           -21.75,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
-        "planIndex": 61,
+        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive_1",
+        "planIndex": 86,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15200,8 +16934,8 @@
           -26.75,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
-        "planIndex": 62,
+        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive_1",
+        "planIndex": 88,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15227,8 +16961,8 @@
           21.75,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
-        "planIndex": 63,
+        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive_1",
+        "planIndex": 90,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15254,8 +16988,8 @@
           26.75,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
-        "planIndex": 64,
+        "name": "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive_1",
+        "planIndex": 92,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15281,8 +17015,8 @@
           -30.320000648498535,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
-        "planIndex": 65,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive_1",
+        "planIndex": 94,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15308,8 +17042,8 @@
           30.320000648498535,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
-        "planIndex": 66,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive_1",
+        "planIndex": 96,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15335,8 +17069,8 @@
           -30.320000648498535,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
-        "planIndex": 67,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive_1",
+        "planIndex": 98,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15362,8 +17096,8 @@
           30.320000648498535,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
-        "planIndex": 68,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive_1",
+        "planIndex": 100,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15389,8 +17123,8 @@
           -27.500000953674316,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
-        "planIndex": 69,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive_1",
+        "planIndex": 102,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15416,8 +17150,8 @@
           27.499999046325684,
           1
         ],
-        "name": "LOD2_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
-        "planIndex": 70,
+        "name": "LOD2_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive_1",
+        "planIndex": 104,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15443,8 +17177,8 @@
           -28.4993257522583,
           1
         ],
-        "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 71,
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 106,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -15471,8 +17205,8 @@
           28.500675201416016,
           1
         ],
-        "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 72,
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 108,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -15500,7 +17234,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 73,
+        "planIndex": 109,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15527,7 +17261,7 @@
           1
         ],
         "name": "LOD2_Lights_Warm",
-        "planIndex": 74,
+        "planIndex": 110,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15554,7 +17288,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 75,
+        "planIndex": 111,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15581,7 +17315,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 76,
+        "planIndex": 112,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15608,7 +17342,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 77,
+        "planIndex": 113,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -15634,8 +17368,8 @@
           -22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_PORT_Armor",
-        "planIndex": 79,
+        "name": "LOD0_MOTION_SHOE_PORT_Armor_1",
+        "planIndex": 116,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15662,8 +17396,8 @@
           -21.519912719726562,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_PORT_BrushedMetal",
-        "planIndex": 80,
+        "name": "LOD0_MOTION_SHOE_PORT_BrushedMetal_1",
+        "planIndex": 118,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15690,8 +17424,8 @@
           -22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_PORT_Mechanical",
-        "planIndex": 81,
+        "name": "LOD0_MOTION_SHOE_PORT_Mechanical_1",
+        "planIndex": 120,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15718,8 +17452,8 @@
           -21.149999618530273,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_PORT_MechanicalDark",
-        "planIndex": 82,
+        "name": "LOD0_MOTION_SHOE_PORT_MechanicalDark_1",
+        "planIndex": 122,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15746,8 +17480,8 @@
           -22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_PORT_Warning",
-        "planIndex": 83,
+        "name": "LOD0_MOTION_SHOE_PORT_Warning_1",
+        "planIndex": 124,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -15774,8 +17508,8 @@
           -22.5,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_PORT_Armor",
-        "planIndex": 84,
+        "name": "LOD1_MOTION_SHOE_PORT_Armor_1",
+        "planIndex": 126,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15802,8 +17536,8 @@
           -21.520442008972168,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_PORT_BrushedMetal",
-        "planIndex": 85,
+        "name": "LOD1_MOTION_SHOE_PORT_BrushedMetal_1",
+        "planIndex": 128,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15830,8 +17564,8 @@
           -22.500000953674316,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_PORT_Mechanical",
-        "planIndex": 86,
+        "name": "LOD1_MOTION_SHOE_PORT_Mechanical_1",
+        "planIndex": 130,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15858,8 +17592,8 @@
           -21.149846076965332,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_PORT_MechanicalDark",
-        "planIndex": 87,
+        "name": "LOD1_MOTION_SHOE_PORT_MechanicalDark_1",
+        "planIndex": 132,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15886,8 +17620,8 @@
           -22.5,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_PORT_Warning",
-        "planIndex": 88,
+        "name": "LOD1_MOTION_SHOE_PORT_Warning_1",
+        "planIndex": 134,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -15914,8 +17648,8 @@
           -22.50121021270752,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_PORT_Armor",
-        "planIndex": 89,
+        "name": "LOD2_MOTION_SHOE_PORT_Armor_1",
+        "planIndex": 136,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15942,8 +17676,8 @@
           -21.523042678833008,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_PORT_BrushedMetal",
-        "planIndex": 90,
+        "name": "LOD2_MOTION_SHOE_PORT_BrushedMetal_1",
+        "planIndex": 138,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15970,8 +17704,8 @@
           -22.500000953674316,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_PORT_Mechanical",
-        "planIndex": 91,
+        "name": "LOD2_MOTION_SHOE_PORT_Mechanical_1",
+        "planIndex": 140,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -15998,8 +17732,8 @@
           -21.15000057220459,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_PORT_MechanicalDark",
-        "planIndex": 92,
+        "name": "LOD2_MOTION_SHOE_PORT_MechanicalDark_1",
+        "planIndex": 142,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16026,8 +17760,8 @@
           -22.5,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_PORT_Warning",
-        "planIndex": 93,
+        "name": "LOD2_MOTION_SHOE_PORT_Warning_1",
+        "planIndex": 144,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16054,8 +17788,8 @@
           -26,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
-        "planIndex": 95,
+        "name": "LOD0_MOTION_SHOE_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 147,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16082,8 +17816,8 @@
           -26,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
-        "planIndex": 96,
+        "name": "LOD1_MOTION_SHOE_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 149,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16110,8 +17844,8 @@
           -26,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_RAM_PORT_0_BrushedMetal",
-        "planIndex": 97,
+        "name": "LOD2_MOTION_SHOE_RAM_PORT_0_BrushedMetal_1",
+        "planIndex": 151,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16138,8 +17872,8 @@
           -26,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
-        "planIndex": 99,
+        "name": "LOD0_MOTION_SHOE_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 154,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16166,8 +17900,8 @@
           -26,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
-        "planIndex": 100,
+        "name": "LOD1_MOTION_SHOE_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 156,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16194,8 +17928,8 @@
           -26,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_RAM_PORT_1_BrushedMetal",
-        "planIndex": 101,
+        "name": "LOD2_MOTION_SHOE_RAM_PORT_1_BrushedMetal_1",
+        "planIndex": 158,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16222,8 +17956,8 @@
           26,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 103,
+        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 161,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16250,8 +17984,8 @@
           26,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 104,
+        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 163,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16278,8 +18012,8 @@
           26,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal",
-        "planIndex": 105,
+        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_0_BrushedMetal_1",
+        "planIndex": 165,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16306,8 +18040,8 @@
           26,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 107,
+        "name": "LOD0_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 168,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16334,8 +18068,8 @@
           26,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 108,
+        "name": "LOD1_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 170,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16362,8 +18096,8 @@
           26,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal",
-        "planIndex": 109,
+        "name": "LOD2_MOTION_SHOE_RAM_STARBOARD_1_BrushedMetal_1",
+        "planIndex": 172,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16390,8 +18124,8 @@
           22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_STARBOARD_Armor",
-        "planIndex": 111,
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Armor_1",
+        "planIndex": 175,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16418,8 +18152,8 @@
           21.519912719726562,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_STARBOARD_BrushedMetal",
-        "planIndex": 112,
+        "name": "LOD0_MOTION_SHOE_STARBOARD_BrushedMetal_1",
+        "planIndex": 177,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16446,8 +18180,8 @@
           22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_STARBOARD_Mechanical",
-        "planIndex": 113,
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Mechanical_1",
+        "planIndex": 179,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16474,8 +18208,8 @@
           21.149999618530273,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_STARBOARD_MechanicalDark",
-        "planIndex": 114,
+        "name": "LOD0_MOTION_SHOE_STARBOARD_MechanicalDark_1",
+        "planIndex": 181,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16502,8 +18236,8 @@
           22.5,
           1
         ],
-        "name": "LOD0_MOTION_SHOE_STARBOARD_Warning",
-        "planIndex": 115,
+        "name": "LOD0_MOTION_SHOE_STARBOARD_Warning_1",
+        "planIndex": 183,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -16530,8 +18264,8 @@
           22.5,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_STARBOARD_Armor",
-        "planIndex": 116,
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Armor_1",
+        "planIndex": 185,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16558,8 +18292,8 @@
           21.520442008972168,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_STARBOARD_BrushedMetal",
-        "planIndex": 117,
+        "name": "LOD1_MOTION_SHOE_STARBOARD_BrushedMetal_1",
+        "planIndex": 187,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16586,8 +18320,8 @@
           22.500000953674316,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_STARBOARD_Mechanical",
-        "planIndex": 118,
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Mechanical_1",
+        "planIndex": 189,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16614,8 +18348,8 @@
           21.150155067443848,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_STARBOARD_MechanicalDark",
-        "planIndex": 119,
+        "name": "LOD1_MOTION_SHOE_STARBOARD_MechanicalDark_1",
+        "planIndex": 191,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16642,8 +18376,8 @@
           22.5,
           1
         ],
-        "name": "LOD1_MOTION_SHOE_STARBOARD_Warning",
-        "planIndex": 120,
+        "name": "LOD1_MOTION_SHOE_STARBOARD_Warning_1",
+        "planIndex": 193,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -16670,8 +18404,8 @@
           22.50121021270752,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_STARBOARD_Armor",
-        "planIndex": 121,
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Armor_1",
+        "planIndex": 195,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16698,8 +18432,8 @@
           21.52327060699463,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_STARBOARD_BrushedMetal",
-        "planIndex": 122,
+        "name": "LOD2_MOTION_SHOE_STARBOARD_BrushedMetal_1",
+        "planIndex": 197,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16726,8 +18460,8 @@
           22.500000953674316,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_STARBOARD_Mechanical",
-        "planIndex": 123,
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Mechanical_1",
+        "planIndex": 199,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16754,8 +18488,8 @@
           21.149999618530273,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_STARBOARD_MechanicalDark",
-        "planIndex": 124,
+        "name": "LOD2_MOTION_SHOE_STARBOARD_MechanicalDark_1",
+        "planIndex": 201,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16782,8 +18516,8 @@
           22.5,
           1
         ],
-        "name": "LOD2_MOTION_SHOE_STARBOARD_Warning",
-        "planIndex": 125,
+        "name": "LOD2_MOTION_SHOE_STARBOARD_Warning_1",
+        "planIndex": 203,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -16795,7 +18529,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ceres_breaker.glb"
   },
-  "runtimeHash": "591810aa261a39e3af9b542c9d7e60cde5683f4c4e054c84a744649db61973cc",
+  "runtimeHash": "45af0e0e5bce34a9793bc36dd2af285753a8a4e0294d1a9ae57e578ddf784bc5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

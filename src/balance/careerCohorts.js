@@ -116,7 +116,10 @@ export const CAREER_BANDS = Object.freeze({
   hunter: Object.freeze({
     dead: round2(A_T1 * 0.12),
     lo: round2(A_T1 * 0.25),
-    hi: round2(A_T1 * 1.6),
+    // Post-raise honest envelope: same-sector chains + matched field posters measured ~386-544
+    // cr/min (Oct-17 wages + head-money parity). 2.4×A(T1)=600 sits above that envelope and still
+    // far below a double-settlement read (~2× honest ≈ 1100).
+    hi: round2(A_T1 * 2.4),
     note: 'Bounty/recon settle via missions board accept + complete → economy:grantCredits; repair live',
   }),
   prospector: Object.freeze({

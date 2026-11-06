@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
-import { PRESENTATION_TIER, SIM_TIER } from '../src/world/activityClassification.js';
+import { PIN_REASON, PRESENTATION_TIER, SIM_TIER } from '../src/world/activityClassification.js';
 import { shouldOwnerThink } from '../src/core/activityScheduler.js';
 import { SpatialHash } from '../src/core/spatialHash.js';
 import { spatialHashLayersFromState } from '../src/core/physics.js';
@@ -13,6 +13,9 @@ import {
   entityNeedsPhysics,
   simGlassHalfExtentsFromState,
   skipUnstampedRescan,
+  requestActivityPhysicsInterest,
+  releaseActivityPhysicsInterest,
+  resetActivityRuntimeForRestore,
 } from '../src/world/activityRuntime.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
 
@@ -75,6 +78,132 @@ function rock(id, x, extras = {}) {
     flags: extras.flags || {},
   };
 }
+
+function physicalInterestFixture() {
+  const player = ship(1, 0, { isPlayer: true });
+  const owner = ship(2, 8000, { data: { jobId: 'ordinary-salvor' }, rest: { occupantGeneration: 12 } });
+  const target = { ...ship(3, 8010), type: 'wreck', occupantGeneration: 13,
+    physicsBody: { dynamic: true, mass: 16, radius: 8 }, data: { salvagePool: { scrap: 1 } } };
+  const state = makeState([player, owner, target], { world: { currentSectorId: 'ceres' },
+    entityIndex: { __spacefaceEntityIndexV1: true, version: 1, ready: true, physicsStaticVersion: 0 } });
+  return { state, owner, target };
+}
+
+test('physical-interest admits a dormant NPC work target through the normal dynamics lane and expires absolutely', () => {
+  const { state, owner, target } = physicalInterestFixture();
+  const originalData = structuredClone(target.data), originalFlags = structuredClone(target.flags);
+  let runtime = ensureActivityClassified(state);
+  assert.equal(target.activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(runtime.physicsDynamics.includes(target), false);
+  const lease = requestActivityPhysicsInterest(state, owner, target, { expiresAt: 13, sectorId: 'ceres' });
+  assert.ok(lease);
+  runtime = ensureActivityClassified(state); // same tick and unchanged membership
+  assert.equal(target.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.deepEqual(target.activity.pins, [PIN_REASON.PHYSICAL_INTEREST]);
+  assert.equal(entityNeedsPhysics(target), true);
+  assert.equal(target._physicsPartition, 2);
+  assert.equal(runtime.physicsDynamics.includes(target), true);
+  assert.equal(spatialHashLayersFromState(state).dynamics.includes(target), true);
+  assert.deepEqual(target.data, originalData);assert.deepEqual(target.flags, originalFlags);
+  assert.equal(target.data.jobId, undefined);assert.equal(target.flags.tethered, undefined);
+  assert.equal(requestActivityPhysicsInterest(state, owner, target, { expiresAt: 100, sectorId: 'ceres' }), lease);
+  state.simTime = 12.999;state.tick++;
+  assert.equal(ensureActivityClassified(state).physicsDynamics.includes(target), true);
+  state.simTime = 13; // expiry must also defeat the same-tick cached/quiet result
+  runtime = ensureActivityClassified(state);
+  assert.equal(target.activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(target.activity.graceUntilT, -1, 'ordinary demotion grace cannot extend a finite authority');
+  assert.equal(target._physicsPartition, 0);assert.equal(runtime.physicsDynamics.includes(target), false);
+  assert.equal(releaseActivityPhysicsInterest(state, owner, lease), false);
+});
+
+test('physical-interest receipts isolate owners and withdrawal publishes in the same tick', () => {
+  const { state, owner, target } = physicalInterestFixture();
+  const other = ship(4, 8020);state.entities.set(other.id, other);state.entityList.push(other);
+  ensureActivityClassified(state);
+  const a = requestActivityPhysicsInterest(state, owner, target, { expiresAt: 13, sectorId: 'ceres' });
+  const b = requestActivityPhysicsInterest(state, other, target, { expiresAt: 14, sectorId: 'ceres' });
+  assert.notEqual(a, b);
+  assert.equal(releaseActivityPhysicsInterest(state, other, a), false);
+  assert.equal(releaseActivityPhysicsInterest(state, owner, {}), false);
+  assert.equal(releaseActivityPhysicsInterest({}, owner, a), false);
+  ensureActivityClassified(state);
+  assert.equal(releaseActivityPhysicsInterest(state, owner, a), true);
+  assert.equal(ensureActivityClassified(state).physicsDynamics.includes(target), true);
+  assert.equal(releaseActivityPhysicsInterest(state, other, b), true);
+  assert.equal(ensureActivityClassified(state).physicsDynamics.includes(target), false);
+  assert.equal(target.activity.simTier, SIM_TIER.S3_DORMANT);
+});
+
+test('physical-interest expiry wakes an otherwise retained parked frame', () => {
+  const { state, owner, target } = physicalInterestFixture();
+  ensureActivityClassified(state);
+  requestActivityPhysicsInterest(state, owner, target, { expiresAt: 13, sectorId: 'ceres' });
+  const modes = new Set();
+  for (let i = 0; i < 8; i++) {
+    state.tick++;state.simTime += 1 / 60;
+    const runtime = ensureActivityClassified(state);
+    modes.add(runtime.classifyMode);
+    assert.equal(runtime.physicsDynamics.includes(target), true);
+  }
+  assert.ok(modes.has('early-quiet-latch') || modes.has('frame-retain'), [...modes].join(','));
+  const membership = state.entityIndex.version;
+  state.simTime = 13;
+  const runtime = ensureActivityClassified(state);
+  assert.equal(state.entityIndex.version, membership);
+  assert.equal(target.activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(runtime.physicsDynamics.includes(target), false);
+});
+
+test('physical-interest rejects stale lives and withdraws on owner, target or sector invalidation', () => {
+  for (const invalidate of [
+    ({ owner }) => { owner.alive = false; },
+    ({ target }) => { target.alive = false; },
+    ({ owner }) => { owner.occupantGeneration++; },
+    ({ target }) => { target.occupantGeneration++; },
+    ({ state, owner }) => {
+      const replacement = { ...owner };state.entities.set(owner.id, replacement);
+      state.entityList[state.entityList.indexOf(owner)] = replacement;state.entityIndex.version++;
+    },
+    ({ state, target }) => {
+      const replacement = { ...target };state.entities.set(target.id, replacement);
+      state.entityList[state.entityList.indexOf(target)] = replacement;state.entityIndex.version++;
+    },
+    ({ owner }) => { owner.id = 99; },
+    ({ target }) => { target.id = 99; },
+    ({ state }) => { state.world.currentSectorId = 'other'; },
+    ({ target }) => { target.physicsBody = false; },
+  ]) {
+    const fixture = physicalInterestFixture(), { state, owner, target } = fixture;
+    ensureActivityClassified(state);
+    const lease = requestActivityPhysicsInterest(state, owner, target, { expiresAt: 13, sectorId: 'ceres' });
+    assert.ok(lease);ensureActivityClassified(state);
+    invalidate(fixture);
+    const runtime = ensureActivityClassified(state);
+    assert.equal(runtime.physicsDynamics.includes(target), false, invalidate.toString());
+    assert.equal(runtime.pinFacts.physicalInterest.size, 0);
+    assert.equal(releaseActivityPhysicsInterest(state, owner, lease), false);
+  }
+  const { state, owner, target } = physicalInterestFixture();
+  assert.equal(requestActivityPhysicsInterest(state, { ...owner }, target, { expiresAt: 13, sectorId: 'ceres' }), null);
+  assert.equal(requestActivityPhysicsInterest(state, owner, { ...target }, { expiresAt: 13, sectorId: 'ceres' }), null);
+});
+
+test('physical-interest has no serialized/restored authority and validates finite sector-bound demand', () => {
+  const { state, owner, target } = physicalInterestFixture();
+  for (const options of [{ expiresAt: NaN, sectorId: 'ceres' }, { expiresAt: Infinity, sectorId: 'ceres' },
+    { expiresAt: 10, sectorId: 'ceres' }, { expiresAt: 13, sectorId: 'wrong' }, { expiresAt: 13 }]) {
+    assert.equal(requestActivityPhysicsInterest(state, owner, target, options), null);
+  }
+  // Hand-built minimal owners may lack generation stamps; exact references still bind them.
+  delete owner.occupantGeneration;delete target.occupantGeneration;
+  const lease = requestActivityPhysicsInterest(state, owner, target, { expiresAt: 13, sectorId: 'ceres' });
+  assert.ok(lease);ensureActivityClassified(state);
+  assert.equal(JSON.stringify(state).includes('PHYSICAL_INTEREST'), false);
+  assert.equal(resetActivityRuntimeForRestore(state), true);
+  assert.equal(ensureActivityClassified(state).physicsDynamics.includes(target), false);
+  assert.equal(releaseActivityPhysicsInterest(state, owner, lease), false);
+});
 
 test('far rocks and haulers leave the Rapier set without being deleted', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });

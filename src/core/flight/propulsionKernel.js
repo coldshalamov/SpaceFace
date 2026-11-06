@@ -535,8 +535,8 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
 // Assisted-mode speed governor: any positive translation command is a speed command toward
 // commandFraction × combatSpeed (boost raises the cap by boostSpeedMult). commandFraction is
 // hypot(max(0, throttle), strafe) clamped to 1, so a diagonal W+A/D requests ONE full-cap
-// vector rather than two independent caps, and pure lateral still has a cap. Negative throttle
-// alone stays the brake/reverse path. The quantity it governs is TOTAL planar speed, not the
+// vector rather than two independent caps, and pure lateral still has a cap. The manual
+// reverse branch below uses physical retro authority and a smaller signed envelope. The quantity it governs is TOTAL planar speed, not the
 // nose-forward component: yawing must not launder governed speed into ungoverned lateral speed
 // (PQ-137.03b). Below the cap the existing axial forward servo saturates at full thruster
 // authority until the last ~governorResponseS of closing speed. The physics owner's thrust-only
@@ -546,6 +546,20 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
 // Mutates manualLocal.forward in place and returns telemetry (null when the governor has no
 // opinion this tick).
 function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt) {
+  const reverseCap = manualReverseCap(input, profile);
+  if (reverseCap > 0) {
+    const speed = Math.hypot(localVelocity.forward, localVelocity.lateral);
+    // Overspeed carried FORWARD is not reverse speed: retro thrust must be able to
+    // spend it and cross zero. Already-earned backward overspeed coasts; no velocity write.
+    const err = localVelocity.forward > EPS
+      ? Math.max(reverseCap, localVelocity.forward)
+      : reverseCap - speed;
+    const requested = Math.max(0, -manualLocal.forward);
+    const governed = clamp(err / positive(profile.assist?.governorResponseS, 0.9), 0, requested);
+    manualLocal.forward = -governed;
+    return { cap: reverseCap, baseCap: reverseCap, engaged: governed < requested - EPS,
+      overspeed: err < 0, physicsEarned: !!input.physicsEarnedMomentum };
+  }
   if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
@@ -661,6 +675,13 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   return telemetry;
 }
 
+function manualReverseCap(input, profile) {
+  if (!input.manualReverse || input.brake || !(input.throttle < -positive(profile.assist?.deadInput, 0.025))) return 0;
+  const forward = positive(profile.combatSpeed, positive(profile.maxSpeed, positive(profile.precisionSpeed, 150)));
+  const reverse = positive(profile.reverseMaxSpeed, forward * 0.35);
+  return reverse * clamp(Math.hypot(input.throttle, input.strafe), 0, 1);
+}
+
 /**
  * Finite bound on planar speed this tick's continuous translation may produce. Null governor
  * (Drift, Newtonian, hands-off) preserves the drive's solver limit — Infinity for reaction —
@@ -677,7 +698,8 @@ function controlMadeSpeedLimit(governor, profile) {
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
   const axes = localAxes(body.rot);
-  const maxSpeed = input.boost
+  const reverseCap = manualReverseCap(input, profile);
+  const maxSpeed = reverseCap > 0 ? reverseCap : input.boost
     ? positive(profile.boostMaxSpeed, positive(profile.maxSpeed, 150))
     : positive(profile.maxSpeed, 150);
   const desiredLocal = clampMagnitude({ x: input.throttle, z: input.strafe }, 1);
@@ -731,7 +753,7 @@ function stepGravimetric(body, input, profile, runtime, environment, dt) {
     runtime: nextRuntime,
     acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
-    maxSpeed: Math.min(maxSpeed * 1.04, finiteOrInfinity(profile.solverSpeedLimit)),
+    maxSpeed: Math.min(reverseCap > 0 ? reverseCap : maxSpeed * 1.04, finiteOrInfinity(profile.solverSpeedLimit)),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
     telemetry: {
@@ -783,12 +805,14 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     },
   };
   const limits = reactionLimits(rcsProfile, 1);
+  const localVelocity = worldToLocal(body.vel, axes);
+  const manualLocal = manualThrustLocal(manualInput, limits, localVelocity, rcsProfile);
+  const governor = manualReverseCap(manualInput, rcsProfile) > 0
+    ? applySpeedGovernor(manualLocal, manualInput, limits, localVelocity, rcsProfile, dt) : null;
   const assist = reactionAssistAcceleration(body, axes, manualInput, rcsProfile, false);
   const local = clampLocalAcceleration({
-    forward: (manualInput.throttle >= 0
-      ? manualInput.throttle * limits.forward
-      : manualInput.throttle * limits.reverse) + assist.local.forward,
-    lateral: manualInput.strafe * limits.strafe + assist.local.lateral,
+    forward: manualLocal.forward + assist.local.forward,
+    lateral: manualLocal.lateral + assist.local.lateral,
   }, limits);
   let accel = add2(localToWorld(local, axes), environmentalDragAcceleration(body, environment));
 
@@ -848,7 +872,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
     impulse,
-    maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
     demand,
     events: [...transitionEvents(runtime, nextRuntime, input, profile), ...events],
     telemetry: {
@@ -961,13 +985,24 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
   const fieldDir = normalize2(environment.fieldDirection, FIELD_DIRECTION_DEFAULT);
   const fieldStrength = Math.max(0, finite(environment.fieldStrength, 0));
   const alignment = Math.max(0, dot2({ x: axes.fx, z: axes.fz }, fieldDir));
-  const sailAccel = positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle) * channelScale('forward');
+  const sailAccel = input.brake ? 0
+    : positive(profile.fieldAccel, 8) * fieldStrength * deployed * alignment * Math.max(0, input.throttle) * channelScale('forward');
   const sailWorld = scale2(fieldDir, sailAccel);
 
-  const trim = localToWorld({
-    forward: Math.min(0, input.throttle) * positive(profile.trimAccel, 2) * channelScale('reverse'),
-    lateral: input.strafe * positive(profile.trimAccel, 2) * channelScale('strafe'),
-  }, axes);
+  const trimAccel = positive(profile.trimAccel, 2);
+  const limits = { forward: trimAccel * channelScale('forward'), reverse: trimAccel * channelScale('reverse'),
+    strafe: trimAccel * channelScale('strafe') };
+  const trimLocal = { forward: input.brake ? 0 : Math.min(0, input.throttle) * limits.reverse,
+    lateral: input.brake ? 0 : input.strafe * limits.strafe };
+  const localVelocity = worldToLocal(body.vel, axes);
+  const governor = manualReverseCap(input, profile) > 0
+    ? applySpeedGovernor(trimLocal, input, limits, localVelocity, profile, dt) : null;
+  if (input.brake) {
+    const horizon = positive(profile.assist?.pilotBrakeHorizonS, 0.72);
+    trimLocal.forward = clamp(-localVelocity.forward / horizon, -limits.reverse, limits.forward);
+    trimLocal.lateral = clamp(-localVelocity.lateral / horizon, -limits.strafe, limits.strafe);
+  }
+  const trim = localToWorld(trimLocal, axes);
   let accel = add2(add2(sailWorld, trim), environmentalDragAcceleration(body, environment));
 
   const yaw = computeYawControl(body, input, profile, dt);
@@ -981,7 +1016,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
     runtime: nextRuntime,
     acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
-    maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
     telemetry: {
@@ -1348,11 +1383,8 @@ function manualThrustLocal(input, limits, localVelocity, profile) {
     // zero, and settled flying BACKWARDS at 21.6 WU/s forever; holding S from rest accelerated
     // backwards to the same figure. Both measured on the starter hull.
     //
-    // Assisted reverse flight is not a verb this kernel supports — applySpeedGovernor returns early
-    // unless `throttle > deadInput`, so reverse is entirely ungoverned, and in a model with no
-    // vacuum drag (invariant 1) an unopposed reverse command would accelerate without bound. The
-    // -21.6 equilibrium was not reverse flight; it was two controllers deadlocking. Turning the ship
-    // is how you go somewhere else.
+    // Manual reverse now has its own signed governor. It must arrive without the brake flag;
+    // an explicit stop still suppresses translation rather than fighting a reverse controller.
     if (Math.abs(throttle) > deadInput) throttle = 0;
     if (Math.abs(strafe) > deadInput) strafe = 0;
     void releaseSpeed;
@@ -1621,6 +1653,7 @@ function normalizeInput(input = {}, out = null, subs = null) {
   o.turn = clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1);
   o.boost = !!input.boost;
   o.brake = !!input.brake;
+  o.manualReverse = input.manualReverse === true;
   o.boostPressed = !!input.boostPressed;
   o.boostReleased = !!input.boostReleased;
   o.physicsEarnedMomentum = !!input.physicsEarnedMomentum;

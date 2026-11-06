@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
@@ -15,6 +15,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
+import { collectRepeatedKtx2PayloadHashes } from './lib/renderPackageStorage.mjs';
 import {
   buildRuntimeTableForRenderGlb,
   sealMotionBankRef,
@@ -31,10 +32,21 @@ export async function buildRenderPackagePilots(options = {}) {
   const check = options.check === true;
   const onlyKeys = options.onlyKeys ? new Set(options.onlyKeys) : null;
   const repoRoot = resolve(options.repoRoot || REPO_ROOT);
+  const outputRoot = options.outputRoot ? resolve(repoRoot, options.outputRoot) : repoRoot;
+  const externalizeKtx2 = options.externalizeKtx2 === true;
+  if (externalizeKtx2) {
+    const ignoredRoot = resolve(repoRoot, '.devshots') + sep;
+    if (options.check || !options.outputRoot || !outputRoot.startsWith(ignoredRoot)) {
+      throw new Error('External KTX2 pilot builds require an explicit ignored --output-root under .devshots and cannot run with --check.');
+    }
+  }
   const manifestPath = resolve(repoRoot, options.manifestPath || DEFAULT_MANIFEST);
   const manifestBytes = await readFile(manifestPath);
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   assertPilotManifest(manifest);
+  if (externalizeKtx2 && manifest.pilots.some((pilot) => pilot.sharedKtx2Hashes !== undefined)) {
+    throw new Error('The --externalize-ktx2 prototype cannot be combined with manifest-declared sharedKtx2Hashes.');
+  }
   const flightStaticManifestPath = resolve(
     repoRoot,
     options.flightStaticManifestPath || DEFAULT_FLIGHT_STATIC_MANIFEST,
@@ -52,6 +64,10 @@ export async function buildRenderPackagePilots(options = {}) {
       if (!available.has(key)) throw new Error(`Unknown render-package pilot key ${key}.`);
     }
   }
+  const selectedPilots = manifest.pilots.filter((pilot) => !onlyKeys || onlyKeys.has(pilot.key));
+  const repeatedKtx2Hashes = externalizeKtx2
+    ? await collectRepeatedKtx2PayloadHashes(selectedPilots.map((pilot) => resolve(repoRoot, pilot.outputDir, 'render.glb')))
+    : null;
   let bindings = [];
 
   try {
@@ -75,7 +91,8 @@ export async function buildRenderPackagePilots(options = {}) {
       const semanticManifest = await derivePilotSemanticManifest(pilot, sourcePath);
       const outputDir = check
         ? join(scratch, pilot.key)
-        : resolve(repoRoot, pilot.outputDir);
+        : resolve(outputRoot, pilot.outputDir);
+      const declaredKtx2Hashes = manifestPilot.sharedKtx2Hashes;
       const result = await compileRenderPackage({
         assetId: pilot.assetId,
         sourceGlbPath: sourcePath,
@@ -83,10 +100,26 @@ export async function buildRenderPackagePilots(options = {}) {
         semanticManifest,
         sourceAssetId: pilot.releaseAssetId,
         positionPrecisionPolicy: pilot.positionPrecisionPolicy || 'standard',
+        ...(externalizeKtx2
+          ? { externalizeKtx2: true, externalizeKtx2Hashes: repeatedKtx2Hashes }
+          : declaredKtx2Hashes !== undefined
+            ? { externalizeKtx2: true, externalizeKtx2Hashes: new Set(declaredKtx2Hashes) }
+            : {}),
         outputDir,
       });
+      if (declaredKtx2Hashes !== undefined) {
+        const compiledHashes = new Set((result.package.render.resources || []).map((resource) => resource.sha256));
+        for (const hash of declaredKtx2Hashes) {
+          if (!compiledHashes.has(hash)) {
+            throw new Error(`${pilot.key}: declared sharedKtx2Hashes entry ${hash} was not externalized from this package.`);
+          }
+        }
+      }
       await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);
-      if (check) await assertPackageMatches(outputDir, resolve(repoRoot, pilot.outputDir), pilot.key);
+      if (check) {
+        const expectedRoot = options.outputRoot ? outputRoot : repoRoot;
+        await assertPackageMatches(outputDir, resolve(expectedRoot, pilot.outputDir), pilot.key);
+      }
 
     }
 
@@ -95,7 +128,8 @@ export async function buildRenderPackagePilots(options = {}) {
     // increases antivirus/file-indexer lock exposure. Unselected bindings come from their already
     // content-addressed metadata; the selected package was just rebuilt above.
     bindings = await Promise.all(manifest.pilots.map(async (pilot) => {
-      const metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8'));
+      const metadataRoot = selectedPilots.some((selected) => selected.key === pilot.key) ? outputRoot : repoRoot;
+      const metadata = JSON.parse(await readFile(resolve(metadataRoot, pilot.metadataUrl), 'utf8'));
       if (metadata.assetId !== pilot.assetId) {
         throw new Error(`${pilot.key}: compiled package assetId ${metadata.assetId} does not match ${pilot.assetId}.`);
       }
@@ -130,7 +164,7 @@ export async function buildRenderPackagePilots(options = {}) {
       };
     }));
 
-    const runtimeManifestPath = resolve(repoRoot, manifest.runtimeManifest);
+    const runtimeManifestPath = resolve(outputRoot, manifest.runtimeManifest);
     const runtimeSource = renderRuntimeManifest(bindings);
     if (check) {
       const current = await readFile(runtimeManifestPath, 'utf8');
@@ -138,6 +172,7 @@ export async function buildRenderPackagePilots(options = {}) {
     } else {
       // The dev server may be serving this module while packages publish. Replace a complete
       // sibling file instead of truncating the live module (also avoids Windows reader locks).
+      await mkdir(dirname(runtimeManifestPath), { recursive: true });
       const temporary = `${runtimeManifestPath}.${process.pid}.tmp`;
       try {
         await writeFile(temporary, runtimeSource, { flag: 'wx' });
@@ -418,6 +453,7 @@ function assertPilotManifest(manifest) {
   for (const pilot of manifest.pilots) {
     if (!pilot?.key || keys.has(pilot.key)) throw new Error(`Duplicate or missing pilot key ${pilot?.key}.`);
     if (!pilot.sourceUrl || sourceUrls.has(pilot.sourceUrl)) throw new Error(`${pilot.key}: duplicate or missing source URL.`);
+    validateSharedKtx2Hashes(pilot);
     const hasNamedRoot = typeof pilot.rootNode === 'string' && pilot.rootNode.length > 0;
     const hasSceneRoot = pilot.sceneRoot === true;
     if (hasNamedRoot === hasSceneRoot) {
@@ -437,6 +473,25 @@ function assertPilotManifest(manifest) {
   for (const key of REQUIRED_PILOT_KEYS) {
     if (!keys.has(key)) throw new Error(`Production manifest is missing required pilot ${key}.`);
   }
+}
+
+export function validateSharedKtx2Hashes(pilot) {
+  if (pilot?.sharedKtx2Hashes === undefined) return null;
+  const hashes = pilot.sharedKtx2Hashes;
+  if (!Array.isArray(hashes) || hashes.length === 0) {
+    throw new Error(`${pilot?.key || '(unknown pilot)'}: sharedKtx2Hashes must be a non-empty sorted array.`);
+  }
+  let prior = '';
+  for (const hash of hashes) {
+    if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) {
+      throw new Error(`${pilot.key}: sharedKtx2Hashes entries must be lowercase SHA-256 digests.`);
+    }
+    if (hash <= prior) {
+      throw new Error(`${pilot.key}: sharedKtx2Hashes must be sorted and unique.`);
+    }
+    prior = hash;
+  }
+  return hashes;
 }
 
 function assertFlightStaticManifest(manifest, pilotManifest) {
@@ -598,6 +653,16 @@ async function assertPackageMatches(candidateDir, committedDir, key) {
     ]);
     if (!candidate.equals(committed)) throw new Error(`${key}: ${file} is stale; rebuild render-package pilots.`);
   }
+  const metadata = JSON.parse(await readFile(resolve(candidateDir, 'render-package.json'), 'utf8'));
+  for (const resource of metadata.render.resources || []) {
+    const candidatePath = resolve(candidateDir, '..', '_shared', 'images', `${resource.sha256}.ktx2`);
+    const committedPath = resolve(committedDir, '..', '_shared', 'images', `${resource.sha256}.ktx2`);
+    const [candidate, committed] = await Promise.all([readFile(candidatePath), readFile(committedPath)]);
+    if (candidate.length !== resource.bytes || sha256(candidate) !== resource.sha256
+        || !candidate.equals(committed)) {
+      throw new Error(`${key}: shared KTX2 resource ${resource.sha256} is stale or differs from its package.`);
+    }
+  }
 }
 
 function renderRuntimeManifest(bindings) {
@@ -676,16 +741,25 @@ function unionGeometryBounds(geometry) {
   };
 }
 
-function parseArgs(argv) {
+export function parseRenderPackagePilotArgs(argv) {
   const onlyArgs = argv.filter((arg) => arg.startsWith('--only='));
   const onlyKeys = onlyArgs.flatMap((arg) => arg.slice('--only='.length).split(',')).filter(Boolean);
-  const unknown = argv.filter((arg) => arg !== '--check' && !arg.startsWith('--only='));
+  const outputRootArg = argv.find((arg) => arg.startsWith('--output-root='));
+  const manifestArg = argv.find((arg) => arg.startsWith('--manifest='));
+  const unknown = argv.filter((arg) => arg !== '--check' && arg !== '--externalize-ktx2'
+    && !arg.startsWith('--only=') && !arg.startsWith('--output-root=') && !arg.startsWith('--manifest='));
   if (unknown.length) throw new Error(`Unknown render-package pilot option: ${unknown.join(', ')}`);
-  return { check: argv.includes('--check'), ...(onlyKeys.length ? { onlyKeys } : {}) };
+  return {
+    check: argv.includes('--check'),
+    externalizeKtx2: argv.includes('--externalize-ktx2'),
+    ...(outputRootArg ? { outputRoot: outputRootArg.slice('--output-root='.length) } : {}),
+    ...(manifestArg ? { manifestPath: manifestArg.slice('--manifest='.length) } : {}),
+    ...(onlyKeys.length ? { onlyKeys } : {}),
+  };
 }
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const options = parseRenderPackagePilotArgs(process.argv.slice(2));
   const bindings = await buildRenderPackagePilots(options);
   console.log(`render-package-pilots: ${options.check ? 'fresh' : 'built'} ${bindings.length} production packages`);
 }

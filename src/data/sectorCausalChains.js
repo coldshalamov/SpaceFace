@@ -16,6 +16,87 @@
 // the chain instead of stalling it.
 import { HELIOS_ACTIVITY_SECTOR_ID, TETHYS_ACTIVITY_SECTOR_ID, VESTA_ACTIVITY_SECTOR_ID } from './sectorActivityPockets.js';
 
+// ── Dione Lane: "the convoy day" ─────────────────────────────────────────────────────────────────
+// The Lane's zone copy promises this afternoon twice over: the station chart note reads "Convoy
+// contracts leave after customs clears the lane", the pocket comment reads "the southbound convoy
+// stages from" the relay manifest pod, and "tolls fund the patrols" names the escort. Until this
+// chain the promise was wallpaper — the convoy hauler staged at the pod on an endless loop and
+// nothing ever left. The catalog's ev_convoy_forms_up is that promise made visible, flown by the
+// three authored hulls that already work the Lane:
+//
+//   logistics  ev_convoy_forms_up  the convoy forms at the manifest pod, the toll patrol takes the
+//                                  flank, the spine wake ripples down the line, and the convoy
+//                                  rolls out south (convoy hauler, exchange hauler, toll patrol)
+//
+// The catalog casts three haulers plus an escort; the Lane flies two haulers and the patrol, so
+// the formation runs on the catalog's own written fallback ("a hauler despawns in line: gap
+// closes, convoy departs smaller") — one hull short, same shape. The convoy hauler reaffirms its
+// authored staging run throughout (the manifest leg IS the gather, the south leg IS the depart);
+// the exchange hauler slots into line by the redirect seam (it closes on the staging hull and is
+// released back to its lane run); the patrol takes the flank the same way.
+//
+// One link, so the cycle is the afternoon itself: forms (~60 s), rolls out (~90 s), the desk
+// posts one line, and after the shared gap the next lot forms. Escort lost before the spine
+// lights plants convoy_bare, and the news line reads the honest branch — the slot sat empty —
+// instead of claiming a departure nobody saw. No phase mints cargo or pickups: choreography
+// only, like Helios and Vesta.
+const DIONE_CONVOY_HAULER = 'dione_convoy_hauler';
+const DIONE_EXCHANGE_HAULER = 'dione_exchange_hauler';
+const DIONE_TOLL_PATROL = 'dione_toll_patrol';
+export const DIONE_LANE_SECTOR_ID = 'sector_dione_lane';
+
+export const DIONE_CAUSAL_CHAIN = Object.freeze([
+  Object.freeze({
+    id: 'ev_convoy_forms_up',
+    actorSlots: Object.freeze([DIONE_CONVOY_HAULER, DIONE_EXCHANGE_HAULER, DIONE_TOLL_PATROL]),
+    requires: Object.freeze([]),
+    seedAtPhase: 'spine_up',
+    seeds: Object.freeze(['convoy_formed']),
+    // Escort lost or skipped: the formation fell through — the honest line is the empty slot,
+    // not a departure nobody saw.
+    interruptSeeds: Object.freeze(['convoy_bare']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: DIONE_CONVOY_HAULER,
+        reaffirm: true,
+        phases: Object.freeze(['gather', 'escort_arrives', 'spine_up', 'depart']),
+      }),
+      Object.freeze({
+        actorSlotId: DIONE_EXCHANGE_HAULER,
+        subjectSlotId: DIONE_CONVOY_HAULER,
+        phases: Object.freeze(['gather', 'escort_arrives', 'spine_up']),
+      }),
+      Object.freeze({
+        actorSlotId: DIONE_EXCHANGE_HAULER,
+        reaffirm: true,
+        phases: Object.freeze(['depart']),
+      }),
+      Object.freeze({
+        actorSlotId: DIONE_TOLL_PATROL,
+        subjectSlotId: DIONE_CONVOY_HAULER,
+        phases: Object.freeze(['escort_arrives', 'spine_up']),
+      }),
+      Object.freeze({
+        actorSlotId: DIONE_TOLL_PATROL,
+        reaffirm: true,
+        phases: Object.freeze(['depart']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'gather', durationS: 45, cue: 'heavy_burn' }),
+      Object.freeze({ name: 'escort_arrives', durationS: 15, cue: 'on_the_pin' }),
+      Object.freeze({ name: 'spine_up', durationS: 10, cue: 'spine_wake' }),
+      Object.freeze({ name: 'depart', durationS: 20, cue: 'heavy_burn' }),
+    ]),
+  }),
+]);
+
+function dioneCycleNewsText(seeds) {
+  return seeds && seeds.convoy_formed === true
+    ? 'Dione customs cleared the lane and the convoy formed at the relay pod, rolled out south under its toll watch.'
+    : 'Dione customs cleared the lane; the convoy slot at the relay pod sat empty.';
+}
+
 // ── Helios Prime: "claim day" ───────────────────────────────────────────────────────────────────
 // The starter harbour already flies four authored hulls (sectorActivityPockets.js): a seam miner
 // and the fence who wants its cargo on the Sanctioned Claim, and a freight hauler with the customs
@@ -612,6 +693,13 @@ export const SECTOR_CAUSAL_CHAIN_DEFS = Object.freeze({
     stationId: 'station_forge',
     newsKind: 'vesta_feedstock_day',
     cycleNewsText: vestaCycleNewsText,
+  }),
+  [DIONE_LANE_SECTOR_ID]: Object.freeze({
+    sectorId: DIONE_LANE_SECTOR_ID,
+    chain: DIONE_CAUSAL_CHAIN,
+    stationId: 'station_dione',
+    newsKind: 'dione_convoy_day',
+    cycleNewsText: dioneCycleNewsText,
   }),
 });
 

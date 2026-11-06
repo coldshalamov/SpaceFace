@@ -5,10 +5,248 @@ import test from 'node:test';
 
 import {
   buildErrorEvidence,
+  compareSoakRecoveryCaptures,
+  compareSoakRecoveryTailProgress,
+  captureSoakRecoveryPixelsInPage,
+  sampleSoakRecoveryAdvancement,
+  buildSoakTerminalCleanup,
+  cleanupSoakFailureProfile,
+  installGlTrapsOnLivePage,
   buildPostTeardownGlDeleteTrapDiagnostic,
+  createSoakPresentationFailureError,
   readFailureRuntimeSnapshot,
   readPostRecoveryRenderDiagnostics,
+  readSceneGeometryCensus,
+  readSoakLoadLanding,
+  shouldRetrySoakCycle,
+  waitForSoakLoadLanding,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('recovery requires changing nonblank pixels in matching advancing world submissions', () => {
+  const a = { width: 2, height: 1, worldSubmittedFrames: 9, pixels: [10, 0, 0, 255, 0, 20, 0, 255] };
+  const b = { ...a, worldSubmittedFrames: 10, pixels: [11, 0, 0, 255, 0, 20, 0, 255] };
+  assert.equal(compareSoakRecoveryCaptures(a, b).pass, true);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: 9 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: a.pixels }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, width: 3 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: [0, 0, 0, 255, 0, 0, 0, 255] }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: null }).pass, false);
+});
+
+test('recovery capture copies pixels only inside an advancing world frame callback', async () => {
+  const oldWindow = globalThis.window;
+  const oldDocument = globalThis.document;
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldCancel = globalThis.cancelAnimationFrame;
+  const oldSetTimeout = globalThis.setTimeout;
+  const oldClearTimeout = globalThis.clearTimeout;
+  const source = { width: 120, height: 80 };
+  let drawn = null;
+  let insideFrame = false;
+  const frames = [];
+  const tasks = [];
+  try {
+    globalThis.window = { SF: { state: { render: { worldSubmittedFrames: 42, renderer: { domElement: source } } } } };
+    globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+    globalThis.cancelAnimationFrame = () => {};
+    globalThis.setTimeout = (callback, delay) => { if (delay === 0) tasks.push(callback); return {}; };
+    globalThis.clearTimeout = () => {};
+    globalThis.document = { createElement: () => ({ getContext: () => ({
+      drawImage: (canvas) => { assert.equal(insideFrame, true); drawn = canvas; },
+      getImageData: (_x, _y, width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+    }) }) };
+    const pending = captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 });
+    assert.equal(drawn, null);
+    assert.equal(frames.length, 0, 'observer schedules after the current rAF batch');
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'unchanged world count cannot capture');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 43;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    const sample = await pending;
+    assert.equal(drawn, source);
+    assert.equal(sample.worldSubmittedFrames, 43);
+    assert.deepEqual([sample.width, sample.height, sample.sampleWidth, sample.sampleHeight], [120, 80, 96, 54]);
+    assert.equal(sample.pixels.length, 96 * 54 * 4);
+    drawn = null;
+    const nextPending = captureSoakRecoveryPixelsInPage({ afterFrame: 43, timeoutMs: 1000 });
+    window.SF.state.render.worldSubmittedFrames = 44;
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'a frame completed before observer scheduling cannot qualify');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 45;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal((await nextPending).worldSubmittedFrames, 45);
+    window.SF.state.render.worldSubmittedFrames = null;
+    assert.equal(await captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 }), null);
+  } finally { globalThis.window = oldWindow; globalThis.document = oldDocument;
+    globalThis.requestAnimationFrame = oldRaf; globalThis.cancelAnimationFrame = oldCancel;
+    globalThis.setTimeout = oldSetTimeout; globalThis.clearTimeout = oldClearTimeout; }
+});
+
+test('recovery sampling waits for world progress before comparing the next capture', async () => {
+  const first = { width: 2, height: 1, worldSubmittedFrames: 4, pixels: [1, 0, 0, 255, 0, 2, 0, 255] };
+  const second = { ...first, worldSubmittedFrames: 7, pixels: [3, 0, 0, 255, 0, 2, 0, 255] };
+  const operations = [];
+  const page = { evaluate: async (_fn, args) => { operations.push(`capture:${args.afterFrame}`); return args.afterFrame == null ? first : second; },
+    waitForTimeout: async () => { operations.push('settle'); } };
+  const result = await sampleSoakRecoveryAdvancement(page);
+  assert.equal(result.pass, true);
+  assert.deepEqual(operations, ['capture:null', 'settle', 'capture:4']);
+  const stalled = { evaluate: async (_fn, args) => { if (args.afterFrame == null) return first; throw new Error('stalled'); }, waitForTimeout: async () => {} };
+  const failure = await sampleSoakRecoveryAdvancement(stalled);
+  assert.equal(failure.pass, false);
+  assert.match(failure.error, /stalled/);
+});
+
+test('soak GL status traps can be disabled without installing any hooks', async () => {
+  const calls = [];
+  const page = { evaluate: async (...args) => calls.push(args) };
+  await installGlTrapsOnLivePage(page, { enabled: false });
+  assert.equal(calls.length, 0);
+  await installGlTrapsOnLivePage(page, { enabled: true });
+  assert.equal(calls.length, 2);
+});
+
+test('recovery tail requires both simulation and world submissions to advance', () => {
+  const start = { tick: 100, worldSubmittedFrames: 20 };
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 21 }).pass, true);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 20 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 100, worldSubmittedFrames: 21 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: null, worldSubmittedFrames: 21 }).pass, false);
+});
+
+test('terminal cleanup keeps the original error and distinguishes unknown from failed', () => {
+  const original = new Error('route failed');
+  const unknown = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original });
+  assert.equal(unknown.error.message, 'route failed');
+  assert.equal(unknown.status, 'unknown');
+  const failed = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupError: new Error('close failed') });
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.cleanupError.message, 'close failed');
+  assert.equal(failed.error.message, 'route failed');
+  const owned = { pass: true, pageClosed: true, appCloseCompleted: true, listenerReleased: true,
+    processExited: true, processCloseConfirmed: true, gracefulProcessCloseConfirmed: true,
+    precloseUrlCheck: { pass: true }, urlTracker: { pass: true }, processHealth: { pass: true } };
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned }).status, 'pass');
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned, profileCleanup: 'retained' }).status, 'failed');
+  const profileError = new Error('profile removal failed');
+  const profile = cleanupSoakFailureProfile({ cleanup: () => { throw profileError; } }, owned);
+  assert.equal(profile.error, profileError);
+  const result = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned,
+    cleanupError: profile.error, profileCleanup: profile.profileCleanup });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.error.message, original.message);
+  assert.equal(result.cleanupError.message, profileError.message);
+});
+
+test('scene geometry census deduplicates shared geometry and attributes entity and unowned roots', () => {
+  const oldWindow = globalThis.window;
+  try {
+    const geometry = (uuid) => ({ uuid });
+    const shared = geometry('shared');
+    const first = { children: [{ geometry: shared, children: [] }, { geometry: geometry('first'), children: [] }] };
+    const second = { children: [{ geometry: shared, children: [] }] };
+    const scene = { children: [first, second, { geometry: geometry('unowned'), children: [] }] };
+    const owner = { scene, _meshes: new Map([[1, first], [2, second]]),
+      renderer: { info: { memory: { geometries: 7 } } },
+      _despawnDisposeQueue: [{}, {}], _despawnDisposeHead: 1, _despawnDisposeIter: {},
+      _warmDisposeQueue: [], _warmDisposeHead: 0 };
+    globalThis.window = { SF: { state: { entities: new Map([[1, { type: 'ship', data: { defId: 'hitch' } }],
+      [2, { type: 'station', data: { defId: 'helios' } }]]) }, registry: { get: () => owner } } };
+    const census = readSceneGeometryCensus();
+    assert.equal(census.uniqueGeometryCount, 3);
+    assert.deepEqual(census.geometryIds, ['first', 'shared', 'unowned']);
+    assert.equal(census.rendererGeometries, 7);
+    assert.deepEqual(census.groups.map((row) => [row.key, row.type, row.defId, row.uniqueGeometryCount]), [
+      ['entity:1', 'ship', 'hitch', 2], ['entity:2', 'station', 'helios', 1], ['scene-unowned', null, null, 1],
+    ]);
+    assert.deepEqual(census.disposal.despawn, { pending: 1, activeIterator: true });
+    assert.equal(census.disposal.retainedLod.available, false);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('F9 start-failed menu ends the cycle while loading keeps its grace and flight succeeds', async () => {
+  const oldWindow = globalThis.window;
+  try {
+    globalThis.window = { SF: { state: { mode: 'loading' }, timeEffects: { describeRequests: () => ({}) } } };
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.state.mode = 'menu';
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.timeEffects.describeRequests = () => ({ 'runtime:start-failed': { scale: 0 } });
+    assert.equal(readSoakLoadLanding(), 'menu');
+    let calls = 0;
+    const failedPage = { waitForFunction: async (fn) => { calls++; return { jsonValue: async () => fn() }; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }) };
+    let failure;
+    try { await waitForSoakLoadLanding(failedPage); } catch (error) { failure = error; }
+    assert.match(failure.message, /opening submission plan is incomplete/);
+    assert.equal(calls, 1);
+    assert.equal(shouldRetrySoakCycle(failure, 0), false);
+    assert.equal(shouldRetrySoakCycle(new Error('market'), 0), true);
+    window.SF.state.mode = 'flight'; window.__M6_RELEASE_SOAK_EVENTS__ = { loaded: true };
+    calls = 0;
+    const slowPage = { waitForFunction: async (fn) => { calls++; if (calls === 1) throw new Error('timeout'); return { jsonValue: async () => fn() }; } };
+    assert.deepEqual(await waitForSoakLoadLanding(slowPage), { late: true });
+    assert.equal(calls, 2);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('F9 landing accepts raw CSP-safe flight and menu results without entering grace', async () => {
+  for (const result of ['flight', 'menu']) {
+    let waits = 0;
+    const page = {
+      waitForFunction: async () => { waits += 1; return result; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }),
+    };
+    if (result === 'flight') assert.deepEqual(await waitForSoakLoadLanding(page), { late: false });
+    else await assert.rejects(waitForSoakLoadLanding(page), (error) => (
+      error.code === 'SOAK_LOAD_START_FAILED' && /opening submission plan is incomplete/.test(error.message)
+    ));
+    assert.equal(waits, 1, `${result} must not enter the grace wait`);
+  }
+});
+
+test('dock wait stops retrying for the canonical terminal presentation failure', () => {
+  const failure = createSoakPresentationFailureError({ presentationFailure: {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  } });
+  assert(failure);
+  assert.equal(failure.code, 'SOAK_PRESENTATION_FAILURE');
+  assert.match(failure.message, /GRAPHICS_RECOVERY_FAILED.*opening presentation could not recover/);
+  assert.deepEqual(failure.presentationFailure, {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  });
+  assert.equal(shouldRetrySoakCycle(failure, 0), false, 'terminal graphics failure must not spend a cycle retry');
+  assert.equal(shouldRetrySoakCycle(new Error('ordinary route failure'), 0), true,
+    'ordinary route failure retains its existing single retry');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: null }), null);
+  assert.equal(createSoakPresentationFailureError({ failurePresenterText: 'Graphics interrupted' }), null,
+    'visible-copy text alone is not treated as canonical failure state');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: {
+    code: 'OTHER', headline: 'Loading', message: 'still loading',
+  } }), null);
+});
+
+test('a restore invariant failure is preserved instead of retrying from mid-flight', () => {
+  let failure;
+  try { assert.equal(77, 2, 'load speed restore exceeded tolerance'); }
+  catch (error) { failure = error; }
+  assert.equal(failure.code, 'ERR_ASSERTION');
+  assert.equal(shouldRetrySoakCycle(failure, 0), false);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 0), true);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 1), false);
+});
 
 test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;

@@ -110,8 +110,11 @@ function killInOpenSpace(ctx, pos, id = 77, label = 'Gray Havoc') {
 }
 
 function openPos() {
-  // Far outside every authored Helios zone radius.
-  return sectorLocalToGlobalForSector({ x: 64000, z: -61000 }, SECTOR_ID);
+  // Far outside every authored Helios zone radius AND inside Helios' own Voronoi cell —
+  // physicalWreckSector lists markers by nearest-origin sectorMembershipAtGlobal, so a
+  // point past the bisector (the old 64000,-61000 sits in sector_dione_lane's cell)
+  // would rematerialize on entering that sector instead of this one.
+  return sectorLocalToGlobalForSector({ x: 10000, z: -10000 }, SECTOR_ID);
 }
 
 function wrecks(state) {
@@ -230,6 +233,31 @@ test('an open-space marker survives a save round-trip', () => {
 
     h.bus.emit('sector:enter', { sectorId: SECTOR_ID });
     assert.equal(wrecks(h.state).length, 1, 'the open-space wreck comes back after load');
+  } finally {
+    dispose();
+  }
+});
+
+test('a wreck physically inside another sector cell rematerializes on entering that sector', () => {
+  const h = boot();
+  try {
+    // 64000,-61000 Helios-local is past the Voronoi bisector: physicalWreckSector lists the
+    // marker under sector_dione_lane, and the body comes back on entering the sector that
+    // physically contains it — not the sector the marker was recorded under.
+    const pos = sectorLocalToGlobalForSector({ x: 64000, z: -61000 }, SECTOR_ID);
+    killInOpenSpace(h, pos);
+    const marker = aftermathForSector(h.state, SECTOR_ID)[0];
+    assert.equal(marker.sectorId, SECTOR_ID, 'the record keeps the kill sector');
+
+    h.bus.emit('sector:exit', { sectorId: SECTOR_ID });
+    dropLiveWrecks(h.state);
+    h.bus.emit('sector:enter', { sectorId: SECTOR_ID });
+    assert.equal(wrecks(h.state).length, 0, 'Helios entry does not mint a body in Dione space');
+
+    h.bus.emit('sector:enter', { sectorId: 'sector_dione_lane' });
+    const again = wrecks(h.state);
+    assert.equal(again.length, 1, 'Dione Lane entry rematerializes the body');
+    assert.equal(again[0].data.markerId, marker.markerId);
   } finally {
     dispose();
   }

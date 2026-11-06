@@ -9,7 +9,8 @@ const clamp = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 
 const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
 const heavyBeats = new Map(IRON_KRAKEN_HEAVY.score.beats.map(beat => [beat.id, beat]));
 const colossalBeats = new Map(IRON_KRAKEN_COLOSSUS.score.beats.map(beat => [beat.id, beat]));
-const KIND = Object.freeze({ siphon_jet: 0, arm_rake: 1, ink_ring: 2 });
+// The retained trawl uses its exact stern sector with the kinetic manipulator material.
+const KIND = Object.freeze({ siphon_jet: 0, arm_rake: 1, mantle_trawl: 1, ink_ring: 2 });
 const RELEASE_SECONDS = Object.freeze([0.46, 0.32, 0.62]);
 let resources;
 

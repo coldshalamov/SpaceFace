@@ -52,6 +52,9 @@ export const BINDINGS = Object.freeze({
   // (voiceDismissBindingMatches/emitVoiceDismissFromBinding) rather than the UI key router —
   // the router does not own function keys.
   voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
+  // Flight HUD navigation is separate from F6's voice dismiss. A saved flight rebind keeps
+  // the unmodified F10 and the focus route falls back to Ctrl+F10 for that player.
+  focusFlightControls: { key: 'F10', code: 'F10', label: 'F10' },
   // Every letter already owns a flight verb; backslash is the camera-only shortcut.
   steeringView: { key: '\\', code: 'Backslash', label: '\\' },
   // Time trials own F8 only while their authored mission is active. In ordinary flight
@@ -62,6 +65,23 @@ export const BINDINGS = Object.freeze({
   // (VERB_BINDINGS moved the deploy row to digits precisely because P is the pause key).
   photo: { key: 'p', code: 'KeyP', label: 'P' },
 });
+
+/** The keyboard focus chord, without stealing an existing saved flight-action binding. */
+export function flightHudFocusShortcut(state) {
+  const code = BINDINGS.focusFlightControls.code;
+  const saved = state?.settings?.controls?.bindings;
+  const uses = (candidate) => !!saved && Object.values(saved).some((value) => (
+    Array.isArray(value) ? value.includes(candidate) : value === candidate
+  ));
+  if (!uses(code)) return { code, ctrl: false, alt: false, available: true, label: BINDINGS.focusFlightControls.label };
+  if (!uses('ControlLeft') && !uses('ControlRight')) {
+    return { code, ctrl: true, alt: false, available: true, label: `Ctrl+${BINDINGS.focusFlightControls.label}` };
+  }
+  if (!uses('AltLeft') && !uses('AltRight')) {
+    return { code, ctrl: false, alt: true, available: true, label: `Alt+${BINDINGS.focusFlightControls.label}` };
+  }
+  return { code: null, ctrl: false, alt: false, available: false, label: 'Rebind F10 to focus flight controls' };
+}
 
 /** True when this keydown is the floor-voice dismiss binding and not a chord. */
 export function voiceDismissBindingMatches(ev) {

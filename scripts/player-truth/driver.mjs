@@ -295,11 +295,58 @@ async function resolveBoostCode(page) {
   }
 }
 
-/** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start. */
-export async function controlProbes(page, tag, probes) {
-  const thrust = await holdKey(page, 'KeyW', 1.2, `${tag} thrust`, probes);
+async function readPlayerMotion(page) {
+  try {
+    return await page.evaluate(() => {
+      const st = window.SF && window.SF.state; const me = st && st.entityList && st.entityList.find((e) => e.id === st.playerId);
+      return me ? { x: me.pos?.x, z: me.pos?.z, vx: me.vel?.x, vz: me.vel?.z, rot: me.rot } : null;
+    });
+  } catch { return null; }
+}
+
+/** Live, endpoint-only read of whether a probe looked dead. The authoritative judgement stays in
+ * checks.mjs probeDead (same thresholds); this only decides whether a software-GL retry is worth running. */
+export function liveProbeLooksDead(kind, a, b) {
+  if (!a || !b) return true;
+  if (kind === 'thrust') {
+    const dv = Math.hypot(b.vx, b.vz) - Math.hypot(a.vx, a.vz);
+    const moved = Math.hypot(b.x - a.x, b.z - a.z);
+    return !(dv >= 3) && !(moved >= 3);
+  }
+  const d = Math.atan2(Math.sin(b.rot - a.rot), Math.cos(b.rot - a.rot));
+  return !(Math.abs(d) >= 0.2);
+}
+
+import { probeNeedsRetry } from './checks.mjs';
+
+async function probeOnce(page, code, seconds, label, probes, softwareGl, trace, drain) {
+  const a = softwareGl ? await readPlayerMotion(page) : null;
+  const rec = await holdKey(page, code, seconds, label, probes);
+  if (!softwareGl || !rec || rec.watch) return rec;
+  const b = await readPlayerMotion(page);
+  if (trace) {
+    // Judge with the checker's evidence (trace samples), not a live endpoint read: a stalled
+    // sampler can leave the window too sparse for probeDead even when the ship visibly moved.
+    if (drain) await drain().catch(() => {});
+    const need = probeNeedsRetry(trace, rec);
+    rec.retryCheck = need.why;
+    if (!need.retry) return rec;
+  } else if (!liveProbeLooksDead(rec.kind, a, b)) return rec;
+  // Software GL (SwiftShader) stalls can swallow a whole ~1 s probe window. Retry once after a
+  // short settle with a doubled window; checks.mjs judges both attempts with unchanged thresholds.
+  rec.retried = true;
+  await waitSim(page, 0.5, { maxWallMs: 30000 });
+  const retry = await holdKey(page, code, seconds * 2, `${label} retry`, probes);
+  if (retry) { retry.retryOf = label; retry.attempt = 2; }
+  return retry;
+}
+
+/** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start.
+ * With { softwareGl: true }, a probe that looks dead live is retried once (see probeOnce). */
+export async function controlProbes(page, tag, probes, { softwareGl = false, trace = null, drain = null } = {}) {
+  const thrust = await probeOnce(page, 'KeyW', 1.2, `${tag} thrust`, probes, softwareGl, trace, drain);
   if (thrust && thrust.watch) return thrust.watch;
-  const yaw = await holdKey(page, 'KeyD', 0.8, `${tag} yaw`, probes);
+  const yaw = await probeOnce(page, 'KeyD', 0.8, `${tag} yaw`, probes, softwareGl, trace, drain);
   return yaw && yaw.watch ? yaw.watch : null;
 }
 

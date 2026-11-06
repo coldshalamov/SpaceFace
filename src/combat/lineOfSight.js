@@ -1,3 +1,4 @@
+import { currentSolidDressingRows } from '../core/physicalObstacleQuery.js';
 import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 // Segment-vs-body line-of-sight primitives shared by the PQ-146 observers. Leaf module: reads
@@ -252,6 +253,17 @@ export function witnessLineOfSight(state, observer, destination, ignored = []) {
   const ax = observer.pos.x, az = observer.pos.z, bx = destination.x, bz = destination.z;
   const mx = (ax + bx) * 0.5, mz = (az + bz) * 0.5;
   const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
+  // Dressing is a separate native static layer, not an entity-index lane.
+  // Re-read its current cohort on every call so removal, restore and sector changes
+  // cannot leave an old blocker in the memoized combat-entity plan.
+  for (const row of currentSolidDressingRows(state)) {
+    if (!row || row.id === observer.id || ignored.includes(row.id) || !point(row.pos)) continue;
+    const reach = occluderBodyView(row).reach;
+    if (!(reach > 0)) continue;
+    const dx = row.pos.x - mx, dz = row.pos.z - mz, bound = halfLen + reach;
+    if (dx * dx + dz * dz > bound * bound || pointSegmentDistance(row.pos, observer.pos, destination) > reach) continue;
+    if (segmentHitsProxy(row, observer.pos, destination)) return false;
+  }
   const plan = witnessOccluderPlan(state);
   for (const rec of plan.dynamic) {
     if (witnessRowBlocks(rec, observer, ignored, observer.pos, destination, mx, mz, halfLen)) return false;

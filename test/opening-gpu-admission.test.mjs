@@ -20,6 +20,39 @@ import {
 } from '../src/render/packageCpuDetach.js';
 import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
+import { beginScenePipelineReadinessBatch } from '../src/render/bloom.js';
+
+test('a timed-out readiness batch does not touch pending programs and permits a later retry', async () => {
+  const subject = { material: { uuid: 'pending-material' }, geometry: { uuid: 'pending-geometry' } };
+  const gl = { isContextLost: () => false };
+  let ready = false;
+  const program = { program: {}, isReady: () => ready };
+  let touches = 0;
+  let batch;
+  let waiterResult;
+  const run = (strict = false) => admitOpeningUnitsAcrossSlices({
+    subjects: [subject], deadlineMs: 100, strict,
+    beginReadinessBatch: () => {
+      batch = beginScenePipelineReadinessBatch();
+      return { ...batch, drain: () => batch.drain({ timeoutMs: 0 }) };
+    },
+    compileOne: () => new Promise((resolve) => {
+      assert.equal(batch.join(gl, [program], (result) => { waiterResult = result; resolve(result); }), true);
+    }),
+    touchOne: () => { touches++; },
+  });
+  const result = await run();
+  assert.equal(result.incomplete, true);
+  assert.equal(waiterResult.readinessTimedOut, true);
+  assert.equal(result.touched, 0);
+  assert.equal(touches, 0);
+  await assert.rejects(run(true), /readiness drain did not settle/);
+  assert.equal(touches, 0);
+  ready = true;
+  const retry = await run();
+  assert.equal(retry.incomplete, false);
+  assert.equal(touches, 1);
+});
 
 test('compile issue key distinguishes onBeforeCompile bodies a sampled fingerprint would merge', () => {
   // Two patches with identical length and identical first/middle/last chars: three's program

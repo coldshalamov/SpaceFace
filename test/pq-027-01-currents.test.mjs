@@ -52,9 +52,13 @@ function spectatorPose() {
 function insidePose() {
   const dir = PALLAS_REEF_FIELD.dir;
   const origin = PALLAS_REEF_FIELD.center;
+  const perp = { x: -dir.z, z: dir.x };
+  // The authored mines all sit within |across| <= 5 of the centerline; parking on
+  // the axis put the hull on top of the slot-1 mine and the contact read as a
+  // phantom "carry" inside the no-force telegraph. Stand inside the cone beside it.
   return {
-    x: origin.x + dir.x * 110,
-    z: origin.z + dir.z * 110,
+    x: origin.x + dir.x * 110 + perp.x * 40,
+    z: origin.z + dir.z * 110 + perp.z * 40,
   };
 }
 
@@ -115,8 +119,11 @@ async function runReef({
   const cascadePairs = new Set();
   const cascadedIds = new Set();
   let hazardEnter = 0;
+  // Runtime steps reseed process flag maps from the frozen profile; holding the flag
+  // off for a before-run needs the process map left alone (see pq-027-00).
   const host = await bootRealPath({
     seed: SEED,
+    seedProcessMaps: fieldsEnabled,
     systems: [
       'actions',
       'flightV3',

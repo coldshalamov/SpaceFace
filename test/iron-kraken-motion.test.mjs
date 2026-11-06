@@ -385,3 +385,29 @@ test('locomotion, turn, and committed rake progress move the character without w
   assert.ok(Math.hypot(points[elbow] - start[elbow], points[elbow + 2] - start[elbow + 2]) > .5,
     'an active rake sweeps a real forearm rather than freezing at maximum charge');
 });
+
+test('the wake trawl moves only the aft-rooted sleeves into a rigid, deterministic scoop', () => {
+  const rest = new Float64Array(pointCount), trawl = new Float64Array(pointCount), again = new Float64Array(pointCount);
+  for (let arm = 0; arm < 8; arm++) {
+    const aftRoot = Math.cos(arm * Math.PI * 2 / 8 + Math.PI / 8) < -0.15;
+    sampleIronKrakenArm(arm, { time: 3.25 }, rest);
+    sampleIronKrakenArm(arm, { time: 3.25, trawl: 1 }, trawl);
+    sampleIronKrakenArm(arm, { time: 3.25, trawl: 1 }, again);
+    assert.deepEqual(again, trawl, 'the trawl pose is deterministic');
+    if (!aftRoot) {
+      assert.deepEqual(trawl, rest, 'the fore hemisphere keeps its authored pose');
+      continue;
+    }
+    let moved = 0;
+    for (let p = 0; p < pointCount; p += 3) moved = Math.max(moved,
+      Math.hypot(trawl[p] - rest[p], trawl[p + 1] - rest[p + 1], trawl[p + 2] - rest[p + 2]));
+    assert.ok(moved > 0.05, 'aft sleeves must visibly answer the trawl channel');
+    assert.ok(trawl.every(Number.isFinite), 'scoop geometry stays finite');
+    for (let link = 0; link < links; link++) close(distance(trawl, link * 3),
+      distance(rest, link * 3), 'the trawl rotates rigid links without stretching');
+    // The scoop trails downward and outward — the net reads below the collar line, not through it.
+    const tip = (links - 1) * 3;
+    assert.ok(trawl[tip + 1] < rest[tip + 1] || Math.hypot(trawl[tip], trawl[tip + 2])
+      !== Math.hypot(rest[tip], rest[tip + 2]), 'the gathered tip reads as a drag shape');
+  }
+});

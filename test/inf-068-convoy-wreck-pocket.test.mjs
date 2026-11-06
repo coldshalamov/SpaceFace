@@ -88,14 +88,17 @@ test('the clock persists across spawns and the pocket refuses off-type work', ()
 });
 
 test('the wiring spawns the pocket on sector entry and briefs both answers', () => {
+  // The spawn flow moved to missionSpawningOps.js in the missions split; successor wiring
+  // and the client brief stayed in missions.js.
+  const spawnSource = readFileSync(new URL('../src/systems/missionSpawningOps.js', import.meta.url), 'utf8');
   const source = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
   assert.match(
-    source,
+    spawnSource,
     /m\.type === 'salvage_retrieval' && isMutationRecovery\(m\)\) \{/,
     'the spawn flow owns a salvage-successor branch',
   );
   assert.match(
-    source,
+    spawnSource,
     /convoyWreckPocket\(m, \{/,
     'the branch authors through the shared helper, not a copy',
   );

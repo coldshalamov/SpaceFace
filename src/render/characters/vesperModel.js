@@ -43,7 +43,7 @@ function bake(group) {
     geo.applyMatrix4(child.matrix); geo.clearGroups();
     if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
     const bucket = buckets.get(child.material) || []; bucket.push(geo); buckets.set(child.material, bucket);
-    original.add(child.geometry); group.remove(child);
+    original.add(child.geometry); child.castShadow = false; group.remove(child);
   }
   for (const [mat, pieces] of buckets) {
     const combined = mergeGeometries(pieces, false); if (!combined) throw new Error('SV-3 geometry schema mismatch');

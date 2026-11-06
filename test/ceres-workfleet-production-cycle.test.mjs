@@ -45,7 +45,7 @@ test('complete production factory secures the original plate through the full am
   };
   writeFileSync(new URL('runtime-full-factory-start-v1.json',traceFolder),JSON.stringify({
     schema:'ceres.workfleet.full-production-cycle-start.v1',at:new Date().toISOString(),seed:48,observer,observerRoute,
-    maxTicks:85000,oldSpaceBudgetMiB:256,execArgv:process.execArgv,node:process.version,pid:process.pid,sourceClosure:sources,profile:runtime.config.profileId,
+    maxTicks:120000,oldSpaceBudgetMiB:256,execArgv:process.execArgv,node:process.version,pid:process.pid,sourceClosure:sources,profile:runtime.config.profileId,
     fingerprint:runtime.fingerprint,selectedSlots:runtime.manifest.selectedSlots,
     registry:runtime.manifest.authoritativeUpdateOrder.map(s=>s.name)},null,2)+'\n');
   const onUncaught=(error,origin)=>diagnostic('uncaught-error',{origin,message:error.message,stack:error.stack});
@@ -73,7 +73,9 @@ test('complete production factory secures the original plate through the full am
     runtime.bus.on('worldSite:operationReceipt',p=>{if(p.siteId===C.siteId&&p.receipt?.complete)operations.push({tick:state.tick,operationId:p.operationId,stream:p.receipt.requestStreamId});});
     assert.equal(withFeatures(runtime,()=>sites.applyWorldSiteBeamOperation({siteId:C.siteId,componentId:'long_plate_clamp',verb:'repair',amount:24,
       requestStreamId:'player-industrial-beam',requestSequence:state.tick})).ok,true);
-    for(let i=0;i<85000;i++) {
+    // The authored cycle pace now outgrows the old cap: extract alone is a ~37k-tick tow and
+    // withdraw-to-secured lands past tick 85k. 120k covers the measured physical cycle.
+    for(let i=0;i<120000;i++) {
       runtime.step(DT);const phase=state.npcJobs?.ceresWorkfleet?.phase;
       if(original.id!==originalId||original.occupantGeneration!==originalLife||original.data?.worldRecordId!==C.identities.payload||state.world.currentSectorId!==C.sectorId){nativeFailure={kind:'original-life-or-sector-lost',tick:state.tick,id:original.id,life:original.occupantGeneration,worldRecordId:original.data?.worldRecordId,sector:state.world.currentSectorId};break;}
       if(!trackedHardware&&phase==='extract')trackedHardware=state.entityList.filter(e=>e.alive&&e.data?.ceresWorkfleetRole).map(e=>({entity:e,id:e.id,life:e.occupantGeneration,record:e.data.worldRecordId}));

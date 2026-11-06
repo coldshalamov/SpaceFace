@@ -5,6 +5,13 @@ import { buildVesperVisual, disposeVesperVisual } from '../src/render/characters
 import { vesperEntitySpec } from '../src/systems/vesper.js';
 function visual(i=-1){const e=vesperEntitySpec(undefined,i),v=buildVesperVisual(e);return {e,v,p:e.data.vesperPose,parts:v.userData.vesperParts};}
 function frame(f,t,phase='listen',a11y={}){Object.assign(f.p,{met:phase!=='sleep',phase,simTime:t});f.v.userData.updateAuthoredMotion(f.e,t,a11y);f.v.updateMatrixWorld(true);}
+test('baking retires source casters while leaving the combined surfaces casting',()=>{
+ const removed=[];const original=THREE.Group.prototype.remove;let f;
+ THREE.Group.prototype.remove=function(...objects){for(const object of objects)if(object.isMesh&&object.name==='seated_fastener')removed.push(object);return original.apply(this,objects);};
+ try{f=visual();}finally{THREE.Group.prototype.remove=original;}
+ assert.ok(removed.length>0);for(const mesh of removed){assert.equal(mesh.parent,null);assert.equal(mesh.castShadow,false);}
+ let liveCasters=0;f.v.traverse(o=>{if(o.isMesh&&o.castShadow)liveCasters++;});assert.ok(liveCasters>0);disposeVesperVisual(f.v);
+});
 test('all four assets have finite real triangular surfaces, no sprites, and distinct silhouettes',()=>{
  const signatures=[];
  for(const i of [-1,0,1,2]){const f=visual(i);let triangles=0;f.v.traverse(o=>{

@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder as RuntimeMeshoptDecoder } from '../vendor/addons/libs/meshopt_decoder.module.js';
+import { registerEmbeddedKtx2Textures } from '../src/render/embeddedKtx2Textures.js';
 
 import {
   RENDER_PACKAGE_SCHEMA,
@@ -16,6 +19,8 @@ import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { hasUnresidentGeometry, prepareStartupGeometryResidency } from '../src/render/startupGpuResidency.js';
+import { preparePreviewDetachedPayloads } from '../src/ui/shipPreviewMount.js';
 import {
   claimSharedImageTexture,
   resetImageSourceDedupeForTests,
@@ -28,6 +33,7 @@ import {
   detachPackageGeometry,
   detachPackageTexture,
   detachedGeometryUploadPending,
+  dropGeometryGpuResidencyLedger,
   detachedPresentedDrawBlocked,
   isPackageGeometryDetached,
   isPackageTextureDetached,
@@ -37,6 +43,7 @@ import {
   packageGeometryUploadDiagnostics,
   presentedDetachRehydrateInFlight,
   rehydrateDetachedGeometries,
+  retainPackageGeometryCpu,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
 
@@ -340,6 +347,226 @@ test('rehydrate refills released arrays from an ordinal-paired donor and bumps v
   loader.dispose();
 });
 
+test('preview geometry remains available while a later texture refill waits', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.preview-refill-race'), { baseUrl: 'https://fixtures.test/' });
+  const mainRenderer = stubRenderer(), previewRenderer = stubRenderer();
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true);
+  assert.equal(detachedGeometryUploadPending(decoded.geometry, previewRenderer), true);
+  let resume, started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  const preparation = preparePreviewDetachedPayloads([decoded.geometry], [], {
+    yieldToMain: async () => {},
+    refillTextures: () => { started(); return new Promise(resolve => { resume = () => resolve({}); }); },
+  });
+  await waiting;
+  // The actual preview lease spans its later texture-refill wait.
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), false,
+    'a pending preview draw must keep the refilled bytes leased');
+  assert.ok(decoded.sharedBuffer.array.byteLength > 0);
+  resume();
+  const release = await preparation;
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), false, 'lease survives until the draw');
+  release(); release();
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true, 'draw releases the lease exactly once');
+  await assert.rejects(preparePreviewDetachedPayloads([decoded.geometry], [], {
+    yieldToMain: async () => {}, refillTextures: async () => { throw new Error('texture refill failed'); },
+  }), /texture refill failed/);
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true, 'failed refill releases its lease');
+  loader.dispose();
+});
+
+test('exact-target refill keeps package geometry leased through its awaited touch', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.exact-target-geometry-lease'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const residencyRenderer = stubRenderer();
+  const competingRenderer = stubRenderer();
+  assert.equal(detachPackageGeometry(geometry, residencyRenderer), true);
+  assert.equal(geometry.getAttribute('normal').array.byteLength, 0);
+
+  // Establish the race the lease is meant to close: the old gap after refill but before the
+  // awaited draw lets another renderer detach the just-restored source a second time.
+  const unleasedReceipt = await rehydrateDetachedGeometries([geometry], { yieldToMain: async () => {} });
+  assert.equal(assertPackageGeometryRefillReady([geometry], unleasedReceipt).ready, true);
+  let finishUnleasedTouch;
+  let unleasedTouchStarted;
+  const unleasedGate = new Promise((resolve) => { finishUnleasedTouch = resolve; });
+  const unleasedStarted = new Promise((resolve) => { unleasedTouchStarted = resolve; });
+  const unleasedTouch = (async () => {
+    unleasedTouchStarted();
+    await unleasedGate;
+    return geometry.getAttribute('normal').array.byteLength > 0;
+  })();
+  await unleasedStarted;
+  assert.equal(detachPackageGeometry(geometry, competingRenderer), true,
+    'without a lease, another admission can remove the bytes before this touch resumes');
+  finishUnleasedTouch();
+  assert.equal(await unleasedTouch, false, 'the resumed upload would observe the emptied attribute');
+
+  // Exact-target admission refills this package, then can await texture restoration/paced draw.
+  // Keep the shared CPU source leased over that whole continuation so another renderer cannot
+  // detach it again between rehydrate and the eventual GPU touch.
+  const releaseCpu = retainPackageGeometryCpu([geometry]);
+  let finishTouch;
+  let touchStarted;
+  const touchGate = new Promise((resolve) => { finishTouch = resolve; });
+  const started = new Promise((resolve) => { touchStarted = resolve; });
+  const exactTouch = (async () => {
+    try {
+      const receipt = await rehydrateDetachedGeometries([geometry], { yieldToMain: async () => {} });
+      assert.equal(assertPackageGeometryRefillReady([geometry], receipt).ready, true);
+      touchStarted();
+      await touchGate;
+      assert.ok(geometry.getAttribute('normal').array.byteLength > 0,
+        'the exact-target upload still has its restored attribute bytes');
+      return 'touched';
+    } finally {
+      releaseCpu();
+    }
+  })();
+
+  await started;
+  assert.equal(detachPackageGeometry(geometry, competingRenderer), false,
+    'a second admission cannot detach the geometry while the first touch is awaiting');
+  assert.ok(geometry.getAttribute('normal').array.byteLength > 0);
+  finishTouch();
+  assert.equal(await exactTouch, 'touched');
+  assert.equal(detachPackageGeometry(geometry, competingRenderer), true,
+    'the competing admission may retire the CPU bytes after the exact touch releases its lease');
+  loader.dispose();
+});
+
+test('startup residency refills a detached package before another renderer uploads its proxy', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.residency-refill'), { baseUrl: 'https://fixtures.test/' });
+  let target = null, draws = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry) return;
+      draws++;
+      assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), false,
+        'another renderer cannot retire the refilled bytes while this upload is in progress');
+      assert.ok(object.geometry.getAttribute('uv').data.array.byteLength > 0, 'proxy must upload actual UV bytes');
+    }); } };
+  assert.equal(detachPackageGeometry(decoded.geometry, renderer), true);
+  await rehydrateDetachedGeometries([decoded.geometry], { yieldToMain: async () => {} });
+  assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), true,
+    'a different context retires refilled CPU data before the original renderer returns');
+  assert.equal(detachedGeometryUploadPending(decoded.geometry, renderer), true);
+  const result = await prepareStartupGeometryResidency(renderer, decoded.scene, {
+    yieldToMain: async () => {}, paceQueue: async () => {},
+  });
+  assert.ok(draws > 0);
+  assert.equal(result.skipped, false);
+  loader.dispose();
+});
+
+test('startup residency proxy uses the geometry captured before a live LOD swap', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.residency-lod-swap'), { baseUrl: 'https://fixtures.test/' });
+  assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), true);
+  const original = new THREE.BoxGeometry();
+  const mesh = new THREE.Mesh(original, new THREE.MeshBasicMaterial());
+  let target = null, yields = 0, draws = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry) return;
+      draws++;
+      assert.equal(object.geometry, original, 'proxy draws the captured, leased geometry');
+      assert.ok(object.geometry.getAttribute('uv').array.byteLength > 0);
+    }); } };
+  await prepareStartupGeometryResidency(renderer, mesh, {
+    yieldToMain: async () => { if (++yields === 2) mesh.geometry = decoded.geometry; },
+    paceQueue: async () => {},
+  });
+  assert.ok(draws > 0);
+  assert.equal(mesh.geometry, decoded.geometry, 'the live LOD owner retains its replacement');
+  assert.equal(decoded.geometry.userData.spacefaceGpuResident, undefined, 'the replacement is not falsely stamped');
+  assert.equal(hasUnresidentGeometry(mesh), true, 'the live replacement remains eligible for its own admission');
+  loader.dispose();
+});
+
+test('dormant instanced residency uploads a refilled attribute before sealing it', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.dormant-residency'), { baseUrl: 'https://fixtures.test/' });
+  let target = null, gpuVersion = 0, uploaded = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry || (object.isInstancedMesh && object.count <= 0)) return;
+      const uv = object.geometry.getAttribute('uv');
+      const record = uv.isInterleavedBufferAttribute ? uv.data : uv;
+      assert.ok(record.array.byteLength > 0, 'the actual proxy upload has CPU bytes');
+      gpuVersion = record.version; uploaded++;
+    }); } };
+  assert.equal(detachPackageGeometry(decoded.geometry, renderer), true);
+  await rehydrateDetachedGeometries([decoded.geometry], { yieldToMain: async () => {} });
+  const buffer = decoded.geometry.getAttribute('uv').data;
+  assert.equal(buffer.version, 1, 'refill advances the real shared record');
+  const pool = new THREE.InstancedMesh(decoded.geometry, decoded.material, 4); pool.count = 0;
+  await prepareStartupGeometryResidency(renderer, pool, { includeEmpty: true,
+    yieldToMain: async () => {}, paceQueue: async () => {} });
+  assert.ok(uploaded > 0, 'the proxy reaches Three’s nonempty project branch');
+  assert.equal(gpuVersion, buffer.version, 'GPU records contain the refilled version before CPU retirement');
+  assert.equal(pool.count, 0, 'the live pool remains dormant');
+  loader.dispose();
+});
+
+test('real Wasp Armor survives a dormant pool refill and activation on the same renderer', async (t) => {
+  resetPackageDetachManifestsForTests();
+  t.after(() => resetPackageDetachManifestsForTests());
+  const bytes = readFileSync(new URL('../assets/ships/release/render-packages/wasp-scn-patrol/render.glb', import.meta.url));
+  const decode = async () => {
+    const loader = new GLTFLoader().setMeshoptDecoder(RuntimeMeshoptDecoder);
+    loader.setKTX2Loader({ parse(_bytes, onLoad) { onLoad(new THREE.CompressedTexture([], 4, 4)); } });
+    loader.register(registerEmbeddedKtx2Textures);
+    return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  };
+  const resources = scene => {
+    const seen = new Set(), geometries = [];
+    scene.traverse(object => { if (object.geometry && !seen.has(object.geometry)) {
+      seen.add(object.geometry); geometries.push(object.geometry);
+    } });
+    return geometries;
+  };
+  const decoded = await decode(), geometries = resources(decoded.scene);
+  const armor = decoded.scene.getObjectByName('LOD0_Armor');
+  assert.equal(armor.geometry, geometries[1]);
+  assert.equal(armor.geometry.getAttribute('uv').count, 5623);
+  createPackageDetachManifest({ assetId: 'sf.render.wasp-scn-patrol', contentHash: 'f'.repeat(64), resources: geometries },
+    { redecode: decode, collectResources: resources });
+  let target = null, gpuVersion = 0, uploaded = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry || (object.isInstancedMesh && object.count <= 0)) return;
+      const uv = object.geometry.getAttribute('uv');
+      assert.equal(uv.array.byteLength, 44984);
+      gpuVersion = uv.version; uploaded++;
+    }); } };
+  assert.equal(detachPackageGeometry(armor.geometry, renderer), true);
+  await rehydrateDetachedGeometries([armor.geometry], { yieldToMain: async () => {} });
+  const uv = armor.geometry.getAttribute('uv');
+  assert.equal(uv.version, 1);
+  const pool = new THREE.InstancedMesh(armor.geometry, armor.material, 4); pool.count = 0;
+  await prepareStartupGeometryResidency(renderer, pool, { includeEmpty: true, yieldToMain: async () => {}, paceQueue: async () => {} });
+  assert.equal(uploaded, 1);
+  assert.equal(gpuVersion, uv.version);
+  assert.equal(detachedGeometryUploadPending(armor.geometry, renderer), false);
+  assert.equal(pool.count, 0);
+  assert.equal(uv.array.byteLength, 0, 'the normal post-upload CPU retirement occurred');
+  pool.count = 1;
+  assert.equal(gpuVersion, uv.version, 'activation reuses the uploaded version rather than re-uploading empty bytes');
+});
+
 test('an unrelated LOD donor mismatch remains evidence without blocking the requested geometry', async () => {
   const original = decodedPairFixture();
   const changedDonor = decodedPairFixture({ secondColorLength: 12 });
@@ -482,8 +709,6 @@ test('vendored-three contract: empty same-ctor arrays and shared-buffer version 
 test('source pins: every F2 gate/detach/ledger call site exists verbatim', () => {
   const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
   const residency = read('src/render/startupGpuResidency.js');
-  assert.match(residency, /noteGeometryGpuResident\(geometry, renderer\);\s*detachPackageGeometry\(geometry, renderer\);/,
-    'post-stamp ledger+detach in the residency receipt');
   assert.equal(residency.match(/detachPackageGeometry\(geometry\);/g).length, 2,
     'stamped-skip detach retries in both work-item mints');
   assert.equal(residency.match(/detachPackageGeometry\(object\.geometry\);/g).length, 2,
@@ -515,7 +740,6 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   assert.match(bloom, /preparePresentedDraw\(renderer, geometry, material\)/);
   assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
   assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
-  assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);
   assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
   assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
   assert.match(
@@ -583,7 +807,41 @@ test('presented draw skips a detached upload and refills before the next one', a
   loader.dispose();
 });
 
-test('orientation hold hides a detached mesh after the readiness walk has gone steady', async () => {
+test('a stale detached geometry is excluded from the active camera until refill completes', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => ++decodes === 1 ? decoded : decodedFixture());
+  await loader.load(packageMetadata('fixture.stale-before-projection'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const camera = new THREE.PerspectiveCamera();
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  guard.hide(decoded.scene); guard.restore();
+  assert.equal(hull.visible, true, 'valid GPU copy remains visible');
+  assert.equal(dropGeometryGpuResidencyLedger(renderer), 1, 'context loss invalidates its GPU record');
+  assert.equal(detachedGeometryUploadPending(geometry, renderer), true);
+  guard.hide(decoded.scene);
+  assert.equal(hull.visible, true, 'the guard preserves authored visibility state');
+  assert.equal(hull.layers.test(camera.layers), false,
+    'the stale released attribute is excluded from the active camera before projectObject');
+  guard.restore();
+  const refill = presentedDetachRehydrateInFlight();
+  assert.ok(refill, 'pre-projection guard requests the existing refill owner');
+  await refill;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  guard.hide(decoded.scene); guard.restore();
+  assert.equal(hull.visible, true, 'refilled geometry remains available');
+  loader.dispose();
+});
+
+test('orientation hold excludes a detached mesh from the active camera after readiness settles', async () => {
   const decoded = decodedFixture();
   let decodes = 0;
   const loader = freshLoader(async () => {
@@ -593,6 +851,7 @@ test('orientation hold hides a detached mesh after the readiness walk has gone s
   await loader.load(packageMetadata('fixture.orientation-hide'), { baseUrl: 'https://fixtures.test/' });
   const geometry = decoded.geometry;
   const hull = decoded.scene.children[0];
+  const camera = new THREE.PerspectiveCamera();
   const prop = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
   prop.name = 'LooseProp';
   decoded.scene.add(prop);
@@ -612,13 +871,17 @@ test('orientation hold hides a detached mesh after the readiness walk has gone s
   guard.hide(decoded.scene);
   guard.restore();
   assert.equal(hull.visible, true, 'steady-state detached draws keep the live GPU copy');
+  assert.equal(hull.layers.test(camera.layers), true, 'steady-state copy remains drawable to the camera');
 
   noteOrientationDetachedHold(renderer);
   guard.hide(decoded.scene);
-  assert.equal(hull.visible, false, 'the first aspect flip hides the ship before projectObject uploads');
+  assert.equal(hull.layers.test(camera.layers), false,
+    'the first aspect flip excludes the ship from the active camera before projectObject uploads');
+  assert.equal(hull.visible, true, 'the draw guard leaves the authored visibility state intact');
   assert.equal(prop.visible, true, 'an ordinary mesh stays on screen through the hold');
+  assert.equal(prop.layers.test(camera.layers), true, 'the unrelated ordinary mesh remains drawable');
   guard.restore();
-  assert.equal(hull.visible, true, 'the hide lasts one pass');
+  assert.equal(hull.layers.test(camera.layers), true, 'the layer exclusion lasts one pass');
 
   const flight = presentedDetachRehydrateInFlight();
   assert.ok(flight, 'the hold starts one refill');
@@ -637,6 +900,7 @@ test('orientation hold journals and restores every detached mesh beyond the ordi
   const loader = freshLoader(async () => decoded);
   await loader.load(packageMetadata('fixture.orientation-cap'), { baseUrl: 'https://fixtures.test/' });
   const geometry = decoded.geometry;
+  const camera = new THREE.PerspectiveCamera();
   const meshes = [decoded.scene.children[0]];
   for (let i = 1; i < 513; i++) {
     const mesh = new THREE.Mesh(geometry, decoded.material);
@@ -656,11 +920,13 @@ test('orientation hold journals and restores every detached mesh beyond the ordi
 
   guard.hide(decoded.scene);
   assert.equal(meshes.length, 513);
-  assert.equal(meshes.filter((mesh) => mesh.visible).length, 0,
-    'the orientation hold hides every detached mesh, including the 513th');
-  guard.restore();
+  assert.equal(meshes.filter((mesh) => mesh.layers.test(camera.layers)).length, 0,
+    'the orientation hold excludes every detached mesh from the active camera, including the 513th');
   assert.equal(meshes.filter((mesh) => mesh.visible).length, 513,
-    'restoration re-shows every journaled detached mesh');
+    'the pass-local guard preserves authored visibility state');
+  guard.restore();
+  assert.equal(meshes.filter((mesh) => mesh.layers.test(camera.layers)).length, 513,
+    'restoration restores drawability for every journaled detached mesh');
 
   loader.dispose();
 });

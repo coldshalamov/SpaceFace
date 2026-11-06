@@ -15,9 +15,47 @@ import {
 } from '../careers/ladders/ladderShared.js';
 import { HAULER_STEP_PARAMS } from '../careers/ladders/haulerLadderDefs.js';
 import { MAP_FOCUS, mapHandoffAction } from './mapAuthority.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { buildSlotList, fits, outfitBudgetBlocker, stationShopOffer } from '../systems/ships.js';
+import { formatNumber } from '../core/numberFormat.js';
 
 const RAIL_NOTE = 'Optional. Paths never lock each other.';
 const FALLBACK_OBJECTIVE = 'Continue the path.';
+
+// This is an optional next purchase, not a new progression authority. Only suggest an empty
+// compatible slot and an unowned part, using the same catalog and berth price as Shipworks.
+function firstHaulInvestmentNote(state, offer) {
+  if (offer.careerId !== 'hauler' || offer.stepIndex !== 1) return null;
+  const history = state?.careers?.origins?.hauler?.history;
+  if (!Array.isArray(history) || !history.some((row) => row?.kind === 'step_success' && row.stepId === 'manifest_truth')) return null;
+  const player = state?.player;
+  const ships = player?.ownedShips;
+  const def = MODULES.find((row) => row.id === 'mod_harbor_brake_s');
+  if (!def || !Array.isArray(ships) || !Number.isFinite(player?.credits)) return null;
+  if ((player.moduleInventory || []).some((item) => item?.defId === def.id)
+    || ships.some((ship) => (ship?.fittings || []).includes(def.id))) return null;
+  const owned = ships[player.activeShipIndex || 0];
+  const hull = SHIPS.find((row) => row.id === owned?.defId);
+  // The recommendation was selected for the starting Hitch; another hull may have different
+  // intrinsic fitting restrictions and handling tradeoffs.
+  if (!hull || hull.id !== 'ship_kestrel') return null;
+  const fittings = Array.isArray(owned.fittings) ? owned.fittings : [];
+  const compatible = buildSlotList(hull).some((slot) => {
+    if (!fits(slot, def) || fittings[slot.index]) return false;
+    const proposed = fittings.slice();
+    proposed[slot.index] = def.id;
+    return !outfitBudgetBlocker(hull, proposed);
+  });
+  if (!compatible) return null;
+  const price = stationShopOffer(def, 'station_helios')?.price ?? def.price;
+  if (!Number.isFinite(price) || price < 0) return null;
+  const shortfall = Math.max(0, price - player.credits);
+  const brakePct = Math.round(((def.mods?.brakeMult || 1) - 1) * 100);
+  if (!(brakePct > 0)) return null;
+  const money = (value) => formatNumber(value, state);
+  return `Optional: ${def.name} at Helios Station Shipworks · ${money(price)} cr · ${brakePct}% stronger braking. ${shortfall > 0 ? `${money(shortfall)} cr more needed.` : 'Your wallet covers it.'}`;
+}
 
 function resolveOriginSystem(api) {
   if (!api || typeof api !== 'object') return null;
@@ -841,6 +879,12 @@ export function buildMissionLogOriginChoiceModel(state, api = null) {
       const choiceSummary = choices.length
         ? choices.map((choice) => `${choice.label}: ${choice.summary}`).join(' · ')
         : null;
+      const investment = firstHaulInvestmentNote(state, offer);
+      const receipt = selected
+        ? `${selected.label} is saved. ${selected.summary}.`
+        : (kit && !(offer.stepIndex > 0)
+          ? `Primary start issues ${kit.label} immediately; other paths remain open.`
+          : 'Other paths remain open.');
       return {
         originChoice: true,
         careerId: offer.careerId,
@@ -860,11 +904,7 @@ export function buildMissionLogOriginChoiceModel(state, api = null) {
             : (focused
             ? `Continue the ${offer.title} path with its next physical contract.`
             : `Choose this start to ${offer.verb || 'begin'} through a real contract now.`))),
-        receiptLine: selected
-          ? `${selected.label} is saved. ${selected.summary}.`
-          : (kit
-          ? `Primary start issues ${kit.label} immediately; other paths remain open.`
-          : 'Other paths remain open.'),
+        receiptLine: investment ? `${receipt} ${investment}` : receipt,
         progressLabel: Number.isFinite(offer.stepIndex) && Number.isFinite(offer.stepCount)
           ? `Contract ${offer.stepIndex + 1}/${offer.stepCount}` : null,
         choices,

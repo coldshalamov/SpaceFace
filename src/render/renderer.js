@@ -1,3 +1,7 @@
+import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
+import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
+import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
 import {
   clearEntityMeshReference,
@@ -39,6 +43,50 @@ import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 import * as THREE from 'three';
 import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from './uiStage.js';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
+import {
+  _bandArgsFor,
+  _residencyLookDelta,
+  activityFrameListsId,
+  admissionVisualRadiusWu,
+  entityHasAuthoredPendingRoot,
+  entityHasAuthoredResidentRoot,
+  entityHomeSectorMismatch,
+  entityIsOnDeadlineGlassScan,
+  entityIsExplicitRenderFocus,
+  entityTimeToGlassSeconds,
+  entityWithinPlayerRadius,
+  entityWithinPlayerRadiusScan,
+  holdFirstFlightStreaming,
+  inboundDecodeRadius,
+  isFirstFlightProtectedEntity,
+  isHoldExemptMeshBuildCore,
+  isInboundDecodeHull,
+  itineraryTimeToGlassSeconds,
+  landmarkKeepDistanceWu,
+  liveShadowCastRadius,
+  liveTableCamera,
+  makeHoldExemptMeshBuildEvaluator,
+  makeHoldExemptScanContext,
+  playerAnchoredAdmissionEnv,
+  playerEntityForRenderState,
+  playerPlanarDistance,
+  predictionVel,
+  renderAdmissionEnv,
+  renderResidencyRadius,
+  scanEnvPlayer,
+  sectorPrewarmPopulationNeedsSynchronousRefresh,
+  survivalRunHoldsArena,
+  _landmarkKeepOptsFor,
+  _landmarkKeepOptsForScan,
+  entityHasOwnSectorPrewarmPlan,
+  entityIsOnReadableGlassScan,
+} from './runtime/residencyAdmissionQueries.js';
+export {
+  entityHasOwnSectorPrewarmPlan,
+  holdFirstFlightStreaming,
+  makeHoldExemptMeshBuildEvaluator,
+  sectorPrewarmPopulationNeedsSynchronousRefresh,
+};
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure, installTextureUploadFailureDiagnostic } from './bufferResizeDiagnostic.js';
@@ -58,7 +106,7 @@ export {
   releaseSharedTextureConsumer,
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
-import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, PHOTO_EXPOSURE_MIN, PHOTO_EXPOSURE_MAX, shakeDistanceAttenuation } from './camera.js';
 import { createShakeAdmission } from './shakeAdmission.js';
 import {
   clearanceCellInRange,
@@ -132,6 +180,7 @@ import {
   authoredCompositionFingerprintForEntity,
   authoredCriticalVisualReadiness,
   authoredPrewarmRequestsForEntities,
+  initialWholeShipLodForBoundary,
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
   collectAuthoredInstancePoolRoots,
   collectPreparedAuthoredCompileRoots,
@@ -158,6 +207,7 @@ import {
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   collectFlightRootTemplateContextLossRoots,
+  getFlightRootTemplateCacheDiagnostics,
   publishPreparedAuthoredBoundary,
   resumeAuthoredUpgradeQueueAfterOpening,
   resumeAuthoredUpgradeQueueForLoadingHulls,
@@ -192,7 +242,7 @@ import {
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from './wholeShipLodPolicy.js';
+import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION, isOrdinaryLodShip } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -209,6 +259,7 @@ import {
   disposeAsteroidInstancePool,
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
+  asteroidInstanceMembership,
   registerAsteroidBaseLeaf,
   rekeyAsteroidInstanceEntity,
   releaseAsteroidInstancesForEntity,
@@ -284,7 +335,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel, projectedShipDiameterPx, createShipLodState } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -371,6 +422,7 @@ import {
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
 import { HeadlightPool } from './headlights.js';
+import { HeroRig } from './heroRig.js';
 import { NocturneRuntime } from './nocturne/runtime.js';
 import { prepareNocturneShadowCamera } from './nocturne/shadows.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
@@ -466,6 +518,7 @@ import {
   lightCensusSignature,
   lightCensusSignatureSteps,
   noteShadowCensusLightMutation,
+  prepareShadowDepthTextureLease,
   shadowCensusEpoch,
   isUnstagedCollectOverCover,
   withheldDepthCasterProvablyDead,
@@ -486,6 +539,8 @@ import {
   formatOpeningCookLedger,
   observePipelineAdmission,
   recordOpeningCookStep,
+  createProgressDeadline,
+  renderWorkProgressMark,
 } from './pipelineReadiness.js';
 import { openingGateBudgetMs } from './startupPacing.js';
 import {
@@ -529,6 +584,7 @@ import { openingLoadPolicy } from './openingLoadPolicy.js';
 import {
   collectStartupGeometries,
   collectStartupGeometriesSteps,
+  collectStartupGeometryDrawables,
   collectOpeningResidencySubjects,
   collectStartupTextures,
   collectStartupTexturesSteps,
@@ -547,13 +603,20 @@ import {
   assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  dropGeometryGpuResidencyLedger,
   isPackageGeometryDetached,
+  isPackageTextureDetached,
+  LIVE_PACKAGE_CPU_PAYLOAD,
+  measureLivePackageCpuPayloads,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
+  queuePresentedDetachRehydrate,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
   refillPresentedCompressedUploads,
+  retainPresentedTextureLeases,
+  retainPackageGeometryCpu,
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
@@ -586,6 +649,7 @@ import {
   drawableHideSessionSteps,
   materialHasCompiledProgram,
   materialList,
+  retryPendingExactTouch,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -623,10 +687,7 @@ import {
 } from './authoredAdmissionPolicy.js';
 import { predictNextSector } from './sectorPredict.js';
 import {
-  freezeHiddenSubtreeMatrices,
-  freezeHiddenSubtreeMatricesSteps,
   unfreezeHiddenSubtreeMatrices,
-  unfreezeHiddenSubtreeMatricesSteps,
   updateMatrixWorldSteps,
 } from './staticChildMatrices.js';
 import {
@@ -675,7 +736,7 @@ import {
   DEPOT_PATROL_ID_PREFIX,
   DEPOT_PATROL_SHAPE_ID,
   DEPOT_PATROL_ZONE_RADIUS_WU,
-} from '../systems/claims.js';
+} from '../systems/claimsReadModel.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 
 const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
@@ -684,7 +745,6 @@ const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
-const _residencyLookDelta = { x: 0, z: 0 };
 
 
 
@@ -710,94 +770,202 @@ async function collectCompileSubjectsPaced(root, pace) {
   return step.value;
 }
 
-async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
-  if (typeof compileShadowDepthPipelinesSteps !== 'function') {
-    return compileShadowDepthPipelines(depthOpts);
+export async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
+  // The renderer keeps its shadow-map bit and the Nocturne spot caster structural so lit
+  // materials retain one stable color-program census while the optional depth pass is off.
+  // Do not mistake those structural flags for an active shadow request: opening/cook callers
+  // pass a separate active-settings policy. forceEnable:false means use an already-enabled
+  // shadow map; live promotion callers must retain that existing meaning.
+  if (depthOpts && depthOpts.shadowsActive === false) {
+    return { skipped: true, reason: 'shadow depth disabled by active settings', subjects: 0, aborted: false };
   }
   const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
-  if (!Number.isFinite(depthOpts.lightSigEpoch)) {
-    depthOpts.lightSigEpoch = shadowCensusEpoch();
-  }
-  // The subject census is light-independent — collect it once so drift retries
-  // re-pay only the light census + session mint, not the whole subtree walk.
-  if (!depthOpts.precollectedCasting && depthOpts.subjects) {
-    const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
-    let precollected = null;
-    for (;;) {
-      let collectStep;
-      try {
-        collectStep = collectIter.next();
-      } catch (collectError) {
-        // A torn census used to propagate through the cook's best-effort catch
-        // (silent cold depth link) or reject the drain settle. Skip the
-        // pre-collect so the compile below pays the sync collect instead.
-        closeCookStepsIter(collectIter);
-        stormWarn('shadow-cast-subject-census-drive-failed-compilin', '[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
-        break;
+  const state = depthOpts && depthOpts.state;
+  const contextRecovery = state && state.render && state.render.contextRecovery;
+  const startingGeneration = Number.isFinite(contextRecovery && contextRecovery.generation)
+    ? contextRecovery.generation : null;
+  const runIsCurrent = () => {
+    try {
+      if (typeof (depthOpts && depthOpts.isActive) === 'function'
+        && depthOpts.isActive() !== true) return false;
+      const renderer = depthOpts && depthOpts.renderer;
+      const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+      if (startingGeneration !== null) {
+        const currentGeneration = state && state.render && state.render.contextRecovery
+          && state.render.contextRecovery.generation;
+        if (currentGeneration !== startingGeneration) return false;
       }
-      if (collectStep.done) { precollected = collectStep.value; break; }
-      await pace();
+      return true;
+    } catch (_) {
+      return false;
     }
-    if (precollected) depthOpts.precollectedCasting = precollected;
-  }
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const iterator = compileShadowDepthPipelinesSteps(depthOpts);
-    for (;;) {
-      let step;
-      try {
-        step = iterator.next();
-      } catch (driveError) {
-        closeCookStepsIter(iterator);
-        noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
-        laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
-        const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
-          () => compileShadowDepthPipelines(depthOpts),
-          { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
-        // The degrade discards the remaining drift retries and runs under
-        // census terms minted pre-fault — a {stale} or never-compiled shape
-        // must read aborted like this drive's own exhausted loop, or callers
-        // evaluate marks that never landed and park roots on unearned
-        // undrawable verdicts.
-        if (degraded && (degraded.stale === true || degraded.skipped === true)) {
-          degraded.aborted = true;
+  };
+  const abortedForContext = () => ({
+    skipped: true, reason: 'shadow-depth-context-changed', subjects: 0, aborted: true,
+  });
+  let textureLease = null;
+  try {
+    if (!runIsCurrent()) return abortedForContext();
+    const contextChanged = () => textureLease
+      ? !textureLease.isCurrent() : !runIsCurrent();
+    if (!Number.isFinite(depthOpts.lightSigEpoch)) {
+      depthOpts.lightSigEpoch = shadowCensusEpoch();
+    }
+    // The subject census is light-independent — collect it once so drift retries
+    // re-pay only the light census + session mint, not the whole subtree walk.
+    if (typeof compileShadowDepthPipelinesSteps === 'function'
+      && !depthOpts.precollectedCasting && depthOpts.subjects) {
+      const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
+      let precollected = null;
+      for (;;) {
+        if (contextChanged()) return abortedForContext();
+        let collectStep;
+        try {
+          collectStep = collectIter.next();
+        } catch (collectError) {
+          // A torn census used to propagate through the cook's best-effort catch
+          // (silent cold depth link) or reject the drain settle. Skip the
+          // pre-collect so the compile below pays the sync collect instead.
+          closeCookStepsIter(collectIter);
+          stormWarn('shadow-cast-subject-census-drive-failed-compilin', '[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
+          break;
         }
-        return degraded;
+        if (collectStep.done) { precollected = collectStep.value; break; }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(collectIter);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(collectIter);
+          return abortedForContext();
+        }
       }
-      if (step.done) {
-        if (step.value && step.value.stale === true) break;
-        return step.value;
+      if (precollected) depthOpts.precollectedCasting = precollected;
+    }
+    const textureRoots = depthOpts
+      ? depthOpts.precollectedCasting || depthOpts.subjects : [];
+    let shadowTextures = [];
+    if (typeof collectStartupTexturesSteps === 'function') {
+      const textureIter = collectStartupTexturesSteps(textureRoots);
+      for (;;) {
+        if (contextChanged()) {
+          closeCookStepsIter(textureIter);
+          return abortedForContext();
+        }
+        let textureStep;
+        try {
+          textureStep = textureIter.next();
+        } catch (textureCollectError) {
+          closeCookStepsIter(textureIter);
+          throw textureCollectError;
+        }
+        if (textureStep.done) {
+          shadowTextures = textureStep.value;
+          break;
+        }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(textureIter);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(textureIter);
+          return abortedForContext();
+        }
       }
-      await pace();
+    } else if (textureRoots) {
+      shadowTextures = collectStartupTextures(textureRoots);
     }
-    depthOpts.lightSigEpoch = shadowCensusEpoch();
-    // A stale abort means the light set drifted — the retry collects the live
-    // set but a minted-once override would keep stamping marks under the old
-    // signature, so every leg caster re-collects as unstaged on the next arm.
-    // Prefer the caller's epoch-keyed memo: one census serves every retry.
-    if (typeof depthOpts.lightSigFor === 'function') {
-      depthOpts.lightSigOverride = depthOpts.lightSigFor();
-    } else if (typeof lightCensusSignature === 'function' && depthOpts.lightingScene) {
-      depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
+    const geometryIter = collectStartupGeometriesSteps(textureRoots, { includeEmpty: true });
+    let shadowGeometries = [];
+    for (;;) {
+      if (contextChanged()) { closeCookStepsIter(geometryIter); return abortedForContext(); }
+      const step = geometryIter.next();
+      if (step.done) { shadowGeometries = step.value; break; }
+      try { await pace(); } catch (error) { closeCookStepsIter(geometryIter); throw error; }
     }
+    textureLease = await prepareShadowDepthTextureLease({
+      renderer: depthOpts && depthOpts.renderer,
+      textures: shadowTextures,
+      geometries: shadowGeometries,
+      state,
+      expectedGeneration: startingGeneration,
+      isActive: depthOpts && depthOpts.isActive,
+      yieldToMain: pace,
+    });
+    if (!textureLease.ready) {
+      return { skipped: true, reason: textureLease.reason, subjects: 0, aborted: true };
+    }
+    if (typeof compileShadowDepthPipelinesSteps !== 'function') {
+      return compileShadowDepthPipelines(depthOpts);
+    }
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      if (contextChanged()) return abortedForContext();
+      const iterator = compileShadowDepthPipelinesSteps(depthOpts);
+      for (;;) {
+        if (contextChanged()) {
+          closeCookStepsIter(iterator);
+          return abortedForContext();
+        }
+        let step;
+        try {
+          step = iterator.next();
+        } catch (driveError) {
+          closeCookStepsIter(iterator);
+          noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
+          laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+          const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
+            () => compileShadowDepthPipelines(depthOpts),
+            { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
+          // The degrade discards the remaining drift retries and runs under
+          // census terms minted pre-fault — a {stale} or never-compiled shape
+          // must read aborted like this drive's own exhausted loop, or callers
+          // evaluate marks that never landed and park roots on unearned
+          // undrawable verdicts.
+          if (degraded && (degraded.stale === true || degraded.skipped === true)) {
+            degraded.aborted = true;
+          }
+          return degraded;
+        }
+        if (step.done) {
+          if (contextChanged()) return abortedForContext();
+          if (step.value && step.value.stale === true) break;
+          return step.value;
+        }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(iterator);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(iterator);
+          return abortedForContext();
+        }
+      }
+      depthOpts.lightSigEpoch = shadowCensusEpoch();
+      // A stale abort means the light set drifted — the retry collects the live
+      // set but a minted-once override would keep stamping marks under the old
+      // signature, so every leg caster re-collects as unstaged on the next arm.
+      // Prefer the caller's epoch-keyed memo: one census serves every retry.
+      if (typeof depthOpts.lightSigFor === 'function') {
+        depthOpts.lightSigOverride = depthOpts.lightSigFor();
+      } else if (typeof lightCensusSignature === 'function' && depthOpts.lightingScene) {
+        depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
+      }
+    }
+    // `aborted` rides the same contract as the callee-minted skip shapes: the
+    // drive never staged, so consumers must not evaluate marks that never landed.
+    return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+  } finally {
+    textureLease?.release();
   }
-  // `aborted` rides the same contract as the callee-minted skip shapes: the
-  // drive never staged, so consumers must not evaluate marks that never landed.
-  return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
 }
 
-// classifyTableBand reads its options object synchronously, so one pooled args
-// struct serves every band call — the glass/runway predicates fire per entity
-// per drain and per-poll and a fresh literal per call is pure churn.
-const _bandArgs = { dx: 0, dz: 0, glassHalfX: 0, glassHalfZ: 0, runwayWu: 0, radius: 0 };
-function _bandArgsFor(dx, dz, glassHalfX, glassHalfZ, runwayWu, radius) {
-  _bandArgs.dx = dx;
-  _bandArgs.dz = dz;
-  _bandArgs.glassHalfX = glassHalfX;
-  _bandArgs.glassHalfZ = glassHalfZ;
-  _bandArgs.runwayWu = runwayWu;
-  _bandArgs.radius = radius;
-  return _bandArgs;
-}
 // Shared empty list for the on-glass pending diagnostics — the per-frame sync
 // publishes it instead of slicing an array that holds nothing.
 const EMPTY_ON_GLASS_PENDING_IDS = Object.freeze([]);
@@ -1039,7 +1207,7 @@ const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
 // reconcile. An early poll only fires once the re-arm is at least half spent (≤8/s).
 const RENDER_RESIDENCY_EARLY_POLL_FLOOR_S = RENDER_RESIDENCY_POLL_SECONDS / 2;
 /** Hold-exempt discovery cadence: fast enough for the rescue set piece, slow enough to skip the scan. */
-const HOLD_EXEMPT_COLLECT_SECONDS = 0.1;
+const HOLD_EXEMPT_COLLECT_SECONDS = 0.2;
 // Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
 // sector-exit sweep was the sole release point for — inside one sector every archetype ever
 // admitted stayed GPU-resident forever. A slow sweep with an idle-age gate keeps short oscillation
@@ -1071,26 +1239,6 @@ const FIRST_PLAYABLE_PAINT_REARM_MS = 2000;
 // tighter bound keeps ≥40 fps behavior identical — rAF always wins — and drains below it.
 const FLIGHT_ADMISSION_PRESENT_BOUND_MS = 24;
 
-// Culled-root subtree freeze mints drain this many roots per syncEntityViews
-// pass (see _queueHiddenSubtreeFreeze) so a cull storm amortizes over frames.
-const HIDDEN_FREEZE_MINT_ROOTS_PER_PASS = 6;
-// Stale drops are bounded too: unbind/re-show waves can leave thousands of
-// dead entries ahead of live ones, and a full-length scan inside one pass is
-// itself the in-frame burst this queue exists to prevent.
-const HIDDEN_FREEZE_SCAN_PER_PASS = 256;
-// Dead drops (unbind-cleared flags) cost ~2 field reads — exempt them from the
-// live-consult budget but still bound total pass length for a dead-entry storm.
-const HIDDEN_FREEZE_VISIT_PER_PASS = 1024;
-// The mint work inside each drain is node-bounded too: the Steps twins yield
-// every ~1024 nodes, so a packaged-hull mint parks mid-subtree on its queue
-// entry and resumes next pass instead of paying ~2x O(subtree) inside one
-// presented beat.
-const HIDDEN_FREEZE_MINT_YIELD_NODES = 1024;
-const HIDDEN_FREEZE_NODE_BUDGET_PER_PASS = 4096;
-// Boundary flap hysteresis: a mint+restore pair costs ~4 subtree visits vs ~1
-// compose-visit/frame saved, so a hull re-shown within this many passes never
-// mints — it keeps paying the unfrozen compose it always paid.
-const HIDDEN_FREEZE_FLAP_DWELL = 3;
 // A live (non-dispose) unbind must restore a flagged subtree definitively
 // before the mesh's next owner, so it can't just ride the lazy drain — but a
 // mass unbind (keepGpu recook over a culled sector) pays ~2x O(subtree) per
@@ -1341,411 +1489,6 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
 // latch's homeSector skip) — but only while the shell latch is set: an unlatched
 // foreign-home row is legitimately live (cross-border far actor, followed convoy)
 // and must keep its decode-pick path; a row without a home stamp earns picks normally.
-function entityHomeSectorMismatch(entity, state) {
-  const data = entity && entity.data || {};
-  const homeSectorId = entity && entity.homeSectorId || data.homeSectorId;
-  if (!homeSectorId || homeSectorId === (state && state.world && state.world.currentSectorId)) {
-    return false;
-  }
-  return !!(state && state.render && (
-    state.render.liveSectorGpuAdmission === true
-    || state.render.sectorShellAdmission === true));
-}
-
-export function sectorPrewarmPopulationNeedsSynchronousRefresh(record) {
-  return record?.active === true
-    && (record.populationSeeded !== true || record.populationCoverageDirty === true);
-}
-
-function playerEntityForRenderState(state) {
-  return state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : null;
-}
-
-function entityIsExplicitRenderFocus(entity, state) {
-  if (!entity || !state) return false;
-  if (entity.id === state.playerId || entity.isPlayer === true) return true;
-  if (entity.flags && (entity.flags.forceRender || entity.flags.neverCull)) return true;
-  const playerEntity = playerEntityForRenderState(state);
-  const targetId = state.player && state.player.targetId != null
-    ? state.player.targetId
-    : playerEntity && playerEntity.targetId;
-  return targetId != null && entity.id === targetId;
-}
-
-// Shelf-time pos for dormant ledger rows freezes at shelf; the shared ledgerAwarePos in
-// presentationSources catches them up (itinerary when the row carries an intent, ballistic
-// otherwise) — every queue-side and render-side glass verdict reads the same projection.
-
-function entityWithinPlayerRadius(entity, state, radius) {
-  if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
-  const player = playerEntityForRenderState(state);
-  if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
-  const epos = ledgerAwarePos(entity, state);
-  const delta = tableLookAtDelta(state, player.pos, epos, _residencyLookDelta);
-  const visual = entityVisualCullRadius(entity, entity.mesh);
-  const reach = Math.max(0, Number(radius) || 0) + visual;
-  const reach2 = reach * reach;
-  if (delta.x * delta.x + delta.z * delta.z <= reach2) return true;
-  // The collect disc unions the player leg so the destination cohort cooks during a
-  // post-relocate focus lag — keep must hold the same rows or they would build then
-  // evict on every poll until the glass lands. Steady state (focus at/near the
-  // player) the legs coincide and nothing extra stays resident.
-  const relPx = (Number.isFinite(epos && epos.x) ? epos.x : 0) - player.pos.x;
-  const relPz = (Number.isFinite(epos && epos.z) ? epos.z : 0) - player.pos.z;
-  return relPx * relPx + relPz * relPz <= reach2;
-}
-
-// Every liveTableCamera caller reads the fields synchronously in the same expression that
-// follows the call (residency/shadow radii, admission env, glass extents) and none retains
-// the struct — one pooled env like _admissionEnv, with `out` left for a caller that ever
-// needs its own copy.
-const _liveTableCamera = { zoom: 0, prefetchZoom: 0, fov: 0, tilt: 0, aspect: 0 };
-
-function liveTableCamera(state, out = _liveTableCamera) {
-  const camera = state && state.camera || {};
-  const video = state && state.settings && state.settings.video || {};
-  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
-  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
-  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
-  const prefetchZoom = tablePrefetchZoomFromState(state);
-  const fov = Number.isFinite(camera.fov) ? camera.fov
-    : (Number.isFinite(video.fov) ? video.fov : 50);
-  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
-  out.zoom = zoom;
-  out.prefetchZoom = prefetchZoom;
-  out.fov = fov;
-  out.tilt = tilt;
-  out.aspect = aspect;
-  return out;
-}
-
-function liveShadowCastRadius(state) {
-  const cam = liveTableCamera(state);
-  return tableShadowCasterRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt, SHADOW_ORTHO_EXTENT);
-}
-
-function renderResidencyRadius(state, kind = 'prefetch', entity = null) {
-  const speed = tableTravelSpeed(state);
-  const cam = liveTableCamera(state);
-  // Both radii read the SAME zoom. Evict used the live zoom alone while prefetch used
-  // max(live, requested): the moment the player wheeled out (requested 330, live still damped at
-  // 144) prefetch was 766 WU and evict 595 WU — evict INSIDE prefetch — so every mesh in that
-  // 170 WU annulus was built and destroyed on each 0.25 s poll, burning the build budget that
-  // the rocks actually reaching the glass needed. Hysteresis only exists if evict >= prefetch.
-  const radius = kind === 'evict'
-    ? residencyEvictRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt)
-    : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
-  // Ships/wrecks admit at the longer decode runway. Evicting at the ordinary mesh
-  // runway removed and rebuilt the same hull on every poll in that outer annulus.
-  return kind === 'evict' && (entity?.type === 'ship' || entity?.type === 'wreck')
-    ? Math.max(radius, authoredResidencyEvictRadius(speed))
-    : radius;
-}
-
-/** True once an entity's visual root carries a finished authored identity — i.e. the decode and
- * composition were already paid for. Distinct from "has a mesh": a procedural fallback boundary is
- * cheap to rebuild and must not pin residency. */
-function entityHasAuthoredResidentRoot(entity) {
-  const root = entity && (entity.mesh || (entity.view && entity.view.root)) || null;
-  const authoredState = root && root.userData ? root.userData.authoredAssetState : null;
-  return typeof authoredState === 'string' && authoredState.startsWith('authored');
-}
-
-/** True while an entity's visual root is mid-admission — a decode already paid for.
- * Inside the landmark keep runway it counts as resident so an evict poll cannot
- * restart the paid decode by dropping the root it is streaming into. */
-function entityHasAuthoredPendingRoot(entity) {
-  const root = entity && (entity.mesh || (entity.view && entity.view.root)) || null;
-  const authoredState = root && root.userData ? root.userData.authoredAssetState : null;
-  return isAuthoredPendingStatus(authoredState);
-}
-
-/** Keep-distance for the landmark residency bound, measured from the live look-at
- * like the rest of the keep/evict radii; Infinity without a player or position. */
-function landmarkKeepDistanceWu(entity, state) {
-  const player = playerEntityForRenderState(state);
-  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
-  const delta = tableLookAtDelta(state, player.pos, ledgerAwarePos(entity, state), _residencyLookDelta);
-  return Math.hypot(delta.x, delta.z);
-}
-
-function inboundDecodeRadius(state, radius = null) {
-  const numeric = Number(radius);
-  if (radius != null && Number.isFinite(numeric)) return numeric;
-  return authoredPrefetchRadius(tableTravelSpeed(state));
-}
-
-const _admissionEnv = { anchorX: 0, anchorZ: 0, pvx: 0, pvz: 0, glassR: 0 };
-const _admissionAnchor = { x: 0, z: 0 };
-
-/**
- * Shared prediction frame for admission tests: the live look-at (while it is
- * near the player), the player velocity the look-at translates with, and the
- * live glass corner. Computed once per residency pass, not per entity.
- */
-function renderAdmissionEnv(state, out = _admissionEnv) {
-  const player = playerEntityForRenderState(state);
-  const cam = liveTableCamera(state);
-  // Admit-side predictions read the composed zoom (max of live + requested): while a wheel-out
-  // is still damping, entities already inside the requested frame would otherwise wait for the
-  // catch-up before their decode starts. The deny side keeps live zoom (see renderResidencyRadius).
-  out.glassR = glassCornerWu(cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
-  // The chase focus IS the frame's destination: at speed it leads the player ~400 WU, so a
-  // capped anchor would let the admission centre trail the actual glass by that whole lead.
-  // When focus is finite it is the anchor; only the no-focus fallback uses the player pos.
-  const anchor = admissionAnchorPos(
-    state,
-    player && player.pos,
-    Number.POSITIVE_INFINITY,
-    _admissionAnchor,
-  );
-  out.anchorX = anchor.x;
-  out.anchorZ = anchor.z;
-  out.pvx = Number(player && player.vel && player.vel.x) || 0;
-  out.pvz = Number(player && player.vel && player.vel.z) || 0;
-  return out;
-}
-
-/**
- * Player-anchored twin of the focus-anchored env: after a relocate the focus can
- * trail the player by thousands of WU while it crawls over, and rows admitted on
- * the player leg would otherwise never satisfy a focus-anchored glass measure
- * until the glass lands. Same cook-from-the-player precedent as
- * isInboundDecodeHull. Null when the focus anchor already IS the player (the
- * common steady state — callers skip the second measure).
- */
-function playerAnchoredAdmissionEnv(state, env) {
-  const player = playerEntityForRenderState(state);
-  const px = Number(player && player.pos && player.pos.x) || 0;
-  const pz = Number(player && player.pos && player.pos.z) || 0;
-  if (!env || (env.anchorX === px && env.anchorZ === pz)) return null;
-  return { glassR: env.glassR, anchorX: px, anchorZ: pz, pvx: env.pvx, pvz: env.pvz };
-}
-
-/**
- * Seconds until the entity sits inside the glass corner of the moving view
- * anchor — the approach-aware runway a fixed disc cannot express. Far ledger
- * rows are extrapolated ballistically first: their stored pos froze at shelf
- * time. Infinity when it never enters inside the horizon.
- */
-const _ledgerPredVel = { x: 0, z: 0 };
-
-// Prediction velocity for a ledger row: advanceWorldRecord zeroes vel on itinerary rows
-// (the schedule carries the motion, not the drift), so entity.vel would mark inbound
-// traffic as static and shrink every glass runway ~2x. Use the itinerary cruise speed
-// when the row has a live schedule; stored vel otherwise. Widens prediction only —
-// earlier admission is the safe direction.
-const _predVelStored = { x: 0, z: 0 };
-
-function predictionVel(entity, state, out = _predVelStored) {
-  const vel = entity && entity.vel;
-  if (isPresentationLedgerRow(entity) && entity.intent
-      && Number.isFinite(entity.lastExactT)) {
-    const simTime = Number.isFinite(state && state.simTime)
-      ? state.simTime
-      : ((state && state.tick) | 0) / 60;
-    const along = itineraryVelocityInto(entity.intent, simTime, _ledgerPredVel);
-    if (along) {
-      out.x = along.x;
-      out.z = along.z;
-      return out;
-    }
-  }
-  out.x = Number(vel && vel.x) || 0;
-  out.z = Number(vel && vel.z) || 0;
-  return out;
-}
-
-// An itinerary row's schedule — not its current-leg velocity — is its trajectory. Sampling
-// itineraryPositionInto over the horizon prices pre-departure waits and post-arrival stops
-// exactly the way the catch-up sweep will play them; straight-line extrapolation at the
-// current leg's cruise would over-predict both (and under-predict a leg ending inside the
-// window). Non-itinerary rows keep the closed-form quadratic.
-const _itineraryGlassScratch = { x: 0, z: 0 };
-
-function itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS) {
-  let prevT = 0;
-  for (let i = 1; i <= 8; i += 1) {
-    const t = (horizonS * i) / 8;
-    const pos = itineraryPositionInto(entity.intent, simTime + t, _itineraryGlassScratch);
-    if (!pos) continue;
-    const dx = pos.x - (env.anchorX + env.pvx * t);
-    const dz = pos.z - (env.anchorZ + env.pvz * t);
-    if (dx * dx + dz * dz <= radius * radius) {
-      let lo = prevT;
-      let hi = t;
-      for (let j = 0; j < 6; j += 1) {
-        const mid = (lo + hi) / 2;
-        const probe = itineraryPositionInto(entity.intent, simTime + mid, _itineraryGlassScratch);
-        if (!probe) break;
-        const mx = probe.x - (env.anchorX + env.pvx * mid);
-        const mz = probe.z - (env.anchorZ + env.pvz * mid);
-        if (mx * mx + mz * mz <= radius * radius) hi = mid;
-        else lo = mid;
-      }
-      return hi;
-    }
-    prevT = t;
-  }
-  return Infinity;
-}
-
-/** Drawn-envelope radius for admission timing — the same measure the cull band grades on
- * (a pending boundary's stamped estimate already classifies at √2·placeTargetRadius), so
- * admission predicates must not grade late against the circle the renderer draws. */
-function admissionVisualRadiusWu(entity) {
-  let visual = entityVisualCullRadius(entity, entity && entity.mesh);
-  const declaredRadius = declaredPlaceTargetRadius(entity);
-  if (Number.isFinite(declaredRadius) && declaredRadius > 0) {
-    visual = Math.max(visual, declaredRadius * Math.SQRT2);
-  }
-  return visual;
-}
-
-function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
-  const pos = entity && entity.pos;
-  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
-  const ledgerPos = ledgerAwarePos(entity, state);
-  const ex = ledgerPos.x;
-  const ez = ledgerPos.z;
-  // Presence radius, not the collision proxy: a big authored body's surface reaches
-  // the glass long before its centre+radius math says it does.
-  const visual = admissionVisualRadiusWu(entity);
-  const radius = env.glassR + visual + (Number(padWu) || 0);
-  if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
-    const simTime = Number.isFinite(state && state.simTime)
-      ? state.simTime
-      : ((state && state.tick) | 0) / 60;
-    const dx = ex - env.anchorX;
-    const dz = ez - env.anchorZ;
-    if (dx * dx + dz * dz <= radius * radius) return 0;
-    return itineraryTimeToGlassSeconds(entity, env, simTime, radius, horizonS);
-  }
-  const pvel = predictionVel(entity, state);
-  const relVx = pvel.x - env.pvx;
-  const relVz = pvel.z - env.pvz;
-  return timeToEnterRadiusSeconds(
-    ex - env.anchorX,
-    ez - env.anchorZ,
-    relVx,
-    relVz,
-    radius,
-    horizonS,
-  );
-}
-
-function playerPlanarDistance(entity, state) {
-  const player = playerEntityForRenderState(state);
-  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
-  const dx = (Number(entity.pos.x) || 0) - (Number(player.pos.x) || 0);
-  const dz = (Number(entity.pos.z) || 0) - (Number(player.pos.z) || 0);
-  return Math.hypot(dx, dz);
-}
-
-/** True when a live inbound hull is already inside the authored decode circle. */
-function isInboundDecodeHull(entity, state, radius = null, admissionEnv = null) {
-  if (!entity || entity.alive === false) return false;
-  if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
-  const stationBoundary = entity.type === 'station';
-  if (!stationBoundary
-      && entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone'
-      && entity.type !== 'payload' && entity.type !== 'beacon') return false;
-  // Promote and catch-up are player-centered. tableLookAtDelta follows the
-  // leftover chase focus, so a relocate leaves the hull "beyond the table"
-  // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
-  const visual = admissionVisualRadiusWu(entity);
-  if ((playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius)) {
-    return true;
-  }
-  // An explicit radius is a hysteresis caller's bound (evict/admit edge). Keep it
-  // a pure disc test; prediction only extends the default admission radius.
-  // Stations are exempt: a boundary evicted on the disc alone mid-compose would
-  // restart a paid decode, so the station evict edge runs the approach clause.
-  if (radius != null && !stationBoundary) return false;
-  // Approach-aware admission: a hull closing on the glass inside the promote
-  // horizon gets its decode+build chain started while it is still outside the
-  // static circle. entityTimeToGlassSeconds extrapolates shelved far rows from
-  // lastExactT first — their stored pos is stale for anything that kept moving.
-  // Stations approach on the full authored decode runway — the same horizon
-  // kickDecodeRunwayAssets decodes them on — while hulls keep the promote horizon.
-  // Shared definition: every serial-lane predicate grades the same per-type ladder.
-  const horizon = authoredRunwayHorizonSeconds(entity);
-  const player = playerEntityForRenderState(state);
-  if (!player || !player.pos) return false;
-  const env = admissionEnv || renderAdmissionEnv(state);
-  const pad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
-  return entityTimeToGlassSeconds(
-    entity,
-    env,
-    state,
-    horizon,
-    pad,
-  ) <= horizon;
-}
-
-/** Hold the cooked GPU working set so first-flight travel cannot evict+rebuild it. */
-export function holdFirstFlightStreaming(state) {
-  if (!state || state.mode !== 'flight') return false;
-  if (state.render && (
-    state.render.liveSectorGpuAdmission === true
-    || state.render.sectorShellAdmission === true
-  )) return false;
-  const until = Number(state.render && state.render.firstFlightResidencyHoldUntil);
-  if (Number.isFinite(until)) return (Number(state.simTime) || 0) < until;
-  return (Number(state.simTime) || 0) < 20;
-}
-
-/** True while a survival run is live — the crucible cooks its whole arena behind the shell. */
-function survivalRunHoldsArena(state) {
-  const run = state && state.run;
-  return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
-}
-
-/**
- * Sector-arrival staging eligibility: does THIS body carry its own authored plan to prepare?
- * The request builder appends the sector-wide spawnable-archetype set by default, which made every
- * procedural rock, hidden site proxy and art-less fx "eligible". None of them can reach prepared
- * admission, so the certified arrival set failed on every entry, and every body in it (the Wreck
- * Cathedral included) stayed undrawn until the set was thrown away and rebuilt (~45 s measured).
- * A mesh-less proxy never gets a boundary at all — the same law as isEntityRenderRelevant.
- */
-export function entityHasOwnSectorPrewarmPlan(entity, sectorId, playerId = null) {
-  if (!entity || entity.alive === false || entity._noMesh) return false;
-  return authoredPrewarmRequestsForEntities([entity], {
-    sectorId,
-    playerId,
-    includeSpawnableArchetypes: false,
-  }).length > 0;
-}
-
-// shouldKeepPersistentLandmarkResident reads its options synchronously — one pooled
-// struct per residency evaluation instead of a six-field literal per entity per poll.
-const _landmarkKeepOpts = {
-  mode: null, currentSectorId: null, authoredResident: false,
-  authoredPending: false, distanceWu: 0, travelSpeedWu: 0,
-};
-function _landmarkKeepOptsFor(entity, state) {
-  _landmarkKeepOpts.mode = state && state.mode;
-  _landmarkKeepOpts.currentSectorId = state && state.world && state.world.currentSectorId;
-  _landmarkKeepOpts.authoredResident = entityHasAuthoredResidentRoot(entity);
-  _landmarkKeepOpts.authoredPending = entityHasAuthoredPendingRoot(entity);
-  _landmarkKeepOpts.distanceWu = landmarkKeepDistanceWu(entity, state);
-  _landmarkKeepOpts.travelSpeedWu = tableTravelSpeed(state);
-  return _landmarkKeepOpts;
-}
-
-// Activity-frame glass/runway membership: Set.has when the frame publishes a real set,
-// array includes for the serialized/lite frames — hoisted so the per-entity residency
-// poll does not re-allocate the probe closure.
-function activityFrameListsId(collection, id) {
-  return collection && typeof collection.has === 'function'
-    ? collection.has(id)
-    : Array.isArray(collection) && collection.includes(id);
-}
-
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -3665,60 +3408,6 @@ export function serviceRenderMeshResidency(owner, frameDt) {
 }
 
 /** The opening's rescue set piece: the rock, the wall, the pod, the trainer. Built and shown at once. */
-function isFirstFlightProtectedEntity(entity) {
-  const data = entity && entity.alive !== false ? entity.data : null;
-  return !!(data && (data.rescue === true || data.onboardingTraining === true));
-}
-
-/**
- * Entities the first-flight streaming hold must not starve: the rescue set piece,
- * explicit render focus (player, target lock, forced roots), and whatever the activity
- * frame currently has on the readable glass. The set is small by construction; the bulk
- * runway keeps the hold so the cooked working set survives first flight.
- */
-function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, admissionEnv) {
-  if (!entity || entity.alive === false) return false;
-  if (isFirstFlightProtectedEntity(entity)) return true;
-  if (entityIsExplicitRenderFocus(entity, state)) return true;
-  if (glassIds) {
-    if (typeof glassIds.has === 'function' ? glassIds.has(entity.id) : glassIds.includes(entity.id)) {
-      return true;
-    }
-  }
-  // The activity frame can only name combat-list entities, so field rocks and dressing rows were
-  // never exempt: anything not cooked during loading could not build for the first 20 s of
-  // flight, however squarely it sat on screen. The hold protects the opening from work the
-  // player cannot see; a row on the live glass is work the player is looking at the absence of.
-  // Builds stay inside the ordinary per-poll budget and time slice.
-  if (onReadableGlass(entity)) return true;
-  // Lane C — residency prefetch window under the hold. Waiting until a row crosses the
-  // glass band pays first mesh build on-glass (crucible soft-GPU: asteroid builds at
-  // +11.5 s while hold still owns streaming). Approach time uses the same seconds×speed
-  // constants as the ordinary runway; a parked far R1_RUNWAY row still stays deferred.
-  //
-  // Ledger rocks already enter the presentation list on TABLE_COLLECT_HORIZON_SECONDS
-  // (player-vel projection for parked static rows). Keeping hold-exempt on the tighter
-  // prefetch window left those approach rocks listed but unbuilt until hold release —
-  // the +20 s asteroid dump on soft-GPU crucible seed 4242. Match the collect horizon
-  // for ledger rows only; combat-list hulls stay on the prefetch window.
-  //
-  // Wave-planned hull keys (Choice B) are next-contact by schedule — owe their mesh under
-  // the hold even when spawn distance sits on the glass lip (~165 WU vs ~163 halfX).
-  if (entityMatchesWaveHullRunway(entity, state)) return true;
-  const env = admissionEnv();
-  const hull = entity.type === 'ship' || entity.type === 'wreck'
-    || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'beacon';
-  // Station/hull rows ride the shared authored ladder (station→decode runway,
-  // hull→promote horizon); ledger + other rows keep their own horizon names.
-  const horizon = entity.type === 'station' || hull
-    ? authoredRunwayHorizonSeconds(entity)
-    : isPresentationLedgerRow(entity)
-      ? TABLE_COLLECT_HORIZON_SECONDS
-      : TABLE_RESIDENCY_PREFETCH_SECONDS;
-  const tGlass = entityTimeToGlassSeconds(entity, env, state, horizon);
-  return tGlass <= horizon;
-}
-
 export function isHoldExemptMeshBuild(entity, state, glassIds) {
   // Single callers keep the lazy per-entity derivations: the env is built only for the few
   // entities that survive the early exits, and the readable-glass test computes its camera
@@ -3733,146 +3422,7 @@ export function isHoldExemptMeshBuild(entity, state, glassIds) {
   );
 }
 
-const _holdExemptLookOrigin = { x: 0, z: 0 };
-const _holdExemptEnv = { anchorX: 0, anchorZ: 0, pvx: 0, pvz: 0, glassR: 0 };
 const _authoredRunwayLookOrigin = { x: 0, z: 0 };
-
-/**
- * One poll's worth of invariant terms for the hold-exempt scan. enqueueHoldExemptMeshBuilds
- * evaluates ~100+ presentation entities each collect, and entityIsOnReadableGlass used to
- * re-derive the player entity, the live table camera and the glass half extents (trig) for
- * every row; renderAdmissionEnv re-derived the same player and camera again in the approach
- * tail. All of it is fixed inside one call, so it is computed once here.
- */
-function makeHoldExemptScanContext(state) {
-  const player = playerEntityForRenderState(state);
-  const cam = liveTableCamera(state);
-  const travelSpeedWu = tableTravelSpeed(state);
-  return {
-    player,
-    glass: glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt),
-    lookOrigin: tableLookAtOrigin(state, player && player.pos, _holdExemptLookOrigin),
-    env: renderAdmissionEnv(state, _holdExemptEnv),
-    // Per-walk invariants the per-row predicates used to re-derive (player
-    // lookup + camera + travel speed + prefetch disc) — verdict-identical
-    // since none of them read the entity.
-    travelSpeedWu,
-    prefetchRadius: residencyPrefetchRadius(travelSpeedWu, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt),
-    // playerAnchoredAdmissionEnv allocs a fresh object per call — computed
-    // lazily here the first time a walk actually asks (steady state = null).
-    envPlayer: undefined,
-    envPlayerReady: false,
-  };
-}
-
-/** Lazily materialized playerAnchoredAdmissionEnv — one alloc per walk, never per row. */
-function scanEnvPlayer(state, scan) {
-  if (scan.envPlayerReady !== true) {
-    scan.envPlayerReady = true;
-    scan.envPlayer = playerAnchoredAdmissionEnv(state, scan.env);
-  }
-  return scan.envPlayer;
-}
-
-/** landmarkKeepDistanceWu with the player + look-at already resolved — same math, same order. */
-function landmarkKeepDistanceWuScan(entity, state, scan) {
-  const player = scan.player;
-  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
-  const epos = ledgerAwarePos(entity, state);
-  const dx = (Number.isFinite(epos && epos.x) ? epos.x : 0) - scan.lookOrigin.x;
-  const dz = (Number.isFinite(epos && epos.z) ? epos.z : 0) - scan.lookOrigin.z;
-  return Math.hypot(dx, dz);
-}
-
-function _landmarkKeepOptsForScan(entity, state, scan) {
-  _landmarkKeepOpts.mode = state && state.mode;
-  _landmarkKeepOpts.currentSectorId = state && state.world && state.world.currentSectorId;
-  _landmarkKeepOpts.authoredResident = entityHasAuthoredResidentRoot(entity);
-  _landmarkKeepOpts.authoredPending = entityHasAuthoredPendingRoot(entity);
-  _landmarkKeepOpts.distanceWu = landmarkKeepDistanceWuScan(entity, state, scan);
-  _landmarkKeepOpts.travelSpeedWu = scan.travelSpeedWu;
-  return _landmarkKeepOpts;
-}
-
-/** entityWithinPlayerRadius with the player + look-at already resolved — same math, same order. */
-function entityWithinPlayerRadiusScan(entity, state, radius, scan) {
-  if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
-  const player = scan.player;
-  if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
-  const epos = ledgerAwarePos(entity, state);
-  const dx = (Number.isFinite(epos && epos.x) ? epos.x : 0) - scan.lookOrigin.x;
-  const dz = (Number.isFinite(epos && epos.z) ? epos.z : 0) - scan.lookOrigin.z;
-  const visual = entityVisualCullRadius(entity, entity.mesh);
-  const reach = Math.max(0, Number(radius) || 0) + visual;
-  const reach2 = reach * reach;
-  if (dx * dx + dz * dz <= reach2) return true;
-  const relPx = (Number.isFinite(epos && epos.x) ? epos.x : 0) - player.pos.x;
-  const relPz = (Number.isFinite(epos && epos.z) ? epos.z : 0) - player.pos.z;
-  return relPx * relPx + relPz * relPz <= reach2;
-}
-
-/** entityIsOnReadableGlass with the per-poll terms already resolved — same math, same order. */
-function entityIsOnReadableGlassScan(entity, state, scan) {
-  if (!entity || !state) return false;
-  if (entityIsExplicitRenderFocus(entity, state)) return true;
-  const player = scan.player;
-  if (!player || !player.pos || !entity.pos) return false;
-  const glass = scan.glass;
-  const scanPos = ledgerAwarePos(entity, state);
-  _residencyLookDelta.x = (Number.isFinite(scanPos.x) ? scanPos.x : 0) - scan.lookOrigin.x;
-  _residencyLookDelta.z = (Number.isFinite(scanPos.z) ? scanPos.z : 0) - scan.lookOrigin.z;
-  const band = classifyTableBand(_bandArgsFor(
-    _residencyLookDelta.x,
-    _residencyLookDelta.z,
-    glass.halfX,
-    glass.halfZ,
-    TABLE_FRAME_SKIRT_WU,
-    entityVisualCullRadius(entity, entity.mesh),
-  ));
-  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
-}
-
-/** entityIsOnDeadlineGlass with the per-poll terms already resolved — same math, same order. */
-function entityIsOnDeadlineGlassScan(entity, state, scan) {
-  if (!entity || entity.alive === false || !state) return false;
-  if (entityIsExplicitRenderFocus(entity, state)) return true;
-  if (entity.activity && entity.activity.presentationTier === PRESENTATION_TIER.R0_GLASS) return true;
-  const frame = state.render && state.render.activityFrame;
-  const glassIds = frame && frame.renderGlassIds;
-  const listed = glassIds && typeof glassIds.has === 'function'
-    ? glassIds.has(entity.id)
-    : Array.isArray(glassIds) && glassIds.includes(entity.id);
-  if (listed === true) return true;
-  const player = scan.player;
-  if (!player || !player.pos || !entity.pos) return false;
-  const glass = scan.glass;
-  const scanPos = ledgerAwarePos(entity, state);
-  _residencyLookDelta.x = (Number.isFinite(scanPos.x) ? scanPos.x : 0) - scan.lookOrigin.x;
-  _residencyLookDelta.z = (Number.isFinite(scanPos.z) ? scanPos.z : 0) - scan.lookOrigin.z;
-  return classifyTableBand(_bandArgsFor(
-    _residencyLookDelta.x,
-    _residencyLookDelta.z,
-    glass.halfX,
-    glass.halfZ,
-    0,
-    entityVisualCullRadius(entity, entity.mesh),
-  )) === TABLE_BAND.GLASS;
-}
-
-/**
- * The exempt predicate for one collect pass: identical answers to isHoldExemptMeshBuild
- * (pinned by test/hold-exempt-scan.test.mjs) with the camera/glass/player/env terms hoisted.
- */
-export function makeHoldExemptMeshBuildEvaluator(state, glassIds) {
-  const scan = makeHoldExemptScanContext(state);
-  return (entity) => isHoldExemptMeshBuildCore(
-    entity,
-    state,
-    glassIds,
-    (e) => entityIsOnReadableGlassScan(e, state, scan),
-    () => scan.env,
-  );
-}
 
 /**
  * Whether the renderer owes this entity a built mesh right now. Outside the first-flight
@@ -4204,6 +3754,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       let cycleKickStarted = 0;
       if (iterator) {
         let done = false;
+        let collectStride = 0;
         for (;;) {
           let step;
           try {
@@ -4219,8 +3770,10 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
             return 0;
           }
           if (step.done) { done = true; break; }
-          if (now() - started >= sliceMs
-              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          // Row-granular steps: read the clock every 8th row, not every row.
+          if ((++collectStride & 7) === 0
+              && (now() - started >= sliceMs
+                || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         }
         if (!done) break;
       }
@@ -4279,8 +3832,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       // and zero kick (a hold could queue exempt builds that never landed).
       let commitSteps = 0;
       while (owner._holdExemptEnqueueIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptEnqueueIter.next();
@@ -4302,8 +3856,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
         owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
       }
       while (owner._holdExemptKickIter) {
-        if (commitBounded && commitSteps > 0 && (now() - commitStarted >= commitSliceMs
-            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
+        if (commitBounded && commitSteps > 0 && (commitSteps & 7) === 0
+            && (now() - commitStarted >= commitSliceMs
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
         let step;
         try {
           step = owner._holdExemptKickIter.next();
@@ -8057,9 +7612,12 @@ export function assertCompleteAppearanceAdmission(receipt) {
     if (Array.isArray(value)) { for (const entry of value) visit(entry); return; }
     if (!value || typeof value !== 'object'
         || value.contextLost === true || value.partial === true || value.cancelled === true
+        || value.incomplete === true || value.readinessTimedOut === true
         || (value.skipped === true && value.reason !== 'no drawable geometry')) {
       const reason = value?.reason || 'missing/partial receipt';
       const error = new Error(`Incomplete appearance admission: ${reason}`);
+      if (value?.readinessTimedOut === true && value.contextLost !== true
+          && value.cancelled !== true) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
       // A strict caller still receives the rejection, but an owner retired while
       // queued is expected cancellation. Keep it out of the background failure
       // channel just like the underlying async-admission AbortError.
@@ -8077,10 +7635,32 @@ export function assertCompleteAppearanceAdmission(receipt) {
   return receipt;
 }
 
+function appearanceAdmissionHasUnreadyPipeline(value) {
+  if (Array.isArray(value)) return value.some(appearanceAdmissionHasUnreadyPipeline);
+  if (!value || typeof value !== 'object') return false;
+  if (value.readinessTimedOut === true || value.incomplete === true) return true;
+  return ['pipelines', 'results'].some((key) => appearanceAdmissionHasUnreadyPipeline(value[key]));
+}
+
 export function compilePipelineSubject(tracker, subject, options = {}, urgent = false) {
   if (urgent === true) return tracker.compile(subject, { ...options, urgent: true });
   if (options && options.explicit === true) return tracker.compileExplicit(subject, options);
   return tracker.compile(subject, options);
+}
+
+/** Only a typed, empty retired pool with a still-live caller proves an expected cancellation. */
+export function isRetiredPackagePoolResidencyOwner(snapshot) {
+  if (snapshot?.ownerType !== 'authored-boundary' || snapshot.entityStillRequired !== false
+    || snapshot.nestedAdmissionOwnerActive !== false) return false;
+  for (const gate of ['entityAlive', 'entityIsCurrent', 'boundaryAttached', 'renderMatches',
+    'rendererMatches', 'admissionGenerationMatches', 'contextLossGenerationMatches', 'portMatches']) {
+    if (snapshot[gate] !== true) return false;
+  }
+  const nested = snapshot.nestedAdmissionOwner;
+  return nested?.ownerType === 'render-package-pool-admission'
+    && nested.cancelled === true && nested.requestedOwnerActive === true
+    && nested.liveSlotCount === 0 && nested.liveOwnerCount === 0
+    && (nested.poolRetiring === true || nested.chunkRetired === true);
 }
 
 export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
@@ -8480,6 +8060,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
   'resumeDeferredPipelineAdmissions', 'compileCurrentPipelines', 'pendingPipelineAdmissions',
+  'authoredVisualReadiness', 'openingAuthoredQueueDiagnostics',
   'preparePostOpeningPipelines', 'prepareOpeningGpuResources', 'retryAuthoredPartLibrary',
   'startupGpuResidency', 'rockSurfaceLibraryReady', 'rockFamilyLibraryReady', 'creatureSkinLibraryReady', 'planetDetailLibraryReady', 'authoredPartLibraryReady',
   'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
@@ -8491,6 +8072,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'openingSubmissionLateInstancedPbr', 'openingSubmissionPreSubmitValidation',
   'openingSubmissionReady', 'openingSubmissionValidation', 'pipelinePrecompileReady',
   'rigidOpaqueBatch', 'setRigidOpaqueBatchForBench', 'getRigidOpaqueBatchDiagnosticsForBench',
+  'setAshlineFactorPaletteForBench',
   'firstPlayableContentHashes', 'firstPlayableContentHashesVerified',
   'firstPlayableGlobalProgramKeys', 'firstPlayableOpeningProgramKeys',
   'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen', 'openingVfxFrozen',
@@ -8703,9 +8285,23 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  owner._releaseLivePackageCpuPayloads?.();
+  owner._orientationResizeRelease?.();
+  owner._orientationResizeRelease = null;
+  owner._orientationResizePending = null;
+  owner._orientationResizeReady = false;
   try { owner._disarmDrawHistogram?.(); } catch (_) { /* diagnostic cleanup only */ }
   owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
+  if (owner._playerTruthAsteroidInstanceMembership) {
+    const renderState = owner.state && owner.state.render;
+    if (renderState
+        && renderState.asteroidInstanceMembershipForEntity
+          === owner._playerTruthAsteroidInstanceMembership) {
+      renderState.asteroidInstanceMembershipForEntity = null;
+    }
+    owner._playerTruthAsteroidInstanceMembership = null;
+  }
   disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
   owner._rigidOpaqueBatchScene = null;
   invalidateMachineryPresentation(owner.state);
@@ -8799,6 +8395,10 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   if (owner._headlights) {
     owner._headlights.dispose({ disposeGpu });
     owner._headlights = null;
+  }
+  if (owner._heroRig) {
+    owner._heroRig.dispose({ disposeGpu });
+    owner._heroRig = null;
   }
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
@@ -9316,6 +8916,35 @@ const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
   bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
 });
+// The legacy pin remains only for the matched runtime comparison. Current packages keep the
+// same verified rigid-motion ABI; changing their package hash must not strand every hull leaf
+// on a separate draw. These two measured families are the entire scope of this admission repair.
+const RIGID_ASHLINE_CURRENT_MOTION_IDENTITY = Object.freeze({
+  ...RIGID_ASHLINE_MOTION_IDENTITY,
+  packageContentHash: 'a42a7418282d4c3f79ce55c1af2fe7d18a9ab00451de600901403403c3da0ed3',
+});
+const RIGID_ASHLINE_RIG_HULL_URL = 'assets/ships/release/parts/wholeships/ashline_rig.glb';
+const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
+  packageAssetId: 'sf.render.ashline-rig',
+  packageContentHash: 'be256f60992a8517c276eb229f8597613c0db76ea4704f48e70cc270f17fc779',
+  bankSha256: '840d8935b3ef67db1d6a9bfa667b8440a874f626eede9d93168740f3881f54b2',
+  sourceAssetId: 'SF_WHOLESHIP_ASHLINE_RIG', rigId: 'hull', bindingId: 'hull_core',
+});
+
+// Each sibling is pinned to its own package hash and the same verified source motion bank.
+const RIGID_ASHLINE_LOD_IDENTITIES = new Map([
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: 'dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d' })],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: '1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631' })],
+]);
+function rigidAshlineIdentityForUrl(owner, url) {
+  if (url === RIGID_ASHLINE_HULL_URL) return owner._ashlineHullBatchEnabled === false
+    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  if (owner._ashlineHullBatchEnabled === false) return null;
+  return url === RIGID_ASHLINE_RIG_HULL_URL ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
+    : RIGID_ASHLINE_LOD_IDENTITIES.get(url) || null;
+}
 
 export function isRigidOpaqueAshlineCohortRoot(owner, root) {
   const data = root?.userData, id = data?.presentationEntityId;
@@ -9331,7 +8960,8 @@ export function isRigidOpaqueAshlineCohortRoot(owner, root) {
     && entity.occupantGeneration != null
     && data.presentationOccupantGeneration === entity.occupantGeneration
     && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error')
-    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.includes(RIGID_ASHLINE_HULL_URL);
+    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.some((url) =>
+      url === RIGID_ASHLINE_HULL_URL || (RIGID_ASHLINE_LOD_IDENTITIES.get(url)?.sourceAssetId === RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId));
 }
 
 function rigidOpaqueAshlineSourceRoot(owner, source) {
@@ -9339,30 +8969,37 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
   const body = RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name);
   if ((!retro && !body) || source.isMesh !== true
       || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
-  if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = body ? rigidAshlineIdentityForUrl(owner, url) : null;
+  if (body && (!expected || expected.sourceAssetId !== RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId)) return null;
   let packageMatched = retro;
   for (let node = source; node; node = node.parent) {
     const identity = node.userData?.spacefaceRenderPackage;
     if (body && !packageMatched && identity) {
-      if (identity.assetId !== RIGID_ASHLINE_MOTION_IDENTITY.packageAssetId
-          || identity.contentHash !== RIGID_ASHLINE_MOTION_IDENTITY.packageContentHash) return null;
+      if (identity.assetId !== expected.packageAssetId
+          || identity.contentHash !== expected.packageContentHash) return null;
       packageMatched = true;
     }
-    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)
+        && (!body || node.userData.authoredSlots.hull.includes(url))) return node;
   }
   return null;
 }
 
 function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
   if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
-  const root = rigidOpaqueAshlineSourceRoot(owner, source);
-  if (!root) return false;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = rigidAshlineIdentityForUrl(owner, url);
+  if (!expected) return false;
+  const rig = expected.sourceAssetId === RIGID_ASHLINE_RIG_MOTION_IDENTITY.sourceAssetId;
+  const root = rig ? rigidOpaqueShipSourceRoot(owner, source) : rigidOpaqueAshlineSourceRoot(owner, source);
+  if (!root || (rig && !root.userData?.authoredSlots?.hull?.includes(url))) return false;
   let matched = null;
   for (let node = source; node; node = node.parent) {
     const controllers = node.userData?.authoredMotionControllers;
     if (Array.isArray(controllers)) {
       for (const controller of controllers) {
-        if (!hasBoundRigidMotionNode(controller, object, RIGID_ASHLINE_MOTION_IDENTITY.bindingId)) continue;
+        if (!hasBoundRigidMotionNode(controller, object, expected.bindingId)) continue;
         // A second transform writer is not the attested single-owner contract.
         if (matched && matched !== controller) return false;
         matched = controller;
@@ -9370,7 +9007,7 @@ function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
     }
     if (node === root) break;
   }
-  return !!matched && isAttestedRigidMotionOwner(matched, object, RIGID_ASHLINE_MOTION_IDENTITY);
+  return !!matched && isAttestedRigidMotionOwner(matched, object, expected);
 }
 
 // Beyond the named Kestrel/Ashline allowlists, every live authored traffic ship carries the
@@ -9427,14 +9064,27 @@ export function isRigidOpaqueDefaultCohortSource(owner, source) {
     || rigidOpaqueShipSourceRoot(owner, source) != null;
 }
 
-function defaultRigidBatchMayPrepare(owner) {
+function defaultRigidBatchOwnerResident(owner) {
   const state = owner?.state;
   const renderState = state?.render;
-  return state?.mode === 'flight' && Number.isFinite(renderState?.firstPlayableFrameAt)
+  const stack = state?.ui?.screenStack;
+  const hasScreen = Array.isArray(stack) && stack.length > 0;
+  const pause = hasScreen && stack.length === 1 && stack[0] === 'pause'
+    && (state?.mode === 'flight' || state?.mode === 'paused');
+  // Pause covers the same resident world. It can retain an existing finite
+  // preparation, but menus/docks/loading cannot acquire that lifetime.
+  return (pause || (state?.mode === 'flight' && !hasScreen)) && state?.ui?.docked !== true
+    && Number.isFinite(renderState?.firstPlayableFrameAt)
     && renderState.openingGraphPublicationFrozen !== true
     && renderState.sectorShellAdmission !== true
     && owner._contextLost !== true && owner._contextRecovery?.pending !== true
     && owner._rendererResourcesDisposed !== true;
+}
+
+function defaultRigidBatchMayPrepare(owner) {
+  const stack = owner?.state?.ui?.screenStack;
+  return owner?.state?.mode === 'flight' && (!Array.isArray(stack) || stack.length === 0)
+    && defaultRigidBatchOwnerResident(owner);
 }
 
 function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
@@ -9465,7 +9115,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       || rigidOpaqueAshlineSourceRoot(owner, source) != null
       || rigidOpaqueShipSourceRoot(owner, source) != null
     : undefined;
-  return createRetainedRigidOpaqueBatchController({
+  const controller = createRetainedRigidOpaqueBatchController({
     scene,
     capturePreparationGuard: defaultCohort ? () => {
       const renderState = state.render, world = state.world;
@@ -9476,15 +9126,19 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const recovery = owner._contextRecovery;
       const recoveryGeneration = recovery?.generation, recoveryLosses = recovery?.losses;
       const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
+      const depthEpoch = shadowCensusEpoch();
+      const depthOff = rigidBatchDepthProvenOff(owner, depthEpoch);
       const paint = renderState?.firstPlayableFrameAt;
-      return () => defaultRigidBatchMayPrepare(owner)
-        && owner.state === state && state.render === renderState && state.world === world
+      return () => defaultRigidBatchOwnerResident(owner)
+        && owner.scene === scene && owner.state === state && state.render === renderState && state.world === world
         && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState?.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._rendererGeneration === rendererGeneration
         && owner._contextRecovery === recovery && recovery?.generation === recoveryGeneration
         && recovery?.losses === recoveryLosses
         && (owner._rigidOpaqueBatchPictureEpoch || 0) === pictureEpoch
+        && (!depthOff || (shadowCensusEpoch() === depthEpoch
+          && rigidBatchDepthProvenOff(owner, depthEpoch)))
         && renderState?.firstPlayableFrameAt === paint;
     } : undefined,
     supported: owner?._opaqueBatchSupported === true,
@@ -9494,6 +9148,13 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
     isAttestedRigidMotionOwner: defaultCohort
       ? (object, source) => isRigidOpaqueAshlineMotionOwner(owner, object, source)
       : undefined,
+    isAshlineFactorSource: (source) => {
+      if (owner._ashlineFactorPaletteEnabled !== true || owner._ashlineHullBatchEnabled === false || !defaultCohort) return false;
+      for (let node = source?.parent; node; node = node.parent) {
+        if (node.name === 'MOTION_HULL_CORE') return isRigidOpaqueAshlineMotionOwner(owner, node, source);
+      }
+      return false;
+    },
     prepare: async (batches, context = {}) => {
       const renderState = state?.render;
       const compile = renderState?.compileObjectPipelines;
@@ -9509,7 +9170,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
         const ship = shipLifetimes.get(root);
         return ship ? [{ root, ...ship, ship: true }] : [];
       }) : [];
-      const isActive = () => owner.state === state && state.render === renderState
+      const isActive = () => owner.scene === scene && owner.state === state && state.render === renderState
         && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._contextLost !== true
@@ -9547,9 +9208,47 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       return { ready: true };
     },
   });
+  const unsubscribeShadowWarm = subscribeRigidBatchShadowWarm(owner.renderer,
+    () => controller.setShadowDepthDisabled(false));
+  const dispose = controller.dispose.bind(controller);
+  controller.dispose = () => { unsubscribeShadowWarm(); return dispose(); };
+  return controller;
+}
+
+const WARM_GROWTH_AXIS_X = new THREE.Vector3(1, 0, 0);
+const WARM_GROWTH_AXIS_Y = new THREE.Vector3(0, 1, 0);
+const WARM_GROWTH_AXIS_Z = new THREE.Vector3(0, 0, 1);
+const WARM_GROWTH_POSE = new THREE.Quaternion();
+const WARM_GROWTH_TURN = new THREE.Quaternion();
+
+// Optional dressing-only pose. Compose the same host child rotation as the Mule
+// hulk, then the original growth yaw in the host's surface plane.
+export function applyWarmFreighterDressingPose(mesh, row, frameMembrane) {
+  const p = row?.data?.warmFreighterVisualPose;
+  if (!mesh?.position || !row?.data?.warmFreighterHostMarkerId || !row.pos || !p
+      || !Number.isFinite(row.rot) || !Number.isFinite(p.height) || !Number.isFinite(p.bank)
+      || !Number.isFinite(p.pitch) || !Number.isFinite(p.localYaw) || !frameMembrane?.toLocal) return false;
+  const local = frameMembrane.toLocal(row.pos, _meshLocalXZ);
+  const height = p.height - (Number.isFinite(frameMembrane.origin?.y) ? frameMembrane.origin.y : 0);
+  WARM_GROWTH_POSE.setFromAxisAngle(WARM_GROWTH_AXIS_Y, -(row.rot - p.localYaw));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_X, p.bank));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_Z, p.pitch));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_Y, -p.localYaw));
+  const changed = mesh.position.x !== local.x || mesh.position.y !== height || mesh.position.z !== local.z
+    || Math.abs(mesh.quaternion.dot(WARM_GROWTH_POSE)) < 1 - 1e-12;
+  if (changed) {
+    mesh.position.set(local.x, height, local.z);
+    mesh.quaternion.copy(WARM_GROWTH_POSE);
+    if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+  }
+  return changed;
 }
 
 export const render = {
+  getFlightRootTemplateCacheDiagnostics() {
+    return getFlightRootTemplateCacheDiagnostics();
+  },
+
   name: 'render',
   init(ctx) {
     if (this._rendererLifecycle) {
@@ -9562,6 +9261,11 @@ export const render = {
       }
     }
     this._rendererResourcesDisposed = false;
+    this._orientationResizeRelease?.();
+    this._orientationResizeRelease = null;
+    this._orientationResizePending = null;
+    this._orientationResizeReady = false;
+    this._orientationResizeApplying = false;
     this._rendererGeneration = (this._rendererGeneration || 0) + 1;
     const rendererGeneration = this._rendererGeneration;
     const rendererGenerationIsActive = () => (
@@ -9786,7 +9490,9 @@ export const render = {
     // resolves successfully. A supported GPU therefore gets the bounded default without making
     // the bench flag part of the player route.
     const rigidOpaqueBatchBenchRequested = !!(query && query.get('rigidOpaqueBatch') === '1');
+    this._ashlineHullBatchEnabled = true;
     this._rigidOpaqueBatchDefaultCohort = !rigidOpaqueBatchBenchRequested;
+    this._ashlineFactorPaletteEnabled = false;
     this._rigidOpaqueBatchProbeEnabled = this._opaqueBatchSupported === true;
     this._rigidOpaqueBatchScene = scene;
     this._rigidOpaqueBatchRootsScratch = [];
@@ -9802,6 +9508,9 @@ export const render = {
     state.render.rigidOpaqueBatchTwinCohort = this._rigidOpaqueBatchProbeEnabled === true;
     state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
+    state.render.setAshlineHullBatchForBench = (enabled) => this.setAshlineHullBatchForBench(enabled);
+    state.render.getAshlineHullBatchDiagnosticsForBench = () => this.getAshlineHullBatchDiagnosticsForBench();
+    state.render.setAshlineFactorPaletteForBench = (enabled) => this.setAshlineFactorPaletteForBench(enabled);
     if (this._rigidOpaqueBatchProbeEnabled) {
       if (rigidOpaqueBatchBenchRequested) this.setRigidOpaqueBatchForBench(true);
       else this._enableRigidOpaqueBatch(true);
@@ -9821,6 +9530,12 @@ export const render = {
     // below compiles every program against the final light count (src/render/headlights.js).
     this._headlights = new HeadlightPool(scene);
     state.render.headlights = this._headlights; // probes and look tuning read the live pool
+    // DUST P3b — hero rim rake for the player hull (src/render/heroRig.js). Mounted with the
+    // rig, before the shader warm-up, desktop contexts only (the phone census stays as
+    // authored); contribution is switched by intensity, never by visibility.
+    if (!isMobileRenderContext()) {
+      this._heroRig = new HeroRig(scene);
+    }
     // Rig mount + the fog write above both move census-signature terms; the
     // epoch bump keeps a cross-pass memo from serving the pre-mount signature.
     noteShadowCensusLightMutation();
@@ -10018,9 +9733,11 @@ export const render = {
       lifecycle.listen(canvas, 'webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
+        globalLawArenaDressing.invalidateStormPresentation();
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
@@ -10278,131 +9995,143 @@ export const render = {
             // (env bake, link-force warm pass, residency re-upload) can re-upload them empty.
             // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
             // serial per-package decode is deliberately sequential, not a decode storm.
+            const restoreTextures = collectStartupTextures(scene);
+            // Keep both canonical and cloned payloads alive through the shadow/transmission
+            // draws and residency yields. Other admission owners may otherwise release them.
+            const releaseRestoreTextureLeases = retainPresentedTextureLeases(restoreTextures);
             try {
-              const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
-              const remainingDetachedGeometry = [];
-              assertPackageTextureRefillReady(collectStartupTextures(scene), packageRehydrate);
-              scene.traverse((object) => {
-                if (!isPackageGeometryDetached(object && object.geometry)) return;
-                const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
-                remainingDetachedGeometry.push({
-                  contentHash: mark && mark.contentHash || null,
-                  geometryOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
-                  objectName: object.name || null,
+              try {
+                const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+                await refillPresentedCompressedUploads(restoreTextures, renderer);
+                const remainingDetachedGeometry = [];
+                assertPackageTextureRefillReady(restoreTextures, packageRehydrate);
+                scene.traverse((object) => {
+                  if (!isPackageGeometryDetached(object && object.geometry)) return;
+                  const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
+                  remainingDetachedGeometry.push({
+                    contentHash: mark && mark.contentHash || null,
+                    geometryOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
+                    objectName: object.name || null,
+                  });
                 });
-              });
-              if (remainingDetachedGeometry.length > 0) {
-                const geometryMismatches = packageRehydrate.geometryMismatches || [];
-                const packageErrors = packageRehydrate.errors || [];
-                const failure = {
-                  remainingDetachedGeometryCount: remainingDetachedGeometry.length,
-                  remainingDetachedGeometry: remainingDetachedGeometry.slice(0, 8),
-                  geometryMismatchCount: geometryMismatches.length,
-                  geometryMismatches: geometryMismatches.slice(0, 8),
-                  packageErrors: packageErrors.slice(0, 8),
-                };
-                throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+                if (remainingDetachedGeometry.length > 0) {
+                  const geometryMismatches = packageRehydrate.geometryMismatches || [];
+                  const packageErrors = packageRehydrate.errors || [];
+                  const failure = {
+                    remainingDetachedGeometryCount: remainingDetachedGeometry.length,
+                    remainingDetachedGeometry: remainingDetachedGeometry.slice(0, 8),
+                    geometryMismatchCount: geometryMismatches.length,
+                    geometryMismatches: geometryMismatches.slice(0, 8),
+                    packageErrors: packageErrors.slice(0, 8),
+                  };
+                  throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+                }
+                // A retained BatchedMesh whose owner textures are already null has been disposed
+                // while still referenced by the active cohort. Restore the canonical source layers
+                // and remove that dead batch before any forced scene render can call its hooks; the
+                // normal cohort sync rebuilds it through the ordinary admission owner after resume.
+                retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
+              } catch (rehydrateError) {
+                if (typeof console !== 'undefined') {
+                  console.warn('[render] context-restore package rehydrate failed', rehydrateError);
+                }
+                throw rehydrateError;
               }
-              // A retained BatchedMesh whose owner textures are already null has been disposed
-              // while still referenced by the active cohort. Restore the canonical source layers
-              // and remove that dead batch before any forced scene render can call its hooks; the
-              // normal cohort sync rebuilds it through the ordinary admission owner after resume.
-              retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
-            } catch (rehydrateError) {
-              if (typeof console !== 'undefined') {
-                console.warn('[render] context-restore package rehydrate failed', rehydrateError);
-              }
-              throw rehydrateError;
-            }
-            const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
-            // Dummy catalog precompile is illegal mid-flight, including restore.
-            // Compile the live scene that already owns the table, then yield so
-            // Intel can finish links without a second TDR.
-            // Shadows must be armed for the compile: line above disables shadowMap.enabled and
-            // _syncShadowMapEnabled re-gates it on the next frame, so a shadowless compile leaves
-            // every lit material one numDirLightShadows variant short at the first post-restore
-            // draw (~12 s of synchronous links inside bloomScene).
-            const restoreAdmissionShadows = armAdmissionShadows({
-              renderer,
-              light: this._shadowDepthLight(),
-              enabled: this._shadowDepthEnabled(),
-            });
-            try {
-              // Prime the shadow map and the casters' depth programs first: the color program key
-              // carries numDirLightShadows, which stays 0 until the light owns a map again.
-              await driveCompileShadowDepthPipelines({
-                state: this.state,
+              const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
+              // Dummy catalog precompile is illegal mid-flight, including restore.
+              // Compile the live scene that already owns the table, then yield so
+              // Intel can finish links without a second TDR.
+              // Shadows must be armed for the compile: line above disables shadowMap.enabled and
+              // _syncShadowMapEnabled re-gates it on the next frame, so a shadowless compile leaves
+              // every lit material one numDirLightShadows variant short at the first post-restore
+              // draw (~12 s of synchronous links inside bloomScene).
+              const restoreAdmissionShadows = armAdmissionShadows({
                 renderer,
                 light: this._shadowDepthLight(),
-                camera: cam.obj,
-                subjects: [scene],
-                forceEnable: this._shadowDepthEnabled(),
-                THREE,
-                captureObjectHome,
-                restoreObjectHome,
-                lightingScene: scene,
-                lightSigFor: () => this._depthCollectLightSig(scene),
-                stagingName: 'SF_ContextRestoreShadowDepth',
-              }, yieldToBrowser);
-              await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
-              await yieldToBrowser();
-              // compile() only STARTS the KHR links. One forced scene render onto the exact post
-              // target finishes every link (and uploads every visible buffer/texture) while
-              // recovery.pending still gates presented frames.
+                enabled: this._shadowDepthEnabled(),
+              });
               try {
-                if (restoredPostRoute === POST_PROCESS_ROUTE.BLOOM
-                    && this.bloom && typeof this.bloom.warmScenePipelines === 'function') {
-                  await this.bloom.warmScenePipelines(scene, cam.obj, scene);
-                } else {
-                  await warmScenePipelinesForRenderTarget(
-                    renderer,
-                    restoredPostRoute === POST_PROCESS_ROUTE.GRAPH && this._renderGraph
-                      ? this._renderGraph.sceneTarget
-                      : null,
-                    scene,
-                    cam.obj,
-                    scene,
-                  );
+                // Prime the shadow map and the casters' depth programs first: the color program key
+                // carries numDirLightShadows, which stays 0 until the light owns a map again.
+                await driveCompileShadowDepthPipelines({
+                  state: this.state,
+                  renderer,
+                  light: this._shadowDepthLight(),
+                  camera: cam.obj,
+                  subjects: [scene],
+                  forceEnable: this._shadowDepthEnabled(),
+                  shadowsActive: this._shadowDepthEnabled(),
+                  THREE,
+                  captureObjectHome,
+                  restoreObjectHome,
+                  lightingScene: scene,
+                  lightSigFor: () => this._depthCollectLightSig(scene),
+                  stagingName: 'SF_ContextRestoreShadowDepth',
+                }, yieldToBrowser);
+                await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
+                await yieldToBrowser();
+                // compile() only STARTS the KHR links. One forced scene render onto the exact post
+                // target finishes every link (and uploads every visible buffer/texture) while
+                // recovery.pending still gates presented frames.
+                try {
+                  if (restoredPostRoute === POST_PROCESS_ROUTE.BLOOM
+                      && this.bloom && typeof this.bloom.warmScenePipelines === 'function') {
+                    await this.bloom.warmScenePipelines(scene, cam.obj, scene);
+                  } else {
+                    await warmScenePipelinesForRenderTarget(
+                      renderer,
+                      restoredPostRoute === POST_PROCESS_ROUTE.GRAPH && this._renderGraph
+                        ? this._renderGraph.sceneTarget
+                        : null,
+                      scene,
+                      cam.obj,
+                      scene,
+                    );
+                  }
+                } catch (warmError) {
+                  if (typeof console !== 'undefined') {
+                    console.warn('[render] context-restore link force failed', warmError);
+                  }
+                  throw warmError;
                 }
-              } catch (warmError) {
-                if (typeof console !== 'undefined') {
-                  console.warn('[render] context-restore link force failed', warmError);
+                await yieldToBrowser();
+                // Compile only relinks programs — vertex/index buffers and textures all died with the
+                // old context and WebGLObjects.update() only runs inside render(), so the first
+                // post-restore bloomScene used to pay a single ~13 s upload brick. Re-admit the live
+                // scene through the bounded residency pass now, while recovery.pending still gates
+                // every draw; the stamps are stale, so re-upload everything.
+                try {
+                  await prepareStartupGpuResidency(renderer, scene, {
+                    yieldToMain: yieldToBrowser,
+                    ignoreResidentStamps: true,
+                    includeEmpty: true,
+                    onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+                  });
+                } catch (error) {
+                  if (typeof console !== 'undefined') console.warn('[render] context-restore residency failed', error);
+                  throw error;
                 }
+                await yieldToBrowser();
+              } finally {
+                restoreAdmissionShadows();
               }
-              await yieldToBrowser();
-              // Compile only relinks programs — vertex/index buffers and textures all died with the
-              // old context and WebGLObjects.update() only runs inside render(), so the first
-              // post-restore bloomScene used to pay a single ~13 s upload brick. Re-admit the live
-              // scene through the bounded residency pass now, while recovery.pending still gates
-              // every draw; the stamps are stale, so re-upload everything.
-              try {
-                await prepareStartupGpuResidency(renderer, scene, {
-                  yieldToMain: yieldToBrowser,
-                  ignoreResidentStamps: true,
-                  includeEmpty: true,
-                  onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-                });
-              } catch (error) {
-                if (typeof console !== 'undefined') console.warn('[render] context-restore residency failed', error);
+              const restoredPipelines = {
+                skipped: false,
+                method: 'live-scene-restore',
+                route: restoredPostRoute,
+              };
+              // Only this restore's own world may be stamped ready: an enter during the
+              // awaits swapped the scene this pass linked, and a second context loss
+              // voids it entirely — the newest enter/restore owns the stamp then.
+              const restoreSuperseded = (state.world && state.world.enterSerial !== restoreEnterSerial)
+                || this._contextLost === true;
+              if (!restoreSuperseded) {
+                state.render.pipelinePrecompileReady = Promise.resolve(restoredPipelines);
               }
-              await yieldToBrowser();
+              return restoredPipelines;
             } finally {
-              restoreAdmissionShadows();
+              releaseRestoreTextureLeases();
             }
-            const restoredPipelines = {
-              skipped: false,
-              method: 'live-scene-restore',
-              route: restoredPostRoute,
-            };
-            // Only this restore's own world may be stamped ready: an enter during the
-            // awaits swapped the scene this pass linked, and a second context loss
-            // voids it entirely — the newest enter/restore owns the stamp then.
-            const restoreSuperseded = (state.world && state.world.enterSerial !== restoreEnterSerial)
-              || this._contextLost === true;
-            if (!restoreSuperseded) {
-              state.render.pipelinePrecompileReady = Promise.resolve(restoredPipelines);
-            }
-            return restoredPipelines;
           };
           void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
             .then(lifecycle.guard((restored) => {
@@ -10425,6 +10154,7 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
+    this._installLivePackageCpuPayloads(scene);
     if (scene && scene.userData) {
       // Scene-level injection seam: pool and chunk composition code outside
       // renderer scope (asteroid instance pool, packaged instance chunks) adds
@@ -10607,6 +10337,7 @@ export const render = {
                 camera: this.cam && this.cam.obj,
                 subjects: depthSubjects,
                 forceEnable: this._shadowDepthEnabled(),
+                shadowsActive: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -10958,7 +10689,7 @@ export const render = {
           if (part.geometrySubjects.length > 0) admitGeometrySubjects.push(...part.geometrySubjects);
           await yieldToBrowser();
         }
-        await admitOpeningUnitsAcrossSlices({
+        const firstPresentAdmission = await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
           units: {
             programSubjects: admitProgramSubjects,
@@ -11013,7 +10744,7 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
-        if (firstPresentCoversQuarks) {
+        if (firstPresentCoversQuarks && firstPresentAdmission?.incomplete !== true) {
           this._environmentVariantAdmissionEnvKey = firstPresentEnvironmentKey;
           this._environmentVariantAdmissionEnv = this._envMap;
         }
@@ -11549,6 +11280,15 @@ export const render = {
     state.render.worldSubmittedFrames = 0;
     state.render.camera = cam.obj;
     state.render.meshes = this._meshes;
+    if (SF_DEBUG) {
+      // Player-truth transition diagnostics need the pool's canonical per-entity submission
+      // receipt. Keep the pool private; this read-only delegate returns only the bounded scalar
+      // membership DTO and is retired with this renderer owner.
+      const membershipReader = (entityId) => asteroidInstanceMembership(
+        this._asteroidInstancePool, entityId);
+      this._playerTruthAsteroidInstanceMembership = membershipReader;
+      state.render.asteroidInstanceMembershipForEntity = membershipReader;
+    }
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
@@ -11636,9 +11376,11 @@ export const render = {
         try { return touchExactTargetSubject(subject); }
         finally { restore(); }
       };
-      const pending = pace?.submit
+      const pending = retryPendingExactTouch(() => pace?.submit
         ? pace.submit(submit, { urgent: urgent === true, isActive: () => !isActive || isActive(subject) })
-        : Promise.resolve().then(submit);
+        : Promise.resolve().then(submit), {
+        renderer, isActive: () => !isRetiredRigidOpaqueBatch(subject) && (!isActive || isActive(subject)),
+      });
       return Promise.resolve(pending).then((result) => {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
         // skip into the same cancellation used by the exact callback so awaited admission owners
@@ -11793,6 +11535,18 @@ export const render = {
       const receipt = await rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
       return assertPackageGeometryRefillReady(pending, receipt);
     };
+    const withSubjectGeometryCpuLease = (subjects, work) => {
+      // The residency lane already holds this lease from its refill through upload. Exact-target
+      // admission has a longer async suffix (compressed texture refill + paced draw), so keep the
+      // same detached package bytes attached until that actual draw has finished too.
+      const releaseCpu = retainPackageGeometryCpu(collectStartupGeometries(subjects));
+      try {
+        return Promise.resolve(work()).finally(releaseCpu);
+      } catch (error) {
+        releaseCpu();
+        throw error;
+      }
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -11806,6 +11560,16 @@ export const render = {
       if (counters) {
         counters.admissionSubject = batch.map(admissionSubjectLabel).join(',');
       }
+      let issueLabelReleased = false;
+      const releaseIssueLabel = () => {
+        if (issueLabelReleased) return;
+        issueLabelReleased = true;
+        if (counters) counters.admissionSubject = priorSubject;
+      };
+      const acknowledgeIssue = () => {
+        releaseIssueLabel();
+        compileOptions?.onIssueComplete?.();
+      };
       const route = this._selectPostRoute();
       const admitFlightShadowDepth = () => {
         // Color-only compile leaves each new caster's shadow-depth variant unlinked; the next
@@ -11899,7 +11663,7 @@ export const render = {
           return result;
         })
         .finally(() => {
-          if (counters) counters.admissionSubject = priorSubject;
+          releaseIssueLabel();
         });
       // A loading admission can outlive the flight handoff. Keep the live player in
       // its scene while linking; the staging batch below reparents roots until ready.
@@ -11919,13 +11683,15 @@ export const render = {
           // program wait into one per-link readiness batch collapses the link wall to
           // the slowest drawable instead of the sum (the opening cook's
           // issue-all / drain-once pattern, compilePresentSlice comment).
-          const linkBatch = beginScenePipelineReadinessBatch(renderer);
+          const splitIssue = typeof compileOptions?.onIssueComplete === 'function';
+          const linkBatch = beginScenePipelineReadinessBatch(renderer, { independent: splitIssue });
           // Readiness batches can nest across renderer lifetimes. Submission ownership and
           // its drain must belong to this native renderer, never a global batch's creator.
           const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
           const submitSerial = paceQueue && typeof paceQueue.submit === 'function'
             ? paceQueue.submit : null;
           const issued = [];
+          const issueReceipts = [];
           try {
             await compileSubjectsAcrossPresents(
               sliced,
@@ -11934,8 +11700,12 @@ export const render = {
                   issued.push(Promise.resolve({ skipped: true, reason: 'owner-inactive' }));
                   return Promise.resolve({ skipped: true });
                 }
+                let acknowledgeIssue;
+                if (splitIssue) issueReceipts.push(new Promise((resolve) => { acknowledgeIssue = resolve; }));
                 const submit = () => compileSubjectColorAndDepth(entry.subject, route, {
                   ...compileOptions,
+                  ...(splitIssue ? { onIssueComplete: acknowledgeIssue, restoreTargetAfterIssue: true,
+                    readinessBatch: linkBatch } : {}),
                   // A serial reservation cannot wait on the enclosing batch it prevents
                   // from draining, even if capabilities change while environment stamping yields.
                   ...(submitSerial ? { skipSharedBatch: true } : {}),
@@ -11954,6 +11724,9 @@ export const render = {
                   admission = observePipelineAdmission(Promise.reject(error));
                 }
                 issued.push(admission);
+                // An unsupported asynchronous compiler never signals the synchronous issue
+                // boundary; keep the reservation until that work actually settles instead.
+                if (acknowledgeIssue) admission.then(acknowledgeIssue, acknowledgeIssue);
                 // Serial units reserve submission through drain across all enrolled producers.
                 // KHR still issues without awaiting its per-unit pooled readiness.
                 return submitSerial ? admission : Promise.resolve({ issued: true });
@@ -11968,13 +11741,18 @@ export const render = {
                 debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
               },
             );
-            if (linkBatch) await linkBatch.drain({});
+            if (splitIssue) await Promise.all(issueReceipts);
+            if (linkBatch) {
+              const drain = linkBatch.drain({});
+              if (splitIssue && !submitSerial) acknowledgeIssue();
+              await drain;
+            }
             return Promise.all(issued);
           } finally {
             if (linkBatch) {
               linkBatch.close();
               await Promise.allSettled(issued);
-              linkBatch.restoreEntryTarget();
+              if (!splitIssue || submitSerial) linkBatch.restoreEntryTarget();
             } else {
               await Promise.allSettled(issued);
             }
@@ -11982,7 +11760,9 @@ export const render = {
         })());
       }
       if (batch.length === 1) {
-        return finish(compileSubjectColorAndDepth(batch[0], route, compileOptions));
+        const singleOptions = typeof compileOptions?.onIssueComplete === 'function'
+          ? { ...compileOptions, skipSharedBatch: true, onIssueComplete: acknowledgeIssue } : compileOptions;
+        return finish(compileSubjectColorAndDepth(batch[0], route, singleOptions));
       }
       // Compile together so Three can dedupe programs, but put every live root back on its
       // original parent. Group.add() steals children; a later clear() used to leave ships
@@ -11991,10 +11771,18 @@ export const render = {
       staging.name = 'SF_AuthoredPipelineAdmissionBatch';
       const homes = batch.map((root) => captureObjectHome(root));
       for (const root of batch) staging.add(root);
-      return finish(compileSubjectColorAndDepth(staging, route, compileOptions).finally(() => {
+      let restored = false;
+      const restoreHomes = () => {
+        if (restored) return;
+        restored = true;
         for (const home of homes) restoreObjectHome(home);
         staging.clear();
-      }));
+      };
+      const stagedOptions = typeof compileOptions?.onIssueComplete === 'function'
+        ? { ...compileOptions, skipSharedBatch: true,
+          onIssueComplete: () => { restoreHomes(); acknowledgeIssue(); } }
+        : compileOptions;
+      return finish(compileSubjectColorAndDepth(staging, route, stagedOptions).finally(restoreHomes));
     };
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
       const durationMs = Number(slice && slice.durationMs);
@@ -12009,6 +11797,12 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
+      // Only KHR exposes nonblocking per-program completion. Other drivers retain the
+      // original fully serialized submit/drain route.
+      maxSettlingLinks: renderer.extensions?.get?.('KHR_parallel_shader_compile')
+        && typeof renderer.compile === 'function' && typeof renderer.properties?.get === 'function'
+        && typeof renderer.getContext === 'function' && typeof renderer.domElement?.addEventListener === 'function'
+        && typeof renderer.domElement?.removeEventListener === 'function' ? 4 : 1,
       // While the flight veil holds the sim after the first playable paint, nothing playable is
       // on screen and simTime is frozen (the first-flight hold below is sim-clocked): let queued
       // admissions flush now, so their per-object admission draws land under the veil.
@@ -12051,7 +11845,20 @@ export const render = {
             && ownerSnapshot.admissionGenerationMatches === true
             && ownerSnapshot.contextLossGenerationMatches === false
             && ownerSnapshot.portMatches === true;
-          if (retiredAuthoredBoundary) {
+          const supersededAuthoredBoundaryAfterTransition = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === true
+            && ownerSnapshot.entityIsCurrent === true
+            && ownerSnapshot.boundaryAttached === true
+            && ownerSnapshot.renderMatches === true
+            && ownerSnapshot.rendererMatches === true
+            && ownerSnapshot.admissionGenerationMatches === false
+            && ownerSnapshot.contextLossGenerationMatches === true
+            && ownerSnapshot.portMatches === true;
+          if (ownerSnapshot.ownerType === 'authored-boundary' && this._rendererResourcesDisposed === true) {
+            console.info(
+              `[render] authored GPU residency cancelled during renderer teardown for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (retiredAuthoredBoundary) {
             console.info(
               `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
@@ -12059,8 +11866,22 @@ export const render = {
             console.info(
               `[render] authored GPU residency cancelled after context loss for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
+          } else if (supersededAuthoredBoundaryAfterTransition) {
+            console.info(
+              `[render] authored GPU residency cancelled after transition for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (isRetiredPackagePoolResidencyOwner(ownerSnapshot)) {
+            console.info(
+              `[render] authored GPU residency cancelled for retired package pool at boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
           } else {
-            console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+            // DevTools' preview truncates nested owner gates. Keep their primitive snapshot
+            // in captured console text so a withdrawn job can be distinguished from a live
+            // owner's failed upload without relaxing the guard or warning severity.
+            let ownerDiagnostic;
+            try { ownerDiagnostic = JSON.stringify(ownerSnapshot); }
+            catch { ownerDiagnostic = '[owner snapshot could not be serialized]'; }
+            console.warn('[render] authored GPU residency owner became inactive', ownerDiagnostic);
           }
         }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');
@@ -12134,6 +11955,9 @@ export const render = {
         }) : promise
     );
     state.render.beginOpeningLoadingAdmission = () => {
+      // A same-session restore may inherit the previous flight's queue hold before
+      // the loading cohort discovers its player boundary.
+      if (state.mode === 'loading') resumeAuthoredUpgradeQueueForLoadingHulls(scene);
       const existing = this._openingLoadingAdmission;
       if (existing?.owns(state.entities?.get(state.playerId))) return this._openingLoadingMeshesReady;
       const world = state.world;
@@ -12334,10 +12158,12 @@ export const render = {
       let subjectPipelineReady = false;
       let subjectResidencyReady = false;
       let exactTargetReady = true;
+      let exactTouchFailure = null;
       try {
         admission = compilation
         .then((result) => {
           if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(result);
+          else if (appearanceAdmissionHasUnreadyPipeline(result)) return result;
           // Once a subject's programs have linked it can keep drawing through any
           // later re-admission: the pending latch's hide exists to keep a never-
           // compiled root out of bloomScene, and an already-linked root has
@@ -12347,9 +12173,6 @@ export const render = {
           // authored hull behind a background recompile was the whole-ship
           // hide flake).
           subjectPipelineReady = !!(result && result.contextLost !== true && result.skipped !== true);
-          if (subjectPipelineReady && subject && subject.userData) {
-            subject.userData.sfAdmittedOnce = true;
-          }
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
           // pending latch; the mode check runs at settle time so entries queued
@@ -12384,11 +12207,11 @@ export const render = {
         .then(async (result) => {
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
               && admissionOptions.openingRequired !== true) {
-            return result;
+            return { ...result, exactTargetDeferred: true };
           }
           const recovering = state.render
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;
-          if (!result || result.contextLost === true || recovering
+          if (appearanceAdmissionHasUnreadyPipeline(result) || !result || result.contextLost === true || recovering
               || !subject || !this.scene || !cam.obj) {
             if (admissionOptions.strict === true) throw new Error('Exact-target appearance admission unavailable');
             return result;
@@ -12398,104 +12221,113 @@ export const render = {
             throw ownerInactiveTouchError();
           }
           if (isRetiredRigidOpaqueBatch(subject)) throw ownerInactiveTouchError();
-          admissionOptions.onPreparationLeg?.('exact-target');
-          // A cpu-detached package texture this draw would force-upload reads an emptied mip
-          // chain inside uploadTexture and throws — the touch exists to keep exactly that work
-          // out of the presented pass, so re-attach those payloads first (D150).
-          try {
-            await reattachDetachedSubjectTextures(subject);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
-          }
-          try {
-            await reattachDetachedSubjectGeometries(subject);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch geometry reattach failed', error,
-              error?.geometryRefill || null);
-            // Do not render this newly admitted subject against a detached or incompatible CPU
-            // geometry buffer. The caller must keep its previous authored body/fallback and
-            // surface the typed package/ordinal/attribute-shape receipt instead.
-            throw error;
-          }
-          try {
-            await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
-          }
-          // compile() resolves under the armed admission state; the presented pass can still
-          // ask the driver for a different program key (shadow-gate drift, env binding, target
-          // color space). Draw the admitted subject once on the exact post target under live
-          // state — the same touch the opening plan runs — so any residual variant links here,
-          // behind the pending latch, instead of inside a presented bloom frame.
-          try {
-            await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
-          } catch (error) {
-            if (isOwnerInactiveTouchError(error)) throw error;
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
-            // Identify which texture threw on upload and why: package-detach empties a
-            // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
-            // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
-            // on the empty array. Fires only on failure; walks the subject once — so a
-            // persistently-faulting subject would pay the walk + stringify per retry.
-            // Sampled: first 4 per service epoch carry the full diag; later ones warn bare.
+          return withSubjectGeometryCpuLease(subject, async () => {
+            admissionOptions.onPreparationLeg?.('exact-target');
+            // A cpu-detached package texture this draw would force-upload reads an emptied mip
+            // chain inside uploadTexture and throws — the touch exists to keep exactly that work
+            // out of the presented pass, so re-attach those payloads first (D150).
             try {
-              const diagEpoch = serviceFaultEpoch(this.state);
-              const diagRollup = this.state && this.state.render
-                && (this.state.render.touchFailDiag
-                  || (this.state.render.touchFailDiag = { epoch: -1, runs: 0 }));
-              if (diagRollup && diagRollup.epoch !== diagEpoch) {
-                diagRollup.epoch = diagEpoch; diagRollup.runs = 0;
+              await reattachDetachedSubjectTextures(subject);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
+            }
+            try {
+              await reattachDetachedSubjectGeometries(subject);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch geometry reattach failed', error,
+                error?.geometryRefill || null);
+              // Do not render this newly admitted subject against a detached or incompatible CPU
+              // geometry buffer. The caller must keep its previous authored body/fallback and
+              // surface the typed package/ordinal/attribute-shape receipt instead.
+              throw error;
+            }
+            try {
+              await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
+            }
+            // compile() resolves under the armed admission state; the presented pass can still
+            // ask the driver for a different program key (shadow-gate drift, env binding, target
+            // color space). Draw the admitted subject once on the exact post target under live
+            // state — the same touch the opening plan runs — so any residual variant links here,
+            // behind the pending latch, instead of inside a presented bloom frame.
+            try {
+              const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+              if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
+                exactTargetReady = false;
+                exactTouchFailure = touchReceipt;
+                if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(touchReceipt);
               }
-              const diagSampled = !diagRollup || (diagRollup.runs += 1) <= 4;
-              if (!diagSampled) {
-                laneWarn(this, 'admissionTouch',
-                  '[render] touch-fail texture diag skipped (epoch budget spent)');
-                throw new Error('diag-skipped');
-              }
-              const rows = [];
-              subject.traverse?.((o) => {
-                const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-                for (const m of mats) for (const k of Object.keys(m)) {
-                  const t = m[k];
-                  if (!t || !t.isTexture || !t.isCompressedTexture) continue;
-                  const empty = !(t.mipmaps && t.mipmaps.length > 0);
-                  let threw = null;
-                  try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
-                  if (empty || threw) rows.push({
-                    slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
-                    mips: t.mipmaps ? t.mipmaps.length : -1,
-                    shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
-                    detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
-                    colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
-                    magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
-                    users: sharedImageSourceUsers(t) || undefined,
-                    threw,
-                  });
+            } catch (error) {
+              if (isOwnerInactiveTouchError(error)) throw error;
+              if (error?.code === 'SF_PIPELINE_READINESS_TIMEOUT') throw error;
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
+              // Identify which texture threw on upload and why: package-detach empties a
+              // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
+              // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
+              // on the empty array. Fires only on failure; walks the subject once — so a
+              // persistently-faulting subject would pay the walk + stringify per retry.
+              // Sampled: first 4 per service epoch carry the full diag; later ones warn bare.
+              try {
+                const diagEpoch = serviceFaultEpoch(this.state);
+                const diagRollup = this.state && this.state.render
+                  && (this.state.render.touchFailDiag
+                    || (this.state.render.touchFailDiag = { epoch: -1, runs: 0 }));
+                if (diagRollup && diagRollup.epoch !== diagEpoch) {
+                  diagRollup.epoch = diagEpoch; diagRollup.runs = 0;
                 }
-              });
-              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
-              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail geometry diag', JSON.stringify(
-                packageGeometryUploadDiagnostics(collectStartupGeometries(subject), { limit: 16 }),
-              ));
-            } catch (diagError) {
-              if (diagError && diagError.message !== 'diag-skipped') {
-                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
-                  String(diagError && diagError.message || diagError));
+                const diagSampled = !diagRollup || (diagRollup.runs += 1) <= 4;
+                if (!diagSampled) {
+                  laneWarn(this, 'admissionTouch',
+                    '[render] touch-fail texture diag skipped (epoch budget spent)');
+                  throw new Error('diag-skipped');
+                }
+                const rows = [];
+                subject.traverse?.((o) => {
+                  const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+                  for (const m of mats) for (const k of Object.keys(m)) {
+                    const t = m[k];
+                    if (!t || !t.isTexture || !t.isCompressedTexture) continue;
+                    const empty = !(t.mipmaps && t.mipmaps.length > 0);
+                    let threw = null;
+                    try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
+                    if (empty || threw) rows.push({
+                      slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
+                      mips: t.mipmaps ? t.mipmaps.length : -1,
+                      shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
+                      detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
+                      colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
+                      magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
+                      users: sharedImageSourceUsers(t) || undefined,
+                      threw,
+                    });
+                  }
+                });
+                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
+                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail geometry diag', JSON.stringify(
+                  packageGeometryUploadDiagnostics(collectStartupGeometries(subject), { limit: 16 }),
+                ));
+              } catch (diagError) {
+                if (diagError && diagError.message !== 'diag-skipped') {
+                  laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
+                    String(diagError && diagError.message || diagError));
+                }
               }
             }
-          }
-          if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
-            markAuthoredGeologyFallbackAdmitted(subject);
-            rememberOpeningPreparedLeaves(subject);
-          }
-          if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
-            throw new Error('Required authored appearance admission did not complete');
-          }
-          return result;
+            if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
+              if (subject && subject.userData) subject.userData.sfAdmittedOnce = true;
+              markAuthoredGeologyFallbackAdmitted(subject);
+              rememberOpeningPreparedLeaves(subject);
+            }
+            if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
+              throw new Error('Required authored appearance admission did not complete');
+            }
+            return exactTouchFailure || result;
+          });
         })
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
@@ -12602,7 +12434,7 @@ export const render = {
       // draw would force-upload reads emptied mipmaps inside the draw and throws
       // (D150) — for that subject only, re-attach the payloads first and run the
       // identical reveal+touch in the continuation.
-      return detachedSubjectUploadsPendingAsync(subject)
+      return withSubjectGeometryCpuLease(subject, () => detachedSubjectUploadsPendingAsync(subject)
         .catch((error) => {
           laneWarn(this, 'admissionTouch', '[render] exact-target pending-texture scan failed', error);
           return null;
@@ -12638,7 +12470,7 @@ export const render = {
                 }
                 try {
                   const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-                  rememberOpeningPreparedLeaves(subject);
+                  if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
                   return result;
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
@@ -12661,7 +12493,7 @@ export const render = {
           }
           try {
             const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-            rememberOpeningPreparedLeaves(subject);
+            if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
             return result;
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) {
@@ -12672,7 +12504,7 @@ export const render = {
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
           }
-        });
+        }));
     };
     // The restore drain re-enters the public touch so the queued subject gets the same
     // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
@@ -12879,8 +12711,15 @@ export const render = {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
         this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
       },
-      onError: (error, entity) => laneWarn(this, 'liveGeometryAdmission',
-        '[render] live geometry admission failed', entity.id, error),
+      onError: (error, entity) => {
+        if (error?.name === 'AbortError'
+            && error?.message === 'post-route compile owner became inactive') {
+          console.info('[render] live geometry admission cancelled with its post route', entity.id, error);
+          return;
+        }
+        laneWarn(this, 'liveGeometryAdmission',
+          '[render] live geometry admission failed', entity.id, error);
+      },
     });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
@@ -12952,7 +12791,7 @@ export const render = {
     // legs so async drives pace it under their slice clocks instead of paying one
     // atomic ~multi-tens-of-ms window (and 3-4 times per boot). Sync callers drive
     // the generator inline for identical output.
-    const buildOpeningSubmissionPlanSteps = function* () {
+    const buildOpeningSubmissionPlanSteps = function* (onCandidate = null) {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
       // not the transform cache from the previous scene attachment.
@@ -12964,6 +12803,7 @@ export const render = {
         if (!root || seenRoots.has(root)) return false;
         seenRoots.add(root);
         candidates.push({ root, ...metadata });
+        if (onCandidate) onCandidate(root, metadata, submissionCamera);
         return true;
       };
 
@@ -13162,6 +13002,7 @@ export const render = {
       camera: cam.obj,
       subjects,
       forceEnable: this._shadowDepthEnabled(),
+      shadowsActive: this._shadowDepthEnabled(),
       THREE,
       captureObjectHome,
       restoreObjectHome,
@@ -13351,8 +13192,187 @@ export const render = {
       // would otherwise commit rows minted under two epochs into the new
       // world's plan + cohort (entity:${id} identities collide across worlds).
       const captureStale = captureLiveSectorCookStale();
-      const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
-      if (captureStale()) return null;
+      const captureWorld = state.world;
+      const captureRender = state.render;
+      const expected = {
+        enterSerial: captureWorld?.enterSerial ?? null,
+        sectorId: captureWorld?.currentSectorId ?? null,
+        cookGeneration: this._liveSectorCookGeneration ?? null,
+      };
+      captureRender.openingPlanCaptureFailure = null;
+      const selectedRoots = new Map();
+      const cameraState = () => {
+        const camera = cam?.obj;
+        const matrix = (value) => value?.elements ? Array.from(value.elements).slice(0, 16) : null;
+        return { projection: matrix(camera?.projectionMatrix), worldInverse: matrix(camera?.matrixWorldInverse),
+          layerMask: camera?.layers?.mask ?? null };
+      };
+      const captureCandidate = (root, metadata, camera) => {
+        if (metadata?.role !== 'opening-entity-root' && metadata?.role !== 'tableStationShell') return;
+        const entityId = metadata.entityId ?? null;
+        const data = root.userData || {};
+        const key = data.openingSubmissionId != null ? String(data.openingSubmissionId)
+          : data.entityId != null ? `entity:${data.entityId}`
+            : data.sfEntityId != null ? `entity:${data.sfEntityId}`
+              : root.uuid ? `uuid:${root.uuid}` : root.id != null ? `id:${root.id}` : null;
+        if (key) selectedRoots.set(key, { root, entityId, camera, cameraAtSelection: cameraState(),
+          includeOffscreen: metadata.includeOffscreen === true });
+      };
+      let plan;
+      // The candidate census and final producer/leaf census are stepped across presents.
+      // A selected entity can change between them; rebuild the whole cohort and producer
+      // census rather than sealing a mixed picture or silently dropping its blocking root.
+      // The caller's existing first-picture deadline still bounds all attempts.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (captureStale()) break;
+        selectedRoots.clear();
+        plan = yield* buildOpeningSubmissionPlanSteps.call(this, captureCandidate);
+        if (captureStale()) break;
+        const changedSelectedRoot = Array.isArray(plan?.roots) && plan.roots.some((root) => (
+          root?.blocking === true && root.drawLeafCount === 0 && selectedRoots.has(root.id)
+        ));
+        if (!changedSelectedRoot || attempt === 2) break;
+        yield;
+      }
+      if (captureStale()) {
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'stale-capture', expected,
+          actual: {
+            enterSerial: state.world?.enterSerial ?? null,
+            sectorId: state.world?.currentSectorId ?? null,
+            cookGeneration: this._liveSectorCookGeneration ?? null,
+            sameWorld: state.world === captureWorld,
+            sameRender: state.render === captureRender,
+            sameState: this.state === state,
+            rendererActive: rendererGenerationIsActive(),
+          },
+        };
+        return null;
+      }
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        const emptyRoots = (Array.isArray(plan?.roots) ? plan.roots : [])
+          .filter((root) => root?.blocking === true && root.drawLeafCount === 0);
+        const describeEmptyRoot = (descriptor) => {
+          const selection = selectedRoots.get(descriptor.id);
+          const root = selection?.root;
+          const entityId = selection?.entityId ?? null;
+          const entity = entityId != null ? state.entities?.get?.(entityId) : null;
+          const current = entityId != null ? this._meshes?.get?.(entityId) : null;
+          const camera = selection?.camera;
+          const descendants = [];
+          const pending = root ? [{ object: root, hiddenAncestor: false }] : [];
+          let visited = 0;
+          while (pending.length && visited < 256 && descendants.length < 12) {
+            const { object, hiddenAncestor } = pending.pop(); visited += 1;
+            const hidden = hiddenAncestor || object.visible === false;
+            const drawable = object.isMesh || object.isSkinnedMesh || object.isPoints || object.isLine || object.isSprite;
+            if (drawable || object === root || object.isLOD || object.isBatchedMesh) {
+              let inFrustum = null;
+              try { if (camera?.frustum?.intersectsObject) inFrustum = camera.frustum.intersectsObject(object); } catch (_) {}
+              const materials = Array.isArray(object.material) ? object.material : [object.material].filter(Boolean);
+              const range = object.geometry?.drawRange;
+              const layerMatch = camera?.layers?.test && object.layers ? camera.layers.test(object.layers) : null;
+              const exclusions = [];
+              if (hidden) exclusions.push('hidden');
+              if (!drawable) exclusions.push('not-drawable');
+              if ((object.isInstancedMesh || object.isPoints || object.isLine || object.isSprite)
+                  && Number.isFinite(Number(object.count)) && Number(object.count) <= 0) exclusions.push('empty-instance-count');
+              if (range && Number.isFinite(Number(range.count)) && Number(range.count) <= 0) exclusions.push('empty-draw-range');
+              if (object.userData?.authoredResolvingMarker === true) exclusions.push('resolving-marker');
+              if (layerMatch === false) exclusions.push('camera-layer');
+              if (!selection?.includeOffscreen && object.frustumCulled !== false && inFrustum === false) exclusions.push('outside-frustum');
+              descendants.push({
+                uuid: String(object.uuid || '').slice(0, 100) || null,
+                name: String(object.name || '').slice(0, 120) || null,
+                type: String(object.type || '').slice(0, 80) || null,
+                visible: object.visible !== false, hiddenAncestor,
+                parentUuid: object.parent?.uuid || null,
+                layerMask: object.layers?.mask ?? null, cameraLayerMask: camera?.layers?.mask ?? null,
+                layerMatch, exclusions,
+                inFrustum, frustumCulled: object.frustumCulled !== false,
+                resolvingMarker: object.userData?.authoredResolvingMarker === true,
+                instanceCount: Number.isFinite(object.count) ? object.count : null,
+                drawRangeCount: Number.isFinite(range?.count) ? range.count : null,
+                geometryUuid: object.geometry?.uuid || null,
+                materials: materials.slice(0, 4).map((material) => ({
+                  name: String(material?.name || '').slice(0, 100) || null,
+                  type: String(material?.type || '').slice(0, 80) || null,
+                  visible: material?.visible !== false,
+                })),
+                batched: object.isBatchedMesh === true,
+                retiredBatch: object.isBatchedMesh === true && isRetiredRigidOpaqueBatch(object),
+                lod: String(object.userData?.lod?.level ?? '').slice(0, 80) || null,
+              });
+            }
+            for (let i = (object.children?.length || 0) - 1; i >= 0; i--) {
+              pending.push({ object: object.children[i], hiddenAncestor: hidden });
+            }
+          }
+          return {
+            rootId: String(descriptor.id || '').slice(0, 160) || null,
+            name: String(descriptor.name || '').slice(0, 160) || null,
+            role: String(descriptor.role || '').slice(0, 120) || null,
+            entityId, entityType: entity?.type || null, entityAlive: entity?.alive ?? null,
+            defId: entity?.data?.defId || entity?.defId || null,
+            selectedRootFound: !!root, selectedStillCurrent: root ? current === root : null,
+            currentRootUuid: current?.uuid || null, rootParentIsScene: root ? root.parent === scene : null,
+            cameraAtSelection: selection?.cameraAtSelection || null, cameraAtFailure: cameraState(),
+            censusFrustum: camera?.frustum?.planes?.map((plane) => [plane.normal.x, plane.normal.y, plane.normal.z, plane.constant]) || null,
+            includeOffscreen: selection?.includeOffscreen === true,
+            authoredState: root?.userData?.authoredAssetState || null,
+            descendants, visited, truncated: pending.length > 0,
+          };
+        };
+        const failureReasons = (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : [])
+          .filter((row) => ['productionBoundary', 'producerResourceIdentityCensus', 'firstPlayablePipelineSet'].includes(row?.role));
+        const unverifiedRoots = (Array.isArray(plan?.roots) ? plan.roots : []).filter((root) => (
+          root?.blocking === true && (!root.productionBoundary?.contentHash
+            || root.productionBoundary.contentHashVerified !== true)
+        ));
+        const resourceDifferences = {};
+        for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+          const producer = new Set(plan?.producerResourceIdentitySets?.[key] || []);
+          const captured = new Set(plan?.resourceIdentitySets?.[key] || []);
+          const producerOnly = [...producer].filter((id) => !captured.has(id));
+          const capturedOnly = [...captured].filter((id) => !producer.has(id));
+          resourceDifferences[key] = {
+            producerCount: producer.size, capturedCount: captured.size,
+            producerOnlyCount: producerOnly.length, capturedOnlyCount: capturedOnly.length,
+            producerOnly: producerOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+            capturedOnly: capturedOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+          };
+        }
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'incomplete-plan',
+          complete: plan?.complete === true,
+          drawLeafCount: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
+          emptyBlockingRootCount: emptyRoots.length,
+          emptyBlockingRoots: emptyRoots.slice(0, 12).map(describeEmptyRoot),
+          unverifiedBlockingRootCount: unverifiedRoots.length,
+          unverifiedBlockingRoots: unverifiedRoots.slice(0, 12).map((root) => ({
+            rootId: String(root.id || '').slice(0, 160) || null,
+            name: String(root.name || '').slice(0, 160) || null,
+            role: String(root.role || '').slice(0, 120) || null,
+          })),
+          failureReasons: failureReasons.slice(0, 12).map((row) => ({
+            role: String(row.role || '').slice(0, 120) || null,
+            reason: String(row.reason || '').slice(0, 160) || null,
+          })),
+          failureReasonCount: failureReasons.length,
+          resourceIdentityCensusMatches: plan?.resourceIdentityCensusMatches ?? null,
+          producerResourceCensusPresent: !!plan?.producerResourceIdentitySets,
+          resourceDifferences,
+          firstPlayableComplete: plan?.firstPlayablePipelineSet?.complete === true,
+          firstPlayableReason: String(plan?.firstPlayablePipelineSet?.reason || '').slice(0, 160) || null,
+          blockingReasons: (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : []).slice(0, 12)
+            .map((row) => ({ rootId: String(row?.rootId || '').slice(0, 160) || null,
+              role: String(row?.role || '').slice(0, 120) || null,
+              reason: String(row?.reason || '').slice(0, 160) || null })),
+          blockingReasonCount: Array.isArray(plan?.blockingReasons) ? plan.blockingReasons.length : 0,
+          requiredHashCount: Array.isArray(plan?.firstPlayablePipelineSet?.requiredContentHashes)
+            ? plan.firstPlayablePipelineSet.requiredContentHashes.length : 0,
+        };
+      }
       stampProducerReceipt(plan);
       state.render.openingSubmissionPlan = plan;
       const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
@@ -13432,6 +13452,9 @@ export const render = {
       unusedPrograms: () => (renderer && renderer.userData ? renderer.userData.spacefaceUnusedPrograms : null),
     });
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount + veilSettlePending();
+    // Read only on explicit startup-report requests; the loading tick does no extra census.
+    state.render.authoredVisualReadiness = () => authoredCriticalVisualReadiness(state);
+    state.render.openingAuthoredQueueDiagnostics = () => describeAuthoredUpgradeQueue(scene);
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);
@@ -13569,46 +13592,182 @@ export const render = {
           reason: 'session-recook-keep-gpu',
         };
       }
-      if (isMobileRenderContext() && !survivalRunHoldsArena(state)) {
-        // WebKit exposes parallel compile on phones too. That does not make desktop-scale hidden
-        // catalog/effect rehearsals affordable: they consumed the cook budget before touching any
-        // of the opening picture and held New Game until required-package admission failed.
-        const mobileStarted = performance.now();
-        let mobileActive = true;
+      if (!survivalRunHoldsArena(state)) {
+        // Adventure needs the exact authored first picture, not the future roster's hidden
+        // exemplars. On the laptop the broad cook + post-opening sweep held this barrier for
+        // 29–32 s. Reuse the finite admission already used on phones: capture/compile/depth,
+        // geometry/texture residency and the first-picture seal remain required. Desktop keeps
+        // its complete declared first-use pool set; only the existing phone policy filters it.
+        // Later assets still enter through compileObjectPipelines / the bounded authored upgrade
+        // queue, which compile, upload and touch each live owner before publication. Do not queue
+        // a whole-sector cook after first paint or move this loading pause into live flight.
+        const mobileFirstPicture = isMobileRenderContext();
+        const exactStarted = performance.now();
+        let exactActive = true;
         releaseOpeningGraphPublication(this);
         state.render.liveSectorGpuAdmission = true;
         resumeAuthoredUpgradeQueueAfterOpening(scene);
         this._discardEarlyCrucibleWarm();
         try {
+          // The on-table 47-A spindle is deliberately excluded from initial composition:
+          // its old owner was the first-flight cook. Preserve that finite exception before
+          // freezing the picture, including when its pivot is just outside the camera.
+          // This does not promote field rocks or admit the future sector/roster.
+          const firstFlightActors = (state.entityList || []).filter((entity) => (
+            isFirstFlightCookEntity(entity, state) && !isInitialAuthoredCompositionEntity(entity, state)
+          ));
+          // Structural contacts emit synchronously from real input/events; these four live
+          // pools have no async first-use owner. Desktop's declared-pool pass already covers
+          // them. The phone's dormant-pool filter must not leave their first impact cold.
+          const immediatePoolRoots = mobileFirstPicture
+            ? collectFirstFlightEffectRoots(scene).filter(root => root.name === 'SF_ArcadeStructuralFx')
+            : [];
+          const actorIds = new Set(firstFlightActors.map((entity) => entity.id));
+          // Slow GL (software rasterisers, CPU-starved CI) can spend the whole base budget in the
+          // actor's authored upgrade + strict pipeline compile while still linking programs. The
+          // base deadline is unchanged; it only slides while measurable work advances (capped at
+          // one more base budget), so a wedged admission still fails at its base deadline.
+          let actorSteps = 0;
+          const actorBudget = createProgressDeadline(openingGateBudgetMs(), {
+            startedAt: exactStarted,
+            now: () => performance.now(),
+            progress: () => actorSteps + renderWorkProgressMark(state.render),
+          });
+          const assertExactActive = () => {
+            if (!exactActive || recookStale()) throw new Error('opening first-flight actor admission superseded');
+            actorSteps += 1;
+            if (!actorBudget.check()) {
+              throw new Error('opening first-flight actor admission timed out');
+            }
+          };
+          const driveActors = async (steps) => {
+            try {
+              for (;;) {
+                assertExactActive();
+                if (steps.next().done) break;
+                await yieldToBrowser();
+              }
+            } finally { steps.return?.(); }
+          };
+          const warmPlayerPlasma = state.render.warmupOpeningEffectSubset;
+          if (firstFlightActors.length > 0 || immediatePoolRoots.length > 0
+              || typeof warmPlayerPlasma === 'function') {
+            assertExactActive();
+            if (firstFlightActors.length > 0) {
+              // The authored runway uses this same finite cook membership while loading.
+              const firstFlightIds = state.render.liveSectorFirstFlightIds || new Set();
+              for (const id of actorIds) firstFlightIds.add(id);
+              state.render.liveSectorFirstFlightIds = firstFlightIds;
+              await driveActors(enqueueMissingMeshBuildsSteps(firstFlightActors,
+                this._meshes, this._meshBuildQueuedIds, this._meshBuildQueue));
+              assertExactActive();
+              const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+              this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
+                ...tail.filter(id => actorIds.has(id)), ...tail.filter(id => !actorIds.has(id)));
+              while (this._meshBuildQueueHead < this._meshBuildQueue.length
+                  && actorIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
+                await driveActors(this._drainMeshBuildQueueSteps(1));
+              }
+            }
+            let actorTimer;
+            const actorDeadline = new Promise((_, reject) => {
+              const arm = () => {
+                actorTimer = setTimeout(() => {
+                  if (actorBudget.check()) { arm(); return; }
+                  exactActive = false;
+                  reject(new Error('opening first-flight actor admission timed out'));
+                }, Math.max(1, actorBudget.remainingMs()));
+              };
+              arm();
+            });
+            let playerPlasmaWarm = null;
+            try {
+              for (const entity of firstFlightActors) {
+                assertExactActive();
+                if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
+                const root = this._meshes.get(entity.id);
+                await Promise.race([requestAuthoredUpgrade(root, renderer, scene, { admissionVisible: true }), actorDeadline]);
+                assertExactActive();
+                if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
+                if (this._meshes.get(entity.id) !== root
+                    || !['authored', 'authored-prepared', 'authored-with-cleanup-error'].includes(root?.userData?.authoredAssetState)) {
+                  throw new Error(`opening first-flight authored actor ${entity.id} is unavailable`);
+                }
+                await Promise.race([admitSubjectPipelines(root, {
+                  openingRequired: true, strict: true, urgent: true,
+                  isActive: () => exactActive && !recookStale()
+                    && entity.alive !== false && state.entities.get(entity.id) === entity
+                    && this._meshes.get(entity.id) === root,
+                }), actorDeadline]);
+                assertExactActive();
+              }
+              for (const root of immediatePoolRoots) {
+                assertExactActive();
+                await Promise.race([admitSubjectPipelines(root, {
+                  openingRequired: true, strict: true, urgent: true,
+                  isActive: () => exactActive && !recookStale() && root.parent === scene,
+                }), actorDeadline]);
+                assertExactActive();
+              }
+              if (typeof warmPlayerPlasma === 'function') {
+                assertExactActive();
+                playerPlasmaWarm = warmPlayerPlasma({ playerPlasmaOnly: true });
+                if (playerPlasmaWarm?.skipped !== true) {
+                  const root = playerPlasmaWarm?.plasmaRoot;
+                  if (!root || playerPlasmaWarm.plasma !== true) {
+                    throw new Error('opening player plasma owner is unavailable');
+                  }
+                  // Prepare the same player ribbon/forge/throat that first thrust will draw,
+                  // including the forge's two face programs, before sealing the first picture.
+                  await Promise.race([admitSubjectPipelines(root, {
+                    openingRequired: true, strict: true, urgent: true,
+                    isActive: () => exactActive && !recookStale() && root.parent === scene
+                      && playerPlasmaWarm.isActive(),
+                  }), actorDeadline]);
+                  assertExactActive();
+                }
+              }
+            } finally {
+              try { playerPlasmaWarm?.releaseWarmSamples?.(); }
+              finally { clearTimeout(actorTimer); }
+            }
+          }
+          // Actor admission may already be on a residual progress-deadline crumb when this
+          // seal begins (CI software GL often spends most of the actor window on plasma/actors).
+          // Retain at least the same openingGateBudgetMs() picture window the cook barrier uses
+          // instead of starving prepareOpeningFirstPicture into a ~1s cohort timeout.
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
-            timeoutMs: openingGateBudgetMs(),
+            timeoutMs: Math.max(openingGateBudgetMs(), Math.max(1, actorBudget.remainingMs())),
             yieldToMain: yieldToBrowser,
-            isActive: () => mobileActive && !recookStale(),
+            isActive: () => exactActive && !recookStale(),
           });
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
           // Register the promise observers while loading owns the canvas. Registering already
           // awaited handles on the first flight draw temporarily counts them as pending until
           // their microtasks run, refusing that picture for a whole frame on slow WebKit.
           this._openingAdmissionPendingCount();
+          // Release per-subject streaming admission; this is not a claim that a future catalog
+          // was warmed. No speculative ordinary roster is mounted, and the exact plan above
+          // owns every initial leaf/material/depth/texture/receiver requirement.
           this._postOpeningPipelineAdmissionReleased = true;
           this._sessionLiveSectorCookedId = recookSectorId;
           state.render.sessionLiveSectorCookedId = recookSectorId;
-          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'resolved', {
+          recordOpeningCookStep(state.render, mobileFirstPicture ? 'live.mobileFirstPicture' : 'live.requiredFirstPicture', exactStarted, 'resolved', {
             drawLeaves: admitted.plan.drawLeaves.length,
             materials: admitted.submission.materials,
           });
-          return { skipped: false, mobileFirstPicture: true, ...admitted };
+          return { skipped: false, exactFirstPicture: true, mobileFirstPicture, ...admitted };
         } catch (error) {
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
-          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'error', {
+          recordOpeningCookStep(state.render, mobileFirstPicture ? 'live.mobileFirstPicture' : 'live.requiredFirstPicture', exactStarted, 'error', {
             error: String(error && error.message || error),
           });
           throw error;
         } finally {
-          mobileActive = false;
+          exactActive = false;
           if (!recookStale()) {
             state.render.liveSectorGpuAdmission = false;
-            holdAuthoredUpgradeQueueForFirstFlight(scene);
+            holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
             freezeOpeningGraphPublication(this);
           }
         }
@@ -15155,6 +15314,7 @@ export const render = {
                 camera: this.cam && this.cam.obj,
                 subjects: latePoolRoots,
                 forceEnable: this._shadowDepthEnabled(),
+                shadowsActive: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -15807,7 +15967,7 @@ export const render = {
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
-        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
         // A survival cook mounts the whole arena as content, not a protected first picture:
         // freezing the publication gate here only parks finished boundary commits on the ~20 s
         // first-flight latch, which bursts them into the round. Leave the gate released so a
@@ -16082,15 +16242,29 @@ export const render = {
         programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
           method: programs.method || programs.reason || undefined,
         });
-      const yieldBufferFrame = typeof options.yieldToMain === 'function'
+      const yieldBufferBase = typeof options.yieldToMain === 'function'
         ? options.yieldToMain
         : yieldToBrowser;
-      // The shared stretch clock covers every paced stretch of this cook — the
-      // cohort mint, the pool census, the subject buckets — so a fat leg
-      // debits the same ledger the slices debit.
       const cookStretchStarted = cookNow();
       let cookStretchSliceAt = cookStretchStarted;
       let cookStretchDebitAt = cookStretchStarted;
+      const restartCookStretchAfterFrame = (previousEpoch) => {
+        const currentEpoch = paceEpochNow();
+        if (previousEpoch < 0 || currentEpoch < 0 || currentEpoch === previousEpoch) return;
+        cookStretchSliceAt = cookNow();
+        cookStretchDebitAt = cookStretchSliceAt;
+      };
+      const bufferYieldStats = { count: 0, ms: 0 };
+      const yieldBufferFrame = async () => {
+        const started = cookNow();
+        const previousEpoch = paceEpochNow();
+        bufferYieldStats.count += 1;
+        try { return await yieldBufferBase(); }
+        finally { bufferYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
+      };
+      // The shared stretch clock covers every paced stretch of this cook — the
+      // cohort mint, the pool census, the subject buckets — so a fat leg
+      // debits the same ledger the slices debit.
       const paceCookStretch = async () => {
         const tick = cookNow();
         if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
@@ -16430,7 +16604,14 @@ export const render = {
         let switched = 0;
         let touchMs = 0;
         let maxTouchMs = 0;
-        const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        const touchYieldStats = { count: 0, ms: 0 };
+        const yieldTouch = typeof options.yieldToMain === 'function' ? async () => {
+          const started = cookNow();
+          const previousEpoch = paceEpochNow();
+          touchYieldStats.count += 1;
+          try { return await options.yieldToMain(); }
+          finally { touchYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
+        } : null;
         // Issue every touch subject's compile as one readiness cohort on the exact post target, drain
         // once, then touch: a draw against an unlinked program blocks the main thread in onFirstUse
         // until ANGLE finishes the link (laneB-fixA: 5 of 89 touch subjects had no program at their
@@ -16560,6 +16741,7 @@ export const render = {
             })
             : yieldTouch;
           const touchStarted = cookNow();
+          const touchYieldStart = { ...touchYieldStats };
           // Names of subjects that still had no compiled program at touch time — they are the
           // programs the first presented frame will link synchronously. Counts alone never said
           // which objects escaped every admission gate.
@@ -16574,6 +16756,7 @@ export const render = {
           // bound as the cohort above instead of a frame wait + gl.finish per touch.
           const touchPace = createCookQueuePaceDebt();
           let touchPaces = 0;
+          let touchPaceWaitMs = 0;
           for (let index = 0; index < units.programSubjects.length; index += 1) {
             const subject = units.programSubjects[index];
             if (cookOverBudget()) break;
@@ -16602,7 +16785,9 @@ export const render = {
               touchPace.note(drawMs);
               if (!coalesce || before.status !== 'ready' || touchPace.due()
                 || index === units.programSubjects.length - 1) {
-                await cohort.paceQueue();
+                const paceStarted = cookNow();
+                try { await cohort.paceQueue(); }
+                finally { touchPaceWaitMs += cookNow() - paceStarted; }
                 touchPace.clear();
                 touchPaces += 1;
                 paced = coalesce;
@@ -16630,7 +16815,10 @@ export const render = {
             touchMs: Math.round(touchMs),
             maxTouchMs: Math.round(maxTouchMs),
             yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
+            yieldWaitCount: touchYieldStats.count - touchYieldStart.count,
+            yieldWaitMs: Math.round(touchYieldStats.ms - touchYieldStart.ms),
             paces: cohort && typeof cohort.paceQueue === 'function' ? touchPaces : undefined,
+            paceWaitMs: Math.round(touchPaceWaitMs),
           });
         } finally {
           restoreTouchShadows();
@@ -16841,6 +17029,9 @@ export const render = {
         : await driveRevealCohort(firstFlightRoots);
       if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
+      const bufferYieldStart = { ...bufferYieldStats };
+      const bufferSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const bufferTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       const bufferPolicy = openingLoadPolicy({
         shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
         mode: state.mode,
@@ -16857,6 +17048,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
               geometryBatchDrawables: bufferPolicy.geometryBatchDrawables,
@@ -16864,6 +17056,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             });
         }
       } finally {
@@ -16874,9 +17067,17 @@ export const render = {
         buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
           roots: firstFlightBufferRoots.length,
           textures: buffers ? buffers.textures : undefined,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - bufferSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - bufferYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - bufferYieldStart.ms),
+          residencySubmissions: bufferTiming.submissions,
+          residencySubmissionMs: Math.round(bufferTiming.submissionMs),
+          residencySyncMs: Math.round(bufferTiming.syncMs),
         });
       const layersStarted = cookNow();
+      const layerYieldStart = { ...bufferYieldStats };
+      const layerSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const layerTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
       // ribbon trails) are skipped unless revealed. 1x1 every first-flight layer.
       // InstancedMesh-only left a +6 geo stall that first-drew in bloom (164 ms).
@@ -16922,6 +17123,7 @@ export const render = {
             includeGeometry: true,
             includeEmpty: true,
             yieldToMain: yieldBuffers,
+            cookTiming: layerTiming,
           });
         } finally {
           await driveRestoreCohort(restoreLayers);
@@ -16931,7 +17133,12 @@ export const render = {
       recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
         layerRoots.length === 0 ? 'skipped' : 'resolved', {
           roots: layerRoots.length,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - layerSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - layerYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - layerYieldStart.ms),
+          residencySubmissions: layerTiming.submissions,
+          residencySubmissionMs: Math.round(layerTiming.submissionMs),
+          residencySyncMs: Math.round(layerTiming.syncMs),
         });
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
@@ -17279,6 +17486,7 @@ export const render = {
                 ? cookCompileRoots.concat([scene])
                 : cookCompileRoots,
               forceEnable: this._shadowDepthEnabled(),
+              shadowsActive: this._shadowDepthEnabled(),
               THREE,
               captureObjectHome,
               restoreObjectHome,
@@ -17998,7 +18206,7 @@ export const render = {
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
-        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
         freezeOpeningGraphPublication(this);
         try { console.info(formatOpeningCookLedger(jumpLedger)); } catch { /* diagnostics only */ }
         // Both guards above are the OPENING's, and the only thing that ever lifts them is the
@@ -18378,12 +18586,16 @@ export const render = {
       // next(), so a presented frame only ever pays the two bounded GL submits
       // plus the row loops.
       const driveDepthCompile = async (compileSubjects, stagingName) => {
+        if (!this._shadowDepthEnabled()) {
+          return { skipped: true, reason: 'shadow depth disabled by active settings', subjects: 0, aborted: false };
+        }
         const depthOpts = {
           renderer,
           light: this._shadowDepthLight(),
           camera: cam.obj,
           subjects: compileSubjects,
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -18425,36 +18637,53 @@ export const render = {
           }
           if (precollected) depthOpts.precollectedCasting = precollected;
         }
-        for (let attempt = 0; attempt < 4; attempt += 1) {
-          const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+        const leaseSubjects = depthOpts.precollectedCasting || depthOpts.subjects;
+        const collectLeaseResources = async (iterator) => {
           for (;;) {
-            let depthStep;
-            try {
-              depthStep = depthIter.next();
-            } catch (driveError) {
-              // A throw is not light drift — a re-mint hits the same fault, so
-              // skip the pass (the next admission re-arm retries it wholesale)
-              // instead of burning the four drift attempts on the dead drive.
-              closeCookStepsIter(depthIter);
-              stormWarn('depth-compile-drive-failed-skipping-the-depth-pa', '[render] depth compile drive failed; skipping the depth pass', driveError);
-              return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
-            }
-            if (depthStep.done) {
-              lastRetryResult = depthStep.value;
-              if (lastRetryResult && (lastRetryResult.stale === true
-                || lastRetryResult.reason === 'session-closed-mid-drive')) break;
-              return lastRetryResult;
-            }
-            if (await postPace()) {
-              return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
-            }
+            const step = iterator.next();
+            if (step.done) return step.value;
+            if (await postPace()) { closeCookStepsIter(iterator); return null; }
           }
-          depthOpts.lightSigOverride = freshDepthLightSig();
-          depthOpts.lightSigEpoch = shadowCensusEpoch();
-        }
-        return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
-          ? lastRetryResult
-          : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+        };
+        const leaseTextures = await collectLeaseResources(collectStartupTexturesSteps(leaseSubjects));
+        if (!leaseTextures) return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+        const leaseGeometries = await collectLeaseResources(collectStartupGeometriesSteps(leaseSubjects, { includeEmpty: true }));
+        if (!leaseGeometries) return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+        const shadowLease = await prepareShadowDepthTextureLease({ renderer, textures: leaseTextures,
+          geometries: leaseGeometries, state: this.state, isActive: () => !postSuperseded(), yieldToMain: postPace });
+        if (!shadowLease.ready) return { skipped: true, reason: shadowLease.reason, subjects: 0, aborted: true };
+        try {
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+            for (;;) {
+              let depthStep;
+              try {
+                depthStep = depthIter.next();
+              } catch (driveError) {
+                // A throw is not light drift — a re-mint hits the same fault, so
+                // skip the pass (the next admission re-arm retries it wholesale)
+                // instead of burning the four drift attempts on the dead drive.
+                closeCookStepsIter(depthIter);
+                stormWarn('depth-compile-drive-failed-skipping-the-depth-pa', '[render] depth compile drive failed; skipping the depth pass', driveError);
+                return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
+              }
+              if (depthStep.done) {
+                lastRetryResult = depthStep.value;
+                if (lastRetryResult && (lastRetryResult.stale === true
+                  || lastRetryResult.reason === 'session-closed-mid-drive')) break;
+                return lastRetryResult;
+              }
+              if (await postPace()) {
+                return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+              }
+            }
+            depthOpts.lightSigOverride = freshDepthLightSig();
+            depthOpts.lightSigEpoch = shadowCensusEpoch();
+          }
+          return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
+            ? lastRetryResult
+            : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+        } finally { shadowLease.release(); }
       };
       const unstagedDepthSubjects = [];
       // One node wallet across the chunk loop: the paced 512-subject batches only
@@ -19175,6 +19404,10 @@ export const render = {
     if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
     this._videoSettingsOff = onBus('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
+      if (p.key == null || p.key === 'shadows' || p.key === 'nocturne'
+          || p.key === 'nocturneShadows') {
+        this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+      }
       this._authoredPreparationEpoch++;
       this._sectorBoundaryPreparations?.abortAll('video-settings-changed-during-sector-prewarm');
       const vd = state.settings.video;
@@ -19195,6 +19428,19 @@ export const render = {
         // caster as unstaged and withholds the whole linked set.
         this._syncShadowMapEnabled();
         if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
+      }
+      if (p.key === 'nocturneShadows' || p.key === 'nocturne' || p.key == null) {
+        const nocturne = this._nocturne;
+        const nocturneShadowsWereOn = nocturne?.shadowsEnabled === true;
+        if (nocturne) {
+          // Align admission with this settings transaction before deciding whether the first
+          // enabled Nocturne depth pass needs the existing guarded stage.
+          nocturne.setEnabled(vd.nocturne !== false);
+          if (!nocturneShadowsWereOn && nocturne.shadowConfigured === true
+              && nocturne.shadowsEnabled === true && this._shadowSettingOn !== true) {
+            this._stageShadowDepthOnSettingEnable();
+          }
+        }
       }
       // Auto can flip the graph-route gate just like dynamicResolution; re-derive buffer scale
       // whenever either policy changes, not just the adaptive controller's enabled flag.
@@ -19323,6 +19569,7 @@ export const render = {
         playerId: state.playerId,
         playerPos: player && player.pos,
         viewportHeight: this.viewport && this.viewport.height,
+        initialLodForEntity: (entity) => initialWholeShipLodForBoundary(entity, this._meshes?.get(entity.id)),
       });
     };
     const reviseSectorPrewarmPopulation = (record, count = 1) => {
@@ -20024,6 +20271,12 @@ export const render = {
     // self-gates on arenaId, so non-law rooms pass through untouched.
     onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene));
     onBus('survivalArena:released', () => globalLawArenaDressing.handleReleased());
+    onBus('survivalArena:stormWarning', (p) => globalLawArenaDressing.handleStormWarning(p, this.scene,
+      receipt => this.bus.emit('survivalArena:stormPresented', receipt)));
+    onBus('survivalArena:stormResolve', (p) => globalLawArenaDressing.handleStormResolve(p));
+    onBus('survivalArena:stormCancel', (p) => globalLawArenaDressing.handleStormEnd(p));
+    onBus('save:loaded', () => globalLawArenaDressing.resetStormPresentation());
+    onBus('game:started', () => globalLawArenaDressing.resetStormPresentation());
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
     // Continue decode runway — the worker-prepared envelope arrives before restore clears
     // the live world; its entity histogram is the only prefetch source that names the saved
@@ -20702,6 +20955,7 @@ export const render = {
         });
       }
       if (mode !== 'flight') return;
+      holdAuthoredUpgradeQueueForFirstFlight(this.scene, { onlyLoadingHulls: true });
       this._sessionRecookKeepGpu = false;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
@@ -22171,8 +22425,7 @@ export const render = {
       // the ordinary cook's censuses.
       if (!survivalRunHoldsArena(state)) {
         // A door-staged crucible warm belongs to no launch the player took —
-        // discard it, then let the ordinary New Game claim the same slot for
-        // its opening-species cohort below instead of returning empty.
+        // discard it; ordinary Adventure admits its required picture without a roster warm.
         this._discardEarlyCrucibleWarm();
       } else if (state.run.ruleset !== SWARM_RULESET) {
         // The door staged this warm before a run existed, so it scoped to the default ruleset
@@ -22198,21 +22451,13 @@ export const render = {
     }
     if (state.mode !== 'loading') return;
     try {
-      const openingProfile = !survivalRunHoldsArena(state);
-      if (openingProfile && isMobileRenderContext()) return;
+      // Ordinary Adventure uses the required first-picture plan and per-object streaming.
+      // Starting the optional opening roster here shares decode/compile capacity with those
+      // required bodies and later widens the cook/post-opening census with hidden exemplars.
+      if (!survivalRunHoldsArena(state)) return;
       const warm = this._beginCrucibleBoundedRosterWarm({
         yieldToMain: yieldToBrowser,
-        // The opening profile is deterministic at scenePrepared — the scripted-intro species
-        // manifest needs no run. Beginning here starts the packaged-body attaches during the
-        // library/visuals/GPU waits; the cook used to begin the warm mid-cook, so the roster
-        // settle still found ten decodes and the drone attach in flight at the shell-release
-        // boundary (the 8 s open-route timeout). The heavy fleet decodes stay deferred to the
-        // cook claim (deferFleetDecodes) — starting ~100 MB of meshopt work at scenePrepared
-        // measured as pure contention on the authored-library/visuals gates (+8 s) because
-        // decode shares the one main thread, and it tripled the finish() cohort's compile
-        // sweep inside the shell (+10 s on live.postOpeningPipelines).
-        profile: openingProfile ? 'opening' : 'crucible',
-        deferFleetDecodes: openingProfile,
+        profile: 'crucible',
       });
       if (!warm || !warm.root) return;
       if (warm.root.parent !== scene) {
@@ -24729,307 +24974,7 @@ export const render = {
 
   // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once
   // at the microtask boundary instead of O(assets) per corpse.
-  // Culled roots freeze their subtree matrices so the per-frame walk stops
-  // recomposing them, but the freeze mint itself is O(subtree) — a cull storm
-  // (the opening picture's syncEntityViews, a sector transition) sums it to
-  // O(scene) inside one presented pass. The freeze is benefit-only, so mints
-  // ride this queue drained a few roots per sync pass; an unfrozen culled
-  // subtree keeps paying the compose it always paid.
-  _queueHiddenSubtreeFreeze(mesh) {
-    if (!mesh || mesh.matrixAutoUpdate !== true) return;
-    const ud = mesh.userData || (mesh.userData = {});
-    if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true) {
-      // The kept sfHiddenFrozen flag also marks the show->restore window: a
-      // re-hide inside it cancels the pending restore outright, so a
-      // sub-dwell cull->show->cull flap costs zero subtree walks. The drain's
-      // abandon check would kill a parked restore iterator a pass later via
-      // sfHiddenFreezeQueued anyway — stamp-killing it here is just earlier.
-      // A bound (unbind-owed) restore cancels the same way: the freeze lane
-      // re-owns the subtree's marks, so the owed restore is moot.
-      delete ud.sfHiddenUnfreezeQueued;
-      delete ud.sfHiddenUnfreezeQueuedSeq;
-      delete ud.sfHiddenUnfreezeBound;
-      const parkedUnfreeze = ud.sfHiddenUnfreezeIter || null;
-      if (parkedUnfreeze) {
-        try { parkedUnfreeze.return(); } catch (_) { /* discard proceeds */ }
-        delete ud.sfHiddenUnfreezeIter;
-      }
-      return;
-    }
-    ud.sfHiddenFreezeQueued = true;
-    // Queue age feeds the drain's flap dwell: a mint must only fire after the
-    // root stays culled across the whole dwell window, or a first-cycle
-    // cull->show flap pays the mint+restore pair for ~zero compose savings.
-    ud.sfHiddenFreezeQueuedSeq = this._viewSyncSeq || 0;
-    // Shared flap epoch: the unfreeze lane's own dwell only delays its stamp,
-    // so a freeze queued after a cancelled unfreeze inherits the queue date of
-    // a long-dead first request — this stamp is what the freezes dwell on.
-    ud.sfHiddenFlapSeq = ud.sfHiddenFreezeQueuedSeq;
-    if (!this._pendingHiddenFreeze) this._pendingHiddenFreeze = [];
-    this._pendingHiddenFreeze.push(mesh);
-  },
-
-  _drainHiddenFreezeQueue() {
-    const pending = this._pendingHiddenFreeze;
-    if (!pending || pending.length === 0) return;
-    // The drain rides every cook yield seam AND the per-pass sync call —
-    // its per-call caps are per-INVOCATION, so an unclocked drain stacks
-    // seams/frame × caps of invisible presented-frame work. Debit the wallet
-    // honestly in flight and let a spent wallet park the tail after the
-    // first row (progress is still guaranteed per call).
-    const drainNow = () => (typeof performance !== 'undefined'
-      && typeof performance.now === 'function' ? performance.now() : Date.now());
-    const drainStarted = drainNow();
-    const flightMode = this.state && this.state.mode === 'flight';
-    try {
-      const viewSeq = this._viewSyncSeq || 0;
-      let minted = 0;
-      let scanned = 0;
-      let visited = 0;
-      let nodesWorked = 0;
-      let w = 0;
-      const tornFreezeMints = [];
-      for (let r = 0; r < pending.length; r += 1) {
-        const mesh = pending[r];
-        if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
-            || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
-            || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
-            || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
-          pending[w++] = mesh;
-          continue;
-        }
-      visited += 1;
-      const ud = mesh.userData || {};
-      let iter = ud.sfHiddenFreezeIter || null;
-      if (!iter) {
-        // Unbind clears the flag precisely so its entry cannot mint: honor it
-        // before any other check or a pooled reuse inherits a full subtree
-        // freeze the world no longer owns. Dead drops are free — a mass-unbind
-        // storm can't starve live entries behind its own garbage.
-        if (ud.sfHiddenFreezeQueued !== true) continue;
-        scanned += 1;
-        // Boundary flap hysteresis: a root re-shown inside the dwell window
-        // would pay ~4 subtree visits minting+restoring a freeze that saves ~1
-        // compose-visit per hidden frame — defer the mint, never drop the entry.
-        const lastShow = ud.sfHiddenFreezeLastShowSeq;
-        // The dwell spans queue age as well as last-show: a freshly-queued entry
-        // stays deferred until it has spent the full window culled — the first
-        // cull->show cycle of a flap used to mint the same pass it queued.
-        const dwellBase = Math.max(lastShow || 0, ud.sfHiddenFreezeQueuedSeq || 0,
-          ud.sfHiddenFlapSeq || 0);
-        if (viewSeq - dwellBase < HIDDEN_FREEZE_FLAP_DWELL) {
-          pending[w++] = mesh;
-          continue;
-        }
-        // A row re-shown, detached, or restored mid-queue drops out instead of
-        // minting a freeze on a subtree that is live again — the queued flags
-        // are consumed on the drop so a later cull window can re-queue.
-        if (ud.sfHiddenFrozen === true || mesh.matrixAutoUpdate !== true
-            || mesh.visible === true || !mesh.parent) {
-          delete ud.sfHiddenFreezeQueued;
-          delete ud.sfHiddenFreezeQueuedSeq;
-          continue;
-        }
-        // Compose before freezing: writers skip the hook once the flag is true,
-        // so the local matrix for the last pose exists only after this compose.
-        mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-        ud.sfHiddenFrozen = true;
-        iter = freezeHiddenSubtreeMatricesSteps(mesh);
-      } else {
-        scanned += 1;
-        // Abandon checks for a parked mint: the queued flag cleared (unbind),
-        // the frozen flag cleared (a re-show queued the unfreeze lane, which
-        // restores exactly the stamped prefix), a detached root (the stamped
-        // prefix heals on re-show), or matrixAutoUpdate restored externally —
-        // all kill the iterator and drop the row.
-        if (ud.sfHiddenFreezeQueued !== true || ud.sfHiddenFrozen !== true
-            || mesh.matrixAutoUpdate === true || mesh.visible === true || !mesh.parent) {
-          try { iter.return(); } catch (_) { /* discard proceeds */ }
-          delete ud.sfHiddenFreezeIter;
-          delete ud.sfHiddenFreezeQueued;
-          delete ud.sfHiddenFreezeQueuedSeq;
-          continue;
-        }
-      }
-      // Drive the mint under the per-pass node budget — a packaged-hull subtree
-      // parks mid-walk on its own queue entry instead of landing the whole
-      // freeze+mark pair inside one presented beat.
-      let step = null;
-      try {
-        while (!(step = iter.next()).done) {
-          nodesWorked += HIDDEN_FREEZE_MINT_YIELD_NODES;
-          if (nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) break;
-        }
-      } catch (_) {
-        // A torn mint drops the row; sfHiddenFrozen stays true so the subtree
-        // keeps the frozen prefix and a re-show restores it by stamp.
-        if (tornFreezeMints.length < 4) tornFreezeMints.push(mesh && mesh.name || '?');
-        step = { done: true };
-      }
-      if (!step || step.done !== true) {
-        // The queued flag stays set while parked — unbind clearing it is how a
-        // dead parked mint is detected on resume.
-        ud.sfHiddenFreezeIter = iter;
-        pending[w++] = mesh;
-        continue;
-      }
-      delete ud.sfHiddenFreezeIter;
-      delete ud.sfHiddenFreezeQueued;
-      delete ud.sfHiddenFreezeQueuedSeq;
-      minted += 1;
-      }
-      pending.length = w;
-      if (tornFreezeMints.length > 0) {
-        stormWarn('hidden-freeze-mints-torn-mid-walk-rows-dropped', '[render] hidden-freeze mints torn mid-walk; rows dropped:', tornFreezeMints.join(', '));
-      }
-    } finally {
-      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
-    }
-  },
-
-  // The unfreeze rides the same bounded-drain shape as the freeze: a mass
-  // re-show (sector re-entry, camera snap over a culled fleet, zoom-in across
-  // the cull boundary) otherwise pays ~2x O(subtree) restore walks per root
-  // inside one presented pass — the atomic O(scene) class relocated from the
-  // cull edge to the un-cull edge. Deferral is correctness-safe: the root's
-  // pose write sets matrixWorldNeedsUpdate, and the vendored updateMatrixWorld
-  // descends marked subtrees under force, so the re-shown subtree keeps paying
-  // the unfrozen compose it paid pre-W100 until its restore mints.
-  _queueHiddenSubtreeUnfreeze(mesh) {
-    if (!mesh) return;
-    const ud = mesh.userData || {};
-    if (ud.sfHiddenFrozen !== true || ud.sfHiddenUnfreezeQueued === true) return;
-    ud.sfHiddenUnfreezeQueued = true;
-    // Queue age feeds the drain's restore-side dwell: the mint must only run
-    // after the root stays shown for the whole dwell window, or a first-cycle
-    // cull->show flap pays the ~3-walk restore for ~zero hidden frames. The
-    // queue stamp is the show epoch — sfHiddenFreezeLastShowSeq re-stamps on
-    // every visible pass and so can never serve as a dwell base.
-    ud.sfHiddenUnfreezeQueuedSeq = this._viewSyncSeq || 0;
-    ud.sfHiddenFlapSeq = ud.sfHiddenUnfreezeQueuedSeq;
-    (this._pendingHiddenUnfreeze || (this._pendingHiddenUnfreeze = [])).push(mesh);
-  },
-
-  _drainHiddenUnfreezeQueue() {
-    const pending = this._pendingHiddenUnfreeze;
-    if (!pending || pending.length === 0) return;
-    // Twin of the freeze drain's metering: a mass re-show mints up to the
-    // same caps inside the same seams, so it debits the flight wallet and
-    // parks its tail on a spent wallet — first row still guaranteed per call.
-    const drainNow = () => (typeof performance !== 'undefined'
-      && typeof performance.now === 'function' ? performance.now() : Date.now());
-    const drainStarted = drainNow();
-    const flightMode = this.state && this.state.mode === 'flight';
-    try {
-    const viewSeq = this._viewSyncSeq || 0;
-    let minted = 0;
-    let scanned = 0;
-    let visited = 0;
-    let nodesWorked = 0;
-    let w = 0;
-    const tornUnfreezeMints = [];
-    for (let r = 0; r < pending.length; r += 1) {
-      const mesh = pending[r];
-      if (minted >= HIDDEN_FREEZE_MINT_ROOTS_PER_PASS || scanned >= HIDDEN_FREEZE_SCAN_PER_PASS
-          || visited >= HIDDEN_FREEZE_VISIT_PER_PASS
-          || nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS
-          || (flightMode && visited > 0 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
-        pending[w++] = mesh;
-        continue;
-      }
-      visited += 1;
-      const ud = mesh.userData || {};
-      let iter = ud.sfHiddenUnfreezeIter || null;
-      if (!iter) {
-        // Dead drops (flag cleared mid-queue — unbind also killed the iter
-        // stamp) are free — same exemption as the freeze drain so an unbind
-        // storm can't park live restores.
-        if (ud.sfHiddenUnfreezeQueued !== true) continue;
-        scanned += 1;
-        // Restore-side flap dwell — the freeze mint's mirror image. The kept
-        // sfHiddenFrozen flag early-outs the freeze queue on a sub-dwell
-        // re-hide and this entry dead-drops at the flag check for zero walks;
-        // a period>=4 flapper used to pay ~7 subtree walks per cycle for ~3
-        // hidden frames of compose savings.
-        // Dwell on the latest queue direction stamp, not this lane's own:
-        // a cancel-then-refreeze flap would otherwise keep deferring the
-        // freeze mint on the original queue date forever.
-        if (viewSeq - Math.max(ud.sfHiddenUnfreezeQueuedSeq || 0, ud.sfHiddenFlapSeq || 0)
-            < HIDDEN_FREEZE_FLAP_DWELL) {
-          pending[w++] = mesh;
-          continue;
-        }
-        delete ud.sfHiddenUnfreezeQueued;
-        delete ud.sfHiddenUnfreezeQueuedSeq;
-        // Re-culled rows dead-drop above (the kept flag's freeze-queue
-        // early-out deleted this entry's flag); a detached or externally
-        // re-frozen root drops here. sfHiddenFrozen is not a drop signal on
-        // this path — it stays true until the mint below consumes it.
-        // mesh.visible matters the same way it does on the freeze lane:
-        // hide-in-place paths (submit-false/pose-fail) never touch the queue,
-        // so a deferred-admission row sits invisible past the dwell — a mint
-        // here would spend the restore on a mesh that draws nothing and
-        // surrender the freeze's savings mid-pending.
-        const boundRestore = ud.sfHiddenUnfreezeBound === true;
-        if (ud.sfHiddenFreezeQueued === true
-            || mesh.matrixAutoUpdate !== true
-            || (boundRestore
-              // Bound (unbind-owed) restores mint regardless of attach/visible
-              // state — the row's next owner can't inherit frozen marks — but
-              // a re-frozen row still drops: the freeze lane re-owns marks.
-              ? ud.sfHiddenFrozen === true
-              : (!mesh.parent || mesh.visible !== true))) {
-          if (boundRestore) delete ud.sfHiddenUnfreezeBound;
-          continue;
-        }
-        ud.sfHiddenFrozen = false;
-        iter = unfreezeHiddenSubtreeMatricesSteps(mesh);
-      } else {
-        scanned += 1;
-        // Abandon checks for a parked restore: re-culled (the freeze lane owns
-        // the subtree's marks now — still-stamped nodes stay frozen for the
-        // next restore), detached, hidden in place, or matrixAutoUpdate
-        // re-frozen externally. An unbound row's iter stamp was already
-        // deleted — it falls into the dead-entry gate above for free.
-        const boundLive = ud.sfHiddenUnfreezeBound === true;
-        if (ud.sfHiddenFrozen === true || ud.sfHiddenFreezeQueued === true
-            || mesh.matrixAutoUpdate !== true
-            || (!boundLive && (!mesh.parent || mesh.visible !== true))) {
-          try { iter.return(); } catch (_) { /* discard proceeds */ }
-          delete ud.sfHiddenUnfreezeIter;
-          delete ud.sfHiddenUnfreezeBound;
-          continue;
-        }
-      }
-      let step = null;
-      try {
-        while (!(step = iter.next()).done) {
-          nodesWorked += HIDDEN_FREEZE_MINT_YIELD_NODES;
-          if (nodesWorked >= HIDDEN_FREEZE_NODE_BUDGET_PER_PASS) break;
-        }
-      } catch (_) {
-        if (tornUnfreezeMints.length < 4) tornUnfreezeMints.push(mesh && mesh.name || '?');
-        step = { done: true };
-      }
-      if (!step || step.done !== true) {
-        ud.sfHiddenUnfreezeIter = iter;
-        pending[w++] = mesh;
-        continue;
-      }
-      delete ud.sfHiddenUnfreezeIter;
-      delete ud.sfHiddenUnfreezeQueued;
-      delete ud.sfHiddenUnfreezeBound;
-      minted += 1;
-    }
-    pending.length = w;
-    if (tornUnfreezeMints.length > 0) {
-      stormWarn('hidden-unfreeze-mints-torn-mid-walk-rows-dropped', '[render] hidden-unfreeze mints torn mid-walk; rows dropped:', tornUnfreezeMints.join(', '));
-    }
-    } finally {
-      if (flightMode) notePacedFrameSpend(drainNow() - drainStarted);
-    }
-  },
+  ...createHiddenSubtreeLifecycleMethods({ stormWarn }),
 
   _queueAssetResidencyDiagnosticsPublish() {
     if (this._assetResidencyDiagnosticsPublishQueued === true) return;
@@ -26799,6 +26744,7 @@ export const render = {
       const gate = shouldStartHeavyAdmissionEventually(
         this.state && this.state.render && this.state.render.lastPresentDtMs,
         this._meshBuildLateSkips,
+        { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
       );
       // The starvation floor still consults the forced wallet — a spent frame
       // defers the forced start (keeping the late streak armed) instead of
@@ -26919,6 +26865,7 @@ export const render = {
           const resumedGate = shouldStartHeavyAdmissionEventually(
             this.state && this.state.render && this.state.render.lastPresentDtMs,
             this._meshBuildLateSkips,
+            { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
           );
           const resumedStartAllowed = resumedGate.start
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
@@ -27060,6 +27007,7 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -(e.rot || 0);
+      if (e.data?.warmFreighterVisualPose) applyWarmFreighterDressingPose(m, e, this._frameMembrane);
       if (m.matrixAutoUpdate === false) m.updateMatrix();
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
@@ -27264,8 +27212,12 @@ export const render = {
     if (m.matrixAutoUpdate === false) m.updateMatrix();
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
-    if (hull && e.bank != null) hull.rotation.x = e.bank;
-    if (hull && e.pitch != null) hull.rotation.z = e.pitch;
+    if (hull && isPhysicsBoundWholeHulk(e)) {
+      hull.rotation.x = 0; hull.rotation.z = 0;
+    } else {
+      if (hull && e.bank != null) hull.rotation.x = e.bank;
+      if (hull && e.pitch != null) hull.rotation.z = e.pitch;
+    }
     if (e.type === 'ship' || e.type === 'station') {
       attachContactShadow(m, e);
       const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
@@ -27818,13 +27770,22 @@ export const render = {
       slot,
     );
     if (!applied) return false;
+    const attachedRow = this.state?.entities?.get(world.entityIds[slot]);
+    if (attachedRow?.data?.warmFreighterVisualPose) {
+      applyWarmFreighterDressingPose(mesh, attachedRow, this._frameMembrane);
+    }
     const poseDx = mesh.position.x - poseBeforeX;
     const poseDz = mesh.position.z - poseBeforeZ;
     if (poseDx * poseDx + poseDz * poseDz >= POSE_JUMP_WU * POSE_JUMP_WU && this.state && this.state.render) {
       this.state.render.poseJump = attributePoseJump({ dx: poseDx, dz: poseDz });
     }
     const hull = mesh.userData && mesh.userData.hull;
-    if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
+    if (hull && isPhysicsBoundWholeHulk(attachedRow)) {
+      if (hull.rotation.x !== 0 || hull.rotation.z !== 0) {
+        hull.rotation.x = 0; hull.rotation.z = 0;
+        if (hull.matrixAutoUpdate === false && typeof hull.updateMatrix === 'function') hull.updateMatrix();
+      }
+    } else if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
       hull.rotation.x = world.bank[slot];
       hull.rotation.z = world.pitch[slot];
     }
@@ -28175,6 +28136,13 @@ export const render = {
           if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
           transformed++;
         }
+        // Table-row motion arrives on the bounded aux channel, not the ordinary
+        // entity transform journal. Its live facade can change while the snapshot is clean.
+        if (posed && entity?.data?.warmFreighterVisualPose
+            && applyWarmFreighterDressingPose(mesh, entity, this._frameMembrane)) {
+          this._persistentSubmitLanes.markDirty(entityId, 'transform');
+          poseApplied = true;
+        }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
         // Visible ships retain their authored body. Props still resolve their
@@ -28203,7 +28171,12 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = presentedLodWidthPx(
+        const shipFamily = typeName === 'ship' && userData.wholeShipLodFamilyInstalled === true;
+        const sampledShip = typeName === 'ship' && !!entity && !isPlayer
+          && posed && isOrdinaryLodShip(entity);
+        const projectedPx = shipFamily && !posed ? Infinity : (shipFamily || sampledShip) ? projectedShipDiameterPx(
+          mesh.position, Math.max(lodRadius, (Number(entity?.radius) || 0) * 2), this.cam && this.cam.obj, this.viewport,
+        ) : presentedLodWidthPx(
           userData,
           mesh.position,
           lodRadius,
@@ -28212,15 +28185,45 @@ export const render = {
           isPlayer,
           typeName,
         );
+        if (sampledShip) {
+          const sample = userData.initialShipLodSample || (userData.initialShipLodSample = {});
+          sample.entity = entity;
+          sample.px = projectedPx;
+          sample.at = performance.now();
+          sample.protectedBody = entityIsMissionCritical(entity, this.state);
+          sample.camera = this.cam?.obj || null;
+          sample.viewport = this.viewport;
+          sample.width = this.viewport?.width;
+          sample.height = this.viewport?.height;
+          const view = sample.camera?.matrixWorldInverse?.elements;
+          const projection = sample.camera?.projectionMatrix?.elements;
+          if (view && projection) {
+            if (!sample.view) sample.view = new Float64Array(16);
+            if (!sample.projection) sample.projection = new Float64Array(16);
+            sample.view.set(view);
+            sample.projection.set(projection);
+          }
+        } else if (typeName === 'ship' && userData.initialShipLodSample) {
+          userData.initialShipLodSample = null;
+        }
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
+          const protectedShip = shipFamily && (isPlayer || !isOrdinaryLodShip(entity)
+            || entityIsMissionCritical(entity, this.state));
+          if (shipFamily && !userData.shipLodSelection) userData.shipLodSelection = createShipLodState(userData.wholeShipLodActiveLevel);
+          const desiredLod = shipFamily
+            ? userData.shipLodSelection.resolve(projectedPx, this.state.simTime, protectedShip)
+            : resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
-          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
-            userData.updateLod(lodLevel);
-            userData._appliedLodLevel = lodLevel;
+          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== desiredLod
+              || (shipFamily && !userData.wholeShipLodTransitionPromise
+                && userData.wholeShipLodActiveLevel !== desiredLod
+                && performance.now() >= (userData.wholeShipLodRetryAfter || 0))) {
+            userData.updateLod(desiredLod);
+            userData._appliedLodLevel = desiredLod;
           }
+          lodLevel = shipFamily ? (userData.wholeShipLodActiveLevel || 'lod0') : desiredLod;
         }
         // Keeper masks remain correctness at every LOD and decorative sleep cadence.
         if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
@@ -28372,7 +28375,7 @@ export const render = {
         // Visible interactive and hero roots retain their authored per-frame presentation closures.
         // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
-        const farSpeck = lodLevel === 'lod2' && !isPlayer;
+        const farSpeck = lodLevel === 'lod2' && !isPlayer && !shipFamily;
         if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
         if (entity) this._syncNemesisHullPresentation?.(entity, mesh);
         if (isPlayer && entity && this._livingHullPresentation) {
@@ -28834,6 +28837,44 @@ export const render = {
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
   },
 
+  // Switch only the current Rig/Dart hull admission; retain all other default cohorts. Rolling
+  // back first restores canonical sources and cancels an in-flight compile before either side
+  // can publish. A pilot can await the first plan and then let normal frames settle membership.
+  async setAshlineHullBatchForBench(enabled) {
+    if (typeof enabled !== 'boolean') throw new TypeError('Ashline hull batch switch requires a boolean');
+    if (this._rigidOpaqueBatchDefaultCohort !== true) {
+      throw new Error('Ashline hull comparison requires the ordinary default rigid cohort');
+    }
+    const previousEnabled = this._ashlineHullBatchEnabled !== false;
+    if (previousEnabled !== enabled) {
+      this._ashlineHullBatchEnabled = enabled;
+      this._rigidOpaqueBatchPictureEpoch = (this._rigidOpaqueBatchPictureEpoch || 0) + 1;
+      this._rigidOpaqueBatchController?.rollback?.('ashline-hull-compare-switch');
+    }
+    await this._syncRigidOpaqueBatchProbe();
+    return { previousEnabled, ...this.getAshlineHullBatchDiagnosticsForBench() };
+  },
+
+  getAshlineHullBatchDiagnosticsForBench() {
+    return {
+      enabled: this._ashlineHullBatchEnabled !== false,
+      factorPaletteEnabled: this._ashlineFactorPaletteEnabled === true,
+      defaultCohort: this._rigidOpaqueBatchDefaultCohort === true,
+      rigidOpaqueBatch: this.getRigidOpaqueBatchDiagnosticsForBench(),
+    };
+  },
+
+  async setAshlineFactorPaletteForBench(enabled) {
+    const previousEnabled = this._ashlineFactorPaletteEnabled === true;
+    this._ashlineFactorPaletteEnabled = enabled === true;
+    if (previousEnabled !== this._ashlineFactorPaletteEnabled) {
+      this._rigidOpaqueBatchController?.rollback?.('ashline-factor-palette-compare-switch');
+    }
+    await this._syncRigidOpaqueBatchProbe();
+    return { previousEnabled, enabled: this._ashlineFactorPaletteEnabled,
+      rigidOpaqueBatch: this.getRigidOpaqueBatchDiagnosticsForBench() };
+  },
+
   // Retained rigid candidate. The default path walks only the already-resident player root; the
   // explicit bench scope keeps the broader entity-root census so hidden/camera-culled roots remain
   // represented and can toggle per-instance visibility without rebuilding the candidate.
@@ -28841,6 +28882,12 @@ export const render = {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
+    if (this._rigidOpaqueBatchDefaultCohort === true && this._shadowSettingOn === false
+        && this.state?.settings?.video?.shadows === false) {
+      this._shadowCensusForFrame?.();
+    }
+    controller.setShadowDepthDisabled(this._rigidOpaqueBatchDefaultCohort === true
+      && rigidBatchDepthProvenOff(this, shadowCensusEpoch()));
     if (this._rigidOpaqueBatchDefaultCohort === true && !defaultRigidBatchMayPrepare(this)) return;
     // The default waits until the first picture is painted and its graph hold is released.
     // The explicit bench probe retains its existing loading exclusion.
@@ -28973,6 +29020,7 @@ export const render = {
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot].concat(poolCompileRoots || []),
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -29058,6 +29106,7 @@ export const render = {
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot],
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -29120,13 +29169,17 @@ export const render = {
       if (!row || row.alive === false || !row.pos) return false;
       const mesh = this._meshes && this._meshes.get(row.id);
       if (!mesh) return false;
-      const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
-      mesh.position.set(local.x, 0, local.z);
+      const warm = row.data?.warmFreighterHostMarkerId && row.data?.warmFreighterVisualPose;
+      if (warm) applyWarmFreighterDressingPose(mesh, row, this._frameMembrane);
+      else {
+        const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
+        mesh.position.set(local.x, 0, local.z);
+        mesh.rotation.y = -(row.rot || 0);
+      }
       // A table row under a sightline duck keeps its sink through this re-pose — the
       // occluder pass already ran this frame and will not write again until next frame.
       const occEntry = this._cameraOccluderState && this._cameraOccluderState.entries.get(row.id);
-      if (occEntry && occEntry.applied !== 0) mesh.position.y = -occEntry.applied;
-      mesh.rotation.y = -(row.rot || 0);
+      if (occEntry && occEntry.applied !== 0) mesh.position.y -= occEntry.applied;
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };
@@ -29232,6 +29285,37 @@ export const render = {
     return step.value;
   },
 
+  *_packOpeningSnapshotFenceSteps(simTime, poseEpoch) {
+    // The render loop can leave a loading-mode fence pack parked across frames.
+    // The fence has one writer cursor, so the opening publish must retire that
+    // iterator before it starts another pack and own the cursor until commit.
+    const pending = this._fencePackPending;
+    if (pending) {
+      closeCookStepsIter(pending.iter);
+      if (this._fencePackPending === pending) this._fencePackPending = null;
+    }
+    const packOwner = {};
+    this._openingFencePackOwner = packOwner;
+    try {
+      if (typeof packPresentationWorldToFenceSteps === 'function') {
+        return yield* packPresentationWorldToFenceSteps(
+          this._presentationWorld,
+          this._snapshotFence,
+          simTime,
+          poseEpoch,
+        );
+      }
+      return packPresentationWorldToFence(
+        this._presentationWorld,
+        this._snapshotFence,
+        simTime,
+        poseEpoch,
+      );
+    } finally {
+      if (this._openingFencePackOwner === packOwner) this._openingFencePackOwner = null;
+    }
+  },
+
   // Stepped twin: each settle pass (≤8 + final) pays the same leg chain — entity
   // sync, forced whole-scene compose, pool/shadow band, second compose — as one
   // atomic span. Yields split the legs so the async drives below pace them
@@ -29271,22 +29355,10 @@ export const render = {
     }
 
     if (this._snapshotFence && this._presentationWorld) {
-      let packed;
-      if (typeof packPresentationWorldToFenceSteps === 'function') {
-        packed = yield* packPresentationWorldToFenceSteps(
-          this._presentationWorld,
-          this._snapshotFence,
-          state && state.simTime,
-          this._advancePosePackEpoch(publication),
-        );
-      } else {
-        packed = packPresentationWorldToFence(
-          this._presentationWorld,
-          this._snapshotFence,
-          state && state.simTime,
-          this._advancePosePackEpoch(publication),
-        );
-      }
+      const packed = yield* this._packOpeningSnapshotFenceSteps(
+        state && state.simTime,
+        this._advancePosePackEpoch(publication),
+      );
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
       this._publishSnapshotFenceStats(packed);
     }
@@ -29858,7 +29930,7 @@ export const render = {
     }
   },
 
-  prepareFrame(alpha, frameDt, presentationFrame = null) {
+  prepareFrame(alpha, frameDt, presentationFrame = null, cameraFrameDt = frameDt) {
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
@@ -30085,7 +30157,7 @@ export const render = {
       const packWalletSpent = !livePosePack && !pendingPack
         && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
       if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
-          && !packFaulted && !packWalletSpent) {
+          && !this._openingFencePackOwner && !packFaulted && !packWalletSpent) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
             iter: !livePosePack && typeof packPresentationWorldToFenceSteps === 'function'
@@ -30155,7 +30227,8 @@ export const render = {
           this._fencePackPending = null;
         }
       } else if (packFaulted && snapshotNeedsPack && this._snapshotFence
-          && this._presentationWorld && this._fencePackDegradedEpoch !== packEpoch) {
+          && this._presentationWorld && !this._openingFencePackOwner
+          && this._fencePackDegradedEpoch !== packEpoch) {
         // A pose epoch whose pack is permanently faulted freezes every
         // interpolated pose world-wide — strictly worse than one atomic pack.
         // After ~1 s parked, run the sync twin ONCE per epoch, latched like
@@ -30218,8 +30291,18 @@ export const render = {
       this._activityFrame = null;
       this._activityFrameTick = null;
       if (this.state.render) this.state.render.activityFrame = null;
-    } else if (this._activityFrameTick !== activityTick
+    } else if ((this._activityFrameTick !== activityTick
+        && (this._activityFrame == null
+          || this._activityFrameTick == null
+          || activityTick < this._activityFrameTick
+          || activityTick - this._activityFrameTick >= 4
+          || this._activityFrameIndexVersion !== entityIndexVersion(this.state)
+          || this._activityFrameListLen !== (this.state.entityList ? this.state.entityList.length : -1)))
         || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
+      // Presentation-side reclassification of the mirrored state (the worker classifies
+      // authoritatively): rerun at most every 4 ticks unless membership changed.
+      this._activityFrameIndexVersion = entityIndexVersion(this.state);
+      this._activityFrameListLen = this.state.entityList ? this.state.entityList.length : -1;
       tryPresentedCall(this, 'activity-frame', () => {
         publishActivityFrame(this, getActivityFrame(this.state));
       });
@@ -30231,8 +30314,9 @@ export const render = {
     });
     const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
-      && this.state && this.state.mode === 'flight'
-      && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+      && this.state && ((holdLoadingGpu && this.state.render?.openingGraphPublicationFrozen === true)
+        || (this.state.mode === 'flight'
+          && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)));
     // No presentation path may hold poses while the sim keeps stepping. The kinetic crunch used to
     // do exactly that for 1–2 frames per heavy hit: every hull froze, the sim ran on underneath,
     // and the picture then snapped a frame or two forward — the player's own ship included. Weight
@@ -30242,7 +30326,7 @@ export const render = {
     // the hold would freeze syncEntityViews/camera/instance submission for the rest of the session.
     // Release it after a bounded grace so a missed latch degrades to one stale picture, not a
     // permanently frozen presentation.
-    if (holdOpeningPicture) {
+    if (holdOpeningPicture && !holdLoadingGpu) {
       const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
@@ -30270,7 +30354,8 @@ export const render = {
         this._snapshotPresentationSequence = this._snapshotFence.sequence;
       }
       this.syncEntityViews(alpha);
-      if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
+      if (this.state && this.state.render) this.state.render.interpolationAlpha = Number.isFinite(this._snapshotPresentationAlpha)
+        ? Math.max(0, Math.min(1, this._snapshotPresentationAlpha)) : alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
         // The player hull was just posed from the snapshot fence; hand the camera that exact
         // presented position so follow/lookahead/safe-rect never track a narrower sim-tick window
@@ -30281,7 +30366,7 @@ export const render = {
           ? pm.position
           : null;
         tryPresentedCall(this, 'camera-follow', () => {
-          this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
+          this.cam.follow(cameraFrameDt, alpha, presented, this._cameraClearanceAt);
           this._updateCameraOccluders(frameDt);
         });
       }
@@ -30327,6 +30412,9 @@ export const render = {
     // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
     tryPresentedCall(this, 'nocturne', () => this._nocturne?.prepare(frameDt, this.cam.obj,
       this._frameMembrane, this._meshes, !(this._marrowSpot && this._marrowSpot.intensity > 0)));
+    // DUST P3b — hero rim rake follows the presented player hull (no-op until flight).
+    tryPresentedCall(this, 'hero-rig', () => this._heroRig
+      && this._heroRig.update(this.state, frameDt, this._frameMembrane, this._meshes));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
@@ -30425,6 +30513,7 @@ export const render = {
 
   drawPreparedFrame() {
     if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
+    if (this._orientationResizePending && !this._orientationResizeReady) return false;
     // The DOM loading shell completely covers the canvas. Drawing the hidden world here used to
     // trigger the entire first texture/shader upload during a progress yield, freezing that shell
     // for 5-8 seconds on SwiftShader and low-end drivers.
@@ -30695,8 +30784,12 @@ export const render = {
           }
         }
         const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
+        // Census the leaves through the camera this frame submits with, not the plan's frozen
+        // cook-time frustum (see validateOpeningSubmissionReceipt).
+        const liveSubmissionCamera = openingSubmissionCamera(this.cam && this.cam.obj) || undefined;
         const preSubmitValidation = receipt
-          ? validateOpeningSubmissionReceipt(receipt, this.renderer)
+          ? validateOpeningSubmissionReceipt(receipt, this.renderer, null, null,
+            { camera: liveSubmissionCamera })
           : {
             ok: false,
             reason: 'missing-opening-submission-receipt',
@@ -30832,6 +30925,9 @@ export const render = {
                   const refreshed = validateOpeningSubmissionReceipt(
                     this.state.render.openingSubmissionReceipt,
                     this.renderer,
+                    null,
+                    null,
+                    { camera: liveSubmissionCamera },
                   );
                   stamped = refreshed.ok
                     ? refreshed
@@ -32466,7 +32562,8 @@ export const render = {
   },
 
   _shadowDepthEnabled() {
-    return this._shadowSettingOn === true || this._nocturne?.shadowConfigured === true;
+    return this._shadowSettingOn === true
+      || (this._nocturne?.shadowConfigured === true && this._nocturne?.shadowsEnabled === true);
   },
 
   _shadowDepthLight() {
@@ -32899,8 +32996,36 @@ export const render = {
   },
 
   _renderPostRoute(route, scene, camera, time = 0) {
+    if (this._orientationResizePending) {
+      if (!this._orientationResizeReady || scene !== this.scene) return false;
+      // Commit only at a real draw boundary: setSize clears the canvas and post targets.
+      // The same task must replace them with a complete scene, after the refill hold ends.
+      this._orientationResizeApplying = true;
+      try { this.onResize(); }
+      finally {
+        this._orientationResizeRelease?.();
+        this._orientationResizeRelease = null;
+        this._orientationResizeApplying = false;
+        this._orientationResizePending = null;
+        this._orientationResizeReady = false;
+      }
+    }
     // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
     if (scene === this.scene) this._nocturne?.flush(camera);
+    // Check the final light budget after flush and before any post-route world draw.
+    if (scene === this.scene && !rigidBatchDepthProvenOff(this, shadowCensusEpoch())) {
+      this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+    }
+    // Photo is a final presentation override: Nocturne's held world exposure must not replace
+    // the slider, and the slider must not advance or rewrite that world's adaptation state.
+    const photo = scene === this.scene && this.state?.render?.photoMode;
+    if (photo?.active === true && Number.isFinite(photo.exposure)) {
+      const options = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
+      options.exposure = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, photo.exposure));
+      if (this.bloom) this.bloom.setOptions(options);
+      if (this._renderGraph) this._renderGraph.setOptions(options);
+      if (this.renderer) this.renderer.toneMappingExposure = options.exposure;
+    }
     // All transform writes for the frame are complete before this dispatch. One explicit walk
     // here replaces the per-pass walk every renderer.render(scene, …) would otherwise repeat
     // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal
@@ -33113,31 +33238,144 @@ export const render = {
     );
   },
 
+  _installLivePackageCpuPayloads(scene) {
+    this._releaseLivePackageCpuPayloads?.();
+    const records = new Set();
+    this._livePackageCpuPayloads = records;
+    const retain = (boundary, root, contextRoots) => {
+      if (this._rendererResourcesDisposed || this.scene !== scene) return null;
+      let anchor = boundary;
+      while (anchor && anchor !== scene) {
+        if (anchor.userData?.rosterPrewarm != null) return null;
+        anchor = anchor.parent;
+      }
+      if (anchor !== scene) return null; // Speculative/cache-only roots have no live scene owner.
+      const entity = shadowPolicyEntityOf(boundary, this.state);
+      const identity = boundary.userData;
+      if (!entity || entity.alive === false
+          || (identity?.presentationEntityType != null && identity.presentationEntityType !== entity.type)
+          || (identity?.presentationOccupantGeneration != null
+            && identity.presentationOccupantGeneration !== entity.occupantGeneration)) return null;
+      const subjects = [...contextRoots];
+      const materials = subjects.filter(subject => subject?.isMaterial);
+      if (materials.length) subjects.push({ traverse(visit) { visit({ material: materials }); } });
+      const geometries = [...new Set([
+        ...collectStartupGeometries(subjects, { includeEmpty: true }),
+        ...subjects.filter(subject => subject?.isBufferGeometry),
+      ])];
+      const textures = collectStartupTextures(subjects);
+      const releaseGeometry = retainPackageGeometryCpu(geometries);
+      const releaseTextures = retainPresentedTextureLeases(textures);
+      // Acquire the successor before releasing an earlier claim on this exact root.
+      root[LIVE_PACKAGE_CPU_PAYLOAD]?.();
+      const record = { geometries, textures, release: null };
+      let liveRoot = root;
+      const release = () => {
+        if (!records.delete(record)) return;
+        release.unregisterOwner?.();
+        release.unregisterOwner = null;
+        releaseGeometry(); releaseTextures();
+        if (liveRoot?.[LIVE_PACKAGE_CPU_PAYLOAD] === release) delete liveRoot[LIVE_PACKAGE_CPU_PAYLOAD];
+        liveRoot = null;
+        record.geometries.length = 0;
+        record.textures.length = 0;
+      };
+      record.release = release;
+      records.add(record);
+      root[LIVE_PACKAGE_CPU_PAYLOAD] = release;
+      return release;
+    };
+    scene[LIVE_PACKAGE_CPU_PAYLOAD] = retain;
+    const releaseAll = () => {
+      for (const record of records) record.release();
+      if (scene[LIVE_PACKAGE_CPU_PAYLOAD] === retain) delete scene[LIVE_PACKAGE_CPU_PAYLOAD];
+      this._livePackageCpuPayloads = null;
+      if (this._releaseLivePackageCpuPayloads === releaseAll) this._releaseLivePackageCpuPayloads = null;
+    };
+    this._releaseLivePackageCpuPayloads = releaseAll;
+  },
+
   // Re-apply the drawing-buffer size (renderer + bloom + render-graph + LOD viewport) from the current
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
-    // Arm before setSize. Construction already recorded the class, so the phone's
-    // first rotation is a real flip. setSize can redraw before this function returns.
     const cssAspect = (typeof window !== 'undefined' && (window.innerWidth || 0) >= (window.innerHeight || 0))
       ? 'land' : 'port';
-    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect) {
-      noteOrientationDetachedHold(this.renderer);
+    let orientationResources = null;
+    const needsRefill = (resources) => resources.geometries.some(isPackageGeometryDetached)
+      || resources.textures.some(isPackageTextureDetached);
+    const aspectChanging = this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect;
+    if (!this._orientationResizeApplying && !this._orientationResizePending && aspectChanging) {
+      orientationResources = collectOrientationResizeResources(this.scene, this.cam?.obj, this.renderer, this.keyLight);
+      if (globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
+          || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bufferResizeDiag') === '1')) {
+        console.info('[render:live-package-cpu]', JSON.stringify(
+          measureLivePackageCpuPayloads(this._livePackageCpuPayloads || [])));
+      }
+    }
+    if (!this._orientationResizeApplying && (this._orientationResizePending
+        || (aspectChanging && needsRefill(orientationResources)))) {
+      // Preserve the last complete picture while the guard protects released hulls. Resizing
+      // now clears that picture, then presents a scene with those hulls deliberately hidden.
+      const canvas = this.renderer.domElement;
+      if (canvas?.style && typeof window !== 'undefined') {
+        canvas.style.width = `${window.innerWidth}px`;
+        canvas.style.height = `${window.innerHeight}px`;
+      }
+      if (!this._orientationResizePending) {
+        const renderer = this.renderer, generation = this._rendererGeneration;
+        const contextGeneration = this._contextRecovery?.generation || 0;
+        // Admissions can finish while this scene's refill walks its packages. Keep restored
+        // bytes alive until resize and draw run in the same task; cached offscreen packages
+        // are not a prerequisite for replacing the current picture.
+        const resources = orientationResources;
+        const releaseGeometry = retainPackageGeometryCpu(resources.geometries);
+        const releaseTextures = retainPresentedTextureLeases(resources.textures);
+        const release = () => { releaseGeometry(); releaseTextures(); };
+        this._orientationResizeRelease = release;
+        noteOrientationDetachedHold(this.renderer, resources);
+        const active = () => this.renderer === renderer && this._rendererGeneration === generation
+          && (this._contextRecovery?.generation || 0) === contextGeneration
+          && this._rendererResourcesDisposed !== true && this._contextLost !== true;
+        const retire = () => {
+          release();
+          if (this._orientationResizePending !== pending) return false;
+          this._orientationResizeRelease = null;
+          this._orientationResizePending = null;
+          this._orientationResizeReady = false;
+          return true;
+        };
+        const pending = queuePresentedDetachRehydrate(renderer, resources).then((receipt) => {
+          if (!active() || this._orientationResizePending !== pending) { retire(); return; }
+          if (receipt.errors?.length || receipt.geometryMismatches?.length || receipt.textureMismatches?.length) {
+            throw new Error(`Orientation package refill incomplete: ${JSON.stringify(receipt)}`);
+          }
+          this._orientationResizeReady = true;
+        }).catch((error) => {
+          if (!retire() || !active()) return;
+          laneWarn(this, 'orientationResize', '[render] orientation resize refill failed', error);
+        });
+        this._orientationResizePending = pending;
+      }
+      return this.renderer.getDrawingBufferSize(_drawSize);
     }
     const drawSize = applyRendererSize(this.renderer, this.state);
     // setSize can land a different class than the CSS viewport. Hold that flip
     // too. A same-aspect resize does not.
     const nextAspect = aspectClassFromSize(drawSize);
-    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
-      noteOrientationDetachedHold(this.renderer);
+    if (!this._orientationResizeApplying && this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
+      const resources = orientationResources || collectOrientationResizeResources(this.scene, this.cam?.obj, this.renderer, this.keyLight);
+      if (needsRefill(resources)) noteOrientationDetachedHold(this.renderer, resources);
     }
     this._drawBufferAspectClass = nextAspect;
     // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
     const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
       const disp = displayPixelFootprint();
-      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
       if (typeof this.bloom.setContentScale === 'function') this.bloom.setContentScale(dyn);
+      // Size/scale transitions publish active content before the display gate is reconciled.
+      // setSize reserves the post pool before opening admission; later Auto bands reuse it.
+      this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
     }
     if (this._renderGraph && this.state?.settings?.video?.renderGraph === true) {
       const video = this.state?.settings?.video || {};
@@ -33494,6 +33732,56 @@ function renderGraphDynResBlocked(state) {
   return qualityModeForVideo(video) === 'auto' || video.dynamicResolution === true;
 }
 
+function collectOrientationResizeResources(scene, camera, renderer, keyLight) {
+  // An aspect flip replaces the current picture. Hidden scene branches and empty pools have
+  // no draw in that picture; their normal admission owner still refills them when they activate.
+  // Keep startup's broader future-use census intact and scope only this resize hold.
+  const visible = { traverse(visit) {
+    if (typeof scene?.traverseVisible === 'function') scene.traverseVisible(visit);
+    else scene?.traverse?.(visit);
+  } };
+  let frustum = null, shadowFrustum = null;
+  try {
+    if (camera?.isPerspectiveCamera === true && typeof camera.clone === 'function'
+        && camera.projectionMatrix && camera.matrixWorldInverse) {
+      // createChaseCamera receives globalThis.window and onResize uses this exact CSS ratio.
+      // Other projection adapters have no predicted resize contract here, so retain all draws.
+      const width = Number(globalThis.window?.innerWidth), height = Number(globalThis.window?.innerHeight);
+      if (!(width > 0 && height > 0 && Number.isFinite(width) && Number.isFinite(height))) {
+        throw new Error('Pending camera viewport is unavailable');
+      }
+      const resized = camera.clone(false);
+      resized.aspect = width / height;
+      resized.updateProjectionMatrix();
+      frustum = new THREE.Frustum().setFromProjectionMatrix(
+        new THREE.Matrix4().multiplyMatrices(resized.projectionMatrix, camera.matrixWorldInverse),
+      );
+    }
+    const shadowCamera = renderer?.shadowMap?.enabled === true && keyLight?.castShadow === true
+      ? keyLight.shadow?.camera : null;
+    if (shadowCamera?.projectionMatrix && shadowCamera.matrixWorldInverse) {
+      shadowFrustum = new THREE.Frustum().setFromProjectionMatrix(
+        new THREE.Matrix4().multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse),
+      );
+    }
+  } catch { /* An uncertain projection cannot exclude an authored draw. */ }
+  const drawables = collectStartupGeometryDrawables(visible).filter(drawable => {
+    if (!frustum || drawable.frustumCulled === false) return true;
+    try {
+      if (frustum.intersectsObject(drawable)) return true;
+      if (drawable.castShadow === true && renderer?.shadowMap?.enabled === true) {
+        return !shadowFrustum || shadowFrustum.intersectsObject(drawable);
+      }
+      return false;
+    } catch { return true; } // Missing bounds stay protected by the refill hold.
+  });
+  const subjects = { traverse(visit) { for (const drawable of drawables) visit(drawable); } };
+  return {
+    geometries: [...new Set(drawables.map(drawable => drawable.geometry))],
+    textures: collectStartupTextures(subjects),
+  };
+}
+
 function aspectClassFromSize(size) {
   return size.x >= size.y ? 'land' : 'port';
 }
@@ -33527,7 +33815,7 @@ function applyRendererSize(renderer, state) {
 
 // The display's native pixel footprint: CSS viewport × devicePixelRatio. This is the size the
 // browser upscales the drawing buffer to — the CAS gate (src/render/cas.js) compares the actual
-// drawing buffer against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
+// active content against it, so a renderScale/dynRes/cap-reduced frame sharpens and a full-res
 // or supersampled one does not. Reuses _drawSize-style module state; _applySize can run per
 // frame under the dynamic-resolution controller, so this must not allocate.
 const _displayFootprint = { x: 0, y: 0 };
@@ -33900,7 +34188,10 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
 }
 
 export function disposeObjectNode(c, state = null) {
+  releaseStaticBatchGeometryForObject(c);
   if (!c) return false;
+  try { c[LIVE_PACKAGE_CPU_PAYLOAD]?.(); }
+  catch (error) { stormWarn('teardown:liveCpuPayload', '[render] live CPU payload release failed', error); }
   const heldLight = c.isLight === true;
   // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
   // object would stay pinned by the registry Set otherwise.

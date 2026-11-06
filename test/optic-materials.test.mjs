@@ -94,13 +94,15 @@ test('the three live kinds produce measurably different body materials', () => {
   assert.ok(metal.envMapIntensity >= 1.5, 'a mirror must ride the reflection environment');
   assert.equal(metal.transmission || 0, 0);
 
-  // diamond — the prism: transmissive glass, the only kind that lets light through.
-  assert.ok(diamond.transmission >= 0.6, `diamond transmission ${diamond.transmission} must read as glass`);
+  // diamond — the prism: reflective alpha glass, the only live kind that lets light through.
+  assert.equal(diamond.transmission, 0, 'ordinary prism avoids a full-scene refraction pass');
+  assert.equal(diamond.transparent, true);
+  assert.ok(diamond.opacity <= 0.70, `diamond opacity ${diamond.opacity} keeps its internal facets visible`);
   assert.ok(diamond.isMeshPhysicalMaterial, 'the prism uses the physical material path');
 
   // Pairwise gaps a stranger can see without numbers: matte-vs-polished and clear-vs-solid.
   assert.ok(stone.roughness - metal.roughness >= 0.5, 'matte vs mirror must be unmissable');
-  assert.ok((diamond.transmission || 0) - (stone.transmission || 0) >= 0.6, 'clear vs opaque must be unmissable');
+  assert.ok(stone.opacity - diamond.opacity >= 0.29, 'prism remains translucent beside opaque stone');
   assert.ok((diamond.emissiveIntensity || 0) > (stone.emissiveIntensity || 0),
     'the charged prism carries a whisper of light the absorber does not');
 });
@@ -109,8 +111,8 @@ test('spent prism is measurably dead beside the live diamond', () => {
   const live = opticCellBodyMaterial('diamond');
   const spent = opticCellBodyMaterial('spent');
   assert.notEqual(live, spent);
-  assert.ok(live.transmission - spent.transmission >= 0.4,
-    `spent must darken: live ${live.transmission} vs spent ${spent.transmission}`);
+  assert.ok(spent.opacity - live.opacity >= 0.17,
+    `spent must thicken: live ${live.opacity} vs spent ${spent.opacity}`);
   assert.ok(luminance(spent) < luminance(live) * 0.6,
     `spent color must be visibly darker (${luminance(spent).toFixed(3)} vs ${luminance(live).toFixed(3)})`);
   assert.ok(spent.emissiveIntensity < live.emissiveIntensity * 0.5,

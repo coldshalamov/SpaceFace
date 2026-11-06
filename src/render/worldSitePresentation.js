@@ -41,11 +41,25 @@ export function installWorldSitePresentation(root, entity, { THREE_NS = THREE } 
     });
     const mount = new THREE_NS.Group();
     mount.name = `WorldSitePresentation_${spec.id}`;
+    // Optional authored-space height places a light at the tip of an existing beacon;
+    // its work sensor remains at the original socket and is not a physical collider.
+    if (Number.isFinite(spec.height)) mount.position.y = Math.max(-24, Math.min(24, spec.height));
     mount.userData.worldSitePresentationOwned = true;
     mount.userData.animated = true;
     const mesh = new THREE_NS.Mesh(geometry, material);
     mesh.name = `WorldSiteFixture_${spec.id}`;
     mesh.userData.worldSitePresentationFixtureId = spec.id;
+    // The lamp belongs to the presented root but its work belongs to a live, separate
+    // component. Keep the owner lifetime, never a recyclable component entity id.
+    if (spec.componentId && entity.data?.worldSiteId && entity.data?.role === 'world_site_root') {
+      mesh.userData.worldSiteFixtureTarget = {
+        owner: entity,
+        ownerGeneration: entity.occupantGeneration,
+        siteId: entity.data.worldSiteId,
+        worldObjectId: entity.data.worldObjectId,
+        componentId: spec.componentId,
+      };
+    }
     mesh.renderOrder = 3;
     mount.add(mesh);
     socket.add(mount);
