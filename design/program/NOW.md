@@ -96,6 +96,22 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
   sheet + Brood family surface rows (hue, silhouette, mass, protection layers, tell,
   debut wave). Lane S can render the bestiary/HUD identity straight off it; the S1
   fodder band and the sheet agree by test.
+- **S7 tasks 2–3 (in tree, uncommitted):** sheet stat overrides apply at materialization
+  through `applySwarmFeelSpec` (`spec.data.swarmCharacter` + `spec.data.ai.swarmTellFloor`
+  stamps — Lane S reads both). Shared-file hunks claimed, all gated on the cohort flag:
+  `src/ai/combatDoctrine.js` (`SWARM_TELL_FLOOR_TICKS=36`, `cueTicksFor(record)`,
+  `record.swarmTellFloor`, floored cue-age checks — inert for unmarked hulls),
+  `src/systems/aiPorts.js` (`swarmTellFloor` flatten next to `swarmLastStand`),
+  `src/ui/hud.js` (additive `DOCTRINE_TELL_BY_KIND`/`_HINT`/`_ICON` rows for the swarm
+  cue kinds `pack_call`/`wake_mines`/`field_spool`/`sensor_ghost`/`detonator_fuse` —
+  inert for un-emitted kinds), `src/data/swarmMode.js`
+  (`SWARM_PACK_PURSUIT_IDS` drops `choir_zealot` so its authored `escort_screen`
+  runs in Swarm — the ward is the nearest packmate), `src/data/swarmSpecialists.js`
+  (`windupTicks` 30→36, the 0.6 s tell floor). The reaver pack call now reads
+  `data.reinforcements` inside `survivalWave` (the live-route single writer — the
+  legacy ai.js consumer is dead under sg06-tactical): the caller telegraphs
+  `pack_call`, Wasps ride the ordinary stream through a lit gate with `data.calledBy`,
+  and the caller's death scatters them through the authored `forceFlee` egress.
 
 <!-- Lane 5 WORLD (master plan) — active claims, 2026-11-06 -->
 ## Lane 5 WORLD — master-plan campaign W1 (doc phase)
@@ -103,3 +119,22 @@ Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf'
 | Work | Owner | Exact write set | Note |
 |---|---|---|---|
 | W1 the Journey (diagnosis + inventory + Journey doc) | Lane 5 | NEW `finish/campaigns/W1/*` (DIAGNOSIS.md, inventory/*, JOURNEY.md, STATUS.md), append-only section in this file | Doc phase stops for owner approval before any src/ edit. No Swarm files, no lane-4 progression files. |
+
+<!-- Lane 2 SIM CORE (master plan) — active claims, 2026-11-06 -->
+## Lane 2 SIM CORE — master-plan campaigns E3 → E2 → E4
+
+Lane 2 of `finish/MASTER_PLAN.md` is active. Diagnosis memo:
+`finish/campaigns/E3/DIAGNOSIS.md`.
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| E3 mode-scoped simulation + simulation LOD | Lane 2 | `src/runtime/authoritativeSystemManifest.js`, `src/core/catchupPolicy.js`, `src/world/activityRuntime.js`, `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`, `finish/campaigns/E3/*` | **COMPLETE** (2026-11-06). 220 systems mapped with 0 violations; pre-partitioned mode queues; unified simulation LOD telemetry. Verification: `finish/campaigns/E3/VERIFY.md`. |
+| E2 the simulation hot path | Lane 2 | worker per-system profiler, batched impact buffer (`physics` / `combat` / `collisionConsequences`), physics shape, entity indices, telemetry off hot path, `finish/campaigns/E2/*` | active next |
+| E4 data-oriented core | Lane 2 | SoA entity store + facade migration, snapshot buffer alignment with Lane 1, `finish/campaigns/E4/*` | after E2 |
+
+<!-- Lane 6 LOOK & SOUND (master plan) — active claims, 2026-11-06 -->
+## Lane 6 LOOK & SOUND — master-plan campaigns X1 → X2 → X4 → X3 → X5
+
+Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/X1/DIAGNOSIS.md`,
+`finish/campaigns/X3/DIAGNOSIS.md`, `finish/campaigns/X4/DIAGNOSIS.md`,
+`finish/campaigns/X5/DIAGNOSIS.md`. X2 is gated on the owner approving X1's lineup.

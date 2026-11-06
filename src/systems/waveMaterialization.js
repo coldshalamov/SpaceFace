@@ -15,6 +15,7 @@ import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
+import { swarmCharacterFor } from '../data/swarmCharacter.js';
 import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
@@ -235,6 +236,30 @@ export function applySwarmFeelSpec(spec, enemyId, feel) {
     spec.armorHp = feel.fodder.armor;
     spec.armorMax = feel.fodder.armor;
     spec.armorFlat = 0;
+  }
+  // S7 task 2 — the character sheet's body numbers land through the same profile gate:
+  // radius, mass and the doctrine cruise are the sheet's, never the adventure def's, so a
+  // dart reads fast and a wall reads heavy. Silhouette/hue/scale ride the data stamp for
+  // Lane S; abilityId/tellId name the behaviour the doctrine and tell owners already own.
+  const row = swarmCharacterFor(enemyId);
+  if (row) {
+    spec.radius = row.radius;
+    spec.mass = row.mass;
+    spec.maxSpeed = row.speed;
+    if (Number.isFinite(spec.combatSpeed) && spec.combatSpeed > row.speed) {
+      spec.combatSpeed = row.speed;
+    }
+    spec.data.swarmCharacter = {
+      silhouette: row.silhouette,
+      scale: row.scale,
+      hue: row.hue,
+      tier: row.tier,
+      abilityId: row.abilityId,
+      tellId: row.tellId,
+    };
+    // S7 — cohort telegraphs hold the 0.6 s tell floor: the doctrine executor reads the
+    // flattened flag and stretches every cue beat it owns for this hull only.
+    if (spec.data.ai && typeof spec.data.ai === 'object') spec.data.ai.swarmTellFloor = true;
   }
   return spec;
 }
