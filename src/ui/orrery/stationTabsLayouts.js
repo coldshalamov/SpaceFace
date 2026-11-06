@@ -2158,6 +2158,18 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
   ${D} .sx-talk__keys { display:none !important; }
 }
+/* Industry fab-chain at 651–1100 × ≤640: the short-body tuck above parks the product's
+   "1 · REFINED METALS per run" with translate(136px), which fits a wider reading but at
+   801–960-wide the stage is only ~429–553px — the unit hangs ~33–60px past stage right under
+   NEEDS REFINERY / Iron Ore / REFINE. Keep it within the stage width and below the reason/action block, with enough
+   separation for its multiline route button. The unit may wrap inside its own column. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(72px, -20px) !important; width:auto !important; max-width:38% !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
+}
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
    takes the whole first row; the standing keeps the right corner of the name's row, under the
