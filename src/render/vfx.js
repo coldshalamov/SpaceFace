@@ -60,6 +60,21 @@ import {
   ARRIVAL_BRAKE_LIFE_S,
   ARRIVAL_STREAK_LIFE_S,
 } from './arrivalRead.js';
+import {
+  SEEKER_TELL_COLOR_OTHER,
+  SEEKER_TELL_COLOR_YOU,
+  SEEKER_TELL_GAIN_OTHER,
+  SEEKER_TELL_GAIN_YOU,
+  SEEKER_TELL_LIFE_S,
+  SEEKER_TELL_MAX_ACTIVE,
+  SEEKER_TELL_MAX_RANGE_WU,
+  SEEKER_TELL_REDUCED_PERIOD_MUL,
+  seekerTellHuntsPlayer,
+  seekerTellLit,
+  seekerTellOfProjectile,
+  seekerTellPhase,
+  seekerTellSizes,
+} from './seekerTell.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
@@ -128,6 +143,19 @@ import {
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
 import { isMortalBlowContact, resolveMortalBlowPlan } from './vfx/mortalBlowRead.js';
+import {
+  isSurvivorEjectMoment,
+  SURVIVOR_EJECT_CUE_ID,
+  SURVIVOR_EJECT_FLARE_PLAN,
+  SURVIVOR_EJECT_PRIORITY,
+} from './vfx/survivorEjectRead.js';
+import {
+  isBroodBurstMoment,
+  broodBurstHue,
+  broodBurstPlan,
+  BROOD_BURST_PRIORITY,
+} from './vfx/broodBurstRead.js';
+import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
@@ -332,6 +360,23 @@ import {
   salvageLampLive,
   writeSalvageLampQuads,
 } from './salvageLamp.js';
+import {
+  resolveStormCrossingBeat,
+  stormStaticTickPlan,
+  STORM_STATIC_CADENCE_HZ,
+  STORM_STATIC_REDUCED_CADENCE_HZ,
+} from './hazardStormRead.js';
+import { resolveStormDepartureBeat } from './stormDepartureRead.js';
+import { resolveHullDustWakePlan } from './hullDustWake.js';
+import {
+  gateEmergenceArm,
+  gateEmergenceTickPlan,
+} from './gateEmergenceRead.js';
+import {
+  createStormZoneGeometry,
+  resolveStormZonePlans,
+  writeStormZoneGeometry,
+} from './stormZoneField.js';
 import {
   APRON_FLOOD_MAX_RANGE_WU,
   APRON_FLOOD_STATION_CAP,
@@ -622,7 +667,7 @@ function loadKestrelThrusterTextures() {
 }
 
 // ---- pool caps by particle-quality setting (spec: low/med/high -> 1500/3000/4000) ----
-const PARTICLE_CAP = { low: 1500, med: 3000, medium: 3000, high: 4000 };
+const PARTICLE_CAP = { low: 1500, med: 2000, medium: 2000, high: 4000 };
 const PARTICLE_POSITION = 0;
 const PARTICLE_COLOR = 1;
 const PARTICLE_SIZE = 2;
@@ -994,6 +1039,7 @@ const VFX_PROJECTILE_TRAILS_HZ = 45;
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
 // Row 493: the held-key preview re-plans this often; between plans its rings follow their bodies.
 const VFX_POWER_PREVIEW_HZ = 15;
+const VFX_FIELD_GEOM_HZ = 30;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -1153,6 +1199,7 @@ function emptyVfxSubsystemDiag() {
     npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
     ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
     lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
+    seekerTell: 0,      // a guided round's pursuit lamp — which tracers are hunting you
   };
 }
 
@@ -1381,6 +1428,13 @@ export const vfx = {
       reducedFlash: false,
       lowQuality: false,
       qualityTier: 'high',
+    };
+    // Fleet jets share one budget; the player's separate plasma stream keeps its chosen tier.
+    this._fleetThrusterA11y = {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: true,
+      qualityTier: 'low',
     };
     this._productionThrusterOpts = {
       boost: 0,
@@ -1691,6 +1745,10 @@ export const vfx = {
     this._overlayQuartetTetherPhase = null;
     this._overlayQuartetTetherTargetId = null;
     this._overlayQuartetGhostRef = null;
+    // inf-storm-crossing: live zone families on the player hull (zoneType -> intensity) and
+    // the sustained-static tick latch, both presentation-local scratch.
+    this._stormPresence = {};
+    this._stormStaticLastStep = null;
     this._seamMarkersWereRelevant = false;
     // Quiet settled flight: irrelevant seam path used to re-walk asteroids +
     // commitDynamicBufferOwner(0) every tick. Latch after first sleep; clear on
@@ -1963,6 +2021,7 @@ export const vfx = {
     this._masslineLatchRim = null;
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
+    disposeVfxRoot(this._stormZones && this._stormZones.mesh, disposeState);
     disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
     disposeVfxRoot(this._apronFlood && this._apronFlood.mesh, disposeState);
     disposeVfxRoot(this._salvageLamp && this._salvageLamp.mesh, disposeState);
@@ -2088,6 +2147,9 @@ export const vfx = {
     this._dockApproach = null;
     this._apronFlood = null;
     this._salvageLamp = null;
+    this._stormPresence = {};
+    this._stormStaticLastStep = null;
+    this._stormZones = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -2428,6 +2490,7 @@ export const vfx = {
     this._initMonofilamentBlade();
     this._initDockingCradle();
     this._initDockApproach();
+    this._initStormZones();
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
@@ -2868,9 +2931,27 @@ export const vfx = {
     add('salvage:cutComplete', (p) => this._onSalvageCutComplete(p));
     add('salvage:completed', (p) => this._onSalvageCompleted(p));
     add('mining:yield', (p) => this._onMiningYield(p));
+    // inf-storm-crossing: the hazard boundary answers on the hull — the sim already publishes
+    // hazard:enter/exit with zone type and intensity; the picture finally reads them.
+    add('hazard:enter', (p) => this._onHazardBoundary(p, true));
+    add('hazard:exit', (p) => this._onHazardBoundary(p, false));
+    // inf-gate-emergence: the far gate answers the crossing — the throat you were spat out
+    // of rebounds. A sector enter without a jump clears any stale arm first (jump:arrive
+    // arms after its own enterSector, so the arrival read always wins).
+    add('sector:enter', () => this._resetGateEmergence());
+    add('jump:arrive', (p) => this._onJumpArriveGateEmergence(p));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
+    // inf-brood-burst-read: a brood bomb's death blast finally reads. The engine has
+    // carried the swarm:broodBurst receipt (pos, radius, familyId, strain) since the
+    // burst families landed — the shove was always real — but no render path subscribed,
+    // so a cyst's spore burst or a volatile pop went off invisibly. broodBurstRead owns
+    // the plan; the sprites ride the normal admission and flash accessibility.
+    add('swarm:broodBurst', (p) => this._onBroodBurst(p));
+    // inf-mayday-flare: a mayday starts here — the pod tearing clear of a killed crew reads
+    // on the glass, not just in the speaker.
+    add('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
     add('station:broadcastTic', (p) => {
@@ -3363,6 +3444,7 @@ export const vfx = {
   },
 
   _clearWorldTransientMatter() {
+    this._clearSeekerTells();
     // A new world can reuse the same scene-local coordinates while the sim is paused. Retire
     // the CPU residents and publish empty draws immediately; waiting for their ordinary lifetime
     // would show the previous world's sparks, smoke and debris over the new scene.
@@ -8028,9 +8110,12 @@ export const vfx = {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         if (!row || (readout.stationId != null ? row.stationId !== readout.stationId : row.proxyId !== readout.proxyId)) continue;
-        const station = state.entities?.get?.(row.entityId);
-        if (!station || station.alive === false
-          || (row.generation != null && station.occupantGeneration !== row.generation)) continue;
+        // Liveness/generation gating applies only to rows that NAME their station entity — the
+        // same guard shape the capture/berthed readers use. An anonymous diagnostics row must
+        // still bind its pad: a proxy-less readout silently nulls the whole cradle engagement.
+        const station = row.entityId != null ? state.entities?.get?.(row.entityId) : null;
+        if (row.entityId != null && (!station || station.alive === false
+          || (row.generation != null && station.occupantGeneration !== row.generation))) continue;
         proxy = row;
         break;
       }
@@ -8083,6 +8168,210 @@ export const vfx = {
     dc.mesh.geometry.attributes.color.needsUpdate = true;
     dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
     dc.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // inf-storm-crossing — the hazard storm reads on the hull. The sim damages you every tick
+  // inside a zone and publishes hazard:enter/exit plus state.world.hazardPresence; until now
+  // the picture was silent about all of it, so the storm that was killing you was invisible.
+  // Crossing the boundary plays a charge beat around the hull (a pooled event light keyed by
+  // the bite at the line); riding the storm keeps a sparse deterministic static crawling the
+  // hull at the sustained cadence; leaving it sheds one last discharge flicker drifting off
+  // the hull (inf-storm-departure, thinner and slower than the entry charge). Colors are per
+  // hazard family (radiation chartreuse, nebula violet, debris slate); reduced motion thins
+  // the static and halves the beats, never to zero.
+  // -------------------------------------------------------------------------
+  _onHazardBoundary(p, entering) {
+    const state = this.state;
+    if (!state || !p || p.entityId == null) return;
+    // Only the player's own hull reads the boundary; NPC zone traffic stays unhurried.
+    if (p.entityId !== state.playerId) return;
+    const zoneType = String(p.zoneType || '');
+    if (!zoneType) return;
+    if (!entering) {
+      const hadPresence = this._stormPresence && this._stormPresence[zoneType] != null;
+      if (this._stormPresence) delete this._stormPresence[zoneType];
+      // inf-storm-departure: leaving the zone sheds — one last discharge flicker of the
+      // zone's own hue drifting OFF the hull, thinner and slower than the entry charge.
+      // The sustained static stops with the presence flag; the shed is the goodbye.
+      if (!this._scene) return;
+      const shedPlayer = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+      if (!shedPlayer || shedPlayer.alive === false || !shedPlayer.pos) return;
+      const shedAccess = resolveVfxAccessibilityProfile(state && state.settings);
+      const shedReduced = shedAccess.id.includes('motion');
+      const shedSimTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const shed = resolveStormDepartureBeat(p, shedSimTime, shedReduced);
+      if (!shed) return;
+      const shedR = Math.max(4, shedPlayer.radius || 6);
+      this._c0.set(shed.colorHex); this._c1.set(shed.colorHex);
+      for (let k = 0; k < shed.angles.length; k++) {
+        const a = shed.angles[k];
+        this._spawnParticle(
+          shedPlayer.pos.x + Math.cos(a) * shedR * 1.05,
+          shedPlayer.pos.z + Math.sin(a) * shedR * 1.05,
+          Math.cos(a) * shed.shedSpeed, Math.sin(a) * shed.shedSpeed,
+          shed.lifeS, 1.4, 0.2, this._c0, this._c1, 1.4, 0.5, 0, a, 1.6,
+        );
+      }
+      if (shedAccess.eventLightPeakScale > 0 && hadPresence) {
+        this._eventLight({ x: shedPlayer.pos.x, z: shedPlayer.pos.z }, 'impact', {
+          severity: shed.lightSeverity,
+          color: shed.colorHex,
+          peakMul: 0.45 + shed.intensity * 0.3,
+        });
+      }
+      return;
+    }
+    const intensity = Math.max(0, Math.min(1, Number(p.intensity) || 0));
+    this._stormPresence = this._stormPresence || {};
+    this._stormPresence[zoneType] = intensity;
+    if (!this._scene) return;
+    const player = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+    if (!player || player.alive === false || !player.pos) return;
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const beat = resolveStormCrossingBeat(p, simTime, reduced);
+    if (!beat) return;
+    const r = Math.max(4, player.radius || 6);
+    for (let k = 0; k < beat.angles.length; k++) {
+      const a = beat.angles[k];
+      const speed = 13 + beat.intensity * 15;
+      this._c0.set(beat.colorHex); this._c1.set(beat.colorHex);
+      this._spawnParticle(
+        player.pos.x + Math.cos(a) * r * 0.9, player.pos.z + Math.sin(a) * r * 0.9,
+        Math.cos(a) * speed, Math.sin(a) * speed,
+        0.28 + beat.intensity * 0.22, 1.7, 0.3, this._c0, this._c1, 2.2, 0.5, 0, a, 2.4,
+      );
+    }
+    if (accessibility.eventLightPeakScale > 0) {
+      this._eventLight({ x: player.pos.x, z: player.pos.z }, 'impact', {
+        severity: beat.lightSeverity,
+        color: beat.colorHex,
+        peakMul: 0.7 + beat.intensity * 0.5,
+      });
+    }
+  },
+
+  _updateStormRead() {
+    const state = this.state;
+    const presence = this._stormPresence;
+    const types = presence ? Object.keys(presence) : [];
+    if (!types.length) {
+      this._stormStaticLastStep = null;
+      return false;
+    }
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (!player || player.alive === false || !player.pos || (player.flags && player.flags.docked)) {
+      return false;
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entry = stormStaticTickPlan(
+      simTime, types, presence,
+      reduced ? STORM_STATIC_REDUCED_CADENCE_HZ : STORM_STATIC_CADENCE_HZ,
+      this._stormStaticLastStep,
+    );
+    if (!entry) return true;
+    this._stormStaticLastStep = entry.step;
+    const plan = entry.plan;
+    const r = Math.max(4, player.radius || 6);
+    for (let k = 0; k < plan.count; k++) {
+      const a = plan.angle + k * 2.4;
+      const jitter = 0.85 + 0.3 * (((plan.seed >>> (k * 5 + 3)) % 16) / 16);
+      this._c0.set(plan.colorHex); this._c1.set(plan.colorHex);
+      this._spawnParticle(
+        player.pos.x + Math.cos(a) * r * jitter, player.pos.z + Math.sin(a) * r * jitter,
+        Math.cos(a) * plan.speed, Math.sin(a) * plan.speed,
+        0.34, 1.15, 0.2, this._c0, this._c1, 1.6, 0.6, 0, a, 1.8,
+      );
+    }
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // inf-storm-body — a hazard zone's own skin. The sim stamps every live zone (type, center,
+  // radius, intensity) on activeSector.hazards each tick; this adapter binds the pure quad
+  // field to one additive mesh and lets the live intensity own the density, so a boss-defeat
+  // aftermath thins its storm on screen without any event wiring. Reduced motion slows the
+  // churn; the skin stays lit — a hazard you cannot see is worse than one that sits still.
+  // -------------------------------------------------------------------------
+  _initStormZones() {
+    if (!this._scene) return;
+    const scratch = createStormZoneGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-storm-zones';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._stormZones = { mesh, scratch };
+  },
+
+  _updateStormZones() {
+    const sz = this._stormZones;
+    if (!sz) return false;
+    const state = this.state;
+    const hazards = state && state.world && state.world.activeSector
+      && state.world.activeSector.hazards;
+    if (!Array.isArray(hazards) || !hazards.length) {
+      if (sz.mesh.visible) {
+        sz.mesh.visible = false;
+        sz.mesh.material.opacity = 0;
+        sz.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const focus = (state.camera && state.camera.focus) || (player && player.pos) || { x: 0, z: 0 };
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reducedMotion = accessibility.id.includes('motion');
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const plans = resolveStormZonePlans(hazards, focus, simTime);
+    const geometry = writeStormZoneGeometry(sz.scratch, plans, simTime, reducedMotion, 0.22);
+    if (!(geometry.indexCount > 0)) {
+      if (sz.mesh.visible) {
+        sz.mesh.visible = false;
+        sz.mesh.material.opacity = 0;
+        sz.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = geometry.positions;
+    for (let vertex = 0; vertex < (geometry.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    sz.mesh.geometry.setDrawRange(0, geometry.indexCount);
+    sz.mesh.geometry.attributes.position.needsUpdate = true;
+    sz.mesh.geometry.attributes.color.needsUpdate = true;
+    sz.mesh.material.opacity = Math.min(0.62, 0.5 * accessibility.flashOpacityScale);
+    sz.mesh.visible = true;
     return true;
   },
 
@@ -8432,6 +8721,132 @@ export const vfx = {
   _engineWashContact: null,
   _engineWashPayload: null,
 
+  // inf-hull-dust-wake — the drift sheet's dust answers the hull. The sector wind moves the
+  // ambient sheet (inf-belt-wind), but the biggest moving thing in the belt combed nothing:
+  // open the throttle and the world stayed a painting. Now a hull past cruise leaves a wake —
+  // sparse grains in the sector palette's own dust tint, combed off the flanks, trailing the
+  // hull and shearing away downwind on the same wind the sheet rides. Reads the palette the
+  // drift sheet already consumes plus the hull's published vel/maxSpeed; the emission tick
+  // rides floor(simTime * cadence) so frame rate cannot stack grains and a frozen sim freezes
+  // the wake mid-flight. Reduced motion thins the cadence, never to zero.
+  _updateHullDustWake() {
+    const state = this.state;
+    if (!state) return false;
+    const palette = state.render && state.render.sectorPalette;
+    if (!palette) return false;
+    const player = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+    if (!player || player.alive === false || !player.pos || !player.vel) return false;
+    if (player.flags && player.flags.docked) return false;
+    const vx = Number.isFinite(player.vel.x) ? player.vel.x : 0;
+    const vz = Number.isFinite(player.vel.z) ? player.vel.z : 0;
+    if (vx === 0 && vz === 0) return false;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const reduced = accessibility.id.includes('motion');
+    const plan = resolveHullDustWakePlan({
+      velX: vx, velZ: vz,
+      maxSpeed: player.maxSpeed,
+      palette, simTime, reducedMotion: reduced,
+      lastStep: this._hullDustWakeLastStep,
+    });
+    if (!plan) return false;
+    this._hullDustWakeLastStep = plan.step;
+    const r = Math.max(4, player.radius || 6);
+    const heading = Math.atan2(vz, vx);
+    const cosH = Math.cos(heading);
+    const sinH = Math.sin(heading);
+    this._c0.set(plan.dustHex); this._c1.set(plan.dustHex);
+    for (const grain of plan.grains) {
+      // Spawn at the flank (perpendicular to travel), a step behind the nose — the comb.
+      const sx = player.pos.x + (-sinH) * grain.lateral * r * 0.6 - cosH * r * 0.6;
+      const sz = player.pos.z + (cosH) * grain.lateral * r * 0.6 - sinH * r * 0.6;
+      this._spawnParticle(
+        sx, sz,
+        grain.vx * grain.speedMul, grain.vz * grain.speedMul,
+        plan.lifeS, 1.4, 0.25, this._c0, this._c1, 1.2, 0.4, 0, heading, 1.8,
+      );
+    }
+    return true;
+  },
+
+  // inf-gate-emergence — the far gate answers the crossing. jump:arrive only killed the
+  // departure pulse; the gate you emerged from played nothing, so the crossing's far stage
+  // was silent. Now the arrival gate (the nearest data.isGate entity within the emergence
+  // radius of the payload's toPos — a drive jump emerges in open space, no gate answers)
+  // plays a 0.5 s rebound + 1.2 s settle: discharge ring batches shedding outward from the
+  // throat on the door's own ion hue, violet for a wormhole, plus one pooled light at the
+  // rebound. Transform-free: the gate mesh stays owned by infrastructureMotion. Reduced
+  // motion thins the rings, never to zero; a frozen sim freezes the rebound with the world.
+  _onJumpArriveGateEmergence(p) {
+    const state = this.state;
+    if (!state || !p || !p.toPos) { this._resetGateEmergence(); return; }
+    const ents = state.entities;
+    const gates = [];
+    if (ents && typeof ents.forEach === 'function') {
+      ents.forEach((ent) => {
+        if (!ent || !ent.data || ent.data.isGate !== true || !ent.pos
+          || !Number.isFinite(ent.pos.x) || !Number.isFinite(ent.pos.z)) return;
+        if (ent.data.sectorId && p.sectorId && ent.data.sectorId !== p.sectorId) return;
+        gates.push({
+          id: ent.id,
+          pos: ent.pos,
+          wormhole: ent.data.isWormhole === true,
+          throatR: Number.isFinite(ent.data.dockRadius) ? ent.data.dockRadius
+            : (Number.isFinite(ent.radius) ? ent.radius * 2 : 70),
+        });
+      });
+    }
+    const accessibility = resolveVfxAccessibilityProfile(state && state.settings);
+    const arm = gateEmergenceArm(
+      p, gates,
+      Number.isFinite(state.simTime) ? state.simTime : 0,
+    );
+    this._gateEmergenceReduced = accessibility.id.includes('motion');
+    this._gateEmergenceLastStep = null;
+    if (!arm) { this._gateEmergence = null; return; }
+    arm.throatR = gates.length ? gates[0].throatR : 70;
+    // Match the arm's gate to its entity throat radius (resolveGateEmergenceGate picked it).
+    for (const g of gates) {
+      if (String(g.id) === arm.gateId) { arm.throatR = g.throatR; break; }
+    }
+    this._gateEmergence = arm;
+    if (this._scene && accessibility.eventLightPeakScale > 0) {
+      this._eventLight({ x: arm.x, z: arm.z }, 'impact', {
+        severity: 'contact',
+        color: arm.hue,
+        peakMul: arm.wormhole ? 1.1 : 0.9,
+      });
+    }
+  },
+
+  _updateGateEmergence() {
+    const arm = this._gateEmergence;
+    if (!arm) return false;
+    const state = this.state;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const plan = gateEmergenceTickPlan(
+      arm, simTime, this._gateEmergenceReduced === true, this._gateEmergenceLastStep,
+    );
+    if (!plan) return false;
+    this._gateEmergenceLastStep = plan.step;
+    const throatR = Number.isFinite(arm.throatR) && arm.throatR > 0 ? arm.throatR : 70;
+    this._c0.set(plan.hue); this._c1.set(plan.hue);
+    const r0 = throatR * plan.radiusU;
+    for (const a of plan.angles) {
+      this._spawnParticle(
+        plan.x + Math.cos(a) * r0, plan.z + Math.sin(a) * r0,
+        Math.cos(a) * plan.radialSpeed, Math.sin(a) * plan.radialSpeed,
+        plan.lifeS, 1.6, 0.3, this._c0, this._c1, 1.1, 0.6, 0, a, 2.0,
+      );
+    }
+    return true;
+  },
+
+  _resetGateEmergence() {
+    this._gateEmergence = null;
+    this._gateEmergenceLastStep = null;
+  },
+
   _updateEngineWash() {
     const gas = this._suppressBreakupGas ? null : this._gas;
     const state = this.state;
@@ -8442,6 +8857,7 @@ export const vfx = {
     // nozzles draw with, so the wash can never burn harder than the bell it belongs to.
     const ships = indexedShipLikeScan(state);
     const candidates = this._engineWashCandidates || (this._engineWashCandidates = []);
+    const drives = this._engineWashDrives || (this._engineWashDrives = new Float64Array(8));
     candidates.length = 0;
     for (const e of ships) {
       if (!e || (e.type !== 'ship' && e.type !== 'drone') || e.alive === false
@@ -8451,12 +8867,23 @@ export const vfx = {
       } else if (e.flags?.docked || !npcPropulsionVisible(state, e, this._scene)) continue;
       const drive = this._engineDriveFor(e, this._engineWashDriveScratch ||= {}).drive;
       if (!(drive > 0.3)) continue; // below the resolver's own floor: skip the surface walk too
+      drives[candidates.length] = drive; // copy now: the drive read refills one shared scratch
       candidates.push(e);
       if (candidates.length >= 8) break;
     }
     if (candidates.length === 0) return false;
     const slots = this._engineWashSlots || (this._engineWashSlots = new Map());
     if (slots.size > 48) slots.clear(); // bounded: an id churn burst resets the cadence book
+    const active = this._engineWashActive || (this._engineWashActive = new Uint8Array(8));
+    let activeCount = 0;
+    for (let c = 0; c < candidates.length; c++) {
+      const shipId = candidates[c].id != null ? candidates[c].id : c;
+      active[c] = slots.get(shipId) !== slot && shouldEmitEngineWash(drives[c], slot, shipId) ? 1 : 0;
+      activeCount += active[c];
+    }
+    // Keep the original first-eight admission order. A ship that already washed must not
+    // be replaced by a ninth ship, but it no longer needs another surface walk this slot.
+    if (activeCount === 0) return false;
     const surfaces = this._engineWashSurface || (this._engineWashSurface = { pos: { x: 0, z: 0 }, radius: 0, kind: 'rock' });
     const contact = this._engineWashContact || (this._engineWashContact = {});
     const payload = this._engineWashPayload || (this._engineWashPayload = {});
@@ -8475,8 +8902,9 @@ export const vfx = {
         if (!ENGINE_WASH_SURFACE_KINDS.includes(kind)) continue;
         const surfR = Math.max(2, Number(surf.radius) || 10);
         for (let c = 0; c < candidates.length; c++) {
+          if (!active[c]) continue;
           const ship = candidates[c];
-          const drive = this._engineDriveFor(ship, this._engineWashDriveScratch ||= {}).drive;
+          const drive = drives[c];
           const dx = surf.pos.x - ship.pos.x, dz = surf.pos.z - ship.pos.z;
           const range = ENGINE_WASH_RANGE_WU + ship.radius * 2;
           if (dx * dx + dz * dz > range * range) continue;
@@ -8485,9 +8913,9 @@ export const vfx = {
           const wash = resolveEngineWashContact(ship, drive, surfaces, contact);
           if (!wash.hit) continue;
           const shipId = ship.id != null ? ship.id : c;
-          if (slots.get(shipId) === slot) continue; // this slot already washed
-          if (!shouldEmitEngineWash(drive, slot, shipId)) continue;
           slots.set(shipId, slot);
+          active[c] = 0;
+          activeCount--;
           engineWashEmitPayload(wash, shipId, slot, payload);
           gas.emitFractureDust({
             ...payload,
@@ -8497,6 +8925,7 @@ export const vfx = {
             occluderRadius: surfR * 0.9,
           });
           emitted += 1;
+          if (activeCount === 0) return true;
         }
       }
     }
@@ -9625,8 +10054,14 @@ export const vfx = {
     if (!pos) return;
     const source = this._ent(p.chunkId ?? p.id);
     const crystal = (p.material || source?.data?.material) === 'crystal';
+    // inf-sac-death-voice: a Hive spawn sac is the room's win lever — its death takes the
+    // tide with it — yet it died an anonymous rock's death: the same grey cleavage and the
+    // default-ore flash as every barren stone. hiveSacRead re-voices the break in the
+    // Hive's own acid green; the fracture stays physical (a sac is meat on rock).
+    const sacVoice = isHiveSacBody(source) ? HIVE_SAC_VOICE : null;
     const materialId = crystal ? 'ice' : 'rock';
-    const col = crystal ? '#d8f6ff' : oreColor(p.commodityId || p.typeId);
+    const col = sacVoice ? sacVoice.lightColor
+      : (crystal ? '#d8f6ff' : oreColor(p.commodityId || p.typeId));
     // IMPACTS: brittle failure. A rock does not explode -- it opens conchoidal cleavage planes in
     // sequence, cold, with the dust lagging behind them. No ignition, no reward firework.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
@@ -9669,11 +10104,73 @@ export const vfx = {
       });
     }
     this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'shatter', color: col });
+    // The sac's own two-beat burst layered over the ordinary shatter: the membrane's
+    // white-green tear, the acid breath over the corpse, and the lit star that outlives
+    // the tear so the read survives the flash. Ordinary rocks never play these.
+    if (sacVoice) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, sacVoice.tear.life, sacVoice.tear.size0,
+        sacVoice.tear.size1, sacVoice.tear.op0, 0.0, sacVoice.tear.color,
+        (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
+      this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, sacVoice.vent.life, sacVoice.vent.size0,
+        sacVoice.vent.size1, sacVoice.vent.op0, 0.0, sacVoice.vent.color,
+        (Math.random() - 0.5) * sacVoice.vent.drift, (Math.random() - 0.5) * sacVoice.vent.drift);
+      this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, sacVoice.star.life, sacVoice.star.size0,
+        sacVoice.star.size1, sacVoice.star.op0, 0.0, sacVoice.star.color, 0, 0);
+    }
     this._emitJuiceCue(
       chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
       { pos },
       chunked ? 0.8 : 1.2,
     );
+  },
+
+  // inf-mayday-flare: a survivor pod tearing clear of a killed crew — one white retro
+  // flash, a cold vent whiff from the torn mount, and the beacon's first full-power shout
+  // (the lamp-red star that keeps burning after the flash dies). survivorEjectRead owns the
+  // plan and the gate: only a causal eject plays; a rematerialized player pod re-emits its
+  // event on every sector re-entry, and a re-entry is not an ejection. The light rides the
+  // director's tell/mayday row so the pool owns admission and the a11y profile owns the peak.
+  _onSurvivorPodEjected(p) {
+    if (!isSurvivorEjectMoment(p)) return;
+    const pod = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = pod && pod.pos;
+    if (!this._scene || !pos) return;
+    const plan = SURVIVOR_EJECT_FLARE_PLAN;
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.flash.life, plan.flash.size0,
+      plan.flash.size1, plan.flash.op0, plan.flash.op1, plan.flash.color, 0, 0, 1, null,
+      SURVIVOR_EJECT_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.vent.life, plan.vent.size0,
+      plan.vent.size1, plan.vent.op0, plan.vent.op1, plan.vent.color,
+      (Math.random() - 0.5) * plan.vent.drift, (Math.random() - 0.5) * plan.vent.drift);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, plan.star.op1, plan.star.color, 0, 0, 1, null,
+      SURVIVOR_EJECT_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'tell', { severity: 'mayday' });
+    this._emitJuiceCue(SURVIVOR_EJECT_CUE_ID, { pos }, 0.9);
+  },
+
+  // inf-brood-burst-read: the bomb's death plays where the receipt says it went off.
+  // flash is the white-hot core in the family's own hue pushed hot, vent is the
+  // family-coloured gas drifting out over the blast's reach, and the star outlives the
+  // flash — the shove the whole pack felt. The event light rides the explosion/beat row
+  // in the family hue, reach-keyed. No juice cue: swarmJuice already speaks the kill,
+  // and cue-count contracts stay frozen.
+  _onBroodBurst(p) {
+    if (!isBroodBurstMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const plan = broodBurstPlan(p.radius, broodBurstHue(p.familyId, p.strain));
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.flash.life, plan.flash.size0,
+      plan.flash.size1, plan.flash.op0, 0.0, plan.flash.color, 0, 0, 1, null,
+      BROOD_BURST_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.vent.life, plan.vent.size0,
+      plan.vent.size1, plan.vent.op0, 0.0, plan.vent.color,
+      (Math.random() - 0.5) * plan.vent.drift, (Math.random() - 0.5) * plan.vent.drift,
+      1, null, BROOD_BURST_PRIORITY);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, 0.0, plan.star.color, 0, 0, 1, null,
+      BROOD_BURST_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'explosion',
+      { severity: plan.light.severity, color: plan.vent.color, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {
@@ -10095,7 +10592,15 @@ export const vfx = {
       if (!this._fieldFlowRelevant()) return;
       this._initFieldGeometry();
     }
-    if (this._fieldGeom) return this._fieldGeom.update(dt, this.state);
+    if (this._fieldGeom) {
+      // 30 Hz is enough for swept-surface growth; accumulated dt keeps envelopes in time.
+      // Only a steady, already-live field is throttled; wake/retire transitions run every frame.
+      const live = this._fieldGeomLast && this._fieldGeomLast.surfaces > 0 && this._fieldFlowRelevant();
+      const step = live ? this._consumeCadence('_cadenceFieldGeom', dt, VFX_FIELD_GEOM_HZ) : dt;
+      if (!live) this._cadenceFieldGeom = 0;
+      if (!live || step > 0) this._fieldGeomLast = this._fieldGeom.update(step, this.state);
+      return this._fieldGeomLast;
+    }
   },
 
   // Gyre Snare presentation: the published state.gyreSnare mirror owns existence —
@@ -10350,6 +10855,9 @@ export const vfx = {
       // (quiet latch). Soft-GPU fps not claimed.
       sub.projectileTrails = 0;
     }
+    // Seeker tell (inf-seeker-tell): guided rounds wear a pursuit lamp so a furball names which
+    // tracers are hunting you. Reads the same cached projectile candidates the trails lane uses.
+    sub.seekerTell = this._emitSeekerTells(dt) ? 1 : 0;
     if (this._miningBeamActive()) {
       this._updateMiningBeam(dt);
       sub.miningBeam = 1;
@@ -10368,9 +10876,17 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    // inf-storm-crossing: sustained hull static while a hazard storm works the hull.
+    sub.stormRead = this._updateStormRead(dt) ? 1 : 0;
+    // inf-storm-body: the hazard zones' own skin, density keyed to live intensity.
+    sub.stormZones = this._updateStormZones() ? 1 : 0;
     sub.apronFlood = this._updateApronFlood() ? 1 : 0;
     sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
+    // inf-hull-dust-wake: the hull combs the drift sheet's dust in cruise, shearing downwind.
+    sub.hullDustWake = this._updateHullDustWake() ? 1 : 0;
+    // inf-gate-emergence: the far gate's rebound after a gate arrival.
+    sub.gateEmergence = this._updateGateEmergence() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
@@ -11860,6 +12376,11 @@ export const vfx = {
       }
     }
     const plumeOpts = { boost: 0.4, a11y };
+    const fleetPlumes = new Set();
+    const fleetPlumeOpts = { boost: 0.4, a11y: {
+      reducedMotion: a11y.reducedMotion, reducedFlash: a11y.reducedFlash,
+      lowQuality: true, qualityTier: 'low',
+    } };
     let plumes = 0;
     const seen = new Set();
     const livePlumes = [];
@@ -11868,13 +12389,16 @@ export const vfx = {
     if(energy.latchNine?.plume)livePlumes.push(energy.latchNine.plume);
     if (energy.fleet && Array.isArray(energy.fleet.families)) {
       for (const family of energy.fleet.families) {
-        if (family && family.plume) livePlumes.push(family.plume);
+        if (family && family.plume) {
+          livePlumes.push(family.plume);
+          fleetPlumes.add(family.plume);
+        }
       }
     }
     for (const plume of livePlumes) {
       if (!plume || seen.has(plume) || typeof plume.update !== 'function') continue;
       seen.add(plume);
-      plume.update(dt, 1, sockets, plumeOpts);
+      plume.update(dt, 1, sockets, fleetPlumes.has(plume) ? fleetPlumeOpts : plumeOpts);
       plumes += 1;
     }
     const liveRcs = [];
@@ -12269,7 +12793,10 @@ export const vfx = {
     const ceresActive = energy.ceresWorkfleet?.update(this.state, dt, a11y) || 0;
     const latchActive=energy.latchNine?.update(this.state,dt,a11y)||0;
     const fleet = energy.fleet;
-    fleet.beginFrame(a11y);
+    const fleetA11y = this._fleetThrusterA11y;
+    fleetA11y.reducedMotion = a11y.reducedMotion;
+    fleetA11y.reducedFlash = a11y.reducedFlash;
+    fleet.beginFrame(fleetA11y);
 
     // Retention-safe two-phase (no per-frame arrays / closures):
     // 1) retainShip every eligible survivor by entityId (player first)
@@ -14083,6 +14610,111 @@ export const vfx = {
       this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
       this._projectileFrameLook || (this._projectileFrameLook = { x: 0, z: 0 }),
     );
+  },
+
+  // Seeker tell (inf-seeker-tell): a guided round (data.kind 'missile' — stamped iff
+  // tracking 'homing' — with turnRate > 0) carries a hard pursuit blinker, red-orange when it
+  // hunts the pilot, amber when it hunts anyone else; dumb tracers stay cold. The decision is
+  // pure (seekerTell.js, headless-tested); this adapter owns the per-round emit cadence, the
+  // readability band, and the sprite pool. Sprites age on the presentation clock, so a frozen
+  // sim freezes the lamp.
+  _seekerTellNext: null,
+  _seekerTellStamp: 0,
+
+  _retireSeekerTell(entry) {
+    const sprite = entry.sprite;
+    if (sprite && sprite.alive && sprite.admissionSerial === entry.serial
+      && this._spr[entry.slot] === sprite) {
+      this._retireSprite(entry.slot);
+      if (this._liveSpriteCount === 0) this._integrateSprites(0);
+    }
+    entry.sprite = null;
+  },
+
+  _clearSeekerTells() {
+    if (!this._seekerTellNext) return;
+    this._seekerTellRetireEach ||= (entry) => this._retireSeekerTell(entry);
+    this._seekerTellNext.forEach(this._seekerTellRetireEach);
+    this._seekerTellNext.clear();
+  },
+
+  _emitSeekerTells(dt) {
+    if (!this._scene) return false;
+    if (this._projectileTrailsQuietEmpty && !this._seekerTellNext?.size
+      && !this._projectileTrailsQuietMaybeAwake()) return false;
+    this._refreshProjectileCandidates();
+    const list = this._projectileCandidates;
+    if (!list.length) {
+      this._clearSeekerTells();
+      return false;
+    }
+    const state = this.state;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (this._t || 0);
+    const reduced = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const flashReduced = !!(state.settings?.accessibility?.flashReduce || state.settings?.video?.flashReduce);
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    if (player?.alive === false || !Number.isFinite(px) || !Number.isFinite(pz)) { this._clearSeekerTells(); return false; }
+    const next = this._seekerTellNext || (this._seekerTellNext = new Map());
+    const stamp = (this._seekerTellStamp = (this._seekerTellStamp + 1) >>> 0);
+    const range2 = SEEKER_TELL_MAX_RANGE_WU * SEEKER_TELL_MAX_RANGE_WU;
+    const sizes = this._seekerTellSizesScratch || (this._seekerTellSizesScratch = {});
+    let retained = 0, anyLit = false;
+    // Existing indexed candidates only; no second entity census. The two bounded passes admit
+    // player-seeking rounds first, and allocate a cadence record only once per projectile life.
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'projectile' || !e.pos || this._ent(e.id) !== e) continue;
+      const data = e.data;
+      const read = seekerTellOfProjectile(data);
+      if (!read) continue;
+      const huntsYou = seekerTellHuntsPlayer(data, state.playerId, player.occupantGeneration);
+      if (huntsYou !== (pass === 0)) continue;
+      const dx = px - e.pos.x, dz = pz - e.pos.z;
+      if (dx * dx + dz * dz > range2) continue;
+      if (retained++ >= SEEKER_TELL_MAX_ACTIVE) continue;
+      let entry = next.get(e.id);
+      if (entry && (entry.entity !== e || entry.generation !== e.occupantGeneration)) {
+        this._retireSeekerTell(entry);
+        next.delete(e.id); entry = null;
+      }
+      if (!entry) {
+        entry = { entity: e, generation: e.occupantGeneration, phase: seekerTellPhase(e.id),
+          sprite: null, slot: -1, serial: -1, stamp };
+        next.set(e.id, entry);
+      }
+      entry.stamp = stamp;
+      if (entry.huntsYou !== huntsYou || entry.reduced !== reduced || entry.flashReduced !== flashReduced) {
+        this._retireSeekerTell(entry);
+        entry.huntsYou = huntsYou; entry.reduced = reduced; entry.flashReduced = flashReduced;
+      }
+      if (!seekerTellLit(e.id, simTime, reduced, flashReduced, entry.phase)) {
+        this._retireSeekerTell(entry); continue;
+      }
+      let sprite = entry.sprite;
+      if (!sprite || !sprite.alive || sprite.admissionSerial !== entry.serial) {
+        seekerTellSizes(e.radius, sizes);
+        sprite = this._spawnSprite(SPR_FLASH, e.pos.x, 0.35, e.pos.z,
+          SEEKER_TELL_LIFE_S * (reduced ? SEEKER_TELL_REDUCED_PERIOD_MUL : 1),
+          sizes.size0, sizes.size1, huntsYou ? SEEKER_TELL_GAIN_YOU : SEEKER_TELL_GAIN_OTHER, 0,
+          huntsYou ? SEEKER_TELL_COLOR_YOU : SEEKER_TELL_COLOR_OTHER, 0, 0, 1, 0);
+        if (!sprite) continue;
+        entry.sprite = sprite;
+        entry.serial = sprite.admissionSerial;
+        entry.slot = this._activeSprites[this._liveSpriteCount - 1];
+      }
+      // Attach to the current projectile pose, not a launch-time position or extrapolated aim.
+      const local = this._toLocalXZ(e.pos.x, e.pos.z, this._spawnLocalXZ);
+      sprite.x = local.x; sprite.z = local.z;
+      if (flashReduced) sprite.age = 0;
+      anyLit = true;
+    }
+    this._seekerTellCullEach ||= (entry, id) => {
+      if (entry.stamp !== this._seekerTellStamp) { this._retireSeekerTell(entry); this._seekerTellNext.delete(id); }
+    };
+    next.forEach(this._seekerTellCullEach);
+    return anyLit;
   },
 
   _emitProjectileTrails(dt) {

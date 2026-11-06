@@ -719,6 +719,48 @@ export async function settleWhileProgressing(promise, baseMs, options = {}) {
   }
 }
 
+// Sliding deadline for multi-step admissions that cannot be wrapped in one promise (the
+// first-flight actor admission checks its deadline between sub-steps and from a timer). Same
+// policy as settleWhileProgressing: the base deadline is unchanged, so normal-speed hosts behave
+// exactly as before; once it passes, each check that sees new progress (a linked program, an
+// uploaded texture/geometry, or a finished sub-step) slides the deadline one window forward, up
+// to one more base budget. No progress within a window still fails at the base deadline (or
+// within one window of it).
+export function createProgressDeadline(baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const startedAt = Number.isFinite(options.startedAt) ? options.startedAt : now();
+  const base = Math.max(1, Number(baseMs) || 1);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? base) || 0);
+  const baseDeadline = startedAt + base;
+  const hardDeadline = baseDeadline + capMs;
+  let deadline = baseDeadline;
+  let mark = progress();
+  return {
+    get deadline() { return deadline; },
+    get extendedMs() { return deadline - baseDeadline; },
+    remainingMs() { return deadline - now(); },
+    /** True when the admission may continue; false once it has expired without progress. */
+    check() {
+      const t = now();
+      if (t < deadline) return true;
+      if (t >= hardDeadline) return false;
+      const next = progress();
+      const advanced = next !== mark;
+      mark = next;
+      const nextDeadline = Math.min(hardDeadline, t + windowMs);
+      if (!advanced || nextDeadline <= deadline) return false;
+      deadline = nextDeadline;
+      return true;
+    },
+  };
+}
+
+export function renderWorkProgressMark(render) {
+  return linkedProgramCount(render);
+}
+
 // The link reporter already records driver failures. Read that result rather than issuing
 // another synchronous shader query or replacing an incompatible shader with a loading timeout.
 export function assertMobileOpeningGraphicsHealthy(render) {

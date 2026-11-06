@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c",
+    "authoritativeHash": "26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b",
     "authoritativeHashByReloadAt": {
-      "60": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c",
-      "600": "30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c"
+      "60": "26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b",
+      "600": "26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -287,10 +287,6 @@
     "Tick720/reload60 player position (2917.172852,358.997406)->(873.155212,121.119652); velocity (272.799438,30.792490)->(48.880264,-0.075229); yaw0.113411->-0.001539. This is a deliberate motion change.",
     "With the slower trajectory, the same17 fires produce17 hits/damage instead of10; cue and cueApplied counts14->21. All seven former surviving projectiles now hit; entity count17->10. Tether attach4/break129 and boost121/181 are unchanged.",
     "The paired authoritative delta is confined to motion/aim, projectile lifecycle, target shield, propulsion energy/heat, wreck worldRecordId and native bodies. No economy, mission, story, settings, input-tape or scenario-contract fields changed.",
-    "Current canonical reload60 and reload600 snapshots have the same26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b hash. The exact seed47,720 ticks,input tape,event families,bounds,five-run minimum and reload-equivalence checks remain enforced.",
-    "2026-11-05 Lantern Ward save-version migration: controller f71edbfc and integrated8cf0034e, seed47/tick720/V3 reload60 and reload600. Full canonical snapshots differ only at $.meta.version22->23; no fields added or removed.",
-    "All720 per-step entity motion/vitals frames, full existing event/combat traces, metrics and final native bodies match. A current-runtime control loading only f71 src/data/saveVersion.js reproduces the prior complete snapshot and telemetry.",
-    "Prior authoritative hash: 26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b. Version23 hash: 30b35458d74d3acdea176872b647d0624fc71992f5cea50aadfb7d81e4900b6c.",
-    "Exact source/capture hashes and semantic-diff evidence: docs/validation/lantern-ward/evidence/merged-baseline-diagnosis.json. Input tape, scenario, physics owner, event counts/families, acceptance bounds and five-run requirement are unchanged."
+    "Current canonical reload60 and reload600 snapshots have the same26f47b219803ed86bdf8f02bee0294990ffa697b40e3171609a415964a25596b hash. The exact seed47,720 ticks,input tape,event families,bounds,five-run minimum and reload-equivalence checks remain enforced."
   ]
 }

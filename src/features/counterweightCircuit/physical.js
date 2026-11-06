@@ -383,7 +383,9 @@ export function createCircuitPhysical(ctx) {
     const result = {bodyId:body?.id, bodyGeneration:body?.occupantGeneration,
       receiverId:receiver?.id, receiverGeneration:receiver?.occupantGeneration,
       inside:false, entered:false, contact:false, supportContact:false, supportWitness:false,
-      supportGapWu:null, supportContactAgeS:null, relativeSpeed:Infinity, stable:false};
+      supportGapWu:null, supportContactAgeS:null, relativeSpeed:Infinity, stable:false,
+      handlingSupported:false, relativeVelocity:null, relativeSpin:null,
+      speedLimit:null, spinLimit:null, firstUnmet:null};
     if (!nativeReady(body) || !nativeReady(receiver) || byIdentity(body.data?.worldRecordId)!==body
       || byIdentity(receiver.data?.worldRecordId)!==receiver) return result;
     const bounds=cradleFit(receiver.radius), footprint=receiverFootprint(body,receiver);
@@ -405,14 +407,21 @@ export function createCircuitPhysical(ctx) {
     result.supportContact=live.some(c=>c.targetPrimitiveId==='rear_spine' || c.targetPrimitiveId?.startsWith('depth_keeper_'));
     if (result.supportContact) mem.supportAt=state.simTime;
     const dx=body.pos.x-receiver.pos.x,dz=body.pos.z-receiver.pos.z,w=finite(receiver.angVel);
-    result.relativeSpeed=Math.hypot(body.vel.x-receiver.vel.x+w*dz,body.vel.z-receiver.vel.z-w*dx);
+    result.relativeVelocity={x:body.vel.x-receiver.vel.x+w*dz,z:body.vel.z-receiver.vel.z-w*dx};
+    result.relativeSpeed=Math.hypot(result.relativeVelocity.x,result.relativeVelocity.z);
     const age=mem.supportAt==null?Infinity:Math.max(0,state.simTime-mem.supportAt);
     const gap=receiverSupportGap(bounds,footprint);
     result.supportGapWu=gap;result.supportContactAgeS=Number.isFinite(age)?age:null;
     result.supportWitness=result.supportContact || (age<=(zone.supportWitnessS??1.5)
       && gap<=(zone.supportGapWu??.15) && result.relativeSpeed<=(zone.settleSpeedWu??.5));
-    result.stable=result.inside && result.entered && result.supportWitness && result.relativeSpeed<=maxSpeed
-      && Math.abs(finite(body.angVel)-w)<=(zone.maxSpinRad??.25);
+    result.relativeSpin=Math.abs(finite(body.angVel)-w);
+    result.speedLimit=maxSpeed;result.spinLimit=zone.maxSpinRad??.25;
+    // This IS the acceptance predicate, in its original short-circuit order.
+    // Presentation consumes this verdict rather than rechecking approximate geometry.
+    result.firstUnmet=!result.inside?'inside':!result.entered?'mouth':!result.supportWitness?'support'
+      :!(result.relativeSpeed<=maxSpeed)?'speed':!(result.relativeSpin<=result.spinLimit)?'spin':null;
+    result.stable=result.firstUnmet===null;
+    result.handlingSupported=true;
     return result;
   }
 

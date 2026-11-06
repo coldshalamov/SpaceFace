@@ -12,9 +12,9 @@
 //             the PMREM rig say "this reflects". No ore veins — veins are the
 //             valuable-mineral language, not the mirror language.
 //   diamond — a clear prism: a stretched octahedral shard in MeshPhysicalMaterial
-//             transmission glass with pale internal facet inclusions and a faint
+//             environment-alpha glass with pale internal facet inclusions and a faint
 //             iridescent film — the splitter reads as optics, not neon.
-//   spent   — the same prism burned dark: smoky low-transmission glass, no
+//   spent   — the same prism burned dark: smoky alpha glass, no
 //             iridescence, no internal glints. A discharged cell must read dead
 //             at the same glance that reads the live one as charged.
 //
@@ -173,10 +173,10 @@ function buildOpticMetalMaterial() {
 }
 
 function buildOpticDiamondMaterial() {
-  // The live prism: transmissive glass with pale internal absorption and a whisper
+  // The live prism: reflective alpha glass with pale internal facets and a whisper
   // of iridescent film — the "splits light" tell without glow-spam. A faint cool
   // emissive marks it charged; spent turns both off.
-  return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(0xecfaff),
     roughness: 0.05,
     metalness: 0.0,
@@ -194,13 +194,23 @@ function buildOpticDiamondMaterial() {
     emissiveIntensity: 0.16,
     envMapIntensity: 1.2,
     flatShading: true,
-  }), SHARED_MATERIAL_ROLE.GLASS);
+  });
+  material.userData.spacefaceTransmissionBudget = {
+    family: 'optic-diamond', strategy: 'environment-alpha',
+    original: { transmission: material.transmission, opacity: material.opacity,
+      transparent: material.transparent, depthWrite: material.depthWrite },
+  };
+  material.transmission = 0;
+  material.opacity = Math.min(material.opacity, 0.70);
+  material.transparent = true;
+  material.depthWrite = false;
+  return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.GLASS);
 }
 
 function buildOpticSpentMaterial() {
-  // Burned-out glass: same prism family, but smoky and lightless — transmission drops,
-  // absorption shortens, the cool emissive and the film are gone. Reads dead, not hidden.
-  return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
+  // Burned-out glass: same prism family, but smoky and lightless — alpha thickens,
+  // the cool emissive and the film are gone. Reads dead, not hidden.
+  const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(0x222c37),
     roughness: 0.46,
     metalness: 0.0,
@@ -216,7 +226,17 @@ function buildOpticSpentMaterial() {
     emissiveIntensity: 0.05,
     envMapIntensity: 0.55,
     flatShading: true,
-  }), SHARED_MATERIAL_ROLE.GLASS);
+  });
+  material.userData.spacefaceTransmissionBudget = {
+    family: 'optic-spent', strategy: 'environment-alpha',
+    original: { transmission: material.transmission, opacity: material.opacity,
+      transparent: material.transparent, depthWrite: material.depthWrite },
+  };
+  material.transmission = 0;
+  material.opacity = Math.min(material.opacity, 0.88);
+  material.transparent = true;
+  material.depthWrite = false;
+  return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.GLASS);
 }
 
 /**

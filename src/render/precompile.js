@@ -32,6 +32,7 @@ import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { compileScenePipelinesForRenderTarget } from './bloom.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
+import { beginRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -952,7 +953,7 @@ function beginDirectionalShadowWarm(renderer, scene) {
   };
 }
 
-async function prepareDirectionalShadowPipelineVariant(
+export async function prepareDirectionalShadowPipelineVariant(
   renderer, scene, subject, preparePipelines, beforePrepare = null,
 ) {
   const shadowMap = renderer && renderer.shadowMap;
@@ -972,10 +973,14 @@ async function prepareDirectionalShadowPipelineVariant(
     if (!addedPipelineOwners) {
       return { skipped: true, reason: 'directional shadow variant already active' };
     }
-    subject.updateMatrixWorld(true);
-    await preparePipelines(subject);
-    return { skipped: false, reason: 'new pipeline owners admitted under active directional shadows' };
+    const endRigidBatchShadowWarm = beginRigidBatchShadowWarm(renderer);
+    try {
+      subject.updateMatrixWorld(true);
+      await preparePipelines(subject);
+      return { skipped: false, reason: 'new pipeline owners admitted under active directional shadows' };
+    } finally { endRigidBatchShadowWarm(); }
   }
+  const endRigidBatchShadowWarm = beginRigidBatchShadowWarm(renderer);
   try {
     shadowMap.enabled = true;
     keyLight.castShadow = true;
@@ -984,9 +989,11 @@ async function prepareDirectionalShadowPipelineVariant(
     await preparePipelines(subject);
     return { skipped: false };
   } finally {
-    shadowMap.enabled = previousEnabled;
-    keyLight.castShadow = previousCastShadow;
-    noteShadowCensusLightMutation();
+    try {
+      shadowMap.enabled = previousEnabled;
+      keyLight.castShadow = previousCastShadow;
+      noteShadowCensusLightMutation();
+    } finally { endRigidBatchShadowWarm(); }
   }
 }
 

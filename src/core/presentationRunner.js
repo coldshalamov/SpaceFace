@@ -1135,7 +1135,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     lastPresentedMoment = presentedMoment;
     presentationFrame.sequence++;
     presentationFrame.frameDt = frameDt;
-    if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
+    if (state && state.render) {
+      const presentMs = frameDt * 1000;
+      state.render.lastPresentDtMs = presentMs;
+      // Smoothed cadence of THIS host: heavy-admission gates judge a frame "late" against it, so a
+      // steady 50 ms machine still admits models instead of deferring every beat (pop-in).
+      if (Number.isFinite(presentMs) && presentMs > 0 && presentMs < 1000) {
+        const prior = state.render.presentDtBaselineMs;
+        state.render.presentDtBaselineMs = Number.isFinite(prior) ? prior + (presentMs - prior) * 0.05 : presentMs;
+      }
+    }
     presentationFrame.alpha = alpha;
     presentationFrame.lifecycleState = lifecycleState;
     presentationFrame.lifecycleGeneration = lifecycleGeneration;

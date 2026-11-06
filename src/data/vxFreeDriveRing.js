@@ -26,19 +26,46 @@
 // rides the cone's west flank: at z -490 the wedge's west edge sits near x 654 and the anvil's
 // west edge near x 698, a ~40 wu slot that is inside the cone's tail during surge. Entering it
 // in the calm window is the ring's committed line; riding it during the surge is the honest
-// price of mistiming — the field drags you at the anvil, not through it.
+// price of mistiming — the field shoves south toward the anvil, not through it.
 
 export const VX_FREE_DRIVE_SECTOR_ID = 'sector_helios_prime';
+
+// Public yard navigation, like the nearby Outer Yard Derelict: no hidden/story gate. The fix
+// rides the first existing ghost buoy, clear of the solid Mouth. Its runtimeOwner makes this
+// an identity row, not an extra physical body or a paid exploration/completion site.
+export const VX_FREE_DRIVE_POI = Object.freeze({
+  id: 'poi_helios_cracker_run',
+  type: 'beacon',
+  name: 'Cracker Run',
+  pos: Object.freeze({ x: 1060, z: 40 }),
+  runtimeOwner: 'vxFreeDriveRing',
+  chartNote: 'Stripped ore berth for unscored free flying; no start to trigger. This fix is the outer entry buoy. Round the solid Mouth gantry, then follow buoys north between the ribs. Fly the loop or bring a load on the Line. The low road south of the Helios Claim Cracker avoids its southward shove; its warning precedes the surge. Wait for calm before the narrow anvil thread.',
+});
+
+// Arrival copy names an existing body. These are presentation semantics, not a
+// new checkpoint, route executor or physical entrance position.
+export const VX_FREE_DRIVE_ENTRY_GUIDANCE = Object.freeze({
+  mouthId: 'vx_ring_plaza_gate',
+  nearPoiRadius: 200,
+  label: 'Cracker Run · unscored berth',
+  instruction: 'Round the solid Mouth; follow buoys north.',
+});
+
+/** Add the public fix to the mutable sector catalog without editing the static Atlas. */
+export function vxFreeDrivePoisFor(sectorId, pois = []) {
+  if (sectorId !== VX_FREE_DRIVE_SECTOR_ID || pois.some((poi) => poi.id === VX_FREE_DRIVE_POI.id)) return pois;
+  return [...pois, VX_FREE_DRIVE_POI];
+}
 
 export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
   // ── Departure plaza: the mouth, southwest of the station apron ─────────────
   Object.freeze({
     id: 'vx_ring_plaza_gate',
     name: 'Cracker Run — the Mouth',
-    placeId: 'place_transponder_gate',
+    placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 1180, z: -30 }),
-    rot: 2.6, radius: 26,
-    why: 'A survey gate the berth crews re-strung with lane lights; it points at the ribs.',
+    rot: 2.6 + Math.PI, radius: 68,
+    why: 'The berth\'s heavy conveyor cap turns its ochre end toward the entry; round the solid deck to reach the ribs.',
   }),
   // ── The berth ribs: an arc bowed northeast — the outside line is the long way,
   //    the thread through the gaps cuts the corner; one gap is a real needle. ──
@@ -47,8 +74,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Berth Rib — outer post',
     placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 1080, z: 150 }),
-    rot: 0.8, radius: 30,
-    why: 'The first truss of the stripped berth; the wide line bows out northeast of it.',
+    rot: 0.8, radius: 44,
+    why: 'The first heavy rib repeats the Mouth\'s conveyor web; the wide line bows out northeast of its solid span.',
   }),
   Object.freeze({
     id: 'vx_ring_rib_2',
@@ -79,8 +106,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Berth Rib — apron post',
     placeId: 'place_conveyor_truss',
     localPos: Object.freeze({ x: 680, z: 840 }),
-    rot: 0.3, radius: 30,
-    why: 'The last rib before the apron opens west — a wide, forgiving entry.',
+    rot: 0.3, radius: 44,
+    why: 'The last heavy rib closes the stripped berth\'s silhouette before the apron opens west — a wide, forgiving turn.',
   }),
   // ── Apron corner: the west gate of the run ─────────────────────────────────
   Object.freeze({
@@ -88,8 +115,8 @@ export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
     name: 'Apron Mouth',
     placeId: 'place_freight_platform',
     localPos: Object.freeze({ x: 640, z: 1030 }),
-    rot: 0.3, radius: 40,
-    why: 'The freight platform that fed the berth; the run turns west across its face.',
+    rot: 0.3, radius: 60,
+    why: 'The broad freight apron caps the berth; the run turns west across the face of its solid platform.',
   }),
   Object.freeze({
     id: 'vx_ring_hulk_gate',
@@ -187,7 +214,7 @@ export const VX_FREE_DRIVE_MARKERS = Object.freeze([
   Object.freeze({ localPos: Object.freeze({ x: 1000, z: -490 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1090, z: -350 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1150, z: -190 }) }),
-]);
+].map((marker, index) => Object.freeze({ ...marker, id: `vx_ring_marker_${index + 1}` })));
 
 // Authored reservations (sector-local discs) — fed into `_arrangerForSector` so seeded scatter
 // respects the run the way it respects machines, boulders and authored slots. Lean on purpose:
@@ -195,6 +222,8 @@ export const VX_FREE_DRIVE_MARKERS = Object.freeze([
 // deliberately left live (the third option). Nothing straddles the field rim — a rim disc starves
 // the arranger's re-seat crescent and can pin a rock inside the lane it guards.
 const LANE_DISCS = [
+  // Optional loose ore tub: keep seeded scatter clear of its starting footprint and approach.
+  [1020, 80, 55],
   // plaza mouth
   [1180, -30, 90],
   // the rib-gap threads: one disc centred on each gap along the arc

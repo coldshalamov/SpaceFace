@@ -53,6 +53,7 @@ import {
 } from '../data/factions/free.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 const touching = (a, b) => dist2(a.pos, b.pos) <= (a.radius + b.radius + 2) ** 2;
@@ -2319,7 +2320,17 @@ export const frontierHomesteads = {
   },
 
   update(dt, state) {
-    ensureFrontierState(state);
+    const f = ensureFrontierState(state);
+    // An arena has no ambient homestead/site business. Keep every existing
+    // board obligation and physical weld/frame path on the normal update.
+    if (state.run?.kind === 'survival' && !f.barnAttempt && !f.deeds && !f.nextDebtAt
+        && !f.homesteads.length && !f.supplyRuns.length && !f.leads.length
+        && !f.debts.length && !f.disputes.length && !f.calls.length && !f.vendettas.length
+        && !Object.keys(f.sites).length
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (e.data?.lineHeadId === FRONTIER_WELD_HEAD.id || e.data?.weldedTo != null
+            || e.data?.homesteadFrame === true || e.data?.homestead === true
+            || e.data?.frontierRaider === true))) return;
     this._tickBarnAttempt(state);
     this._tickSiteSeeding(state);
     this._tickRaising(state, dt);
@@ -2328,7 +2339,8 @@ export const frontierHomesteads = {
     this._tickLeads(state);
     this._tickDebts(state);
     this._tickDisputes(state);
-    this._tickRaids(state, dt);
+    const raidDt = strideDt(this, 'raids', dt, 3, state);
+    if (raidDt > 0) this._tickRaids(state, raidDt);
     this._tickVendettas(state);
   },
 };

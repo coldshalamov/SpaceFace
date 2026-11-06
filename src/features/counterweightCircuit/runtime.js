@@ -17,6 +17,7 @@ import {
 } from './definition.js';
 import { createCircuitPhysical, venueAnchorGlobal, venueGlobalPos, CIRCUIT_OWNER } from './physical.js';
 import { createAttemptState, advanceAttempt, cancelAttempt } from './attempt.js';
+import { projectCounterweightHandling } from './handlingReadout.js';
 import { applyResultToRecord, freshEventRecord, medalAtMost } from './scoring.js';
 import { createGhostRecorder, normalizeGhost, ghostAllowed } from './ghost.js';
 import { emitCommissionCue } from '../../audio/commissionCues.js';
@@ -47,6 +48,7 @@ export function createCounterweightCircuitSystem() {
   let offerGeneration = 0;
   let lastProgressAt = -1;
   let lastViewAt = -1;
+  let latestObservation = null;    // private, same-attempt physical frame; never persisted
   let nextOrphanSweepAt = 0;
   let nextRewardRetryAt = 0;
   let restoring = false;
@@ -160,8 +162,17 @@ export function createCounterweightCircuitSystem() {
       if (live && live.hullMax > 0) conditionFrac = Math.max(0, live.hull / live.hullMax);
     }
     const rec = recordFor(attempt.eventId);
+    // Capture before scoring changes the record. A missing time on an older
+    // record with completions is unknown, not evidence of a first finish.
+    const newReceipt = rec.lastAttemptKey !== `${fsm.eventId}:${fsm.attemptId}`;
+    const priorBest = Number.isFinite(rec.bestTimeS) && rec.bestTimeS >= 0 && rec.bestTimeS <= Number.MAX_SAFE_INTEGER
+      ? rec.bestTimeS : rec.completions === 0 ? null : undefined;
     const applied = applyResultToRecord(rec, def, fsm, conditionFrac);
     const result = applied.result;
+    if (newReceipt && result?.outcome === 'complete' && Number.isFinite(result.timeS)
+      && result.timeS >= 0 && result.timeS <= Number.MAX_SAFE_INTEGER && priorBest !== undefined) {
+      result.previousBestTimeS = priorBest;
+    }
     r.lastResult = result;
     r.revision += 1;
     if (applied.rewardRequested && !rec.pendingReward) {
@@ -273,7 +284,8 @@ export function createCounterweightCircuitSystem() {
     emitOffer(attemptProgressSpec(state, { attempt, simTime: state.simTime, conditionFrac }));
   }
   function emitResultOffer(result) {
-    emitOffer(resultOfferSpec(result));
+    const canReview = inVenueSector() && state.mode === 'flight' && !!player() && playerDist() <= OFFER_RANGE_WU;
+    emitOffer(resultOfferSpec(result, { canReview }));
   }
   function closeOffers() {
     offerGeneration += 1;
@@ -291,11 +303,26 @@ export function createCounterweightCircuitSystem() {
       const lastResult = row().lastResult || null;
       state.counterweightCircuitView = lastResult ? { phase: null, journal: { attempt: null, lastResult } } : null;
       lastViewAt = -1;
+      latestObservation = null;
       return;
     }
     if (!force && state.simTime - lastViewAt < 0.125) return;
     lastViewAt = state.simTime;
     const journal = projectCounterweightCircuitJournal(state, { attempt, simTime: state.simTime });
+    const currentLives = {};
+    for (const body of attempt.def.bodies) {
+      const entity = attempt.cohort.get(body.role);
+      if (entity && state.entities?.get(entity.id) === entity && physical.nativeReady(entity)) {
+        currentLives[body.role] = { id: entity.id, generation: entity.occupantGeneration };
+      }
+    }
+    const handling = projectCounterweightHandling({
+      def: attempt.def, fsm: attempt.fsm, currentLives,
+      observation: latestObservation?.attempt === attempt && latestObservation.observation.simTime === state.simTime
+        ? latestObservation.observation : null,
+      admitted: !attempt.admissionPending, inFlight: state.mode === 'flight', inVenueSector: inVenueSector(),
+      eventId: attempt.eventId, attemptId: attempt.attemptId,
+    });
     const marks = [];
     for (const b of attempt.def.bodies) {
       if (!b.zone) continue;
@@ -332,6 +359,7 @@ export function createCounterweightCircuitSystem() {
       eventId: attempt.eventId,
       attemptId: attempt.attemptId,
       journal,
+      handling,
       admission: attempt.admissionPending ? { generation: attempt.admissionGeneration,
         bodies: attempt.def.bodies.map(b => ({ id: attempt.cohort.get(b.role).id,
           generation: attempt.cohort.get(b.role).occupantGeneration, file: b.file })) } : null,
@@ -354,7 +382,8 @@ export function createCounterweightCircuitSystem() {
       || !offer.choices?.some(choice => choice.id === choiceId && choice.disabled !== true)) return;
     if (!attempt && !['close', 'leave'].includes(action)
       && (!inVenueSector() || state.mode !== 'flight' || !player() || playerDist() > OFFER_RANGE_WU)) {
-      emitOffer({ ...offer, detail: `${offer.detail || ''}\nReturn to the registrar to choose another course.` });
+      if (offer.id === 'counterweight:result' && r.lastResult) emitResultOffer(r.lastResult);
+      else emitOffer({ ...offer, detail: `${offer.detail || ''}\nReturn to the registrar to choose another course.` });
       return;
     }
     if (action === 'menu') {
@@ -456,6 +485,7 @@ export function createCounterweightCircuitSystem() {
           return;
         }
         const obs = physical.observe(attempt.cohort, attempt.def, dt);
+        latestObservation = { attempt, observation: obs };
         obs.committed = obs.committed || attempt.fsm.phase === 'running';
         // Measured contact on course bodies feeds the attempt's honest
         // damage/impact tally (result reasons; fragility is canonical hull).
@@ -508,10 +538,12 @@ export function createCounterweightCircuitSystem() {
     const nearRegistrar = dist <= OFFER_RANGE_WU && state.mode === 'flight' && !!player();
     if (nearRegistrar && !registrarInRange) {
       registrarInRange = true;
-      emitOffer(registrarOfferSpec(state, { attempt: null }));
+      if (state.counterweightCircuitOffer?.id === 'counterweight:result' && r.lastResult) emitResultOffer(r.lastResult);
+      else emitOffer(registrarOfferSpec(state, { attempt: null }));
     } else if (!nearRegistrar && registrarInRange) {
       registrarInRange = false;
-      closeOffers();
+      if (state.counterweightCircuitOffer?.id === 'counterweight:result' && r.lastResult) emitResultOffer(r.lastResult);
+      else closeOffers();
     }
   }
 

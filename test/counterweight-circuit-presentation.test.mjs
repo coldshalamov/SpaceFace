@@ -36,7 +36,7 @@ test('presentation only admits a complete same-life authored cohort', () => {
 
 test('result explains measured reason and only displays cash after acceptance', () => {
   const result = { outcome: 'complete', medal: 'silver', timeS: 48, reason: 'arrival_speed', reasonDetail: 3.2 };
-  assert.match(resultOfferSpec(result).detail, /3\.2 WU\/s/);
+  assert.match(resultOfferSpec(result).detail, /3\.2 u\/s/);
   assert.doesNotMatch(resultOfferSpec({ ...result, rewardStatus: 'wallet_full' }).detail, /\+60 CR/);
   assert.match(resultOfferSpec({ ...result, rewardStatus: 'wallet_full' }).detail, /wallet is full/);
   assert.match(resultOfferSpec({ ...result, rewardCr: 60 }).detail, /\+60 CR/);

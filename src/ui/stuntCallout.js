@@ -72,41 +72,47 @@ function calloutRarity(value) {
 }
 
 const CSS = `
-.sf-stuntcall { position:fixed; left:16px; bottom:32vh; z-index:12; display:flex; flex-direction:column;
+.sf-stuntcall { position:fixed; left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); bottom:32vh; z-index:12; display:flex; flex-direction:column;
   align-items:flex-start; gap:5px; pointer-events:none; }
 .sf-stuntcall[hidden] { display:none; }
-.sf-stuntcall__line { display:flex; align-items:baseline; gap:10px; white-space:nowrap; }
+.sf-stuntcall__line { display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
+  padding:3px 9px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .86), rgb(11 14 20 / .86));
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60); }
 .sf-stuntcall__lines { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.sf-stuntcall__name { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
+.sf-stuntcall__name { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:rgb(248 244 234 / .92); }
 .sf-stuntcall__line[data-rarity="common"] .sf-stuntcall__name { font-weight:450;
-  color:rgb(248 244 234 / .72); }
+  color:rgb(248 244 234 / .78); }
 .sf-stuntcall__line[data-rarity="uncommon"] .sf-stuntcall__name { font-weight:550;
-  color:rgb(248 244 234 / .84); }
+  color:rgb(248 244 234 / .88); }
 .sf-stuntcall__line[data-rarity="rare"] .sf-stuntcall__name { font-weight:700;
-  color:rgb(248 244 234 / .95); }
+  color:rgb(248 244 234 / .96); }
 .sf-stuntcall__line[data-rarity="legendary"] .sf-stuntcall__name { font-weight:800;
   color:rgb(248 244 234 / 1); }
-.sf-stuntcall__pts { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(${BONE} / .66); }
+.sf-stuntcall__pts { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:500;
+  font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.02em; color:rgb(${BONE} / .76); }
+.sf-stuntcall__line.is-bank { border-color:rgb(242 185 80 / .36); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__name { color:var(--dp-hand, #f2b950); }
 .sf-stuntcall__line.is-bank .sf-stuntcall__pts { color:var(--dp-hand, #f2b950); }
-.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px; }
+.sf-stuntcall__meter { display:flex; flex-direction:column; gap:4px; margin-top:2px;
+  padding:6px 10px; border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+  background:linear-gradient(180deg, rgb(16 20 28 / .88), rgb(11 14 20 / .88)); }
 .sf-stuntcall__rowtop { display:flex; align-items:baseline; gap:10px; }
-.sf-stuntcall__mult { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:250;
-  font-size:30px; line-height:1; letter-spacing:-.01em; font-variant-numeric:tabular-nums;
+.sf-stuntcall__mult { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-stretch:100%; font-weight:600;
+  font-size:24px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums;
   color:rgb(248 244 234 / .95); }
-.sf-stuntcall__names { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650;
-  font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .72); }
-.sf-stuntcall__scale { position:relative; width:190px; height:3px;
-  background:rgb(${BONE} / .22); }
+.sf-stuntcall__names { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-stretch:100%; font-weight:600;
+  font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:rgb(${BONE} / .78); }
+.sf-stuntcall__scale { position:relative; width:190px; height:3px; border-radius:1.5px;
+  background:rgb(${BONE} / .20); }
 .sf-stuntcall__scale-fill { position:absolute; inset:0; transform-origin:left center;
-  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .78); }
+  transform:scaleX(var(--sf-stuntcall-w, 1)); background:rgb(248 244 234 / .82); }
 .sf-stuntcall__scale-notch { position:absolute; top:-3px; width:1px; height:9px;
   background:rgb(${BONE} / .55); }
-.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-label, "Archivo");
-  font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase;
-  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .58); }
+.sf-stuntcall__rowsub { display:flex; gap:12px; font-family:var(--dp-face-num, "Spline Sans Mono", monospace);
+  font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
+  font-variant-numeric:tabular-nums; color:rgb(${BONE} / .64); }
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
@@ -432,6 +438,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
   meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
+  meter.style.display = 'none';
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
   const namesLine = mk(doc, 'span', 'sf-stuntcall__names', '');
@@ -664,9 +671,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function renderMeter(readout) {
     if (!readout) {
       if (!meter.hidden) meter.hidden = true;
+      if (meter.style.display !== 'none') meter.style.display = 'none';
       return;
     }
     if (meter.hidden) meter.hidden = false;
+    if (meter.style.display) meter.style.display = '';
     const multText = `×${readout.multiplier.toFixed(2)}`;
     if (mult.textContent !== multText) mult.textContent = multText;
     const namesText = readout.names.join(' → ');
@@ -951,6 +960,18 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
         && payload?.hostId !== st.playerId) return;
       if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
         && payload?.shipId !== st.playerId) return;
+      // Durable world bookkeeping is global; Adventure's personal register is not.
+      // Read the canonical receipt's involvement/ownership facts, never a current
+      // occupant of a victim id or an invented proximity/witness relationship.
+      if (scope.adventure && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) {
+        const record = payload || {};
+        const playerCause = record.killedByPlayer === true;
+        const ownHull = record.playerWreck === true || record.source === 'player:death'
+          || record.sitePlayerOwned === true;
+        const ownAutomation = eventName === 'lossLedger:recorded'
+          && (record.source === 'automation:assetLost' || record.source === 'automation:outpostRaided');
+        if (!playerCause && !ownHull && !ownAutomation) return;
+      }
       // Swarm's cause lane already files this same kill word, including its run count.
       // The two durable world records need no additional flight-register receipt during
       // this fast arena: their owners still record them normally.
@@ -1007,6 +1028,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       heardStatuses.clear();
       // The run maps ride the same session — a leftover count must not greet the next run.
       causeRuns.clear();
+      renderMeter(null);
       for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
       lineNodes.clear();
       sr.textContent = '';

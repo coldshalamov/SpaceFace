@@ -75,7 +75,7 @@ test('the player lamp rides the bow, pitched down onto what is ahead, and fades 
 
 test('NPC lamps go to the nearest powered hulls in reach and hold them', () => {
   const scene = new THREE.Scene();
-  const pool = new HeadlightPool(scene);
+  const pool = new HeadlightPool(scene, { size: 3 });
   const player = ship(1, 0, 0);
   const near = ship(2, 50, 0);
   const mid = ship(3, 0, 120);

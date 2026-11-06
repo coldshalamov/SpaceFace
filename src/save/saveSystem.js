@@ -1,3 +1,12 @@
+import {
+  saveStoreGeneration as _saveStoreGeneration,
+  installSaveStoreWriteTracking,
+  bumpSaveStoreGeneration,
+  beginSaveStoreApply,
+  endSaveStoreApply,
+  setSaveStoreBumpCallback,
+  saveStoreSignature,
+} from './saveStoreGeneration.js';
 import { validateCinderglassJob } from '../features/cinderglassJob/persistence.js';
 import { cinderglassJobFlagsForSave } from '../features/cinderglassJob/physical.js';
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
@@ -154,70 +163,6 @@ function _collectSharedStoreFallback(owner = null) {
   return out;
 }
 
-// Save-store write generation: detecting slot changes used to mean walking + hashing every
-// stored blob on EVERY listSlots call — multi-MB getItem copies plus an FNV-1a pass per
-// character, synchronously inside the menu render path. A generation counter bumps on the
-// same three write APIs the store uses (patched once so dynamically-bound call sites still
-// route through it) and on the window 'storage' event for cross-tab writes. The rescan — with
-// its full per-blob verification — then only runs when the generation moved; an unchanged
-// generation proves the blobs identical for every API-mediated write. The one uncovered
-// writer is a devtools-style `localStorage['sf.save.x'] = ...` property assignment, whose
-// worst consequence is a stale slot card — never hidden corruption, because a real load
-// re-validates every byte of the envelope.
-let _saveStoreGeneration = 0;
-// >0 while a boot-reconcile apply writes through the silenced facade: its own writes make
-// storage match the merged map by construction, so they must not bump the generation the
-// post-apply cache stamp compares. Foreign writes still bump — they arrive outside the flag.
-let _saveStoreApplySilenced = 0;
-let _saveStoreTrackedObject = null;
-// Optional subscriber for save-store writes — the save system installs its speculative
-// re-arm here so a mid-dwell write can refresh an armed generation instead of letting
-// it go stale until the click.
-let _onSaveStoreBump = null;
-
-function bumpSaveStoreGeneration(key, value) {
-  if (_saveStoreApplySilenced > 0) return;
-  if (key != null) {
-    const k = String(key);
-    // sf.settings.* rows ride the shared-store mirror too; an untracked settings write
-    // inside a collect's generation bracket can ship a stale row in the materialized map.
-    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX) && !k.startsWith('sf.settings.')) return;
-  }
-  _saveStoreGeneration++;
-  if (_onSaveStoreBump) {
-    try { _onSaveStoreBump(key, value); } catch (err) { /* subscriber is best-effort */ }
-  }
-}
-
-function installSaveStoreWriteTracking() {
-  if (typeof localStorage === 'undefined') return;
-  if (_saveStoreTrackedObject === localStorage) return;
-  _saveStoreTrackedObject = localStorage;
-  // A swapped store object (test mocks, host replacement) cannot share the old generation's
-  // signature — bump so the first signature after the swap always rescans.
-  _saveStoreGeneration++;
-  const target = (typeof Storage === 'function' && localStorage instanceof Storage)
-    ? Storage.prototype : localStorage;
-  for (const name of ['setItem', 'removeItem', 'clear']) {
-    const original = target[name];
-    if (typeof original !== 'function' || original.spacefaceSaveTracking === true) continue;
-    const wrapped = function (...args) {
-      const result = original.apply(this, args);
-      // 'clear' takes no key — treat it as a bump for every store, save-prefixed or not.
-      // setItem forwards its value so a write to an armed slot's own key can re-arm the
-      // speculation off the bytes in hand instead of reading them back in this task.
-      bumpSaveStoreGeneration(name === 'clear' ? null : args[0], name === 'setItem' ? args[1] : undefined);
-      return result;
-    };
-    wrapped.spacefaceSaveTracking = true;
-    target[name] = wrapped;
-  }
-  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('storage', (event) => {
-      bumpSaveStoreGeneration(event && event.key, event && event.newValue);
-    });
-  }
-}
 // Previous-generation saves live outside LS_PREFIX so legacy/index recovery scans never mistake
 // them for player-visible slots. A valid primary is copied here before it is overwritten.
 const RECOVERY_PREFIX = 'sf.recovery.';
@@ -475,7 +420,7 @@ export const save = {
     // a warm envelope. The slot's raw is re-read, so a same-slot write re-warms rather
     // than staling; the frozen/menu gate inside speculateLoadPrepare keeps this inert
     // in-flight.
-    _onSaveStoreBump = (bumpKey, bumpValue) => {
+    setSaveStoreBumpCallback((bumpKey, bumpValue) => {
       try {
         const unavailable = this._sharedStoreUnavailableKeys;
         if (unavailable instanceof Map) {
@@ -527,7 +472,7 @@ export const save = {
           try { this.speculateLoadPrepare(staleSlot); } catch (err) { /* best-effort */ }
         }, 0);
       } catch (err) { /* speculation is best-effort */ }
-    };
+    });
     bus.on('settings:changed', (payload) => {
       if (!payload || payload.persist !== false) this._writeProfileSettings();
     });
@@ -752,24 +697,24 @@ export const save = {
         key: (index) => globalThis.localStorage.key(index),
         getItem: (key) => globalThis.localStorage.getItem(key),
         setItem: (key, value) => {
-          _saveStoreApplySilenced++;
+          beginSaveStoreApply();
           try {
             globalThis.localStorage.setItem(key, value);
             if (isSharedPlayerStoreKey(key)) unavailable.delete(key);
           } catch (err) {
             if (isSharedPlayerStoreKey(key)) unavailable.set(key, value);
             throw err;
-          } finally { _saveStoreApplySilenced--; }
+          } finally { endSaveStoreApply(); }
         },
         removeItem: (key) => {
-          _saveStoreApplySilenced++;
+          beginSaveStoreApply();
           try {
             globalThis.localStorage.removeItem(key);
             if (isSharedPlayerStoreKey(key)) unavailable.delete(key);
           } catch (err) {
             if (isSharedPlayerStoreKey(key)) unavailable.set(key, null);
             throw err;
-          } finally { _saveStoreApplySilenced--; }
+          } finally { endSaveStoreApply(); }
         },
       };
       // Chunked: the getItem-compare + setItem pass was the last multi-MB atomic
@@ -1167,6 +1112,7 @@ export const save = {
       ['nemesis', () => this._callSerialize('nemesis') || clonePlain(state.nemesis || null)],
       ['nemesisDeployment', () => this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null)],
       ['enemyMind', () => clonePlain(state.enemyMind || null)],
+      ['tacticalAI', () => this._callSerialize('tacticalAI')],
       // The plan must walk keys in exactly _serializeDataSteps order — the chunked/worker
       // lane assembles `data` in this order and the envelope checksum is insertion-order
       // sensitive, so a plan that drifts from serializeData yields a different byte layout
@@ -1391,6 +1337,7 @@ export const save = {
     data.nemesisDeployment = this._callSerialize('nemesisEncounter') || clonePlain(state.nemesisDeployment || null);
     yield 'serialize:nemesisDeployment';
     data.enemyMind = clonePlain(state.enemyMind || null);
+    data.tacticalAI = this._callSerialize('tacticalAI');
     data.latchNine = this._callSerialize('latchNine');
     yield 'serialize:latchNine';
     data.scissorwake = this._callSerialize('scissorwake');
@@ -1877,7 +1824,8 @@ export const save = {
       if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
       const finiteRef = !isPlayer && ceresWorkfleetEntityRef(e);
       if (finiteRef) {
-        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id), ref: finiteRef });
+        ceresWorkfleetRefs.set(ceresWorkfleetRefKey(finiteRef), { saveId: String(e.id),
+          saveEntityId: e.id, occupantGeneration: e.occupantGeneration ?? null, ref: finiteRef });
         continue;
       }
       // Live projectiles ride the persistent list without being flagged persistent: the
@@ -1892,7 +1840,8 @@ export const save = {
       // interrupt the beam — the snagged body resumes its authored life on continue.)
       const gyreBall = !!(e.data && e.data.gyreLaunched);
       if (!isPlayer && !liveProjectile && !gyreBall && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id) && !ceresHostileOwners.has(e.id)) continue;
-      out.push(plainEntity(e, isPlayer));
+      // Validation metadata for dependent saved cognition, never authority to reuse a live life.
+      out.push({ ...plainEntity(e, isPlayer), occupantGeneration: e.occupantGeneration ?? null });
     }
     for (const entry of this._ceresEntityReferenceRestore?.pending?.values() || []) {
       const key = ceresWorkfleetRefKey(entry.ref);
@@ -3361,8 +3310,7 @@ export const save = {
   // The same generation signature the speculation lane arms on: 'gen:' equality implies
   // byte-identical slot bytes for every tracked writer (installSaveStoreWriteTracking).
   saveStoreSignature() {
-    installSaveStoreWriteTracking();
-    return 'gen:' + _saveStoreGeneration;
+    return saveStoreSignature();
   },
 
   /**
@@ -4131,9 +4079,8 @@ export const save = {
     let plan;
     try { plan = this._saveCapturePlan(); }
     catch (error) { return this._failAutosave(job, 'invalid_capture_plan', null); }
-    // Feature adapters must preserve the indexed [key, reader] array contract. A generator
-    // has no length, so the capture loop would otherwise skip every reader and successfully
-    // replace the last playable save with a checksum-valid empty data object.
+    // Adapters must preserve the indexed [key, reader] array contract. A generator
+    // has no length and would skip every reader, encoding checksum-valid empty data.
     if (!Array.isArray(plan) || plan.length === 0 || plan.some((row) => (
       !Array.isArray(row) || typeof row[0] !== 'string' || !row[0] || typeof row[1] !== 'function'
     ))) return this._failAutosave(job, 'invalid_capture_plan', null);
@@ -6029,14 +5976,20 @@ export const save = {
     return data || null;
   },
 
-  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
-  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
-  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
-  // failure so the caller can run its identical sync tail.
+  // The slot fill's card payload — canonical gzip decode + small projection only (no
+  // migration/normalize: the portrait reads the stored shape verbatim). The parse normally
+  // runs on the save worker; an unavailable/failed worker uses the same decoder locally.
+  // World tables and thumbnail stay off postMessage; malformed data resolves null.
   peekSaveCardData(raw) {
     if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    const readWithoutWorker = async () => {
+      try {
+        const decoded = await decodeSaveEnvelopeText(raw);
+        return decoded.ok ? cardDataFromEnvelope(JSON.parse(decoded.text)) : null;
+      } catch (_) { return null; }
+    };
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
-      return Promise.resolve(null);
+      return readWithoutWorker();
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -6053,7 +6006,7 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
       ? prepared.cardData
-      : null));
+      : readWithoutWorker()));
   },
 
   _prepareEnvelopeStringAsync(raw) {
@@ -7669,6 +7622,23 @@ export const save = {
         // Genie 02: arc snapshot for the tension director's save:loaded handler (schema-checked,
         // clock-guarded; non-exact resets are emitted as tension:reset, never silently dropped).
         tensionDirector: data.tensionDirector || null,
+        tacticalAI: data.tacticalAI || null,
+        // Fresh canonical spawns receive fresh life tokens. Receipt the exact save-id bridge;
+        // tactical memory must never infer that an arbitrary same-id occupant is the saved actor.
+        tacticalAIEntityBindings: (() => {
+          const savedRows = [data.entities?.player, ...(data.entities?.persistent || []),
+            ...(data.entities?.ceresWorkfleetRefs || []).map((row) => ({ ...row, id: row.saveEntityId }))];
+          const savedById = new Map(savedRows.filter(Boolean).map((row) => [row.id, row]));
+          return (Array.isArray(data.tacticalAI?.bindings) ? data.tacticalAI.bindings : []).flatMap((binding) => {
+            if (!binding || !['number', 'string'].includes(typeof binding.id)) return [];
+            const saved = savedById.get(binding.id);
+            if (!saved || saved.occupantGeneration == null || saved.occupantGeneration !== binding.generation) return [];
+            const id = entityIdRemap.get(String(saved.id));
+            const entity = id == null ? null : this.state.entities.get(id);
+            return entity ? [{ saveId: saved.id, savedGeneration: saved.occupantGeneration,
+              entityId: entity.id, generation: entity.occupantGeneration ?? null }] : [];
+          });
+        })(),
       });
       // Time-aware drain: a fixed batch of 12 listeners could stack several heavy reconciles
       // into one over-frame slice. Drain small batches and hand a yield back whenever a slice's

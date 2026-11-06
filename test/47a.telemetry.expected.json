@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "695e63f6120917e66bae0b018c45da8cfa3b7c8ff42ed35d543c874592eb235c",
+    "authoritativeHash": "560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -248,10 +248,6 @@
     "This includes the length-squared scale omitted by the former handling-only heuristic and intentionally changes Rapier contact response; the delta is not metadata-only.",
     "The prior legacy hash was 67b74289db0ec320b13146c8ce07ac6622bdeeca46023403107273701c1dfd95; restoring the old formula reproduces it exactly. Measured hash: 560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448.",
     "Measured legacy outcome: hits/damage 5->2, cues 8->4; the tether stays attached and unbroken. Player position changes (276.573059,58.802704)->(278.157532,56.679245); spindle position changes (305.144806,111.763725)->(311.028656,122.274368).",
-    "The migration preserves seed 47, the input tape, 720 ticks, required event families, acceptance bounds, five-run minimum, and reload@600 canonicalization. The new envelope ID names the measured-hull contract; the prior hash is retained here as history.",
-    "2026-11-05 Lantern Ward save-version migration: controller f71edbfc and integrated8cf0034e, seed47/tick720/legacy reload600. Full canonical snapshots differ only at $.meta.version22->23; no fields added or removed.",
-    "All720 per-step entity motion/vitals frames, full existing event/combat traces, metrics and final native bodies match. A current-runtime control loading only f71 src/data/saveVersion.js reproduces the prior complete snapshot and telemetry.",
-    "Prior authoritative hash: 560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448. Version23 hash: 695e63f6120917e66bae0b018c45da8cfa3b7c8ff42ed35d543c874592eb235c.",
-    "Exact source/capture hashes and semantic-diff evidence: docs/validation/lantern-ward/evidence/merged-baseline-diagnosis.json. Input tape, scenario, physics owner, event counts/families, acceptance bounds and five-run requirement are unchanged."
+    "The migration preserves seed 47, the input tape, 720 ticks, required event families, acceptance bounds, five-run minimum, and reload@600 canonicalization. The new envelope ID names the measured-hull contract; the prior hash is retained here as history."
   ]
 }

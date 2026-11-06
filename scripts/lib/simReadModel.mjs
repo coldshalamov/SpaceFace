@@ -133,6 +133,21 @@ function foldAiState(row, fields) {
   row.data.ai.state = fields.aiFsm;
 }
 
+function seekerVitalsMatch(row, fields, generation = row.occupantGeneration) {
+  return !Object.hasOwn(fields, 'seekerSourceGeneration')
+    || row.type === 'projectile' && generation != null && fields.seekerSourceGeneration === generation;
+}
+
+function foldSeekerVitals(row, fields, generation = row.occupantGeneration) {
+  if (!Object.hasOwn(fields, 'seekerSourceGeneration') || !seekerVitalsMatch(row, fields, generation)) return;
+  const data = row.data || (row.data = {});
+  data.targetId = fields.seekerTargetId ?? null;
+  data.targetGeneration = fields.seekerTargetGeneration ?? null;
+  data.turnRate = Number.isFinite(fields.seekerTurnRate) ? fields.seekerTurnRate : 0;
+  data.diverted = fields.seekerDiverted === true;
+  data.guidanceBroken = fields.seekerGuidanceBroken === true;
+}
+
 function foldPallasSeamVitals(row, fields) {
   if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
   if (!row.data || typeof row.data !== 'object') row.data = {};
@@ -191,6 +206,7 @@ function foldCountermeasureVitals(row, fields) {
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
+    rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
     weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
@@ -281,6 +297,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
+      foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
       foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
     }
@@ -317,6 +334,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       // map) can stamp them 'ready' exactly as on the main lane.
       initializePresentationAdmission(row);
       readModel.entities.set(info.entityId, row);
+      readModel.rosterVersion++;
     }
     if (state && Object.hasOwn(info, 'ceresCradleReceipt')) {
       bindCeresCradlePublicLayout(target, state, info.ceresCradleReceipt, worldGeneration);
@@ -343,8 +361,8 @@ export function revokeCeresCradleReceipts(readModel, state) {
  * prevPos, and the yaw/bank/pitch rotation tuple. The journal IS the pose truth
  * the presentation lane consumes, so the facade answers the same values.
  */
-export function applyFacadePose(readModel, entityId, pose) {
-  const row = readModel && readModel.entities.get(entityId);
+export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
+  const row = knownRow || (readModel && readModel.entities.get(entityId));
   if (!row || !pose || typeof pose !== 'object') return;
   if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
   if (Number.isFinite(pose.x)) { row.prevPos.x = row.pos.x; row.pos.x = pose.x; }
@@ -363,6 +381,23 @@ export function applyFacadePose(readModel, entityId, pose) {
  * Stage-8: apply the vitals diff channel — [entityId, fields] pairs replacing
  * named scalar fields on the facade row (null entity ids / unknown facades skip).
  */
+// 0 = plain scalar assigned onto the row; 1 = fold family key that is also
+// assigned; 2 = fold-only key (never assigned). The fold functions read only
+// names under these prefixes plus vx/vz, so any other key can skip them.
+const VITAL_KEY_KIND = new Map();
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
+const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
+  'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
+function classifyVitalKey(key) {
+  if (VITAL_FOLD_ONLY.has(key) || LANTERN_WARD_VITAL_SET.has(key)) return 2;
+  if (key === 'vx' || key === 'vz') return 1;
+  for (let i = 0; i < VITAL_FOLD_PREFIXES.length; i++) {
+    if (key.startsWith(VITAL_FOLD_PREFIXES[i])) return 1;
+  }
+  return 0;
+}
+
 export function applyEntityVitals(readModel, vitals, state = null, worldGeneration = null) {
   if (!Array.isArray(vitals) || !vitals.length) return;
   for (const entry of vitals) {
@@ -372,14 +407,28 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
     const row = readModel.entities.get(id);
     if (!row) continue;
-    foldNemesisHullVitals(row, fields);
-    for (const key of Object.keys(fields)) {
-      if (key === 'ceresCradlePublic' || key === 'ceresWorkfleetPublic' || key === 'orchardPodPublic'
-        || LANTERN_WARD_VITAL_KEYS.includes(key)) continue;
+    if (!seekerVitalsMatch(row, fields)) continue;
+    // One key pass: plain scalars (hull, shield, pose...) assign directly; only a
+    // key from a fold family (prefix table below) arms the fold chain, so the
+    // common pose/vitals entry skips a dozen no-op fold calls.
+    // Nemesis decode compares against the row's previous JSON, so it runs before assignment.
+    if (fields.nemesisLivingHullJson !== undefined) foldNemesisHullVitals(row, fields);
+    let needsFold = false;
+    for (const key in fields) {
+      let kind = VITAL_KEY_KIND.get(key);
+      if (kind === undefined) {
+        kind = classifyVitalKey(key);
+        VITAL_KEY_KIND.set(key, kind);
+      }
+      if (kind !== 0) {
+        needsFold = true;
+        if (kind === 2) continue;
+      }
       const v = fields[key];
       if (v === undefined) delete row[key];
       else row[key] = v;
     }
+    if (!needsFold) continue;
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
@@ -389,6 +438,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
+    foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
     foldLanternWardVitals(row, fields);
     foldOrchardPodVitals(row, fields);
@@ -463,7 +513,7 @@ export function applyDestroyIds(readModel, ids, state = null) {
       bindCeresWorkfleetPublicActuation(row, state, null, null);
       row.alive = false;
     }
-    readModel.entities.delete(id);
+    if (readModel.entities.delete(id)) readModel.rosterVersion++;
   }
 }
 
@@ -533,7 +583,7 @@ export function applyAuxRemovals(readModel, ids) {
     const facade = prev.kind === 'dressing' && readModel.entities.get(id);
     if (facade?.data?.warmFreighterHostMarkerId) {
       facade.alive = false;
-      readModel.entities.delete(id);
+      if (readModel.entities.delete(id)) readModel.rosterVersion++;
     }
     const bucket = readModel.auxCells.get(prev.cell);
     if (bucket) {

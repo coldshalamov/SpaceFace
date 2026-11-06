@@ -89,14 +89,17 @@ export const mines = {
    * VERB-32: a mine dropped at speed keeps the deploying ship's velocity at the
    * deploy tick, so laying a screen at cruise works. Explicit `opts.vel`
    * overrides; otherwise the owner's current velocity vector is copied.
-   * @param {{ ownerId: number, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
+   * @param {{ ownerId?: number|null, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
    */
   placeMine(opts = {}) {
     const state = this.state;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return null;
     if (!opts.pos || !Number.isFinite(opts.pos.x) || !Number.isFinite(opts.pos.z)) return null;
-    const ownerId = opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
+    // Omitted ownership keeps the legacy player-placement intent. An explicit
+    // null is environmental ordnance and must never invent player kill credit.
+    const ownerId = opts.ownerId === null ? null
+      : opts.ownerId != null ? opts.ownerId : (state && state.playerId != null ? state.playerId : null);
     if (ownerId != null && countOwnerMines(state, ownerId) >= MINE_OWNER_CAP) {
       if (this.bus) this.bus.emit('mines:capReached', { ownerId, cap: MINE_OWNER_CAP });
       // FIGHT-07 — the player's refused press speaks through the voice floor and names the

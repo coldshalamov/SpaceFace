@@ -332,6 +332,14 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+    fields.seekerTargetId = e.data.targetId ?? null;
+    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    fields.seekerDiverted = e.data.diverted === true;
+    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  }
   const specialistFrame = swarmSpecialistFrameValue(e);
   if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
   const riderTell = riderTellValue(e, state);
@@ -458,6 +466,15 @@ function krakenMotionFrame(state, e) {
 
 function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    const data = e.data;
+    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
+      || shadow.seekerTargetId !== (data.targetId ?? null)
+      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
+      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
+      || shadow.seekerDiverted !== (data.diverted === true)
+      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
   // Moving actors commonly change velocity or heading each publish. Check those same
   // canonical scalar tokens first; unchanged actors still compare every field below.
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -525,6 +542,19 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
 }
 
 function writeVitalShadow(e, shadow, krakenFrame, state) {
+  // Named runtime-only slots preserve every existing positional/tail vital index.
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
+    shadow.seekerTargetId = e.data.targetId ?? null;
+    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    shadow.seekerDiverted = e.data.diverted === true;
+    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
+    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
+    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
+    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
+  }
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -1302,7 +1332,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
-    const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
+    const offLedgerLoad = bus.on('save:loaded', () => {
+      host.domainDiffer.invalidateLeaf('shipLedger.board');
+      // Restore identity must accompany its receipt, including paused Import/Continue.
+      // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
+      host.domainDiffer.invalidateLeaf('meta.seed');
+    });
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
@@ -1608,10 +1643,18 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
-      ['saveLoad', (args) => {
+      ['savePeekCardData', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.peekSaveCardData !== 'function') {
+          return { ok: false, reason: 'save-system-unavailable' };
+        }
+        return { ok: true, cardData: await s.peekSaveCardData(args?.raw) };
+      }],
+      ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.load((args && args.slot) || undefined) };
+        const result = await s.load((args && args.slot) || undefined);
+        return { ok: result === true, result };
       }],
       ['saveDelete', (args) => {
         const s = registry.get('save');
@@ -1803,7 +1846,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
         const json = args && typeof args.json === 'string' ? args.json : null;
         if (!json) return { ok: false, reason: 'import-empty' };
-        // Settle the owner's restore before replying: nested Promises cannot cross the worker bridge.
+        // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
+        // drain before publishing a verdict; a nested Promise cannot cross postMessage.
+        // An omitted destination belongs to the canonical owner's first-empty-slot policy.
         const result = await s.importString(json, args && args.slot);
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
@@ -2474,6 +2519,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let completedTick = null;
     let journalStart = host.committedJournalSequence;
     if (production) host.inputPublishes.length = 0;
+    // Work budget: the local-clock catch-up path (workBudgetMs set by the
+    // worker pump) may stop early once the reply has consumed its share of the
+    // frame — un-executed steps behave like shed debt so the world slows down
+    // instead of compounding one heavy step into a multi-hundred-ms reply.
+    // Explicit-step directives carry no budget and always run exactly.
+    const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0
+      ? msg.workBudgetMs * 1e6
+      : null;
+    let stepsExecuted = 0;
     for (let s = 0; s < steps; s++) {
       if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
@@ -2482,6 +2536,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         update47aScenarioActorIntents(state);
         sim.step(SIM_DT);
       }
+      stepsExecuted++;
       // Crash probe (--probe crash, init.crashAt): an unhandled step exception
       // must surface to the main lane as a rejected directive — the same
       // fail-closed shape a real worker throw produces.
@@ -2494,6 +2549,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           flightBackend: 'legacy',
         });
       }
+      if (workBudgetNs != null && s + 1 < steps
+          && (nowNs() - workStart) >= workBudgetNs) break;
     }
     // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
     // drive non-coalescible append churn beyond ring capacity.
@@ -2589,12 +2646,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.lastInputSeq = lastPublish.inputSeq;
       host.lastInputWallMs = lastPublish.inputWallMs;
     }
-    if (steps > 0) {
+    if (stepsExecuted > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
-    host.tickCount += steps;
+    host.tickCount += stepsExecuted;
 
     const packStart = nowNs();
     let pack;
@@ -2722,6 +2779,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
       packMs: Number(packNs) / 1e6,
+      stepsRequested: steps,
+      stepsExecuted,
       boundaryMs,
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,

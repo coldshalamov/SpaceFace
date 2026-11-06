@@ -39,13 +39,19 @@ function browserWorkerHost(requests, workers) {
           const { parentPort } = require('node:worker_threads');
           const self = {
             addEventListener(name, listener) {
-              if (name === 'message') parentPort.on('message', data => listener({ data }));
+              if (name === 'message') parentPort.on('message', data => {
+                if (data?.__testCloseSaveWorker === true) {
+                  parentPort.removeAllListeners('message'); parentPort.close(); return;
+                }
+                listener({ data });
+              });
             },
             postMessage(value) { parentPort.postMessage(value); },
           };
         `;
         this.worker = new NodeWorker(prelude + source, { eval: true });
-        this.worker.on('message', (data) => this.onmessage?.({ data }));
+        this.exited = new Promise(resolve => this.worker.once('exit', resolve));
+        this.worker.on('message', (data) => { if (!this.closed) this.onmessage?.({ data }); });
         this.worker.on('error', (error) => this.onerror?.(error));
         for (const message of this.pending) this.worker.postMessage(message);
         this.pending.length = 0;
@@ -58,9 +64,12 @@ function browserWorkerHost(requests, workers) {
       else this.pending.push(detached);
     }
     terminate() {
+      if (this.closed) return this.exited || this.ready;
       this.closed = true;
       this.pending.length = 0;
-      return this.worker?.terminate();
+      // Normal cooperative disposal: let queued work finish, then close the port.
+      if (this.worker) this.worker.postMessage({ __testCloseSaveWorker: true });
+      return this.exited || this.ready;
     }
   };
 }

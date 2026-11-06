@@ -73,6 +73,7 @@ Current save version: `23`
 - `nemesis`
 - `nemesisDeployment`
 - `enemyMind`
+- `tacticalAI`
 - `latchNine`
 - `scissorwake`
 - `lastShift`
@@ -257,6 +258,7 @@ Current save version: `23`
 | `$.entities.player.hullMax` | number | 100 |
 | `$.entities.player.id` | number | 1 |
 | `$.entities.player.mass` | number | 100 |
+| `$.entities.player.occupantGeneration` | null | null |
 | `$.entities.player.pos` | object | {} |
 | `$.entities.player.pos.x` | number | 0 |
 | `$.entities.player.pos.z` | number | 0 |
@@ -618,6 +620,7 @@ Current save version: `23`
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
+| `$.tacticalAI` | null | null |
 | `$.tallyho` | object | {} |
 | `$.tensionDirector` | null | null |
 | `$.towlineTable` | null | null |

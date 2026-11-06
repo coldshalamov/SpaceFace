@@ -1157,10 +1157,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   if (root.userData.visualBuildFailed || root.userData.authoredAdmissionSubstrate) return root;
   const spec = packagedPropSpec(entity);
   if (!spec || !spec.file) return root;
-  // Procedural beacons scale a unit model at the entity root. Authored props,
-  // resolving markers and subsequently attached lamp layers already use WU.
-  // Preserve the original graph's transform beneath a unit-scale admission root
-  // so a 60 WU arrival zone cannot multiply a 14 WU beacon into a kilometre wall.
+  // Keep the procedural graph's existing scale off authored world-unit children.
   if (root.scale.x !== 1 || root.scale.y !== 1 || root.scale.z !== 1) {
     const proceduralFrame = new THREE.Group();
     proceduralFrame.name = 'ProceduralPropScaleFrame';

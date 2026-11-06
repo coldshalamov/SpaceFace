@@ -21,6 +21,18 @@ export const COUNTERWEIGHT_SAVE_KEY = 'counterweightCircuit';
 const SCHEMA = 1;
 const finite = (v, d = 0) => (Number.isFinite(v) ? v : d);
 
+// Old receipts may not have a comparison. Keep that distinct from a known
+// first finish (null), and never trust an unbounded or non-finite saved value.
+function normalizeResult(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const result = { ...raw };
+  const previous = result.previousBestTimeS;
+  if (previous !== null && !(Number.isFinite(previous) && previous >= 0 && previous <= Number.MAX_SAFE_INTEGER)) {
+    delete result.previousBestTimeS;
+  }
+  return result;
+}
+
 export function freshCounterweightCircuitState() {
   return {
     schema: SCHEMA,
@@ -49,7 +61,7 @@ function normalizeRecord(raw) {
   out.lastAt = Number.isFinite(raw.lastAt) ? raw.lastAt : null;
   out.paid = raw.paid === true;
   out.lastAttemptKey = typeof raw.lastAttemptKey === 'string' && raw.lastAttemptKey.length < 96 ? raw.lastAttemptKey : null;
-  out.lastResult = raw.lastResult && typeof raw.lastResult === 'object' ? raw.lastResult : null;
+  out.lastResult = normalizeResult(raw.lastResult);
   if (!out.paid && raw.pendingReward && typeof raw.pendingReward.eventId === 'string'
     && Number.isSafeInteger(raw.pendingReward.attemptId) && raw.pendingReward.attemptId > 0
     && out.lastAttemptKey === `${raw.pendingReward.eventId}:${raw.pendingReward.attemptId}`
@@ -135,7 +147,7 @@ export function normalizeCounterweightCircuitState(raw) {
     out.settings.ghostReduceMotion = raw.settings.ghostReduceMotion === true;
   }
   out.attempt = normalizeAttempt(raw.attempt);
-  out.lastResult = raw.lastResult && typeof raw.lastResult === 'object' ? raw.lastResult : null;
+  out.lastResult = normalizeResult(raw.lastResult);
   return out;
 }
 

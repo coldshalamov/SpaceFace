@@ -53,6 +53,18 @@ export function runRenderUpdatePhase({
     releaseProExperiencesPresentation(state);
   }
 
+  if (feel && typeof feel.isDeathBellFrameHeld === 'function' && feel.isDeathBellFrameHeld(state)) {
+    // Preserve the submitted framebuffer, including against a death-sheet stage or prewarm.
+    // Feel drains its own lease on presentation time; UI and the simulation retain their
+    // existing clocks. Nothing prepared/consumed this frame's journal range, so reject it.
+    record('render', 0);
+    record('vfx', 0);
+    const errors = runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+    if (errors.feelError) throw errors.feelError;
+    if (errors.uiError) throw errors.uiError;
+    return false;
+  }
+
   if (shouldFreezeFlightSubmit(state) && !photoFrame) {
     // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
     // lit world drawn here, in the game's one context, while the simulation stays stopped. A screen

@@ -5,14 +5,14 @@
 > authoritative order is `src/runtime/authoritativeSystemManifest.js` (materialized by
 > `src/core/registry.js`); this is a navigable projection of it.
 >
-> Generated: 2026-11-04. Live/legacy note: `flight` and `ai` slots are flag-selected
+> Generated: 2026-11-05. Live/legacy note: `flight` and `ai` slots are flag-selected
 > (see root `AGENTS.md` §5). Defaults: `flightBackend:'v3'`, `aiBackend:'sg06-tactical'`,
 > `physicsBackend:'rapier-dynamic'`. Legacy `flight.js`/`ai.js` are fallback-only.
 
 ## Init order (registration order — `registry.js` SYSTEMS array)
 
 ```
-core → runSession → survivalWave → survivalRewards → survivalDraft → survivalResults → killReplay → chainKills → killcamRecorder → survivalAnnounce → survivalArena → swarmArena → swarmFortify → swarmSupply → swarmChain → swarmJuice → swarmElites → survivalRun → voiceArbiter → input → autoTargetAssist → flybyFocus → bulletTime → cloak → scanner → spectrum → scanReveal → buildIdentity → lawSecurity → pirateDisguise → pirateParley → pirateDisengage → aceMemory → barkDirector → ai → dockingCorridor → physics → latchNine → aiPorts → reactiveMatter → orbitalGallery → kineticLeague → tumbleStates → collisionConsequences → stuntGrammar → aiEncounter → actions → heroManeuvers → flight → cruise → weapons → countermeasures → impulseCharges → hullBurst → mines → bombs → emergentPrimitives → environmentMaterials → massSeed → uniqueLootAbilities → fields → gyreSnare → shieldPylons → environmentalMachinery → planetRuntime → combat → combatOutcome → aftermathWrecks → dyingHull → capitalBossEncounters → uniqueWrecks → titles → wingMorale → tetherGameplay → surrenderRecovery → shipjack → custodyConsequences → mercyService → wreckCourt → masslineTelemetry → masslineThreats → masslineImpacts → masslineSnares → masslineThrow → masslineImpactDamage → lootShards → understoryGardens → fulfillmentRoutes → pitbornCull → vaelLiens → archiveRedaction → choirResonance → vergeCourt → frontierHomesteads → terrainAnchors → jettisonImpulse → volatileExposure → mining → fieldDepletion → cargo → fragileCargo → moistureLoss → economy → automation → asteroidSites → industrialDisasters → asteroidFormations → wingmen → intervention → lossLedger → provenanceLedger → chronicler → factionPresence → spawnBudget → world → heistFacilities → regionalEcology → tensionDirector → encounterDirector → rockCore → scissorwake → nemesis → nemesisEncounter → nemesisSignals → routeFollower → travelLanes → livingPoiBehaviors → pirateRumor → ambushSignatures → bountyHunt → stationSideEventDirector → stationContacts → stationContactLoadBoundary → stationServices → difficultyDirector → gateControlDirector → morrow → vesper → bracket → ravel → solstice → rubric → ruckus → ruud → docket → wexTicket → salvage → tallyThree → lastShift → lastShiftPrompt → redKite → redKitePrompt → sableVenn → ilexArk → ilexArkPrompt → kilnback → mothlight → mothlightPrompt → palletJack → palletJackPrompt → secondRinse → lossInvestigation → salvageActions → survivorPod → rookBooth → kesslerScale → furnaceIntake → gateThreeWeir → slateColumn → bouncer → receipt → mop → tallyho → tare → lamplighter → shepherd12 → quill → holdfast → bellhop → gravedigger → recoveryEncounter → factions → massSignature → faction_concord → faction_meridian → faction_helix → faction_drift → lineHeads → sectorSim → towlineTable → towlineTablePrompt → shipbreakingYard → shipbreakingYardBrowser → rigWorkshop → salvageTender → salvageTenderPrompt → cinderglassJob → cinderglassJobPrompt → counterweightCircuit → counterweightCircuitPrompt → breakwaterSpur → breakwaterSpurPrompt → borrowedSun → borrowedSunPrompt → borrowedVoice → borrowedVoicePrompt → salvageOutfits → salvageOutfitsPrompt → npcJobsRuntime → careerOrigins → careerLadders → liveCareerLadderBranches → missions → careerContracts → economyContracts → postEndingReplay → story → scenarioRuntime → presentationOrchestrator → presentationAdapters → ships → crafting → heat → traffic → varianceAdjustmentBerth → drill → claims → beacons → bandRadio → v2FlavorRuntime → longBerth → crew → onboarding → masslineHud → massSeedHud → fieldHud → gyreHud → pylonHud → planetHud → miningHud → survivalHud → swarmJuiceHud → crucibleFocus → sectorPostcard → dockDenyBanner → stationBroadcast → hazardHints → noFireAdvisory → bulkHaulTag → dangerGradient → causeLedger → customsPrompt → impoundPayPrompt → warrantOfferPrompt → moralTrapPrompt → wreckChoicePrompt → stuckTowPrompt → deedRecord → historyWear → cargoConscience → securityReadoutSystem → priceForecastSystem → contractClausesSystem → moralTrapSystem → moralMemory → special500 → special500Spectacle → special500Question → special500Invoice → special500PortraitBuoys → special500Sommelier → special500DockLedger → special500HullLog → special500ReadEverything → special500CollectiveHours → mail → worldClock → worldPressure → lineProgression → render → vfx → feel → audio → ui → save
+core → runSession → survivalWave → survivalRewards → survivalDraft → survivalResults → killReplay → chainKills → killcamRecorder → survivalAnnounce → survivalArena → swarmArena → swarmFortify → swarmSupply → swarmChain → swarmJuice → swarmElites → survivalRun → voiceArbiter → input → autoTargetAssist → flybyFocus → bulletTime → cloak → scanner → spectrum → scanReveal → buildIdentity → lawSecurity → pirateDisguise → pirateParley → pirateDisengage → aceMemory → barkDirector → ai → dockingCorridor → physics → latchNine → aiPorts → reactiveMatter → orbitalGallery → kineticLeague → tumbleStates → collisionConsequences → stuntGrammar → aiEncounter → actions → heroManeuvers → flight → cruise → weapons → countermeasures → impulseCharges → hullBurst → mines → bombs → emergentPrimitives → environmentMaterials → massSeed → uniqueLootAbilities → fields → gyreSnare → shieldPylons → environmentalMachinery → planetRuntime → combat → combatOutcome → aftermathWrecks → dyingHull → capitalBossEncounters → uniqueWrecks → titles → wingMorale → tetherGameplay → surrenderRecovery → shipjack → custodyConsequences → mercyService → wreckCourt → masslineTelemetry → masslineThreats → masslineImpacts → masslineSnares → masslineThrow → masslineImpactDamage → lootShards → understoryGardens → fulfillmentRoutes → pitbornCull → vaelLiens → archiveRedaction → choirResonance → vergeCourt → frontierHomesteads → terrainAnchors → jettisonImpulse → volatileExposure → mining → fieldDepletion → cargo → fragileCargo → moistureLoss → economy → automation → asteroidSites → industrialDisasters → asteroidFormations → wingmen → intervention → lossLedger → provenanceLedger → chronicler → factionPresence → spawnBudget → world → heistFacilities → regionalEcology → tensionDirector → encounterDirector → rockCore → scissorwake → nemesis → nemesisEncounter → nemesisSignals → routeFollower → travelLanes → livingPoiBehaviors → pirateRumor → ambushSignatures → bountyHunt → stationSideEventDirector → stationContacts → stationContactLoadBoundary → stationServices → difficultyDirector → gateControlDirector → morrow → vesper → bracket → ravel → solstice → rubric → ruckus → ruud → docket → wexTicket → salvage → tallyThree → lastShift → lastShiftPrompt → redKite → redKitePrompt → sableVenn → ilexArk → ilexArkPrompt → kilnback → mothlight → mothlightPrompt → palletJack → palletJackPrompt → secondRinse → lossInvestigation → salvageActions → survivorPod → rookBooth → kesslerScale → furnaceIntake → gateThreeWeir → slateColumn → bouncer → receipt → mop → tallyho → tare → lamplighter → shepherd12 → quill → holdfast → bellhop → gravedigger → recoveryEncounter → factions → massSignature → faction_concord → faction_meridian → faction_helix → faction_drift → lineHeads → sectorSim → towlineTable → towlineTablePrompt → shipbreakingYard → shipbreakingYardBrowser → rigWorkshop → salvageTender → salvageTenderPrompt → cinderglassJob → cinderglassJobPrompt → counterweightCircuit → counterweightCircuitPrompt → breakwaterSpur → breakwaterSpurPrompt → borrowedSun → borrowedSunPrompt → borrowedVoice → borrowedVoicePrompt → salvageOutfits → salvageOutfitsPrompt → npcJobsRuntime → careerOrigins → careerLadders → liveCareerLadderBranches → missions → careerContracts → economyContracts → postEndingReplay → story → scenarioRuntime → presentationOrchestrator → presentationAdapters → ships → crafting → heat → traffic → varianceAdjustmentBerth → drill → claims → beacons → bandRadio → v2FlavorRuntime → longBerth → crew → onboarding → masslineHud → massSeedHud → fieldHud → gyreHud → pylonHud → planetHud → miningHud → survivalHud → swarmJuiceHud → crucibleFocus → sectorPostcard → dockDenyBanner → stationBroadcast → hazardHints → noFireAdvisory → bulkHaulTag → dangerGradient → causeLedger → customsPrompt → impoundPayPrompt → warrantOfferPrompt → moralTrapPrompt → wreckChoicePrompt → stuckTowPrompt → deedRecord → historyWear → cargoConscience → securityReadoutSystem → priceForecastSystem → contractClausesSystem → moralTrapSystem → moralMemory → special500 → special500Spectacle → special500Question → special500Invoice → special500PortraitBuoys → special500Sommelier → special500DockLedger → special500HullLog → special500ReadEverything → special500CollectiveHours → special500Confessional → special500DeathBell → special500ForgeKaraoke → mail → worldClock → worldPressure → lineProgression → render → vfx → feel → audio → ui → save
 ```
 
 ## Update order (per-tick sim step order — `registry.js` UPDATE_ORDER)
@@ -25,7 +25,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 
 | Slot | Likely file | Lines | Emits (count) | Subscribes (count) | Top events |
 |---|---|---|---|---|---|
-| `input` | `systems/input.js` | 2521 | 2 | 2 | `drill:beginRejected`×1, `input:worldGestureCancelled`×1 |
+| `input` | `systems/input.js` | 2517 | 2 | 2 | `drill:beginRejected`×1, `input:worldGestureCancelled`×1 |
 | `autoTargetAssist` | `systems/autoTargetAssist.js` | 294 | 0 | 5 | — |
 | `flybyFocus` | `systems/flybyFocus.js` | 546 | 5 | 1 | `flybyFocus:cancel`×1, `flybyFocus:end`×1, `flybyFocus:start`×1 |
 | `bulletTime` | `systems/bulletTime.js` | 417 | 6 | 2 | `audio:cue`×3, `bulletTime:start`×1, `bulletTime:end`×1 |
@@ -47,7 +47,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `mothlight` | `systems/mothlight.js` | 339 | 3 | 0 | `mothlight:lampReleased`×1, `mothlight:phase`×1, `mothlight:identified`×1 |
 | `palletJack` | `systems/palletJack.js` | 533 | 5 | 0 | `palletJack:phase`×1, `palletJack:released`×1, `palletJack:offer`×1 |
 | `secondRinse` | `systems/secondRinse.js` | 274 | 0 | 0 | — |
-| `ai` | `systems/tacticalAI.js` (+ legacy) | 1595 | 6 | 0 | `ai:telegraph`×4, `ai:doctrinePhase`×1, `audio:cue`×1 |
+| `ai` | `systems/tacticalAI.js` (+ legacy) | 1735 | 7 | 0 | `ai:telegraph`×4, `ai:doctrinePhase`×2, `audio:cue`×1 |
 | `barkDirector` | `systems/barkDirector.js` | 3867 | 5 | 53 | `audio:cue`×2, `npc:hailed`×2, `barkDirector:voice`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 863 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
@@ -56,7 +56,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `orbitalGallery` | `gallery/orbital/system.js` | 151 | 0 | 0 | — |
 | `kineticLeague` | `sports/kineticLeague/live.js` | 277 | 0 | 0 | — |
 | `heroManeuvers` | `systems/heroManeuvers.js` | 787 | 4 | 0 | `audio:cue`×4 |
-| `flight` | `systems/flightV3.js` (+ legacy) | 2339 | 11 | 11 | `ship:boostStop`×2, `nav:autopilot`×2, `ship:boostStart`×1 |
+| `flight` | `systems/flightV3.js` (+ legacy) | 2344 | 11 | 11 | `ship:boostStop`×2, `nav:autopilot`×2, `ship:boostStart`×1 |
 | `cruise` | `systems/cruise.js` | 357 | 6 | 6 | `cruise:wrestleStarted`×1, `cruise:engaged`×1, `cruise:wrestleEscaped`×1 |
 | `redKite` | `systems/redKite.js` | 318 | 5 | 0 | `ui:setCourse`×1, `redKite:offer`×1, `redKite:started`×1 |
 | `ilexArk` | `systems/ilexArk.js` | 273 | 6 | 0 | `ui:setCourse`×1, `ilexArk:vaultReleased`×1, `ilexArk:accepted`×1 |
@@ -68,10 +68,10 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `countermeasures` | `systems/countermeasures.js` | 905 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1791 | 35 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:cycle`×3 |
 | `emergentPrimitives` | `systems/emergentPrimitives.js` | 1199 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
-| `environmentMaterials` | `systems/environmentMaterials.js` | 497 | 2 | 1 | `emergent:audio`×1, `asteroid:chunked`×1 |
+| `environmentMaterials` | `systems/environmentMaterials.js` | 523 | 2 | 1 | `emergent:audio`×1, `asteroid:chunked`×1 |
 | `impulseCharges` | `systems/impulseCharges.js` | 1527 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 627 | 17 | 0 | `audio:cue`×5, `presentation:vfxCue`×5, `hullBurst:hit`×3 |
-| `mines` | `systems/mines.js` | 491 | 15 | 8 | `mines:armed`×3, `voice:say`×2, `mines:released`×2 |
+| `mines` | `systems/mines.js` | 494 | 15 | 8 | `mines:armed`×3, `voice:say`×2, `mines:released`×2 |
 | `massSeed` | `systems/massSeed.js` | 683 | 23 | 4 | `presentation:vfxCue`×4, `massSeed:collapsing`×4, `massSeed:collapsed`×4 |
 | `uniqueLootAbilities` | `systems/uniqueLootAbilities.js` | 589 | 3 | 5 | `uniqueLoot:paleCoilBlink`×1, `uniqueLoot:nestbreakerSplit`×1, `uniqueLoot:choirBellPulse`×1 |
 | `dockingCorridor` | `systems/dockingCorridor.js` | 361 | 0 | 4 | — |
@@ -98,11 +98,11 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `latchNine` | `systems/latchNine.js` | 150 | 0 | 0 | — |
 | `combat` | `systems/combat.js` | 1661 | 19 | 10 | `camera:shake`×3, `economy:grantCredits`×3, `player:death`×2 |
 | `combatOutcome` | `systems/combatOutcome.js` | 651 | 6 | 20 | `combat:aftermathChoices`×3, `combat:aftermathChosen`×1, `combat:outcome`×1 |
-| `aftermathWrecks` | `systems/aftermathWrecks.js` | 3512 | 26 | 23 | `aftermathWreck:retired`×3, `news:headline`×2, `news:publish`×2 |
+| `aftermathWrecks` | `systems/aftermathWrecks.js` | 3513 | 26 | 23 | `aftermathWreck:retired`×3, `news:headline`×2, `news:publish`×2 |
 | `dyingHull` | `systems/dyingHull.js` | 475 | 4 | 2 | `dyingHull:lost`×2, `dyingHull:begin`×1, `dyingHull:ruptured`×1 |
 | `titles` | `systems/titles.js` | 1268 | 0 | 13 | — |
 | `wingMorale` | `systems/wingMorale.js` | 442 | 5 | 3 | `ai:formationBroken`×1, `wingMorale:broken`×1, `ai:flee`×1 |
-| `tetherGameplay` | `systems/tetherGameplay.js` | 4578 | 54 | 15 | `tether:latchDenied`×8, `tether:releaseRated`×5, `tether:broke`×4 |
+| `tetherGameplay` | `systems/tetherGameplay.js` | 4594 | 54 | 15 | `tether:latchDenied`×8, `tether:releaseRated`×5, `tether:broke`×4 |
 | `surrenderRecovery` | `systems/surrenderRecovery.js` | 1654 | 0 | 16 | — |
 | `shipjack` | `systems/shipjack.js` | 574 | 15 | 0 | `save:dirty`×1, `comms:log`×1, `shipjack:cue`×1 |
 | `custodyConsequences` | `systems/custodyConsequences.js` | 638 | 0 | 5 | — |
@@ -114,7 +114,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `masslineSnares` | `systems/masslineSnares.js` | 896 | 8 | 5 | `massline:snareDeployed`×2, `massline:snareArmed`×1, `ai:telegraph`×1 |
 | `masslineThrow` | `systems/masslineThrow.js` | 877 | 9 | 4 | `audio:cue`×3, `massline:releaseCancelled`×1, `massline:releaseWindow`×1 |
 | `masslineImpactDamage` | `systems/masslineImpactDamage.js` | 154 | 0 | 3 | — |
-| `lootShards` | `systems/lootShards.js` | 1328 | 8 | 4 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
+| `lootShards` | `systems/lootShards.js` | 1331 | 8 | 4 | `cargo:volatileSlam`×2, `loot:magnetCaptured`×1, `cargo:caughtByNet`×1 |
 | `terrainAnchors` | `systems/terrainAnchors.js` | 456 | 1 | 6 | `terrainAnchors:replenished`×1 |
 | `jettisonImpulse` | `systems/jettisonImpulse.js` | 95 | 1 | 1 | `audio:cue`×1 |
 | `lineHeads` | `systems/lineHeads.js` | 499 | 5 | 2 | `lineHead:breakerSplit`×1, `audio:cue`×1, `lineHead:sealed`×1 |
@@ -131,7 +131,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `crafting` | `systems/crafting.js` | 497 | 10 | 0 | `craft:queueChanged`×4, `audio:cue`×3, `craft:complete`×2 |
 | `economy` | `systems/economy.js` | 6837 | 64 | 43 | `service:completed`×8, `credits:changed`×4, `faction:repDelta`×3 |
 | `intervention` | `systems/intervention.js` | 591 | 5 | 2 | `intervention:logged`×1, `camera:shake`×1, `intervention:available`×1 |
-| `world` | `systems/world.js` | 8654 | 87 | 62 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
+| `world` | `systems/world.js` | 8709 | 87 | 62 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
 | `heistFacilities` | `systems/heistFacilities.js` | 3933 | 23 | 8 | `heist:launchScheduleReceipt`×4, `heist:counterweightSceneReceipt`×4, `heist:launchCue`×2 |
 | `regionalEcology` | `systems/regionalEcology.js` | 454 | 0 | 0 | — |
 | `tensionDirector` | `systems/tensionDirector.js` | 296 | 0 | 0 | — |
@@ -177,14 +177,14 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `faction_meridian` | `systems/faction_meridian.js` | 1848 | 42 | 3 | `comms:log`×2, `meridian:blacklisted`×2, `economy:grantCredits`×1 |
 | `faction_helix` | `systems/faction_helix.js` | 2063 | 45 | 6 | `helix:noticeLapsed`×9, `comms:log`×3, `helix:lienScraped`×2 |
 | `faction_drift` | `systems/faction_drift.js` | 271 | 3 | 0 | `drift:claimLifted`×1, `drift:claimStaked`×1, `drift:claimContested`×1 |
-| `understoryGardens` | `systems/faction_understory.js` | 2099 | 42 | 10 | `comms:log`×6, `understory:dropLapsed`×5, `understory:debtChanged`×3 |
+| `understoryGardens` | `systems/faction_understory.js` | 2117 | 42 | 10 | `comms:log`×6, `understory:dropLapsed`×5, `understory:debtChanged`×3 |
 | `fulfillmentRoutes` | `systems/faction_fulfillment.js` | 537 | 17 | 0 | `comms:log`×8, `fulfillment:derailed`×1, `fulfillment:rerailed`×1 |
 | `pitbornCull` | `systems/faction_pitborn.js` | 2177 | 58 | 2 | `comms:log`×7, `pitborn:marketDelisted`×5, `economy:grantCredits`×2 |
-| `vaelLiens` | `systems/faction_vael.js` | 2038 | 53 | 2 | `comms:log`×7, `economy:chargeCredits`×2, `faction:repDelta`×2 |
-| `archiveRedaction` | `systems/faction_archive.js` | 1910 | 45 | 3 | `comms:log`×5, `faction:repDelta`×4, `archive:errandExpired`×3 |
+| `vaelLiens` | `systems/faction_vael.js` | 2052 | 53 | 2 | `comms:log`×7, `economy:chargeCredits`×2, `faction:repDelta`×2 |
+| `archiveRedaction` | `systems/faction_archive.js` | 1920 | 45 | 3 | `comms:log`×5, `faction:repDelta`×4, `archive:errandExpired`×3 |
 | `choirResonance` | `systems/faction_choir.js` | 1726 | 69 | 1 | `comms:log`×23, `faction:repDelta`×10, `economy:grantCredits`×5 |
-| `vergeCourt` | `systems/faction_verge.js` | 1934 | 62 | 0 | `faction:repDelta`×11, `comms:log`×8, `economy:chargeCredits`×4 |
-| `frontierHomesteads` | `systems/faction_frontier.js` | 2338 | 48 | 7 | `comms:log`×8, `frontier:missionAttemptLost`×2, `frontier:sitePlanted`×2 |
+| `vergeCourt` | `systems/faction_verge.js` | 1946 | 62 | 0 | `faction:repDelta`×11, `comms:log`×8, `economy:chargeCredits`×4 |
+| `frontierHomesteads` | `systems/faction_frontier.js` | 2348 | 48 | 7 | `comms:log`×8, `frontier:missionAttemptLost`×2, `frontier:sitePlanted`×2 |
 | `sectorSim` | `systems/sectorSim.js` | 1253 | 10 | 17 | `sectorsim:tick`×1, `sectorsim:fieldAdvanced`×1, `economy:applyTradePressure`×1 |
 | `towlineTable` | `systems/towlineTable.js` | 307 | 6 | 0 | `ui:setCourse`×1, `towlineTable:cleanupAccepted`×1, `towlineTable:assistAccepted`×1 |
 | `shipbreakingYard` | `features/shipbreakingYard/runtime.js` | 691 | 17 | 0 | `shipbreakingYard:offer`×6, `save:dirty`×3, `ui:setCourse`×2 |
@@ -196,14 +196,14 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `salvageOutfits` | `features/salvageOutfits/index.js` | 612 | 11 | 0 | `salvageOutfits:offer`×3, `salvageOutfits:radio`×1, `comms:log`×1 |
 | `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 7432 | 26 | 21 | `npcJobs:towAssistLost`×3, `npcjobs:loadEmpty`×2, `economy:chargeCredits`×2 |
 | `cinderglassJob` | `features/cinderglassJob/runtime.js` | 480 | 10 | 0 | `cinderglassJob:servicePrompt`×2, `cinderglassJob:fact`×2, `ui:setCourse`×2 |
-| `missions` | `systems/missions.js` | 7040 | 85 | 104 | `mission:updated`×34, `comms:popup`×5, `nav:waypoint`×4 |
+| `missions` | `systems/missions.js` | 7039 | 85 | 104 | `mission:updated`×34, `comms:popup`×5, `nav:waypoint`×4 |
 | `careerOrigins` | `careers/origins/careerOrigins.js` | 1329 | 0 | 0 | — |
 | `careerLadders` | `careers/ladders/careerLadders.js` | 366 | 0 | 0 | — |
 | `liveCareerLadderBranches` | `careers/ladders/liveCareerLadderBranches.js` | 206 | 0 | 0 | — |
 | `story` | `systems/story.js` | 2744 | 50 | 53 | `graffiti:show`×6, `hud:phase`×4, `endgame:ineligible`×4 |
 | `scenarioRuntime` | `systems/scenarioRuntime.js` | 854 | 9 | 5 | `scenario:loaded`×1, `scenario:factsInitialized`×1, `scenario:actorBindings`×1 |
 | `swarmArena` | `systems/swarmArena.js` | 2275 | 0 | 9 | — |
-| `survivalWave` | `systems/survivalWave.js` | 1979 | 0 | 8 | — |
+| `survivalWave` | `systems/survivalWave.js` | 2000 | 0 | 8 | — |
 | `survivalRun` | `systems/survivalRun.js` | 1074 | 1 | 14 | `run:transitionRequested`×1 |
 | `swarmChain` | `systems/swarmChain.js` | 412 | 0 | 3 | — |
 | `killReplay` | `systems/killReplay.js` | 431 | 0 | 5 | — |
@@ -218,8 +218,8 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `longBerth` | `systems/longBerth.js` | 322 | 5 | 4 | `longBerth:claimOffer`×1, `longBerth:restoreOffer`×1, `economy:chargeCredits`×1 |
 | `crew` | `systems/crew.js` | 819 | 39 | 10 | `comms:popup`×19, `economy:chargeCredits`×4, `crew:hireDenied`×2 |
 | `bandRadio` | `systems/bandRadio.js` | 871 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
-| `onboarding` | `systems/onboarding.js` | 5196 | 25 | 93 | `comms:popup`×3, `onboarding:rangePrompt`×3, `rescue:beat`×2 |
-| `masslineHud` | `ui/masslineHud.js` | 2581 | 0 | 5 | — |
+| `onboarding` | `systems/onboarding.js` | 5207 | 25 | 93 | `comms:popup`×3, `onboarding:rangePrompt`×3, `rescue:beat`×2 |
+| `masslineHud` | `ui/masslineHud.js` | 2626 | 0 | 8 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 380 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 333 | 0 | 0 | — |
 | `gyreHud` | `ui/gyreHud.js` | 471 | 0 | 0 | — |
@@ -240,11 +240,11 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `special500Sommelier` | `systems/special500Sommelier.js` | 167 | 7 | 2 | `comms:log`×3, `economy:chargeCredits`×2, `faction:repDelta`×1 |
 | `special500CollectiveHours` | `systems/special500CollectiveHours.js` | 90 | 1 | 1 | `comms:log`×1 |
 | `voiceArbiter` | `ui/voiceArbiter.js` | 1035 | 5 | 6 | `voice:clear`×2, `voice:surface`×2, `barkDirector:voice`×1 |
-| `mail` | `systems/mail.js` | 235 | 2 | 0 | `comms:popup`×1, `mail:delivered`×1 |
+| `mail` | `systems/mail.js` | 250 | 2 | 0 | `comms:popup`×1, `mail:delivered`×1 |
 | `worldClock` | `systems/worldClock.js` | 221 | 6 | 0 | `calendar:stormSeason`×1, `calendar:festival`×1, `calendar:marketDay`×1 |
 | `worldPressure` | `systems/worldPressure.js` | 454 | 13 | 0 | `sectorsim:impulse`×2, `comms:log`×2, `worldPressure:tideChanged`×1 |
 | `lineProgression` | `systems/lineProgression.js` | 244 | 2 | 4 | `line:recordStamped`×1, `line:classChanged`×1 |
-| `save` | `save/saveSystem.js` | 10412 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
+| `save` | `save/saveSystem.js` | 10382 | 63 | 31 | `save:error`×35, `mode:changed`×4, `save:started`×3 |
 
 ## Render-phase order (every animation frame)
 

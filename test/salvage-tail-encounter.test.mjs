@@ -262,13 +262,27 @@ test('salvage tail: terminal effects resist synchronous re-entry', () => {
   }
 });
 test('salvage tail: dead hauler without flight intent still waits for finite cargo custody', () => {
-  const t = boot(), rows = record(t), l = liveOf(t, fire(t, 'custody').encounterId);
+  const t = boot(), rows = record(t, [...OBSERVED, 'encounter:waitStarted']), l = liveOf(t, fire(t, 'custody').encounterId);
   const h = t.director.entsOf(l, 'hauler')[0];
   h.alive = false; delete h.data.intent;
   t.bus.emit('entity:killed', { id: h.id, killerId: t.director.entsOf(l, 'raider')[0].id, type: 'ship', pos: { ...h.pos } });
   assert.ok(l.data.freightCargoCustody.pods.length > 0, 'the real custody owner opens a finite spill');
   for (let i = 0; i < 120; i++) t.sim.step();
   assert.equal(countOf(rows, 'encounter:resolved'), 0);
+  const wait = rows.find(r => r.name === 'encounter:waitStarted' && r.payload.reason === 'cargo_custody').payload;
+  assert.equal(wait.title, 'THE SALVAGE TAIL');
+  assert.equal(wait.detail, 'The replacement lot is in a cargo custody window.');
+  assert.equal(wait.deadlineAt, l.data.freightCargoCustody.deadlineAt);
+  const previousDeck = getPromptDeck(), cards = new Map();
+  setPromptDeck({ offerDecision(spec) { cards.set(spec.id, spec); return true; }, resolveDecision(id) { return cards.delete(id); } });
+  const ui = createEncounterChoicePrompt({ bus: t.bus });
+  try {
+    t.bus.emit('encounter:waitStarted', wait);
+    const card = cards.get('encounter:' + l.id);
+    assert.equal(card.headline, wait.title);
+    assert.equal(card.detail, wait.detail);
+    assert.equal(card.ttlAt, wait.deadlineAt);
+  } finally { ui.destroy(); setPromptDeck(previousDeck); }
   t.state.simTime = l.data.freightCargoCustody.deadlineAt + 1;
   for (let i = 0; i < 120; i++) t.sim.step();
   assert.equal(countOf(rows, 'encounter:resolved', 'hauler_lost'), 1);
@@ -278,9 +292,9 @@ test('salvage tail: dead hauler without flight intent still waits for finite car
 test('salvage tail: unanswered commit replaces the real adapter decision and rejects stale input', () => {
   const previousDeck = getPromptDeck();
   for (const reason of ['damage', 'elapsed']) {
-    const cards = new Map();
+    const cards = new Map(), offeredIds = [];
     setPromptDeck({
-      offerDecision(spec) { cards.set(spec.id, { ...cards.get(spec.id), ...spec }); return true; },
+      offerDecision(spec) { offeredIds.push(spec.id); cards.set(spec.id, { ...cards.get(spec.id), ...spec }); return true; },
       resolveDecision(id) { return cards.delete(id); },
     });
     const t = boot(), ui = createEncounterChoicePrompt({ bus: t.bus });
@@ -288,23 +302,30 @@ test('salvage tail: unanswered commit replaces the real adapter decision and rej
       const rows = record(t, ['story:playerChoiceRecorded', 'encounter:waitStarted']);
       const l = liveOf(t, fire(t, 'ui-' + reason).encounterId), key = 'encounter:' + l.id;
       assert.deepEqual(cards.get(key).choices.map(c => c.id), ['shadow', 'bait', 'decline']);
+      assert.equal(cards.get(key).headline, 'THE SALVAGE TAIL');
+      assert.match(cards.get(key).detail, /Replacement lot aboard/);
       assert.equal(cards.get(key).deadlineAt, l.startedAt + 26);
       if (reason === 'damage') {
         const r = t.director.entsOf(l, 'raider')[0];
         t.bus.emit('combat:damage', { targetId: r.id, attackerId: t.state.playerId, amount: 1 });
       } else for (let i = 0; i < 60 * 28; i++) t.sim.step();
-      assert.equal(cards.size, 1, 'same encounter key replaced, not another card');
+      assert.ok(cards.has(key), 'the same encounter key is replaced');
+      assert.deepEqual(offeredIds.filter(id => id.includes(l.id)), [key, key],
+        'offer and wait both use the same encounter key');
       const wait = cards.get(key);
       assert.deepEqual(wait.choices, []);
-      assert.equal(wait.detail, 'Waiting on the outcome.');
+      assert.equal(wait.headline, 'THE SALVAGE TAIL');
+      assert.equal(wait.detail, 'The Reach pack has committed against the replacement fuel run.');
       assert.equal(wait.deadlineAt, l.deadlineAt);
       assert.equal(routeDigit([{ ...wait, seq: 1 }], key, 'Digit1'), null);
       choose(t, l.id, 'bait');
       assert.equal(l.data.tail.chosen, 'unanswered');
       assert.equal(countOf(rows, 'story:playerChoiceRecorded'), 0, 'no invented or stale player answer');
       assert.equal(countOf(rows, 'encounter:waitStarted'), 1);
+      const unrelated = [...cards.keys()].filter(id => id !== key);
       t.director.resolve(l, 'tail_over', { speak: false });
-      assert.equal(cards.size, 0, 'actual resolution clears the watch');
+      assert.equal(cards.has(key), false, 'actual resolution clears the watch');
+      assert.deepEqual([...cards.keys()], unrelated, 'resolution leaves other encounters alone');
     } finally { ui.destroy(); setPromptDeck(previousDeck); }
   }
 });

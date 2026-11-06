@@ -6945,6 +6945,62 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 220,
       "contractNodeCount": 75
+    },
+    {
+      "id": "wholeship_ashline_dart_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_dart_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_dart_lod1.glb",
+      "sourceSha256": "3796b7d55feecd66fa8843554b18e2beafdc6ec6f060ee0d9ed284ce85cc4a42",
+      "releaseSha256": "77e46eebb3d811d1e80d36a2ffcee58bcf3e650580c5e0842d8c872891788b66",
+      "sourceBytes": 766940,
+      "releaseBytes": 475072,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_dart_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_dart_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb",
+      "sourceSha256": "2692db35cb41f2b631be6ce6d0a979c9db37ec78b6aa2230823708725a98a307",
+      "releaseSha256": "1cbadd483fe70294097dfa6021b4b881dc65499284beae77491cc66c71996b13",
+      "sourceBytes": 501212,
+      "releaseBytes": 404784,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 53,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_rig_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_rig_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_rig_lod1.glb",
+      "sourceSha256": "aaf52bef4ff103f0b63d48f618fb0574bb06db344295123c057a080947c7a421",
+      "releaseSha256": "5179453eb60309271de00ecb90e0ce610e89aea58ed2d49a2ffb49c8db4ac10e",
+      "sourceBytes": 796604,
+      "releaseBytes": 491300,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 55,
+      "contractNodeCount": 26
+    },
+    {
+      "id": "wholeship_ashline_rig_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_rig_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_rig_lod2.glb",
+      "sourceSha256": "baf3334c5eec1efe328f704e4f0a0d65863df04b54e4f0313f7db774d8af95b3",
+      "releaseSha256": "7a88004eb46995c52cff854d84e0bb1f04b6574d78c59cd2f4665f6716d8a097",
+      "sourceBytes": 534584,
+      "releaseBytes": 419176,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 54,
+      "contractNodeCount": 26
     }
   ]
 }

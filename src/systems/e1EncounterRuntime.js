@@ -498,6 +498,7 @@ const h6 = Object.freeze({
       battle.waitDeadlineAt = d.now() + H6_WAIT_TIMEOUT_S;
       d.emit('encounter:waitStarted', {
         encounterId: live.id, deadlineAt: battle.waitDeadlineAt, reason: 'observe_battle',
+        title: live.shape.title, detail: 'Both sides are fighting. Hold position.',
       });
     }
   },

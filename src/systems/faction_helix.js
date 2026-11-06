@@ -45,6 +45,7 @@
 import { faction as HELIX } from '../data/factions/helix.js';
 import { hash32 } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FLAG = (HELIX.custom && HELIX.custom.falseFlag) || {};
 const LIEN = (HELIX.custom && HELIX.custom.lienDrone) || {};
@@ -1992,9 +1993,10 @@ export const factionHelix = {
     const hx = ensureHelixState(state);
     const step = Math.max(0, num(dt, 1 / 60));
     const entities = entityListOf(state);
-    this._tickPacks(state, hx, entities, now);
+    if (strideDt(this, 'packs', step, 3, state) > 0) this._tickPacks(state, hx, entities, now);
     this._tickLienDrones(state, hx, entities, now);
-    this._tickDesks(state, hx, entities, now, step);
+    const deskStep = strideDt(this, 'desks', step, 3, state);
+    if (deskStep > 0) this._tickDesks(state, hx, entities, now, deskStep);
     this._tickNotices(state, hx, entities, now, step);
     this._tickFines(state, hx, now);
     this._tickAudits(state, hx, entities, now, step);

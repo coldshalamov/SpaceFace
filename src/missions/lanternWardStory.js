@@ -88,22 +88,24 @@ export function settleLanternWard(owner, receiptId) {
 
 const LINES = {
   neutral: ["That's a family lamp. The twenty-fifth memorial stays dark.", "Our lamp has its own seat. The memorial's dark one belongs to everyone."],
-  blockage: ["Mind that fallen mast? The cradle has to turn before the candles do.", "Nessa's waiting for the passage. Our lamp is still on the cradle."],
+  blockage: ["The mast blocks our Venn household lamp. Its seat has three brass strokes; the separate public memorial stays dark.", "Our family lamp is waiting on the cradle. Its seat is not the dark public memorial."],
   help: ["Your help counts. Bring this same lamp to the Venn seat; I'll make the connection.", "We saw your help with our lamp. Nessa can finish the connection now."],
-  missingLamp: ["The Venn lamp is missing. Find that same serial; another lamp cannot fill their seat.", "Our lamp is missing. We are keeping its seat for its return."],
-  shortage: ["The cradle's missing. I can't carry a live family lamp bare.", "The lamp's here, but the cradle isn't. Nessa won't risk the contacts."],
+  missingLamp: ["The original Venn lamp is unavailable. Another lamp cannot fill their seat.", "Our original lamp is unavailable. Its seat must wait."],
+  displaced: ["The Venn lamp is out of its seat. Return the same lamp and release your Massline near the three brass strokes; I will connect it.", "Our lamp is out of its seat. Nessa can connect it when it is returned."],
+  unavailable: ["The service cannot continue while its equipment or operator is unavailable. The household seat must wait.", "Our household seat must wait until the service can continue."],
+  shortage: ["The cradle is away. The Venn lamp needs its cradle or a lift to the household seat.", "The cradle is away. Our lamp still needs to reach its seat."],
   injury: ["The launch took a hit. This run will be late; keep the turn clear.", "Nessa's launch was damaged. We're keeping the seat clear while she works."],
   repair: ["The lamp's contacts are damaged. One electronics unit, here beside the launch, and I can repair them.", "The family lamp was damaged. Nessa needs an electronics unit to mend the contacts."],
-  theft: ["That lamp and cradle were borrowed for a household. Bring them back; the empty seat is theirs.", "Someone took our procession gear. We kept the seat empty for its return."],
+  theft: ["I remember the missing procession gear. The household is still waiting for its lamp.", "We remember when our procession gear went missing."],
   recovery: ["Same serial, back in its seat. I'll remember what happened, and the return.", "Our own lamp came back. We kept its seat waiting."],
   installedHelp: ["The Venn lamp's connected. You helped get it here. Thank you.", "You helped bring our lamp home. We left you room by the rail."],
   installed: ["Venn family circuit is live. One household done; the dark memorial stays dark.", "Nessa brought our lamp home. We're ready for the procession."],
-  ignored: ["The clearing crew came after the watch deadline. We lost time; I still have a lamp to connect.", "The clearing crew freed the passage after our watch. We waited with the empty seat."],
+  ignored: ["The watch deadline passed. The household waited; I still have a lamp to connect.", "We waited through the watch with our seat empty."],
   working: ["Keep the cradle steady. I need both contacts seated before I energise it.", "That's our lamp on the cradle. Nessa's lining up the contacts."],
   revisitHelp: ["Venn lamp's still here. You helped get that light home last time.", "We remember your help with our lamp. There's still room by the rail."],
   revisitTheft: ["I remember the missing gear. A new visit doesn't settle that debt.", "We remember when our gear went missing. The empty seat wasn't decoration."],
   revisitRecovery: ["The returned lamp is still the same one. We remember getting it back.", "Our lamp came back. We still tell that part of the story."],
-  revisitIgnored: ["The clearing crew freed the passage after the watch. We still remember the wait.", "We waited through the blocked passage. A visit later, we still remember."],
+  revisitIgnored: ["The watch deadline passed. We still remember the household's wait.", "We waited through the blocked passage. A visit later, we still remember."],
 };
 
 /** Pure projection of the work owner's status; neither accepts work nor changes world state. */
@@ -116,18 +118,24 @@ export function selectLanternWardDialogue(status, { speaker = 'nessa', revisit =
   const recovered = s.installed === true && h.recovered === true;
   const returnVisit = revisit === true;
   let key = 'neutral';
-  if (recovered) key = returnVisit ? 'revisitRecovery' : 'recovery';
-  else if (theft) key = returnVisit ? 'revisitTheft' : 'theft';
+  if (s.missingLamp === true) key = 'missingLamp';
+  else if (s.missingReceiver === true) key = 'unavailable';
   else if (s.damaged === true || s.phase === 'damaged') key = 'repair';
+  else if (s.phase === 'displaced') key = 'displaced';
+  else if (s.cradleMissing === true && !s.installed && !['brace', 'connect'].includes(s.phase)) key = 'shortage';
+  else if (s.phase === 'missing') key = 'unavailable';
   else if (s.injured === true || s.tugDamaged === true || s.phase === 'injured') key = 'injury';
-  else if (s.missingLamp === true || s.phase === 'missing') key = 'missingLamp';
-  else if (s.cradleMissing === true) key = 'shortage';
+  else if (recovered) key = returnVisit ? 'revisitRecovery' : 'recovery';
   else if (returnVisit && (s.ignored === true || h.ignored === true)) key = 'revisitIgnored';
   else if (s.installed === true && s.playerHelped === true) key = returnVisit ? 'revisitHelp' : 'installedHelp';
   else if (s.installed === true) key = 'installed';
+  else if (theft) key = returnVisit ? 'revisitTheft' : 'theft';
   else if (s.ignored === true || h.ignored === true) key = returnVisit ? 'revisitIgnored' : 'ignored';
   else if (s.blocked === true || s.phase === 'blocked') key = 'blockage';
   else if (s.playerHelped === true) key = 'help';
   else if (['working', 'collecting', 'carrying', 'aligning', 'installing', 'servicing'].includes(s.phase)) key = 'working';
-  return { id: `${STORY_ID}:${who}:${key}`, text: LINES[key][household ? 1 : 0], speaker: who };
+  const currentProblem = ['missingLamp', 'repair', 'displaced', 'shortage', 'unavailable'].includes(key);
+  const memory = (currentProblem || (s.installed === true && !recovered)) && theft ? (household ? ' We remember the missing gear.' : ' I remember the missing gear.')
+    : currentProblem && (s.ignored === true || h.ignored === true) ? ' The household remembers the wait.' : '';
+  return { id: `${STORY_ID}:${who}:${key}`, text: LINES[key][household ? 1 : 0] + memory, speaker: who };
 }

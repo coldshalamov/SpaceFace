@@ -2065,6 +2065,24 @@ export const understoryGardens = {
     this.ensureAuthoredReceiver();
     this._reseedDestroyedReceiver();
     const u = ensureUnderstoryState(state);
+    // The arena may retain real reefs, heads and quiet-market obligations, but
+    // an empty ledger has no ambient ecology to seed or poll every fixed tick.
+    const dormant = u;
+    if (state.run?.kind === 'survival'
+        && !dormant.notice && !dormant.debtCr && !dormant.blackoutUntil
+        && !dormant.favors && !dormant.nextWildDropAt
+        && Array.isArray(dormant.drops) && !dormant.drops.length
+        && Array.isArray(dormant.whispers) && !dormant.whispers.length
+        && Array.isArray(dormant.covers) && !dormant.covers.length
+        && isObj(dormant.gardens) && !Object.keys(dormant.gardens).length
+        && isObj(dormant.compost) && !Object.keys(dormant.compost).length
+        && isObj(dormant.tidePushback) && !Object.keys(dormant.tidePushback).length
+        && isObj(dormant.informants) && !Object.keys(dormant.informants).length
+        && !state.entityList.some((e) => e && (e.data?.understoryCacheId != null
+          && e.data?.understoryResolved !== true || e.alive !== false
+          && (e.data?.understoryGarden === true || e.data?.lineHeadId === UNDERSTORY_SPORE_HEAD.id
+            || e.factionId === FACTION_ID
+              && (e.data?.role === 'gardener-skiff' || e.data?.shipRole === 'gardener-skiff'))))) return;
     const gardens = gardenEntities(state);
     for (const e of gardens) {
       // A reef without a gardenId has no ledger identity — skip it rather than

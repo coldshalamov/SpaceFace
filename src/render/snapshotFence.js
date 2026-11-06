@@ -4,6 +4,14 @@
 import { createPresentationSnapshot, SNAPSHOT_COLUMNS } from './presentationSnapshot.js';
 
 export const SNAPSHOT_FENCE_BUFFERS = 3;
+/** Longest the presented moment may run past the latest completed pack (worker silence). */
+export const PRESENTATION_EXTRAPOLATION_S = 0.1;
+/** Per-frame fraction of the gap to the reply-derived moment closed when the clock lags. */
+const PRESENTATION_CATCHUP_GAIN = 0.25;
+const PRESENTATION_RATE_WINDOW_S = 0.2;
+const PRESENTATION_RATE_MAX = 1.25;
+/** Max extrapolated travel (world units) per entity; larger means a teleport, not motion. */
+const EXTRAPOLATION_MAX_WU = 40;
 
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
@@ -175,6 +183,9 @@ export function createSnapshotFence(options = {}) {
   let presentedSequence = -1;
   let presentedEpoch = -1;
   let presentedSnapshotTime = NaN;
+  let presentationRate = 1;
+  let rateWallS = 0;
+  let rateSimS = 0;
 
   return {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
@@ -247,9 +258,20 @@ export function createSnapshotFence(options = {}) {
       if (buffers[previous].poseEpoch !== buffers[latest].poseEpoch) return null;
       return buffers[previous].published;
     },
-    // Sample once per drawn frame. The worker (or a stepped pack) can leave the same two
-    // snapshots on glass across several accumulator wraps. Continue toward the latest pose,
-    // then hold it; never replay their blend backwards. No prediction changes sim authority.
+    // Sample once per drawn frame (elapsedS = wall frame time already scaled by the game time
+    // scale). The presented moment is a wall-clock-driven playout clock, NOT a function of the
+    // last reply's accumulator: the worker can go silent for 100-600 ms between replies and the
+    // accumulator/snapshots then stay frozen. Per frame:
+    //   1. presentedTime advances by elapsed * rate, where rate is the measured sim-seconds per
+    //      presented-second (EMA over ~0.2 s windows), so a worker running at 0.67x is drawn as
+    //      smooth 0.67x motion instead of run-then-hold bursts;
+    //   2. if it fell behind the reply-derived moment (latest.simTime + acc - fixedDt) it closes
+    //      the gap exponentially (no snap), and it never moves backwards;
+    //   3. it may run past latest.simTime by at most PRESENTATION_EXTRAPOLATION_S: the returned
+    //      alpha then exceeds 1 and applySnapshotPoseToMesh extrapolates each pose along its
+    //      previous->latest velocity. When a real reply lands behind the extrapolated moment the
+    //      clock decelerates (QUARTER rate) instead of rewinding, so the hull eases back.
+    // Presentation only: the simulation stays authoritative.
     samplePresentationAlpha(elapsedS, accumulatorS, fixedDt, fallbackAlpha = 1) {
       if (latest < 0) return fallbackAlpha;
       const current = buffers[latest].published;
@@ -257,17 +279,39 @@ export function createSnapshotFence(options = {}) {
       const span = prior ? current.simTime - prior.simTime : 0;
       const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
       const target = span > 0 ? prior.simTime + span * raw : current.simTime;
+      const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
       const reset = presentedEpoch !== current.poseEpoch
         || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
-      if (reset) presentedTime = target;
-      else if (presentedSequence === current.sequence) {
-        const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
-        presentedTime = Math.min(current.simTime, Math.max(target, presentedTime + elapsed));
-      } else presentedTime = Math.max(presentedTime, target);
+      if (reset) {
+        presentedTime = target;
+        presentationRate = 1;
+        rateWallS = 0;
+        rateSimS = 0;
+      } else {
+        // Rate window: sim-time the latest pack gained vs wall time presented in the same window.
+        rateWallS += elapsed;
+        rateSimS += current.simTime - presentedSnapshotTime;
+        if (rateWallS >= PRESENTATION_RATE_WINDOW_S) {
+          const sample = rateSimS / rateWallS;
+          presentationRate += (Math.max(0, Math.min(PRESENTATION_RATE_MAX, sample))
+            - presentationRate) * 0.5;
+          rateWallS = 0;
+          rateSimS = 0;
+        }
+        const cap = current.simTime + PRESENTATION_EXTRAPOLATION_S;
+        let next = presentedTime + elapsed * presentationRate;
+        if (target > next) next += (target - next) * PRESENTATION_CATCHUP_GAIN;
+        // Past the extrapolation window (silence, or a reply landed behind the extrapolated
+        // moment) the clock holds; the sim catches up to it. It never rewinds.
+        if (next > cap) next = cap;
+        presentedTime = Math.max(presentedTime, next);
+      }
       presentedSequence = current.sequence;
       presentedEpoch = current.poseEpoch;
       presentedSnapshotTime = current.simTime;
-      return span > 0 ? Math.max(0, Math.min(1, (presentedTime - prior.simTime) / span)) : 1;
+      if (!(span > 0)) return 1;
+      const alpha = (presentedTime - prior.simTime) / span;
+      return alpha < 0 ? 0 : alpha;
     },
     get sequence() { return sequence; },
     get packCount() { return packCount; },
@@ -395,12 +439,21 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let z = snapshot.columns.position[p + 2];
   let qy = snapshot.columns.quaternion[q + 1];
   let qw = snapshot.columns.quaternion[q + 3];
-  const t = Number.isFinite(alpha) ? alpha : 1;
-  const prev = previous && t < 1
+  let t = Number.isFinite(alpha) ? alpha : 1;
+  const prev = previous && t !== 1
     ? snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint) : -1;
   if (prev >= 0) {
     const pp = prev * 3;
     const pq = prev * 4;
+    if (t > 1) {
+      // Bounded velocity extrapolation past the latest pack (worker silence). A body whose
+      // previous->latest hop would carry it farther than EXTRAPOLATION_MAX_WU is a teleport or
+      // respawn, not motion: hold it at the latest pose.
+      const dx = x - previous.columns.position[pp];
+      const dz = z - previous.columns.position[pp + 2];
+      const extra = t - 1;
+      if (extra * extra * (dx * dx + dz * dz) > EXTRAPOLATION_MAX_WU * EXTRAPOLATION_MAX_WU) t = 1;
+    }
     x = previous.columns.position[pp] + (x - previous.columns.position[pp]) * t;
     z = previous.columns.position[pp + 2] + (z - previous.columns.position[pp + 2]) * t;
     qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * t;

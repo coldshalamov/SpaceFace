@@ -98,6 +98,7 @@ test('save adapter nests the section inside the world bag on both lanes', () => 
   const dispose = installCounterweightCircuitSaveAdapter(save, systemRef);
   // Chunked lane: the world plan row carries the nested section.
   const plan = save._saveCapturePlan();
+  assert.equal(Array.isArray(plan), true);
   const worldBag = plan.find(([key]) => key === 'world')[1]();
   assert.equal(worldBag.counterweightCircuit.discovered, true);
   // Streaming lane: data.world gets the section appended.

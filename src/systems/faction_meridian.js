@@ -84,6 +84,7 @@ import { faction as MTS } from '../data/factions/mts.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const SPINE = (MTS.custom && MTS.custom.cargoSpine) || {};
 const TICKER = (MTS.custom && MTS.custom.hullTicker) || {};
@@ -820,12 +821,15 @@ export const factionMeridian = {
     }
 
     // ── the exchange ledger ──────────────────────────────────────────────────────────
+    // Ledger work is simTime-stamped bookkeeping: 15 Hz with the accumulated step.
+    const ledgerStep = strideDt(this, 'ledger', step, 4, state);
+    if (ledgerStep <= 0) return;
     const desks = this._desks(state, entities);
     this._tickContracts(state, mer, desks, now);
     this._tickClaims(state, mer, desks, loose, now);
-    this._tickConvoys(state, mer, desks, step, now);
+    this._tickConvoys(state, mer, desks, ledgerStep, now);
     this._tickWarrants(state, mer, now);
-    this._tickAccount(state, mer, step, now);
+    this._tickAccount(state, mer, ledgerStep, now);
   },
 
   // ── manifest contracts ─────────────────────────────────────────────────────

@@ -239,7 +239,7 @@ test('saved causal revisits require an explicit player revisit, never commuter d
   assert.match(selectLanternWardDialogue({ districtId: DISTRICT, installed: true, history: { recovered: true } }, { revisit: true }).id, /:revisitRecovery$/);
   const ignored = { districtId: DISTRICT, installed: true, history: { ignored: true } };
   assert.match(selectLanternWardDialogue(ignored, { revisit: true }).id, /:revisitIgnored$/);
-  assert.match(selectLanternWardDialogue({ districtId: DISTRICT, ignored: true }).text, /clearing crew/i);
+  assert.match(selectLanternWardDialogue({ districtId: DISTRICT, ignored: true }).text, /wait/i);
 });
 
 test('unknown status stays neutral and the canonical memorial stays dark', () => {

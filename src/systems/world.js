@@ -45,8 +45,9 @@ import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
-import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
-import { vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+import { WORLD_ONE_OFFS, crackerRunLoadRecovery } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { VX_FREE_DRIVE_SECTOR_ID, VX_FREE_DRIVE_POI, vxFreeDrivePoisFor,
+  vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
   from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
@@ -679,6 +680,7 @@ export const world = {
       state.world.sectors = {};
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
+    this._registerFreeDriveRingPoi();
     if (!state.world.discovery) state.world.discovery = {};
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
@@ -802,6 +804,22 @@ export const world = {
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
       handleMachineTokenDestroyed(this, p || {}, true);
       noteFoldAberrantKilled(this, p || {});
+    });
+    bus.on('salvage:completed', (p) => {
+      const entity = p && this.state.entities.get(p.wreckId);
+      const recovery = crackerRunLoadRecovery(entity);
+      if (!recovery || entity.alive !== false || entity.data?._salvaged !== true
+          || entity.occupantGeneration !== p.sourceGeneration
+          || entity.data.worldRecordId !== p.worldRecordId
+          || p.worldRecordId !== stableRecordId(this.state.meta?.seed || 1,
+            entity.data.homeSectorId, RECORD_KIND.WRECK, entity.data.identityKey)
+          || p.loot?.[recovery.commodityId] !== recovery.amount
+          || Object.values(entity.data.salvagePool || {}).some(qty => qty !== 0)) return;
+      const prior = this.state.world.records?.byId?.[p.worldRecordId];
+      if (prior?.alive === false || prior?.outcome === 'destroyed' || prior?.outcome === 'defeated') return;
+      // Use the existing durable retirement owner, without a lethal event,
+      // kill reward, or law attribution. Core removes this consumed mesh next.
+      this._onDurableEntityKilled({ id: entity.id });
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
     // sectorSim's intel/reconcile channels were emitted and dropped before this binding — the
@@ -1673,7 +1691,10 @@ export const world = {
     // materialize — promoting it re-walked the entire record bag a second time in one
     // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
     // or stripped since still run the full promote below.
-    if (active.fullExtrasBuilt === true) return;
+    if (active.fullExtrasBuilt === true) {
+      this._spawnFreeDriveRing(sector, active, { metadataOnly: true });
+      return;
+    }
     // Rematerialize durable combat/convoy/mission records first (idempotent).
     const rematerialized = this._rematerializeSectorRecords(
       sectorId,
@@ -3291,8 +3312,11 @@ export const world = {
     const fullPresence = tier === RESIDENCY_TIER.FULL;
     if (!disc.pois) disc.pois = {};
     for (const poi of (sector.pois || [])) {
-      const ang = rng() * Math.PI * 2;
-      const r = wr * (0.2 + rng() * 0.6);
+      // This added navigation identity uses an existing buoy; consume no content RNG, so the
+      // original POIs, dressing and physical bodies retain their established generation stream.
+      const ringNavigation = poi.runtimeOwner === 'vxFreeDriveRing';
+      const ang = ringNavigation ? 0 : rng() * Math.PI * 2;
+      const r = ringNavigation ? 0 : wr * (0.2 + rng() * 0.6);
       const local = poi.pos
         ? { x: poi.pos.x, z: poi.pos.z }
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
@@ -3692,27 +3716,72 @@ export const world = {
   // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
   // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
   // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
-  _spawnFreeDriveRing(sector, active) {
-    for (const structure of vxFreeDriveStructuresFor(sector.id)) {
-      const pos = this._toGlobal(
-        { x: structure.localPos.x, z: structure.localPos.z }, sector.id);
-      this._spawnPlaceProp(active, sector, structure.placeId, pos, {
-        rot: structure.rot,
-        name: structure.name,
-        radius: structure.radius,
-        worldOneOff: true,
-      });
+  _registerFreeDriveRingPoi() {
+    const sector = this.state.world.sectors?.[VX_FREE_DRIVE_SECTOR_ID];
+    if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
+  },
+
+  _spawnFreeDriveRing(sector, active, { metadataOnly = false } = {}) {
+    const structures = vxFreeDriveStructuresFor(sector.id);
+    const markers = vxFreeDriveMarkersFor(sector.id);
+    if (!structures.length || !active?.dressing) return;
+    const table = this.state.world.dressing;
+    let known = 0, needsStamp = false;
+    // Cached FULL promotion is hot. Correct, missing, dead or replaced slots
+    // need no new allocation or write; only an original missing metadata does.
+    for (const slot of active.dressing) {
+      if (!slot.vxFreeDriveId) continue;
+      known++;
+      const body = table?.byId?.get(slot.id);
+      if (body && body === slot._vxFreeDriveOriginal && body.alive !== false
+          && (body.data?.vxFreeDriveId !== slot.vxFreeDriveId
+            || body.data?.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id)) needsStamp = true;
     }
-    for (const marker of vxFreeDriveMarkersFor(sector.id)) {
-      const pos = this._toGlobal(
-        { x: marker.localPos.x, z: marker.localPos.z }, sector.id);
-      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
-        rot: 0,
-        name: 'Cracker Run marker',
-        radius: 10,
-        worldOneOff: true,
-      });
-    }
+    if (known === structures.length + markers.length && !needsStamp) return;
+
+    let metadataChanged = false;
+    const adopt = (source, placeId, name, radius, rot) => {
+      const pos = this._toGlobal(source.localPos, sector.id);
+      let slot = null;
+      for (const candidate of active.dressing) {
+        if (candidate.vxFreeDriveId === source.id) { slot = candidate; break; }
+        // Legacy first adoption uses the world's existing static dressing
+        // identity tuple, never a nearby body or its display name alone.
+        if (!candidate.vxFreeDriveId && candidate.placeId === placeId
+            && candidate.pos?.x === pos.x && candidate.pos?.z === pos.z) slot = candidate;
+      }
+      let body = slot && table?.byId?.get(slot.id);
+      if (!slot) {
+        if (metadataOnly) return;
+        body = this._spawnPlaceProp(active, sector, placeId, pos, {
+          rot, name, radius, worldOneOff: true,
+        });
+        if (!body) return;
+        for (const candidate of active.dressing) if (candidate.id === body.id) { slot = candidate; break; }
+      }
+      if (!slot) return;
+      // An occupied original slot stays occupied even when its body is absent.
+      // No metadata pass replaces a worked/dead body or reuses a recycled id.
+      slot.vxFreeDriveId = source.id;
+      const data = body?.data;
+      if (!body || body.alive === false || body.type !== 'fx'
+          || table?.byId?.get(slot.id) !== body
+          || (this.state.entities?.has(body.id) && this.state.entities.get(body.id) !== body)
+          || (slot._vxFreeDriveOriginal && slot._vxFreeDriveOriginal !== body)
+          || data?.worldDressing !== true || data.worldOneOff !== true
+          || data.placeId !== placeId || data.name !== name || body.radius !== radius
+          || data.homeSectorId !== sector.id || data.sectorId !== sector.id) return;
+      if (!slot._vxFreeDriveOriginal) Object.defineProperty(slot, '_vxFreeDriveOriginal', { value: body });
+      if (data.vxFreeDriveId !== source.id) { data.vxFreeDriveId = source.id; metadataChanged = true; }
+      if (data.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id) {
+        data.vxFreeDrivePoiId = VX_FREE_DRIVE_POI.id; metadataChanged = true;
+      }
+    };
+    for (const structure of structures) adopt(structure, structure.placeId, structure.name, structure.radius, structure.rot);
+    for (const marker of markers) adopt(marker, 'place_nav_buoy', 'Cracker Run marker', 10, 0);
+    // Legacy rows may already have crossed the worker boundary. Their data uses
+    // the existing spawn/rebuild channel, not the pose-only aux delta.
+    if (metadataOnly && metadataChanged) this.helpers.requestPresentationRebuild?.('cracker-run-guidance');
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
@@ -3747,6 +3816,19 @@ export const world = {
       masslineTetherable: true,
     });
     this._stampHomeSector(ent, sector.id);
+    if (oneOff.materialRecovery) {
+      // Recovery is atomic: an intact original has paid no contents. A terminal
+      // original never reaches this decoration path (_spawnWorldOneOffs guards it).
+      const { commodityId, amount } = oneOff.materialRecovery;
+      const pool = { [commodityId]: amount };
+      ent.data.debrisCache ??= 'empty';
+      const salvage = this.registry?.get?.('salvageActions');
+      if (salvage?.configureAuthoredWreck) salvage.configureAuthoredWreck(ent, { salvagePool: pool });
+      else {
+        ent.data.authoredSalvagePool = { ...pool };
+        ent.data.salvagePool = pool;
+      }
+    }
     return ent;
   },
 
@@ -8225,6 +8307,7 @@ export const world = {
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
     state.world.arrangementVersion = arrangementVersion;
+    this._registerFreeDriveRingPoi();
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
     // materializer believe stations/gates are still live and the loaded sector appears empty.
@@ -8306,6 +8389,7 @@ export const world = {
     for (const sector of SECTORS) {
       state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
     }
+    this._registerFreeDriveRingPoi();
     state.world.discovery = {};
     state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};

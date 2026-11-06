@@ -19,6 +19,7 @@
 import { BINDINGS } from './bindings.js';
 import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
 import { createSpecial500InvoicePrompt } from './special500InvoicePrompt.js';
+import { createSpecial500ConfessionalPrompt } from './special500ConfessionalPrompt.js';
 import { createSectorLawPresenter } from './sectorLawPresenter.js';
 import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js';
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
@@ -309,6 +310,7 @@ export function createComms(ctx) {
   // The special-500 invoice (SP2-044): the same adapter pattern — the sim leg owns the bill,
   // the deck renders it, this module never prices or settles anything.
   const special500InvoicePrompt = createSpecial500InvoicePrompt(ctx);
+  const special500ConfessionalPrompt = createSpecial500ConfessionalPrompt(ctx);
   const commsRadial = createCommsRadial(ctx);
   const endingEpilogue = createEndingEpilogue({
     ...ctx,
@@ -784,6 +786,7 @@ export function createComms(ctx) {
       signalInvestigationPrompt,
       recoveryEncounterPrompt,
       contactHailPrompt,
+      special500ConfessionalPrompt,
       commsRadial,
     ]) {
       try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}

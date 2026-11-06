@@ -74,11 +74,15 @@ vec3 actionPoint(float t,float v){
     p.z+=sign(cos(curl))*pow(abs(cos(curl)),.65)*width;
     p.y=sign(sin(curl))*pow(abs(sin(curl)),.65)*lift;
     p.y+=sin(t*8.0-age*3.0+phase)*lift*.20*belly;
-  }else{
+  }else if(kind<6.5){
     // Closed angular clamp members have a load-bearing back and bright teeth.
     p.z+=bow*(.5-.5*cos(t*PI));
     p.z+=sign(cos(curl))*pow(abs(cos(curl)),.38)*width;
     p.y=sign(sin(curl))*pow(abs(sin(curl)),.38)*lift;
+  }else{
+    // A committed lane is a flat wedge: its edges follow the exact permitted shot angles.
+    p.z=v*width*t;
+    p.y=.02;
   }
   p.z+=iBehavior.z;
   float c=cos(iOrigin.w),s=sin(iOrigin.w);
@@ -137,6 +141,9 @@ void main(){
     edge=1.0;
     float knot=pow(wave(t*19.0-time*7.0+phase),5.0);
     hot=crest*(.38+1.7*knot);body*=.62;dark=band(v,.30);
+  }else if(kind>6.5){
+    edge=1.0; body=.45; dark=0.0;
+    hot=band(abs(v)-.94,.08)*.45;
   }else if(kind>5.5){
     edge=1.0;body=.35;dark=.6;
     hot=(band(v-.72,.15)+band(v+.72,.15))*(.32+wave(t*18.0-time*3.0+phase));
@@ -203,6 +210,15 @@ export class ActionPrimitiveComposer {
     p.kind=kind;p.radius=reach;p.seed=s.seed+pulse*.381966;p.count=kind==='heat'?7:5;
     p.life=Math.min(.78,s.recipe.life*.86);p.strength=.84;p.age=0;
     this.particles.emit(p);
+  }
+  renderCommittedLane(s, origin, flash=false) {
+    const lane=s.committedLane;
+    if(!lane)return;
+    const x=s.x,z=s.z,y=s.y;
+    this.slot=s;s.x=origin.x;s.z=origin.z;s.y=0;
+    this._piece(7,s.x,s.z,lane.bearing,0,lane.range,lane.range*Math.tan(lane.capRad),0,
+      0,0,0,0,flash?.24:.32,1,-.1,.16);
+    s.x=x;s.z=z;s.y=y;
   }
   render(s,now,reduced=false,flash=false){
     this.slot=s;

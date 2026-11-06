@@ -61,6 +61,7 @@ import {
 import { PORTRAIT_PAINTER } from '../../data/special500/portraitBuoyLine.js';
 import { SOMMELIER } from '../../data/special500/sommelier.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { contestedSectorForPair } from '../../data/conflictZones.js';
 import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
 import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
@@ -1433,6 +1434,86 @@ function serviceSummary(stationId, state) {
   return names.slice(0, 3).join(' / ') || services.slice(0, 3).join(' / ');
 }
 
+// THE HOUSE'S WAR (inf-bar-war-front): the arrival desk names the house's war once per dock and
+// the chart renders the front, but the bar conversation — the place you sit down and ask for the
+// word — answered "things have been quiet" while the house was at war. This is the conversation
+// reading the same conflict truth: a pure read of state.conflicts (factions stays the sole
+// writer), gated exactly like the desk on the record's own 'war' state — cold and tense pairs
+// stay quiet, and a faction with no record stays wordless.
+export function warRecordForFaction(state, factionId) {
+  const conflicts = state && state.conflicts;
+  if (!conflicts || typeof conflicts !== 'object' || !factionId) return null;
+  for (const pairKey of Object.keys(conflicts)) {
+    const rec = conflicts[pairKey];
+    if (!rec || String(rec.state || '').toLowerCase() !== 'war') continue;
+    const pair = String(pairKey).split(':');
+    if (!pair.includes(factionId)) continue;
+    const rivalId = pair.find((id) => id && id !== factionId);
+    if (!rivalId) continue;
+    return { pairKey, factionId, rivalId, rec };
+  }
+  return null;
+}
+
+function factionShortName(factionId) {
+  const meta = FACTION_BY_ID.get(factionId);
+  return (meta && (meta.short || meta.name)) || String(factionId || '').replace(/^faction_/, '');
+}
+
+function warFrontName(war) {
+  const sectorId = contestedSectorForPair(war && war.pairKey);
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  return sector ? sector.name : 'the contested lane';
+}
+
+/** Player-lean read from the queried faction's side: positive means the war is going their way. */
+function warLeanForFaction(war) {
+  const lean = Number(war && war.rec && war.rec.playerLean) || 0;
+  const first = String(war && war.pairKey || '').split(':')[0];
+  return first === war.factionId ? -lean : lean;
+}
+
+const WAR_RUMOR_LINES = Object.freeze([
+  'Rumors? The war is the news. This house is at war with {rival}, and the front sits at {front}. Every lane through there is leaning on it.',
+  'You want rumors — the only story worth a tab is the war with {rival}. The front at {front} decides who eats on this station next season.',
+]);
+const WAR_RUMOR_BLOCKADE = 'The only story is the war with {rival}. Someone has been strangling the supply lane at {front} — half the dock is idle because of it.';
+const WAR_RUMOR_SIEGE = 'The war with {rival}, what else. They set a heavy hull over the front at {front}, and somebody cracked it. This room has told the story every night since.';
+const WAR_WORD_LINES = Object.freeze([
+  'The word is the war. {rival} holds the front at {front}, and this house is in it — watch the lanes, and watch the flags they fly on them.',
+  'Same word as every night this week: the war with {rival}. The front at {front} is where this station\'s luck is being decided.',
+]);
+const WAR_LEAN_FOR = ' The house knows which side your work has been feeding. It is noticed here.';
+const WAR_LEAN_AGAINST = ' And some of the work banked on that front is yours — against this house. Drink light, and keep your back to the wall.';
+
+/**
+ * One bar line for the house's war, in the room's voice. Deterministic: the same (seed, pair,
+ * slot) always answers the same way, and the front's own ledger facts (a blockaded lane, a
+ * cracked bastion, the player's banked lean) pick the variant — nothing invented, the same
+ * truth the chart's war front renders.
+ */
+export function barWarTalkLine(state, war, slot = 'rumors') {
+  if (!war) return null;
+  const rival = factionShortName(war.rivalId);
+  const front = warFrontName(war);
+  const values = { rival, front };
+  const frontRec = war.rec && typeof war.rec.front === 'object' ? war.rec.front : null;
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  let line;
+  if (slot === 'word') {
+    line = WAR_WORD_LINES[hash32(seed, 'bar-war', war.pairKey, 'word') % WAR_WORD_LINES.length];
+  } else if (frontRec && frontRec.siege > 0) {
+    line = WAR_RUMOR_SIEGE;
+  } else if (frontRec && frontRec.blockade > 0) {
+    line = WAR_RUMOR_BLOCKADE;
+  } else {
+    line = WAR_RUMOR_LINES[hash32(seed, 'bar-war', war.pairKey, 'rumors') % WAR_RUMOR_LINES.length];
+  }
+  const lean = warLeanForFaction(war);
+  const clause = lean >= 0.2 ? WAR_LEAN_FOR : lean <= -0.2 ? WAR_LEAN_AGAINST : '';
+  return localizeText(line + clause, values);
+}
+
 export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const role = contact.role || 'barkeep';
   const sec = currentSector(stationId, state);
@@ -1443,6 +1524,12 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
     if (!text) return;
     tags.push({ label, text, kind });
   };
+
+  // The house's war (inf-bar-war-front) is the loudest fact in the room: it leads the tags,
+  // naming the rival and the contested front the chart already renders. Contacts whose own
+  // house is the warring side carry their own war — a patron whose faction fights speaks for it.
+  const war = warRecordForFaction(state, contact.factionId);
+  if (war) add('War', `${factionShortName(war.rivalId)} — the front holds ${warFrontName(war)}`, 'bad');
 
   const memory = stationContactMemoryFor(state, contact.id);
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
@@ -1544,6 +1631,17 @@ function barRegularTroubleLine(contact, state, stationId, talkCount) {
     ? dangerousSector(stationId, state) : null;
   const event = localEconEvent(state, stationId);
   const sec = currentSector(stationId, state);
+
+  // The war is what changed while you were out (inf-bar-war-front): a regular whose own house
+  // is at war — or who drinks in a house at war — opens with the front, not the weather.
+  const war = warRecordForFaction(state, contact.factionId)
+    || warRecordForFaction(state, stationFor(stationId, state)?.factionId || null);
+  if (war) {
+    const values = { rival: factionShortName(war.rivalId), front: warFrontName(war) };
+    return variant
+      ? localizeText('Since your last drink, the war with {rival} moved the front at {front}. The regulars argue about nothing else.', values)
+      : localizeText('You were gone one bell and the war with {rival} got closer. The front at {front} is all anyone will talk about.', values);
+  }
 
   if (role === 'barkeep') {
     if (event) {
@@ -1749,6 +1847,29 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
     ? AUTHORED_DOCK_RUMORS[stationId]
     : null;
+
+  const canonical = contact && contact.canonicalKey
+    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
+    : null;
+  if (canonical) return canonical;
+
+  // THE HOUSE'S WAR (inf-bar-war-front): the desk names it on arrival and the chart renders the
+  // front; here the room's answers carry it. Rumor days: three days in four the war is the
+  // answer, outranking the keeper's repeating dock story; the other days the keeper sells the
+  // ledger, so the pitch never locks out for the war's whole life. One-shot leads above (a
+  // wreck bearing, a posted ore lot, a live entrance run, an ace sighting) and an authored
+  // keeper's own line still answer first.
+  const houseWar = role === 'barkeep'
+    ? warRecordForFaction(state, stationFor(stationId, state)?.factionId || null)
+    : null;
+  const warAnswersToday = houseWar
+    ? hash32(Number(state?.meta?.seed) || 0, 'bar-war-day', houseWar.pairKey,
+      Math.floor((Number(state?.simTime) || 0) / 600)) % 4 !== 0
+    : false;
+  if (role === 'barkeep' && choiceId === 'rumors' && houseWar && warAnswersToday) {
+    return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
+  }
+
   if (authoredDockRumor) {
     const rumor = frontierRumorOffer(state, stationId);
     return {
@@ -1756,11 +1877,6 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       frontierRumorOffer: rumor || null,
     };
   }
-
-  const canonical = contact && contact.canonicalKey
-    ? buildCanonicalReply(contact, choiceId, ctx, stationId)
-    : null;
-  if (canonical) return canonical;
 
   switch (role) {
     /* ── BARKEEP ───────────────────────────────────────── */
@@ -1780,6 +1896,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
             surveyOffer: survey,
           };
         }
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'rumors'), warPosture: houseWar.rec };
         const events = getEconEvents(state);
         if (events.length > 0) {
           const ev = events[0];
@@ -1791,6 +1908,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
       }
       if (choiceId === 'word') {
+        // "What's the word?" — during a war the word IS the war; the survey pitch keeps its
+        // rumor days and the barkeep's Survey tag.
+        if (houseWar) return { text: barWarTalkLine(state, houseWar, 'word'), warPosture: houseWar.rec };
         const survey = availableSurveyOffer(state, stationId);
         if (survey) {
           return {

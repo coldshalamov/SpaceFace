@@ -2,6 +2,8 @@
 
 ## Current status: Pro queued; usage limit observed
 
+November5,01:05UTC recheck: the actual regular ChatGPT menu still shows Pro5of5, Locked and Usage limit reached, with Chat selected and Work unselected. No prompt was entered/submitted; only the new empty check tab closed. All five remain unsent. Reset time is unknown; no substitute model/app is authorized.
+
 November4,21:52UTC: all five remain unsent. The integrated Browser is now reachable. A fresh regular
 ChatGPT page had Chat selected and Work unselected; its actual model menu showed **Pro,5of5**, a
 locked power slider and **Usage limit reached**. No prompt was submitted and no alternate model/app

@@ -1,8 +1,9 @@
 // src/ui/orrery/footprintLayouts.js — ORRERY composition for THE FOOTPRINT (F3; design/frontend/ORRERY.md §6
 // Meta). It places the screen's own nodes and pins nothing inline: the Heat Dial (footprintDial.js) on the
 // left, filling the stage's height; beside it the reading of the traced source — what it is, its chain
-// unfolded as a beam of its receipts (act, incident, standing, consequence), the verbs that answer it (the
-// one Lamp Key and words, each with what it costs), then the record. No boxes: the column stands in a pool
+// unfolded as a beam of its receipts (act, incident, standing, consequence); beside the dial a reading
+// column holds that scroll (the beam), then the verbs that answer it (the one Lamp Key and words, each with
+// what it costs), then the record — verbs sit outside the scroll so its foot-fold cannot cover them. No boxes: the column stands in a pool
 // of shade, the beam is a band of light with a core, the verbs are words. It overrides the kit's footprint
 // board (styles/ui.css fp-*) and the Deckplate printed keys from here, scoped to the screen.
 import { injectOrrery } from './tokens.js';
@@ -32,12 +33,17 @@ ${S} > .k-corner, ${S} > .k-hang { display:none !important; }
 ${S} > .k-stage.fp-stage { grid-area:stage; display:grid !important; grid-template-columns:var(--fp-dial-w, 52%) minmax(0, 1fr) !important; grid-template-rows:minmax(0, 1fr) !important;
   column-gap:clamp(20px, 2.6vw, 60px) !important; row-gap:0 !important; min-height:0 !important; position:relative; }
 ${S} .fp-dialhost { grid-column:1; grid-row:1; position:relative; min-width:0; min-height:0; }
-${S} .fp-read { grid-column:2; grid-row:1; position:relative; min-width:0; min-height:0; max-width:calc(680px * var(--fp-s, 1)); display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px);
+/* the dial's neighbour: scrolling reading, then the verbs, then the record — verbs stay clear of the fold */
+${S} .fp-reading { grid-column:2; grid-row:1; position:relative; min-width:0; min-height:0; max-width:calc(680px * var(--fp-s, 1)); display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px); max-height:100%; }
+${S} .fp-read { position:relative; flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px);
   overflow:hidden auto; scrollbar-width:none; padding:2px 10px 8px 10px; box-sizing:border-box; }
 ${S} .fp-read::-webkit-scrollbar { display:none; }
 /* the column scrolls as one: nothing in it shrinks to fit */
 ${S} .fp-read > * { flex:none !important; }
-/* a column that overflows says so with a fold at its foot */
+${S} .fp-answer, ${S} .fp-drawer { flex:none !important; min-width:0; box-sizing:border-box; }
+${S} .fp-answer { padding-left:10px !important; padding-right:10px !important; }
+${S} .fp-drawer { padding-left:10px !important; padding-right:10px !important; }
+/* a column that overflows says so with a fold at its foot (reading only — never the verbs) */
 ${S} .fp-read[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); }
 /* a pool of shade behind the reading, no panel */
 ${S} > .k-stage.fp-stage::after { content:""; position:absolute; z-index:-1; pointer-events:none; top:-40px; bottom:-40px; left:calc(var(--fp-dial-w, 52%) - 20px); right:-60px;
@@ -159,7 +165,7 @@ ${S} .fp-statehost .sf-state--empty .sf-state__word { display:none !important; }
 /* keyboard focus inside the column: light, never an underline or a box */
 ${S} :focus-visible { outline:none !important; }
 @media (max-height:800px) {
-  ${S} .fp-read { gap:10px; }
+  ${S} .fp-reading, ${S} .fp-read { gap:10px; }
   ${S} .fp-trace { gap:5px; }
   ${S} .fp-trace__read .k-sentence--emph { display:none; }
   ${S} .fp-chain { gap:4px !important; }
@@ -191,7 +197,11 @@ ${S} :focus-visible { outline:none !important; }
    of a thin stack and the column's fold falls lower; the at-rest drag hint steps aside where the tokens sit on it */
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
   ${S} > .k-stage.fp-stage { column-gap:16px !important; }
-  ${S} .fp-read { gap:8px; padding-right:4px; }
+  ${S} .fp-reading { gap:8px; }
+  /* the beam keeps a real share of the column; verbs densify instead of eating the stage */
+  ${S} .fp-read { gap:8px; padding-right:4px; flex:1 1 auto !important; min-height:38% !important; }
+  ${S} .fp-answer { padding-right:4px !important; flex:0 0 auto !important; }
+  ${S} .fp-drawer { padding-right:4px !important; }
   ${S} .fp-trace__crest { width:36px; height:36px; }
   ${S} .fp-trace__top { gap:12px; }
   ${S} .fp-trace__names { gap:3px; }
@@ -201,11 +211,12 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-node { font-size:13.5px !important; }
   ${S} .fp-node__meta { font-size:12px !important; }
   ${S} .fp-node__stage { font-size:12px !important; letter-spacing:.16em !important; }
-  ${S} .fp-answer { gap:4px !important; }
-  ${S} .fp-answer .k-words { column-gap:14px; row-gap:2px !important; }
-  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:24px !important; font-size:12px !important; letter-spacing:.1em !important; padding-left:14px !important; }
-  ${S} .fp-answer .k-word.orr-lampkey { min-height:32px !important; font-size:12.5px !important; margin:2px 0 4px !important; }
-  ${S} .fp-answer .k-word-sub { font-size:12px !important; line-height:1.3 !important; }
+  ${S} .fp-answer { gap:2px !important; }
+  ${S} .fp-answer__k { margin-bottom:0 !important; }
+  ${S} .fp-answer .k-words { column-gap:10px; row-gap:0 !important; }
+  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:22px !important; font-size:12px !important; letter-spacing:.08em !important; padding-left:12px !important; }
+  ${S} .fp-answer .k-word.orr-lampkey { min-height:28px !important; font-size:12px !important; margin:1px 0 2px !important; }
+  ${S} .fp-answer .k-word-sub { font-size:12px !important; line-height:1.25 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   ${S} .fp-hint { display:none; }
   /* the rule along the bottom gap tracks tighter so it ends before the WANTED word */
   ${S} .fp-engrave--rule text { letter-spacing:.16em; }
@@ -216,7 +227,10 @@ ${S} :focus-visible { outline:none !important; }
   ${S} > .k-stage.fp-stage { display:flex !important; flex-direction:column; gap:18px; min-height:auto !important; }
   ${S} > .k-stage.fp-stage::after { display:none; }
   ${S} .fp-dialhost { flex:none; align-self:center; width:min(calc(100% + var(--k-margin, 14px) * 2), 520px); height:auto !important; aspect-ratio:1 / 1; margin:0; max-height:none; }
-  ${S} .fp-read { flex:none; max-width:none; overflow:visible; padding:0 0 12px; gap:16px; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${S} .fp-reading { flex:none; max-width:none; max-height:none; gap:16px; }
+  ${S} .fp-read { flex:none; max-width:none; overflow:visible; padding:0; gap:16px; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${S} .fp-answer, ${S} .fp-drawer { padding-left:0 !important; padding-right:0 !important; }
+  ${S} .fp-read { min-height:0 !important; }
   ${S} .fp-board { max-width:none; padding-left:40px !important; }
   ${S} .fp-board::before { left:18px; }
   ${S} .fp-board::after { left:22px; }

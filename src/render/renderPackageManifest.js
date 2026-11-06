@@ -1074,7 +1074,9 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.crusher-module",
-    "expectedContentHash": "ebebaf3775a5bc518dbf00a5cf001f6805e23b2aaf4586a108db749497c04cfd",
+    "expectedContentHash": "2c1d2ab0ff48b0b2745936fac9bfcc806a53b7f467764e938c33aa099c498671",
+    "expectedRuntimeHash": "fa009406979b22891cab024b60b8100bf8520761ec8190e2958fa6d148601da2",
+    "flightStaticV3": true,
     "key": "crusher-module",
     "metadataUrl": "assets/ships/release/render-packages/crusher-module/render-package.json",
     "runtimeAssetId": "place_crusher_module",
@@ -2246,7 +2248,9 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ore-sorter",
-    "expectedContentHash": "f43755691c1021e3d04da0f0f63dc022d916fc321ffec79f8c5293f77e02527f",
+    "expectedContentHash": "4d14d6a054df5605c92c67f55e46d634fc7c44e473c92dc60da48fba662213cf",
+    "expectedRuntimeHash": "429df3606bb1d7d247687344cc0cab7ec91bd47b976b9ce8bbdc402693cb0e2a",
+    "flightStaticV3": true,
     "key": "ore-sorter",
     "metadataUrl": "assets/ships/release/render-packages/ore-sorter/render-package.json",
     "runtimeAssetId": "place_ore_sorter",
@@ -4193,6 +4197,46 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
     "sourceUrl": "assets/ships/release/parts/wholeships/swarm_anchor.glb"
+  },
+  {
+    "assetId": "sf.render.ashline-dart-lod1",
+    "expectedContentHash": "dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d",
+    "key": "ashline-dart-lod1",
+    "metadataUrl": "assets/ships/release/render-packages/ashline-dart-lod1/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_DART",
+    "slot": "hull",
+    "sourceSha256": "77e46eebb3d811d1e80d36a2ffcee58bcf3e650580c5e0842d8c872891788b66",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart_lod1.glb"
+  },
+  {
+    "assetId": "sf.render.ashline-dart-lod2",
+    "expectedContentHash": "1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42",
+    "key": "ashline-dart-lod2",
+    "metadataUrl": "assets/ships/release/render-packages/ashline-dart-lod2/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_DART",
+    "slot": "hull",
+    "sourceSha256": "1cbadd483fe70294097dfa6021b4b881dc65499284beae77491cc66c71996b13",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb"
+  },
+  {
+    "assetId": "sf.render.ashline-rig-lod1",
+    "expectedContentHash": "b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81",
+    "key": "ashline-rig-lod1",
+    "metadataUrl": "assets/ships/release/render-packages/ashline-rig-lod1/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG",
+    "slot": "hull",
+    "sourceSha256": "5179453eb60309271de00ecb90e0ce610e89aea58ed2d49a2ffb49c8db4ac10e",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_lod1.glb"
+  },
+  {
+    "assetId": "sf.render.ashline-rig-lod2",
+    "expectedContentHash": "cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631",
+    "key": "ashline-rig-lod2",
+    "metadataUrl": "assets/ships/release/render-packages/ashline-rig-lod2/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG",
+    "slot": "hull",
+    "sourceSha256": "7a88004eb46995c52cff854d84e0bb1f04b6574d78c59cd2f4665f6716d8a097",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_lod2.glb"
   }
 ];
 

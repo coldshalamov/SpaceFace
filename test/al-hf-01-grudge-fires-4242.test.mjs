@@ -44,11 +44,15 @@ function settle(sim, ticks) {
 
 // (1)+(2): a jackal mine blast turns the Reaver on its owner within 1 tick, and the first
 // return shot leaves the battery inside the armed window (60..120 ticks after the hit).
+// LW-03: this fixture stack carries no flight system, so spawned hulls never rotate. Committed-
+// corridor doctrines hold fire until a mount cone can bear the announced lane — the victim is
+// spawned already facing its grudge target, as a production approach would have it.
 for (const doctrineId of ['interceptor_flyby', 'brawler_commit']) {
   test(`a grudge victim (${doctrineId}) fires at the mine's owner inside the response window`, () => {
     const { sim, fires } = makeSim();
     const a = spawnRaider(sim, 0, { squadId: 'pack_a' });
     const b = spawnRaider(sim, 220, { doctrineId, squadId: 'pack_b' });
+    b.rot = Math.PI;
     settle(sim, 60);
 
     const liveMines = sim.registry.get('mines');
@@ -92,6 +96,7 @@ test('a lawful hull in the same geometry forms 0 grudge pairs and fires nothing'
 test('a non-grudge hostile keeps its old first-fire tick', () => {
   const { sim, fires } = makeSim();
   const hunter = sim.spawn(makeEnemySpawnSpec('reaver_pirate', 4, { x: 0, z: 350 }, { startedTick: 0 }));
+  hunter.rot = Math.PI / 2; // LW-03: face the committed corridor lane; no flight system here rotates it.
   hunter.data.ai.squadId = 'pack_a';
   Object.assign(hunter.data.ai, {
     forcePlayerTarget: true, motive: 'assigned_interdiction',
@@ -113,6 +118,7 @@ test('two fresh sims on the same seed produce identical first-fire ticks', () =>
     const { sim, fires } = makeSim();
     const a = spawnRaider(sim, 0, { squadId: 'pack_a' });
     const b = spawnRaider(sim, 220, { squadId: 'pack_b' });
+    b.rot = Math.PI; // LW-03: as above — face the corridor this no-flight stack cannot slew onto.
     settle(sim, 60);
     const liveMines = sim.registry.get('mines');
     liveMines.placeMine({ ownerId: a.id, pos: { x: 210, z: 0 }, armDelayS: 0, triggerRadius: 60, telegraph: false });

@@ -543,17 +543,20 @@ export function installOrchardMutationObservation(R) {
   try {
     for(const row of rows) {
       const original=row.descriptor.value;
-      const wrapper=function(...args) {
-        const gate=row.className==='World' && worldGates.get(this);
+      const isWorld=row.className==='World';
+      const wrapper=function() {
+        const gate=isWorld && worldGates.get(this);
         if(gate?.active && gate.enabled) {
           if(gate.phase==='solve' && gate.permit)gate.permit=false;
           else if(gate.phase==='idle')gate.serial++;
           else {gate.serial++;return undefined;}
         }
         const observer=observedObjects.get(this);
-        if(observer?.active)observer.serial++;
-        try{return Reflect.apply(original,this,args);}
-        finally{if(observer?.active)observer.serial++;}
+        // Unobserved receivers (the per-tick bulk of body writes) take the bare call.
+        if(!observer?.active)return Reflect.apply(original,this,arguments);
+        observer.serial++;
+        try{return Reflect.apply(original,this,arguments);}
+        finally{if(observer.active)observer.serial++;}
       };
       Object.defineProperty(wrapper,'name',{value:original.name,configurable:true});
       Object.defineProperty(wrapper,'length',{value:original.length,configurable:true});

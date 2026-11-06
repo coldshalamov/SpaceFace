@@ -55,6 +55,7 @@ export const MAIL_EVENT_NAMES = Object.freeze([
   'signal:surveyFiled',
   'encounter:resolved',
   'economy:eventStarted',
+  'endgame:finaleCompleted',
 ]);
 
 export const MAIL_KINDS = Object.freeze(['cast', 'job', 'spam', 'fan', 'hate', 'bill', 'crew']);
@@ -75,6 +76,22 @@ const OWNSHIPS = (gte) => ({ type: 'ownedShips', gte });
 const CREDITS = (gte) => ({ type: 'credits', gte });
 
 export const MAIL_LETTERS = Object.freeze([
+  {
+    id: 'mail_guilt_read_back', kind: 'cast', from: 'DISPOSAL OF GUILT, PROFESSIONAL',
+    subject: 'THE RECORD, READ BACK',
+    // The delivery owner supplies the exact accepted recordText. This is not a substitute
+    // body: old count-only filings have no recoverable verbatim record and do not invent one.
+    body: 'The cabinet opens the accepted filing. The record is read back exactly as it was filed.',
+    triggers: [FLAG('guilt_filed')], // delivery additionally reads the canonical completed finale
+  },
+  {
+    id: 'mail_heard_the_count', kind: 'cast', from: 'A Foundry regular',
+    subject: 'COUNT ’EM',
+    body: 'You caught the rail at the bell. The Pitborn heard about it and are delighted. '
+      + 'That engineer has been asked, firmly, to leave the pitch to the bell next time. '
+      + 'He has declined, warmly. Come back on a shift change. We will keep you a place.',
+    triggers: [FLAG('heard_the_count_sung')],
+  },
   // ── CAST — letters from the named figures (26 of them) ─────────────────────────────
   {
     id: 'mail_kael_01', kind: 'cast', from: 'Kael',

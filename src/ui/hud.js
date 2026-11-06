@@ -42,9 +42,12 @@ import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS, promptLabel } from './bindings.js';
 import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
 import { coreText } from './localizedCoreCopy.js';
+import { localizeText } from '../localization/sourceText.js';
+import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { livingWorkStatusText } from '../data/contactHail.js';
@@ -92,6 +95,7 @@ import {
 import {
   fillActiveMassCouplingTargets,
   MAX_MOMENTUM_SINK_OVERLAYS,
+  momentumSinkAttribution,
 } from './momentumSinkOverlay.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -697,6 +701,17 @@ export function resolveFlightObjectiveCommand(
     ? active.find((mission) => mission && mission.id === trackedId && mission.status === 'active')
     : null;
   const navWaypoint = state && state.nav && state.nav.waypoint;
+  const course = state && state.counterweightCircuitView;
+  const attempt = course && course.journal && course.journal.attempt;
+  // The published attempt is temporary context, not a new navigation waypoint. An urgent
+  // claim defense remains actionable, and a stale mirror cannot follow the pilot out of flight.
+  if (state?.mode === 'flight' && state?.world?.currentSectorId === COUNTERWEIGHT_SECTOR_ID
+    && navWaypoint?.kind !== 'claim_defense' && course?.attemptId != null
+    && attempt?.eventId === course.eventId && attempt?.phase === course.phase
+    && (course.phase === 'staged' || course.phase === 'running')
+    && attempt.legs?.[attempt.legIndex]?.hint) {
+    return { owner: 'counterweight-course', attempt, preparing: !!course.admission, waypoint: null };
+  }
   const trackedOwnsWaypoint = !!(
     tracked && navWaypoint && navWaypoint.kind === 'mission' && navWaypoint.missionId === tracked.id
   );
@@ -746,6 +761,14 @@ export function flightDestinationSurface(state, command) {
     return { show: false, line: '', urgent: false };
   }
   if (!command) return { show: false, line: '', urgent: false };
+  if (command.owner === 'counterweight-course') {
+    const title = localizeText(command.attempt.title);
+    const hint = localizeText(command.attempt.legs[command.attempt.legIndex].hint);
+    const line = command.preparing
+      ? localizeText('{title} — preparing course', { title })
+      : `${hint}\n${title}`;
+    return { show: true, line, urgent: false };
+  }
   if (command.owner === 'tracked-mission') {
     const tracked = command.mission;
     const waypoint = command.waypoint;
@@ -789,6 +812,16 @@ export function flightDestinationSurface(state, command) {
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
+    const entry = crackerRunEntryGuidance(state, wp);
+    if (entry) {
+      const mouth = { pos: entry.mouth.pos };
+      const reading = mtReadingsLine(objectiveBearingGlyph(state, mouth),
+        objectiveTravelReadout(state, mouth).distanceText, '');
+      const entryReading = mtReadingsLine(objectiveBearingGlyph(state, entry.entry),
+        objectiveTravelReadout(state, entry.entry).distanceText, '');
+      return { show: true, urgent: false,
+        line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
+    }
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
     const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
@@ -1728,13 +1761,18 @@ function injectTravelTapeStyle() {
   s.id = 'sf-vtape-style';
   s.textContent = `
   .sf-vtape { --vt-brass:var(--k-bone-62); --vt-amber:var(--k-signal); --vt-teal:var(--k-text-live);
-    position:relative; width:min(300px,40vw); margin:0 auto 6px; padding:5px 9px 4px;
-    display:flex; flex-direction:column; gap:3px; pointer-events:none;
+    position:relative; width:min(312px,42vw); margin:0 auto 6px; padding:8px 12px;
+    border-radius:4px; border:1px solid rgb(236 230 216 / .12);
+    background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90));
+    box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 10px 24px -8px rgb(0 0 0 / .68);
+    display:flex; flex-direction:column; gap:4px; pointer-events:none;
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
     opacity:0; visibility:hidden;
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    flex-wrap:wrap; font-family:var(--k-text); font-size:var(--k-fs-data); }
+    flex-wrap:wrap; padding-bottom:5px; border-bottom:1px solid rgb(236 230 216 / .08);
+    font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; letter-spacing:.05em; }
   .sf-vtape__state { color:var(--vt-brass); flex:0 0 auto; }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
   .sf-vtape[data-state="braking"] .sf-vtape__state { color:var(--vt-amber); }
@@ -1742,52 +1780,55 @@ function injectTravelTapeStyle() {
   .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
   /* The spool note stays inside the instrument's own box: a long break reason wraps to a second
      line rather than running over the neighbouring cluster readouts. */
-  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data);
-    min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
+  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px;
+    letter-spacing:.015em; word-spacing:.08em; min-width:0; max-width:100%; text-align:right; overflow-wrap:anywhere; }
   /* --- the tape itself: a linear 0..headroom scale --- */
   /* margin-top reserves the caret-label lane: CAP / V-MAX sit between the head row and the
      tape instead of overprinting the state and spool text. */
-  .sf-vtape__track { position:relative; height:2px; margin-top:13px; overflow:visible; background:var(--k-bone-38); }
+  .sf-vtape__track { position:relative; height:3px; border-radius:1.5px; margin-top:20px; overflow:visible; background:rgb(236 230 216 / .20); }
   /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
   .sf-vtape__grat { position:absolute; inset:0;
     display:none; }
-  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%;
+  .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%; border-radius:1.5px;
     transform:scaleX(0); transform-origin:left center;
     background:var(--vt-teal);
     transition:transform .1s linear; }
   .sf-vtape[data-state="engaged"] .sf-vtape__fill { background:var(--vt-amber); }
   /* Earned-cap caret: how much of the ceiling the ramp has actually unlocked so far. */
-  .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
+  .sf-vtape__cap { position:absolute; top:-1px; bottom:-1px; width:2px; left:0; transform:translateX(-1px);
     background:var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:var(--k-fs-fine); color:var(--vt-amber); white-space:nowrap; }
+  .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 3px); left:50%; transform:translateX(-50%);
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--dp-ink-dim, #9ba3b0); white-space:nowrap; }
   /* The caret labels share one lane above the tape (the track's margin-top reserves it). A CAP
      mark that would run under the V-MAX label anchors left of its caret; one hugging the tape's
      left edge anchors right of it instead of sliding off the instrument. */
-  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 3px); transform:none; }
-  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 3px); transform:none; }
+  .sf-vtape__cap--label-left .sf-vtape__caplabel { left:auto; right:calc(100% + 4px); transform:none; }
+  .sf-vtape__cap--label-right .sf-vtape__caplabel { left:calc(100% + 4px); transform:none; }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
-  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
-    font-size:var(--k-fs-fine); color:var(--vt-brass); }
+  .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 3px); right:4px; left:auto; text-align:right; white-space:nowrap;
+    font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px; font-weight:500;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; color:var(--vt-brass); }
   /* --- approach row: the stopping arc (W1-9) --- */
-  .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
+  .sf-vtape__approach { display:none; flex-direction:column; gap:5px; margin-top:4px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
-  .sf-vtape__arc { position:relative; height:2px; background:var(--k-bone-38); }
+  .sf-vtape__arc { position:relative; height:3px; border-radius:1.5px; background:rgb(236 230 216 / .20); }
   /* Span from the ship to where it would actually come to rest. */
-  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0;
+  .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:1.5px;
     background:var(--vt-teal); transition:width .1s linear; }
   /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
     border-left:1px solid var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__arclabel { font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--k-bone-62); }
+  .sf-vtape__arclabel { font-family:var(--dp-face-num, "Spline Sans Mono", monospace); font-size:12px;
+    font-variant-numeric:tabular-nums; letter-spacing:.02em; word-spacing:.08em; color:var(--k-bone-62); }
   .sf-vtape--overshoot .sf-vtape__arcstop { background:var(--k-red); }
   .sf-vtape--overshoot .sf-vtape__arclabel { color:var(--k-red); }
   /* --- BRAKE NOW --- */
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
-    padding:2px 0; font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--vt-amber); }
+    padding:2px 0; font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; font-weight:600; color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
   .sf-vtape__brakeglyph { font-size:var(--k-fs-data); display:inline-flex; align-items:center; }
   .sf-vtape__brakeglyph svg { display:block; }
@@ -1795,8 +1836,8 @@ function injectTravelTapeStyle() {
   /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
      visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
      crescent (seen live over the RIG/BAY keys). In ORRERY the tape is re-parented to #hud and
-     takes the cleared bottom-centre band above the receipt lane. */
-  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:86px; margin:0;
+     takes the cleared bottom-centre band below .ml2-meters. */
+  #hud[data-hud="orrery"] > .sf-vtape { position:absolute; left:50%; bottom:20px; margin:0;
     transform:translateX(-50%); }
   /* Below the 1280 floor the band between the Cluster's ordnance crescent and the right dock is
      narrower than the tape. Anchor it to the dock's left edge and scale it to fit that band
@@ -1804,6 +1845,9 @@ function injectTravelTapeStyle() {
   @media (max-width: 1279px), (max-height: 719px) {
     #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 236px) + 36px);
       transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .85)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .85)); }
   }
   /* Phone band: the dock-anchored row collapses onto the ORRERY cluster, so the tape
      moves into the open lane directly above the cluster (left-anchored like it).
@@ -1812,6 +1856,9 @@ function injectTravelTapeStyle() {
     #hud[data-hud="orrery"] > .sf-vtape { left:calc(8px + var(--sf-safe-inset-x, 0px)); right:auto;
       bottom:calc(24px + var(--orr-cluster-h, 232px) + 8px); transform:scale(var(--sf-vtape-fit, .62));
       transform-origin:0 100%; max-width:calc(100vw - 16px); }
+    #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head, .sf-vtape__spool, .sf-vtape__caplabel,
+      .sf-vtape__vmaxlabel, .sf-vtape__arclabel, .sf-vtape__brake) { font-size:calc(12px / var(--sf-vtape-fit, .62)); }
+    #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:calc(20px / var(--sf-vtape-fit, .62)); }
   }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
@@ -1822,6 +1869,7 @@ function injectTravelTapeStyle() {
   html.sf-reduce-motion .sf-vtape, html.sf-reduce-motion .sf-vtape__fill, html.sf-reduce-motion .sf-vtape__cap,
   html.sf-reduce-motion .sf-vtape__arcstop, html.sf-reduce-motion .sf-vtape__arcring { transition:none; }
   html.sf-reduce-motion .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
+  html.sf-reduce-flash .sf-vtape--brake .sf-vtape__brake { animation:none; opacity:1; }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
      The numeric readout also gains a ⟫ marker, so this is never colour-only. */
   .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }
@@ -1872,6 +1920,7 @@ export function createHud(ctx, alerts) {
   const hudUnsubscribers = [];
   // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
   let receiptLanePlacementDirty = true;
+  let receiptIdleSlowTicks = 0;
   function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
@@ -1903,7 +1952,7 @@ export function createHud(ctx, alerts) {
   // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
   // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
   // layer's update returns false and stops listening for frames when nothing is on screen.
-  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateAndPlaceHudOverlays });
+  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry });
 
   // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
   // step can change that height, so both ResizeObserver and resize publish the same value.
@@ -2060,6 +2109,7 @@ export function createHud(ctx, alerts) {
   // tracker's existing region, not a second live region.
   if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
   const objectiveRecall = createObjectiveRecall();
+  let lastFlightObjectiveOwner = null;
   if (ctx.bus) {
     // FB-065 — the three condition states the sim already emits, surfaced on the objective
     // slot this same tracker owns. Progress never voices; the break voices once at mission
@@ -2657,9 +2707,13 @@ export function createHud(ctx, alerts) {
     marker.setAttribute('role', 'img');
     marker.innerHTML = '<div class="sf-momentum-sink__bracket" aria-hidden="true"></div>'
       + '<div class="sf-momentum-sink__axis" aria-hidden="true"></div>'
-      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · YOUR FRAME · <span>0s</span></div>';
+      + '<div class="sf-momentum-sink__label mono">MOMENTUM SINK · '
+      + '<span class="sf-momentum-sink__src">YOUR FRAME</span> · '
+      + '<span class="sf-momentum-sink__t">0s</span></div>';
     root.appendChild(marker);
-    momentumSinkOverlays.push({ marker, remaining: marker.querySelector('span'), seconds: -1 });
+    momentumSinkOverlays.push({ marker, source: marker.querySelector('.sf-momentum-sink__src'),
+      remaining: marker.querySelector('.sf-momentum-sink__t'), seconds: -1,
+      sourceText: null, hostile: null, aria: null });
   }
 
   function updateMomentumSinkOverlays(player) {
@@ -2683,10 +2737,26 @@ export function createHud(ctx, alerts) {
       const runtime = state.combat && state.combat.entities && state.combat.entities[String(entity.id)];
       const active = runtime && runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID];
       const seconds = active ? Math.max(0, Math.ceil((active.expiresTick - tick) / 60)) : 0;
-      if (overlay.seconds !== seconds) {
+      // A hostile hauler (the Kraken's wake trawl) writes its own id onto the pilot's frame —
+      // the marker names it and wears the hostile slot instead of claiming YOUR FRAME.
+      const attribution = momentumSinkAttribution(state, active, player.id);
+      if (overlay.sourceText !== attribution.label) {
+        overlay.sourceText = attribution.label;
+        setText(overlay.source, attribution.label);
+      }
+      if (overlay.hostile !== attribution.hostile) {
+        overlay.hostile = attribution.hostile;
+        if (attribution.hostile) overlay.marker.dataset.relation = 'hostile';
+        else overlay.marker.removeAttribute('data-relation');
+      }
+      const aria = attribution.hostile
+        ? `Momentum Sink inbound${attribution.label === 'INBOUND' ? ' from a hostile frame' : ` from ${attribution.label}`}, ${seconds} seconds remaining`
+        : `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`;
+      if (overlay.seconds !== seconds || overlay.aria !== aria) {
         overlay.seconds = seconds;
+        overlay.aria = aria;
         setText(overlay.remaining, `${seconds}s`);
-        overlay.marker.setAttribute('aria-label', `Momentum Sink target, bound to your velocity frame, ${seconds} seconds remaining`);
+        overlay.marker.setAttribute('aria-label', aria);
       }
       stampMarkLive(overlay.marker);
       setClass(overlay.marker, 'visible', true);
@@ -5513,7 +5583,7 @@ export function createHud(ctx, alerts) {
     // CAP and V-MAX share the label lane above the tape: the cap label centres on its caret until
     // it would run under the V-MAX label (it moves left of the caret), and near the tape's left
     // edge it anchors right of the caret instead of sliding off the instrument.
-    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 4 && capPct > 8);
+    setClass(vt.cap, 'sf-vtape__cap--label-left', capPct > vmaxPct - 28 && capPct > 8);
     setClass(vt.cap, 'sf-vtape__cap--label-right', capPct <= 8);
 
     if (slow) {
@@ -5779,8 +5849,16 @@ export function createHud(ctx, alerts) {
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
       const dest = flightDestinationSurface(state, command);
+      if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
+        // Recall can be pinned or dismissed while a course runs; it must not resurrect that
+        // course after the public attempt has ended or the pilot has left it.
+        objectiveRecall.text = dest.line || '';
+        objectiveRecall.snapshot = dest.line || '';
+      }
+      lastFlightObjectiveOwner = command?.owner || null;
       // the dial's needle takes the nearest way round to the objective's bearing
-      const bearingDeg = objectiveBearingDeg(state, (command && command.waypoint) || wp);
+      const bearingDeg = command?.owner === 'counterweight-course'
+        ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
       if (bearingDeg != null && mtNeedle) {
         let next = bearingDeg;
         if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
@@ -5865,7 +5943,21 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) invalidateReceiptLane();
+    if (slow) {
+      // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
+      // through the explicit invalidations (layout/settings/resize events), so re-placing on every
+      // 10 Hz tick just re-reads rects. Keep a 2 Hz safety refresh; stay at 10 Hz while any
+      // receipt-lane content is live.
+      const laneBusy = (toastsLaneEl && toastsLaneEl.childElementCount > 0)
+        || (alertsEl && alertsEl.childElementCount > 0)
+        || externalFlightCaptions.size > 0
+        || (caption && !caption.hidden && caption.classList.contains('show'));
+      receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
+      if (laneBusy || receiptIdleSlowTicks >= 5) {
+        receiptIdleSlowTicks = 0;
+        invalidateReceiptLane();
+      }
+    }
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 
@@ -5911,6 +6003,12 @@ export function createHud(ctx, alerts) {
   }
 
   function updateObjectiveArrow(p, slow) {
+    if (lastFlightObjectiveOwner === 'counterweight-course') {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      return;
+    }
     // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
     const tracked = state.ui.trackedMissionId;
     const objectiveOwnsAttention = !!tracked || !!(state.nav && state.nav.waypoint);
@@ -6099,7 +6197,7 @@ export function createHud(ctx, alerts) {
   };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
-    const box = el.getBoundingClientRect();
+    const box = readReceiptRect(el);
     return box && box.width > 0 && box.height > 0 ? box : null;
   }
   function invalidateObjectiveEdgeBoxes() {
@@ -6107,6 +6205,14 @@ export function createHud(ctx, alerts) {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
+  }
+  function invalidateTransientOverlayGeometry() {
+    // A fixed callout appearing/moving cannot change the structural HUD plates. Keep their
+    // settled boxes, but place new text/alerts in the same pre-paint turn as before.
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
@@ -6128,19 +6234,23 @@ export function createHud(ctx, alerts) {
     // read when the HUD layout changes, not on every slow presentation frame.
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     objectiveEdgeBoxes.railEl = railEl;
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
+    // Finish the read batch before publishing a CSS variable that can dirty the HUD subtree.
     // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
     // decisions sit left of the dock column instead of growing over the target card. The dock's
     // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
     if (objectiveEdgeBoxes.right && typeof document !== 'undefined'
       && document.documentElement && document.documentElement.style
       && typeof document.documentElement.style.setProperty === 'function') {
-      document.documentElement.style.setProperty(
-        '--sf-rightdock-left', `${Math.round(objectiveEdgeBoxes.right.left)}px`);
+      const value = `${Math.round(objectiveEdgeBoxes.right.left)}px`;
+      const style = document.documentElement.style;
+      if (style.getPropertyValue?.('--sf-rightdock-left') !== value) {
+        style.setProperty('--sf-rightdock-left', value);
+      }
     }
-    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
-    objectiveEdgeBoxes.orreryEl = orreryEl;
-    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
-    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
   // Other persistent UI owners may register a short-lived flight caption. Keep those captions in
@@ -6188,7 +6298,8 @@ export function createHud(ctx, alerts) {
             || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
         } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
       }
-      const rect = cachedRect || el.getBoundingClientRect?.();
+      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
+      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
       if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
       seen.add(el);
       entries.push({ owner, rect });
@@ -6230,7 +6341,11 @@ export function createHud(ctx, alerts) {
   let touchOverlayOwner = null;
   let touchOverlayObserver = null;
   if (typeof ResizeObserver === 'function') {
-    overlayLayoutObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
+    overlayLayoutObserver = new ResizeObserver(entries => {
+      if (entries.length && entries.every(entry => externalFlightCaptions.has(entry.target))) {
+        invalidateTransientOverlayGeometry();
+      } else invalidateAndPlaceHudOverlays();
+    });
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     if (railEl) overlayLayoutObserver.observe(railEl);
     if (rightDock) overlayLayoutObserver.observe(rightDock);
@@ -6345,8 +6460,8 @@ export function createHud(ctx, alerts) {
     }
     return slot;
   }
-  // Diagnostic comparison is local to this HUD. Geometry never survives a flush, and a real
-  // placement write ends the current read stage before another owner can consume its boxes.
+  // Diagnostic comparison is local to this HUD. Geometry never survives a flush. Out-of-flow
+  // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
   function setReceiptPlacementMode(mode) {
@@ -6370,9 +6485,19 @@ export function createHud(ctx, alerts) {
       // Keep the old lane writer coherent when the diagnostic switches back to original.
       if (el._sfStyle) el._sfStyle[prop] = value;
       if (el.style[prop] === value) return;
-      // These are scoped placement writes. Pointer/opacity changes do not move boxes; all
-      // other writes conservatively discard the entire stage, including ancestor geometry.
-      if (prop !== 'pointerEvents' && prop !== 'opacity') receiptGeometryRects?.clear();
+      if (prop !== 'pointerEvents' && prop !== 'opacity' && receiptGeometryRects) {
+        // Only these absolute/fixed overlay roots are independent of sibling layout. Their
+        // descendants (receipt/alert cards) and ancestors must still be measured after writes.
+        const isolated = el === caption || el === toastsLaneEl || el === alertsEl
+          || (externalFlightCaptions.has(el)
+            && (el.style.position === 'absolute' || el.style.position === 'fixed'));
+        if (!isolated) receiptGeometryRects.clear();
+        else for (const cached of receiptGeometryRects.keys()) {
+          if (cached === el || el.contains?.(cached) || cached.contains?.(el)) {
+            receiptGeometryRects.delete(cached);
+          }
+        }
+      }
     }
     el.style[prop] = value;
   }
@@ -6579,26 +6704,22 @@ export function createHud(ctx, alerts) {
       let placement = null;
       for (const candidate of slots) {
         // Wrapping changes height: measure only after applying this lane's actual width.
-        setReceiptStyle(el, 'width', 'fit-content');
-        setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-        setReceiptStyle(el, 'maxHeight', 'none');
+        prepareReceiptCaptionSize(candidate, el);
         const bands = freeOverlayBands(candidate, h, layout, el, true);
         const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
         const band = bands.find((available) => available.bottom - available.top >= height + 8);
-        if (band) { placement = { slot: candidate, band }; break; }
+        if (band) { placement = { slot: candidate, band, height }; break; }
         if ((!mobile || el.dataset?.flightCritical === 'true') && bands[0]
             && (!placement || (el.dataset?.flightCritical === 'true'
               && bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top))) {
-          placement = { slot: candidate, band: bands[0] };
+          placement = { slot: candidate, band: bands[0], height };
         }
       }
       if (!placement && mobile && el.dataset?.flightCritical === 'true') {
         // The teaching ghost is decorative; a time-limited authority notice takes
         // priority when a small screen cannot fit both alongside the controls.
         for (const candidate of slots) {
-          setReceiptStyle(el, 'width', 'fit-content');
-          setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-          setReceiptStyle(el, 'maxHeight', 'none');
+          prepareReceiptCaptionSize(candidate, el);
           const bands = freeOverlayBands(candidate, h, layout, el, true, true);
           if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
             placement = { slot: candidate, band: bands[0] };
@@ -6647,7 +6768,9 @@ export function createHud(ctx, alerts) {
         continue;
       }
       el.style.opacity = externalCaptionOpacity.get(el) || '';
-      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band);
+      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band,
+        receiptPlacementMode === 'shared' && el.style.maxWidth === `${Math.round(placement.slot.width)}px`
+          ? placement.height ?? null : null);
     }
   }
   function clearExternalFlightCaptionPlacement(el) {
@@ -6737,15 +6860,15 @@ export function createHud(ctx, alerts) {
     }
     write(laneRoot, 'pointerEvents', 'none');
   }
-  function prepareReceiptCaptionSize(captionSlot) {
-    setReceiptStyle(caption, 'width', 'fit-content');
-    setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+  function prepareReceiptCaptionSize(captionSlot, target = caption) {
+    setReceiptStyle(target, 'width', 'fit-content');
+    setReceiptStyle(target, 'maxWidth', `${Math.round(captionSlot.width)}px`);
     // Visible overflow has no scrollbar and scrollHeight still reports the full text. Keep a
     // settled cap rather than toggling it none -> px on every flush; reset a scrolling caption.
-    if (receiptPlacementMode === 'original' || caption.style.overflowY !== 'visible') {
-      setReceiptStyle(caption, 'maxHeight', 'none');
+    if (receiptPlacementMode === 'original' || target.style.overflowY !== 'visible') {
+      setReceiptStyle(target, 'maxHeight', 'none');
     }
-    setReceiptStyle(caption, 'overflowY', 'visible');
+    setReceiptStyle(target, 'overflowY', 'visible');
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');

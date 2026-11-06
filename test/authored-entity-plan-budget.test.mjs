@@ -965,3 +965,88 @@ test('ship pipeline aggregate distinguishes pending pool siblings from completed
     assert.equal(activated,failRoot?0:1);
   }
 });
+
+for (const scenario of ['coarse', 'approach', 'identity-change', 'context-loss']) {
+  test(`initial ship admission prepares exact family and fences ${scenario}`, async () => {
+    const renderer = {}, scene = new THREE.Scene(), scheduled = [], loads = [];
+    const entity = { id: `initial-${scenario}`, type: 'ship', alive: true, team: 1, radius: 12,
+      pos: { x: 0, z: 0 }, activity: { presentationTier: 'R0_GLASS' },
+      data: { defId: 'ship_wasp', sectorId: 'sector_helios_prime' } };
+    const camera = new THREE.PerspectiveCamera(60, 2, 1, 1000);
+    camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+    const viewport = { width: 1600, height: 800 };
+    let releasePipeline, compiled = 0, ownerActive = true;
+    const gate = new Promise(resolve => { releasePipeline = resolve; });
+    const previous = { window: globalThis.window, raf: globalThis.requestAnimationFrame, scheduler: globalThis.scheduler };
+    globalThis.requestAnimationFrame = fn => { scheduled.push(fn); return scheduled.length; };
+    globalThis.scheduler = { postTask: fn => { scheduled.push(fn); return scheduled.length; } };
+    globalThis.window = { SF: { state: { mode: 'flight', entities: new Map([[entity.id, entity]]),
+      camera: { obj: camera }, world: { currentSectorId: 'sector_helios_prime' },
+      render: { scene, viewport, firstPlayableFrameAt: 1,
+        compileObjectPipelines() { compiled++; return gate; },
+        prepareAuthoredGpuResidency() { return { skipped: false }; } } } } };
+    const options = { releaseMode: true, isResidencyOwnerActive: () => ownerActive,
+      loadAuthoredPart: async url => { loads.push(url); const record = fixtureRecord(url);
+        if (url.includes('wasp_production_v1')) record.assetId = 'SF_WASP_PRODUCTION_V1'; return record; } };
+    const pump = async count => { for (let i = 0; i < count; i++) {
+      const tasks = scheduled.splice(0); for (const fn of tasks) fn(); await Promise.resolve();
+    } };
+    let done;
+    try {
+      await partsLibrary.preloadAuthoredPartLibrary(renderer, options);
+      const fallback = fallbackShip(); fallback.userData.authoredAdmissionSubstrate = true;
+      const boundary = partsLibrary.wrapShipWithAuthoredParts(entity, fallback, options);
+      entity.mesh = boundary; scene.add(boundary);
+      const sample = { entity, px: 24, at: performance.now(), protectedBody: false, camera, viewport,
+        width: viewport.width, height: viewport.height, view: camera.matrixWorldInverse.elements.slice(),
+        projection: camera.projectionMatrix.elements.slice() };
+      boundary.userData.initialShipLodSample = sample;
+      done = boundary.userData.requestAuthoredUpgrade(renderer, scene);
+      for (let i = 0; i < 400 && !compiled; i++) await pump(1);
+      assert.ok(compiled, 'the initial exact sibling reaches preparation');
+      assert.ok(loads.some(url => url.endsWith('wasp_production_v1_lod2.glb')));
+      assert.equal(boundary.children.includes(fallback), true, 'old visual remains until preparation and publication');
+      if (scenario === 'approach') sample.px = 150;
+      if (scenario === 'identity-change') entity.data.lootTableId = 'wasp_swarmer';
+      if (scenario === 'context-loss') {
+        ownerActive = false;
+        boundary.userData.admissionEpoch = (boundary.userData.admissionEpoch || 0) + 1;
+      }
+      sample.at = performance.now();
+      releasePipeline({ skipped: false });
+      for (let i = 0; i < 700; i++) { sample.at = performance.now(); await pump(1); }
+      await done;
+      if (scenario === 'context-loss') {
+        assert.notEqual(boundary.userData.authoredAssetState, 'authored');
+      } else {
+        assert.equal(boundary.userData.authoredAssetState, 'authored');
+        if (scenario === 'identity-change') {
+          assert.equal(boundary.userData.wholeShipLodFamilyInstalled, true);
+          assert.equal(boundary.userData.wholeShipLodFamily.lod1, 'wholeships/ashline_dart_lod1.glb');
+          assert.equal(boundary.userData.wholeShipLodRoots.lod0, boundary.children.find(child => child.visible !== false));
+          assert.ok(loads.some(url => url.endsWith('ashline_dart.glb')));
+        } else {
+          assert.equal(boundary.userData.wholeShipLodActiveLevel, scenario === 'approach' ? 'lod0' : 'lod2');
+        }
+        if (scenario === 'approach') assert.ok(loads.some(url => url.endsWith('wasp_production_v1.glb')));
+        if (scenario === 'coarse') {
+          const coarseRoot = boundary.userData.wholeShipLodRoots.lod2;
+          sample.px = 150;
+          boundary.userData.updateLod('lod0');
+          assert.equal(coarseRoot.parent, boundary, 'keep the coarse root visible during promotion');
+          for (let i = 0; i < 700; i++) { sample.at = performance.now(); await pump(1); }
+          assert.equal(boundary.userData.wholeShipLodActiveLevel, 'lod0', 'a missing full body is prepared and promoted');
+          assert.ok(loads.some(url => url.endsWith('wasp_production_v1.glb')));
+        }
+      }
+    } finally {
+      releasePipeline({ skipped: false });
+      partsLibrary.cancelAuthoredUpgradeQueue(scene, 'fixture-cleanup');
+      await pump(100);
+      partsLibrary.invalidatePartsLibraryCaches(renderer);
+      if (previous.window === undefined) delete globalThis.window; else globalThis.window = previous.window;
+      if (previous.raf === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = previous.raf;
+      if (previous.scheduler === undefined) delete globalThis.scheduler; else globalThis.scheduler = previous.scheduler;
+    }
+  });
+}

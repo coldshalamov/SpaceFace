@@ -66,7 +66,7 @@ function makeOwner(records, {
   }
   scene.updateMatrixWorld(true);
   const state = {
-    mode: 'running', entities, render: { compileObjectPipelines: compile, admissionRunGeneration: 1 },
+    mode: 'flight', entities, render: { firstPlayableFrameAt: 1, compileObjectPipelines: compile, admissionRunGeneration: 1 },
     world: { enterSerial: 1, currentSectorId: 'test' }, contextRestoreSeq: 0,
   };
   const owner = Object.assign(Object.create(renderSystem), {

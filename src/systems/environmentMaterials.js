@@ -50,7 +50,25 @@ function fracturePositions(state, registry, parent, pose, child, parentInertia) 
       const at = record.body.translation();
       if (Math.hypot(at.x + origin.x - pose.pos.x, at.z + origin.z - pose.pos.z) > searchReach + articulatedColliderRadius(record)) continue;
       shapes += colliders.length;
-      peers.push({ colliders });
+      // Fresh per-call geometry: the additional rejection must not trust a stale
+      // collector radius. Local offsets/rotations fit the compound sphere; skin
+      // is included even when the exact geometric query does not inflate by it.
+      // Collider.shape is itself a JS cache: native dimension setters do not
+      // refresh it. The pinned SDK's fromRaw reads geometry without that cache.
+      const raw = native.world.colliders.raw;
+      const liveShapes = colliders.map(collider => ({
+        shape: native.RAPIER.Shape.fromRaw(raw, collider.handle),
+        translationWrtParent: () => collider.translationWrtParent(),
+      }));
+      let bound = articulatedColliderRadius({ colliders: liveShapes });
+      let skin = 0;
+      for (const collider of colliders) {
+        const value = collider.contactSkin?.();
+        if (!Number.isFinite(value) || value < 0) { bound = Infinity; break; }
+        skin = Math.max(skin, value);
+      }
+      bound += skin;
+      peers.push({ colliders, x: at.x, z: at.z, bound });
     }
     else {
       const spec = resolvePhysicsBodySpec(entity);
@@ -73,9 +91,17 @@ function fracturePositions(state, registry, parent, pose, child, parentInertia) 
       const angle = pose.rot + (i + 0.5) * Math.PI / 2 + turn * Math.PI / 32;
       const pos = { x: pose.pos.x + Math.cos(angle) * distance, z: pose.pos.z + Math.sin(angle) * distance };
       const at = { x: pos.x - origin.x, y: 0, z: pos.z - origin.z };
-      const blocked = peers.some(peer => peer.colliders
-        ? peer.colliders.some(c => c.contactShape(shape, at, { x: 0, y: 0, z: 0, w: 1 }, 0)?.distance <= 0)
-        : Math.hypot(pos.x - peer.entity.pos.x, pos.z - peer.entity.pos.z) <= reach + gap + peer.reach);
+      const x = Math.fround(at.x), z = Math.fround(at.z);
+      const blocked = peers.some(peer => {
+        if (!peer.colliders) return Math.hypot(pos.x - peer.entity.pos.x, pos.z - peer.entity.pos.z) <= reach + gap + peer.reach;
+        // Query inputs round to f32 at the native boundary. Keep a generous
+        // roundoff envelope in native-local coordinates, including large frames.
+        const extent = peer.bound + Math.fround(reach + gap);
+        const margin = 1e-4 + Math.max(Math.abs(x), Math.abs(z), Math.abs(peer.x), Math.abs(peer.z), extent) * 8 * 2 ** -23;
+        if (Number.isFinite(extent) && Number.isFinite(margin)
+            && Math.hypot(x - peer.x, z - peer.z) > extent + margin) return false;
+        return peer.colliders.some(c => c.contactShape(shape, at, { x: 0, y: 0, z: 0, w: 1 }, 0)?.distance <= 0);
+      });
       if (blocked || positions.some(p => Math.hypot(p.x - pos.x, p.z - pos.z) <= 2 * reach + gap)) break;
       positions.push(pos);
     }

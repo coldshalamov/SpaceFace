@@ -14,6 +14,7 @@
 import { MAIL_EVENT_NAMES, MAIL_LETTERS, MAIL_DAY_S } from '../data/mail.js';
 import { deedTally } from './deedRecord.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { confessionalReadback } from './special500Confessional.js';
 
 const SCHEMA_VERSION = 1;
 const EVENT_CAP = 96;
@@ -129,7 +130,13 @@ export function mailTriggerSatisfied(trigger, state, events) {
 /** All conjuncts hold — the letter is due right now. */
 export function mailLetterDue(letter, state, events) {
   if (!letter || !Array.isArray(letter.triggers) || letter.triggers.length === 0) return false;
-  return letter.triggers.every((trigger) => mailTriggerSatisfied(trigger, state, events));
+  if (letter.id === 'mail_guilt_read_back' && !confessionalReadback(state)) return false;
+  return letter.triggers.every((trigger) => {
+    // This named owner stores a simTime stamp: zero is a real bell, not an unset flag.
+    if (letter.id === 'mail_heard_the_count' && trigger.type === 'flag'
+        && trigger.flag === 'heard_the_count_sung') return state?.story?.flags?.heard_the_count_sung != null;
+    return mailTriggerSatisfied(trigger, state, events);
+  });
 }
 
 export const mail = {
@@ -187,6 +194,9 @@ export const mail = {
     const own = this._ensureState();
     own.events.push({ n: name, t: (this.state && this.state.simTime) || 0, f: eventScalars(payload) });
     if (own.events.length > EVENT_CAP) own.events.splice(0, own.events.length - EVENT_CAP);
+    // Story commits its saved finale cursor before emitting this canonical receipt. Deliver
+    // the filed words now; Continue also reaches the same eligibility through update().
+    if (name === 'endgame:finaleCompleted') this._evaluate(this.state);
   },
 
   update(dt, state) {
@@ -213,12 +223,14 @@ export const mail = {
   },
 
   _deliver(letter, own) {
+    const readback = letter.id === 'mail_guilt_read_back' ? confessionalReadback(this.state) : null;
+    if (letter.id === 'mail_guilt_read_back' && !readback) return;
     own.delivered.push(letter.id);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('comms:popup', {
         id: `mail:${letter.id}`,
         sender: letter.from,
-        text: letter.body,
+        text: readback ? readback.text : letter.body,
         note: letter.subject,
         category: letter.kind === 'crew' ? 'story' : 'personal',
         persist: true,
@@ -226,6 +238,9 @@ export const mail = {
       this.bus.emit('mail:delivered', {
         id: letter.id, kind: letter.kind, from: letter.from,
         at: (this.state && this.state.simTime) || 0,
+        // Story domains are cadence-mirrored. The real delivery receipt carries this
+        // one accepted text so the ending reader never races a stale main-side mirror.
+        ...(readback ? { readback } : {}),
       });
     }
   },

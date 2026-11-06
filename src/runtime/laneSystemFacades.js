@@ -1,4 +1,5 @@
 import { laneRpc, laneDomEvent } from '../core/simLaneCommands.js';
+import { saveStoreSignature } from '../save/saveStoreGeneration.js';
 import { economyReadView } from '../systems/economy.js';
 import { claimsReadView } from '../systems/claimsReadModel.js';
 import { drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
@@ -112,11 +113,20 @@ export function createLaneSystemFacade(ctx) {
       case 'save':
         return {
           name: 'save',
+          saveStoreSignature,
+          peekSaveCardData: (raw) => laneRpc('savePeekCardData', { raw }).then(
+            (ack) => ack?.ok === true && ack.result?.ok === true
+              ? ack.result.cardData || null : null,
+            () => null,
+          ),
           save: (slot) => durableSaveCommand('saveWrite', { slot: slot === undefined ? null : slot }),
           drainSharedStoreWrites: () => durableSaveCommand('saveDrain'),
           prepareForQuit: () => durableSaveCommand('savePrepareQuit'),
           cancelPreparedQuit: () => laneRpc('saveCancelPreparedQuit', {}),
-          load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
+          load: async (slot) => {
+            const ack = await laneRpc('saveLoad', { slot: slot === undefined ? null : slot });
+            return ack?.ok === true && ack.result?.ok === true && ack.result.result === true;
+          },
           delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
           // saveLoad.js's delete path — the delete must reach the worker's save
           // system (staged store + index), not just main's localStorage.
@@ -130,7 +140,10 @@ export function createLaneSystemFacade(ctx) {
             reader.onload = () => {
               try {
                 Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: slot === undefined ? null : slot }))
-                  .then((ack) => finish(ack?.ok === true && ack.result?.ok === true))
+                  // Transport success alone is not a completed restore. Accept the canonical
+                  // settled verdict or an explicit legacy boolean owner result, never a bare ack.
+                  .then((ack) => finish(ack?.ok === true
+                    && (ack.result === true || ack.result?.ok === true)))
                   .catch(() => finish(false));
               } catch (_) { finish(false); }
             };

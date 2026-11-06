@@ -114,6 +114,8 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
   }),
 });
 const WHOLE_SHIP_LOD_FAMILY_BY_FILE = Object.freeze(Object.fromEntries([
+  ['wholeships/ashline_dart.glb', Object.freeze({lod0:'wholeships/ashline_dart.glb',lod1:'wholeships/ashline_dart_lod1.glb',lod2:'wholeships/ashline_dart_lod2.glb'})],
+  ['wholeships/ashline_rig.glb', Object.freeze({lod0:'wholeships/ashline_rig.glb',lod1:'wholeships/ashline_rig_lod1.glb',lod2:'wholeships/ashline_rig_lod2.glb'})],
   ...['kilnback', 'scissorwake', 'towline_mara', 'towline_odo', 'towline_kit', 'pallet_jack', 'mothlight'].map((family) => [
     `wholeships/${family}.glb`, Object.freeze({lod0:`wholeships/${family}.glb`,lod1:`wholeships/${family}_lod1.glb`,lod2:`wholeships/${family}_lod2.glb`}),
   ]),

@@ -81,6 +81,20 @@ export const MAX_AFFIX_LINES_PER_WAVE = 2;
 const AFFIX_TELL_TTL_S = 5;
 
 /**
+ * A mid-wave reinforcement tell is the arrival beat the pressure hold cannot give: the hold
+ * telegraphs a breath before the spend, but the GATE is only drawn when the batch materializes,
+ * so the bearing exists only on the materialization receipt. The batch lands as one clump at
+ * the gate — seconds of approach before contact — so a line spoken there is a true pre-contact
+ * tell: the count and the world bearing, one per gap, a small count per wave. Each still counts
+ * against MAX_LINES_PER_WAVE through _alert, because the bound is hard.
+ */
+export const MAX_REINFORCE_LINES_PER_WAVE = 2;
+/** Sim seconds between reinforcement tells inside one wave. */
+export const REINFORCE_TELL_GAP_S = 8;
+/** Reading time for an arrival tell — the hulls are already on the approach. */
+const REINFORCE_TELL_TTL_S = 4;
+
+/**
  * Gate id → world bearing, in words.
  *
  * These are WORLD directions, not player-relative ones: waveMaterialization.js:117-118 takes the
@@ -188,6 +202,10 @@ function packagesOf(plan) {
  */
 function questionClauseFor(wave, plan, arenaId) {
   if (!plan || plan.mode === 'boss_circuit') return null;
+  // Authored act rounds already speak their own question — the derived package line can
+  // misname the mechanic on the field (a bruiser's roster role reads as 'anchor' with no
+  // snare well on wave 33). One question per wave: the act's.
+  if (plan.swarm && plan.swarm.act) return null;
   const derived = Boolean(plan.swarm) || plan.heaviesOnly === true || plan.mode === 'endless'
     || !Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_TEMPLATE_BLOCK;
   const row = derived
@@ -292,7 +310,11 @@ export function waveOpeningLine(wave, plan) {
       return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${pressure}${wall}${actLine} ${closing}`;
+    // LW-05: a scheduled recurring character is named before contact, same as the debut it
+    // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
+    const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name
+      ? ` ${swarm.character.name} is inbound.` : '';
+    return `Wave ${wave}. ${stageLine}${arrival}${namecheck}${character}${pressure}${wall}${actLine} ${closing}`;
   }
 
   let bodies = 0;
@@ -386,6 +408,8 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
+    this._unsubs.push(this.bus.on('swarm:hiveSacKilled', (p) => this._onHiveSacKilled(p)));
+    this._unsubs.push(this.bus.on('swarm:broodReserve', (p) => this._onBroodReserve(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -432,7 +456,10 @@ export const survivalAnnounce = {
     this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
+    this._reinforceAt = 0;         // simTime the last reinforcement tell spoke
+    this._reinforceLines = 0;      // reinforcement arrival lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
+    this._sacSpoke = false;        // the Hive sac lesson, once per run
     this._firstCourtRock = null;
   },
 
@@ -620,7 +647,31 @@ export const survivalAnnounce = {
     if (typeof enemyId !== 'string' || !ENEMY_BY_ID.has(enemyId)) return;
 
     if (this._tryBossArrival(wave, enemyId)) return;
+    if (this._tryReinforcementTell(wave, rec)) return;
     this._tryCounterHint(enemyId);
+  },
+
+  /**
+   * The reinforcement batch exists now, at its gate, still seconds from contact. Say how many
+   * and from where — the count and the world bearing off the same receipt the spawner keeps.
+   * Returns true only when a line actually spoke, so a rate-limited or budget-starved tell
+   * falls through to the counter hint instead of swallowing it.
+   */
+  _tryReinforcementTell(wave, rec) {
+    if (rec.reinforcement !== true) return false;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return false;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return false;
+    const where = BEARING_WORD[rec.gateGroup] || null;
+    const text = where
+      ? `${capitalize(countWord(rec.admitted))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(rec.admitted))} more inbound, on approach.`;
+    const spoke = this._alert(
+      `reinforce:${wave}:${rec.tick != null ? rec.tick : 0}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return false;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+    return true;
   },
 
   _onPressureTelegraph(payload) {
@@ -652,6 +703,80 @@ export const survivalAnnounce = {
     const spoke = this._say('objective', `survival:w${wave}:stall`,
       'The room breathes again — the pack is inbound.', 5);
     if (spoke) this._stallSpokeWave = wave;
+  },
+
+  /**
+   * The Hive's own counter, named the first time it works. A burst sac receipts on the bus
+   * (`swarm:hiveSacKilled`) and the brood it was feeding answer through the grief cascade —
+   * but nothing TOLD the player what the burst took: the tide that sac was feeding dies with
+   * it, and the sacs are the room's win lever (burst them all and the wave runs dry). Once
+   * per run, marked on announce (the affix law) so a wave whose budget is spent defers the
+   * lesson to the next burst instead of losing it. 'objective' like the stall release — a
+   * state of the room, not a danger beat. Later sacs stay silent: the lesson belonged to the
+   * first burst, not a per-sac chorus.
+   */
+  _onHiveSacKilled(payload) {
+    if (this._muted || this._sacSpoke) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    const spoke = this._say('objective', `hive-sac:w${wave}`,
+      'The sac bursts — the tide it was feeding dies with it.', 4);
+    if (spoke) this._sacSpoke = true;
+  },
+
+  /**
+   * B5 — the wave's held-back second breath, heard. The brood reserve lands mid-wave as one
+   * gate clump at the 165 wu arrival ring — the same arrival shape the pressure hold's
+   * reinforcement names — and its only voice was the family telegraph, which speaks a
+   * family's behavior line for ANY commitment (a mother's birth, a splitter's break) and
+   * carries no count and no bearing. This is the reinforce tell's own sentence for the
+   * reserve's receipt (`swarm:broodReserve`): the count and the compass word where the clump
+   * landed, one per gap, sharing the reinforcement tell's small per-wave budget — they are
+   * the same kind of sentence about the same kind of arrival, and the room should not spend
+   * two budgets saying it. The bearing reads the landing point against the player POSITION
+   * (the camera follows position only, so the compass word stays true on screen); a receipt
+   * without a readable landing point still says the count. The drop may finish its budget
+   * over several ticks — the gap timer coalesces that burst into one line per 8 s, exactly
+   * like a reinforcement stream. Warn-sev, finite ttl, counted in the hard per-wave bound.
+   */
+  _onBroodReserve(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const rec = payload || {};
+    const wave = rec.wave;
+    if (!Number.isInteger(wave) || wave !== this._wave) return;
+    const count = Number.isInteger(rec.count) && rec.count > 0 ? rec.count : 0;
+    if (count <= 0) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return;
+    const where = this._reserveBearingWord(rec.pos);
+    const text = where
+      ? `${capitalize(countWord(count))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(count))} more inbound, on approach.`;
+    const spoke = this._alert(`reserve:${wave}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+  },
+
+  /**
+   * The reserve landing's compass word against the player's position, in the gate table's
+   * own shape ("the north"). Null when nothing readable stands — no player, no point, or a
+   * landing under one wu from the pilot, where a compass word would be a guess.
+   */
+  _reserveBearingWord(pos) {
+    const player = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!player || !player.pos || !pos
+      || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const dx = pos.x - player.pos.x;
+    const dz = pos.z - player.pos.z;
+    if (!Number.isFinite(dx) || !Number.isFinite(dz) || dx * dx + dz * dz < 1) return null;
+    const name = playerBearingName(dx, dz);
+    return name ? `the ${name}` : null;
   },
 
   /**

@@ -168,6 +168,8 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'ui:buyModule',
   'ui:buyPayload',
   'ui:buyShip',
+  'ui:confessionalChoose',
+  'ui:confessionalReady',
   'ui:deleteLoadoutPreset',
   'ui:endgameChoose',
   'ui:endgameDecline',
@@ -328,4 +330,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=182 dynamic=39 legacy=18 excluded=6 total=212 knownUnforwarded=83
+// provenance: census=185 dynamic=39 legacy=18 excluded=6 total=214 knownUnforwarded=83

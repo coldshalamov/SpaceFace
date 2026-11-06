@@ -52,6 +52,7 @@ import {
   VERGE_BARKS,
 } from '../data/factions/vergelayers.js';
 import { rankForState } from './factions.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 
@@ -1868,15 +1869,29 @@ export const vergeCourt = {
   },
 
   update(dt, state) {
-    ensureVergeState(state);
+    const v = ensureVergeState(state);
+    // Keep border posture current even without a machine. Dormant arenas need
+    // no repeated machine/evidence walks; live authority and pending work do.
+    if (state.run?.kind === 'survival' && !v.court && !v.violations.length
+        && !v.lawZones.length && !v.permit && !v.escort && !v.pursuit
+        && !v.returns.length && v.scans.pendingPatrol == null
+        && !state.entityList.some((e) => e && e.alive !== false
+          && (vergeMachineKind(e) != null || e.data?.vergeCheckpoint || e.data?.permitIssuer === true
+            || typeof e.data?.vergeDirective === 'string'
+            || e.data?.typeId === VERGE_LINE_TRIAL.fragmentTypeId))) {
+      this._tickTreatment(state);
+      return;
+    }
     this._tickDirectives(state, dt);
-    this._tickMeasureEngines(state);
+    // Mass weigh-ins are an O(machines x bodies) census of stamps that only change on refit.
+    if (strideDt(this, 'measure', dt, 8, state) > 0) this._tickMeasureEngines(state);
     this._tickAppeal(state);
     this._tickJury(state);
     this._tickLineTrial(state);
     // Border authority: posture first so the rings answer with the standing in hand.
     this._tickTreatment(state);
-    this._tickCheckpoints(state, dt);
+    const cpDt = strideDt(this, 'checkpoints', dt, 3, state);
+    if (cpDt > 0) this._tickCheckpoints(state, cpDt);
     this._tickPermits(state, dt);
     this._tickEscort(state, dt);
     this._tickPursuit(state, dt);

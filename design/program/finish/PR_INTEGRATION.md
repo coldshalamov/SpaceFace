@@ -4,6 +4,14 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
+- **#840, Lantern Ward:** pinned at `e4363226c1c9`. The useful new Ward service/harbor-life code is
+  being adapted through31 current owner paths and17 tests; schema22→23 adds optional defaults,
+  without grants. Component/projection and real async-save checks pass62 cases; native work and
+  ordinary arrival remain open. Two independent existing defects are already ported and repaired:
+  `1220bfd9925f` preserves full Counterweight autosave capture, and `6794833bc886` prevents packaged
+  beacon double scaling. Stronger local Import/Load/Continue and seed/scar fixes are retained.
+  No broad old-branch replacement, reference-budget rebinding or binary asset port is involved.
+
 - **#835/#838/#839, compact station and Help:** merged with `origin/master90beba0230f1` in
   `03b9e46336f7`. The scoped source/DOM/breakpoint review found the vitals row, footer rail and
   Ores reading selectors consistent. Integrated ordinary looks remain open. Both historical
