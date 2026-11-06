@@ -6279,6 +6279,13 @@ export function createHud(ctx, alerts) {
 
   function refreshFlightTextObstacleSnapshot() {
     if (!flightTextObstaclesStale) return;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
     const measured = objectiveEdgeObstacles();
     const entries = [];
     const seen = new Set();
@@ -6318,12 +6325,12 @@ export function createHud(ctx, alerts) {
       ['receipt', '.sf-toast:not(.sf-toast--out)'],
     ];
     for (const [owner, selector] of rootGroups) {
-      for (const el of root.querySelectorAll?.(selector) || []) add(owner, el);
+      for (const el of qsa(root, selector)) add(owner, el);
     }
     add('caption', caption);
     for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
-    for (const el of document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || []) add('alert', el);
-    for (const el of document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || []) add('stunt', el);
+    for (const el of qsa(document, '#alerts > .sf-alert:not([hidden])')) add('alert', el);
+    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
     for (const el of externalFlightCaptions) add('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
       add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
@@ -6362,6 +6369,14 @@ export function createHud(ctx, alerts) {
   function responsiveOverlayObstacles() {
     // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
     // instruments rather than the desktop vitals rectangle that mobile flight replaces.
+    if (receiptGeometryRects?.resp) return receiptGeometryRects.resp;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
     const touch = document.getElementById('sf-touch-overlay');
     if (touch !== touchOverlayOwner) {
       touchOverlayObserver?.disconnect();
@@ -6376,12 +6391,13 @@ export function createHud(ctx, alerts) {
       }
     }
     const elements = [
-      ...root.querySelectorAll?.('#race-tape') || [],
-      ...root.querySelectorAll?.('#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded') || [],
+      ...qsa(root, '#race-tape'),
+      ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
       ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
     ];
+    const elementSet = new Set(elements);
     for (const el of responsiveOverlayElements) {
-      if (!elements.includes(el)) {
+      if (!elementSet.has(el)) {
         overlayLayoutObserver?.unobserve(el);
         responsiveOverlayElements.delete(el);
       }
@@ -6392,6 +6408,7 @@ export function createHud(ctx, alerts) {
         overlayLayoutObserver?.observe(el);
       }
     }
+    if (receiptGeometryRects) receiptGeometryRects.resp = elements;
     return elements;
   }
 
@@ -6468,6 +6485,7 @@ export function createHud(ctx, alerts) {
     if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
     receiptPlacementMode = mode;
     receiptGeometryRects?.clear();
+    if (receiptGeometryRects) receiptGeometryRects.bm = null;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
@@ -6491,6 +6509,7 @@ export function createHud(ctx, alerts) {
         const isolated = el === caption || el === toastsLaneEl || el === alertsEl
           || (externalFlightCaptions.has(el)
             && (el.style.position === 'absolute' || el.style.position === 'fixed'));
+        receiptGeometryRects.bm = null;
         if (!isolated) receiptGeometryRects.clear();
         else for (const cached of receiptGeometryRects.keys()) {
           if (cached === el || el.contains?.(cached) || cached.contains?.(el)) {
@@ -6502,6 +6521,24 @@ export function createHud(ctx, alerts) {
     el.style[prop] = value;
   }
   function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false, ignoreFlightGhost = false) {
+    // Inside one flush the selector walks and the band solve are pure functions of the DOM and the
+    // measured rects. Both memos live on the flush's rect Map; any geometry-changing write drops them.
+    const flushCache = receiptPlacementMode === 'shared' && !(excludedElement instanceof Set)
+      ? receiptGeometryRects : null;
+    const qsa = (scope, selector) => {
+      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+      let hit = queries.get(selector);
+      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+      return hit;
+    };
+    const memoKey = flushCache ? [slot.x, slot.width, h, includeLiveCaptionsAndToasts, ignoreFlightGhost,
+      yieldedFlightVisuals.size, externalFlightCaptions.size] : null;
+    if (flushCache && flushCache.bm) {
+      const hit = flushCache.bm.find((m) => m.layout === layout && m.ex === excludedElement
+        && m.key.every((v, n) => v === memoKey[n]));
+      if (hit) return hit.bands.map((band) => ({ ...band }));
+    }
     const measured = objectiveEdgeObstacles();
     const responsive = responsiveOverlayObstacles();
     const responsiveRects = new Map(responsive.map(el => [el, readReceiptRect(el)]));
@@ -6510,15 +6547,15 @@ export function createHud(ctx, alerts) {
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
     const candidates = [
-      ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
-      ...document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || [],
-      ...(hasTouchControls ? root.querySelectorAll?.('.sf-leftcontext') || [] : []),
-      ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
+      ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
+      ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
+      ...qsa(document, '#alerts > .sf-alert:not([hidden])'),
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
-      ...(radarYielded ? root.querySelectorAll?.('.sf-rightdock > *') || [] : []),
+      ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
     ];
     if (includeLiveCaptionsAndToasts) {
-      candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
+      candidates.push(...qsa(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
     }
     const blockers = candidates.map((el) => {
       if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
@@ -6579,7 +6616,10 @@ export function createHud(ctx, alerts) {
         }
       }
     }
-    return bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+    const result = bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+    if (flushCache) (flushCache.bm || (flushCache.bm = [])).push({ layout, ex: excludedElement, key: memoKey,
+      bands: result.map((band) => ({ ...band })) });
+    return result;
   }
   const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
     'overflowY', 'transform', 'pointerEvents', 'boxSizing'];

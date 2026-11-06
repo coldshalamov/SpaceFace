@@ -360,13 +360,22 @@ export function saveEnvelopeSectorStubs(data) {
     if (!authoredPlaceId) continue;
     const sub = rockSubstanceForSlot(seed, fdef.id, 0);
     const [lo, hi] = astDef.sizeRange || [6, 14];
-    const mid = (lo + hi) / 2;
-    const warmPlaceId = `place_rock_${sub}_${mid < 14 ? 'pebble' : mid < 24 ? 'boulder' : 'monolith'}`;
-    out.placeStubs.push({
-      type: 'asteroid',
-      radius: 1,
-      data: { authoredGeologySkin: true, placeId: warmPlaceId, placeTargetRadius: 1 },
-    });
+    // The hero's size is a uniform draw over the type's sizeRange, so EVERY size class the
+    // range can reach may be the one that mounts — warming only the midpoint class left the
+    // other bodies to decode at first sight (the late pop). Thresholds mirror
+    // authoredRockPlaceId (pebble < 14 <= boulder < 24 <= monolith).
+    const classes = [];
+    if (lo < 14) classes.push('pebble');
+    if (hi >= 14 && lo < 24) classes.push('boulder');
+    if (hi >= 24) classes.push('monolith');
+    if (!classes.length) classes.push((lo + hi) / 2 < 14 ? 'pebble' : (lo + hi) / 2 < 24 ? 'boulder' : 'monolith');
+    for (const sizeClass of classes) {
+      out.placeStubs.push({
+        type: 'asteroid',
+        radius: 1,
+        data: { authoredGeologySkin: true, placeId: `place_rock_${sub}_${sizeClass}`, placeTargetRadius: 1 },
+      });
+    }
   }
 
   const palette = paletteClassForSector(sector);

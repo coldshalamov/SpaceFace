@@ -195,6 +195,7 @@ export function canonicalProgramSpecimenPoolSize() {
  * admissions mint and re-pin fresh ones against the restored context. */
 export function clearCanonicalProgramSpecimens() {
   specimensBySignature.clear();
+  linkedSignatures.clear();
 }
 
 /** Diagnostic surface: the dedupe signature a (material, object) pair mints under. Exported so
@@ -426,4 +427,49 @@ export function settleCanonicalProgramSpecimens(root, mount) {
   try {
     if (root && typeof root.remove === 'function') root.remove(mount);
   } catch (_) { /* registry pins are unaffected by a stale parent edge */ }
+}
+
+// Signatures that completed an authored compile at least once. A minted specimen only proves
+// a signature was seen; the linked set proves the program actually bound — the specimen pins
+// keep that program alive for the context's lifetime. Context loss clears both registries
+// together so a restored context never reads a stale 'linked' verdict.
+const linkedSignatures = new Set();
+
+const visitRootMaterialSignatures = (root, visit) => {
+  if (!root || typeof root.traverse !== 'function') return;
+  root.traverse((object) => {
+    if (!object || (object.userData && object.userData[SPECIMEN_MARKER])) return;
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : (object.material ? [object.material] : []);
+    for (const material of materials) {
+      let signature;
+      try { signature = canonicalProgramSpecimenSignature(material, object); } catch (_) {
+        signature = null;
+      }
+      visit(signature);
+    }
+  });
+};
+
+/** Mark every program signature under `root` as linked. Call only after the root's compile
+ * resolved — marking early would let a sibling boundary skip its pacing on programs the
+ * failed compile never bound. */
+export function noteCanonicalProgramsLinked(root) {
+  visitRootMaterialSignatures(root, (signature) => {
+    if (signature) linkedSignatures.add(signature);
+  });
+}
+
+/** True when every (material, object) leaf under `root` resolves a signature that a prior
+ * authored compile already linked. Axes the signature cannot express (BatchedMesh, morph
+ * targets) return null and keep the verdict false — those subjects keep their pacing. */
+export function canonicalProgramsLinked(root) {
+  let all = true;
+  let sawAny = false;
+  visitRootMaterialSignatures(root, (signature) => {
+    if (!signature || !linkedSignatures.has(signature)) { all = false; return; }
+    sawAny = true;
+  });
+  return all && sawAny;
 }
