@@ -199,9 +199,24 @@ async function assertGatedProductionRegistration() {
     'SG-06 acceptance report generator must include the runtime capability gating status');
   assert(read('scripts/check-sg06-ai.mjs').includes('productionSpawnTacticalCapabilities'),
     'SG-06 acceptance report generator must include the production spawn tactical capability status');
-  const combat = read('src/systems/combat.js');
-  assert(combat.includes('tacticalCapabilitiesFor'), 'enemy spawn specs must author SG-06 tactical capability metadata');
-  assert(combat.includes('ARCHETYPE_TACTICAL_CAPABILITIES'), 'enemy spawn tactical capabilities must be explicit and reviewable');
+  const spawnBuilder = read('src/systems/enemySpawnSpec.js');
+  assert(spawnBuilder.includes('tacticalCapabilitiesFor'), 'enemy spawn specs must author SG-06 tactical capability metadata');
+  assert(spawnBuilder.includes('ARCHETYPE_TACTICAL_CAPABILITIES'), 'enemy spawn tactical capabilities must be explicit and reviewable');
+  // The deterministic builder also serves worker materializers. The combat API must keep
+  // using that exact owner after its extraction, and the authored tags must reach real specs.
+  const [{ makeEnemySpawnSpec }, { makeEnemySpawnSpec: canonicalSpawnSpec }] = await Promise.all([
+    import('../src/systems/combat.js'),
+    import('../src/systems/enemySpawnSpec.js'),
+  ]);
+  assert.strictEqual(makeEnemySpawnSpec, canonicalSpawnSpec,
+    'combat and worker materializers must share the canonical enemy spawn factory');
+  const lawman = makeEnemySpawnSpec('patrol_lawman', 3, { x: 0, z: 0 });
+  const capabilities = lawman.data.ai.capabilities;
+  for (const capability of ['drive', 'sensor', 'ranged', 'disable']) {
+    assert(capabilities.includes(capability), `lawful interceptor spawn must author ${capability}`);
+  }
+  assert.deepEqual(capabilities, [...new Set(capabilities)].sort(),
+    'production spawn tactical capabilities must be unique and deterministically ordered');
   const tactical = read('src/systems/tacticalAI.js');
   assert(tactical.includes('helpers.aiManeuver'), 'SG-06 tacticalAI must depend on helpers.aiManeuver');
   assert(tactical.includes('function ensureStack'), 'SG-06 tacticalAI must lazy-bind ports for registry-slot initialization');

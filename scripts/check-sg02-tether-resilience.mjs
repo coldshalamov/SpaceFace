@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 
+import { createBus } from '../src/core/eventBus.js';
+import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { createGameState } from '../src/core/gameState.js';
 import { physics } from '../src/core/physics.js';
 import { actions } from '../src/systems/actions.js';
@@ -17,12 +19,17 @@ const bus = createBus();
 const ctx = { state, bus, helpers, registry: { get() { return null; } } };
 const breakReceipts = [];
 const nearBreakReceipts = [];
+const warningCues = [];
+bus.on('presentation:cue', (cue) => {
+  if (cue.id === 'tether.near_break') warningCues.push({ tick: state.tick, cue });
+});
 bus.on('tether:broken', (payload) => breakReceipts.push(payload));
 bus.on('tether:nearBreak', (payload) => nearBreakReceipts.push(payload));
 
 try {
   physics.init(ctx);
   actions.init(ctx);
+  presentationOrchestrator.init(ctx);
 
   const ordinary = addPair({ actorId: 1, targetId: 2, extreme: false });
   physics.update(DT, state);
@@ -63,6 +70,7 @@ try {
     0,
     'ordinary load emits no impending-break warning',
   );
+  assert.equal(warningCues.length, 0, 'protected ordinary load must not produce a false presentation warning');
   assert.equal(physics._sg02.diagnostics().attachments, 1,
     'ordinary action_attach retains its physical SG-02 attachment');
 
@@ -98,12 +106,24 @@ try {
   assert(extremeAttachment.lastTension > 0, 'extreme break preserves tension telemetry');
   assert(extremeAttachment.lastImpulse > 0, 'extreme break preserves impulse telemetry');
   assert.equal(extremeWarnings.length, 1, 'explicit extreme endpoint emits one ordered near-break warning');
+  assert.equal(warningCues.length, 1, 'the real extreme-load warning must route through SG-08 exactly once');
+  const warningCue = warningCues[0];
+  assert.equal(warningCue.cue.sourceEvent, 'tether:nearBreak');
+  assert.equal(warningCue.cue.sourceId, extreme.actor.id);
+  assert.equal(warningCue.cue.targetId, extreme.target.id);
+  assert.equal(warningCue.cue.sequence, extremeCase.attachmentId);
+  assert.equal(warningCue.cue.payload.ratio, extremeWarnings[0].ratio,
+    'presentation must carry the native overload receipt, not a synthetic alarm');
+  assert(warningCue.tick < extremeAttachment.breakWarningUntilTick,
+    'the warning reaches presentation before its counterplay lease expires');
+  assert(warningCue.tick < state.tick, 'the warning reaches presentation before the physical break');
   assert.equal(extremeBreaks.length, 1, 'explicit extreme endpoint emits one threshold-break receipt');
   assert.equal(thresholdBreakTrace(extremeCase.attachmentId).length, 1,
     'explicit extreme endpoint appends one canonical threshold-break trace');
   assert.equal(physics._sg02.diagnostics().attachments, 0,
     'explicit extreme overload removes the physical SG-02 attachment');
 } finally {
+  presentationOrchestrator.dispose();
   if (actions.kernel && typeof actions.kernel.dispose === 'function') actions.kernel.dispose();
   if (typeof physics._disableSg02DynamicAuthority === 'function') physics._disableSg02DynamicAuthority();
 }
@@ -162,6 +182,7 @@ function step(tick, highWater = null) {
   actions.update(DT, state);
   physics.update(DT, state);
   actions.kernel.postPhysics(DT);
+  bus.flush();
   if (highWater) recordTelemetry(highWater);
 }
 
@@ -235,21 +256,6 @@ function makeCombatShip(id, team, x) {
     data: {
       derived: { damageReductionMult: 1 },
       combatProfileId: 'combat_profile_standard_ship',
-    },
-  };
-}
-
-function createBus() {
-  const listeners = new Map();
-  return {
-    on(event, fn) {
-      let set = listeners.get(event);
-      if (!set) listeners.set(event, set = new Set());
-      set.add(fn);
-      return () => set.delete(fn);
-    },
-    emit(event, payload) {
-      for (const fn of [...(listeners.get(event) || [])]) fn(payload, event);
     },
   };
 }

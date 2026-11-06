@@ -119,10 +119,22 @@ export function installCaptainMemory(host) {
     if (payload?.playerAnswered !== true) return;
     // victimId is historical numeric provenance, not identity (especially after
     // Continue). A missing/evicted/ambiguous binding must not reward its new occupant.
-    const key = state.entities?.get?.(payload.entityId)?.data?.captainPodKey;
-    if (!key) return;
+    const receipts = typeof payload.id === 'string'
+      ? (state.survivorPod?.causal?.receipts || []).filter(item => item?.id === payload.id) : [];
+    if (receipts.length > 1) return;
+    const receipt = receipts[0];
+    if (receipt && (receipt.outcome !== 'rescued' || receipt.playerAnswered !== true)) return;
+    const pod = state.entities?.get?.(payload.entityId);
+    // A completed custody ride has no live pod. Read its terminal owner receipt;
+    // an arbitrary event key cannot revive a captain or replace canonical credit.
+    // Older live-pod producers retain their binding fallback. When a ledger row
+    // exists, the pod must still carry that survivor identity before it can help.
+    const liveKey = !receipt || pod?.data?.survivorPodCausal?.memoryId === receipt.id
+      ? pod?.data?.captainPodKey : null;
+    const key = receipt?.captainPodKey ?? liveKey;
+    if (typeof key !== 'string' || !key) return;
     const matches = rows().filter(row => row.podKey === key);
-    if (matches.length === 1) remember('rescued', payload, matches[0]);
+    if (matches.length === 1) remember('rescued', receipt || payload, matches[0]);
   });
   return { remember, destroy() { for (const unsubscribe of off) unsubscribe(); } };
 }
