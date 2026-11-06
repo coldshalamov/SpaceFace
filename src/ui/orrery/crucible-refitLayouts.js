@@ -198,10 +198,8 @@ ${RF} > .k-title .sf-cru-preview {
     margin:0 !important;
   }
 }
-/* Very short / narrow-short: keynotes under Take the win / Keep going doubled the foot
-   (~169px at 651×461) and crushed the list; drop them so verbs stay one compact band. */
+/* Very short / narrow-short: compact the verbs without withdrawing their consequences. */
 @media (max-height:500px) {
-  ${RF} .k-foot .sf-cru-fine, ${RF} .k-foot .sf-cru-keynote { display:none !important; }
   ${RF} > .k-foot { padding:4px 0 2px !important; }
   ${RF} .k-foot .k-word { min-height:30px !important; font-size:12px !important; }
   ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) { font-size:13px !important; min-height:32px !important; }
@@ -267,8 +265,32 @@ ${RF} > .k-title .sf-cru-preview {
   }
   ${RF} .k-foot .k-word { font-size:13px !important; min-height:32px !important; padding:0 10px !important; }
   ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) { font-size:14px !important; min-height:34px !important; }
-  ${RF} .k-foot .sf-cru-fine, ${RF} .k-foot .sf-cru-keynote { display:none !important; }
 }
+/* The fine print names what ending, continuing or banking commits. Let each action
+   wrap with its consequence; a bounded footer scrolls when all offers cannot fit. */
+@media (max-height:560px), (max-width:560px) {
+  ${RF} > .k-foot {
+    min-height:0 !important; max-height:45dvh !important;
+    overflow-y:auto !important; overflow-x:hidden !important;
+    scroll-padding-block:8px;
+  }
+  ${RF} .k-foot .k-words {
+    display:grid !important; width:100% !important; min-width:0 !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(16rem, 100%), 1fr)) !important;
+    align-items:start !important;
+  }
+  ${RF} .k-foot .k-words > li { min-width:0 !important; }
+  ${RF} .k-foot .k-word {
+    max-width:100% !important; height:auto !important;
+    white-space:normal !important; overflow-wrap:anywhere;
+  }
+  ${RF} .k-foot .sf-cru-keynote {
+    max-width:none !important; margin:4px 0 0 !important;
+    font-size:12px !important; line-height:1.35 !important;
+    white-space:normal !important; overflow-wrap:anywhere;
+  }
+}
+
 `;
 
 // One more jig layout after the arrival window: the foot's settle transform is done (kit settle
