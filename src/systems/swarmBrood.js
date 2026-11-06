@@ -1662,8 +1662,11 @@ export function createBroodEngine(deps = {}) {
         // the face it planted on. It repins next tick regardless.
         if (def && def.rooted) break;
         if (rel2 >= slam * slam) {
-          kill(i, 'terrain', px[i], pz[i], !!rockCredited[r]
-            || creditUntil[i] > simTime || phase[i] === BROOD_PHASE_DASH);
+          // S3 fair credit: the dash is the body's own committed attack steer — a brood
+          // that suicides on the room's face is machinery the player did not trigger,
+          // an environmental death like any drifting body's slam. Only the player's own
+          // momentum (a shoved rock, a recent impulse window) earns the credit.
+          kill(i, 'terrain', px[i], pz[i], !!rockCredited[r] || creditUntil[i] > simTime);
           break;
         }
         // A body under its own steering meets the rock and slides along its face.
