@@ -221,25 +221,40 @@ ${S} :focus-visible { outline:none !important; }
   /* the rule along the bottom gap tracks tighter so it ends before the WANTED word */
   ${S} .fp-engrave--rule text { letter-spacing:.16em; }
 }
-/* phone: the dial stands over its reading, full width, and the screen scrolls as one page */
+/* phone: dial over reading (capped), reading column fills the rest — chain scrolls with a fold,
+   verbs + record stay pinned below it (same contract as desktop #333: verbs clear of the fold).
+   Page-scroll used to clip the last chain rows and leave PAY/BRIBE entirely below the fold with no cue. */
 @media (max-width:760px) {
-  ${S} { grid-template-rows:auto auto !important; overflow:hidden auto !important; }
-  ${S} > .k-stage.fp-stage { display:flex !important; flex-direction:column; gap:18px; min-height:auto !important; }
+  ${S} { grid-template-rows:auto minmax(0, 1fr) !important; overflow:hidden !important; padding-bottom:8px !important; }
+  ${S} > .k-stage.fp-stage { display:flex !important; flex-direction:column; gap:12px; min-height:0 !important; overflow:hidden !important; }
   ${S} > .k-stage.fp-stage::after { display:none; }
-  ${S} .fp-dialhost { flex:none; align-self:center; width:min(calc(100% + var(--k-margin, 14px) * 2), 520px); height:auto !important; aspect-ratio:1 / 1; margin:0; max-height:none; }
-  ${S} .fp-reading { flex:none; max-width:none; max-height:none; gap:16px; }
-  ${S} .fp-read { flex:none; max-width:none; overflow:visible; padding:0; gap:16px; -webkit-mask-image:none !important; mask-image:none !important; }
-  ${S} .fp-answer, ${S} .fp-drawer { padding-left:0 !important; padding-right:0 !important; }
-  ${S} .fp-read { min-height:0 !important; }
+  ${S} .fp-dialhost { flex:none; align-self:center; width:min(calc(100% + var(--k-margin, 14px) * 2), 520px, 30vh) !important;
+    max-width:100%; height:auto !important; aspect-ratio:1 / 1; margin:0; max-height:min(30vh, 210px) !important; }
+  ${S} .fp-reading { flex:1 1 auto !important; min-height:0 !important; max-width:none; max-height:none; gap:8px; overflow:hidden !important; }
+  ${S} .fp-read { flex:1 1 auto !important; min-height:30% !important; max-width:none; overflow:hidden auto !important;
+    padding:0 0 8px !important; gap:8px; -webkit-mask-image:none; mask-image:none; }
+  ${S} .fp-read[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; }
+  ${S} .fp-answer, ${S} .fp-drawer { flex:0 0 auto !important; padding-left:0 !important; padding-right:0 !important; }
+  ${S} .fp-answer { gap:2px !important; padding-top:4px !important;
+    background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .9) 12%, rgb(5 7 10 / .96)) !important; }
+  ${S} .fp-drawer { gap:4px !important; max-height:min(12vh, 96px) !important; overflow:hidden auto !important; scrollbar-width:none; }
+  ${S} .fp-drawer::-webkit-scrollbar { display:none; }
   ${S} .fp-board { max-width:none; padding-left:40px !important; }
   ${S} .fp-board::before { left:18px; }
   ${S} .fp-board::after { left:22px; }
-  ${S} .fp-node { font-size:15px !important; }
+  ${S} .fp-chain { gap:6px !important; }
+  ${S} .fp-node { font-size:14px !important; padding:2px 0 !important; }
+  ${S} .fp-node__meta { font-size:12px !important; line-height:1.3 !important; }
   ${S} .fp-answer .k-words { grid-template-columns:minmax(0, 1fr); row-gap:0 !important; }
-  ${S} .fp-answer .k-word-sub { margin:0 0 10px 18px !important; }
+  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:22px !important; font-size:12px !important; letter-spacing:.08em !important; }
+  ${S} .fp-answer .k-word.orr-lampkey { min-height:28px !important; font-size:12.5px !important; margin:1px 0 !important; }
+  ${S} .fp-answer .k-word-sub { margin:0 0 2px 14px !important; font-size:12px !important; line-height:1.2 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
   ${S} .fp-answer .k-word.orr-lampkey + .k-word-sub, ${S} .fp-answer li:has(> .orr-lampkey) > .k-word-sub { margin-left:0 !important; }
-  ${S} .fp-dossier { grid-template-columns:minmax(0, 1fr) !important; }
+  ${S} .fp-dossier { grid-template-columns:minmax(0, 1fr) !important; gap:8px !important; }
   ${S} .fp-dossier__cell:first-child { grid-column:auto; }
+  ${S} .fp-dossier__k, ${S} .fp-dossier__sub { display:none !important; }
   /* the dial on a phone: no keyboard hint over the tokens, no link out to a column it no longer stands beside, and the
      rule and WANTED track tighter so they part at the bottom gap */
   ${S} .fp-hint, ${S} .fp-link { display:none; }
