@@ -65,6 +65,21 @@ last300 review is end-only; final independent release approvals0/3, not started.
 
 <!-- zcode-inf20c released 2026-10-29: INFERENCE 20 complete — 20/20 units landed and pushed (2e5bf4c5633 … e5ac485619fd), each recorded via inference-record; see design/program/inference-memory.json and the sitting's final report. -->
 
+<!-- Lane 1 PIPELINE (master plan) — active claims, 2026-11-06 -->
+## Lane 1 PIPELINE — master-plan campaigns E10 → E1 → E5 → E9
+
+Lane 1 of `finish/MASTER_PLAN.md` is active. Diagnosis memos:
+`finish/campaigns/E10/DIAGNOSIS.md`, `finish/campaigns/E1/DIAGNOSIS.md`.
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| E10 frame-truth dashboard | Lane 1 | NEW `src/core/frameTruth.js`, `test/frame-truth*.test.mjs`, `finish/campaigns/E10/*`; small wiring edits in `src/core/presentationRunner.js` | Consolidates existing probes; renderer internals untouched |
+| E1 playout buffer | Lane 1 | `src/render/snapshotFence.js` (history ring + delayed presented clock — the agreed pose-writer interface with Lane 3; renderer callers keep `latestSnapshot()/previousSnapshot()` unchanged), `src/core/wholeSimBrowserWorker.js` + `scripts/lib/simWorkerHost.mjs` (stall-injection seam only), `src/core/simLaneMain.js` (flag parse), `finish/campaigns/E1/*` | Renderer file NOT edited; Codex perf's in-flight files untouched |
+| E5 shared memory / Electron-first | Lane 1 | `vercel.json` (COOP/COEP headers), `electron/main.cjs` (session isolation + switch audit), `finish/campaigns/E5/*` | after E1 |
+| E9 load in seconds | Lane 1 | `scripts/build-bundle.mjs` + boot/loading entry files, `finish/campaigns/E9/*` | after E5 |
+
+Lane 1 does not edit: renderer internals (Lane 3), SWARM lane files, Codex perf's in-flight files.
+
 <!-- Lane F (Crucible Swarm overhaul) — hand-offs for Lane S -->
 ## Crucible Swarm — Lane F notes for Lane S
 
