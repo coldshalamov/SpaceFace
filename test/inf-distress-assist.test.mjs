@@ -108,7 +108,8 @@ test('seed 4242: Scan inside the tell radius reads the hull once and leaves the 
   h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'scan' });
   assert.equal(live.phase, 'offer');
   assert.equal(live.data.toldTell, true);
-  assert.equal(live.offerConsumed, true);
+  assert.equal(live.offerConsumed, false, 'the read returns control to the pilot');
+  assert.deepEqual(h.offered.at(-1).options.map((option) => option.id), ['assist', 'scan', 'ignore']);
   const tells = h.voice.filter((row) => row.encounterId === live.id && /Signal reads wrong|heartbeat aboard/.test(row.text));
   assert.equal(tells.length, 1);
   assert.equal(tells[0].channel, 'info');
@@ -117,6 +118,9 @@ test('seed 4242: Scan inside the tell radius reads the hull once and leaves the 
   h.sim.runTicks(2);
   const tellsAfter = h.voice.filter((row) => row.encounterId === live.id && /Signal reads wrong|heartbeat aboard/.test(row.text));
   assert.equal(tellsAfter.length, 1, 'a second pulse does not read it again');
+  h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+  assert.equal(live.data.assisting, true, 'the pilot can still answer after learning what the scan found');
+  assert.equal(h.state.nav.waypoint.encounterId, live.id);
   h.sim.dispose();
 });
 

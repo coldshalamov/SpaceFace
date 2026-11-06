@@ -884,8 +884,11 @@ const distress = {
         d.say(live, 'info', range != null
           ? `The mayday is ${range} WU out. Close in before a scan will hold.`
           : 'The mayday will not read from here.', null, { literal: true });
-        distressOfferAgain(d, live);
       }
+      // A successful read is information, not a commitment to abandon the rescue. Re-open
+      // the one-shot choice after either result so the pilot can still Assist or Ignore.
+      // toldTell remains latched, so a later card scan never rolls or speaks a second read.
+      distressOfferAgain(d, live);
     }
   },
 
