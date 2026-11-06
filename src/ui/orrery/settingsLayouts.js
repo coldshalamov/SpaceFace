@@ -355,12 +355,13 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
 }
-/* a very short desktop window (844×390 / ≤460): stacked ≤900 put the five-rung category ladder
-   in an auto row (~208px) so the stage track collapsed to 0 and MUTE ALL printed through MORE
-   and ‹ BACK. Lay the tabs sideways (credits-style) and compress chrome so the pane gets a real
+/* a very short desktop window (844×390 / ≤540 densify): stacked ≤900 put the five-rung category
+   ladder in an auto row (~208px) so the stage track collapsed to ~34px and MUTE ALL printed through
+   MORE and ‹ BACK. The prior ≤460 band missed the polish densify heights (700×461 / 801×461) by
+   one pixel. Lay the tabs sideways (credits-style) and compress chrome so the pane gets a real
    band. Real phones in landscape use data-sf-mobile and stay out. No width floor: at 641–650
    (and narrower) a short desktop window had the same 34px pane. */
-@media (max-width:900px) and (max-height:460px) {
+@media (max-width:900px) and (max-height:540px) {
   ${SD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important; }
   ${SD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
   ${SD} > .k-hang { min-width:0 !important; width:100% !important; }
