@@ -485,8 +485,14 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
   --sf-sandbox-key: 44px;
   padding-bottom: calc(var(--sf-sandbox-dock) + env(safe-area-inset-bottom, 0px)) !important;
 }
-/* Short frames (desktop 960x540, landscape phone 844x390): the crest gives back its top air, and
-   below 500px of stage height the ladder drops its own bound — the stage alone scrolls. */
+/* Short frames (desktop 960x540, landscape phone 844x390): the crest gives back its top air.
+   SHORT DENSIFY (ui-polish-363): the prior ≤500 band set .sf-sandbox-tiles { max-height:none;
+   overflow-y:visible }, so standard short-desktop 461 (651/700/801×461) let Free Play and
+   Combat Range spill through the fixed Launch dock (ix~172 iy~32 / iy~12; Free Play pastBottom
+   12). The 501–640 band already kept a scroll max-height; 461 fell through the floor. Extend
+   that scroll bound through min-height:391 so 461–519 keep the ladder scroll-bounded above
+   Launch rather than shrinking tiles into unreadability. True landscape-phone ≤390 still
+   drops the nested bound (stage alone scrolls) and hides the dial. */
 @media (max-height: 640px) {
   .screen.sf-sandbox.dp-frame--screen { padding-top: 16px; row-gap: 8px; }
   .sf-sandbox .sf-crest { padding-top: 8px; padding-bottom: 4px; }
@@ -494,12 +500,21 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
   .sf-sandbox-dial { width: 84px; height: 84px; }
   .sf-sandbox .sf-sandbox-name { font-size: calc(var(--dp-fs-title) * .6); }
 }
-/* Leave the first Combat Lab row above the stage fade in short desktop windows. */
-@media (max-height: 640px) and (min-height: 501px) {
-  .sf-sandbox-tiles { max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade))); }
+/* Leave the first Combat Lab row above the stage fade in short desktop windows — including
+   standard short-desktop 461 (was min-height:501, which skipped 461–500). */
+@media (max-height: 640px) and (min-height: 391px) {
+  .sf-sandbox-tiles {
+    max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade)));
+    overflow-y: auto;
+  }
   .sf-sandbox .sf-section-h { margin-top: calc(var(--dp-u) * 3); }
 }
-@media (max-height: 500px) {
+/* ≤500 still hides the dial (crest air is gone); tiles stay scroll-bounded via the band above. */
+@media (max-height: 500px) and (min-height: 391px) {
+  .sf-sandbox-dial { display: none; }
+}
+/* True landscape-phone: stage alone scrolls; nested ladder bound would be unreadably short. */
+@media (max-height: 390px) {
   .sf-sandbox-tiles {
     margin-top: 8px; max-height: none; overflow-y: visible;
     -webkit-mask-image: none; mask-image: none;
