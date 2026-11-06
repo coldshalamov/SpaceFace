@@ -54,18 +54,50 @@ test('a first-met captain remains the same client through production Continue an
     runtime.step();
     assert.equal(state.entityList.filter(entity => entity.alive !== false && entity.data?.captainPodKey === key).length, 1);
     const currentPlayer = state.entities.get(state.playerId);
-    // Focused handoff setup, not an assertion of native towing acceptance.
-    currentPlayer.pos.x = restored.pos.x; currentPlayer.pos.z = restored.pos.z;
-    const rescuer = runtime.spawn(makeShipEntitySpec('ship_kestrel', { team: 2, pos: { ...restored.pos } }));
+    // Focused handoff setup after real Continue. The original pod remains the only passenger;
+    // a traffic-owned rescue hull takes custody before its real delivery owner completes rescue.
+    const rescuer = runtime.spawn(makeShipEntitySpec('ship_kestrel', {
+      team: 2, factionId: 'faction_mts', pos: { x: restored.pos.x + 24, z: restored.pos.z },
+    }));
     rescuer.data.trafficRole = 'rescue';
-    state.player.tether = { ...state.player.tether, active: true, targetId: restored.id };
-    const receipts = [], grants = [];
+    rescuer.data.role = 'rescue';
+    rescuer.data.worldRecordId = `continue-rescue:${rescuer.id}`;
+    state.traffic.freighters.push({ id: rescuer.id, role: 'rescue', targetId: null,
+      waitT: 0, carryingSurvivor: false });
+    rescuer.flags.noInterp = true;
+    currentPlayer.pos.x = restored.pos.x; currentPlayer.pos.z = restored.pos.z;
+    currentPlayer.vel.x = 0; currentPlayer.vel.z = 0;
+    currentPlayer.flags.noInterp = true;
+    state.player.tether = { ...state.player.tether, active: true, targetId: restored.id, attachmentId: null };
+    const receipts = [], grants = [], boarded = [];
     bus.on('survivorPod:rescued', receipt => receipts.push(receipt));
+    bus.on('survivorPod:boarded', receipt => boarded.push(receipt));
     bus.on('economy:grantCredits', intent => { if (String(intent.reason).startsWith('survivor_mayday:')) grants.push(intent); });
     registry.get('survivorPod').update(0, state);
+    assert.equal(boarded.length, 1, 'the latched pod transfers into rescue-hull custody');
+    assert.equal(boarded[0].entityId, restored.id, 'custody keeps the original durable pod identity');
+    assert.equal(receipts.length, 0, 'boarding is custody transfer, not terminal rescue');
+    assert.equal(grants.length, 0, 'boarding alone must not pay the rescue fee');
+    const custody = state.survivorPod.causal.receipts.find(item => item.id === memoryId);
+    assert.equal(custody?.outcome, 'in_transit');
+    assert.equal(custody?.carrierEntityId, rescuer.id);
+    assert.equal(rescuer.data.carryingSurvivor, true);
+    const traffic = registry.get('traffic');
+    const rescueRecord = state.traffic.freighters.find(item => item.id === rescuer.id);
+    assert.ok(traffic && rescueRecord?.targetId != null, 'the production traffic owner assigns a station destination');
+    const deliveryStation = state.entities.get(rescueRecord.targetId);
+    assert.ok(deliveryStation?.type === 'station', 'rescue destination is a real station entity');
+    // Focus the final delivery handoff on the assigned real station; this is not a flown route test.
+    rescuer.pos.x = deliveryStation.pos.x; rescuer.pos.z = deliveryStation.pos.z;
+    // Invoke the production role owner at that arrival geometry. This focused Continue test
+    // does not substitute an offscreen-scheduler or flown-route claim for the custody contract.
+    assert.equal(traffic._stepRescue(rescuer, rescueRecord, traffic._sectorStations(), state, 0), true);
     assert.equal(receipts.length, 1);
+    assert.equal(receipts[0].reason, 'player_handoff_rescue_hull');
     assert.equal(receipts[0].playerAnswered, true);
     assert.equal(grants.length, 1);
+    assert.equal(rescuer.data.carryingSurvivor, false);
+    assert.equal(state.survivorPod.causal.receipts.find(item => item.id === memoryId)?.outcome, 'rescued');
     const row = state.traffic.captainRoster.find(item => item.id === identity.id);
     assert.equal(row.name, prior.name); assert.equal(row.worldRecordId, prior.worldRecordId);
     assert.equal(row.alive, true); assert.equal(row.outcomes.rescued, 1);

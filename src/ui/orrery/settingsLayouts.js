@@ -396,6 +396,12 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${SD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
   ${SD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; }
 }
+/* Horizontal categories keep a visible focus cue even on the selected tab: the compact
+   strip hides the ladder's focus tick, so selection color alone cannot identify keyboard focus. */
+${S} .sf-tabbar { scroll-padding-inline:12px; }
+${S} .sf-tabbar .sf-tab:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important;
+}
 html.sf-reduce-motion ${S} #sf-settings-pane .sf-bind-btn { animation:none !important; }
 @media (forced-colors: active) {
   ${S} #sf-settings-pane input.k-range { background:CanvasText !important; height:2px !important; }
