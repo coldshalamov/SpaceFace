@@ -1,0 +1,482 @@
+name: UI PR review
+
+on:
+  pull_request:
+    paths:
+      - 'src/ui/**'
+      - 'styles/**'
+      - 'src/systems/mobile/*Css*'
+      - 'scripts/ui-bench.mjs'
+      - 'scripts/lib/uiBench*'
+      - 'tools/ui-bench*'
+      - '.github/workflows/ui-pr-review.yml'
+  workflow_dispatch:
+    inputs:
+      shots:
+        description: 'Optional comma-separated bench fixture IDs; empty runs the mapped set'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Explicit bash enables pipefail, so tee cannot hide a failed bench process.
+    shell: bash
+
+concurrency:
+  group: ui-pr-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Fixture evidence only: neither arrival PNGs nor synthetic control walks establish
+# live-player acceptance. No golden images, measured budgets, or source manifests
+# are promoted by this workflow. The dedicated hold test uses real pointer input.
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      matrix: ${{ steps.surfaces.outputs.matrix }}
+      selection: ${{ steps.surfaces.outputs.selection }}
+      unmapped: ${{ steps.surfaces.outputs.unmapped }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout: |
+            src/ui
+            styles
+            scripts/lib
+      - name: Resolve changed owners and helper importers
+        id: surfaces
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REQUESTED_SHOTS: ${{ inputs.shots }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import collections, json, os, posixpath, re, subprocess
+          from pathlib import Path
+
+          routes = {}
+          def route(paths, shots):
+              for path in paths.split():
+                  routes[path] = set(shots.split())
+
+          route('src/ui/orrery/lampKey.js', 'station-contracts station-industry clips new-game')
+          route('src/ui/orrery/stationStandard.js', 'station-dock station-market station-contracts')
+          route('src/ui/orrery/stationLayouts.js',
+                'station-dock station-industry asteroid-works')
+          route('src/ui/station/stationScreen.js',
+                'station-dock station-market station-shipworks station-industry station-contracts station-factions station-bar station-ledger')
+          route('src/ui/station/screens/contracts.js', 'station-contracts')
+          route('src/ui/station/screens/industry.js', 'station-industry')
+          route('src/ui/station/screens/market.js', 'station-market')
+          route('src/ui/station/screens/shipworks.js', 'station-shipworks station-shipworks-impound')
+          route('src/ui/station/screens/factions.js', 'station-factions')
+          route('src/ui/station/screens/bar.js', 'station-bar')
+          route('src/ui/station/screens/ledger.js', 'station-ledger')
+          route('src/ui/orrery/stationTabsLayouts.js', 'station-industry station-shipworks')
+          route('src/ui/orrery/shipworksLayouts.js src/ui/orrery/station-shipworksLayouts.js',
+                'station-shipworks station-shipworks-impound')
+          route('src/ui/orrery/mobileScreenLayouts.js',
+                'station-dock station-industry station-shipworks')
+          route('src/ui/orrery/marketLayouts.js src/ui/orrery/station-marketLayouts.js', 'station-market')
+          route('src/ui/orrery/station-contractsLayouts.js', 'station-contracts')
+          route('src/ui/orrery/station-factionsLayouts.js', 'station-factions')
+          route('src/ui/orrery/pauseLayouts.js src/ui/screens/pause.js', 'pause')
+          route('src/ui/orrery/helpLayouts.js src/ui/screens/help.js', 'help')
+          route('src/ui/orrery/settingsLayouts.js src/ui/screens/settings.js', 'settings')
+          route('src/ui/orrery/achievementsLayouts.js src/ui/screens/achievements.js', 'achievements')
+          route('src/ui/orrery/crucible-doorLayouts.js src/ui/screens/crucible.js',
+                'crucible-door crucible-rearm crucible-results')
+          route('src/ui/orrery/codexLayouts.js src/ui/orrery/archiveLayouts.js src/ui/screens/codex.js',
+                'codex codex-record')
+          route('src/ui/orrery/sandboxLayouts.js src/ui/screens/sandbox.js', 'sandbox')
+          route('src/ui/orrery/chartLayouts.js src/ui/galaxyMap.js',
+                'chart-local chart-galaxy chart-route')
+          route('src/ui/orrery/rangeLayouts.js src/ui/screens/range.js', 'range')
+          route('src/ui/orrery/popupsLayouts.js', 'popup-dossier popup-confirm-danger popup-find')
+          route('src/ui/entityLinks.js', 'popup-dossier')
+          route('src/ui/globalFind.js', 'popup-find popup-dossier')
+          route('src/ui/orrery/tech-treeLayouts.js src/ui/screens/techTree.js',
+                'tech-tree tech-tree-progress')
+          route('src/ui/orrery/flight-radialsLayouts.js src/ui/orrery/commsLayouts.js',
+                'comms-radial wingman-radial')
+          route('src/ui/orrery/gameOverLayouts.js src/ui/orrery/game-overLayouts.js src/ui/screens/gameOver.js',
+                'game-over gameOver-empty')
+          route('src/ui/orrery/newGameLayouts.js src/ui/orrery/new-gameLayouts.js src/ui/screens/newGame.js',
+                'new-game')
+          route('src/ui/orrery/physics-raceLayouts.js', 'physicsVenues raceBoard')
+          route('src/ui/screens/physicsVenues.js', 'physicsVenues')
+          route('src/ui/orrery/raceBoardLayouts.js src/ui/screens/raceBoard.js', 'raceBoard')
+          route('src/ui/orrery/cruciblePreparationLayouts.js src/ui/screens/crucibleDraft.js',
+                'crucible-door crucible-draft crucible-rearm crucible-refit crucible-fortify')
+          route('src/ui/orrery/crucible-refitLayouts.js', 'crucible-refit crucible-refit-swarm')
+          route('src/ui/orrery/swarmFortifyLayouts.js src/ui/swarmFortifyPanel.js', 'crucible-fortify')
+          route('src/ui/orrery/drillLayouts.js src/ui/asteroid/asteroidScreen.js',
+                'asteroid-works drill-claimed drill-build')
+          route('src/ui/orrery/saveLayouts.js src/ui/orrery/save-loadLayouts.js src/ui/screens/saveLoad.js',
+                'save-load save-load-empty save-load-live')
+          route('src/ui/screens/clips.js', 'clips')
+          route('src/ui/orrery/creditsLayouts.js src/ui/screens/credits.js', 'credits')
+          route('src/ui/orrery/statisticsLayouts.js src/ui/screens/statistics.js', 'statistics')
+          route('src/ui/orrery/mission-logLayouts.js src/ui/screens/missionLog.js',
+                'mission-log mission-log-receipts')
+          route('src/ui/orrery/footprintLayouts.js src/ui/screens/footprint.js',
+                'footprint footprint-clean')
+          all_shots = set().union(*routes.values())
+          routes['src/ui/orrery/screenLayouts.js'] = all_shots
+
+          # Follow relative module/style dependencies backwards to the first known
+          # screen owner. A new helper no longer expands every PR to every fixture.
+          # Unresolved owners remain explicit coverage gaps and fail the final gate.
+          reverse = collections.defaultdict(set)
+          dependency = re.compile(r'''["'](\.{1,2}/[^"'\s]+\.(?:m?js|css))["']''')
+          for root in ('src/ui', 'styles'):
+              for path in Path(root).rglob('*'):
+                  if path.suffix not in ('.js', '.mjs', '.css') or not path.is_file():
+                      continue
+                  for spec in dependency.findall(path.read_text(encoding='utf-8')):
+                      target = posixpath.normpath(posixpath.join(path.parent.as_posix(), spec))
+                      reverse[target].add(path.as_posix())
+
+          def owners(path):
+              pending, visited, found = [path], set(), set()
+              while pending:
+                  item = pending.pop()
+                  if item in visited:
+                      continue
+                  visited.add(item)
+                  if item in routes:
+                      found.update(routes[item])
+                  else:
+                      pending.extend(reverse[item])
+              return found
+
+          base, head = os.environ.get('BASE_SHA'), os.environ['HEAD_SHA']
+          merge_base = subprocess.check_output(['git', 'merge-base', base, head], text=True).strip() if base else None
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', '--no-renames', merge_base, head], text=True
+          ).splitlines() if merge_base else []
+          selected, unmapped, reasons = set(), [], {}
+          for path in changed:
+              if path.startswith(('src/ui/', 'styles/')) and Path(path).suffix in ('.js', '.mjs', '.css'):
+                  matches = all_shots if path.startswith('styles/') else owners(path)
+                  if matches:
+                      selected.update(matches)
+                      reasons[path] = sorted(matches)
+                  else:
+                      unmapped.append(path)
+              elif path.startswith(('scripts/ui-bench.', 'scripts/lib/uiBench', 'tools/ui-bench',
+                                    'src/systems/mobile/')):
+                  selected.update(all_shots)
+                  reasons[path] = ['shared bench or mobile infrastructure: mapped fixture set']
+
+          requested = {item.strip() for item in os.environ.get('REQUESTED_SHOTS', '').split(',') if item.strip()}
+          if os.environ['EVENT_NAME'] == 'workflow_dispatch':
+              selected = requested or all_shots
+          if not selected:
+              selected = {'station-contracts', 'popup-dossier', 'new-game'}
+              reasons['workflow-smoke'] = sorted(selected)
+          catalog = Path('scripts/lib/uiBenchCatalog.mjs').read_text(encoding='utf-8')
+          known = set(re.findall(r"\bid:\s*'([^']+)'", catalog))
+          invalid = sorted(selected - known)
+          if invalid:
+              raise SystemExit('Unknown bench fixture IDs: ' + ', '.join(invalid))
+          if unmapped:
+              print('::warning::Unmapped UI owners require an explicit fixture route: ' + ', '.join(unmapped))
+          selection = dict(head=head, base=base, mergeBase=merge_base, changed=changed,
+                           reasons=reasons, unmapped=unmapped, fixtures=sorted(selected),
+                           scope='Real UI fixtures; not live-player acceptance or promoted visual baselines')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('matrix=' + json.dumps({'shot': sorted(selected)}, separators=(',', ':')) + '\n')
+              output.write('selection=' + json.dumps(selection, separators=(',', ':')) + '\n')
+              output.write('unmapped=' + json.dumps(unmapped, separators=(',', ':')) + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Selected UI fixtures\n\n' + ', '.join(sorted(selected)) + '\n\n')
+              summary.write('Capturing exact head `' + head + '`. Each fixture retains arrival and walk evidence separately.\n')
+              if unmapped:
+                  summary.write('\n**Coverage gaps:** ' + ', '.join(unmapped) + '\n')
+          print(json.dumps(selection, indent=2))
+          PY
+
+  fixture:
+    name: Fixture · ${{ matrix.shot }}
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    env:
+      SHOT: ${{ matrix.shot }}
+      SPACEFACE_PLAYER_STORE_DIR: ''
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          # Keep the known bench assets, not the entire production ship library.
+          # Required-asset 404s remain failures; do not whitelist them as optional.
+          sparse-checkout: |
+            /*
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
+            /assets/**/*.css
+            /assets/**/*.woff2
+            /assets/ui/**
+            /assets/portraits/**
+            /assets/cinematics/boot-visualizer.jpg
+            /assets/cinematics/C-INTRO-*.jpg
+            /assets/ships/release/render-packages/kestrel/**
+            /assets/ships/release/render-packages/wasp/**
+            /assets/ships/release/render-packages/dock-interior/**
+            /assets/ships/release/render-packages/pip-spanner/**
+            /assets/ships/release/render-packages/_shared/**
+            /assets/ships/parts/places/place_dock_interior.glb
+            /assets/ships/parts/wholeships/pelican*.glb
+            /assets/ships/release/parts/wholeships/pelican*.glb
+            !/design/
+            !/tools/blender/
+            !/docs/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Record exact evidence provenance
+        id: evidence
+        env:
+          SELECTION: ${{ needs.select.outputs.selection }}
+        run: |
+          mkdir -p .devshots/ui-pr-review/arrivals .devshots/ui-pr-review/walks
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          data = json.loads(os.environ['SELECTION'])
+          desktop_viewports = ['651x461', '700x461', '801x461', '960x540', '390x844', '1920x1080']
+          phone_viewports = ['390x844', '844x390']
+          desktop_timeout, phone_timeout = 210, 150
+          # Exercise the changed wide/short venue band and narrow-landscape comms
+          # band without adding those cells to unrelated fixture jobs.
+          if os.environ['SHOT'] == 'physicsVenues':
+              desktop_viewports.append('1280x461')
+              desktop_timeout = 270
+          if os.environ['SHOT'] == 'comms-radial':
+              phone_viewports.append('700x390')
+              phone_timeout = 180
+          regression_specs = {
+              'contract_hold': ('test/contract-hold-identity-p04.test.mjs', ['station-contracts'], 'pointer'),
+              'contract_short_dossier': ('test/station-contracts-short-dossier.test.mjs', ['station-contracts'], 'pointer'),
+              'refit': ('test/crucible-refit-compact-consequences.test.mjs', ['crucible-refit', 'crucible-refit-swarm'], 'refit_regression'),
+              'fortify': ('test/swarm-fortify-compact-feedback.test.mjs', ['crucible-fortify'], 'fortify_regression'),
+          }
+          regression_scope = {}
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for name, (file, fixtures, step) in regression_specs.items():
+                  applicable, present = os.environ['SHOT'] in fixtures, Path(file).is_file()
+                  state = 'scheduled' if applicable and present else ('not-tested-file-absent' if applicable else 'not-applicable')
+                  regression_scope[name] = dict(file=file, step=step, applicable=applicable, present=present, state=state)
+                  output.write(name + '=' + state + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as environment:
+              environment.write('DESKTOP_VIEWPORTS=' + ','.join(desktop_viewports) + '\n')
+              environment.write('PHONE_VIEWPORTS=' + ','.join(phone_viewports) + '\n')
+              environment.write('DESKTOP_CAPTURE_SECONDS=' + str(desktop_timeout) + '\n')
+              environment.write('PHONE_CAPTURE_SECONDS=' + str(phone_timeout) + '\n')
+          data.update(fixture=os.environ['SHOT'],
+                      checkedOutHead=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+                      checkedOutTree=subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+                      run=os.environ['GITHUB_RUN_ID'], attempt=os.environ['GITHUB_RUN_ATTEMPT'],
+                      desktopViewports=desktop_viewports,
+                      phoneViewports=phone_viewports,
+                      captureTimeoutSeconds=dict(desktop=desktop_timeout, phone=phone_timeout),
+                      regressionScope=regression_scope,
+                      phoneContext=dict(isMobile=True, hasTouch=True, deviceScaleFactor=2),
+                      walks=dict(desktop='700x461', phone='390x844', timeoutPerCellMs=240000, maxControls=1000))
+          assert data['head'] == data['checkedOutHead'], 'Captured checkout is not the selected PR head'
+          for phase in ('arrivals', 'walks'):
+              Path('.devshots/ui-pr-review', phase, 'provenance.json').write_text(json.dumps(data, indent=2) + '\n')
+          PY
+      - name: Install bench dependencies without Electron
+        timeout-minutes: 5
+        run: npm ci --ignore-scripts
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: npx playwright install --with-deps chromium
+      - name: Verify mission selection and real hold acceptance
+        id: pointer
+        if: matrix.shot == 'station-contracts'
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          tests=(test/contract-hold-identity-p04.test.mjs)
+          if [[ -f test/station-contracts-short-dossier.test.mjs ]]; then
+            tests+=(test/station-contracts-short-dossier.test.mjs)
+          else
+            echo 'Not tested at this head: optional short-dossier regression file is absent.' \
+              | tee .devshots/ui-pr-review/arrivals/contract-regression-scope.log
+          fi
+          timeout --signal=TERM --kill-after=15s 210s node --test \
+            "${tests[@]}" \
+            2>&1 | tee .devshots/ui-pr-review/arrivals/pointer-hold.log
+      - name: Capture desktop arrivals without walking controls
+        id: desktop
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          timeout --signal=TERM --kill-after=15s "${DESKTOP_CAPTURE_SECONDS}s" node scripts/ui-bench.mjs \
+            --shot="$SHOT" --viewports="$DESKTOP_VIEWPORTS" \
+            --timeout-ms=30000 --out=.devshots/ui-pr-review/arrivals/desktop \
+            2>&1 | tee .devshots/ui-pr-review/arrivals/desktop.log
+      - name: Capture touch phone arrivals in both orientations
+        id: phone
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          timeout --signal=TERM --kill-after=15s "${PHONE_CAPTURE_SECONDS}s" node scripts/ui-bench.mjs \
+            --shot="$SHOT" --phone --viewports="$PHONE_VIEWPORTS" \
+            --timeout-ms=30000 --out=.devshots/ui-pr-review/arrivals/phone \
+            2>&1 | tee .devshots/ui-pr-review/arrivals/phone.log
+      - name: Upload arrivals before any long control walk
+        id: arrivals_upload
+        if: always()
+        timeout-minutes: 3
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-pr-${{ github.event.pull_request.number || github.run_id }}-${{ matrix.shot }}-arrivals
+          path: .devshots/ui-pr-review/arrivals/
+          include-hidden-files: true
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Verify available Refit consequence regression
+        id: refit_regression
+        if: ${{ !cancelled() && steps.evidence.outputs.refit == 'scheduled' }}
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          test -f test/crucible-refit-compact-consequences.test.mjs
+          timeout --signal=TERM --kill-after=15s 330s node --test \
+            test/crucible-refit-compact-consequences.test.mjs \
+            2>&1 | tee .devshots/ui-pr-review/walks/refit-regression.log
+      - name: Verify available Fortify feedback regression
+        id: fortify_regression
+        if: ${{ !cancelled() && steps.evidence.outputs.fortify == 'scheduled' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          test -f test/swarm-fortify-compact-feedback.test.mjs
+          timeout --signal=TERM --kill-after=15s 270s node --test \
+            test/swarm-fortify-compact-feedback.test.mjs \
+            2>&1 | tee .devshots/ui-pr-review/walks/fortify-regression.log
+      - name: Walk all controls on short desktop
+        id: desktop_walk
+        if: ${{ !cancelled() && steps.desktop.outcome != 'skipped' && steps.arrivals_upload.outcome != 'skipped' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          timeout --signal=TERM --kill-after=15s 270s node scripts/ui-bench.mjs \
+            --shot="$SHOT" --viewports=700x461 --walk --max=1000 \
+            --timeout-ms=240000 --out=.devshots/ui-pr-review/walks/desktop \
+            2>&1 | tee .devshots/ui-pr-review/walks/desktop.log
+      - name: Walk all controls on touch phone
+        id: phone_walk
+        if: ${{ !cancelled() && steps.phone.outcome != 'skipped' && steps.arrivals_upload.outcome != 'skipped' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          timeout --signal=TERM --kill-after=15s 270s node scripts/ui-bench.mjs \
+            --shot="$SHOT" --phone --viewports=390x844 --walk --max=1000 \
+            --timeout-ms=240000 --out=.devshots/ui-pr-review/walks/phone \
+            2>&1 | tee .devshots/ui-pr-review/walks/phone.log
+      - name: Record outcomes and coverage limits
+        if: always()
+        env:
+          OUTCOMES: ${{ toJSON(steps) }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          steps = json.loads(os.environ['OUTCOMES'])
+          outcomes = {name: data.get('outcome') for name, data in steps.items()}
+          target = Path('.devshots/ui-pr-review/walks')
+          target.mkdir(parents=True, exist_ok=True)
+          provenance = target / 'provenance.json'
+          regressions = json.loads(provenance.read_text()).get('regressionScope', {}) if provenance.is_file() else {}
+          for data in regressions.values():
+              if data['state'] == 'scheduled':
+                  data['state'] = outcomes.get(data['step'], 'missing')
+          (target / 'outcomes.json').write_text(json.dumps(dict(steps=outcomes, regressions=regressions), indent=2) + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Fixture: ' + os.environ['SHOT'] + '\n\n')
+              summary.write('| Evidence phase | Outcome |\n|---|---|\n')
+              for name in ('pointer', 'desktop', 'phone', 'arrivals_upload', 'refit_regression', 'fortify_regression', 'desktop_walk', 'phone_walk'):
+                  summary.write('| ' + name + ' | ' + str(outcomes.get(name, 'missing')) + ' |\n')
+              summary.write('\n| Scoped regression | Coverage |\n|---|---|\n')
+              for data in regressions.values():
+                  if data['applicable']:
+                      summary.write('| `' + data['file'] + '` | ' + data['state'] + ' |\n')
+              summary.write('\nArrival images show first paint. Walks use synthetic activation; '
+                            'UNTRIED controls, timeouts, and required-asset failures remain failures. '
+                            'Review PNGs and geometry findings: bench exit success does not certify layout quality.\n')
+          PY
+      - name: Upload completed and partial control walk evidence
+        id: walks_upload
+        if: always()
+        timeout-minutes: 3
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-pr-${{ github.event.pull_request.number || github.run_id }}-${{ matrix.shot }}-walks
+          path: .devshots/ui-pr-review/walks/
+          include-hidden-files: true
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Require complete evidence without hiding failed phases
+        if: always()
+        env:
+          OUTCOMES: ${{ toJSON(steps) }}
+          UNMAPPED: ${{ needs.select.outputs.unmapped }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          steps = json.loads(os.environ['OUTCOMES'])
+          required = ['desktop', 'phone', 'arrivals_upload', 'desktop_walk', 'phone_walk', 'walks_upload']
+          if os.environ['SHOT'] == 'station-contracts':
+              required.append('pointer')
+          not_tested = []
+          scoped = [
+              ('refit_regression', 'test/crucible-refit-compact-consequences.test.mjs', ['crucible-refit', 'crucible-refit-swarm']),
+              ('fortify_regression', 'test/swarm-fortify-compact-feedback.test.mjs', ['crucible-fortify']),
+          ]
+          for step, file, fixtures in scoped:
+              if os.environ['SHOT'] in fixtures:
+                  if Path(file).is_file():
+                      required.append(step)
+                  else:
+                      not_tested.append(file)
+          if os.environ['SHOT'] == 'station-contracts' and not Path('test/station-contracts-short-dossier.test.mjs').is_file():
+              not_tested.append('test/station-contracts-short-dossier.test.mjs')
+          failures = [name for name in required if steps.get(name, {}).get('outcome') != 'success']
+          unmapped = json.loads(os.environ['UNMAPPED'])
+          if unmapped:
+              failures.append('unmapped owners: ' + ', '.join(unmapped))
+          if failures:
+              raise SystemExit('Incomplete UI fixture evidence: ' + '; '.join(failures))
+          for file in not_tested:
+              print('Not tested at this head (file absent): ' + file)
+          print('Fixture arrival capture and complete synthetic walks passed. PNG review and live-player acceptance remain separate.')
+          PY
