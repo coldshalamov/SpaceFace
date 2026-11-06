@@ -20,7 +20,8 @@ function fixture(step = 1) {
     player: { activeShipIndex: 0, ownedShips: [{ defId: 'ship_pelican', fittings: ['mod_winch_hd'] }] } };
   ensureCombatState(state);
   assert.equal(registerStarterBuoyTow(state, buoy, mission), true);
-  const bus = { emit() {} }, helpers = { combatPhysics: { createAttachment: () => 1, cutAttachment: () => true } };
+  // Keep receipt delivery paused: the cut test deliberately exercises stale reader mirrors.
+  const bus = { on() {}, emit() {} }, helpers = { combatPhysics: { createAttachment: () => 1, cutAttachment: () => true } };
   const service = createAttachmentService({ state, catalog: createCombatCatalog(), bus, helpers });
   const created = service.create({ defId: 'tether_standard', ownerId: player.id, targetId: buoy.id });
   assert.equal(created.ok, true, created.reason);
@@ -33,6 +34,8 @@ function fixture(step = 1) {
     _offerSetPieceFollowOn() {},
     _completeMission(row) { completions++; row.status = 'completed'; },
   });
+  // Registered owners acquire their objective operations through the canonical init seam.
+  owner.init({ state, bus, helpers });
   return { state, mission, buoy, player, attachment, service, owner, completions: () => completions };
 }
 
