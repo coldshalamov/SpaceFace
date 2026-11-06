@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "695e63f6120917e66bae0b018c45da8cfa3b7c8ff42ed35d543c874592eb235c",
+    "authoritativeHash": "134e1e7f8296ed4c462d620421d8ec7102886ec629a39c9a0cd778a1f260aad5",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -249,6 +249,10 @@
     "The prior legacy hash was 67b74289db0ec320b13146c8ce07ac6622bdeeca46023403107273701c1dfd95; restoring the old formula reproduces it exactly. Measured hash: 560c28a8f5463ce9f237d2b8d595b264a98a50e65c7d35808a5231c779faa448.",
     "Measured legacy outcome: hits/damage 5->2, cues 8->4; the tether stays attached and unbroken. Player position changes (276.573059,58.802704)->(278.157532,56.679245); spindle position changes (305.144806,111.763725)->(311.028656,122.274368).",
     "The migration preserves seed 47, the input tape, 720 ticks, required event families, acceptance bounds, five-run minimum, and reload@600 canonicalization. The new envelope ID names the measured-hull contract; the prior hash is retained here as history.",
-    "Root-approved source17efe: Ward save22->23 changes only canonical $.meta.version; diagnostic23->22 restores both exact old hashes, with identical events/physics and one V3 leaf delta. Both historical parent fixtures remain unchanged."
+    "Root-approved source17efe: Ward save22->23 changes only canonical $.meta.version; diagnostic23->22 restores both exact old hashes, with identical events/physics and one V3 leaf delta. Both historical parent fixtures remain unchanged.",
+    "2026-11-05 deliberate re-record: Rapier numSolverIterations 12 to 6 (Smooth Program owner direction: same solver quality this 2.5D game needs at roughly half the step cost).",
+    "Evidence method: in-tree A/B at identical seed 47, 720 ticks, input tape, repeat 5, reload-at 600. The solver-12 run reproduced the prior hash 695e63f6120917e66bae0b018c45da8cfa3b7c8ff42ed35d543c874592eb235c exactly, then only the iteration constant changed.",
+    "171 motion leaf fields moved; worst entity pose drift about 0.3 WU over 720 ticks and velocities under 0.4 WU/s. Remaining diffs are flightDistance integrals of those same trajectories plus one angular-velocity rounding in the physics mirror.",
+    "phase0ObservedTraceCounts are UNCHANGED: identical fires, hits, tether attach/break ticks, damage, economy. The alert family present in runs is a post-envelope instrumentation superset, identical across solvers."
   ]
 }

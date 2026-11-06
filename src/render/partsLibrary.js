@@ -255,7 +255,9 @@ import {
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
   canonicalizeAuthoredProgramState,
+  canonicalProgramsLinked,
   mountCanonicalProgramSpecimens,
+  noteCanonicalProgramsLinked,
   settleCanonicalProgramSpecimens,
 } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
@@ -3641,6 +3643,9 @@ async function commitAuthoredCargoCapsuleBoundary(
       }
     }
     boundary.userData.authoredAssetState = 'authored';
+    // Provably-linked program set — same-family boundaries can now take the resident
+    // fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // The first in-frame cull consult would otherwise pay Box3.setFromObject
     // O(subtree) inside syncEntityViews — stamp the envelope + motion pad
     // here, inside the paced commit tail, under the caller-visible key.
@@ -4758,6 +4763,9 @@ export async function commitAuthoredPlaceBoundary(
       recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
+    // Provably-linked program set — same-family boundaries can now take the resident
+    // fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // Same commit-tail stamp as the ship/cargo publishes: keep the first
     // envelope measure out of the presented cull pass (bounds-carrying rows
     // skip it — only the pad stamps).
@@ -9122,14 +9130,20 @@ export function authoredCriticalVisualReadiness(state) {
         status: authoredAssetState(entity),
         hook: typeof (root && root.userData && root.userData.requestAuthoredUpgrade) === 'function',
         promised: !!(root && root.userData && root.userData.authoredUpgradePromise),
+        unbuildable: entity && entity._noMesh === true,
       };
     });
+  // A `_noMesh` stamp means the build queue gave up permanently — the row can
+  // never receive a hook or a promise, so counting it as pending reports a
+  // wait that can never end. It stays in openingAssets for diagnostics.
   const openingPending = openingAssets.filter((entry) => (
     !isFlightReadyStatus(entry.status)
     && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const openingPipelinePending = openingAssets.filter((entry) => (
     !authoredPipelineStaged(entry.status) && !authoredOpeningFailedClosed(entry.status)
+    && entry.unbuildable !== true
   ));
   const gateIds = new Set(
     entityList.filter((entity) => isOpeningFlightGateEntity(entity, state)).map((entity) => entity.id),
@@ -9353,6 +9367,16 @@ export async function prepareAuthoredVisualPipelines(root, options = {}, phaseOb
   const poolCandidateTwinMount = await pacePolicyWalk(
     () => mountPackagePoolCandidateInstancedTwins(root),
   );
+  // Resident-program fast lane: canonicalization and the specimen mounts above have fixed
+  // this boundary's program axes, so a repeat-archetype subject (the swarm crowd, traffic
+  // families) can now prove every program it needs already linked through an earlier
+  // admission. Its remaining stages are cache-hit binds and bookkeeping — pacing them
+  // across presents only serializes seconds of queue wall-time behind the flight lane.
+  // The verdict lives on the job's own options so the compile, residency, publication
+  // and commit/dispose legs all unpace for this subject only.
+  if (options.yieldBetweenGpuStages === true && canonicalProgramsLinked(root)) {
+    options.yieldBetweenGpuStages = false;
+  }
   const tier1 = tier1CausalCounters();
   if (tier1) {
     tier1.countPipelinePreparation('material-policies', 1);
@@ -10781,6 +10805,10 @@ async function commitAuthoredBoundary(
       recordLatchAuthoredSource(boundary, authored.root.userData.latchNineAuthoredSource);
     }
     boundary.userData.authoredAssetState = 'authored';
+    // This boundary's program set is now provably linked (the exact-target touch above
+    // paid any residual variant) — record the signatures so same-family boundaries can
+    // take the resident fast lane instead of re-pacing the serial queue.
+    noteCanonicalProgramsLinked(authored.root);
     // The publish key is final for non-family rows; a whole-ship LOD family
     // mints its level after this commit and re-stamps there. Stamping now
     // still covers the pre-install consult window.
