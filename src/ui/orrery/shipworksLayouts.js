@@ -1330,14 +1330,49 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
 }
 /* Short desktop fleet: give the roster and the independently scrollable readings
-   separate seats, and make the pinned Save Fit band cover readings passing behind it. */
+   separate seats, and make the pinned Save Fit band cover readings passing behind it.
+   ui-polish-348: at 1366×768 the handling band-detail (Agility / Inertia / Brake) sat
+   under the sticky Save Fit lamp at rest — Critic F5 wants those scales above the fold
+   beside the pinned key. Raise the readings a little and densify the handling stack so
+   the three bars clear Save Fit without #861's Generalist BUILD identity restructure. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
+  /* Stats top:133 keeps Hitch (~448) clear of the readings (top:72 climbed into
+     Starter Scout). Densify heroes + handling so Agility/Inertia/Brake clear sticky
+     Save Fit at rest — open #861 still owns the Generalist BUILD identity restructure. */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:133px !important; bottom:4px !important; min-height:0 !important; max-height:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:1px !important; padding-bottom:1px !important; margin-top:2px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bands { gap:0 8px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero { padding:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero .k-hero__w { margin-top:0 !important; line-height:1 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:24px !important; line-height:1 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability'], [data-band='identity']) .k-hero__n {
+    font-size:13px !important; line-height:1 !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--handling { margin-top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--handling > .sx-sw-band__meta { display:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bars { display:grid !important; grid-template-columns:1fr 1fr !important; gap:0 6px !important; margin:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar { padding:0 !important; min-height:0 !important; grid-template-columns:34px minmax(0, 1fr) auto !important; column-gap:4px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-row__name,
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-row__num { font-size:12px !important; line-height:1.1 !important; white-space:nowrap !important; }
 }
+/* 1280×720 short seat: another ~8px so handling clears Save Fit without raising stats into Hitch. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:740px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:20px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability'], [data-band='identity']) .k-hero__n {
+    font-size:12px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-hero:is([data-band='power'], [data-band='capability'], [data-band='identity']) .k-hero__w {
+    font-size:12px !important; letter-spacing:.08em !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--handling { margin-bottom:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bars { margin-bottom:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar { line-height:1 !important; padding:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-bar .k-bar { height:2px !important; }
+}
+
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
