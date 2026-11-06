@@ -1401,6 +1401,33 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
   /* The lane's faces sat 7px under the stage's fold: the stage now runs 12px lower (margin above) and the route claws back 4px + 10px of foot room. */
   html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route:not(.has-slot) .ml-route__track { height:calc(var(--ml-disc) + 6px); }
 }
+/* ui-polish-334: a short desktop (1101+ wide, <=700 tall: 1200x540, 1280x600, 1440x540, 1366x680). The title row spanned both columns, so
+   the reading started under MISSIONS and its route lane (FROM | THIS SECTOR | TO, the faces and the scale) sat wholly under the
+   stage's fold with no fade to say so -- even the CONTRACT row was cut at 1200x540. The stage now rises beside the title, the
+   ledger wears the desktop card's hairline sheet at tight rows, and the lane takes the 901-1100 band's one-row ends and 36px faces;
+   under 1280 the hang narrows to that band's 284px so the reading is wide enough for its values. Type is unchanged. */
+@media (min-width:1101px) and (max-height:700px) {
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog { grid-template-areas:"title stage" "hang stage" "foot stage" !important; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-40px !important; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route { --ml-disc:36px; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__ends { grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows:auto; align-items:start; gap:12px; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__mid { grid-column:2; grid-row:1; flex-direction:column; align-items:center; gap:3px; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.ml-route__from, .ml-route__to) { grid-row:1; line-height:1.25; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__from { grid-column:1; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to { grid-column:3; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .ml-route-host { margin-top:6px; }
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route:not(.has-slot) .ml-route__track { height:calc(var(--ml-disc) + 6px); }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms {
+    box-sizing:border-box; padding:0 14px !important; border:1px solid rgb(236 230 216 / .16) !important; border-radius:6px !important; background:rgb(12 12 14 / .62) !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row { column-gap:16px; padding:2px 0 !important; border-top:1px solid rgb(236 230 216 / .09) !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row:first-child { border-top:0 !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row::before { display:none !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.12em !important; color:rgb(236 230 216 / .7) !important; white-space:nowrap; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
+}
+@media (min-width:1101px) and (max-width:1279px) and (max-height:700px) {
+  html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog { grid-template-columns:minmax(0, 284px) minmax(0, 1fr) !important; }
+}
 /* On desktop, group the selected contract's terms into a single reading card while leaving the
    public tracking, route, and action controls in their existing owners. */
 @media (min-width:1101px) and (min-height:641px) {

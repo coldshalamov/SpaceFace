@@ -523,6 +523,7 @@ export const footprintScreen = {
   _dial: null,
   _dialHost: null,
   _read: null,
+  _reading: null,
   _trace: null,
   _hang: null,
   _hangList: null,
@@ -604,13 +605,19 @@ export const footprintScreen = {
     this._incidentState = board.querySelector('.fp-col-state--incident');
     this._consequenceState = board.querySelector('.fp-col-state--consequence');
     // .k-foot — the verbs that answer the traced source; rebuilt by _renderVerbs.
+    // Kept outside .fp-read so the column's overflow fold cannot fade the words that answer it
+    // (compact desktop used to leave PAY/BRIBE/FIND under the mask at rest).
     const foot = el('footer', 'k-foot fp-answer');
     this._foot = foot;
     const record = el('div', 'fp-drawer');
     record.setAttribute('aria-label', 'Chain record');
     this._record = record;
-    read.append(stateHost, trace, board, foot, record);
-    stage.append(dialHost, read);
+    // .fp-reading — dial's neighbour: the scrolling reading, then the verbs, then the record.
+    const reading = el('div', 'fp-reading');
+    this._reading = reading;
+    read.append(stateHost, trace, board);
+    reading.append(read, foot, record);
+    stage.append(dialHost, reading);
     rootEl.append(title, stage);
 
     this._dial = createHeatDial(dialHost, {
