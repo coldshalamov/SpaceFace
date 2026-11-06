@@ -374,6 +374,9 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
 /* ui-polish-330: at 761-870 wide the Ores hero is under the ring's 320px floor, so the ring sleeps and its 257px slot sat empty
    between the list and the reading. The sleeping slot closes and the reading takes the stage's width, its ledger on the same
    hairline-framed sheet the 1201+ readings wear, so the term values read on one line (FOUND IN no longer wraps). */
+/* ui-polish-340: same band, Ships/Commodities — both dials need ≥300px of hero width and sleep below it, leaving an empty
+   slot between the list and the reading. Close the sleeping slot; the reading takes the stage on the hairline sheet
+   (and Commodities' Legality line wears the matching frame). Ores rules above stay more specific / untouched. */
 @media (min-width:761px) and (max-width:870px) and (min-height:461px) {
   ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
   ${HD} .orr-help-list--ores .orr-help-list__hero { display:none; }
@@ -382,6 +385,14 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
 }
 /* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
    1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
