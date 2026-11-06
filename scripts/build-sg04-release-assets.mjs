@@ -17,6 +17,7 @@ import {
   inspectReleaseAssetPair,
 } from '../src/contracts/assetReleaseValidation.js';
 import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
+import { deduplicateExactEmbeddedTextures } from './lib/deduplicateExactEmbeddedTextures.mjs';
 import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -262,6 +263,7 @@ for (let index = 0; index < assets.length; index++) {
     }));
 
     await document.transform(...transforms);
+    deduplicateExactEmbeddedTextures(document);
     nameTransformMintedNodes(document);
     stampReleaseTextureCompression(document, sourceInspection);
     await mkdir(dirname(releaseAbs), { recursive: true });

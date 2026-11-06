@@ -120,11 +120,12 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 
 /* In the short desktop berth, the standard header's fourth track must not consume the station
    body as a flexible spacer. Keep the authored two-column areas and let the five bands size to
-   their content; the crown readings share their available column without wrapping. */
+   their content; the crown remains in the head's scroll flow when its readings need more height. */
 /* On a phone the station name and purse cannot share the same row: the older composition lifts
    the crown to save head height, but the Standard purse has a 232px ledger width. Let it follow the
-   title as a compact two-column reading instead of painting across the name. */
-@media (max-width:480px) and (min-height:601px) {
+   title as a compact two-column reading instead of painting across the name. Narrow portrait windows
+   (481–650 wide) hit the same collision, so they take the same stacked reading. */
+@media (max-width:650px) and (min-height:601px) {
   ${P} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:0 !important; }
   ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
   ${P} .sxb-crown .sxb-purse { min-width:0 !important; width:max-content !important; max-width:100% !important;
@@ -134,20 +135,55 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
 }
-/* Under 481 wide the 136px vitals wrapped two to a row at uneven offsets, so MUNITIONS fell to a third row past the
-   40% head and LEDGER's Draw sat under its fade: two even columns, the hull's two priced verbs beside fuel over hold. */
-@media (max-width:480px) and (min-height:601px) {
-  ${P} .sxb-crown .sxb-vitals { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
-    grid-template-areas:"hull fuel" "hull hold" "note muni" !important; gap:2px 18px !important; align-items:start !important;
-    padding-block:5px 6px !important; }
+/* At phone and narrow-tablet widths, the authored 136px cards otherwise spill into a third row
+   and leave too little room for station work. Two compact rows keep readings above the body. */
+@media (max-width:650px) and (min-height:601px) {
+  /* Two rows keep every reading in the head: the hull and ledger get wide cells; fuel and hold
+     have room for their figures, and MUNITIONS keeps its label clear of its value. */
+  ${P} .sxb-crown { gap:0 !important; }
+  /* Put the purse beside the palette trigger so the full vitals strip retains its own row. */
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:trigger !important; justify-self:start !important; align-self:center !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; margin-top:0 !important; }
+  ${P} .sxb-crown .sxb-vital__head { min-height:22px !important; }
+  ${P} .sxb-berth.dp-frame__head { grid-template-rows:max-content max-content max-content max-content max-content !important;
+    align-content:start !important; row-gap:2px !important; }
+  ${P} .sxb-crown .sxb-vitals { padding-top:0 !important; padding-bottom:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__head {
+    min-height:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__value {
+    position:static !important; display:inline-flex !important; }
+  ${P} .sxb-crown .sxb-vital--muni .sxb-vital__head::after { height:2px !important; margin-top:2px !important; }
+  ${P} .sxb-crown .sxb-vital__acts { margin:2px 0 0 !important; gap:2px !important; }
+  ${P} .sxb-crown .sxb-vital--hull .sxb-vital__acts { flex-wrap:nowrap !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:24px !important; padding:1px 2px !important; }
+  ${P} .sxb-crown .sxb-vitals { display:grid !important; grid-template-columns:repeat(10, minmax(0, 1fr)) !important;
+    grid-template-areas:"hull hull hull hull hull note note note note note" "fuel fuel fuel hold hold hold muni muni muni muni" !important; gap:0 !important; align-items:start !important;
+    padding-block:2px 3px !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; grid-column:auto !important; grid-row:auto !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { padding-left:8px !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:nowrap !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__acts { flex-wrap:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important; padding-bottom:2px !important; }
 }
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  /* The active handoff needs its complete instruction above the tab body. Keep the compact
+     Market and Shipworks allocations below; other tabs can use the available head room. */
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) {
+    grid-template-rows:minmax(0, 40vh) minmax(200px, 1fr) max-content !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth.dp-frame__head {
+    max-height:40vh !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth > .sxb-signs {
+    padding-top:0 !important;
+  }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
     min-height:0 !important; max-height:145px !important; overflow-y:auto !important; overflow-x:hidden !important;
@@ -157,27 +193,71 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
      ambient bay/wire boards away here so the table and the Buy/Sell stage are not cut to a sliver. */
   ${P}:has(#sx-panel > .sx-mkt) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-mkt) .sxb-berth > .sxb-signs { display:none !important; }
-  ${P} .sxb-crown .sxb-purse { position:absolute !important; top:-44px !important; left:28px !important; right:auto !important; margin:0 !important; }
+  /* The compact head itself is the scrollport. Keep the credit figure inside the crown's flow;
+     lifting it above the crown put its label outside the head's top edge at 960x540. */
+  ${P} .sxb-berth .sxb-crown { display:flex !important; flex-direction:column !important; align-items:stretch !important; min-width:0 !important; }
+  ${P} .sxb-crown .sxb-purse { position:static !important; align-self:flex-end !important; min-width:0 !important; width:max-content !important;
+    max-width:100% !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    justify-content:start !important; align-items:center !important; gap:0 10px !important; margin:0 !important; padding:3px 8px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:22px !important; line-height:1.1 !important; }
   ${P} .sxb-crown .sxb-vitals { min-width:0 !important; max-width:none !important; width:100% !important;
-    flex-wrap:nowrap !important; justify-content:space-between !important; gap:8px !important; margin-top:32px !important; }
-  ${P} .sxb-vital { flex:1 1 0 !important; min-width:0 !important; width:auto !important; max-width:none !important; box-sizing:border-box; }
+    display:grid !important; grid-template-columns:repeat(10,minmax(0,1fr)) !important;
+    grid-template-areas:"hull hull hull hull hull note note note note note" "fuel fuel fuel hold hold hold muni muni muni muni" !important;
+    gap:4px 6px !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { display:block !important; min-width:0 !important; width:auto !important;
+    max-width:100% !important; flex:none !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__head { min-width:0 !important; max-width:100% !important; }
+  ${P} .sxb-crown .sxb-vital__label { font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    white-space:normal !important; overflow-wrap:anywhere; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { position:static !important; display:block !important; width:100% !important;
+    max-width:100% !important; margin:2px 0 0 !important; white-space:normal !important; }
+  ${P} .sxb-crown .sxb-vital--muni .sxb-vital__value { position:absolute !important; top:0 !important; right:0 !important; left:auto !important; width:auto !important; margin:0 !important; }
+  ${P} .sxb-crown .sxb-vital__acts { min-width:0 !important; max-width:100% !important; margin:4px 0 0 !important; gap:3px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { max-width:100% !important; padding-left:6px !important; padding-right:6px !important; }
   ${P} .sxb-vital__head, ${P} .sxb-vital__value, ${P} .sxb-vital__acts { min-width:0 !important; max-width:100% !important; }
-  ${P} .sxb-vital__label { min-width:0 !important; max-width:100% !important; font-size:12px !important; letter-spacing:0 !important;
-    line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; text-align:center !important; }
-  ${P} .sxb-vital--muni .sxb-vital__head { justify-content:center !important; }
-  ${P} .sxb-vital--muni .sxb-vital__value { position:static !important; width:100% !important; margin:0 !important; }
+  ${P} .sxb-vital__label { min-width:0 !important; max-width:100% !important; text-align:left !important; }
   ${P} .sxb-ops { flex-wrap:wrap !important; column-gap:10px !important; row-gap:4px !important; }
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; max-width:none !important; width:100% !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
 }
-/* …and in that short 901–1100 berth the five readings took equal fifths (~105px), so LEDGER's Draw (+cost,
-   ~121px) and MUNITIONS' Rearm (~107px) ran past their cells and touched. The two verb-bearing cells take
-   their own width; HULL, FUEL and HOLD share what is left. Verbs close up 2px a side to make the room. */
+/* Keep the short desktop's two-row crown grid at the same column spacing after its responsive
+   overrides; the wider LEDGER/MUNITIONS cells carry their own actions without crowding the other readings. */
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
-  ${P} .sxb-crown .sxb-vitals { gap:6px !important; }
-  ${P} .sxb-crown .sxb-vitals > .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) { flex:0 0 auto !important; }
-  ${P} .sxb-crown .sxb-vital__acts > button { padding-left:7px !important; padding-right:7px !important; }
+  ${P} .sxb-crown .sxb-vitals { gap:4px 6px !important; }
+}
+/* 960–1100 wide × 461–640 tall: the seven tabs (glyphs folded, 6px keys) are ~560px, so tabs, COMMS · HELP and UNDOCK
+   (~860px with gaps) stand on ONE row of the 896px+ foot instead of the tab rail taking a row of its own. The row it
+   gave back (~70px) goes to the body, so the Market's Buy/Sell stage and table are no longer cut to a sliver at 960x540.
+   901–959 keeps the two-row foot above, where the single row does not fit. */
+@media (min-width:960px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-ops { flex-wrap:nowrap !important; column-gap:10px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 1 auto !important; min-width:0 !important; width:auto !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  /* The crown is ~587px here: the five readings fit ONE row (hull, fuel, hold, ledger, munitions), so FUEL, HOLD and
+     MUNITIONS stand in the head's visible band. In the two-row grid above they sat on a second row under the head's
+     32vh scrollport (ships: 145px), so a player at 960x540 saw only the hull and ledger. Cell widths follow each
+     reading's own ink (label + figure, or the 92px Repair/Rearm key); 901-959 keeps the two rows, where five do not fit. */
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; }
+}
+
+/* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
+   ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
+   to 12px, the cells follow each reading's own ink, so FUEL, HOLD and MUNITIONS stand in the visible band. */
+@media (min-width:901px) and (max-width:959px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,91fr) minmax(0,85fr) minmax(0,83fr) minmax(0,125fr) minmax(0,125fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 5px !important; }
+  ${P} .sxb-crown .sxb-vital__head { column-gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
@@ -199,7 +279,159 @@ ${P} .sx-dock :is(button, a)[aria-selected="true"], ${P} .sx-dock :is(button, a)
 ${P} .sxb-help, ${P} .sx-comms__toggle { text-transform:none !important; letter-spacing:.02em !important; font-size:13px !important; font-family:${UI} !important;
   min-height:32px !important; padding:0 12px !important; border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important; clip-path:none !important; }
 ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em !important; }
+/* Under 581 wide the orbital sheet hides Help's word and the Standard sheet hides its icon, so the ruled key beside
+   Comms painted as an empty box: put the word back so both foot keys read as labelled controls. */
+@media (max-width:580px) {
+  ${P} .sxb-ops .sxb-help > span { display:inline !important; }
+}
+/* 901–1199 wide (641+ tall under 1101): the seven tabs (~850px at this sheet's 14px key padding) were capped at 58–64vw and shrunk
+   further by flex, so LEDGER (and at 901–1100 BAR, at 901–960 even FACTIONS) ran on under COMMS · HELP and UNDOCK, which
+   took their clicks: a click on LEDGER at 1101×720 opened Help. The keys close up (6px padding, 6px gaps), COMMS drops its
+   48px lead, and the rail keeps its words' width: rail, COMMS · HELP and UNDOCK stand on one row, and
+   where they cannot, the keys step down a row instead of standing on the tabs. (901–1100 × 461–640 already gives the
+   rail its own row, above.) */
+@media (min-width:901px) and (max-width:1100px) and (min-height:641px), (min-width:1101px) and (max-width:1199px) and (min-height:461px) {
+  ${P} .sxb-ops { flex-wrap:wrap !important; column-gap:12px !important; row-gap:4px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 0 auto !important; min-width:max-content !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sxb-ops > .sx-comms { margin-left:0 !important; }
+}
+/* …and under 1080 the tab glyphs step aside (the words still name each tab), so the foot keeps one row down to ~960 and
+   the Market's Buy key keeps its place above it */
+@media (min-width:901px) and (max-width:1079px) and (min-height:641px) {
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+}
+/* …and at 901–959 the row is still ~45px over (rail 559 + COMMS · HELP 137 + UNDOCK 161 + gaps against an 837px foot), so the
+   foot wrapped to two rows and the Market panel lost a row: its Buy key and price dial fell under the foot. The keys close
+   up again (3px padding, 4px gaps) and the foot keeps one row to 901 and down to the band's 641px-tall edge. */
+@media (min-width:901px) and (max-width:959px) and (min-height:641px) {
+  ${P} .sxb-ops { column-gap:6px !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:3px !important; padding-right:3px !important; }
+}
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
+
+/* Bound the facility rail through the entire 651–900 band. Its own horizontal scrollport
+   keeps later tabs reachable without painting beneath Comms, Help or Undock. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+  ${P} .sxb-ops { flex-wrap:wrap !important; gap:2px 8px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; }
+  ${P} .sxb-ops .of-facility-rail :is(.sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { width:max-content !important; min-width:100% !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { flex-wrap:nowrap !important; gap:0 3px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:5px !important; padding-right:5px !important; }
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  ${P} .sxb-ops > .sx-comms { order:2 !important; flex:0 0 auto !important; flex-direction:row !important; gap:4px !important; margin:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; flex:0 0 auto !important; margin-left:auto !important; }
+}
+/* The 461–800 tall window cannot spare the 57px two-line UNDOCK on a row of its own: UNDOCK and its READY line sit side by
+   side and COMMS · HELP centre on them, so the second row is the keys' own 32px instead of ~57px under a 20px gap. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-ops > .sx-comms { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-launch__copy { flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+  /* the tabs' one-line gloss painted nothing here but its 26px of reserved padding still held a blank band under the keys, a gap above COMMS · HELP */
+  ${P} .sxb-ops .sx-tile__gloss { display:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { padding-top:0 !important; padding-bottom:0 !important; }
+}
+/* 801–900 wide × 461–800 tall: the head stacked four bands (name, a 232px purse card over the vitals strip, which
+   wrapped LEDGER and MUNITIONS to a second row, then the mechanic's note, the next step and both signs), ~520px of head,
+   so at 801×461 the tab body was 0px tall and at 860×720 ~77px. The purse rides the name's row beside the palette key,
+   the five readings stand on ONE ruled row with their keys inline, the note and the next step share a row, and the
+   signs run on one clamped line (folded away at ≤540 tall, as the Market does at 960×540): the head is ~234px. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:"title purse" "crown crown" "tape handoff" "signs signs" !important;
+    grid-template-rows:max-content max-content max-content max-content !important; align-content:start !important;
+    column-gap:12px !important; row-gap:6px !important; max-height:none !important; }
+  ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
+    min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    align-items:center !important; gap:0 10px !important; margin:0 94px 0 0 !important; padding:3px 10px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:22px !important; line-height:1.1 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
+    grid-template-columns:minmax(0,190fr) minmax(0,105fr) minmax(0,100fr) minmax(0,132fr) minmax(0,130fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 14px !important; margin:0 !important; padding:6px 12px 7px !important;
+    width:auto !important; max-width:none !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
+    margin:4px 0 0 !important; gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:24px !important; padding:1px 6px !important; }
+  ${P} .sxb-crown .sxb-vital--note, ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { text-align:left !important; align-items:flex-start !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { margin:0 !important; white-space:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; display:flex !important; gap:0 32px !important; padding-top:4px !important; }
+  ${P} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden !important; }
+  ${P} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+}
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:540px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  /* #850 gave Market/Shipworks a 150px scrollport head so the body was ~185px; Industry/Factions/Bar/Ledger/Missions
+     stayed on the full ~234px head and a 107px body. Industry's fab chain alone is ~230px and its absolute labels
+     stacked into each other; Factions' standing stage and Bar's hang were the same crush. Same scrollport for every
+     tab: name + five readings visible, note + next step one scroll down (as 901–1100 already does for Market/Shipworks). */
+  ${P} .sxb-berth.dp-frame__head {
+    min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
+}
+
+/* 651–800 wide × 461–800 tall: the same four-band crush #850 closed at 801–900 — name, a 232px purse card over
+   the vitals strip (which wrapped LEDGER and MUNITIONS), then the mechanic's note, the next step and both signs —
+   so at 700×461 the tab body was 0px tall and at 800×720 ~73px. The purse rides the name's row beside the palette
+   key, the five readings stand on ONE ruled row (tighter fr tracks than 801–900: 636–736px of content), the note
+   and the next step share a row, and the signs run on one clamped line (folded away at ≤540 tall): the head is
+   ~220px. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-areas:"title purse" "crown crown" "tape handoff" "signs signs" !important;
+    grid-template-rows:max-content max-content max-content max-content !important; align-content:start !important;
+    column-gap:10px !important; row-gap:5px !important; max-height:none !important; }
+  ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
+    min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    align-items:center !important; gap:0 8px !important; margin:0 94px 0 0 !important; padding:3px 9px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
+    grid-template-columns:minmax(0,170fr) minmax(0,95fr) minmax(0,90fr) minmax(0,120fr) minmax(0,118fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 10px !important; margin:0 !important; padding:5px 10px 6px !important;
+    width:auto !important; max-width:none !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
+    margin:3px 0 0 !important; gap:3px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:22px !important; padding:1px 5px !important; }
+  ${P} .sxb-crown .sxb-vital--note, ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { text-align:left !important; align-items:flex-start !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { margin:0 !important; white-space:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; display:flex !important; gap:0 24px !important; padding-top:3px !important; }
+  ${P} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden !important; }
+  ${P} .sxb-signs .sx-adboard__text { display:inline !important; margin:0 0 0 8px !important; }
+}
+/* …and at ≤540 tall in this band the signs fold away (as Market does at 960×540 / #850 at 801–900); every tab's
+   head is a 150px scrollport so Industry/Factions/Bar keep a working body (scoped max-width:800 — does not
+   collide with #856's 801–900 every-tab scrollport). */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:540px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  ${P} .sxb-berth.dp-frame__head {
+    min-height:0 !important; max-height:150px !important; overflow-y:auto !important; overflow-x:hidden !important; scrollbar-width:thin; }
+}
 
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */
@@ -317,6 +549,90 @@ ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-fam
 ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2px 0 0 !important; font-family:${UI} !important; font-size:13px !important; line-height:1.35 !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE} / .78) !important; }
 
+/* Narrow portrait berths keep the register and selected trade side-by-side. Keep the stage as its
+   single scroll surface, and size the dial/action strip to the shallow body above the fixed tabs. */
+@media (max-width:650px) and (min-height:601px), (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sx-mkt .sx-mkt-browser { display:grid !important; height:100% !important; min-height:0 !important; grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:auto auto auto minmax(0, 1fr) !important; row-gap:2px !important; }
+  ${P} .sx-mkt .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; min-height:16px !important;
+    margin:0 !important; padding:0 !important; line-height:16px !important; }
+  ${P} .sx-mkt .orr-mkt-find { grid-column:1 !important; grid-row:2 !important; width:100% !important; margin:0 !important; }
+  ${P} .sx-mkt .sx-mkt-browser__filters { grid-column:1 !important; grid-row:3 !important;
+    flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important;
+    width:100% !important; min-width:0 !important; max-width:100% !important; overflow-x:auto !important; overflow-y:hidden !important;
+    gap:0 10px !important; padding:0 0 2px !important; margin:0 !important; background:none !important; scrollbar-width:thin; }
+  ${P} .sx-mkt .sx-mkt-browser__filters > li { flex:none !important; max-width:100% !important; }
+  ${P} .sx-mkt .sx-mkt-filter { min-width:max-content !important; max-width:none !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-browser__rail, ${P} .sx-mkt .sx-mkt-browser__empty { grid-column:1 !important; grid-row:4 !important;
+    min-height:0 !important; overflow-x:hidden !important; overflow-y:auto !important; }
+}
+@media (max-width:650px) and (min-height:601px) {
+  ${P} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:max-content max-content max-content !important; align-content:start !important;
+    row-gap:8px !important; padding:4px !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important;
+    width:100% !important; min-width:0 !important; max-width:100% !important; max-height:none !important;
+    overflow:visible !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important;
+    min-width:0 !important; max-height:none !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important;
+    min-width:0 !important; overflow:visible !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "verb" "note" "breakdown" !important;
+    justify-items:stretch !important; align-items:start !important; column-gap:0 !important; row-gap:6px !important; }
+  /* One compact grid owns every quantity control. The older absolute-positioned dial
+     put three words in a 108px row; font and viewport changes made them collide. */
+  ${P} .sx-mkt .sx-trade > .sx-qty { display:grid !important; position:relative !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:"label label" "value max" "fewer more" !important;
+    width:100% !important; max-width:100% !important; height:auto !important; gap:4px !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__k { grid-area:label !important; position:static !important;
+    width:auto !important; margin:0 !important; text-align:left !important; line-height:16px !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__in { grid-area:value !important; position:static !important;
+    width:100% !important; min-width:0 !important; height:40px !important; line-height:40px !important; font-size:20px !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__words, ${P} .sx-mkt .sx-qty .sx-qty__words > li { display:contents !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(1) > button { grid-area:fewer !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(2) > button { grid-area:more !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(3) > button { grid-area:max !important; }
+  ${P} .sx-mkt .sx-qty :is(.sx-qty__b, .sx-qty__max) { width:100% !important; min-width:0 !important;
+    min-height:40px !important; height:40px !important; box-sizing:border-box !important;
+    padding:0 4px !important; font-size:12px !important; letter-spacing:0 !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-qty :is(.sx-qty__b, .sx-qty__max)::before,
+  ${P} .sx-mkt .sx-qty :is(.sx-qty__b, .sx-qty__max)::after { content:none !important; display:none !important; }
+  ${P} .sx-mkt .so-trade-total { height:17px !important; min-height:17px !important; line-height:16px !important; }
+  ${P} .sx-mkt .sx-trade__words { width:100% !important; flex-wrap:nowrap !important; justify-content:space-between !important;
+    gap:0 6px !important; margin:0 !important; }
+}
+
+/* At phone widths, use two readable lines per commodity: full name first, then buy / sell / stock. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sx-mkt .sx-mkt-table, ${P} .sx-mkt .sx-mkt-table > :is(thead, tbody) {
+    display:block !important; width:100% !important; table-layout:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table tr { display:grid !important; width:100% !important;
+    grid-template-columns:minmax(62px, 1fr) 44px 49px !important; column-gap:0 !important; row-gap:1px !important;
+    align-items:baseline !important; padding:0 !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td) { display:block !important; width:auto !important; min-width:0 !important;
+    height:auto !important; block-size:auto !important; box-sizing:border-box !important; padding:0 2px !important; }
+  ${P} .sx-mkt .sx-mkt-table thead th:first-child { display:none !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(2) { grid-column:1 !important; text-align:left !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(5) { display:none !important; }
+  ${P} .sx-mkt .sx-mkt-table thead th { font-size:12px !important; line-height:14px !important; letter-spacing:0 !important;
+    white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 / -1 !important;
+    padding-left:4px !important; padding-right:4px !important; font-size:13px !important; line-height:15px !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row { row-gap:1px !important; padding:0 !important; align-content:center !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td { line-height:15px !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td:is(.sx-mkt-row__price, .sx-mkt-row__sell, .sx-mkt-row__stock) {
+    overflow:visible !important; text-overflow:clip !important; font-variant-numeric:tabular-nums !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row__tr { margin-left:2px !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td.sx-mkt-row__name { white-space:normal !important; overflow:visible !important;
+    text-overflow:clip !important; }
+}
+
 /* Market in the short desktop berth (901–1100 x 461–640): after the rules above so it wins at equal weight. */
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   /* the exchange reads as one column: title and finder on one line, the filters one scrolling row,
@@ -341,6 +657,52 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
     grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
   ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
   ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
+}
+
+/* Numeric columns size to their actual readings in the narrow register; a fixed 44px
+   stock cell clipped both the heading and three-digit amounts. */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px), (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; width:100% !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td) { padding-left:4px !important; padding-right:4px !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4)) { width:1% !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row__name { min-width:0 !important; max-width:none !important; white-space:normal !important; }
+}
+
+/* Market at 651–900 × 461–800: the Standard 276px Fewer/qty/More/Max strip is wider than the
+   compact berth's ~146px console column beside the analysis (marketLayouts), so Max hung ~57px
+   past the glass and BUY/SELL clipped the right edge once the densified head left a real body.
+   Same fix as 901–1100 × 461–640: keep the stepper inside the console and stack quote/actions. */
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sx-mkt__console { min-width:0 !important; max-width:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
+}
+
+/* The portrait Market shares one compact console through 650px. On short phones its
+   trade controls remain inside a local scrollport; action and quote labels keep whole words. */
+@media (max-width:650px) and (min-height:601px) {
+  ${P} .sx-mkt__console { box-sizing:border-box !important; min-width:0 !important; min-height:0 !important;
+    max-width:100% !important; max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; min-width:0 !important; }
+  ${P} .sx-mkt .sx-trade__words { width:100% !important; gap:6px !important; }
+  ${P} .sx-mkt .sx-trade__words > li { flex:1 1 0 !important; min-width:0 !important; }
+  ${P} .sx-mkt .sx-trade__words > li > .sx-trade__go { width:100% !important; height:36px !important; min-height:36px !important;
+    box-sizing:border-box !important; padding:0 6px !important; justify-content:center !important; white-space:nowrap !important;
+    word-break:normal !important; overflow-wrap:normal !important; hyphens:none !important; }
+  ${P} .sx-mkt .so-trade-breakdown, ${P} .sx-mkt .so-trade-breakdown *,
+  ${P} .sx-mkt__console :is(.k-row__name, .k-row__sub) { word-break:normal !important; overflow-wrap:normal !important; hyphens:none !important; }
+}
+
+/* Short portrait windows keep the transaction above the fold. Seven facilities fit
+   two rows once decorative glyphs and the repeated tab gloss yield their space. */
+@media (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${P} .sxb-ops .sx-dock__group--nav { display:grid !important; grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+    gap:2px 4px !important; width:100% !important; padding:0 !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { box-sizing:border-box !important; min-width:0 !important; width:100% !important;
+    min-height:32px !important; padding:4px 2px !important; font-size:12px !important; letter-spacing:0 !important; }
+  ${P} .sxb-ops :is(.dust-tab-glyph, .sx-tile__gloss) { display:none !important; }
 }
 
 /* ==== BAR =================================================================================== */
@@ -401,6 +763,137 @@ ${P} .sx-bar .sx-choice::after { content:none !important; display:none !importan
 ${P} .sx-bar .sx-choice:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .14) !important; background-image:none !important; outline:none !important; }
 ${P} .sx-bar .sx-choice:focus-visible { outline:2px solid rgb(${AMBER}) !important; outline-offset:2px !important; }
 ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
+
+/* On a short landscape Market berth the base 136px vital cards lose their compact dock-layout
+   sizing: values overlap labels, while the uncapped head leaves only a thin market strip. Keep the
+   readings in two readable rows, put priced verbs in the head's scroll flow, and give the exchange
+   the remaining viewport. The head scrolls for its secondary tape/signs and any actions below the
+   readings; the primary tab rail remains pinned by the existing short-berth layout. */
+@media (max-width:650px) and (max-height:400px) {
+  /* The generic short-berth rule keeps a 230px tab track and scrolls the whole station. At 320px
+     that track extends behind the pinned dock, so this Market gets the actual remaining viewport
+     and owns scrolling inside its list and trade stage. */
+  ${P}:has(.sx-mkt.orr-market) {
+    box-sizing:border-box !important; min-height:0 !important;
+    grid-template-rows:max-content minmax(0,1fr) max-content !important;
+    overflow-x:hidden !important; overflow-y:hidden !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot {
+    box-sizing:border-box !important; display:flex !important; flex-wrap:nowrap !important; align-items:center !important; margin-inline:0 !important;
+    min-width:0 !important; min-height:0 !important; height:auto !important; padding:3px 8px 5px !important; column-gap:5px !important; row-gap:0 !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot > .of-facility-rail {
+    box-sizing:border-box !important; flex:1 1 0 !important; width:0 !important; min-width:0 !important; max-width:none !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; overscroll-behavior-x:contain;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops .of-facility-rail :is(.sxb-ops__dock, .sx-dock) {
+    box-sizing:border-box !important; width:max-content !important; min-width:100% !important; max-width:none !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops .sx-dock__group--nav {
+    box-sizing:border-box !important; display:flex !important; flex-wrap:nowrap !important; width:max-content !important; min-width:100% !important;
+    min-height:0 !important; height:auto !important; gap:0 5px !important; padding:0 2px !important; overflow:visible !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops .sx-dock__group--nav > li { flex:none !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops .sx-tile { box-sizing:border-box !important; min-height:28px !important; height:28px !important; padding:3px 2px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops .sx-tile__label { font-size:12px !important; line-height:18px !important; letter-spacing:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms { display:flex !important; flex:0 0 auto !important; flex-direction:row !important; align-items:center !important; gap:0 4px !important; margin:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops :is(.sx-comms__toggle, .sxb-help) { flex:0 0 auto !important; min-height:28px !important; height:28px !important; padding:2px 3px !important; font-size:12px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops > .sxb-launch-seat { flex:0 0 auto !important; margin:0 !important; padding:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-launch { min-height:28px !important; height:28px !important; padding:2px !important; gap:3px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-launch__label { font-size:12px !important; letter-spacing:0 !important; }
+  /* Arrival/trade receipts are live player feedback. Give one its own temporary footer row rather
+     than positioning its long sentence over the first commodity rows. */
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) { flex-wrap:wrap !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms { display:contents !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) {
+    box-sizing:border-box !important; position:static !important; order:-1 !important; flex:1 0 100% !important; width:100% !important; max-width:100% !important;
+    left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; padding:2px 0 !important;
+    max-height:42px !important; overflow-y:auto !important; overscroll-behavior:contain;
+    flex-wrap:wrap !important; white-space:normal !important; gap:2px 8px !important; line-height:14px !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) > * {
+    min-width:0 !important; max-width:100% !important; white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) > .dp-frame__body--station,
+  ${P}:has(.sx-mkt.orr-market) .dp-frame__body--station > .sx-screen__body {
+    box-sizing:border-box !important; min-width:0 !important; min-height:0 !important;
+    height:100% !important; overflow:hidden !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head {
+    box-sizing:border-box !important; min-height:0 !important; max-height:96px !important; overflow-x:hidden !important; overflow-y:auto !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
+    grid-template-areas:"title purse" "vitals vitals" "tape tape" "handoff handoff" "signs signs" "trig trig" !important;
+    grid-template-rows:max-content max-content max-content max-content max-content max-content !important;
+    align-content:start !important; row-gap:3px !important; padding-bottom:4px !important;
+    -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 4px),transparent) !important;
+    mask-image:linear-gradient(180deg,#000 calc(100% - 4px),transparent) !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown > .sxb-purse {
+    grid-area:purse !important; min-width:0 !important; max-width:100% !important; width:max-content !important;
+    grid-template-columns:max-content max-content !important; grid-template-areas:"label value" "delta delta" !important;
+    align-items:center !important; gap:0 8px !important; margin:0 !important; padding:2px 7px !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-purse__label { width:auto !important; padding:0 !important; border:0 !important;
+    display:inline-block !important; min-width:max-content !important; white-space:nowrap !important; font-size:12px !important; line-height:16px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-purse__value { font-size:18px !important; line-height:1.1 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vitals {
+    grid-area:vitals !important; display:flex !important; flex-wrap:nowrap !important; align-items:flex-start !important;
+    width:100% !important; min-width:0 !important; max-width:none !important; justify-content:flex-start !important; overflow-x:auto !important; overflow-y:hidden !important;
+    gap:2px 4px !important; margin:0 !important; padding:2px 0 !important; scrollbar-width:thin; overscroll-behavior-x:contain;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vitals > .sxb-vital {
+    box-sizing:border-box !important; grid-area:auto !important; flex:0 0 88px !important; width:88px !important;
+    min-width:88px !important; max-width:88px !important; min-height:0 !important; height:auto !important; padding:0 !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vitals > .sxb-vital--note {
+    flex-basis:150px !important; width:150px !important; min-width:150px !important; max-width:150px !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital__head { min-width:0 !important; min-height:20px !important; flex-wrap:nowrap !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vitals > .sxb-vital { min-height:0 !important; height:auto !important; padding:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital__label { min-width:0 !important; font-size:12px !important; line-height:18px !important; letter-spacing:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value {
+    position:static !important; display:inline-flex !important; flex:none !important; margin-left:auto !important; font-size:12px !important; line-height:18px !important;
+  }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital--note .sxb-vital__value { margin-top:0 !important; font-size:12px !important; line-height:16px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital__track { margin-top:1px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital__acts { display:flex !important; flex-direction:row !important; flex-wrap:wrap !important;
+    align-items:center !important; justify-content:flex-start !important; min-width:0 !important; min-height:0 !important; width:100% !important;
+    margin-top:1px !important; gap:1px 3px !important; line-height:14px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sxb-crown .sxb-vital__acts > button { box-sizing:border-box !important; flex:0 1 auto !important;
+    min-width:0 !important; max-width:100% !important; min-height:22px !important; height:auto !important; padding:1px 3px !important; font-size:12px !important; line-height:16px !important; }
+  /* The general Standard console reserves a 276px stepper and 28px gap. This stage has ~193px:
+     keep the real dial/quantity controls in an 80px rail, with quote and Buy/Sell in the adjacent
+     column. The stage itself scrolls when the breakdown or note needs more height. */
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt__stage { box-sizing:border-box !important; min-width:0 !important; min-height:0 !important;
+    overflow-x:hidden !important; overflow-y:auto !important; padding:4px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt__stage > .sx-mkt__console { box-sizing:border-box !important; min-width:0 !important;
+    max-width:100% !important; width:100% !important; overflow-x:hidden !important; overflow-y:visible !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-trade { box-sizing:border-box !important; min-width:0 !important; width:100% !important;
+    grid-template-columns:80px minmax(0,1fr) !important; grid-template-rows:max-content max-content max-content max-content !important;
+    grid-template-areas:"dial total" "dial verb" "dial note" "dial breakdown" !important;
+    column-gap:4px !important; row-gap:4px !important; align-items:start !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty { box-sizing:border-box !important; display:block !important; position:relative !important;
+    grid-area:dial !important; width:80px !important; max-width:80px !important; min-width:0 !important; height:110px !important; padding:0 !important; overflow:visible !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty .orr-qdial { display:block !important; position:absolute !important;
+    left:0 !important; top:0 !important; width:80px !important; height:80px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty__in { position:absolute !important; left:20px !important; top:18px !important;
+    width:40px !important; height:26px !important; line-height:26px !important; padding:0 !important; font-size:18px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty__k { position:absolute !important; left:0 !important; top:46px !important;
+    width:80px !important; margin:0 !important; text-align:center !important; font-size:12px !important; line-height:16px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty__words { position:absolute !important; display:flex !important; flex-wrap:wrap !important;
+    align-content:start !important; justify-content:space-between !important; gap:2px !important; left:0 !important; right:0 !important;
+    top:82px !important; width:80px !important; margin:0 !important; padding:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty__words > li { display:block !important; flex:1 1 34px !important; min-width:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-qty__words button { box-sizing:border-box !important; width:100% !important; min-width:0 !important;
+    min-height:24px !important; height:auto !important; padding:2px !important; font-size:12px !important; line-height:16px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-trade__words { box-sizing:border-box !important; display:flex !important; flex-wrap:wrap !important;
+    width:100% !important; min-width:0 !important; gap:3px !important; margin:0 !important; padding:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-trade__words > li { display:block !important; flex:1 1 46px !important; min-width:0 !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .sx-trade__words .sx-trade__go { box-sizing:border-box !important; width:100% !important;
+    min-width:0 !important; min-height:28px !important; height:auto !important; padding:3px 2px !important; font-size:12px !important; }
+  ${P}:has(.sx-mkt.orr-market) .sx-mkt .so-trade-total, ${P}:has(.sx-mkt.orr-market) .sx-mkt .so-trade-breakdown { min-width:0 !important; max-width:100% !important; }
+}
 `;
 
 export function injectStationStandard(doc = globalThis.document) {
@@ -410,6 +903,15 @@ export function injectStationStandard(doc = globalThis.document) {
   style.id = STYLE_ID;
   style.textContent = CSS;
   (doc.head || doc.documentElement).appendChild(style);
+  // setActive may have scrolled the selected facility before this short-berth rail's final
+  // one-line geometry was applied. Re-align the existing roving tab after the stylesheet lands so
+  // the selected destination remains visible on the first paint.
+  const revealSelectedFacility = () => {
+    const selected = doc.querySelector?.('.of-facility-rail [role="tab"][aria-selected="true"]');
+    selected?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+  };
+  if (typeof doc.defaultView?.requestAnimationFrame === 'function') doc.defaultView.requestAnimationFrame(revealSelectedFacility);
+  else revealSelectedFacility();
 }
 
 export const STATION_STANDARD_CSS = CSS;

@@ -21,6 +21,13 @@
 export const PLANET_FLAGS = { enabled: false };
 export function planetFlag(name) { return !!PLANET_FLAGS[name]; }
 
+// The actual frame and its public approach share the same authored bearing.
+export function anvilOrchardFramePosition(center) {
+  const radius = PLANET_SITE.bands.skim + (PLANET_SITE.bands.sling - PLANET_SITE.bands.skim) * 0.5;
+  const angle = Math.PI / 9;
+  return { x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius };
+}
+
 /** Band edges are PLANAR radii (x/z distance from the site centre, WU). Hysteresis is applied
  *  symmetrically at every boundary by the runtime so states never flap on the line. */
 export const PLANET_SITE = Object.freeze({

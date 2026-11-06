@@ -115,7 +115,7 @@ export const ACHIEVEMENTS = Object.freeze([
     category: 'adventure',
     name: 'Signed and Delivered',
     description: 'Complete a contract.',
-    icon: 'icon-missions',
+    icon: 'icon-check',
     rule: { source: 'counter', key: 'contracts', target: 1 },
   }),
   achievement({
@@ -245,9 +245,9 @@ export const ACHIEVEMENTS = Object.freeze([
   achievement({
     id: 'the_hundred_thousand',
     category: 'career',
-    name: 'The Hundred Thousand',
+    name: 'Seven Figures',
     description: 'Earn a million credits over your career.',
-    icon: 'icon-credits',
+    icon: 'icon-buy',
     rule: { source: 'counter', key: 'creditsEarned', target: 1000000 },
   }),
   achievement({

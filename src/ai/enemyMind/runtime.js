@@ -1,4 +1,5 @@
-import { ENEMY_MIND_PROFILES, resolveEnemyMindTuning } from '../../data/enemyMindTuning.js';
+import { ENEMY_MIND_PROFILES, ENEMY_MIND_TUNING, resolveEnemyMindTuning } from '../../data/enemyMindTuning.js';
+import { enemyMindArchetypeFor, ENEMY_MIND_ARCHETYPES } from '../../data/enemies.js';
 import { boundedGoal, cleanCopy, compare, keyFor, point, unitValue } from './math.js';
 import { authorityFor, hearPeers, observePilot } from './observation.js';
 import { advancePlan, choosePlan, makePlan, steerPlan, updateMorale } from './decision.js';
@@ -6,6 +7,25 @@ import { advancePlan, choosePlan, makePlan, steerPlan, updateMorale } from './de
 export const ENEMY_MIND_STATE_VERSION = 1;
 const TRAITS = Object.freeze(['courage', 'discipline', 'loyalty', 'cunning', 'aggression', 'patience']);
 const EPS = 1e-9;
+
+// DUST P6 (BS-7): the authored doctrine-keyed archetype table (src/data/enemies.js) must fail
+// loudly at import — a misspelled trait or verb weight silently ships an untunable mind.
+(function validateEnemyMindArchetypes() {
+  for (const [doctrineId, archetype] of Object.entries(ENEMY_MIND_ARCHETYPES)) {
+    const traits = archetype && archetype.traits;
+    if (!traits) throw new TypeError(`Enemy Mind archetype ${doctrineId} requires traits`);
+    for (const [key, value] of Object.entries(traits)) {
+      if (!TRAITS.includes(key)) throw new TypeError(`Unknown Enemy Mind trait on ${doctrineId}: ${key}`);
+      if (!Number.isFinite(value) || value < 0 || value > 1) throw new RangeError(`Trait ${key} on ${doctrineId} must be in [0,1]`);
+    }
+    const weights = archetype.weights || {};
+    for (const [key, value] of Object.entries(weights)) {
+      if (!(key in ENEMY_MIND_TUNING)) throw new TypeError(`Unknown Enemy Mind verb weight on ${doctrineId}: ${key}`);
+      if (!Number.isFinite(value) || value < 0) throw new RangeError(`Invalid Enemy Mind verb weight on ${doctrineId}: ${key}`);
+    }
+    resolveEnemyMindTuning(weights); // full tuning-shape validation, same rules as the constructor
+  }
+})();
 
 export function createEnemyMindState() {
   return { version: ENEMY_MIND_STATE_VERSION, lastTime: null, lastTick: -1, cursorKey: null,
@@ -85,7 +105,7 @@ export class EnemyMindRuntime {
       observations.set(record.key, obs);
       const peers = hearPeers(record, obs, memory.signals, simTime, tuning, stats);
       heard.set(record.key, peers);
-      updateMorale(record, obs, peers, dt, tuning);
+      updateMorale(record, obs, peers, dt, record.tuning || tuning);
       record.output = null;
     }
     stats.pilots = active.length;
@@ -119,7 +139,7 @@ export class EnemyMindRuntime {
         record.lastThinkAt = simTime;
         record.nextThinkAt = simTime + tuning.thinkInterval;
       }
-      if (advancePlan(record, obs, simTime, tuning)) {
+      if (advancePlan(record, obs, simTime, record.tuning || tuning)) {
         emitFact(memory, tuning, 'phase', record, simTime, tick, { reason: record.plan.reason });
       }
     }
@@ -129,7 +149,7 @@ export class EnemyMindRuntime {
       const record = active[(start + offset) % active.length];
       if (reflex.has(record.key) || simTime + EPS < record.nextThinkAt) continue;
       const obs = observations.get(record.key), peers = heard.get(record.key);
-      const choice = choosePlan(record, obs, peers, simTime, tuning);
+      const choice = choosePlan(record, obs, peers, simTime, record.tuning || tuning);
       const plan = record.plan;
       const changed = !plan || plan.verb !== choice.verb || plan.targetId !== (obs.known?.id ?? null)
         || plan.chargeId !== (choice.charge?.id ?? null) || simTime + EPS >= plan.endsAt;
@@ -147,7 +167,7 @@ export class EnemyMindRuntime {
     const outputs = new Map();
     for (const record of active) {
       const obs = observations.get(record.key), peers = heard.get(record.key);
-      const output = steerPlan(record, obs, peers, simTime, tuning) || coldStartOutput(record, obs, simTime, tuning);
+      const output = steerPlan(record, obs, peers, simTime, record.tuning || tuning) || coldStartOutput(record, obs, simTime, tuning);
       output.goal = boundedGoal(output.goal, obs.pos, tuning.maxGoalDistance);
       output.tick = tick;
       Object.freeze(output.goal);
@@ -172,9 +192,15 @@ export class EnemyMindRuntime {
     let traits = previous?.traits;
     let initiative = previous?.initiative;
     let side = previous?.side;
+    // DUST P6: the authored archetype table outranks the constructor's doctrine→profile mapping
+    // for the doctrines it names (the data layer owns per-archetype personality); everything
+    // else keeps the constructor resolution. Verb weights ride the record, never the shared
+    // runtime tuning, so two archetypes in one squad cannot leak weights into each other.
+    const archetype = enemyMindArchetypeFor(entry.member.combatDoctrineId);
+    const tuning = archetype ? Object.freeze({ ...this.tuning, ...archetype.weights }) : this.tuning;
     if (!traits) {
-      const profileName = this.profilesByDoctrine[entry.member.combatDoctrineId] || this.profile;
-      const profile = ENEMY_MIND_PROFILES[profileName];
+      const profileName = archetype ? null : (this.profilesByDoctrine[entry.member.combatDoctrineId] || this.profile);
+      const profile = archetype ? archetype.traits : ENEMY_MIND_PROFILES[profileName];
       const overrides = this.traitsByEntity[entry.key] || this.traitsByEntity[String(entry.member.id)] || {};
       traits = {};
       for (const key of TRAITS) {
@@ -191,11 +217,12 @@ export class EnemyMindRuntime {
       lastHull: previous?.lastHull ?? 1, observedAt: null, frameTick: null, frameAt: null,
       lastTarget: null, contactCursor: 0, targetSlot: null, plan: null, planSerial: previous?.planSerial || 0, scores: [], output: null,
       baitReadyAt: now, nextThinkAt: now, lastThinkAt: null, nextSignalAt: now,
+      tuning,
     };
   }
 
   _commit(memory, record, choice, obs, peers, now, tick, stats) {
-    record.plan = makePlan(record, choice, obs, peers, now, this.tuning);
+    record.plan = makePlan(record, choice, obs, peers, now, record.tuning || this.tuning);
     emitFact(memory, this.tuning, 'decision', record, now, tick, { reason: choice.reason });
     if (choice.read) emitFact(memory, this.tuning, 'pursuit_read', record, now, tick,
       { chargeId: choice.read.peer.id, alignment: choice.read.alignment, observedSpeed: choice.read.speed });

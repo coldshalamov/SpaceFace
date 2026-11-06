@@ -8,7 +8,9 @@
 
 import { applyLocaleFonts } from './fonts.js';
 
-const LOCALIZED_ATTRIBUTES = Object.freeze(['aria-label', 'placeholder', 'title', 'alt']);
+const LOCALIZED_COPY_ATTRIBUTE = 'data-localization-copy';
+const TEXT_ATTRIBUTES = Object.freeze(['aria-label', 'placeholder', 'title', 'alt']);
+const LOCALIZED_ATTRIBUTES = Object.freeze([...TEXT_ATTRIBUTES, LOCALIZED_COPY_ATTRIBUTE]);
 const SKIP_SELECTOR = '[data-localization-skip]';
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'CANVAS']);
 const PSEUDO_STYLE_ID = 'sf-localization-overflow-style';
@@ -26,6 +28,39 @@ const sourceAttributes = new WeakMap();
 const renderedAttributes = new WeakMap();
 const canvasSamples = [];
 const stats = { textNodes: 0, attributes: 0, canvasTextDraws: 0, mutationBatches: 0 };
+
+// A single plain-text element may carry a source template plus interpolation values.
+// The source text remains its English fallback; this is metadata, never HTML.
+export function setLocalizedTextTemplate(element, copy, suffix = '') {
+  if (!element?.setAttribute) return;
+  const values = copy?.values;
+  const pairs = values && typeof values === 'object' && !Array.isArray(values) ? Object.entries(values) : [];
+  const valid = typeof copy?.template === 'string' && copy.template.length > 0 && copy.template.length <= 2000
+    && pairs.length <= 24 && pairs.every(([key, value]) => /^[A-Za-z_][\w.-]*$/.test(key)
+      && ['string', 'number', 'boolean'].includes(typeof value) && String(value).length <= 600)
+    && typeof suffix === 'string' && suffix.length <= 120;
+  if (!valid) {
+    if (element.hasAttribute?.(LOCALIZED_COPY_ATTRIBUTE)) element.removeAttribute(LOCALIZED_COPY_ATTRIBUTE);
+    return;
+  }
+  const serialized = JSON.stringify({ template: copy.template, values: Object.fromEntries(pairs), suffix });
+  if (element.getAttribute(LOCALIZED_COPY_ATTRIBUTE) !== serialized) element.setAttribute(LOCALIZED_COPY_ATTRIBUTE, serialized);
+}
+
+function localizedTextTemplate(element) {
+  const value = element?.getAttribute?.(LOCALIZED_COPY_ATTRIBUTE);
+  if (!value || value.length > 18000) return null;
+  try {
+    const copy = JSON.parse(value);
+    if (!copy || typeof copy.template !== 'string' || !copy.template || copy.template.length > 2000
+      || !copy.values || typeof copy.values !== 'object' || Array.isArray(copy.values)
+      || typeof copy.suffix !== 'string' || copy.suffix.length > 120) return null;
+    const pairs = Object.entries(copy.values);
+    if (pairs.length > 24 || pairs.some(([key, v]) => !/^[A-Za-z_][\w.-]*$/.test(key)
+      || !['string', 'number', 'boolean'].includes(typeof v) || String(v).length > 600)) return null;
+    return copy;
+  } catch { return null; }
+}
 
 export function localizeDocumentTree(root, translate) {
   if (!root || typeof translate !== 'function') return { textNodes: 0, attributes: 0 };
@@ -75,7 +110,10 @@ function installObserver(doc) {
     if (typeof translate !== 'function') return;
     for (const record of records) {
       if (record.type === 'characterData') localizeTextNode(record.target, translate);
-      else if (record.type === 'attributes') localizeAttribute(record.target, record.attributeName, translate);
+      else if (record.type === 'attributes') {
+        if (record.attributeName === LOCALIZED_COPY_ATTRIBUTE) visit(record.target, translate);
+        else localizeAttribute(record.target, record.attributeName, translate);
+      }
       else for (const node of record.addedNodes || []) visit(node, translate);
     }
   });
@@ -97,7 +135,7 @@ function visit(node, translate) {
   if (node.nodeType !== 1 && node.nodeType !== 9 && node.nodeType !== 11) return;
   if (node.nodeType === 1) {
     if (shouldSkipElement(node)) return;
-    for (const attribute of LOCALIZED_ATTRIBUTES) localizeAttribute(node, attribute, translate);
+    for (const attribute of TEXT_ATTRIBUTES) localizeAttribute(node, attribute, translate);
   }
   for (const child of node.childNodes || []) visit(child, translate);
 }
@@ -120,8 +158,9 @@ function localizeTextNode(node, translate) {
     renderedText.set(node, value);
     return;
   }
-  const renderedBody = translate(body);
-  const rendered = `${match ? match[1] : ''}${renderedBody}${match ? match[3] : ''}`;
+  const copy = localizedTextTemplate(parent);
+  const renderedBody = copy ? translate(copy.template, copy.values) + copy.suffix : translate(body);
+  const rendered = copy ? renderedBody : `${match ? match[1] : ''}${renderedBody}${match ? match[3] : ''}`;
   renderedText.set(node, rendered);
   if (rendered !== value) {
     stats.textNodes += 1;

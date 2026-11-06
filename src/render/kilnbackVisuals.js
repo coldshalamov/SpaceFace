@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { KILNBACK as C, KILNBACK_CASK_IDS } from '../data/kilnback.js';
 import { kilnbackPresentation } from '../systems/kilnback.js';
 import { readFrameOrigin } from './frameCoordinates.js';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const KILNBACK_ASSET_ID = 'SF_SHIP_KILNBACK';
 export const KILNBACK_FILE = 'wholeships/kilnback.glb';
@@ -91,7 +92,7 @@ export function createKilnbackVisualDriver(root, entity) {
       const selected = materials.map(material => {
         if (!material.name?.startsWith('Material_Ceramic')) return material;
         changed = true;
-        if (!localClones.has(material)) { const clone = material.clone(); localClones.set(material, clone);
+        if (!localClones.has(material)) { const clone = cloneMaterialPreservingShaderHooks(material); localClones.set(material, clone);
           owned.push({ material: clone, color: material.color.clone(), roughness: material.roughness }); }
         return localClones.get(material);
       });
@@ -128,8 +129,11 @@ export function createKilnbackVisualDriver(root, entity) {
         && live.alive !== false && isKilnbackEntity(live) && state?.entities?.get(id) === live
         && sourceMatches(root) && inside(root, live.mesh) && !!state.render?.scene && inside(root, state.render.scene);
       const frame = valid ? kilnbackPresentation(state, live) : null;
-      if (!frame || frame.nativeBodyReady !== true || !Number.isSafeInteger(frame.phaseStartTick)
-        || frame.phaseStartTick > state.tick || frame.tick !== state.tick) { quiet(); return; }
+      // nativeBodyReady is a lane-trust signal, nativePending the fresh-but-unaccepted
+      // handoff window; both carry owner truth. Only a stale/absent native channel rests.
+      if (!frame || !Number.isSafeInteger(frame.phaseStartTick)
+        || frame.phaseStartTick > state.tick || frame.tick !== state.tick
+        || (frame.nativeBodyReady !== true && frame.nativePending !== true)) { quiet(); return; }
       const age = state.tick - frame.phaseStartTick;
       const reduced = a11y?.reducedMotion === true, lowFlash = a11y?.reducedFlash === true;
       let opening = frame.phase === 'preheat' ? smooth(age / C.preheatTicks)
@@ -140,7 +144,13 @@ export function createKilnbackVisualDriver(root, entity) {
         const angle = radians(55) * opening;
         slats[i].quaternion.copy(rests[i]).multiply(turn.setFromAxisAngle(axis, angle)); slats[i].updateMatrix();
       }
-      for (let i = 0; i < casks.length; i++) casks[i].visible = frame.attachedCaskIds?.includes(KILNBACK_CASK_IDS[i]) === true;
+      for (let i = 0; i < casks.length; i++) {
+        // A severed cask keeps its socket mesh until the native body accepts the reduced
+        // revision — the released payload materializes on that same acceptance, so the hull
+        // never shows a cask-shaped hole with no loose tank to account for it.
+        casks[i].visible = frame.attachedCaskIds?.includes(KILNBACK_CASK_IDS[i]) === true
+          || (frame.casks?.[KILNBACK_CASK_IDS[i]]?.status === 'releasing' && frame.nativePending === true);
+      }
       for (let i = 0; i < frostMaterials.length; i++) {
         const cask = frame.casks?.[KILNBACK_CASK_IDS[i]];
         const frost = cask?.status === 'attached' && cask.coolant > 0

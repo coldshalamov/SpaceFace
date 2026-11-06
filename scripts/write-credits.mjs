@@ -61,6 +61,63 @@ const libraries = Object.keys(pkg.dependencies || {}).sort().map((name) => {
   return { name, version: meta.version || pkg.dependencies[name], license, author, homepage, text };
 });
 
+// CC0 files promoted out of the reference library into runtime. The rows are authored here —
+// the promoted file, its runtime role and its origin live nowhere else — while licence text is
+// read at build time from the notices beside the source files (Poly Haven ships no licence file
+// in the reference tree, so its notice is the authored CC0 deed text). The scanner test
+// (inf-oct17-pro-23) checks every recorded promotion against these rows; add a row whenever a
+// reference file is promoted into a shipped path.
+const CC0_ROOT = path.join(ROOT, 'assets', 'reference', 'cc0');
+const KENNEY_INTERFACE_LICENSE = readLicenseText(path.join(CC0_ROOT, 'kenney', 'interface'));
+const POLYHAVEN_FOUNDRY_NOTICE = [
+  'Poly Haven — Industrial Workshop Foundry (2K HDR)',
+  'Source: https://polyhaven.com/a/industrial_workshop_foundry',
+  'License: CC0 1.0 (Creative Commons Zero, CC0)',
+  'https://polyhaven.com/license',
+  '',
+  'CC0 1.0 Universal Public Domain Dedication:',
+  'The person who associated a work with this deed has dedicated the work to the public domain by waiving all of his or her rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law.',
+  'You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission.',
+].join('\n');
+const assets = [
+  {
+    name: 'Kenney — Interface Sounds (Denied Latch)',
+    author: 'Kenney', license: 'CC0',
+    role: 'sound: the Massline\'s refused-latch tick',
+    homepage: 'https://kenney.nl/assets/interface-sounds',
+    origin: 'kenney/interface/Audio/tick_001.ogg',
+    promotedFile: 'assets/audio/massline/massline_deny.wav',
+    licenseText: KENNEY_INTERFACE_LICENSE,
+  },
+  {
+    name: 'Kenney — Interface Sounds (UI Hover)',
+    author: 'Kenney', license: 'CC0',
+    role: 'sound: the menu hover tick',
+    homepage: 'https://kenney.nl/assets/interface-sounds',
+    origin: 'kenney/interface/Audio/tick_002.ogg',
+    promotedFile: 'assets/audio/ui/ui_hover.wav',
+    licenseText: KENNEY_INTERFACE_LICENSE,
+  },
+  {
+    name: 'Kenney — Interface Sounds (UI Tab)',
+    author: 'Kenney', license: 'CC0',
+    role: 'sound: the tab selection tick',
+    homepage: 'https://kenney.nl/assets/interface-sounds',
+    origin: 'kenney/interface/Audio/select_002.ogg',
+    promotedFile: 'assets/audio/ui/ui_tab.wav',
+    licenseText: KENNEY_INTERFACE_LICENSE,
+  },
+  {
+    name: 'Poly Haven — Industrial Workshop Foundry',
+    author: 'Poly Haven', license: 'CC0',
+    role: 'lighting: the industrial workshop environment',
+    homepage: 'https://polyhaven.com/a/industrial_workshop_foundry',
+    origin: 'polyhaven/industrial_workshop_foundry/industrial_workshop_foundry_2k.hdr',
+    promotedFile: 'assets/background/env/industrial_workshop_foundry_2k.hdr',
+    licenseText: POLYHAVEN_FOUNDRY_NOTICE,
+  },
+];
+
 // The vendored faces. Files live in styles/fonts/; the OFL text ships beside Bricolage and covers
 // every OFL face here (the licence is the same text, only the reserved font names differ).
 const oflText = readLicenseText(path.join(ROOT, 'styles', 'fonts')).trim()
@@ -82,6 +139,7 @@ const credits = {
   madeBy: authorName(pkg.author) || 'SpaceFace',
   version: pkg.version || '',
   type,
+  assets,
   libraries: libraries.map(({ text, ...rest }) => rest),
   notices: [
     ...libraries.filter((l) => l.text).map((l) => ({ name: `${l.name} ${l.version}`, license: l.license, text: l.text })),

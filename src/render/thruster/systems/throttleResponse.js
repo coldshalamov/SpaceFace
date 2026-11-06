@@ -176,6 +176,75 @@ function applyBlendedContinuum(continuum, mode, sample, boostBlend, weights) {
 const BOOST_INDEX = DRIVE_MODES.indexOf('boost');
 const ACCEL_INDEX = DRIVE_MODES.indexOf('accel');
 
+// ── Drive-mode heat: the glow's own color names the maneuver ────────────────────────────────
+//
+// The continuum above tells the maneuver in STRUCTURE (length, width, turbulence, flow). Color
+// stayed fixed per recipe, so at chase distance an idling, cruising and boosting bell all wore
+// the same hue and only their lengths differed — in a crowd you could not read what a ship was
+// doing from its glow. The heat channel is the second half of the same story: boost overpressure
+// burns white-hot, a settled cruise leans out cooler, and the idle / suppressed brake / reverse
+// bells are a cooling chamber. It is a steady-state shift, not a flash: the ignition transient
+// still spends itself on length and structure only (integrateDriveState), so reduced-flash
+// profiles keep the whole language.
+
+export const DRIVE_MODE_HEAT = Object.freeze({
+  idle: Object.freeze({ whitePush: 0, cool: 0.62 }),
+  accel: Object.freeze({ whitePush: 0, cool: 0 }),
+  cruise: Object.freeze({ whitePush: 0, cool: 0.34 }),
+  boost: Object.freeze({ whitePush: 1, cool: 0 }),
+  brake: Object.freeze({ whitePush: 0, cool: 0.55 }),
+  reverse: Object.freeze({ whitePush: 0, cool: 0.72 }),
+});
+
+// Per-layer-role share of each channel. The core carries the state (white-hot or cooled) while
+// the sheath and vapor keep most of the recipe/faction identity, so a fleet stays readable by
+// faction even while every bell answers its own maneuver.
+export const DRIVE_HEAT_ROLE_WHITE = Object.freeze({
+  core: 1.0, inner: 0.8, sheath: 0.5, vapor: 0.4,
+});
+export const DRIVE_HEAT_ROLE_COOL = Object.freeze({
+  core: 0.4, inner: 0.55, sheath: 0.75, vapor: 0.85,
+});
+export const DRIVE_HEAT_DEFAULT_ROLE_WHITE = 0.65;
+export const DRIVE_HEAT_DEFAULT_ROLE_COOL = 0.65;
+
+/**
+ * Steady-state heat of one discrete drive mode. Writes `out` ({whitePush, cool}) and returns it.
+ * Unknown modes read as accel: the authored recipe color IS the thrust color.
+ */
+export function resolveDriveModeHeat(mode, out) {
+  const m = DRIVE_MODE_HEAT[mode] || DRIVE_MODE_HEAT.accel;
+  out.whitePush = m.whitePush;
+  out.cool = m.cool;
+  return out;
+}
+
+/**
+ * Weighted heat across an entity's mode-blend weights (integrateModeWeights), so a mode flip
+ * crossfades the color over the same ~0.14 s that crossfades the structure. One-hot weights
+ * reproduce resolveDriveModeHeat exactly. Missing/degenerate weights fall back to the discrete
+ * mode, so a caller that skipped the blend still gets the language. No allocation.
+ */
+export function blendDriveModeHeat(weights, mode, out) {
+  resolveDriveModeHeat(mode, out);
+  if (!weights || weights.length < DRIVE_MODES.length) return out;
+  let whitePush = 0;
+  let cool = 0;
+  let sum = 0;
+  for (let i = 0; i < DRIVE_MODES.length; i++) {
+    const w = weights[i];
+    if (!(w > 1e-4)) continue;
+    const m = DRIVE_MODE_HEAT[DRIVE_MODES[i]];
+    whitePush += w * m.whitePush;
+    cool += w * m.cool;
+    sum += w;
+  }
+  if (sum <= 1e-4) return out;
+  out.whitePush = whitePush / sum;
+  out.cool = cool / sum;
+  return out;
+}
+
 /** Time constant of the drive-mode crossfade, seconds. */
 export const MODE_BLEND_TAU = 0.14;
 

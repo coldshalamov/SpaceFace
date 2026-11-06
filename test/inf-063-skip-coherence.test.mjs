@@ -159,12 +159,14 @@ test('INF-063: tearing down a guided run leaves no streak, no actors, no panel',
       // While the fresh rail runs it owns the voice — no second lesson queues behind it.
       h.fire('tether:latchDenied', { reason: 'no-target' });
       assert.equal(h.events.filter((e) => e.event === 'hud:firstUse').length, 0, 'mid-rail denials wait their turn');
-      // Rail finished: a fresh streak of three still teaches.
+      // Rail finished: a fresh streak of three still teaches. The mid-rail denial sits in
+      // the deferred queue until the rail releases the voice; the update cadence drains it.
       h.system._latchDenialStreak = 0;
       h.state.onboarding.finished = true;
       h.fire('tether:latchDenied', { reason: 'no-target' });
       h.fire('tether:latchDenied', { reason: 'no-target' });
       h.fire('tether:latchDenied', { reason: 'no-target' });
+      h.system._drainHintQueue();
       assert.equal(h.events.filter((e) => e.event === 'hud:firstUse').length, 1, 'post-rail struggle earns the hint');
     } finally { h.restore(); }
   });

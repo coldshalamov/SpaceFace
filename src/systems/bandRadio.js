@@ -7,7 +7,7 @@
 import { hash32 } from '../core/rng.js';
 import { weatherForecast } from '../data/seasonalWeather.js';
 import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
-import { localizeText } from '../localization/gameLocalization.js';
+import { localizeText } from '../localization/sourceText.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
@@ -122,6 +122,15 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // party is the bond office's story, not the Tessera's.
     return payload.byPlayer === true ? ['player.downed_hunter'] : [];
   }
+  if (event === 'entity:killed') {
+    // The ordinary kill — a hostile wing downed in a running fight — is the deed the band never
+    // mentioned. It reports only when the player's own guns did it and the victim was actually
+    // hostile to them: an accident or a rival's work is somebody else's story.
+    return state.playerId != null && payload.killerId === state.playerId
+      && payload.targetHostileToPlayer === true
+      ? ['player.downed_raider']
+      : [];
+  }
   if (event === 'dock:docked') {
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
@@ -214,7 +223,7 @@ export const bandRadio = {
     });
     this._listen('band:bearingResolved', (payload) => this._acceptBearingResolution(payload));
     this._listen('band:bearingUnavailable', (payload) => this._rejectBearingResolution(payload));
-    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled']) {
+    for (const event of ['freight:loss', 'mission:completed', 'dock:docked', 'warrant:hunterDisabled', 'entity:killed']) {
       this._listen(event, (payload) => {
         const own = this._ensureState();
         for (const eventKey of deriveBandEventKeys(event, payload || {}, this.state)) {

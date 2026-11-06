@@ -75,19 +75,20 @@ html body #screens > .k-screen.of-credits.orr-credits > .k-stage:focus-visible {
 }
 
 /* ── The key hint ──────────────────────────────────────────────────────────────
-   ESC reads as etched caps after ‹ BACK, not as a keycap: no bordered rectangle
-   anywhere on the surface (ORRERY.md §3.2). */
+   ESC after ‹ BACK wears the same hairline keycap as the Records Wall, Settings
+   and Save/Load feet, so the way out reads as a key, not a loose word. */
 html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back::after {
-  background: none !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 3px 0 4px !important;
-  margin-left: 14px !important;
-  color: rgb(236 230 216 / .78) !important;
+  background: rgb(236 230 216 / .1) !important;
+  border: 1px solid rgb(236 230 216 / .5) !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / .35) !important;
+  padding: 3px 7px 4px !important;
+  margin-left: 16px !important;
+  color: rgb(236 230 216 / .9) !important;
 }
 html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back:is(:hover, :focus-visible)::after {
   color: rgb(255 253 248) !important;
+  border-color: rgb(255 253 248 / .45) !important;
 }
 
 /* ── The catch zone ────────────────────────────────────────────────────────────

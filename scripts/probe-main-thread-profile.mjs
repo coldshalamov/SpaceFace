@@ -41,6 +41,9 @@
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
+//   --late-enable-nocturne-shadows, with --from-launch, use the public Pause → Settings → Video
+//                         control to enable local shadows after the default-off opening, then wait
+//                         for the guarded depth-stage queue and first-use drain before a look capture.
 //
 // Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
 // The .cpuprofile opens directly in Chrome DevTools' Performance panel (Load profile...).
@@ -146,6 +149,8 @@ const safeName = (value, max) => String(value || '')
   .slice(0, max);
 
 const FROM_LAUNCH = process.argv.includes('--from-launch');
+const BUFFER_RESIZE_DIAG = process.argv.includes('--buffer-resize-diag');
+const LATE_ENABLE_NOCTURNE_SHADOWS = process.argv.includes('--late-enable-nocturne-shadows');
 const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
 const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
 const LAUNCH_DWELL_MS = Math.max(0, Number(argValue('--launch-dwell-ms')) || 0);
@@ -206,7 +211,11 @@ const GPU_TIMERS = process.argv.includes('--gpu-timers');
 // --eval-file=PATH runs a script in the page once the flight has settled (instead of the profile window): the file is
 // one expression that evaluates to a Promise, and its resolved value is saved as eval-result.json. This is how a
 // within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
+// Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
+if (LATE_ENABLE_NOCTURNE_SHADOWS && (!FROM_LAUNCH || CRUCIBLE || GAUNTLET || RACING || WARM_SECOND_LAUNCH || EVAL_FILE)) {
+  throw new Error('--late-enable-nocturne-shadows requires a single public Adventure --from-launch route without --eval-file');
+}
 // --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
 // which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
 const HEAP_SAMPLING = process.argv.includes('--heap-sampling');
@@ -1262,6 +1271,141 @@ async function waitForFlight(page, timeoutMs, pollMs, { signal = null } = {}) {
   throw new Error(`never entered flight (mode=${mode})`);
 }
 
+function readNocturneShadowRouteStateInPage() {
+  const state = window.SF?.state;
+  const owner = window.SF?.registry?.get?.('render');
+  const renderer = owner?.renderer;
+  const pending = owner?._pendingDepthStageRoots;
+  const ledger = renderer?.userData?.spacefaceLinkBlocks;
+  return {
+    mode: state?.mode ?? null,
+    tick: Number(state?.tick) || 0,
+    nocturne: state?.settings?.video?.nocturne ?? null,
+    nocturneShadows: state?.settings?.video?.nocturneShadows ?? null,
+    solarShadows: state?.settings?.video?.shadows ?? null,
+    shadowConfigured: owner?._nocturne?.shadowConfigured === true,
+    shadowsEnabled: owner?._nocturne?.shadowsEnabled === true,
+    unusedTracker: !!renderer?.userData?.spacefaceUnusedPrograms,
+    scheduled: owner?._depthStageScheduled === true,
+    pendingRoots: Number(pending?.size) || 0,
+    programs: Array.isArray(renderer?.info?.programs) ? renderer.info.programs.length : null,
+    unusedPrograms: Number(renderer?.userData?.spacefaceUnusedPrograms?.size) || 0,
+    linkBlocks: Number(ledger?.count) || 0,
+    linkWaits: Number(ledger?.waits) || 0,
+    linkWaitMs: Number(ledger?.totalMs) || 0,
+    contextStateIsPublishedState: window.SF?.ctx?.state === state,
+    contextNocturneShadows: window.SF?.ctx?.state?.settings?.video?.nocturneShadows ?? null,
+  };
+}
+
+async function enableNocturneShadowsThroughPublicSettings(page) {
+  await page.waitForFunction(() => window.SF?.state?.mode === 'flight'
+    && Number(window.SF?.state?.tick) > 0
+    && Number.isFinite(window.SF?.state?.render?.firstPlayableFrameAt),
+  null, { timeout: 180_000, polling: 100 });
+  const before = await page.evaluate(readNocturneShadowRouteStateInPage);
+  if (before.mode !== 'flight' || before.nocturne !== true || before.nocturneShadows !== false
+      || before.solarShadows !== false || !before.shadowConfigured || before.shadowsEnabled) {
+    throw new Error(`late shadow route requires default-off local shadows in ordinary flight: ${JSON.stringify(before)}`);
+  }
+
+  log('opening public Pause → Settings → Video to enable Local light shadows');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 30_000 });
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'settings', null, { timeout: 30_000 });
+  await page.getByRole('tab', { name: 'Video', exact: true }).click({ timeout: 30_000 });
+  const row = page.locator('#screens [data-screen="settings"] .k-row').filter({ hasText: 'Local light shadows' });
+  const on = row.locator('.k-word[data-action="on"]');
+  await on.waitFor({ state: 'visible', timeout: 30_000 });
+  if (await on.getAttribute('aria-pressed') === 'true') {
+    throw new Error('Local light shadows was already on before the public enable click');
+  }
+  const toggleWallMs = Date.now();
+  await page.evaluate(() => {
+    const events = [];
+    const pointer = [];
+    const observePointer = (event) => {
+      const row = [...document.querySelectorAll('#sf-settings-pane .k-row')]
+        .find((node) => node.textContent.includes('Local light shadows'));
+      const button = row?.querySelector('.k-word[data-action="on"]');
+      const rect = button?.getBoundingClientRect();
+      pointer.push({ type: event.type, x: event.clientX, y: event.clientY,
+        targetTag: event.target?.tagName || null, targetAction: event.target?.dataset?.action || null,
+        targetText: String(event.target?.textContent || '').trim().slice(0, 80),
+        onConnected: button?.isConnected ?? null,
+        onRect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null,
+        at: performance.now() });
+    };
+    for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, observePointer, true);
+    const off = window.SF.bus.on('settings:changed', (payload) => {
+      if (payload?.section === 'video') {
+        const owner = window.SF?.registry?.get?.('render');
+        events.push({ ...payload, at: performance.now(), pendingRoots: owner?._pendingDepthStageRoots?.size ?? null,
+          scheduled: owner?._depthStageScheduled ?? null });
+      }
+    });
+    window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__ = { events, off, pointer, observePointer };
+  });
+  let capturedEvents;
+  try {
+    await on.click({ timeout: 30_000 });
+    await page.waitForFunction(() => window.SF?.state?.settings?.video?.nocturneShadows === true,
+      null, { timeout: 30_000 });
+  } finally {
+    const control = await row.evaluate((node) => ({
+      text: node.textContent,
+      buttons: [...node.querySelectorAll('button')].map((button) => ({
+        text: button.textContent, action: button.dataset.action, pressed: button.getAttribute('aria-pressed'),
+      })),
+    }));
+    capturedEvents = await page.evaluate(() => {
+      const observer = window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__;
+      observer?.off?.();
+      for (const type of ['pointerdown', 'pointerup', 'click']) document.removeEventListener(type, observer?.observePointer, true);
+      return { settings: observer?.events || [], pointer: observer?.pointer || [] };
+    });
+    fs.writeFileSync(path.join(OUT_DIR, 'nocturne-shadow-setting-click.json'), JSON.stringify({
+      before, after: await page.evaluate(readNocturneShadowRouteStateInPage), control, events: capturedEvents,
+    }, null, 2));
+  }
+  const afterToggle = await page.evaluate(readNocturneShadowRouteStateInPage);
+  if (afterToggle.shadowsEnabled !== true || !capturedEvents?.settings?.some((event) =>
+    event.key === 'nocturneShadows' && event.value === true)) {
+    throw new Error(`public shadow setting did not commit: ${JSON.stringify(afterToggle)}`);
+  }
+  log(`public setting enabled; observed pending depth roots=${afterToggle.pendingRoots}`);
+
+  await page.locator('#screens [data-screen="settings"] .sf-back[data-action="back"]').click({ timeout: 30_000 });
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 });
+  await page.keyboard.press('Escape');
+  await waitForFlight(page, 30_000, 100);
+  await page.waitForFunction((startTick) => {
+    const owner = window.SF?.registry?.get?.('render');
+    const pending = owner?._pendingDepthStageRoots;
+    return window.SF?.state?.mode === 'flight'
+      && Number(window.SF?.state?.tick) > startTick
+      && owner?._depthStageScheduled !== true
+      && (!pending || pending.size === 0);
+  }, before.tick, { timeout: 180_000, polling: 100 });
+  const completionObservedWallMs = Date.now();
+  const afterAdmission = await page.evaluate(readNocturneShadowRouteStateInPage);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const afterStage = await page.evaluate(readNocturneShadowRouteStateInPage);
+  // The empty queue above establishes admission of the enabled setting's roots.
+  // Normal flight may enqueue new world-residency roots while the next picture is
+  // presented; those remain guarded by the same owner and do not undo that admission.
+  if (afterStage.mode !== 'flight' || afterStage.shadowsEnabled !== true) {
+    throw new Error(`enabled shadow setting did not survive resumed presentation: ${JSON.stringify(afterStage)}`);
+  }
+  const screenshot = path.join(OUT_DIR, 'nocturne-shadows-enabled-flight.png');
+  await page.screenshot({ path: screenshot, timeout: 15_000 });
+  const result = { before, afterToggle, afterAdmission, afterStage, toggleWallMs, completionObservedWallMs,
+    screenshot: path.relative(ROOT, screenshot).replace(/\\/g, '/') };
+  log(`guarded depth stage settled; unused programs=${afterStage.unusedPrograms}; enabled look ${result.screenshot}`);
+  return result;
+}
+
 /** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
 async function launchCrucible(page) {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
@@ -1424,10 +1568,22 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`running ${EVAL_FILE} in the page`);
     const heldKey = process.argv.includes('--eval-brake') ? 'Digit0'
       : process.argv.includes('--eval-thrust') ? 'KeyW' : null;
+    let screenshotSequence = 0;
+    await page.exposeBinding('__sfProfileScreenshot', async (_source, label) => {
+      if (typeof label !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,47}$/i.test(label)) {
+        throw new Error('Screenshot label must be 1–48 letters, digits, underscores or hyphens');
+      }
+      const filename = `eval-${String(++screenshotSequence).padStart(3, '0')}-${label}.png`;
+      await page.screenshot({ path: path.join(OUT_DIR, filename), timeout: 15_000 });
+      return { path: path.relative(ROOT, path.join(OUT_DIR, filename)).replace(/\\/g, '/') };
+    });
     if (heldKey) await page.keyboard.down(heldKey);
     let result;
     try { result = await page.evaluate(source); }
-    finally { if (heldKey) await page.keyboard.up(heldKey).catch(() => {}); }
+    finally {
+      if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
+      await page.evaluate(() => { delete window.__sfProfileScreenshot; }).catch(() => {});
+    }
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
     const sourceDigestAfter = await digestServedSourcePaths();
     const evalIdentity = await page.evaluate(() => {
@@ -1722,6 +1878,51 @@ async function writeHeapSampling(cdp, heapMarks) {
 }
 
 async function runLaunchProfile(page, cdp, profileNote) {
+  let workerProfiler = null;
+  let workerProfileTask = null;
+  let workerProfileStopping = false;
+  const workerProfileStatus = { requested: WORKER_PROFILE, captured: false, targetUrl: null,
+    startedWallMs: null, stoppedWallMs: null, error: null };
+  const startLaunchWorkerProfile = () => {
+    if (!WORKER_PROFILE) return;
+    workerProfileTask = (async () => {
+      while (!workerProfileStopping) {
+        try {
+          workerProfiler = await startSimulationWorkerProfile(cdp);
+          workerProfileStatus.targetUrl = workerProfiler.targetUrl;
+          workerProfileStatus.startedWallMs = Date.now();
+          return;
+        } catch (error) {
+          if (!String(error?.message || error).includes('Simulation worker CDP target unavailable')) {
+            workerProfileStatus.error = String(error?.message || error);
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+      }
+      workerProfileStatus.error = 'Simulation worker CDP target unavailable before profiling ended';
+    })();
+  };
+  const stopLaunchWorkerProfile = async () => {
+    workerProfileStopping = true;
+    if (workerProfileTask) await workerProfileTask;
+    if (!workerProfiler) return;
+    const owned = workerProfiler;
+    workerProfiler = null;
+    try {
+      const profile = await owned.stop();
+      workerProfileStatus.stoppedWallMs = Date.now();
+      fs.writeFileSync(path.join(OUT_DIR, 'worker.cpuprofile'), JSON.stringify(profile));
+      const summary = summarizeProfile(profile, profileIndex(profile));
+      fs.writeFileSync(path.join(OUT_DIR, 'worker-profile.md'), [
+        '# Simulation Worker profile', '', `Target: ${owned.targetUrl}`, '',
+        ...entryTable(summary, 20),
+      ].join('\n'));
+      workerProfileStatus.captured = true;
+    } catch (error) {
+      workerProfileStatus.error = String(error?.message || error);
+    }
+  };
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
   let warmup = null;
@@ -1757,6 +1958,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const profileStartWallMs = Date.now();
   const hostStart = sampleHostResources();
 
+  // The worker may already exist, or may be minted by Launch. Observe either case in
+  // parallel: target discovery must never delay the trusted public click.
+  startLaunchWorkerProfile();
   const newGameWallMs = Date.now();
   await openNewGameWithSeed(page);
   if (warmup) warmup.context = await compareWarmRendererContext(page);
@@ -1777,11 +1981,20 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; ${HOLD_STILL ? 'holding still' : 'holding thrust'} ${FLIGHT_TAIL_MS} ms`);
 
+  const lateShadowEnable = LATE_ENABLE_NOCTURNE_SHADOWS
+    ? await enableNocturneShadowsThroughPublicSettings(page)
+    : null;
+
   if (!HOLD_STILL) await page.keyboard.down('KeyW');
   await page.waitForTimeout(FLIGHT_TAIL_MS);
   if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  await stopLaunchWorkerProfile();
+  workerProfileStatus.coversLaunch = workerProfileStatus.captured
+    && workerProfileStatus.startedWallMs <= launchWallMs;
+  workerProfileStatus.coversFlightTail = workerProfileStatus.captured
+    && workerProfileStatus.startedWallMs <= flightWallMs && workerProfileStatus.stoppedWallMs >= endWallMs;
   const hostEnd = sampleHostResources();
   if (HEAP_SAMPLING) {
     await markHeap('end of flight tail');
@@ -1808,7 +2021,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
       servedSourceOverlayIdentity: baseline?.servedIdentity || null,
     },
     runtime: runtimeBinding,
+    workerProfile: workerProfileStatus,
     host: summarizeHostResources(hostStart, hostEnd),
+    ...(lateShadowEnable ? { lateShadowEnable } : {}),
     ...(warmup ? { launch: {
       mode: 'same-session-warm-second-public-adventure-launch',
       warmup: {
@@ -1831,6 +2046,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
   } finally {
+    await stopLaunchWorkerProfile();
+    if (WORKER_PROFILE) {
+      fs.writeFileSync(path.join(OUT_DIR, 'worker-profile-status.json'), JSON.stringify(workerProfileStatus, null, 2));
+      if (workerProfileStatus.error) log(`worker-profile unavailable: ${workerProfileStatus.error}`);
+    }
     await disposeFlightFailureObserver(page);
   }
 }
@@ -1884,6 +2104,15 @@ try {
   // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
   // This does not change the measured flight window or the game's loading-time result.
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
+  if (BUFFER_RESIZE_DIAG) {
+    // Electron creates its first page before Playwright can install init scripts. Reload only
+    // for this explicit diagnostic mode so the existing renderer arm is present before startup;
+    // the ordinary cold profile stays unarmed and remains the performance measurement.
+    const { installBufferResizeDiagnosticInitScript } = await import('./lib/releaseSoakProbe.mjs');
+    await installBufferResizeDiagnosticInitScript(page);
+    log('buffer-resize diagnostics armed by one setup reload; this run is diagnostic, not a cold baseline');
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+  }
   if (baselineSourceOverlay) {
     servedSourceOverlayIdentity = await page.evaluate(async () => {
       const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
@@ -1990,6 +2219,7 @@ try {
               })) : null,
           },
           pendingPipelineAdmissions,
+          bufferResizeDiagnosticLastFailure: render?.bufferResizeDiagnostic?.lastFailure || null,
         },
       };
     });

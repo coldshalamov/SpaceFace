@@ -1,5 +1,131 @@
 // On-demand production observer: internal state in, bounded plain facts out; no Three updates.
 // Existing matrices/bounds may be stale or absent; this records evidence, not visibility proof.
+import {
+  detachedGeometryUploadPending,
+  isPackageGeometryDetached,
+  isPackageTextureDetached,
+  orientationDetachedHoldActive,
+  presentedDetachRehydrateInFlight,
+} from './packageCpuDetach.js';
+
+// Consult only existing CPU bookkeeping. In particular, a program handle being present is
+// not evidence that it is live: this observer must never ask GL or compile/upload anything.
+function collectRenderOwner(render, playerId) {
+  const renderer = render?.renderer, scene = render?.scene;
+  if (!renderer || !scene) return { available: false };
+  const number = value => Number.isFinite(value) ? value : null;
+  const text = value => typeof value === 'string' ? value.slice(0, 180) : null;
+  const color = value => value ? { r: number(value.r), g: number(value.g), b: number(value.b) } : null;
+  const vector = value => value ? { x: number(value.x), y: number(value.y), z: number(value.z) } : null;
+  const node = value => value ? {
+    id: number(value.id), name: text(value.name), type: text(value.type),
+    visible: value.visible !== false, layers: number(value.layers?.mask),
+    parentId: number(value.parent?.id), renderOrder: number(value.renderOrder),
+    frustumCulled: value.frustumCulled === true, scale: vector(value.scale),
+  } : null;
+  const texture = value => value?.isTexture === true ? {
+    uuid: text(value.uuid), version: number(value.version), sourceVersion: number(value.source?.version),
+    type: number(value.type), colorSpace: text(value.colorSpace), detached: isPackageTextureDetached(value),
+    mipCount: number(value.mipmaps?.length),
+    imageWidth: number(value.source?.data?.width), imageHeight: number(value.source?.data?.height),
+  } : null;
+  const root = render.meshes?.get?.(playerId), ancestors = [], ancestorSet = new Set();
+  const programs = Array.isArray(renderer.info?.programs) ? renderer.info.programs : null;
+  const programSet = programs ? new Set(programs.slice(0, 512)) : null;
+  for (let value = root; value && ancestors.length < 16 && !ancestorSet.has(value); value = value.parent) {
+    ancestorSet.add(value); ancestors.push(node(value));
+  }
+  const nodes = [], materials = [], geometries = [], materialSet = new Set(), geometrySet = new Set();
+  const stack = root ? [root] : [], seen = new Set();
+  let dropped = 0;
+  while (stack.length && seen.size < 128) {
+    const value = stack.pop();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    if (value.isMesh || value.isPoints) nodes.push(node(value));
+    const geometry = value.geometry;
+    if (geometry && geometries.length < 16 && !geometrySet.has(geometry)) {
+      geometrySet.add(geometry);
+      const position = geometry.attributes?.position, index = geometry.index;
+      geometries.push({ uuid: text(geometry.uuid), resident: geometry.userData?.spacefaceGpuResident === true,
+        detached: isPackageGeometryDetached(geometry), uploadPending: detachedGeometryUploadPending(geometry, renderer),
+        positionCount: number(position?.count), positionArrayLength: number((position?.array || position?.data?.array)?.length),
+        indexCount: number(index?.count), indexArrayLength: number(index?.array?.length) });
+    }
+    const list = Array.isArray(value.material) ? value.material : [value.material];
+    for (let i = 0; i < Math.min(16, list.length) && materials.length < 16; i++) {
+      const material = list[i];
+      if (!material || materialSet.has(material)) continue;
+      materialSet.add(material);
+      // WebGLProperties.get creates a record when absent; has must precede it.
+      const properties = renderer.properties?.has?.(material) ? renderer.properties.get(material) : null;
+      const program = properties?.currentProgram;
+      materials.push({ uuid: text(material.uuid), name: text(material.name), type: text(material.type),
+        visible: material.visible !== false, version: number(material.version), opacity: number(material.opacity),
+        transparent: material.transparent === true, color: color(material.color), emissive: color(material.emissive),
+        emissiveIntensity: number(material.emissiveIntensity), metalness: number(material.metalness),
+        roughness: number(material.roughness), transmission: number(material.transmission),
+        toneMapped: material.toneMapped === true, side: number(material.side),
+        depthTest: material.depthTest !== false, depthWrite: material.depthWrite !== false,
+        map: texture(material.map), emissiveMap: texture(material.emissiveMap), envMap: texture(material.envMap),
+        pipelineAdmission: material.userData?.__sfPipelineAdmission === true,
+        program: program ? { id: number(program.id), usedTimes: number(program.usedTimes), handlePresent: !!program.program,
+          inRendererPrograms: programSet ? (programSet.has(program) ? true : programs.length <= 512 ? false : null) : null } : null,
+        properties: properties ? { version: number(properties.__version), toneMapping: number(properties.toneMapping),
+          outputColorSpace: text(properties.outputColorSpace), instancing: properties.instancing === true,
+          skinning: properties.skinning === true, programCount: number(properties.programs?.size) } : null });
+    }
+    const children = Array.isArray(value.children) ? value.children : [];
+    const accepted = Math.min(children.length, 128 - stack.length);
+    // Match Object3D.traverse's authored order so the bounded sample reaches the main
+    // hull before later cosmetic attachments, as did the existing Chrome owner reader.
+    for (let i = accepted - 1; i >= 0; i--) stack.push(children[i]);
+    dropped += children.length - accepted;
+  }
+  const children = Array.isArray(scene.children) ? scene.children : [];
+  const sceneRows = children.slice(0, 64).map(value => ({ ...node(value),
+    light: value?.isLight ? { intensity: number(value.intensity), color: color(value.color), distance: number(value.distance) } : null }));
+  const backdrop = [], backdropSeen = new Set(), backdropStack = children.slice(0, 64)
+    .filter(value => value?.isLight || value?.isPoints || /star|nebula|back|sky/i.test(value?.name || ''));
+  while (backdropStack.length && backdrop.length < 32) {
+    const value = backdropStack.pop();
+    if (!value || backdropSeen.has(value)) continue;
+    backdropSeen.add(value);
+    backdrop.push({ ...node(value), light: value.isLight
+      ? { intensity: number(value.intensity), color: color(value.color), distance: number(value.distance) } : null });
+    const nested = Array.isArray(value.children) ? value.children : [];
+    for (let i = 0; i < Math.min(nested.length, 64 - backdropStack.length); i++) backdropStack.push(nested[i]);
+  }
+  const pending = [], subjects = renderer.userData?.spacefacePendingPipelineSubjects;
+  if (subjects?.[Symbol.iterator]) for (const subject of subjects) { if (pending.length >= 12) break; pending.push(node(subject)); }
+  // These existing getters read JS closure values; neither enters a draw nor consults GL.
+  const target = renderer.getRenderTarget?.();
+  const post = render.bloom?.diagnostics?.();
+  return { available: true, playerRoot: node(root), ancestors, playerNodes: nodes, materials, geometries,
+    limits: { playerVisited: seen.size, playerNodeLimit: 128, playerTruncated: stack.length > 0 || dropped > 0,
+      materialLimit: 16, geometryLimit: 16, sceneChildLimit: 64, sceneChildrenTruncated: children.length > 64,
+      backdropLimit: 32, backdropTruncated: backdropStack.length > 0 },
+    scene: { ...node(scene), background: texture(scene.background), backgroundColor: color(scene.background),
+      environment: texture(scene.environment), backgroundIntensity: number(scene.backgroundIntensity),
+      environmentIntensity: number(scene.environmentIntensity), children: sceneRows, backdrop,
+      fog: scene.fog ? { color: color(scene.fog.color), density: number(scene.fog.density),
+        near: number(scene.fog.near), far: number(scene.fog.far) } : null },
+    renderer: { cameraLayers: number(render.camera?.layers?.mask), toneMapping: number(renderer.toneMapping),
+      exposure: number(renderer.toneMappingExposure), outputColorSpace: text(renderer.outputColorSpace),
+      target: target ? { width: number(target.width), height: number(target.height), texture: texture(target.texture) } : null,
+      programCount: number(programs?.length), programMembershipLimit: 512,
+      lastCompletedPass: 'unavailable',
+      guard: { detachPending: renderer.__sfDrawGuardDetachPending === true,
+        detachSerial: number(renderer.__sfDrawGuardDetachSerial), scanSerial: number(renderer.__sfDrawGuardDetachScanSerial),
+        depth: number(renderer.__sfUnreadyDrawGuardDepth) } },
+    residency: { orientationHold: orientationDetachedHoldActive(renderer),
+      refillInFlight: !!presentedDetachRehydrateInFlight(), pendingSubjects: pending },
+    post: post ? { enabled: post.enabled === true, sceneTargetWidth: number(post.sceneTargetWidth),
+      sceneTargetHeight: number(post.sceneTargetHeight), contentScale: number(post.contentScale),
+      packedHdrMode: text(post.packedHdrMode), bloomPasses: number(post.bloomPasses) } : null,
+    note: 'On-demand cached CPU facts only. Program presence, bounds and counters do not prove visible pixels.' };
+}
+
 export function collectCameraWitness(state) {
   if (!state) return { available: false, reason: 'presentation-state-unavailable' };
   const scalarId = value => typeof value === 'string' ? value.slice(0,128) : Number.isFinite(value) ? value : null;
@@ -95,6 +221,7 @@ export function collectCameraWitness(state) {
       hull:finite(player.hull),hullMax:finite(player.hullMax),render:geometry(render?.meshes?.get?.(player.id))}:null,
     cameraOccluderCount:finite(render?.cameraOccluders),actualOccluderIds:null,
     sceneGeometry:{rows:sceneRows,visited:sceneVisited,truncated:sceneStack.length>0||sceneDropped>0,droppedChildren:sceneDropped},
+    renderOwner:collectRenderOwner(render,state.playerId),
     nearestIds:nearest.map(v=>v.id),largestRadiusIds:large.map(v=>v.id),entities:selected,
     limits:{entityLimit:4096,meshNodeLimitPerEntity:512,nearestLimit:8,largeLimit:8,inspected,truncated},
     visibilityAssessment:'unverified',note:'One-shot public render witness; entity radius/nearby ordering is a proxy, not actual occluder identification. No matrix/bounds updates or raycasts performed.' };

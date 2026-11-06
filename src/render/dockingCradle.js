@@ -12,6 +12,16 @@ const MAX_INDEXED_QUADS = 16383; // 4 vertices each, the Uint16 index ceiling.
 
 export const DOCKING_CRADLE_QUADS = 96;      // ring + brackets + chevrons + center pip
 export const DOCKING_CRADLE_FADE_S = 0.28;   // ease in/out so the cradle never pops
+// inf-corridor-speed-read — the pad's answer to your own motion:
+export const DOCKING_CRADLE_HOT_FADE_S = 0.22;      // caution read eases in/out quickly
+export const DOCKING_CRADLE_SPEED_SMOOTH_S = 0.35;  // sweep-rate follows a smoothed speed
+export const DOCKING_CRADLE_SWEEP_BASE_RATE = 0.5;  // rad/s at rest — the old fixed rate
+export const DOCKING_CRADLE_SWEEP_SPEED_GAIN = 0.9; // + this at speed01 1.0 (the capture gate)
+export const DOCKING_CRADLE_SWEEP_CALM_RATE = 0.22; // berthed: the sweep settles
+/** Hot lane shifts the holo green toward dock-caution amber by this share — never a full swap. */
+export const DOCKING_CRADLE_HOT_TINT = 0.55;
+/** Chevron march: brightness walks inbound; its phase rides the same speed-aware sweep clock. */
+export const DOCKING_CRADLE_CHEVRON_MARCH = 1.6;
 const RING_SEGMENTS = 44;
 const BRACKET_COUNT = 4;
 const CHEVRON_COUNT = 3;
@@ -26,6 +36,9 @@ export function createDockingCradle() {
     radius: 14,          // pad radius in wu (from the capture lane half-width)
     pulseT: 0,
     release01: 0,        // FB-073: undock release beat envelope — runs 1 → 0 over the same fade
+    hot01: 0,            // in the lane but the gates refuse (too fast / wrong heading) — eased 0..1
+    sweepT: 0,           // acquisition bracket phase; its RATE is the ship's own closing speed
+    speed01: 0,          // smoothed speed / capture-gate read the sweep rate and chevron march use
   };
 }
 
@@ -36,6 +49,9 @@ export function resetDockingCradle(cradle) {
   cradle.phase = 'none';
   cradle.pulseT = 0;
   cradle.release01 = 0;
+  cradle.hot01 = 0;
+  cradle.sweepT = 0;
+  cradle.speed01 = 0;
   return cradle;
 }
 
@@ -76,7 +92,26 @@ export function updateDockingCradle(cradle, dt, readout, proxy) {
     return cradle;
   }
   cradle.release01 = 0;
-  const target = engaged ? 1 : preview ? 0.38 : 0;
+  // inf-corridor-speed-read: flying the lane HOT (physically inside the corridor or capture
+  // lane while the speed/heading gates still refuse — the phase falls back to 'approach')
+  // must not read as a lost whisper. The pad holds clearly visible and shifts to its caution
+  // read until the gates pass. Outside the lane, approach stays the faint discoverable preview.
+  const inLane = !!(readout && (readout.inCorridor || readout.inCapture));
+  const hot = preview && inLane;
+  const hotStep = dt > 0 ? dt / DOCKING_CRADLE_HOT_FADE_S : 1;
+  cradle.hot01 = clamp(cradle.hot01 + clamp((hot ? 1 : 0) - cradle.hot01, -hotStep, hotStep), 0, 1);
+  // The bracket sweep's RATE is the ship's own closing speed: 1.0 of speed01 (the capture gate)
+  // doubles the acquisition rhythm, a settled berth calms it to a slow sweep. Smoothed so a
+  // stuttering throttle does not stutter the read.
+  const speed01 = clamp01(readout && Number.isFinite(readout.speed01) ? readout.speed01 : 0);
+  const speedStep = dt > 0 ? dt / DOCKING_CRADLE_SPEED_SMOOTH_S : 1;
+  cradle.speed01 += (speed01 - cradle.speed01) * Math.min(1, speedStep);
+  const sweepRate = engaged
+    ? (phase === 'berthed' ? DOCKING_CRADLE_SWEEP_CALM_RATE : DOCKING_CRADLE_SWEEP_BASE_RATE
+      + DOCKING_CRADLE_SWEEP_SPEED_GAIN * cradle.speed01)
+    : DOCKING_CRADLE_SWEEP_BASE_RATE;
+  cradle.sweepT += Math.max(0, dt) * sweepRate;
+  const target = engaged ? 1 : preview ? (hot ? 0.72 : 0.38) : 0;
   const step = dt > 0 ? dt / DOCKING_CRADLE_FADE_S : 1;
   cradle.visible01 += clamp(target - cradle.visible01, -step, step);
   cradle.phase = phase;
@@ -150,16 +185,26 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
   const ax = cradle.axisX, az = cradle.axisZ;
 
   const releasing = phase === 'release';
+  // The corridor is working: engaged phases plus the hot-lane hold (update eases hot01 toward 1
+  // whenever the pad previews a lane the sim is currently refusing).
+  const working = phase === 'corridor' || phase === 'capture' || phase === 'berthed'
+    || cradle.hot01 > 0.05;
   // Phase brightness: corridor is a soft guide, capture pulses with the lock, berthed holds solid,
   // release reads at nearly-berthed level so the reversed beat is unmistakable as it fades.
   let level = phase === 'capture' ? 0.62 : phase === 'berthed' ? 0.95 : releasing ? 0.85 : 0.42;
+  // A hot lane (in the corridor, gates refusing) holds the pad clearly visible — the pilot most
+  // needs the lane when the sim is refusing it, so the caution read never dims to the preview.
+  level = Math.max(level, 0.62 * cradle.hot01);
   let pulse = 1;
-  if (phase === 'capture' && !reducedMotion) {
-    pulse = 0.82 + 0.18 * Math.sin(cradle.pulseT * 7.2);
+  if ((phase === 'capture' || cradle.hot01 > 0.05) && !reducedMotion) {
+    // Hot cadence is the urgency read: the pad's pulse quickens as the lane stays refused.
+    pulse = 0.82 + 0.18 * Math.sin(cradle.pulseT * (7.2 + 5.5 * cradle.hot01));
   }
   const master = level * vis * gain * pulse;
   // Holo green — reads as station tech, deliberately not the cyan of the player's own tools.
-  const cr = 0.30, cg = 1.0, cb = 0.52;
+  // A hot lane shifts toward dock-caution amber (a partial shift: the pad still says "dock").
+  const hot = cradle.hot01 * DOCKING_CRADLE_HOT_TINT;
+  const cr = 0.30 + (0.98 - 0.30) * hot, cg = 1.0 + (0.66 - 1.0) * hot, cb = 0.52 + (0.26 - 0.52) * hot;
 
   let emitted = 0;
   // --- Pad ring: thin annulus just inside the lane edge. -------------------------------
@@ -172,8 +217,10 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
       bx + Math.cos(a1) * ringR, bz + Math.sin(a1) * ringR,
       ringW, y, cr * master, cg * master, cb * master);
   }
-  // --- Acquisition brackets: four short arcs at 45° that slowly sweep when not reduced. --
-  const sweep = reducedMotion ? Math.PI / 4 : cradle.pulseT * 0.5;
+  // --- Acquisition brackets: four short arcs at 45°. Their sweep RATE is the ship's own closing
+  // speed (sweepT is rate-accumulated in update) — flying the lane hot visibly hurries the
+  // acquisition; a settled berth slows it back down. Reduced motion holds the calm sweep. --
+  const sweep = reducedMotion ? Math.PI / 4 : cradle.sweepT;
   // Release: the brackets let go — they slide out past the pad edge as the beat fades.
   const brkR = R * (releasing ? 0.62 + (1 - vis) * 0.55 : 0.62), brkLen = 0.42; // arc len in radians
   for (let k = 0; k < BRACKET_COUNT; k++) {
@@ -184,14 +231,22 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
       Math.max(0.6, R * 0.06), y + 0.02, cr * master * 1.25, cg * master * 1.25, cb * master * 1.25);
   }
   // --- Chevrons: three arrows along the corridor axis. Inbound while docking; on release they
-  // flip apex-out and slide away along the axis — the pad itself is showing the way out. ----
+  // flip apex-out and slide away along the axis — the pad itself is showing the way out. While
+  // the lane works, a brightness march walks INBOUND along them (outermost first, toward the
+  // pad) at the speed-aware sweep rate: the faster you close, the faster the way in lights up.
+  // Reduced motion keeps the static inward fade, never the march. -------------------------
   const dir = releasing ? 1 : -1;
   const drift = releasing ? (1 - vis) * (R * 0.5 + 3) : 0;
+  const march = !reducedMotion && working
+    ? Math.sin(cradle.sweepT * DOCKING_CRADLE_CHEVRON_MARCH) : 0;
   for (let k = 0; k < CHEVRON_COUNT; k++) {
     const d = R + 4 + drift + k * (R * 0.42 + 3);
     const cx = bx + ax * d, cz = bz + az * d;
     const size = Math.max(1.4, R * 0.16) * (1 - k * 0.16);
-    const fade = master * (1 - k * 0.24);
+    // March phase: outermost chevron (k = CHEVRON_COUNT-1) lights first, the walk runs inward.
+    const marchGain = march !== 0
+      ? 0.18 + 0.22 * Math.sin(march + k * 1.9) : 0;
+    const fade = master * ((1 - k * 0.24) + marchGain);
     // Apex points INBOUND (-axis) while docking, OUTBOUND (+axis) on release.
     const tipX = cx + ax * size * 0.5 * dir, tipZ = cz + az * size * 0.5 * dir;
     const backX = cx - ax * size * 0.5 * dir, backZ = cz - az * size * 0.5 * dir;

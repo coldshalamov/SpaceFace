@@ -17,7 +17,10 @@ const SHEET = 1024;
 const V_BAND = [0.30, 0.70];
 
 // Matches SHIP_DECALS in src/core/shipAppearance.js (minus 'none', which draws nothing).
-export const STENCIL_STYLE_IDS = Object.freeze(['borrowed_time', 'concord', 'industrial', 'frontier']);
+export const STENCIL_STYLE_IDS = Object.freeze([
+  'borrowed_time', 'concord', 'industrial', 'frontier',
+  'probate', 'addendum', 'heavy_is_honest', 'dead_schedule', 'gate_law',
+]);
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -75,6 +78,23 @@ function chip(ctx, x, y, w, h, count, rng) {
       ctx.rect(cx - r * 1.8, cy, r * 3.6, 1.2);
     }
     ctx.fill();
+  }
+  paintOver(ctx);
+}
+
+/** Wear: a scrape dragged through a mark — the bite a docked hull takes from passing cargo. */
+function scratch(ctx, x, y, w, count, rng) {
+  cutThrough(ctx);
+  ctx.globalAlpha = 0.8;
+  for (let i = 0; i < count; i++) {
+    const sx = x + rng() * w;
+    const len = w * (0.06 + rng() * 0.16);
+    ctx.lineWidth = 1 + rng() * 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx, y + (rng() - 0.5) * 6);
+    ctx.quadraticCurveTo(sx + len * 0.5, y + (rng() - 0.5) * 10, sx + len, y + (rng() - 0.5) * 6);
+    ctx.stroke();
   }
   paintOver(ctx);
 }
@@ -220,6 +240,37 @@ function hazardStripes(ctx, u, v, w, h, stripeW, colorA, colorB, alpha = 0.92) {
     ctx.fill();
   }
   ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/** The yard scale: beam, pivot, two pans — what the crane weighs, what the Cull weighs. */
+function weighScale(ctx, u, v, r, color, alpha = 0.9) {
+  paintOver(ctx);
+  const x = px(u), y = px(v), R = px(r);
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = SHEET * 0.0038;
+  ctx.lineCap = 'square';
+  ctx.beginPath();
+  ctx.moveTo(x - R, y);
+  ctx.lineTo(x + R, y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y - R * 0.42);
+  ctx.lineTo(x + R * 0.17, y - R * 0.02);
+  ctx.lineTo(x - R * 0.17, y - R * 0.02);
+  ctx.closePath();
+  ctx.stroke();
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(x + s * R, y);
+    ctx.lineTo(x + s * R, y + R * 0.24);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + s * R - R * 0.19, y + R * 0.24);
+    ctx.lineTo(x + s * R + R * 0.19, y + R * 0.24);
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
 }
 
@@ -369,11 +420,214 @@ function drawFrontier(ctx, rng) {
   chip(ctx, px(0.44), px(0.40), px(0.15), px(0.10), 20, rng);
 }
 
+/** Meridian toll ledger: the double payment, stamped and filed, weighed to the gram. */
+function drawProbate(ctx, rng) {
+  const gold = '#c8a13c', bone = '#e8e2d2', slate = '#9a8f78';
+  // Hero: the Syndicate's whole theology, set like a heading on a form.
+  stencilText(ctx, 'EVERY MAN PAYS TWICE.', 0.13, 0.47, SHEET * 0.030, { color: bone, alpha: 0.92, spacing: 0.08 });
+  stencilText(ctx, 'FIRST IN FLESH. THEN IN COIN.', 0.135, 0.525, SHEET * 0.017, { color: gold, alpha: 0.85, spacing: 0.16, weight: '600' });
+  // Toll-paid stamp: double rule, a punch hole where the token went through, and the date line
+  // the auditor never fills in.
+  const bx = px(0.585), by = px(0.395), bw = px(0.20), bh = px(0.085);
+  paintOver(ctx);
+  ctx.strokeStyle = gold;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = SHEET * 0.004;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.lineWidth = SHEET * 0.0015;
+  ctx.strokeRect(bx + SHEET * 0.006, by + SHEET * 0.006, bw - SHEET * 0.012, bh - SHEET * 0.012);
+  ctx.globalAlpha = 1;
+  stencilText(ctx, 'TOLL PAID', 0.625, 0.448, SHEET * 0.024, { color: gold, alpha: 0.95, spacing: 0.06 });
+  cutThrough(ctx);
+  ctx.beginPath();
+  ctx.arc(bx + bw - SHEET * 0.018, by + bh * 0.5, SHEET * 0.0065, 0, Math.PI * 2);
+  ctx.fill();
+  paintOver(ctx);
+  noStepChevrons(ctx, 0.60, 0.585, 3, 0.022, gold, 0.8);
+  weighScale(ctx, 0.40, 0.588, 0.038, gold);
+  // The ledger line: entries of no fixed length, none of them yours.
+  paintOver(ctx);
+  ctx.fillStyle = slate;
+  ctx.globalAlpha = 0.6;
+  for (let i = 0; i < 7; i++) {
+    ctx.fillRect(px(0.13 + i * 0.052), px(0.622), px(0.02 + rng() * 0.024), SHEET * 0.0022);
+  }
+  ctx.globalAlpha = 1;
+  chip(ctx, px(0.13), px(0.42), px(0.22), px(0.18), 14, rng);
+  scratch(ctx, px(0.585), px(0.438), px(0.2), 4, rng);
+}
+
+/** Vael contract plate: the terms are voluntary, the addendum is twelve pages, this is page 9. */
+function drawAddendum(ctx, rng) {
+  const pale = '#d8dce2', red = '#a03028';
+  // The page number is the biggest mark on the deck. They told you which page. Nobody reads it.
+  stencilText(ctx, '9', 0.17, 0.645, SHEET * 0.185, { color: pale, alpha: 0.26, spacing: 0, weight: '700' });
+  // The contract box: double rule, the header the tags quote, and the fine print under it.
+  const bx = px(0.42), by = px(0.395), bw = px(0.30), bh = px(0.135);
+  paintOver(ctx);
+  ctx.strokeStyle = pale;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = SHEET * 0.0032;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.lineWidth = SHEET * 0.0012;
+  ctx.strokeRect(bx + SHEET * 0.005, by + SHEET * 0.005, bw - SHEET * 0.01, bh - SHEET * 0.01);
+  ctx.globalAlpha = 1;
+  stencilText(ctx, 'VOLUNTARY', 0.47, 0.455, SHEET * 0.030, { color: pale, alpha: 0.95, spacing: 0.24, weight: '700' });
+  stencilText(ctx, 'STANDARD TERMS', 0.472, 0.492, SHEET * 0.016, { color: pale, alpha: 0.8, spacing: 0.3, weight: '600' });
+  // Fine print: page after page, every line a different length, all of it binding.
+  paintOver(ctx);
+  ctx.fillStyle = pale;
+  ctx.globalAlpha = 0.5;
+  for (let r = 0; r < 6; r++) {
+    ctx.fillRect(px(0.428), px(0.51 + r * 0.0125), px(0.14 + rng() * 0.13), SHEET * 0.002);
+  }
+  ctx.globalAlpha = 1;
+  // The second graffiti, smaller, below the first (canon: the Vael row).
+  stencilText(ctx, 'THE ADDENDUM IS ON PAGE 9.', 0.42, 0.638, SHEET * 0.017, { color: red, alpha: 0.92, spacing: 0.12, weight: '700' });
+  stencilText(ctx, 'READ PAGE 9.', 0.42, 0.668, SHEET * 0.017, { color: red, alpha: 0.92, spacing: 0.12, weight: '700' });
+  handStroke(ctx, [[0.42, 0.678], [0.525, 0.68]], SHEET * 0.003, red, 0.8, rng, 2);
+  // Someone scraped at the fine print once. The filing remains.
+  scratch(ctx, px(0.43), px(0.53), px(0.26), 5, rng);
+  chip(ctx, px(0.44), px(0.40), px(0.24), px(0.12), 8, rng);
+}
+
+/** Pitborn yard mark: the chant over the scale, and a tally nobody is allowed to paint over. */
+function drawHeavyIsHonest(ctx, rng) {
+  const orange = '#e06428', bone = '#e8e2d2';
+  // The chant, sprayed with a halo and left to run — the yard boss's whole philosophy.
+  const chant = stencilText(ctx, 'HEAVY IS HONEST.', 0.13, 0.615, SHEET * 0.05, {
+    color: orange, alpha: 0.95, rotation: -0.045, halo: 0.4, spacing: 0.02, weight: '700',
+  });
+  drip(ctx, chant.x + chant.w * 0.3, px(0.615) + SHEET * 0.01, SHEET * 0.04, SHEET * 0.008, orange, 0.8, -1, 0.1);
+  drip(ctx, chant.x + chant.w * 0.72, px(0.615) + SHEET * 0.01, SHEET * 0.028, SHEET * 0.007, orange, 0.66, -1, 0.06);
+  // The scale: what the crane weighs, what the Cull weighs, what everything weighs.
+  weighScale(ctx, 0.60, 0.445, 0.052, bone);
+  // The tally and the superstition as small print — the one rule the yards enforce themselves.
+  killTally(ctx, 0.70, 0.575, 17, bone, rng);
+  stencilText(ctx, 'NEVER PAINT OVER A TALLY.', 0.635, 0.615, SHEET * 0.015, { color: bone, alpha: 0.75, spacing: 0.14, weight: '600' });
+  hazardStripes(ctx, 0.14, 0.41, 0.055, 0.17, 0.011, '#1a1c20', orange, 0.94);
+  chip(ctx, px(0.13), px(0.44), px(0.3), px(0.2), 26, rng);
+  scratch(ctx, px(0.14), px(0.56), px(0.3), 5, rng);
+}
+
+/** Fulfillment routing plate: crisp corporate order over a company that only exists in filings. */
+function drawDeadSchedule(ctx, rng) {
+  const white = '#e6e9ee', cyan = '#3ec8d8';
+  // The header box: the promise the hull still keeps, letter-spaced like a brand manual.
+  const bx = px(0.30), by = px(0.40), bw = px(0.30), bh = px(0.075);
+  paintOver(ctx);
+  ctx.strokeStyle = white;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = SHEET * 0.0028;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.lineWidth = SHEET * 0.001;
+  ctx.strokeRect(bx + SHEET * 0.0045, by + SHEET * 0.0045, bw - SHEET * 0.009, bh - SHEET * 0.009);
+  ctx.globalAlpha = 1;
+  stencilText(ctx, 'ON SCHEDULE', 0.315, 0.458, SHEET * 0.03, { color: white, alpha: 0.95, spacing: 0.24, weight: '700' });
+  // Route columns: five destinations, five dots. Two routes still run. The rest are struck.
+  paintOver(ctx);
+  ctx.fillStyle = white;
+  ctx.strokeStyle = white;
+  for (let r = 0; r < 5; r++) {
+    const ry = px(0.51 + r * 0.024);
+    ctx.globalAlpha = r < 2 ? 0.85 : 0.5;
+    ctx.fillRect(px(0.315), ry, px(0.21), SHEET * 0.0022);
+    ctx.beginPath();
+    ctx.arc(px(0.555), ry + SHEET * 0.001, SHEET * 0.0035, 0, Math.PI * 2);
+    ctx.fill();
+    if (r >= 2) {
+      cutThrough(ctx);
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(px(0.30), ry - SHEET * 0.0022, px(0.27), SHEET * 0.0045);
+      paintOver(ctx);
+    }
+  }
+  // The last route's dot gets the X — cancelled, not delayed.
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = SHEET * 0.003;
+  const xx = px(0.585), xy = px(0.608), xr = SHEET * 0.007;
+  ctx.beginPath();
+  ctx.moveTo(xx - xr, xy - xr); ctx.lineTo(xx + xr, xy + xr);
+  ctx.moveTo(xx + xr, xy - xr); ctx.lineTo(xx - xr, xy + xr);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Set by, then filed: the company name takes the strike, the paperwork stays.
+  stencilText(ctx, 'SCHEDULE SET BY FULFILLMENT', 0.315, 0.662, SHEET * 0.014, { color: white, alpha: 0.75, spacing: 0.18, weight: '600' });
+  cutThrough(ctx);
+  ctx.fillRect(px(0.31), px(0.6565), px(0.185), SHEET * 0.0035);
+  paintOver(ctx);
+  stencilText(ctx, '(FILED)', 0.515, 0.662, SHEET * 0.014, { color: cyan, alpha: 0.85, spacing: 0.18, weight: '600' });
+  // The serial barcode — the machine-readable half of the promise.
+  paintOver(ctx);
+  ctx.fillStyle = white;
+  ctx.globalAlpha = 0.85;
+  let bar = 0.62;
+  while (bar < 0.78) {
+    const w = 0.0018 + rng() * 0.0042;
+    ctx.fillRect(px(bar), px(0.535), px(w), px(0.05));
+    bar += w + 0.0025 + rng() * 0.003;
+  }
+  ctx.globalAlpha = 1;
+  chip(ctx, px(0.30), px(0.40), px(0.28), px(0.06), 3, rng);
+}
+
+/** Verge gate law: three directives in measured frames, a calibration band, mass correct. */
+function drawGateLaw(ctx, rng) {
+  const pale = '#e2ecea', teal = '#8fd8c8';
+  const directive = (v, word) => {
+    const x = px(0.52), y = px(v), w = px(0.26), h = px(0.052);
+    paintOver(ctx);
+    ctx.strokeStyle = pale;
+    ctx.globalAlpha = 0.95;
+    ctx.lineWidth = SHEET * 0.0026;
+    ctx.strokeRect(x, y, w, h);
+    ctx.lineWidth = SHEET * 0.004;
+    for (const [tx, ty] of [[x, y], [x + w, y], [x, y + h], [x + w, y + h]]) {
+      ctx.beginPath();
+      ctx.moveTo(tx - SHEET * 0.008, ty);
+      ctx.lineTo(tx + SHEET * 0.008, ty);
+      ctx.moveTo(tx, ty - SHEET * 0.008);
+      ctx.lineTo(tx, ty + SHEET * 0.008);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    stencilText(ctx, word, 0.535, v + 0.036, SHEET * 0.026, { color: pale, alpha: 0.95, spacing: 0.3, weight: '600' });
+  };
+  directive(0.395, 'PRESENT.');
+  directive(0.472, 'WITNESS.');
+  directive(0.549, 'APPEAL.');
+  // The measure band: a ruler that never blinks, ticks to true mass.
+  paintOver(ctx);
+  ctx.strokeStyle = teal;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = SHEET * 0.0028;
+  ctx.beginPath();
+  ctx.moveTo(px(0.15), px(0.615));
+  ctx.lineTo(px(0.44), px(0.615));
+  ctx.stroke();
+  for (let i = 0; i <= 14; i++) {
+    const tx = px(0.15 + i * (0.29 / 14));
+    const tick = i % 7 === 0 ? 0.009 : 0.005;
+    ctx.beginPath();
+    ctx.moveTo(tx, px(0.615) - px(tick));
+    ctx.lineTo(tx, px(0.615) + px(tick));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  stencilText(ctx, 'MASS RECORDED. MASS CORRECT.', 0.15, 0.655, SHEET * 0.015, { color: teal, alpha: 0.85, spacing: 0.18, weight: '600' });
+  // No chips. The tags never lie, and they do not fade.
+}
+
 const STYLE_DRAWERS = {
   borrowed_time: { draw: drawBorrowedTime, seed: 0x5eed101, strength: 0.95 },
   concord: { draw: drawConcord, seed: 0xc0dc071, strength: 0.85 },
   industrial: { draw: drawIndustrial, seed: 0x1ad5711, strength: 0.9 },
   frontier: { draw: drawFrontier, seed: 0xf207e55, strength: 0.8 },
+  probate: { draw: drawProbate, seed: 0x7011347, strength: 0.85 },
+  addendum: { draw: drawAddendum, seed: 0xadd9e09, strength: 0.8 },
+  heavy_is_honest: { draw: drawHeavyIsHonest, seed: 0x8e2a71d, strength: 0.92 },
+  dead_schedule: { draw: drawDeadSchedule, seed: 0xdead5c0, strength: 0.85 },
+  gate_law: { draw: drawGateLaw, seed: 0x9e4a2c1, strength: 0.85 },
 };
 
 const sheets = new Map();

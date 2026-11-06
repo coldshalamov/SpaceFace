@@ -3,7 +3,7 @@
 //
 // Approaching a station reads as concentric rings: outer TRAFFIC → PATROL lane → DOCKING approach
 // → hard NO-FIRE core. The radii are DERIVED geometry — deterministic functions of the station's
-// existing dockRadius · fixed multipliers · a size factor. No RNG, no state, no DOM, no imports.
+// existing dockRadius · fixed multipliers · a size factor. Geometry uses no RNG, state or DOM.
 //
 // The no-fire ring is a READABILITY + COMMS cue, NOT a hostility or spawn system:
 //   * hostility stays with scanner.isHostileToPlayer (AGENTS §6) — nothing here reads factionId
@@ -23,6 +23,8 @@
 
 // Ring multipliers over the station's dock radius. Strictly increasing → radii are monotonic
 // (noFire < docking < patrol < traffic) for ANY positive base radius.
+import { isRunSealed } from '../core/runSeal.js';
+
 export const BUBBLE_MULTIPLIERS = {
   noFire:  1.5,
   docking: 2.4,
@@ -225,7 +227,7 @@ export const noFireAdvisory = {
 
   _weaponDrawn(payload) {
     const state = this._state;
-    if (!state || !this._watch || !payload) return;
+    if (!state || !this._watch || !payload || isRunSealed(state)) return;
     if (payload.ownerId !== state.playerId) return;
     const player = this._player(state);
     if (!player || !player.pos) return;
@@ -234,7 +236,7 @@ export const noFireAdvisory = {
 
   update(dt, state) {
     const s = state || this._state;
-    if (!s || !this._watch) return;
+    if (!s || !this._watch || isRunSealed(s)) return;
     const player = this._player(s);
     if (!player || !player.pos) return;
     this._watch.update(player.pos, this._stations(s)); // exit re-arms the bark

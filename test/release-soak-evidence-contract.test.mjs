@@ -127,7 +127,15 @@ function fakeResidencyPage({ pendingRequests = 0, settleOnPoll = false, waitErro
         render: { renderer: { info: { programs: [] } } },
       },
       registry: {
-        get: (name) => name === 'render' ? { _assetResidency: residency } : null,
+      get: (name) => name === 'render' ? {
+        _assetResidency: residency,
+        getFlightRootTemplateCacheDiagnostics: () => ({
+          size: 1,
+          geometryBytes: 123,
+          geometryBudgetBytes: 32 * 1024 * 1024,
+          keys: ['template-fixture'],
+        }),
+      } : null,
       },
     },
   };
@@ -202,10 +210,17 @@ test('baseline readiness and snapshot share the existing 30-second bound and ord
   const { fakeWindow, page } = fakeResidencyPage({ pendingRequests: 1, settleOnPoll: true });
   const baseline = await withFakeWindow(fakeWindow, () => readReleaseSoakBaselineMemory(page));
   assert.equal(baseline.phaseTag, 'docked-market-start');
+  assert.deepEqual(baseline.flightRootTemplateCache, {
+    size: 1,
+    geometryBytes: 123,
+    geometryBudgetBytes: 32 * 1024 * 1024,
+    keys: ['template-fixture'],
+  });
   assert.equal(page.calls[0].kind, 'wait');
   assert.equal(page.calls[0].timeout, 30_000);
   assert.equal(page.calls.findIndex((call) => call.kind === 'context') > 0, true);
-  assert.equal(page.calls.at(-1).argument.phaseTag, 'docked-market-start');
+  assert.equal(page.calls.find((call) => call.kind === 'evaluate'
+    && call.argument?.phaseTag === 'docked-market-start')?.argument.phaseTag, 'docked-market-start');
 });
 
 test('baseline bound covers an unresolved readiness wait before snapshot work begins', async () => {
@@ -587,6 +602,25 @@ test('primary evidence accepts unrelated Git drift only when scoped runtime inpu
   const changedResult = validateReleaseSoakEvidence(changed);
   assert.equal(changedResult.pass, false);
   assert(changedResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('primary evidence rejects frozen or unverified context recovery', () => {
+  const evidence = makeValidEvidence({ runtime: 'electron', taskId: 'recovery-evidence',
+    artifact: { kind: 'screenshot', path: 'route.png', bytes: 1, sha256: 'a'.repeat(64) } });
+  assert.equal(validateReleaseSoakEvidence(evidence).pass, true);
+  for (const mutate of [
+    (c) => { c.pixelAdvancement.changedPixels = 0; },
+    (c) => { c.pixelAdvancement.secondNonblank = false; },
+    (c) => { c.pixelAdvancement.secondWorldSubmittedFrames = c.pixelAdvancement.firstWorldSubmittedFrames; c.pixelAdvancement.worldFrameDelta = 0; },
+    (c) => { c.tailAdvancement.end.worldSubmittedFrames = c.tailAdvancement.start.worldSubmittedFrames; c.tailAdvancement.worldFrameDelta = 0; },
+    (c) => { delete c.pixelAdvancement; },
+  ]) {
+    const invalid = structuredClone(evidence);
+    mutate(invalid.contextLoss);
+    const result = validateReleaseSoakEvidence(invalid);
+    assert.equal(result.pass, false);
+    assert.ok(result.failures.some((failure) => /context (loss|recovery)/i.test(failure)), result.failures.join('; '));
+  }
 });
 
 test('full-runtime overlay coverage rejects missing or unknown path policy', async (t) => {
@@ -1203,6 +1237,12 @@ function makeValidEvidence({ runtime, taskId, artifact }) {
       meshResourceReady: true,
       pixelProof: true,
       frameAdvanced: true,
+      worldSubmissionAdvanced: true,
+      pixelAdvancement: { pass: true, width: 1440, height: 900, sampleWidth: 96, sampleHeight: 54,
+        firstWorldSubmittedFrames: 100, secondWorldSubmittedFrames: 103, worldFrameDelta: 3,
+        firstNonblank: true, secondNonblank: true, changedPixels: 12 },
+      tailAdvancement: { pass: true, start: { tick: 200, worldSubmittedFrames: 103 },
+        end: { tick: 7400, worldSubmittedFrames: 7303 }, tickDelta: 7200, worldFrameDelta: 7200 },
       recovered: true,
       before: false,
       after: false,

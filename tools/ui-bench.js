@@ -11,6 +11,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { loadModelTruthCensus } from '../src/data/modelTruth.js';
 import { ensureLocalizationReady } from '../src/localization/gameLocalization.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
+import { isMapScreenId, openGalaxyMap, focusFromLegacyScreenId } from '../src/ui/mapAuthority.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { missions } from '../src/systems/missions.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
@@ -846,7 +847,14 @@ const bus = {
     return () => listeners.get(key)?.delete(fn);
   },
   emit(key, payload = {}) {
-    if (key === 'ui:pushScreen' && payload && payload.id) { void goto(payload.id); return; }
+    if (key === 'ui:pushScreen' && payload && payload.id) {
+      if (isMapScreenId(payload.id)) {
+        openGalaxyMap({ state, bus, screenManager: manager }, {
+          ...payload, screenId: payload.id, source: payload.source || 'ui:pushScreen',
+        });
+      } else void goto(payload.id);
+      return;
+    }
     if (key === 'ui:popScreen') { void back(); return; }
     if (key === 'ui:replaceScreen' && payload && payload.id) { stack.length = 0; void goto(payload.id); return; }
     if (key === 'ui:closeScreen' && payload && payload.id && manager.top() === payload.id) {
@@ -888,6 +896,7 @@ const manager = {
   hasScreen() { return stack.length > 0; },
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
+  getActiveScreenDef() { return currentScreen; },
 };
 /** The defeat receipt the fixture's death is told from. The sentences below come from the same
  *  survivalResults builders a live run uses, so the plate cannot drift from what a player reads. */
@@ -972,6 +981,7 @@ let current = null;
 /** The shot being mounted (the chart reads its planner through the registry). */
 let currentShot = null;
 let currentScreen = null;
+let currentAlias = null;
 /** The save system the load screen reads: null (no saves) unless the shot files some. */
 let benchSaves = null;
 
@@ -1032,6 +1042,20 @@ async function finishShot(shot) {
 }
 
 async function goto(rawId) {
+  const requestedShot = resolveShot(rawId);
+  if (requestedShot?.mapAlias) {
+    // Mount the real chart fixture, then send the same legacy event uiRoot handles.
+    // The canonical owner supplies the focus intent; never mount the obsolete panel.
+    await goto('galaxyMap');
+    window.__BENCH_READY = false;
+    bus.emit('ui:pushScreen', { id: requestedShot.mapAlias });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    currentAlias = { legacyId: requestedShot.mapAlias, destination: current,
+      focus: focusFromLegacyScreenId(requestedShot.mapAlias) };
+    window.__BENCH_READY = true;
+    return;
+  }
+  currentAlias = null;
   window.__BENCH_READY = false;
   // The drill module owns a live session and its own frame loop. Retire that instance before
   // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
@@ -2141,6 +2165,8 @@ window.BENCH = {
     return {
       broken: broken ? broken.innerText.replace(/\s+/g, ' ').trim().slice(0, 240) : '',
       overlay: window.__BENCH_OVERLAY || '',
+      alias: currentAlias && { ...currentAlias,
+        selectedFocus: screensEl.querySelector('.gm-scale-btn[aria-pressed="true"]')?.dataset.focus || null },
       ...layoutAudit(),
     };
   },

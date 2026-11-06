@@ -264,6 +264,14 @@ export function createWeaponImpactVfxMethods({
     if (!hitShield && KINETIC_SPALL_VARIANTS.has(recipe && recipe.variant)) {
       this._emitArmorSpall(pos, p, scale);
     }
+    // Shield hits ripple and pass; only bare hull keeps the wound — and the wound names the weapon.
+    if (!hitShield && tgt && tgt.pos) {
+      const approach0 = p && (p.approach || p.dir) || null;
+      let wax = approach0 && Number(approach0.x) || 0;
+      let waz = approach0 && Number(approach0.z) || 0;
+      const wl = Math.hypot(wax, waz) || 1;
+      this._noteWeaponHitScar(pos, tgt, wax / wl, waz / wl, profile);
+    }
     let presenterHit = null;
     if (this._weaponPresenter) {
       presenterHit = this._weaponPresenter.handleHit(p, hitShield);

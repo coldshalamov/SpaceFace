@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.telemetryEnvelope.v1",
-  "id": "47a-phase0-live-envelope-v3",
+  "id": "47a-phase0-live-envelope-v3-measured-hull-v1",
   "scenario": "47-A: The Mass Discrepancy",
   "seed": 47,
   "sourceInputTape": "test/47a.inputs.json",
@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777",
+    "authoritativeHash": "e979e493265839381484c1b3f0c796237861e511e64ac8c1cb6e5f4107ce30f4",
     "authoritativeHashByReloadAt": {
-      "60": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777",
-      "600": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777"
+      "60": "e979e493265839381484c1b3f0c796237861e511e64ac8c1cb6e5f4107ce30f4",
+      "600": "e979e493265839381484c1b3f0c796237861e511e64ac8c1cb6e5f4107ce30f4"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -89,7 +89,7 @@
     "V3's authored handling differs from the legacy controller, so the hash differs from the legacy envelope in test/47a.telemetry.expected.json.",
     "sourceScenarioContract ties replay evidence to the SG-05 scenario graph consumed by sf-sim.",
     "phase0ObservedTraceCounts asserts events emitted by this rapier-dynamic 720-tick V3 run, captured deterministically across repeat + save/reload.",
-    "The current V3 Massline path attaches at tick 4 and breaks at tick 190 before the first projectile hit; the envelope records both tether events.",
+    "At the time this historical V3 record was written, the Massline path attached at tick 4 and broke at tick 190 before the first projectile hit; the envelope recorded both tether events.",
     "The Massline attach expectation proves the first SG-03 combatAction command reaches SG-02 dynamic tether physics within 60 seconds under V3.",
     "2026-07-14 deliberate re-record: starter pulse-laser fire-rate update and corrected V3 aim tape yield 17 fire / 8 hit / 8 damage; tutorial-owned opening removes duplicate graffiti/comms.",
     "2026-07-27 deliberate re-record over 850c80f3..7f7d030b (333 commits). The prior authoritativeHash was a6c96aad61fc4c185c070e0d9349e5d3e7a860cf47d86c0ffea190a20d9e0ff1.",
@@ -100,7 +100,7 @@
     "And: the re-authored 47-A mass-variance contract copy and params, the starting cmdty_unclassified_composite sample, and one enemy's shield 106.747 -> 100.159.",
     "That shield delta traces to commit f277c5e7 (Build Sprint 1, 2026-07-16), src/data/combatDefs.js DAMAGE_MODEL.subsystemShare 0.75 -> 0.35, an authored balance change.",
     "For the 2026-07-27 record, ZERO fields under entity pos / vel / rot / angVel / prevPos changed after 720 ticks. Its V3 propulsion motion was bit-identical to the 2026-07-14 record.",
-    "That zero-motion statement was specific to the 2026-07-27 record. A future motion delta must stop the repin for causal investigation and may proceed only when the gameplay change is deliberate and reviewed.",
+    "That zero-motion statement was specific to the 2026-07-27 comparison. A later motion delta requires causal review; it is not automatically a defect when an intentional physics contract changes.",
     "Warning: check:sim:v3:compare stayed green across all 333 commits of this drift. scripts/sf-sim.mjs:716 tolerates expectedHash diffs whenever the two runs agree. Only check:sim:v3 gates this file.",
     "Before re-recording, run `node scripts/sim-golden-diff.mjs --flight-system v3`. It prints IDENTICAL / CONTENT_ONLY / MOTION_CHANGED. MOTION_CHANGED means stop and investigate; accept only a deliberate, causally reviewed gameplay change.",
     "Known open at the time of this record: an in-flight lane adds `state.player.gunTargetId` (src/systems/weapons.js:182-188), which moves this hash by exactly one field with zero motion change. Whoever lands that work re-records with the procedure above.",
@@ -272,6 +272,12 @@
     "Paired v3 final snapshots differ in 30 leaves: meta.version 18->21, giverId/clientId nulls, 27 pulse dmg/packet leaves (fewer bolts in flight at reload-60), warden shield mid-regen. ZERO pos/vel/rot diffs; reload-60 and reload-600 hash identically.",
     "The prior authoritativeHash (reload60 and reload600) was b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2.",
     "2026-10-26 deliberate update: save v21->22 and original-life attackSource {id:1,life:1,team:0} on 7 surviving projectiles. Every other final canonical field, metric and event count matches clean master 0d1a8f792bea.",
-    "Seed47/tick720 canonicalization at 60 and 600 (identical snapshots). Normalizing only those metadata fields reproduces the exact prior hash. Ordinary repeat/reload checks remain required; bounds, repeat minimum, input tape and event families are unchanged."
+    "Seed47/tick720 canonicalization at 60 and 600 (identical snapshots). Normalizing only those metadata fields reproduces the exact prior hash. Ordinary repeat/reload checks remain required; bounds, repeat minimum, input tape and event families are unchanged.",
+    "2026-11-02 deliberate measured-hull migration: commit 48c2d6b09bb9 changes native yaw inertia to mass times the authored planar hull polar moment.",
+    "This includes the length-squared scale omitted by the former handling-only heuristic and intentionally changes Rapier contact response; the delta is not metadata-only.",
+    "The prior authoritativeHash was 80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777 for reload@60 and reload@600. With measured inertia both reload points produce e979e493265839381484c1b3f0c796237861e511e64ac8c1cb6e5f4107ce30f4.",
+    "The prior V3 hash was 80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777 at both reload points; restoring the old formula reproduces it. Measured hash: e979e493265839381484c1b3f0c796237861e511e64ac8c1cb6e5f4107ce30f4.",
+    "Measured V3 keeps 10 hits, 10 damage, 1 tether break, and 14 cues. Ten entity poses differ; player position changes (2919.108643,352.274017)->(2917.172852,358.997406), yaw 0.110759->0.113411. Tether break: tick 129.",
+    "Seed, input tape, 720 ticks, event families, acceptance bounds, five-run minimum, and reload@60/600 hash gates remain enforced. This envelope ID names the measured-hull contract."
   ]
 }

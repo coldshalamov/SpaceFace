@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "82fa73c71ae9cbe239259a64fd57d11caf5508668d1ba974566ca532668a968a",
+  "contentHash": "44d96a944abb764be4770539a29323d4b623d9dac4a598fc0859fdb11bd2a616",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4522,8 +4522,8 @@
       "uri": "place_phoebe_shard_sphere.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
@@ -6430,7 +6430,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_phoebe_shard_sphere.glb"
   },
-  "runtimeHash": "80cc456717a9d991096c280f3a41347e79c84a90dbf3ae209d768726153b3a45",
+  "runtimeHash": "86c749f4693c3aceb4f05263d7cfca59d65849e776323f06dfb115d802272d72",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

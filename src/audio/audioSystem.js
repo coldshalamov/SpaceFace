@@ -38,6 +38,7 @@ import {
   BOMB_STATUS_LOOP_PREFIX,
 } from './bombAudio.js';
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
+import { bindCommissionCues } from './commissionCues.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
@@ -129,6 +130,8 @@ import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPo
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
+import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
 import {
   createSampleRuntime,
@@ -171,6 +174,17 @@ const APPROACH_HUM_FACTION_RATE = Object.freeze({
   faction_reach: 0.94,
   faction_choir: 1.06,
 });
+// Pocket beat wake (WF-13): a staged causal-chain beat is heard from its actor out to this
+// radius — inside the tabletop distance model's own far cull, so position carries the rest.
+// One wake per POCKET_BEAT_MIN_GAP_S keeps two same-tick starts (the chain cap allows two live
+// links) from stacking, and the rate varies inside authored bounds so a repeated watch never
+// loops the same chirp. The stream is derived from stable identities, never the shared state
+// rng — a cosmetic voice must not move the replay hash (stationBroadcast's law).
+const POCKET_BEAT_HEARING_WU = 900;
+const POCKET_BEAT_MIN_GAP_S = 6;
+const POCKET_BEAT_GAIN = 0.45;
+const POCKET_BEAT_RATE_LO = 0.92;
+const POCKET_BEAT_RATE_HI = 1.08;
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -942,6 +956,11 @@ export function arbitrateCommsLine(input = {}) {
 export function incomeVoices(event, payload) {
   if (event === 'credits:changed') {
     if (!payload || !(Number(payload.delta) > 0)) return [];
+    // The commission owners forward these accepted receipts through audio:cue
+    // so worker and main use the same one cash voice, not two on main.
+    const reason = String(payload.reason || '');
+    if (reason.startsWith('counterweight:first-completion:')
+      || (reason.startsWith('cinderglass:cg:') && reason.endsWith(':settlement'))) return [];
     if (String(payload.reason || '').startsWith('trade')) return [];
     return ['sfx_cash_register'];
   }
@@ -1694,13 +1713,47 @@ export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
 });
 
 // INST-29. Berth work uses the dock voices already authored for that place.
+// INST-29. Berth work uses the dock voices already authored for that place. The family covers
+// the whole lifecycle: the yard takes the paid order (queued — the same clunk stamped deeper and
+// quieter than the welders arriving), work starts, a paid abort releases, and the finished hull
+// or tank is handed back.
 export const SERVICE_BERTH_CUES = Object.freeze({
+  queued: 'sfx_dock_clunk',
   started: 'sfx_dock_clunk',
   aborted: 'sfx_undock_release',
   // The work finished: the dock's own confirm chime, once, when the yard hands the hull or tank
   // back. Berth work only — see serviceCompletedCue for which receipts count.
   completed: 'sfx_ui_confirm',
 });
+// One recipe, registers — never a second recipe for one event (the plunge-voice law): 'queued'
+// is the stamp that takes the order; 'started' is the yard floor answering it.
+export const SERVICE_BERTH_REGISTERS = Object.freeze({
+  queued: Object.freeze({ gain: 0.26, rate: 0.82 }),
+  started: Object.freeze({ gain: 0.4, rate: 1 }),
+  aborted: Object.freeze({ gain: 0.35, rate: 1 }),
+});
+
+// The self-serve decant is the pilot's own pump: fuel moving cell by cell is a pressure
+// release, not a dock clunk — the same hiss idiom the thrusters use, held lower and slower.
+// A receipt that moved no cells stays silent (a pour that never happened must not sound).
+export const SERVICE_DECANT_CUE = Object.freeze({ id: 'sfx_rcs_hiss', gain: 0.3 });
+
+/** Pure. The decant pour for one `service:decanted` receipt, or null (silence). More cells
+ *  read as a longer, lower release; the register is the pour, not a second recipe. */
+export function serviceDecantCue(payload) {
+  const cells = Number(payload && payload.cells);
+  if (!Number.isFinite(cells) || cells <= 0) return null;
+  const rate = clamp(1.05 - cells * 0.04, 0.85, 1.0);
+  return Object.freeze({ id: SERVICE_DECANT_CUE.id, gain: SERVICE_DECANT_CUE.gain, rate });
+}
+
+/** Pure. The caption for one berth lifecycle receipt, or null. These moments have no toast of
+ *  their own — the caption names the sound the yard just made. */
+export function serviceMomentCaption(event) {
+  if (event === 'service:queued') return 'The yard takes your job.';
+  if (event === 'service:decanted') return 'Fuel cells decant into the tank.';
+  return null;
+}
 
 // service:completed is also the receipt for loans, notes, rights and policies. Those are
 // bookkeeping with their own success toast (a click); only physical berth work earns the chime.
@@ -1811,6 +1864,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // their physical counterparts; these cue names are not standalone recipe ids.
   sfx_station_dock: 'sfx_dock_clunk',
   sfx_capital_predetonation: CAPITAL_PREDET_RECIPE,
+  // A refused self-serve decant (sealed cells, or tank room a paid pump already owns) is a
+  // capacity refusal — it rides the capacity-refusal recipe, never a toast tone. The warn
+  // toast keeps the words with audio:false so the two never stack.
+  'service.decantRefused': MINE_CAP_REFUSAL_RECIPE,
   // Station hub / mission-log navigation cues (must not collapse to generic click).
   ui_accept: 'sfx_ui_confirm', ui_undock: 'sfx_undock_release',
   ui_charge_start: 'sfx_jump_charge', ui_charge_abort: 'sfx_ui_back',
@@ -2574,6 +2631,7 @@ export const audio = {
   name: 'audio',
 
   init(ctx) {
+    this.rt?._commissionCueDispose?.();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -2738,6 +2796,8 @@ export const audio = {
     this.rt = rt;
 
     const bus = this.bus;
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = bindCommissionCues(this, bus);
     bus.on('scan:shipRevealed', (p) => this._noteAnomalyCandidate(p));
     bus.on('scan:wreckRevealed', (p) => this._noteAnomalyCandidate(p));
 
@@ -2984,9 +3044,14 @@ export const audio = {
     // INST-27: a bastion's raid warning uses the wanted-alert voice quietly.
     // One play per event. It does not duck the bed — urgency without a menu beep.
     bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
+    bus.on('service:queued', () => {
+      this._onServiceBerthCue('queued');
+      this._emitNamedCaption(serviceMomentCaption('service:queued'));
+    });
     bus.on('service:started', () => this._onServiceBerthCue('started'));
     bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
     bus.on('service:completed', (p) => this._onServiceCompleted(p));
+    bus.on('service:decanted', (p) => this._onServiceDecanted(p));
     for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
       bus.on(eventName, () => this._onUniqueLootCue(eventName));
     }
@@ -3238,6 +3303,10 @@ export const audio = {
       const id = combatVerbRecipe('tether:cut');
       if (id) this.play(id, { gain: 0.6 });
     });
+    // WF-13 pocket beat: the living-world chain receipts are the one staged "someone's day"
+    // emitter that stayed silent. A beat STARTING within earshot gets one wake voice, positioned
+    // on its primary hull. Phase ticks and cycle bookkeeping stay silent — one wake per beat.
+    bus.on(CERES_CAUSAL_CHAIN_EVENT, (p) => this._onPocketChainBeat(p));
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The arbiter is the floor authority: an arbiter-bound bark (payload.voiceId) holds its
     // resolved voice until the line actually surfaces, so a queued bark never plays early and a
@@ -3411,6 +3480,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = null;
     this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
@@ -4146,6 +4217,7 @@ export const audio = {
     silence(rt.brakeGain);
     silence(rt.tetherHum);
     silence(rt.tetherOverloadGain);
+    silence(rt._tetherSpoolGain);
     if (rt._breachBed) {
       silence(rt._breachBed.noiseGain);
       silence(rt._breachBed.subGain);
@@ -6326,7 +6398,11 @@ export const audio = {
       panner.connect(targetBus);
       dest = panner;
     }
-    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
+    // Mining tracks its target throughout the hold. Its recipe already receives the authored
+    // level here; the outer voice gain must carry distance only, or position updates multiply
+    // that level a second time and make the cutter almost inaudible.
+    const miningBeam = recipeId === 'sfx_mining_beam';
+    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * (miningBeam ? 1 : att));
     // PQ-158.00 hybrid loop: resident sample body + live synth layer, released together.
     const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
     const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
@@ -6339,7 +6415,8 @@ export const audio = {
       id: rt._nextVoiceId++,
     }, rt._caches);
     v._panner = panner;
-    v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
+    v._baseGain = miningBeam ? 1 : this._ampFor(recipe) * (gain == null ? 1 : gain);
+    if (miningBeam) v.gain.gain.value = att;
     v.busName = busName;
     v.recipeId = recipeId;
     v.loop = true;
@@ -6531,6 +6608,53 @@ export const audio = {
     this.play('sfx_wanted_alert', { gain: CLAIM_RAID_WARNING_GAIN });
   },
 
+  // WF-13 pocket beat: the living world's staged beats were the one family of world moments
+  // with no voice — the surveyor could lay a probe line beside you in total silence. A beat
+  // STARTING within earshot gets one low work-bell wake positioned on its primary hull; phase
+  // ticks and cycle bookkeeping stay silent. Reads as "the pocket's work just woke over there",
+  // never as an alarm and never as chatter.
+  _onPocketChainBeat(payload) {
+    if (!payload || payload.kind !== 'event_start') return;
+    const slotIds = payload.actorSlotIds;
+    if (!Array.isArray(slotIds) || !slotIds.length) return;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return;
+    const player = state.entities && state.playerId != null && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return;
+    let actor = null;
+    const entities = state.entityList;
+    if (Array.isArray(entities)) {
+      for (let i = 0; i < entities.length; i++) {
+        const e = entities[i];
+        if (e && e.alive !== false && e.pos && e.data
+          && e.data.activityActorSlotId === slotIds[0]) { actor = e; break; }
+      }
+    }
+    if (!actor) return;
+    const dx = actor.pos.x - player.pos.x;
+    const dz = actor.pos.z - player.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance) || distance > POCKET_BEAT_HEARING_WU) return;
+    const rt = this.rt || (this.rt = {});
+    const now = Number(state.simTime) || 0;
+    // A restored save or new run can rewind sim time while the audio runtime survives. Treat
+    // that boundary as a fresh watch; otherwise a later old-timeline stamp silences beats until
+    // the new clock catches up to it.
+    if (Number.isFinite(rt._pocketBeatAt) && now < rt._pocketBeatAt) rt._pocketBeatAt = -Infinity;
+    if (now - (rt._pocketBeatAt != null ? rt._pocketBeatAt : -Infinity) < POCKET_BEAT_MIN_GAP_S) return;
+    rt._pocketBeatAt = now;
+    const roll = (hash32(String(payload.sectorId || ''), String(payload.eventId || ''),
+      payload.cycle | 0) >>> 0) / 4294967296;
+    const rate = POCKET_BEAT_RATE_LO + roll * (POCKET_BEAT_RATE_HI - POCKET_BEAT_RATE_LO);
+    this.play('sfx_pocket_beat_wake', {
+      gain: POCKET_BEAT_GAIN,
+      rate,
+      position: { x: actor.pos.x, z: actor.pos.z },
+    });
+  },
+
   _stepWantedSearchAudio() {
     const state = this.state;
     if (!state) return;
@@ -6552,7 +6676,17 @@ export const audio = {
   _onServiceBerthCue(which) {
     const id = SERVICE_BERTH_CUES[which];
     if (!id) return;
-    this.play(id, { gain: which === 'started' ? 0.4 : 0.35 });
+    const register = SERVICE_BERTH_REGISTERS[which] || {};
+    this.play(id, { gain: register.gain != null ? register.gain : 0.35, rate: register.rate || 1 });
+  },
+
+  // The self-serve decant: the pilot's own pump moves fuel cell by cell (docked, so like the
+  // berth chime this is not gated on pause). An empty receipt is a receipt, not a pour.
+  _onServiceDecanted(payload) {
+    const cue = serviceDecantCue(payload);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain, rate: cue.rate });
+    this._emitNamedCaption(serviceMomentCaption('service:decanted'));
   },
 
   // The yard hands the hull or tank back. Not gated on pause: docking IS a pause (screenManager

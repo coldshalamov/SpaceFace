@@ -156,13 +156,14 @@ export const SURVIVAL_EVOLUTIONS = freezeDeep([
     blurb: 'The afterburner and the ram plate become one part. The burst is the hit.',
   },
   {
-    // Row 270 B7 — the tractor drinks the bumper's gravity tech: same pull, longer reach.
-    // The burst verb is the trade.
+    // Row 270 B7 — the mass rig drinks the bumper's gravity tech: same pull, longer reach.
+    // The burst verb is the trade. (The M tractor itself is adventure-only stock; the
+    // flail rig is the hauling hardware the shelf can actually hold.)
     id: 'greedy_tractor',
     defId: 'mod_tractor_beam_s',
     name: 'Greedy Tractor S',
     verb: 'Evolve',
-    consumes: ['mod_tractor_beam_m', 'mod_gravity_bumper_s'],
+    consumes: ['mod_mass_flail_rig_m', 'mod_gravity_bumper_s'],
     price: 52,
     blurb: 'The bumper feeds the tractor: same haul, a longer reach. The burst is spent.',
   },

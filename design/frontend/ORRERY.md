@@ -1,15 +1,10 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
 # ORRERY — the SpaceFace interface, all the way through
 
-**Historical direction (2026-09-22, late; amended 2026-10-30).** Owner, verbatim, the same evening:
-
-> *"it should be based on modern game HUDs in 2026 … they almost never use anything recognizably
-> css, they custom make a lot of SVG assets, they create a work of art out of the frontend of their
-> game and use advanced objects and not just the same boring cards, tables, borders … It needs to
-> have a number of advanced 'Magic UI' type elements used and the UI needs to feel CLEAN and
-> EXPENSIVE … it has to be maximally clean with cool effects and scroll animations and crazy
-> unfolding and spinning elements, it has to feel like you're in some control cockpit in the future,
-> it can't read like basic web design … make a plan all the way through … and execute the plan."*
+**Historical direction (2026-09-22, late; amended 2026-10-30).** The original brief asked for a clean,
+distinctive, futuristic cockpit interface, authored art, and expressive motion. Its dislike of generic
+web styling records an aesthetic preference; it is not a ban on CSS, cards, tables, borders, framed
+controls, or keycaps.
 
 This document preserves the original visual direction and screen-by-screen ideas. The 2026-10-30
 owner amendment below supersedes its retired recipes; current Finish assignments and player-facing
@@ -26,11 +21,11 @@ Printed and Lit sequence is historical context, not a competing workflow.
 > review prompts are in [`STATION_STANDARD.md`](./STATION_STANDARD.md). Its examples are starting points;
 > screen purpose, readable content, usable controls, and accessibility take priority over a recipe.
 >
-> | Was (§) | Now |
+> | Earlier overreach | Current direction |
 > |---|---|
-> | "No rectangles with borders, anywhere, ever" (§3.2) · "Glass never has a border" (§3.1) | Hairlines and ruled panels are valid ways to organize content when they improve scanning. Fake *materials* (bevels, brushed metal, screws, LED lenses) remain distinct from simple structure. |
-> | Quantities are arcs; choices ≤ 9 sit on a ring (§3.2) | Bars, figures, steppers, lists, or arcs can fit different content. Reserve a ring for cases where its shape helps explain the value or interaction. |
-> | Tables become ladders; "small verbs are `› WORD PRICE` lines, never pills" | Use a table for genuinely tabular information and controls that look and behave pressable. Choose the layout and button hierarchy that make the screen's actions clear. |
+> | Surface edges and framed controls | Hairlines, borders, cards, keycaps, and ruled panels are valid when they group content or make controls clear. Fake *materials* (bevels, brushed metal, screws, LED lenses) remain distinct from simple structure. |
+> | One shape for quantities or choices | Bars, figures, steppers, lists, or arcs can fit different content. Reserve a ring for cases where its shape helps explain the value or interaction. |
+> | One layout for actions and data | Use a table for genuinely tabular information and controls that look and behave pressable. Choose the layout and button hierarchy that make the screen's actions clear. |
 > | Labels: caps, 12 px, tracking .10–.18em, `wdth` 62–112 (§3.4) | Prefer legible sentence-case labels, modest tracking, and type sizes suited to the viewport. Keep the 12 px floor enforced by `check-type-floor.mjs`; accessibility and actual readability govern above that floor. |
 > | One thin hero numeral, Archivo 250 (§3.4) | Format money and quantities so units and magnitudes are immediately clear; tabular figures and fixed columns are useful defaults. |
 > | Truncate with an ellipsis | Do not hide names or statuses when they are needed to act. Wrap or provide a clear full-text affordance. |
@@ -242,8 +237,8 @@ The following compositions record design intent from the original pass. Treat th
 adapt to the current screen, player task, and implementation; none of the named shapes or effects is
 mandatory. Preserve useful information hierarchy and controls even when changing the visual form.
 
-Each screen has a **hero instrument** — the thing its screenshot is remembered by — so screens share
-a grammar without looking alike.
+A screen may have a **hero instrument** — a memorable focal element — when it helps the player read
+that screen. Screens can share a visual language without requiring the same composition.
 
 ### Flight
 - **The Cluster** (bottom-left, one instrument, replacing ~8 boxes): the hull's top silhouette at

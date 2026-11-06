@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0064218f13477888c7048ed9edb054dbc8274e508670ed438eff2f4ee7376a38",
+  "contentHash": "c4a2e7d239c2decf6603425937ccfbc9fa71f0ba3162dfbf760020989c60f77f",
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior.node.lod0-hook-nav-port.dynamic",
@@ -1946,14 +1946,52 @@
       "uri": "place_dock_interior.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 342592,
-    "sha256": "3f2d280d9b9fdcbce500d7861cb2995687bd03f902f93e72a5421a9556466215",
+    "bytes": 223728,
+    "resources": [
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 23880,
+        "mimeType": "image/ktx2",
+        "sha256": "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
+        "uri": "../_shared/images/81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161.ktx2"
+      },
+      {
+        "bytes": 29743,
+        "mimeType": "image/ktx2",
+        "sha256": "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
+        "uri": "../_shared/images/b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a.ktx2"
+      },
+      {
+        "bytes": 35770,
+        "mimeType": "image/ktx2",
+        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
+        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+      }
+    ],
+    "sha256": "4b354ce593ded6e8af9b00ca15d15e9061a46b3ac3c1a21297f2b13b3745428f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1984,6 +2022,42 @@
     "markers": [
       {
         "matrix": [
+          24.24799919128418,
+          0,
+          0,
+          0,
+          0,
+          24.24799919128418,
+          0,
+          0,
+          0,
+          0,
+          24.24799919128418,
+          0,
+          0,
+          13.84499979019165,
+          -14.400000095367432,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 4,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.dock-interior.node.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2002,7 +2076,7 @@
           1
         ],
         "name": "MOTION_DOCK_CLAMP_L",
-        "planIndex": 14,
+        "planIndex": 15,
         "tags": {
           "motionGroup": true
         },
@@ -2067,7 +2141,7 @@
           1
         ],
         "name": "MOTION_DOCK_CLAMP_R",
-        "planIndex": 17,
+        "planIndex": 18,
         "tags": {
           "motionGroup": true
         },
@@ -2132,7 +2206,7 @@
           1
         ],
         "name": "MOTION_DOCK_UMBILICAL",
-        "planIndex": 20,
+        "planIndex": 21,
         "tags": {
           "motionGroup": true
         },
@@ -2197,7 +2271,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 23,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2247,13 +2321,8 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -2268,7 +2337,7 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2278,12 +2347,12 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "accent"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
@@ -2293,36 +2362,41 @@
       {
         "allowTextures": true,
         "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 18,
-        "role": "hull"
+        "planIndex": 17,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
         "role": "warning"
       }
     ],
@@ -2332,7 +2406,7 @@
       "sha256": "306aea403b5eaa5fd2e664f61af2947872b926fd9e00e37d541d6f7005d5b637",
       "uri": "assets/ships/motions/dock-interior.motion.json"
     },
-    "nodeCount": 24,
+    "nodeCount": 25,
     "primitives": [
       {
         "canopy": false,
@@ -2408,8 +2482,8 @@
           -14.400000095367432,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 4,
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 5,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -2437,7 +2511,7 @@
           1
         ],
         "name": "LOD0_Hull_aged",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2464,7 +2538,7 @@
           1
         ],
         "name": "LOD0_Hull_deck",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2491,7 +2565,7 @@
           1
         ],
         "name": "LOD0_Hull_line_white",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2518,7 +2592,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2545,7 +2619,7 @@
           1
         ],
         "name": "LOD0_Lights_Warm",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2572,7 +2646,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2599,7 +2673,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 11,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2626,7 +2700,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 12,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2653,7 +2727,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 13,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2680,7 +2754,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_CLAMP_L_Armor",
-        "planIndex": 15,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2708,7 +2782,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_CLAMP_L_MechanicalDark",
-        "planIndex": 16,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2736,7 +2810,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_CLAMP_R_Armor",
-        "planIndex": 18,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2764,7 +2838,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_CLAMP_R_MechanicalDark",
-        "planIndex": 19,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2792,7 +2866,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_UMBILICAL_Armor",
-        "planIndex": 21,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2820,7 +2894,7 @@
           1
         ],
         "name": "LOD0_MOTION_DOCK_UMBILICAL_Warning",
-        "planIndex": 22,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -2832,7 +2906,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior.glb"
   },
-  "runtimeHash": "a4dcd98bfa3406e0f1e94e8a17e1412b5747db2e4d71e6e4b8c399f3c7b52466",
+  "runtimeHash": "1bbc81a1fd2f1f3904e90e176803c1b9afb72131567eec772eeaecd0b80917b8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

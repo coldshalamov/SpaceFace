@@ -144,10 +144,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'replay', screen: 'replay', backdrop: 'title' },
   { id: 'clips', screen: 'clips', backdrop: 'title' },
   { id: 'sandbox', screen: 'sandbox', backdrop: 'title' },
-  { id: 'localmap', screen: 'localmap', backdrop: 'world' },
-  { id: 'localmap-legacy', screen: 'localmap', backdrop: 'world' },
-  { id: 'starmap', screen: 'starmap', backdrop: 'world' },
-  { id: 'starmap-legacy', screen: 'starmap', backdrop: 'world' },
+  { id: 'localmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'localmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'localmap' },
+  { id: 'starmap', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
+  { id: 'starmap-legacy', screen: 'galaxyMap', backdrop: 'space', chart: 'seeded', mapAlias: 'starmap' },
 ]);
 
 const BY_ID = new Map(UI_BENCH_SHOTS.map((shot) => [shot.id, shot]));

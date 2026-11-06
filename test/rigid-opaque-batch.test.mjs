@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { ShaderChunk } from 'three';
+import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
 
 import {
   createRetainedRigidOpaqueBatchController,
@@ -49,6 +50,111 @@ function makeRoot() {
   root.updateMatrixWorld(true);
   return { root, a, b };
 }
+
+for (const retirement of ['dispose', 'construction-failure', 'precommit-rollback']) {
+  test(`retired cast-lane batches leave the real shadow registry after ${retirement}`, async () => {
+    // Production's import map gives the controller the vendored Object3D accessor. Install the
+    // same accessor on npm Three's prototype so this controller fixture uses the real registry.
+    const prototype = THREE.Object3D.prototype;
+    const originalCastShadow = Object.getOwnPropertyDescriptor(prototype, 'castShadow');
+    Object.defineProperty(prototype, 'castShadow',
+      Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
+    const originalAddGeometry = THREE.BatchedMesh.prototype.addGeometry;
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    a.castShadow = true;
+    b.castShadow = true;
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let batch;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: (batches) => {
+        [batch] = batches;
+        assert.equal(batch.castShadow, true, 'a live cast-lane batch keeps its shadows');
+        batch.visible = true;
+        assert.ok(spacefaceShadowCastersIn(scene).includes(batch));
+        batch.visible = false;
+        if (retirement === 'precommit-rollback') a.visible = false;
+        return { ready: true };
+      },
+    });
+    try {
+      if (retirement === 'construction-failure') {
+        THREE.BatchedMesh.prototype.addGeometry = function failAfterCreation() {
+          batch = this;
+          throw new Error('fixture: candidate geometry failed');
+        };
+      }
+      const result = await controller.sync([root]);
+      if (retirement === 'dispose') {
+        assert.equal(result.status, 'active');
+        assert.equal(a.layers.mask, 0);
+        assert.equal(b.layers.mask, 0);
+        controller.dispose();
+      } else {
+        assert.equal(result.lastReason, retirement === 'construction-failure'
+          ? 'candidate-build-failed' : 'source-state-changed-before-commit');
+      }
+      assert.ok(batch, 'the real controller created a batch');
+      assert.equal(batch.parent, null);
+      assert.equal(batch._matricesTexture, null, 'the retired batch was disposed');
+      assert.equal(batch._indirectTexture, null);
+      assert.equal(a.layers.mask, 1, 'the authored source remains available');
+      assert.equal(b.layers.mask, 1);
+      assert.equal(a.castShadow, true);
+      assert.equal(b.castShadow, true);
+      a.visible = true;
+      // Reattach the retired object only to query registry membership: the vendor's normal
+      // scene-filtered reader hides detached entries even if its strong Set still owns them.
+      batch.visible = true;
+      scene.add(batch);
+      const casters = spacefaceShadowCastersIn(scene);
+      assert.ok(casters.includes(a));
+      assert.ok(casters.includes(b));
+      assert.ok(!casters.includes(batch), 'the registry must release the retired batch');
+      assert.equal(batch.castShadow, false);
+    } finally {
+      THREE.BatchedMesh.prototype.addGeometry = originalAddGeometry;
+      controller.dispose();
+      if (batch) { batch.castShadow = false; batch.removeFromParent(); }
+      a.castShadow = false;
+      b.castShadow = false;
+      a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+      if (originalCastShadow) Object.defineProperty(prototype, 'castShadow', originalCastShadow);
+      else delete prototype.castShadow;
+    }
+  });
+}
+
+test('retained batch clones texture metadata without serializing it and preserves shader hooks', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const texture = new THREE.Texture();
+  texture.toJSON = () => { throw new Error('texture serialization must not run'); };
+  a.material.userData.retainedFixture = { texture, marker: 'authored' };
+  b.material.userData.retainedFixture = { texture, marker: 'authored' };
+  assert.throws(() => a.material.clone(), /texture serialization must not run/,
+    'the original Material.clone path invokes texture serialization');
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch, 'the prepared candidate promotes');
+    assert.strictEqual(batch.material.userData.retainedFixture.texture, texture);
+    assert.equal(batch.material.userData.retainedFixture.marker, 'authored');
+    assert.strictEqual(batch.material.onBeforeCompile, a.material.onBeforeCompile);
+    assert.strictEqual(batch.material.customProgramCacheKey, a.material.customProgramCacheKey);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    texture.dispose();
+  }
+});
 
 test('retained batch copies marked package normals and UVs after CPU retirement', async () => {
   resetPackageDetachManifestsForTests();
@@ -1477,11 +1583,18 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
     try {
       const old = controller.sync(first.root);
       await Promise.resolve();
-      await controller.sync([first.root, second.root]);
+      const arrival = controller.sync([first.root, second.root]);
+      assert.equal(arrival, old, 'pure arrivals reuse the pending plan rather than restarting compilation');
+      assert.equal(attempts, 1);
+      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 1);
+      assert.equal(reportOldLeg('residency'), true, 'the original preparation remains live through arrivals');
+      const replacement = controller.sync(second.root);
+      assert.notEqual(replacement, old, 'removing the original root supersedes its pending preparation');
+      await replacement;
       const current = controller.getDiagnostics();
       const batches = scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch);
       assert.equal(current.status, 'active');
-      assert.equal(current.hiddenSources, 4);
+      assert.equal(current.hiddenSources, 2);
       assert.equal(reportOldLeg('exact-target'), false, 'retired preparation cannot publish a stale leg');
       settleOld();
       await old;
@@ -1491,9 +1604,10 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
       assert.equal(after.lastError, current.lastError);
       assert.equal(after.preparationLeg, null);
       assert.equal(after.activations, 1);
-      assert.equal(after.hiddenSources, 4);
+      assert.equal(after.hiddenSources, 2);
       assert.deepEqual(scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch), batches);
-      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 0);
+      for (const source of [first.a, first.b]) assert.equal(source.layers.mask, 1);
+      for (const source of [second.a, second.b]) assert.equal(source.layers.mask, 0);
     } finally {
       controller.dispose();
       for (const source of [first.a, first.b, second.a, second.b]) {
@@ -1628,4 +1742,48 @@ test('a shadow-lane flip during residency ejects only its owner before shared-ba
       source.material.dispose();
     }
   }
+});
+
+test('proven disabled depth ignores raw shadow churn, and transition restores direct sources synchronously', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot();
+  scene.add(root); scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]);
+    await Promise.resolve();
+    a.castShadow = true; b.receiveShadow = true;
+    finish({ ready: true });
+    assert.equal((await pending).instances, 2);
+    const batch = scene.children.find(x => x.isBatchedMesh);
+    assert.equal(batch.castShadow, false); assert.equal(batch.receiveShadow, false);
+    a.castShadow = false; b.receiveShadow = false;
+    assert.equal((await controller.sync([root])).instances, 2);
+    assert.equal(a.layers.mask, 0);
+    controller.setShadowDepthDisabled(false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some(x => x.isBatchedMesh), false);
+    a.castShadow = b.castShadow = true;
+    const next = controller.sync([root]); await Promise.resolve();
+    assert.equal(scene.children.find(x => x.isBatchedMesh)?.castShadow, true);
+    finish({ ready: true }); assert.equal((await next).instances, 2);
+  } finally {
+    controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); }
+  }
+});
+
+test('depth mode transition cancels pending normalized preparation', async () => {
+  const scene = new THREE.Scene(), {root,a,b} = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
+  let finish; const controller = createRetainedRigidOpaqueBatchController({scene,
+    prepare: () => new Promise(resolve => { finish = resolve; })});
+  try {
+    controller.setShadowDepthDisabled(true);
+    const pending = controller.sync([root]); await Promise.resolve();
+    controller.setShadowDepthDisabled(false);
+    finish({ready:true}); await pending;
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+    assert.equal(controller.getDiagnostics().instances,0);
+  } finally { controller.dispose(); for (const x of [a,b]) { x.geometry.dispose(); x.material.dispose(); } }
 });

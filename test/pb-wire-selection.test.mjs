@@ -541,9 +541,8 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   const worldSrc = readFileSync(join(ROOT, 'src/systems/world.js'), 'utf8');
   assert.ok(worldSrc.includes('captureEntitySelection(') && worldSrc.includes('waypoint.stable'),
     'the course owner stamps the bind it arms');
-  const flightSrc = readFileSync(join(ROOT, 'src/systems/flightV3.js'), 'utf8');
-  assert.ok(flightSrc.includes('resolveEntitySelection(state, autopilot.stable)'),
-    'the burn re-proves its bind every tick instead of trusting the raw id');
+  // The behavioral mid-burn tests above exercise the exported flight reader; its implementation
+  // may live in the shared presentation-read module instead of this adapter's source text.
   const wpSrc = readFileSync(join(ROOT, 'src/ui/navigationWaypoint.js'), 'utf8');
   assert.ok(wpSrc.includes('waypoint.stable'),
     'HUD/radar/map instruments share the stamped bind');
@@ -573,6 +572,7 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   const routeSrc = readFileSync(join(ROOT, 'src/systems/routeFollower.js'), 'utf8');
   assert.ok(routeSrc.split('autopilot.stable = null').length - 1 >= 2,
     'route disarm and gate-arrival retire the stamp with the id');
+  const flightSrc = readFileSync(join(ROOT, 'src/systems/flightV3.js'), 'utf8');
   assert.ok(flightSrc.includes('autopilot.stable = null'),
     'stopAutopilot retires the stamped bind with the burn');
   // The record lane uses the world-record index when it can give an unambiguous answer, so a

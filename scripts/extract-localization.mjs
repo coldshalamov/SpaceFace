@@ -3,11 +3,13 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localeReadinessForMessages, SHIPPED_LOCALES } from '../src/localization/pipeline.js';
 
 import {
   buildLocalizationInventory,
   renderGeneratedCatalog,
   renderGeneratedCatalogJson,
+  readGitLocalizationSource,
 } from './lib/localizationInventory.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,15 +17,49 @@ const SURFACES_PATH = path.join(ROOT, 'scripts/localization-surfaces.json');
 const EXEMPTIONS_PATH = path.join(ROOT, 'scripts/localization-exemptions.json');
 const CATALOG_PATH = path.join(ROOT, 'src/localization/catalogs/en-US.generated.js');
 const RUNTIME_CATALOG_PATH = path.join(ROOT, 'src/localization/catalogs/en-US.generated.json');
+const READINESS_PATH = path.join(ROOT, 'src/localization/catalogs/readiness.generated.js');
 const writeMode = process.argv.includes('--write');
 const checkMode = process.argv.includes('--check');
+const commitArgs = process.argv.filter(arg => arg.startsWith('--commit='));
 
 if (writeMode === checkMode) fail('choose exactly one mode: --write or --check');
+if (commitArgs.length > 1 || (commitArgs.length && !commitArgs[0].slice(9))) fail('provide one nonempty --commit=REF');
+if (commitArgs.length && process.argv.includes('--readiness-only')) fail('--commit cannot be combined with --readiness-only');
 
-const surfaces = await readJson(SURFACES_PATH, 'surface configuration');
-const exemptions = await readJson(EXEMPTIONS_PATH, 'exemption configuration');
-const first = await buildLocalizationInventory({ rootDir: ROOT, surfaces, exemptions });
-const second = await buildLocalizationInventory({ rootDir: ROOT, surfaces, exemptions });
+function renderReadiness(payload) {
+  const metadata = {
+    schema: 'spaceface.localizationReadiness.v1', inventoryDigest: payload.inventoryDigest,
+    locales: Object.fromEntries(SHIPPED_LOCALES.map(locale => [locale,
+      localeReadinessForMessages(locale, payload.messages)])),
+  };
+  return '// Generated from the canonical inventory and reviewed translation tables. Do not hand-edit.\n'
+    + `export const READINESS = Object.freeze(${JSON.stringify(metadata)});\n`;
+}
+
+async function publishReadiness(payload) {
+  const rendered = renderReadiness(payload);
+  if (writeMode) await writeFile(READINESS_PATH, rendered, 'utf8');
+  else if (normalizeEol(await readFile(READINESS_PATH, 'utf8')) !== rendered) {
+    fail('generated localization readiness is stale; run --write --readiness-only');
+  }
+}
+
+// Refresh derived picker metadata against the existing shipped inventory without re-extracting
+// or silently changing source keys/anchors during an unrelated loader change.
+if (process.argv.includes('--readiness-only')) {
+  await publishReadiness(await readJson(RUNTIME_CATALOG_PATH, 'runtime catalog'));
+  console.log('[localization-readiness] current');
+  process.exit(0);
+}
+
+let frozen = null;
+try { if (commitArgs.length) frozen = readGitLocalizationSource(ROOT, commitArgs[0].slice(9)); }
+catch (error) { fail(`cannot read frozen source: ${error.message}`); }
+const surfaces = frozen?.surfaces || await readJson(SURFACES_PATH, 'surface configuration');
+const exemptions = frozen?.exemptions || await readJson(EXEMPTIONS_PATH, 'exemption configuration');
+const inventoryOptions = { rootDir: ROOT, surfaces, exemptions, sourceFiles: frozen?.sourceFiles || null };
+const first = await buildLocalizationInventory(inventoryOptions);
+const second = await buildLocalizationInventory(inventoryOptions);
 const rendered = renderGeneratedCatalog(first);
 const renderedAgain = renderGeneratedCatalog(second);
 const runtimeRendered = renderGeneratedCatalogJson(first);
@@ -35,6 +71,7 @@ if (first.digest !== second.digest || rendered !== renderedAgain || runtimeRende
 if (first.conflicts.length) fail(`key conflicts: ${JSON.stringify(first.conflicts)}`);
 if (first.exemptionErrors.length) fail(`unexplained exemptions: ${first.exemptionErrors.join('; ')}`);
 if (first.stats.unresolved !== 0) fail(`unresolved extraction surfaces: ${first.stats.unresolved}`);
+await publishReadiness(JSON.parse(runtimeRendered));
 
 if (writeMode) {
   await mkdir(path.dirname(CATALOG_PATH), { recursive: true });
@@ -71,6 +108,7 @@ if (writeMode) {
 console.log(JSON.stringify({
   ok: true,
   mode: writeMode ? 'write' : 'check',
+  ...(frozen ? { sourceCommit: frozen.commit } : {}),
   catalog: 'src/localization/catalogs/en-US.generated.js',
   runtimeCatalog: 'src/localization/catalogs/en-US.generated.json',
   digest: first.digest,

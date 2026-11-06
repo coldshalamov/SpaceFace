@@ -6,6 +6,7 @@ import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
 const SCENARIO_EVIDENCE_EVENT_CAP = 512;
+const NORMALIZED_SCENARIO_STATES = new WeakSet();
 
 export const scenarioRuntime = {
   name: 'scenarioRuntime',
@@ -121,6 +122,7 @@ function activateScenario(runtime, contract) {
     evidence: { schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION, events: [] },
     safeOpening: { spindleClaimed: false, demandIssuedAt: null, noFireUntilS: null, response: null, provoked: false },
   };
+  state.scenario = normalizeScenarioState(state.scenario);
   runtime._lastBeatId = null;
 
   runtime.bus.emit('scenario:loaded', {
@@ -724,11 +726,10 @@ function getAttachment(state, attachmentId) {
 }
 
 function ensureScenarioState(state) {
-  if (!state.scenario || typeof state.scenario !== 'object' || Array.isArray(state.scenario)) {
-    state.scenario = normalizeScenarioState(null);
-  } else {
-    state.scenario = normalizeScenarioState(state.scenario);
-  }
+  const current = state.scenario;
+  if (current && typeof current === 'object' && !Array.isArray(current)
+    && NORMALIZED_SCENARIO_STATES.has(current)) return current;
+  state.scenario = normalizeScenarioState(current);
   return state.scenario;
 }
 
@@ -751,6 +752,7 @@ function normalizeScenarioState(data) {
   if (src.resolution && typeof src.resolution === 'object' && !Array.isArray(src.resolution)) {
     out.resolution = clonePlain(src.resolution);
   }
+  NORMALIZED_SCENARIO_STATES.add(out);
   return out;
 }
 

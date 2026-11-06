@@ -107,7 +107,7 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Fire', 'fire', (g) => g],
   ['Mine beam', 'mine', (g) => g],
   ['Boost', 'boost', (g) => g],
-  ['Brake / reverse', 'brake', (g) => g],
+  ['Brake / full stop', 'brake', (g) => g],
   ['Shove (repulsor; sets off armed ordnance)', 'shove', (g) => g],
   ['Accept / confirm', 'accept', (g) => g],
   ['Massline', 'massline', (g) => g],
@@ -152,7 +152,7 @@ const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
 // Gaps between action rows are the static ones above; see gamepadControlRows.
 const GAMEPAD_ROW_ORDER = Object.freeze([
   'Fly (yaw + throttle)', 'Aim weapons',
-  'Fire', 'Mine beam', 'Boost', 'Brake / reverse', 'Shove (repulsor; sets off armed ordnance)', 'Accept / confirm',
+  'Fire', 'Mine beam', 'Boost', 'Brake / full stop', 'Shove (repulsor; sets off armed ordnance)', 'Accept / confirm',
   'Massline', 'Countermeasure', 'Bomb (selected ordnance)', 'Cycle ordnance',
   'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
   'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
@@ -222,8 +222,8 @@ export function controlSections(state) {
   return [
     ['Flight', [
       ['Throttle forward', 'forward'],
-      ['Reverse + brake', 'reverse'],
-      ['Dedicated brake', 'brake'],
+      ['Reverse thrust', 'reverse'],
+      ['Brake / full stop', 'brake'],
       ['Steer right (yaw + bank)', 'yawRight'],
       ['Steer left (yaw + bank)', 'yawLeft'],
       ['Lateral thruster (left)', 'strafeLeft'],

@@ -39,7 +39,7 @@ function boot(t) {
   }
   function rescuer(extra = {}) {
     return helpers.spawnEntity({ type: 'ship', pos: { x: 20, z: 0 }, radius: 8,
-      mass: 100, hull: 100, hullMax: 100, data: { trafficRole: 'rescue', ...extra } });
+      mass: 100, hull: 100, hullMax: 100, data: { trafficRole: 'rescue', worldRecordId: 'test:rescue', ...extra } });
   }
   return { state, bus, helpers, player, sys, pod, rescuer };
 }
@@ -48,10 +48,14 @@ test('a disabled rescue hull leaves a physical pod awaiting a working carrier', 
   const h = boot(t);
   const pod = h.pod();
   const rescue = h.rescuer();
+  const rec = { id: rescue.id, role: 'rescue', carryingSurvivor: false };
+  h.state.traffic = { freighters: [rec] };
+  const owner = { ...traffic, state: h.state, _sectorStations: () => [], _pickStation: () => null };
+  h.bus.on('survivorPod:boarded', (event) => owner._onSurvivorPodRescued(event));
   h.state.combat.entities = {};
   h.state.combat.entities[String(rescue.id)] = { capabilities: { drive: false } };
   const claims = [];
-  h.bus.on('survivorPod:rescued', (event) => claims.push(event));
+  h.bus.on('survivorPod:boarded', (event) => claims.push(event));
   h.sys.update(1 / 60, h.state);
   assert.equal(h.state.entities.get(pod.id), pod);
   assert.equal(claims.length, 0);
@@ -69,13 +73,15 @@ test('a carrying rescue craft cannot silently consume a second survivor in the s
   const rescue = h.rescuer();
   const rec = { id: rescue.id, role: 'rescue', carryingSurvivor: false };
   h.state.traffic = { freighters: [rec] };
-  const owner = { ...traffic, state: h.state, _sectorStations: () => [], _pickStation: () => null };
-  h.bus.on('survivorPod:rescued', (event) => owner._onSurvivorPodRescued(event));
+  const station = h.helpers.spawnEntity({ type: 'station', pos: { x: 0, z: 0 }, radius: 40, data: {} });
+  const owner = { ...traffic, state: h.state, bus: h.bus, helpers: h.helpers,
+    _sectorStations: () => [station], _pickStation: () => station };
+  h.bus.on('survivorPod:boarded', (event) => owner._onSurvivorPodRescued(event));
   h.sys.update(1 / 60, h.state);
   assert.equal(rec.carryingSurvivor, true);
   assert.equal(h.state.entities.has(first.id), false);
   assert.equal(h.state.entities.get(second.id), second);
-  rec.carryingSurvivor = false; // native traffic delivery opens the passenger berth again
+  owner._stepRescue(rescue, rec, [station], h.state, 0.1); // real station delivery frees the berth
   h.sys.update(1 / 60, h.state);
   assert.equal(h.state.entities.has(second.id), false);
 });

@@ -1,6 +1,6 @@
 # Swarm Renaissance: target and current gaps
 
-Updated 2026-10-31. This summarizes the adopted Swarm/Foundry product target and the current route
+Updated 2026-11-01. This summarizes the adopted Swarm/Foundry product target and the current route
 outcomes. The source was the user-provided 171-page `SpaceFace_Swarm_Renaissance_Extended_Design_Bible.pdf`;
 its catalogs are a design bank, not shipment quotas. The detailed whole-game outcome map is
 [INTEGRATION_COVERAGE.md](./INTEGRATION_COVERAGE.md), and packet source reads are indexed in
@@ -28,6 +28,11 @@ a second simulation, combat or damage writer.
 - Fortify exposes four device types, run-scoped purchases, physical fields/projectiles, paired segment
   damage, paid repair/turret rearm and enemy weak-link counterplay. The paused screen is registered
   in both runtime paths.
+- Veil Step, Boomerang Bomb Run and Pinball Rush are fresh-profile Crucible starter choices with
+  canonical runtime/readout owners. Veil Step still lacks a public outcome; the older Boomerang and
+  Pinball receipts below remain scoped. The optional Tethys capsule mission exists on the ordinary
+  Contracts board. Its stale standing case file now refreshes after casing (focused behavior pass),
+  but natural public stealth-route acceptance is still open.
 - The latest headed public Foundry run cleared waves 1–8 and reached wave 9 alive before its 45-minute
   cap. Public controls, round transitions, player-model visibility, LOD/pop behavior, VFX, loadout and
   edge markers passed; offscreen markers passed 1,219 samples after the observer repair.

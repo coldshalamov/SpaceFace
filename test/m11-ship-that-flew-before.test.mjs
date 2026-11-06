@@ -163,7 +163,7 @@ test('seed 4242: save payload and reload preserve history, binding and partial r
       state: a.state, bus: a.bus, helpers: a.sim.helpers, registry: a.sim.registry,
     });
     const disk = JSON.parse(JSON.stringify(saver.serializeData()));
-    assert.equal(CURRENT_VERSION, 17);
+    assert.equal(CURRENT_VERSION, 22);
     b.owner.deserialize(disk.world);
     assert.deepEqual(b.state.world.records.hullLosses, disk.world.records.hullLosses);
     const wreck = visit(b);

@@ -1,7 +1,7 @@
 // Read-only Orchard forecast facts. Source validation and field math are shared by
 // main-lane HUD and worker projection; mirrored facts never grant custody.
 import { ANVIL_ORCHARD_GUST_PROFILE, anvilOrchardGustGeometry } from '../data/environmentalMachinery.js';
-import { fieldBodyProfile } from '../systems/fields.js';
+import { fieldBodyProfile } from '../core/fields/fieldReadModel.js';
 import { normalizeField, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardHistoryFitsTick, orchardPhase } from '../data/anvilOrchard.js';
 import { ORCHARD_GEOMETRY } from '../data/anvilOrchardBody.js';

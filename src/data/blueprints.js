@@ -78,6 +78,12 @@ const BLUEPRINT_DEFINITIONS = [
   // modules in deep space. Produces items into ownedModules / ownedWeapons.
   // ===================================================================================
   {
+    id: 'bp_build_cargo_net_s', name: 'Build Deck Cargo Net (S)', category: 'assemble', tier: 1, stationType: 'fab', requiresTech: null, timeS: 0, instant: true,
+    inputs: { cmdty_refined_metals: 3, cmdty_silicate: 4 },
+    outputs: { kind: 'module', id: 'mod_cargo_net_s', qty: 1 },
+    desc: 'Make a cargo net for a small hold. Fit it in Shipworks for 20 more cargo space.',
+  },
+  {
     id: 'bp_build_shield_s', name: 'Build Shield Booster (S)', category: 'assemble', tier: 2, stationType: 'fab', requiresTech: 'tech_deflector_theory', timeS: 0,
     inputs: { cmdty_comp_circuitry: 2, cmdty_alloys: 1, cmdty_microchips: 1 },
     outputs: { kind: 'module', id: 'mod_shield_booster_s', qty: 1 },

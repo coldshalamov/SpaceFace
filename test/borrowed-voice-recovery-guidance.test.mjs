@@ -1,3 +1,5 @@
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { globalToFrame } from '../src/core/coordinates.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSimulation} from '../src/core/sim.js';
@@ -8,17 +10,18 @@ import {ensureAlienEcologyState} from '../src/data/alienEcologyState.js';
 import {borrowedVoicePrompt} from '../src/ui/borrowedVoicePrompt.js';
 import {setPromptDeck} from '../src/ui/promptDeck.js';
 
+const WORLD_CENTER=sectorLocalToGlobalForSector(C.center,C.sectorId);
 function fixture(revelation=2){
  const sim=createSimulation({seed:816,systems:[economy,borrowedVoice]}),s=sim.state;
  Object.assign(s,{mode:'flight'});s.run.kind='adventure';s.run.phase='inactive';s.world.currentSectorId=C.sectorId;
  s.settings.gameplay.physicsBackend='legacy';ensureAlienEcologyState(s).revelation=revelation;
- const p=sim.spawn({type:'ship',hull:100,mass:28,radius:8,collides:false,pos:{x:C.center.x+70,z:C.center.z+40}});s.playerId=p.id;
+ const p=sim.spawn({type:'ship',hull:100,mass:28,radius:8,collides:false,pos:{x:WORLD_CENTER.x+70,z:WORLD_CENTER.z+40}});s.playerId=p.id;
  const o=sim.registry.get('borrowedVoice');let card,seq=0;const offers=[];
  setPromptDeck({offerDecision(r){card=r;return true;},resolveDecision(){card=null;}});borrowedVoicePrompt.init({bus:sim.bus});
  sim.bus.on('borrowedVoice:offer',r=>offers.push(r));
  const step=(n=1)=>{for(let i=0;i<n;i++)sim.step(.2);};step();
  const scan=(id='a')=>{s.player.targetId=o._find(id)?.id;sim.bus.emit('scan:pulse',{source:'player-scanner',seq:++seq});};
- const align=(id='a')=>{const e=o._find(id);e.pos.x=C.center.x+8;e.pos.z=C.center.z;e.rot=Math.PI;return e;};
+ const align=(id='a')=>{const e=o._find(id);e.pos.x=WORLD_CENTER.x+8;e.pos.z=WORLD_CENTER.z;e.rot=Math.PI;return e;};
  const recover=(id='a')=>{align(id);step(8);scan(id);assert(o._row.recoveredFragmentIds.includes(R.find(r=>r.id===id).evidenceId));};
  const lose=id=>{const e=o._find(id);e.alive=false;sim.bus.emit('entity:killed',{targetId:e.id});sim.helpers.removeEntity(e.id);};
  return {sim,s,p,o,step,scan,align,recover,lose,offers,get card(){return card;},close(){borrowedVoicePrompt.destroy();setPromptDeck(null);sim.dispose();}};
@@ -112,12 +115,13 @@ test('native production save mid-investigation and after archive/receiver loss r
  try{let s=current.state;s.mode='flight';ensureAlienEcologyState(s).revelation=2;
  const player=current.spawn(makeShipEntitySpec('ship_hawser',{isPlayer:true,player:s.player,pos:{x:0,z:0},fittings:[]}));s.playerId=player.id;
  external(current,()=>current.getSystem('world').enterSector(C.sectorId,{continuous:false,noTeleport:true,placePlayer:false}));
- external(current,()=>current.getSystem('world').relocatePlayerInSector({x:C.center.x+70,z:C.center.z+40,heading:0},{reason:'borrowed-voice-guidance-test'}));
+ external(current,()=>current.getSystem('world').relocatePlayerInSector({x:WORLD_CENTER.x+70,z:WORLD_CENTER.z+40,heading:0},{reason:'borrowed-voice-guidance-test'}));
  assert.equal(await current.getSystem('physics').prepareBackend(s,{reset:true}),true);current.step(1/60);current.step(1/60);
  let owner=current.getSystem('borrowedVoice');const a=owner._find('a'),identity=a.data.worldRecordId;
- const body=current.getSystem('physics')._sg02.records.get(a.id).body;
+ const native=current.getSystem('physics')._sg02,body=native.records.get(a.id).body;
+ const nativePoint=globalToFrame({x:WORLD_CENTER.x+7,z:WORLD_CENTER.z},native.getFrameOrigin());
  // Deliberate native fixture placement, NOT ordinary gate flight or camera acceptance.
- body.setTranslation({x:C.center.x+7,y:0,z:C.center.z},true);body.setRotation({x:0,y:-1,z:0,w:0},true);body.setLinvel({x:0,y:0,z:0},true);body.setAngvel({x:0,y:0,z:0},true);
+ body.setTranslation({x:nativePoint.x,y:0,z:nativePoint.z},true);body.setRotation({x:0,y:-1,z:0,w:0},true);body.setLinvel({x:0,y:0,z:0},true);body.setAngvel({x:0,y:0,z:0},true);
  for(let i=0;i<110;i++)current.step(1/60);
  assert.equal(borrowedVoiceRecoveryProjection(s).a.phase,'ready');s.player.targetId=a.id;
  s.input.actions.scanPulse=true;external(current,()=>current.getSystem('scanner').update(1/60,s));
@@ -158,8 +162,8 @@ test('production host offer reaches the main registry adapter and its revision-b
  assert.equal(host.host.registry.get('borrowedVoicePrompt'),null,'worker must not own the main deck adapter');
  const {state:s,runtime}=host.host,owner=host.host.registry.get('borrowedVoice');s.mode='flight';s.run.kind='adventure';s.run.phase='inactive';s.settings.gameplay.physicsBackend='legacy';
  s.world.currentSectorId=C.sectorId;ensureAlienEcologyState(s).revelation=2;
- s.playerId=runtime.spawn({type:'ship',mass:28,hull:100,radius:8,collides:false,pos:{x:C.center.x+70,z:C.center.z+40}}).id;
- owner.update(.2,s);const a=owner._find('a');a.pos.x=C.center.x+8;a.pos.z=C.center.z;a.rot=Math.PI;
+ s.playerId=runtime.spawn({type:'ship',mass:28,hull:100,radius:8,collides:false,pos:{x:WORLD_CENTER.x+70,z:WORLD_CENTER.z+40}}).id;
+ owner.update(.2,s);const a=owner._find('a');a.pos.x=WORLD_CENTER.x+8;a.pos.z=WORLD_CENTER.z;a.rot=Math.PI;
  for(let i=0;i<8;i++){s.simTime+=.2;owner.update(.2,s);}s.player.targetId=a.id;host.host.bus.emit('scan:pulse',{source:'player-scanner',seq:1});
  assert.equal(card,undefined,'worker emission alone cannot touch the page deck');
  let tick=0;const pump=async()=>{lane.runner.prepareWithoutAdvance();const messages=posts.splice(0);for(const msg of messages){if(msg.kind!=='tick')continue;
@@ -186,10 +190,10 @@ test('native restore, proxy revision, post-step and sim-tick admission gate read
 });
 
 test('a recovered housing scanned beyond the site never offers an inadmissible disposition',()=>{
- const h=fixture();try{h.recover();const a=h.o._find('a');h.p.pos.x=C.center.x+C.siteRange+20;h.p.pos.z=C.center.z;
+ const h=fixture();try{h.recover();const a=h.o._find('a');h.p.pos.x=WORLD_CENTER.x+C.siteRange+20;h.p.pos.z=WORLD_CENTER.z;
  a.pos.x=h.p.pos.x;a.pos.z=h.p.pos.z;h.scan();assert.deepEqual(h.card.choices.map(c=>c.id),['close']);assert(h.card.detail.includes(R[0].text));
  assert.equal(h.o._row.disposition,'open');assert.equal(h.s.player.credits,0);
- h.p.pos.x=C.center.x+70;a.pos.x=C.center.x+8;h.scan();assert(h.card.choices.some(c=>c.id==='archive'));
+ h.p.pos.x=WORLD_CENTER.x+70;a.pos.x=WORLD_CENTER.x+8;h.scan();assert(h.card.choices.some(c=>c.id==='archive'));
  }finally{h.close();}
 });
 

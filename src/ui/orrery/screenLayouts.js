@@ -442,8 +442,8 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 /* the forward key names its key */
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;
-  border:0 !important; box-shadow:none !important; border-radius:0; background:none !important;
-  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(236 230 216 / .62) !important; text-shadow:none; }
+  border:0 !important; box-shadow:inset 0 0 0 1px rgb(28 20 6 / .4) !important; border-radius:3px; background:none !important;
+  font-family:var(--dp-face-label, "Archivo"); font-size: 12px !important; letter-spacing:.08em; color:rgb(28 20 6 / .74) !important; text-shadow:none; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band:is([data-band="kill_chain"], [data-band="last_seconds"]) { position:absolute !important; width:1px; height:1px; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; margin:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__hero { z-index:3; }

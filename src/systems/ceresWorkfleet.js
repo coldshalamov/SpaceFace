@@ -1,4 +1,5 @@
 import {ceresWorkfleetReacquireReturnBudget,restoreCeresWorkfleetReacquireReturnBudget,ceresWorkfleetHeadClearPrefix,planCeresWorkfleetReacquire,restoreCeresWorkfleetReacquire,ceresWorkfleetReacquireStage,CERES_REACQUIRE_LIMITS} from './ceresWorkfleetRecovery.js';
+import { stepCeresWorkfleetStagecraft } from './ceresWorkfleetStagecraft.js';
 import {planCeresWorkfleetRecovery,restoreCeresWorkfleetRecovery,ceresWorkfleetRecoveryClear,CERES_RECOVERY_LIMITS,
  ceresWorkfleetRendezvous,ceresWorkfleetBeginRecoverySeat} from './ceresWorkfleetRecovery.js';
 import {admitCeresCradleLayout} from '../core/ceresWorkfleetLayoutAdmission.js';
@@ -6,7 +7,7 @@ import {admitCeresCradleLayout} from '../core/ceresWorkfleetLayoutAdmission.js';
 // Pose and velocity belong exclusively to native physics; this adapter requests thrust.
 import { CERES_WORKFLEET_CONTRACT as C, ceresWorkfleetPose,
   ceresWorkfleetPoint, ceresWorkfleetCradleLayout } from '../data/ceresWorkfleet.js';
-import { writePhysicsControl, physicsBodyNativeReady, ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { writePhysicsControl, writeOwnedPhysicsControl, physicsBodyNativeReady, ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
 
 export const CERES_WORKFLEET_JOB_ID = 'job:ceres:second_measure:long_plate';
 export const CERES_WORKFLEET_REQUEST_STREAM = 'ceres-second-measure-cutter';
@@ -70,8 +71,13 @@ export function driveCeresWorkfleetBody(entity,target,options,state=null) {
 }
 export function publishCeresWorkfleetActuation(entity,control,tick,state=null) {
   if(!control)clearCeresWorkfleetActuation(entity);
-  else if(state)recordCeresWorkfleetActuation(state,entity,control,entity.data.ceresWorkfleetRole==='breaker'
-    ?{accel:.5,angularAccel:.025}:{accel:8,angularAccel:.6});
+  else if(state){
+    // Re-submit the same owner's control with the existing native one-use token.
+    // A later writer revokes it; only a successful SG02 step may attest it.
+    const nativeControlReceipt=writeOwnedPhysicsControl(entity,control);
+    recordCeresWorkfleetActuation(state,entity,control,entity.data.ceresWorkfleetRole==='breaker'
+      ?{accel:.5,angularAccel:.025}:{accel:8,angularAccel:.6},nativeControlReceipt);
+  }
   const ax=control?.force?.x/entity.mass||0,az=control?.force?.z/entity.mass||0;
   const angular=control?.torque?.y/entity.physicsBody?.inertiaY||0,c=Math.cos(entity.rot||0),sn=Math.sin(entity.rot||0);
   const forward=ax*c+az*sn,lateral=-ax*sn+az*c;
@@ -105,7 +111,7 @@ import { hasPendingCeresWorkfleetAttachments } from '../combat/persistence.js';
 import { CERES_WORKFLEET_SLIDE_SECONDS } from '../data/ceresWorkfleetArticulation.js';
 import { SIM_DT } from '../core/sim.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
-import { recordCeresWorkfleetActuation, clearCeresWorkfleetActuation } from '../core/ceresWorkfleetActuation.js';
+import { recordCeresWorkfleetActuation, clearCeresWorkfleetActuation, recordCeresWorkfleetCutWork } from '../core/ceresWorkfleetActuation.js';
 
 const CONTROL = new WeakMap();
 const ACTIVITY_PINS = new WeakMap();
@@ -117,6 +123,11 @@ const RECOVERY_LIVES = new WeakMap();
 const RECOVERY_NATIVE = new WeakMap();
 const REACQUIRE_LIVES=new WeakMap();
 const RECOVERY_PHASES=['recover_turn','recover_approach','recover_seat','recover_return_turn','recover_return'];
+/** The player may do both real site operations while the crew is preparing its cutter. */
+export function ceresWorkfleetCompletedPlayerPreparation(record) {
+  return !!record?.completedOperations?.cut_long_plate_seam
+    && !!record?.completedOperations?.release_long_plate_clamp;
+}
 const CANONICAL_BODIES = Object.fromEntries(['breaker','cradle','cutterHead'].map(role=>{
   const body=ceresWorkfleetHardwareSpec(role).physicsBody;
   for(const p of body.collisionProxyManifest.primitives)Object.freeze(p);
@@ -520,7 +531,14 @@ export function consumeCeresHeadControl(entity,state,owner) {
 /** Traffic's exact producer. Existing world records, including tombstones, always outrank spawn. */
 export function syncCeresWorkfleetHardware(owner) {
   const state=owner.state;
-  if(state.world?.currentSectorId!==C.sectorId||!siteRecord(state)?.completedOperations?.brace_long_plate)return false;
+  if(state.world?.currentSectorId!==C.sectorId)return false;
+  const record=siteRecord(state);if(!record)return false;
+  const braced=!!record.completedOperations?.brace_long_plate;
+  const player=state.entities?.get(state.playerId);
+  // Show the actual parked crew on approach, without starting its job. The same world records
+  // and bodies are used after bracing; there is no scenic duplicate or automatic brace.
+  if(!braced&&!(state.mode==='flight'&&player?.alive!==false&&player?.pos
+    &&Math.hypot(player.pos.x-C.sitePlacement.pos.x,player.pos.z-C.sitePlacement.pos.z)<=700))return false;
   const world=registryOf(owner)?.get('world');
   if(!world?.upsertWorldRecord)return false;
   const bodies=liveBodies(state);
@@ -530,6 +548,10 @@ export function syncCeresWorkfleetHardware(owner) {
     let e=bodies[role];
     if(!e) {
       const spec=ceresWorkfleetHardwareSpec(role);
+      // A late arrival/restore must not materialize a solid on top of the player. Radius is a
+      // conservative envelope of the compound body, not a replacement for its real collider.
+      if(player?.pos&&Math.hypot(player.pos.x-spec.pos.x,player.pos.z-spec.pos.z)
+        <=spec.radius+(Number.isFinite(player.radius)?player.radius:10)+10)continue;
       if(state.render?.scene){spec.collides=false;spec.physicsBody=false;}
       e=owner.helpers.spawnEntity(spec);
       if(!e)continue;
@@ -765,7 +787,9 @@ export function ceresWorkfleetHeadReturnTarget(breaker,head,index) {
 /** Called by npcJobsRuntime only; one phase machine, one named job and three hardware records. */
 export function stepCeresWorkfleet(owner,dt) {
   const state=owner.state;if(state.mode!=='flight'||state.world?.currentSectorId!==C.sectorId||!(dt>0))return;
-  const record=siteRecord(state);if(!record?.completedOperations?.brace_long_plate)return;
+  const record=siteRecord(state);
+  stepCeresWorkfleetStagecraft(owner,record);
+  if(!record?.completedOperations?.brace_long_plate)return;
   state.npcJobs ||= {byId:{}};
   const job=state.npcJobs.ceresWorkfleet ||= makeJob(state),b=liveBodies(state);
   const {breaker,cradle,cutterHead:head,section}=b;
@@ -820,6 +844,12 @@ export function stepCeresWorkfleet(owner,dt) {
     if(!ceresWorkfleetCanResume(job,b)){pauseForForeignCustody(owner,job,b,'recovery-pose-outside-route');return;}
     job.blockedReason=null;for(const role of ROLES)b[role].data.ceresWorkfleetSlideDisabled=false;
   }
+  // If the pilot finished both operations during deployment, turn the real head back along
+  // the already guarded return path rather than sending it to cut an already released plate.
+  // job.index names the outgoing destination; its preceding waypoint is the return target.
+  if(job.phase==='head_out'&&ceresWorkfleetCompletedPlayerPreparation(record)) {
+    job.index=Math.max(0,Math.min(2,3-job.index));change(job,'head_retract',state);
+  }
   const work=ceresWorkfleetWorldPose(C.route.breakerWorkPose),extracted=ceresWorkfleetWorldPose(C.route.extraction.breakerTo);
   let target=work,options={speed:.5,accel:.1};
   const headOptions={speed:5,accel:8,angularSpeed:.3,angularAccel:.6};let pendingDockBlocked=false;
@@ -839,7 +869,12 @@ export function stepCeresWorkfleet(owner,dt) {
   if(job.phase==='head_dock') {
     if(!ceresWorkfleetAtPose(breaker,work,{position:.5,angle:.006,speed:.2,spin:.01})){}
     else if(ceresWorkfleetAtPose(head,mountedPose(breaker))&&bindLine(owner,job,'mountId','attachment_transport_clamp',head,'cutterHead','SOCKET_Mount',breaker,'breaker','SOCKET_Cutter_Dock')) {
-      service.cut(job.mountId,head.id,'ceres_deploy');job.mountId=null;job.index=1;change(job,'head_out',state);
+      if(ceresWorkfleetCompletedPlayerPreparation(record)) {
+        // Keep the actual mount attached and let normal tow admission check the released body.
+        change(job,'tow_attach',state);
+      } else {
+        service.cut(job.mountId,head.id,'ceres_deploy');job.mountId=null;job.index=1;change(job,'head_out',state);
+      }
     }
   } else if(job.phase==='head_out'||job.phase==='head_retract') {
     const index=job.phase==='head_out'?job.index:2-job.index;
@@ -866,7 +901,14 @@ export function stepCeresWorkfleet(owner,dt) {
     else if(job.blockedReason==='head-return-carrier-realigning')job.blockedReason=null;
     if(job.phase==='head_retract'&&(inRig||enteringRig)){
       RECOVERY_NATIVE.set(job,native);
-      const route=ceresWorkfleetHeadClearPrefix(native,state,b,{...head.pos,rot:head.rot},point);
+      const at={...head.pos,rot:head.rot};
+      // The flush dock can make the last sub-unit cast touch the carrier even though the
+      // current pose is already within the existing physical docking tolerance. Accept only
+      // a native-clear current pose; tow_attach still validates and creates the real mount.
+      const dockReady=job.index===2&&!carrierReturning
+        &&ceresWorkfleetHeadReturnReady(breaker,head,waypoint,true)
+        &&ceresWorkfleetRecoveryClear(native,state,b,at,at,{headOnly:true}).ok;
+      const route=dockReady?{ok:true,pose:at}:ceresWorkfleetHeadClearPrefix(native,state,b,at,point);
       if(route.ok)point=route.pose;
       if(!route.ok){headBlocked=true;point={...head.pos,rot:head.rot};job.blockedReason=`head-return-${route.reason}`;}
       headDriveOptions={...headOptions,returnGuard:headBlocked?'hold':'advance'};
@@ -898,7 +940,15 @@ export function stepCeresWorkfleet(owner,dt) {
     if(!op){job.index=0;change(job,'head_retract',state);}
     else {const result=registryOf(owner)?.get('asteroidSites')?.applyCeresWorkfleetOperation?.({siteId:C.siteId,operationId:op,
       jobId:job.id,workerId:breaker.id,headId:head.id,sectionId:section.id,amount:Math.min(dt,.1)*18,requestSequence:state.tick});
-      job.blockedReason=result?.ok?null:result?.reason||'physical-cutter-not-ready';}
+      job.blockedReason=result?.ok?null:result?.reason||'physical-cutter-not-ready';
+      // Presentation may show contact only for an actual site-owner work receipt this tick.
+      // Old stamps expire with the sim tick; they never advance or authorize the cut.
+      if(result?.ok&&!result.duplicate&&result.moved>0){
+        head.data.ceresWorkfleetCutTick=state.tick;
+      } else if(head.data.ceresWorkfleetCutTick===state.tick) {
+        delete head.data.ceresWorkfleetCutTick;
+      }
+      recordCeresWorkfleetCutWork(state,head,result);}
 
   } else if(job.phase==='tow_attach') {
     let mount=currentLine(service,job.mountId,head,breaker);

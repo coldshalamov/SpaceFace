@@ -184,11 +184,13 @@ export function buildDiagnosticsReport(state, opts = {}) {
   const startup = safe(() => opts.startup || startupJournalSnapshot(), null);
   if (startup) {
     out.push('', 'Startup history');
+    if (startup.loading) out.push('  Opening staging: ' + sanitizeErrorText(JSON.stringify(startup.loading), 12000));
     for (const [name, attempt] of [['Previous document', startup.previous], ['Current document', startup.current]]) {
       if (!attempt) continue;
       out.push('  ' + name + ': ' + plain(attempt.status) + ', last phase ' + plain(attempt.phase));
       out.push('    Started: ' + plain(attempt.startedAt) + ', time origin ' + plain(attempt.timeOrigin));
       if (attempt.sample) out.push('    State: ' + sanitizeErrorText(JSON.stringify(attempt.sample), 1000));
+      if (attempt.loading) out.push('    Retained opening staging: ' + sanitizeErrorText(JSON.stringify(attempt.loading), 8000));
       for (const event of (attempt.events || []).slice(-24)) {
         out.push('    ' + sanitizeErrorText(JSON.stringify(event), 600));
       }

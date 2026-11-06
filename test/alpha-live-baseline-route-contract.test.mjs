@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { countGateInvocations, resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
+import { validateFinalStationFrameSuffix } from '../scripts/lib/alphaLiveBaselineContracts.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHECK_PATH = path.join(ROOT, 'scripts', 'check-alpha-live-baseline-browser.mjs');
@@ -123,8 +124,8 @@ for (const required of [
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]New Game['"],\s*exact:\s*true\s*\}\)/,
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Launch['"],\s*exact:\s*true\s*\}\)/,
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Set Waypoint['"],\s*exact:\s*true\s*\}\)/,
-  /keyboard\.down\(['"]KeyW['"]\)/,
-  /keyboard\.down\(['"]Shift['"]\)/,
+  /await press\(['"]KeyW['"]\)/,
+  /await press\(['"]Shift['"]\)/,
   /keyboard\.press\(['"]KeyN['"]\)/,
   /#sf-galaxymap/,
   /keyboard\.press\(['"]\/['"]\)/,
@@ -272,6 +273,8 @@ assert.match(combined, /inputSource\s*:\s*['"]keyboard-mouse['"]/, 'evidence nam
 
 const routeModule = await import(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url));
 assert.equal(typeof routeModule.runBrowserPublicRoute, 'function', 'route helper exports the public-route runner');
+assert.equal(typeof routeModule.measureFlightInputWithBoundedHold, 'function',
+  'route helper exports the bounded public keyboard probe for behavior coverage');
 assert.equal(typeof routeModule.summarizePerformanceSamples, 'function', 'route helper exports its descriptive sampler summary');
 assert.equal(typeof routeModule.evaluateFlightInputCausality, 'function', 'route helper exports causal flight evaluation');
 assert.equal(typeof routeModule.inspectCanonicalRootUrl, 'function', 'route helper exports canonical URL inspection');
@@ -280,6 +283,142 @@ assert.equal(typeof routeModule.observeStableStationFramesInPage, 'function',
   'route helper exports the exact DOM observer used by page.evaluate');
 
 await testStationDomObserver(routeModule);
+
+const flightProbeEvents = (label) => {
+  const events = [];
+  const keyboard = {
+    async down(key) { events.push(`${label}:down:${key}`); },
+    async up(key) { events.push(`${label}:up:${key}`); },
+  };
+  return { events, keyboard };
+};
+const inertDeadline = (callback, delayMs) => {
+  assert.equal(delayMs, 4_000, 'flight key lifetime has the bounded four-second ceiling');
+  return callback;
+};
+
+const normalProbe = flightProbeEvents('normal');
+let normalSnapshots = 0;
+const normalResult = await routeModule.measureFlightInputWithBoundedHold({
+  keyboard: normalProbe.keyboard,
+  waitForTimeout: async (ms) => normalProbe.events.push(`normal:wait:${ms}`),
+  readSnapshot: async () => ({ sample: ++normalSnapshots }),
+  scheduleDeadline: inertDeadline,
+  cancelDeadline() {},
+});
+assert.deepEqual(normalResult, { wHeld: { sample: 1 }, boostHeld: { sample: 2 } },
+  'ordinary W and boost samples retain their order');
+assert.deepEqual(normalProbe.events, [
+  'normal:down:KeyW', 'normal:wait:500', 'normal:down:Shift', 'normal:wait:400',
+  'normal:up:Shift', 'normal:up:KeyW',
+], 'ordinary probe preserves the 500ms W and 400ms Shift holds and releases both keys');
+
+let unblockFlightSnapshot;
+let flightSnapshotBlocked;
+const blockedSnapshot = new Promise((resolve) => { unblockFlightSnapshot = resolve; });
+const snapshotStarted = new Promise((resolve) => { flightSnapshotBlocked = resolve; });
+let fireFlightDeadline;
+let snapshotUnblocked = false;
+let flightKeysReleased;
+const flightKeysReleasedPromise = new Promise((resolve) => { flightKeysReleased = resolve; });
+const blockedProbe = flightProbeEvents('blocked');
+const blockedFlightProbe = routeModule.measureFlightInputWithBoundedHold({
+  keyboard: {
+    async down(key) { blockedProbe.events.push(`blocked:down:${key}`); },
+    async up(key) {
+      blockedProbe.events.push(`blocked:up:${key}`);
+      if (blockedProbe.events.includes('blocked:up:Shift')
+        && blockedProbe.events.includes('blocked:up:KeyW')) flightKeysReleased();
+    },
+  },
+  waitForTimeout: async (ms) => blockedProbe.events.push(`blocked:wait:${ms}`),
+  readSnapshot: async () => {
+    flightSnapshotBlocked();
+    const value = await blockedSnapshot;
+    snapshotUnblocked = true;
+    return value;
+  },
+  scheduleDeadline: (callback, delayMs) => {
+    assert.equal(delayMs, 4_000);
+    fireFlightDeadline = callback;
+    return callback;
+  },
+  cancelDeadline() {},
+});
+await snapshotStarted;
+fireFlightDeadline();
+await flightKeysReleasedPromise;
+assert.deepEqual(blockedProbe.events.filter((event) => event.startsWith('blocked:up:')),
+  ['blocked:up:Shift', 'blocked:up:KeyW'],
+  'host deadline sends keyup for both probe keys while telemetry is still blocked');
+await assert.rejects(blockedFlightProbe, /exceeded the 4000ms held-key ceiling/);
+assert.equal(snapshotUnblocked, false, 'the release does not depend on DevTools telemetry completing');
+unblockFlightSnapshot({ sample: 'late' });
+assert.equal(blockedProbe.events.includes('blocked:down:Shift'), false,
+  'a late W snapshot cannot trigger a new Shift-down after timeout');
+
+let acknowledgeKeydown;
+let keydownStarted;
+const keydownStartedPromise = new Promise((resolve) => { keydownStarted = resolve; });
+const delayedKeydown = new Promise((resolve) => { acknowledgeKeydown = resolve; });
+let fireKeydownDeadline;
+let keydownAcknowledged = false;
+let lateKeydownReleased;
+const lateKeydownReleasedPromise = new Promise((resolve) => { lateKeydownReleased = resolve; });
+let keydownReleasedCount = 0;
+const keydownProbe = flightProbeEvents('keydown-blocked');
+const blockedKeydownFlightProbe = routeModule.measureFlightInputWithBoundedHold({
+  keyboard: {
+    async down(key) {
+      keydownProbe.events.push(`keydown-blocked:down:${key}`);
+      if (key === 'KeyW') {
+        keydownStarted();
+        await delayedKeydown;
+        keydownAcknowledged = true;
+      }
+    },
+    async up(key) {
+      keydownProbe.events.push(`keydown-blocked:up:${key}`);
+      if (key === 'KeyW') {
+        keydownReleasedCount++;
+        if (keydownAcknowledged && keydownReleasedCount >= 3) lateKeydownReleased();
+      }
+    },
+  },
+  waitForTimeout: async () => { throw new Error('wait must not run after blocked keydown expires'); },
+  readSnapshot: async () => { throw new Error('snapshot must not run after blocked keydown expires'); },
+  scheduleDeadline: (callback, delayMs) => {
+    assert.equal(delayMs, 4_000);
+    fireKeydownDeadline = callback;
+    return callback;
+  },
+  cancelDeadline() {},
+});
+await keydownStartedPromise;
+fireKeydownDeadline();
+await assert.rejects(blockedKeydownFlightProbe, /exceeded the 4000ms held-key ceiling/);
+assert.deepEqual(keydownProbe.events.filter((event) => event.startsWith('keydown-blocked:up:')),
+  ['keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW',
+    'keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW',
+    'keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW'],
+  'deadline and cleanup submit keyup while keydown ack is blocked');
+assert.equal(keydownProbe.events.includes('keydown-blocked:down:Shift'), false,
+  'expired keydown cannot advance to a late boost press');
+acknowledgeKeydown();
+await lateKeydownReleasedPromise;
+assert.equal(keydownProbe.events.includes('keydown-blocked:down:Shift'), false,
+  'late keydown acknowledgement is followed by cleanup, never Shift-down');
+
+const errorProbe = flightProbeEvents('error');
+await assert.rejects(routeModule.measureFlightInputWithBoundedHold({
+  keyboard: errorProbe.keyboard,
+  waitForTimeout: async (ms) => errorProbe.events.push(`error:wait:${ms}`),
+  readSnapshot: async () => { throw new Error('snapshot failed'); },
+  scheduleDeadline: inertDeadline,
+  cancelDeadline() {},
+}), /snapshot failed/);
+assert.deepEqual(errorProbe.events.slice(-2), ['error:up:Shift', 'error:up:KeyW'],
+  'snapshot errors still release both keyboard inputs');
 
 assert.deepEqual(
   routeModule.summarizePerformanceSamples([
@@ -454,6 +593,91 @@ async function testStationDomObserver(routeModule) {
   const fieldsetDisabled = await observeStationFixture(routeModule, { disabledFieldset: true });
   assert.equal(fieldsetDisabled[0].undockAction.disabled, true,
     'DOM observer uses :disabled semantics for disabled fieldset ancestry');
+
+  const changingContent = await observeStationFixture(routeModule, {
+    maximumFrames: 3,
+    stationTextChanges: {
+      1: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,000',
+      2: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,001',
+      3: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,002',
+    },
+  });
+  const settleDiagnostic = changingContent.at(-1)?.settleDiagnostic;
+  assert.equal(settleDiagnostic?.content?.firstChangedFrameNumber, 2,
+    'bounded station diagnostics name the first frame whose visible content differs');
+  assert.equal(settleDiagnostic?.content?.lastChangedFrameNumber, 3,
+    'bounded station diagnostics name the most recent changed frame');
+  assert.match(settleDiagnostic?.content?.firstChange?.before?.text || '', /credits 5,000/,
+    'text delta includes context from the previous visible content');
+  assert.match(settleDiagnostic?.content?.firstChange?.after?.text || '', /credits 5,001/,
+    'text delta includes context from the changed visible content');
+  assert.match(settleDiagnostic?.content?.lastTransition?.before?.text || '', /credits 5,001/,
+    'diagnostic retains the visible text immediately before the last fingerprint transition');
+  assert.match(settleDiagnostic?.content?.lastTransition?.after?.text || '', /credits 5,002/,
+    'diagnostic retains the visible text immediately after the last fingerprint transition');
+  assert(settleDiagnostic.content.firstChange.before.text.length <= 512
+    && settleDiagnostic.content.firstChange.after.text.length <= 512,
+  'text delta snippets stay bounded');
+  assert.equal(settleDiagnostic.firstFrameSignature.screen.width, 1280,
+    'diagnostic retains first-frame station geometry');
+  assert.equal(settleDiagnostic.lastFrameSignature.undock.selector, 'button[data-act="undock"]',
+    'diagnostic retains final-frame canonical control identity');
+
+  const captionTransition = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {
+      16: "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.",
+    },
+  });
+  assert.equal(new Set(captionTransition.map((frame) => frame.contentFingerprint)).size, 1,
+    'the timed docked airlock caption does not destabilize the station content fingerprint');
+  assert.equal(captionTransition[0].stationNarrativeCaption.text, 'THEY KNEW THE MASS.',
+    'observer retains the visible starting story caption separately');
+  assert.equal(captionTransition.at(-1).stationNarrativeCaption.text,
+    "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.",
+    'observer retains the visible successor story caption separately');
+  assert.equal(validateFinalStationFrameSuffix(captionTransition, { minFrames: 30 }).pass, true,
+    'caption-only authored transition still satisfies 30 stable station frames');
+
+  const unrelatedVisibleChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    stationTextChanges: { 16: 'Mission board: new visible requirement' },
+  });
+  assert.equal(validateFinalStationFrameSuffix(unrelatedVisibleChange, { minFrames: 30 }).pass, false,
+    'unrelated visible station content changes still fail the stable-content contract');
+  assert(unrelatedVisibleChange.at(-1).settleDiagnostic.content.firstChange,
+    'unrelated visible content drift retains its bounded text delta');
+
+  const hiddenSiblingChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {},
+    siblingTextHidden: true,
+    siblingTextChanges: { 16: 'HIDDEN PANEL TEXT MUST NOT COUNT' },
+  });
+  assert.equal(new Set(hiddenSiblingChange.map((frame) => frame.contentFingerprint)).size, 1,
+    'hidden non-caption sibling changes do not destabilize rendered station text');
+  assert.doesNotMatch(hiddenSiblingChange.at(-1).contentPreview, /HIDDEN PANEL TEXT MUST NOT COUNT/,
+    'hidden non-caption sibling text is excluded from the fingerprint');
+
+  const visibleSiblingChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {},
+    siblingTextChanges: { 16: 'Visible station notice changed' },
+  });
+  assert.equal(validateFinalStationFrameSuffix(visibleSiblingChange, { minFrames: 30 }).pass, false,
+    'visible non-caption sibling changes still fail the stable-content contract');
+
+  const hiddenCaption = await observeStationFixture(routeModule, {
+    maximumFrames: 1,
+    stationCaptionHidden: true,
+    captionTextChanges: { 1: 'HIDDEN CAPTION MUST NOT LEAK' },
+  });
+  assert.equal(hiddenCaption[0].stationNarrativeCaption.visible, false,
+    'hidden timed captions are not represented as visible narrative text');
+  assert.equal(hiddenCaption[0].stationNarrativeCaption.text, '',
+    'hidden caption text is omitted from the separate visible-caption observation');
+  assert.doesNotMatch(hiddenCaption[0].contentPreview, /HIDDEN CAPTION MUST NOT LEAK/,
+    'hidden caption text is not introduced into the stable visible-content fingerprint');
 }
 
 async function observeStationFixture(routeModule, options = {}) {
@@ -466,7 +690,7 @@ async function observeStationFixture(routeModule, options = {}) {
     globalThis[key] = value;
   }
   try {
-    return await routeModule.observeStableStationFramesInPage({ maximumFrames: 1 });
+    return await routeModule.observeStableStationFramesInPage({ maximumFrames: options.maximumFrames || 1 });
   } finally {
     for (const [key, previous] of prior) {
       if (previous.owned) globalThis[key] = previous.value;
@@ -481,6 +705,11 @@ function createStationDomFixture({
   buttonRect = { left: 1080, top: 24, width: 180, height: 44 },
   duplicateCanonical = false,
   disabledFieldset = false,
+  stationTextChanges = {},
+  captionTextChanges = null,
+  stationCaptionHidden = false,
+  siblingTextChanges = null,
+  siblingTextHidden = false,
 } = {}) {
   const body = fakeElement({ tag: 'body', rect: { left: 0, top: 0, width: 1440, height: 900 } });
   const station = fakeElement({
@@ -512,6 +741,50 @@ function createStationDomFixture({
     rect: { left: 120, top: 140, width: 120, height: 36 },
     innerText: 'Market',
   });
+  let stationCaption = null;
+  let stationTape = null;
+  let stationTapeTail = null;
+  let siblingText = null;
+  if (captionTextChanges !== null || stationCaptionHidden) {
+    stationTape = fakeElement({
+      tag: 'div',
+      parent: station,
+      classes: ['sxb-tape'],
+      rect: { left: 100, top: 160, width: 700, height: 60 },
+      innerText: '',
+    });
+    stationCaption = fakeElement({
+      tag: 'div',
+      parent: stationTape,
+      attrs: { id: 'sf-airlock', 'aria-hidden': stationCaptionHidden ? 'true' : 'false' },
+      classes: ['sf-airlock', 'sf-airlock--station'],
+      style: stationCaptionHidden ? { display: 'none' } : {},
+      hidden: stationCaptionHidden,
+      rect: { left: 100, top: 160, width: 300, height: 28 },
+      innerText: 'THEY KNEW THE MASS.',
+    });
+    stationCaption.parentNode = stationTape;
+    stationTapeTail = { nodeType: 3, nodeValue: ' · Station wire · Local Wire notice' };
+    if (siblingTextChanges !== null || siblingTextHidden) {
+      siblingText = fakeElement({
+        tag: 'div',
+        parent: station,
+        classes: ['sx-hidden-panel'],
+        style: siblingTextHidden ? { display: 'none' } : {},
+        hidden: siblingTextHidden,
+        rect: { left: 0, top: 0, width: 400, height: 40 },
+        innerText: 'Stable sibling notice',
+      });
+      siblingText.childNodes = [{ nodeType: 3, nodeValue: siblingText.innerText }];
+    }
+    stationTape.childNodes = [stationCaption, stationTapeTail];
+    stationTape.contains = (candidate) => containsElement(stationTape, candidate);
+    const headerText = { nodeType: 3, nodeValue: 'Helios Station Mission board ' };
+    const footerText = { nodeType: 3, nodeValue: ' · Undock' };
+    station.childNodes = [headerText, stationTape, siblingText, footerText].filter(Boolean);
+    stationTape.innerText = `${stationCaption.innerText}${stationTapeTail.nodeValue}`;
+    station.innerText = `${headerText.nodeValue}${stationTape.innerText}${siblingText?.innerText || ''}${footerText.nodeValue}`;
+  }
   const outsideDuplicate = duplicateCanonical ? fakeElement({
     tag: 'button',
     parent: body,
@@ -532,7 +805,7 @@ function createStationDomFixture({
       return null;
     },
     querySelectorAll: (selector) => selector === 'button[data-act="undock"]' ? canonical : [],
-    getElementById: () => null,
+    getElementById: (id) => id === 'sf-airlock' ? stationCaption : null,
   };
   const windowRef = {
     innerWidth: 1440,
@@ -549,7 +822,23 @@ function createStationDomFixture({
       document: documentRef,
       window: windowRef,
       getComputedStyle: (element) => element._style,
-      requestAnimationFrame: (callback) => queueMicrotask(() => callback(++frame * 16.667)),
+      requestAnimationFrame: (callback) => queueMicrotask(() => {
+        frame += 1;
+        if (Object.prototype.hasOwnProperty.call(stationTextChanges, frame)) {
+          station.innerText = stationTextChanges[frame];
+        }
+        if (stationCaption && Object.prototype.hasOwnProperty.call(captionTextChanges || {}, frame)) {
+          stationCaption.innerText = captionTextChanges[frame];
+          stationCaption.textContent = stationCaption.innerText;
+          stationTape.innerText = `${stationCaption.innerText}${stationTapeTail.nodeValue}`;
+        }
+        if (siblingText && Object.prototype.hasOwnProperty.call(siblingTextChanges || {}, frame)) {
+          siblingText.innerText = siblingTextChanges[frame];
+          siblingText.textContent = siblingText.innerText;
+          if (siblingText.childNodes?.[0]) siblingText.childNodes[0].nodeValue = siblingText.innerText;
+        }
+        callback(frame * 16.667);
+      }),
     },
   };
 }
@@ -567,6 +856,7 @@ function fakeElement({
 } = {}) {
   const attributes = new Map(Object.entries(attrs));
   const element = {
+    nodeType: 1,
     localName: tag,
     tagName: tag.toUpperCase(),
     parentElement: parent,

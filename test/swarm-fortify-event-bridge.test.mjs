@@ -32,5 +32,20 @@ test('the construction view and purchase verdict cross the real worker event pro
     assert.equal(verdict.dropped, false, JSON.stringify(verdict.hits));
     assert.equal(structuredClone(verdict.flat).readModel.structures[0].hull, 140);
     assert.equal(verdict.flat.readModel.credits, 670);
+
+    const tesla = owner.build({ requestId: 3, runToken: view.runToken, deviceId: 'tesla_pair', socketId: 'port-near' });
+    assert.equal(tesla.accepted, true);
+    const before = owner.getReadModel().structures.find(row => row.deviceId === 'tesla_pair');
+    const endpoint = sim.state.entities.get(before.entityIds[0]);
+    endpoint.alive = false;
+    sim.bus.emit('entity:destroyed', { entity: endpoint });
+    const broken = projectBridgeEvent('swarm:fortifyState', owner.getReadModel());
+    assert.equal(broken.flat.structures.find(row => row.deviceId === 'tesla_pair').missingEndpoint, true);
+    const replacement = owner.repair({ requestId: 4, runToken: view.runToken, entityId: before.entityId });
+    const wire = projectBridgeEvent('swarm:fortifyBuildResolved', replacement);
+    assert.equal(wire.dropped, false, JSON.stringify(wire.hits));
+    assert.equal(wire.flat.replaced, true);
+    assert.equal(wire.flat.readModel.structures.find(row => row.deviceId === 'tesla_pair').operational, true);
+    assert.equal(wire.flat.readModel.credits, 484);
   } finally { sim.registry.get('swarmFortify').destroy(); sim.dispose(); }
 });

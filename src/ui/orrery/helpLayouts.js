@@ -156,6 +156,16 @@ ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
 ${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
 ${H} .orr-hreg__row.is-echo .orr-hkey::after { background:rgb(255 255 255); left:-4px; right:-4px; }
 ${H} .orr-hreg__row.is-echo .orr-hkey::before { background:rgb(143 203 255 / .34); }
+/* the register is a column of keycaps: letter bindings wear the same hairline chip as SHIFT and SPACE · F
+   (the dp-kbd voice) instead of half of them floating over a bar of light. The rig's big diagram keys keep the bar. */
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text) { ${LABEL} font-size:12px !important; letter-spacing:.04em; line-height:1;
+  align-items:center; justify-content:center; gap:5px; min-width:24px; box-sizing:border-box; padding:4px 7px !important;
+  color:rgb(${BONE} / .92); background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:3px; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4); }
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::before, ${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::after { content:none; }
+${H} .orr-hreg__row > .orr-hkey--none:not(.orr-hkey--text) { color:rgb(${BONE} / .66); border-style:dashed; border-color:rgb(${BONE} / .3); background:transparent; }
+${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255 255); text-shadow:none; border-color:rgb(255 255 255 / .85);
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 
@@ -344,11 +354,126 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.1em; }
   /* the ring is at its 80px floor here: its words keep inside the band (the rock's name and share; its tier-cap line drops) */
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
-  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:13px; letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  /* the 140px COMMON ROCK / 45% OF ROCKS pair ran onto the ring's inner arc at both ends; trimmed so it stands clear inside it */
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
   ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 22px; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
+}
+/* ui-polish-324: at 801-1200 wide and up to 540 tall the Ores reading stands beside the stage (the ring needs more room than
+   this and sleeps), and its FOUND IN row wrapped onto a second line that ran into the stage's fading foot -- "70%" read
+   half-cut. The ledger's rows and the name's gap tighten so every term stands whole above the fade; type is unchanged. */
+@media (min-width:761px) and (max-width:1200px) and (max-height:540px) {
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin-top:8px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-block:4px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
+/* ui-polish-330: at 761-870 wide the Ores hero is under the ring's 320px floor, so the ring sleeps and its 257px slot sat empty
+   between the list and the reading. The sleeping slot closes and the reading takes the stage's width, its ledger on the same
+   hairline-framed sheet the 1201+ readings wear, so the term values read on one line (FOUND IN no longer wraps). */
+/* ui-polish-340: same band, Ships/Commodities — both dials need ≥300px of hero width and sleep below it, leaving an empty
+   slot between the list and the reading. Close the sleeping slot; the reading takes the stage on the hairline sheet
+   (and Commodities' Legality line wears the matching frame). Ores rules above stay more specific / untouched. */
+@media (min-width:761px) and (max-width:870px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  /* ui-polish-341: Factions terms at 761-870 still float bare (Factions uses .orr-help-factions, not
+     .orr-help-list). Match the Ores hairline card in this band so the ledger reads as one sheet. */
+  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-factions .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
+/* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
+   1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
+   card beside the mix; type, colours and the one-pair-per-row grid are unchanged. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
+/* ui-polish-338: Ores got the mid-band sheet in 335, but at 871-1200 the Ships, Commodities and Factions readings still
+   floated as bare label/value pairs between the boxed 1201+ band and the boxed Ores tab. They wear the same hairline sheet
+   (and Commodities' Legality line its frame), rows kept compact so the scrolling reading grows by only the frame.
+   The Ores rules above are more specific, so its 335 sheet is untouched. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:6px 16px 6px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ...and on a 461-540 tall screen the Ships reading already scrolls, so its rows close up the way Ores' did in 324 */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) and (max-height:540px) {
+  ${HD} .orr-help-terms dt { padding-block:4px; padding-right:12px; }
+  ${HD} .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
+/* ui-polish-339: at 871-959 the Ships/Commodities hero column is ~253-295px — under both dials'
+   300px width floor — so the price/hull dial sleeps and leaves an empty slot between the list and
+   the reading (960 already wakes at ~328px). The reading flexes down toward 170px and the gap
+   tightens so the hero holds ≥340px: the price dial paints, and the hull dial clears its tight
+   overrun check; Ores keeps its own stage columns. */
+@media (min-width:871px) and (max-width:959px) and (min-height:461px) {
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage {
+    grid-template-columns:minmax(0, 1fr) clamp(170px, 19vw, 200px); column-gap:18px; }
+  /* The dial has room, but a two-column ledger left only ~25px for its values.
+     Stack each term above its value so units and slot names remain whole. */
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:6px 0 2px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:0 0 6px; border-top:0; }
+}
+
+/* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
+   label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
+   section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
+   and the Legality line under it wears the same frame; type, colours and the row data are unchanged. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:9px 18px 9px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:7px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  /* ORES lays two pairs to a line: the second pair opens the sheet too, and the first pair keeps its gutter */
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:0; padding:2px 10px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-right:12px; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:0; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ui-polish-331: at 1201+ wide and 461-599 tall the Ores hero (stage minus the reading under it) is 170-250px, but the mix
+   keeps its 300px min-height, so its ring spilled over the reading's ledger and the rock's name. Here the reading stands beside
+   the mix, as it does at 761-1200, so the ring has its own room and the ledger keeps its sheet and one pair per row. */
+@media (min-width:1201px) and (min-height:461px) and (max-height:599px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(240px, 20vw, 300px); grid-template-rows:minmax(0, 1fr); column-gap:20px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { display:block; align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding:0 0 14px; box-sizing:border-box; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 1.7vw, 28px); margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:8px 0 0; grid-template-columns:auto minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:5px 10px 5px 0; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:3px; line-height:1.3; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:0; }
 }
 /* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
    title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
@@ -482,6 +607,25 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
     ${HD} .orr-help__tabs { padding-right:20px !important; ${TAB_EDGES} }
   }
   html:root[data-sf-mobile="1"] body #screens > .k-screen.of-help.orr-help .orr-help__tabs { ${TAB_EDGES} }
+}
+
+/* ui-polish-281: the side ladder (≥1201 wide) read as loose words on a ruled spine with no edge, so the
+   six sections looked unfinished beside the bordered key register. They now sit in one hairline-framed
+   list: a rule between rows, the open row on a faint fill with a 2px bar at its left edge (amber on
+   Controls, bone elsewhere), and a framed focus ring for keyboard and pad. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} > .k-hang { -webkit-mask-image:none !important; mask-image:none !important; } /* six rows always fit; the kit fade only ate the frame's bottom edge */
+  ${HD} .orr-help__tabs { background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .2) !important; border-radius:6px !important; padding:4px !important; gap:2px !important; }
+  ${HD} .orr-help__tabs > li::before { display:none !important; }
+  ${HD} .orr-help__tabs > li + li { border-top:1px solid rgb(${BONE} / .09) !important; padding-top:2px !important; }
+  ${HD} .orr-help__tabs .sf-tab { min-height:clamp(36px, 4.4vh, 48px) !important; padding:0 12px 0 18px !important; border-radius:4px !important; color:rgb(${BONE} / .78) !important; transition:color .16s linear, background-color .16s linear; }
+  ${HD} .orr-help__tabs .sf-tab::before, ${HD} .orr-help__tabs .sf-tab::after { content:none !important; display:none !important; }
+  ${HD} .orr-help__tabs .sf-tab:hover { background:rgb(${BONE} / .05) !important; color:rgb(255 255 255) !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible, html.sf-gamepad-focus${HD.slice(4)} .orr-help__tabs .sf-tab:focus { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .75) !important; text-decoration:none !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"] { background:rgb(${BONE} / .085) !important; color:rgb(255 255 255) !important; text-shadow:none; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:8px !important; bottom:8px !important;
+    width:2px !important; height:auto !important; margin:0 !important; border-radius:2px !important; background:rgb(${HOT} / .9) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .45) !important; }
 }
 
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */

@@ -10,21 +10,7 @@ import { planarProxyPrismHalfHeight } from './planarProxyGeometry.js';
 
 const canonical = ensurePhysicsBodySpec({ type: 'wreck', radius: G.radius, data: {}, physicsBody: orchardFrameBodySpec() });
 const leases = new WeakMap(), preparations = new WeakSet(), recoveryViews = new WeakMap();
-const poseReaders = new WeakMap();
-
-// Keep presentation's current native-pose read seam beside the Orchard native owner helpers.
-// Physics remains the registrar; the WeakMap does not extend either state or reader lifetime.
-export function registerOrchardPoseReader(state, reader) {
-  poseReaders.set(state, reader);
-}
-
-export function isCurrentOrchardPoseReader(state, reader) {
-  return poseReaders.get(state) === reader;
-}
-
-export function readOrchardNativePose(state, entity) {
-  return poseReaders.get(state)?.readOrchardFramePose(entity) ?? null;
-}
+export { registerOrchardPoseReader, isCurrentOrchardPoseReader, readOrchardNativePose } from './orchardPoseReader.js';
 
 const rigByPart = new Map(G.rigs.map(r => [r.partId, r]));
 let nextRevision = 1;
@@ -745,11 +731,15 @@ function finiteIntake(p,state,socket,pod,amount,insertion){
  if(!slot || slot.operation!=='closed' || slot.progress!==0 || f.row.sourceRemaining<amount || pod.data.commodityId!==ANVIL_ORCHARD.commodityId)return null;
  if(insertion){
   if(!['empty','delivered','lost'].includes(slot.status) || slot.cycle>=4 || pod.cycle!==slot.cycle+1 || pod.data.amount!==amount)return null;
-  const lotId=orchardLotId(socket,pod.cycle);next.lots.push({id:lotId,socket,cycle:pod.cycle,units:amount,outcome:'retained'});
+  const lotId=orchardLotId(socket,pod.cycle),lot={id:lotId,socket,cycle:pod.cycle,units:amount,outcome:'retained'};
+  if(pod.data.orchardContributor==='player')lot.contributor='player';
+  else if(pod.data.orchardContributor!==undefined)return null;
+  next.lots.push(lot);
   next.sockets[socket]={socket,cycle:pod.cycle,lotId,status:'stowed',operation:'closed',progress:0,handoff:'fixed',targetRevision:null,acceptedTick:null,completedTick:null,openedTick:null,readyTick:null,mountLostWork:0,mountLostTick:null};
  }else{
   const lot=next.lots.find(l=>l.id===slot.lotId);
-  if(slot.status!=='stowed' || !lot || lot.units!==pod.data.amount || lot.units+amount>4)return null;
+  if(slot.status!=='stowed' || !lot || lot.units!==pod.data.amount || lot.units+amount>4
+     || (lot.contributor==='player')!==(pod.data.orchardContributor==='player'))return null;
   lot.units+=amount;
  }
  next.sourceRemaining-=amount;const publication=finitePublication(f,next);if(!publication)return null;

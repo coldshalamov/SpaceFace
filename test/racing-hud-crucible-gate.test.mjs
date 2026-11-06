@@ -63,6 +63,7 @@ function installDom() {
       this._listeners.set(type, list);
     }
     blur() { this._blurred = true; }
+    focus() { document.activeElement = this; }
     click(ev = { detail: 1 }) {
       for (const fn of this._listeners.get('click') || []) fn(ev);
     }
@@ -482,4 +483,54 @@ test('adventure combat: weapons hot takes the HUD row out of the click path', ()
   } finally {
     dom.restore();
   }
+});
+
+
+test('mobile flight options preserve view and Circuits actions, focus and combat lock', () => {
+  const dom = installDom();
+  let hud;
+  try {
+    document.documentElement = { dataset: { sfMobile: '1', sfMobileFlight: '1' } };
+    const root = document.createElement('div'), state = flightState(), bus = busStub(), opened = [];
+    hud = mountRacingHud({ root, state, bus, screens: { isOpen: () => false, pushScreen: id => opened.push(id) } });
+    hud.frame(state);
+    const panel = root.children.find(node => node.id === 'race-tape');
+    const trigger = panel.children.find(node => node.className.includes('race-tape-options-trigger'));
+    const row = actionRow(panel), view = row.children[0], circuits = row.children.find(node => node.textContent === 'Circuits');
+    const close = row.children.find(node => node.textContent === 'Close');
+    assert.equal(trigger.getAttribute('aria-controls'), row.id);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(view.textContent, 'View: Overhead');
+    trigger.click();
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(document.activeElement, view);
+    let prevented = false;
+    for (const fn of panel._listeners.get('keydown')) fn({ key:'Escape', preventDefault() { prevented = true; }, stopPropagation() {} });
+    assert.equal(prevented, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.activeElement, trigger);
+    trigger.click(); view.click({ detail: 0 });
+    assert.equal(state.settings.gameplay.steeringView, 'racing');
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.activeElement, trigger);
+    state.simTime += 1; hud.frame(state);
+    assert.equal(view.textContent, 'View: Chase');
+    trigger.click(); close.click({ detail: 0 });
+    assert.equal(document.activeElement, trigger);
+    trigger.click(); circuits.click({ detail: 0 });
+    assert.deepEqual(opened, ['raceBoard']);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    trigger.click(); bus.emit('combat:fire', { ownerId: state.playerId }); hud.frame(state);
+    assert.equal(trigger.disabled, true);
+    assert.equal(row.inert, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    state.simTime += 5; hud.frame(state);
+    assert.equal(trigger.disabled, false);
+    state.missions.active = [{ id:'locked', type:'delivery', status:'active', params:{ steerLock:'racing' } }];
+    state.simTime += 1; bus.emit('mission:updated'); hud.frame(state);
+    assert.equal(view.disabled, true);
+    assert.match(view.textContent, /mission locked/);
+    trigger.click();
+    assert.equal(document.activeElement, close, 'a locked camera focuses the available Close action');
+  } finally { hud?.dispose(); dom.restore(); }
 });

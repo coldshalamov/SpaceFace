@@ -189,6 +189,16 @@ export function paintHoverTagVitals(tag, entity) {
   return true;
 }
 
+let placementMode = 'css';
+
+// Temporary within-session comparison control. The native pilot switches this module's
+// live placement path without a reload, pause, or second renderer.
+export function setHoverTagPlacementMode(mode) {
+  if (mode !== 'css' && mode !== 'measured') throw new RangeError('Unknown hover tag placement mode: ' + mode);
+  placementMode = mode;
+  return placementMode;
+}
+
 export function placeHoverTag(el, x, y, viewW, viewH) {
   if (!el) return;
   const vw = Number.isFinite(viewW) && viewW > 0 ? viewW : 1024;
@@ -201,6 +211,21 @@ export function placeHoverTag(el, x, y, viewW, viewH) {
     el.__woiMaxW = maxW;
     el.style.maxWidth = maxW;
   }
+  if (placementMode === 'css') {
+    // previewFor changes the range text before placement. Measuring here would flush that
+    // tick's pending UI writes. Transform percentages resolve against the CURRENT border
+    // box during layout, so content/font/vital changes need no synchronous size read or
+    // asynchronous size cache. Keep the old 8px half-width floor and viewport width cap.
+    const halfW = 'max(8px,min(50%,' + ((vw - 24) / 2) + 'px))';
+    const tf = 'translate3d(clamp(calc(' + halfW + ' + 6px),' + x + 'px,calc(' + vw + 'px - ' + halfW + ' - 6px)),'
+      + 'clamp(calc(100% + 18px),' + y + 'px,' + (vh - 8) + 'px),0) translate(-50%,calc(-100% - 14px))';
+    if (el.__woiTf !== tf) {
+      el.__woiTf = tf;
+      el.style.transform = tf;
+    }
+    return;
+  }
+  // Retained measured baseline for the native pilot's single active comparison.
   const fonts = (typeof document !== 'undefined' && document.fonts && document.fonts.status) || '';
   const key = el.textContent + '|' + vw + 'x' + vh + '|' + fonts + '|' + ((el.dataset && el.dataset.bars) || '');
   let size = el.__woiSize;

@@ -5,11 +5,29 @@ import { borrowedVoiceRingBody, borrowedVoiceRecorderBody, borrowedVoiceRingRadi
 import { witnessLineOfSight } from '../combat/lineOfSight.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
 const owners=new WeakMap(), terminal=new Set(['destroyed','lost']);
+// Authored constants stay sector-local. Runtime/default and saved body poses are world XZ.
+const WORLD_CENTER=Object.freeze(sectorLocalToGlobalForSector(C.center,C.sectorId));
 const distance=(a,b)=>a&&b?Math.hypot(a.x-b.x,a.z-b.z):Infinity;
 const pose=e=>({x:e.pos.x,z:e.pos.z,vx:e.vel?.x||0,vz:e.vel?.z||0,rot:e.rot||0,spin:e.angVel||0});
 const clone=v=>structuredClone(v);
+const worldPoint=p=>p&&['x','z'].every(k=>Number.isFinite(p[k])&&Math.abs(p[k])<1e7)
+  ?{x:p.x,z:p.z}:null;
+function restoredCenter(raw,row){
+  const marker=raw?.placement;
+  if(marker?.schema===1&&marker.frame==='galactic-global'){
+    const saved=worldPoint(marker.center);if(saved)return saved;
+  }
+  // Schema1 had no placement/history marker. A materialized or progressed legacy assembly
+  // cannot be proved untouched from an authored-looking pose: towing may have returned it.
+  // Preserve that old world anchor, rather than translating a claimed/moved original.
+  const retained=row.ringOutcome!=='unseen'||row.located||row.evidenceRevision>0
+    ||row.recoveredFragmentIds.length>0||row.disposition!=='open'||row.archiveReceipt
+    ||RECORDERS.some(r=>row.recorderOutcomeIds[r.id].status!=='unseen'||row.recorderOutcomeIds[r.id].pose);
+  return {...(retained?C.center:WORLD_CENTER)};
+}
 
 // A physical retained record. This owner never advances global revelation, invents
 // speech, writes credits, or turns a cosmetic orientation into a recovered fact.
@@ -48,6 +66,7 @@ _native(e){const p=this.ctx.registry?.get('physics'),n=p?._sg02;
     if(r._postStepReadTick!==n.tick||!Number.isInteger(n._simTick)||age<0||age>2)return null;}
   return r;
 },
+_center(){return this._find('ring')?.pos||this._worldCenter;},
 _spawn(id){if(this._find(id)||this._bindings.has(id))return;
   if(id==='ring'&&terminal.has(this._row.ringOutcome))return;
   const identity=borrowedVoiceIdentity(id);
@@ -55,7 +74,8 @@ _spawn(id){if(this._find(id)||this._bindings.has(id))return;
   const definition=RECORDERS.find(r=>r.id===id),saved=definition&&this._row.recorderOutcomeIds[id];
   if(definition&&terminal.has(saved.status))return;
   const ring=id==='ring',body=ring?borrowedVoiceRingBody():borrowedVoiceRecorderBody(id),p=saved?.pose;
-  const position=p?{x:p.x,z:p.z}:{x:C.center.x+(definition?.offset.x||0),z:C.center.z+(definition?.offset.z||0)};
+  const center=ring?this._worldCenter:this._center();
+  const position=p?{x:p.x,z:p.z}:{x:center.x+(definition?.offset.x||0),z:center.z+(definition?.offset.z||0)};
   const asset=ring?'SF_PLACE_BORROWED_VOICE_RING':`SF_PROP_BORROWED_VOICE_${id.toUpperCase()}`;
   const e=this.helpers.spawnEntity({type:ring?'wreck':'payload',team:0,pos:position,
     vel:p?{x:p.vx,z:p.vz}:{x:0,z:0},rot:p?.rot??definition?.rot??0,angVel:p?.spin||0,
@@ -71,7 +91,7 @@ _spawn(id){if(this._find(id)||this._bindings.has(id))return;
       salvagePool:{},authoredSalvagePool:{},debrisCache:{resolved:true},signalIsolated:this._row.disposition==='quarantine'}});
   if(!e)return;this._bindings.set(id,{e,life:e.occupantGeneration});if(saved)saved.status='live';else this._row.ringOutcome='live';
 },
-_sample(){const player=this._player(),ring=this._find('ring');if(!player||!ring||distance(player.pos,C.center)>600){this._signals.clear();return;}
+_sample(){const player=this._player(),ring=this._find('ring');if(!player||!ring||distance(player.pos,ring.pos)>600){this._signals.clear();return;}
   const receiver={x:ring.pos.x+C.receiver.x,z:ring.pos.z+C.receiver.z};
   for(const r of RECORDERS){const e=this._find(r.id);if(!e)continue;
     const prior=this._signals.get(r.id),ready=this.state.settings?.gameplay?.physicsBackend!=='rapier-dynamic'||(!!this._native(e)&&!!this._native(ring));
@@ -110,12 +130,12 @@ _offer(id=null){const physical=borrowedVoiceRecoveryProjection(this.state),r=REC
     text:borrowedVoiceJournalPlate(this.state)?.body||'Three original recorder housings carried this damaged signal. Unknown words remain unknown.',
     guidance:guidance.text,dismissLabel:guidance.dismissLabel,
     canChoose:this._active()&&this.state.ui?.docked!==true
-      &&distance(this._player()?.pos,C.center)<=C.siteRange
+      &&distance(this._player()?.pos,this._center())<=C.siteRange
       &&this._row.recoveredFragmentIds.length>0&&['open','leave'].includes(this._row.disposition)});
 },
 _refreshStaleDecision(disposition){const player=this._player();
   if(!['archive','quarantine','leave'].includes(disposition)||!this._active()||this.state.ui?.docked===true||!player
-    ||!(distance(player.pos,C.center)<=C.siteRange)||!this._row.recoveredFragmentIds.length
+    ||!(distance(player.pos,this._center())<=C.siteRange)||!this._row.recoveredFragmentIds.length
     ||!['open','leave'].includes(this._row.disposition))return;
   this.bus.emit('toast',{text:'The record changed while you were reviewing it. Check the updated evidence before choosing.',
     kind:'info',ttl:6});
@@ -124,7 +144,7 @@ _refreshStaleDecision(disposition){const player=this._player();
 choose(disposition,revision){if(this._busy)return {ok:false,reason:'record_changed'};
   if(revision!==this._row.evidenceRevision){this._refreshStaleDecision(disposition);return {ok:false,reason:'record_changed'};}
   if(!this._active()||this.state.ui?.docked===true||!['archive','quarantine','leave'].includes(disposition)||!this._row.recoveredFragmentIds.length
-  ||!['open','leave'].includes(this._row.disposition)||!(distance(this._player()?.pos,C.center)<=C.siteRange))return {ok:false,reason:'record_changed'};
+  ||!['open','leave'].includes(this._row.disposition)||!(distance(this._player()?.pos,this._center())<=C.siteRange))return {ok:false,reason:'record_changed'};
   if(disposition===this._row.disposition)return {ok:true,duplicate:true};
   const economy=this.ctx.registry?.get('economy');
   if(disposition==='archive'&&!this._row.archiveReceipt&&typeof economy?.grantCredits!=='function')return {ok:false,reason:'credit_owner_missing'};
@@ -143,6 +163,7 @@ _lost(entityId,entity=null){if(this._restoring||entityId==null)return;
   const ring=this._bindings.get('ring');
   if(ring&&ring.e.id===entityId&&(!entity||entity===ring.e)&&ring.life===ring.e.occupantGeneration){
     if(terminal.has(this._row.ringOutcome))return;
+    this._worldCenter=worldPoint(ring.e.pos)||this._worldCenter;
     this._row.ringOutcome='destroyed';this._row.evidenceRevision++;this._signals.clear();return;}
   for(const r of RECORDERS){const b=this._bindings.get(r.id);if(!b||b.e.id!==entityId||(entity&&b.e!==entity)
     ||b.life!==b.e.occupantGeneration)continue;
@@ -150,7 +171,8 @@ _lost(entityId,entity=null){if(this._restoring||entityId==null)return;
     row.status='destroyed';row.pose=pose(b.e);this._row.evidenceRevision++;this._signals.delete(r.id);
   }
 },
-_capture(){for(const r of RECORDERS){const e=this._find(r.id);if(e){const row=this._row.recorderOutcomeIds[r.id];row.pose=pose(e);if(!terminal.has(row.status))row.status='live';}}},
+_capture(){const ring=this._find('ring');if(ring)this._worldCenter=worldPoint(ring.pos)||this._worldCenter;
+  for(const r of RECORDERS){const e=this._find(r.id);if(e){const row=this._row.recorderOutcomeIds[r.id];row.pose=pose(e);if(!terminal.has(row.status))row.status='live';}}},
 _shelve(){if(this._restoring)return;this._capture();
   for(const [id,b]of this._bindings){if(this.state.entities.get(b.e.id)!==b.e)continue;
     if(id!=='ring'&&!terminal.has(this._row.recorderOutcomeIds[id].status))this._row.recorderOutcomeIds[id].status='shelved';
@@ -162,8 +184,10 @@ update(dt,state){if(!this._active())return;for(const id of ['ring',...RECORDERS.
   if(state.simTime<this._nextSample)return;this._nextSample=state.simTime+C.sampleSeconds;
   if(this._row.disposition!=='quarantine')this._sample();
 },
-serialize(){this._capture();return clone(normalizeBorrowedVoice(this._row));},
-deserialize(raw){this._row=normalizeBorrowedVoice(raw);this.state.borrowedVoice=this._row;this._bindings.clear();this._signals.clear();this._nextSample=0;},
+serialize(){this._capture();return {...clone(normalizeBorrowedVoice(this._row)),
+  placement:{schema:1,frame:'galactic-global',center:{...this._worldCenter}}};},
+deserialize(raw){this._row=normalizeBorrowedVoice(raw);this._worldCenter=restoredCenter(raw,this._row);
+  this.state.borrowedVoice=this._row;this._bindings.clear();this._signals.clear();this._nextSample=0;},
 afterContinue(){this._restoring=false;this._bindings.clear();this._signals.clear();this._nextSample=0;this._scanSeq=-1;},
 newGame(){this._restoring=true;for(const e of [...this.state.entityList])if(e.data?.persistenceOwner===C.owner)this.helpers.removeEntity(e.id);
   this.deserialize(freshBorrowedVoice());this._restoring=false;this._scanSeq=-1;},

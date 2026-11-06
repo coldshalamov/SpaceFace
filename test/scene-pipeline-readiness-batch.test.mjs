@@ -4,9 +4,97 @@ import test from 'node:test';
 import {
   beginScenePipelineReadinessBatch,
   compilePipelinesContextSafe,
+  compileScenePipelinesForRenderTarget,
   programWrapperDead,
   retireScenePipelineReadinessPrograms,
 } from '../src/render/bloom.js';
+import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
+
+test('separate admission issues restore target before overlapping their own shared-material variants', async () => {
+  const material = { isMaterial: true }, props = {}, canvas = fakeCanvas();
+  let readyA = false, readyB = false, target = 'home';
+  const a = { program: {}, isReady: () => readyA }, b = { program: {}, isReady: () => readyB };
+  const store = { get: () => props };
+  const seen = [];
+  const renderer = { domElement: canvas, properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] },
+    getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    compile(subject) { seen.push([subject, target]); store.get(material).currentProgram = subject; return new Set([material]); },
+    compileAsync() { throw new Error('unexpected fallback'); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, 'target', subjects[0], {}, {}, options), { maxSettlingLinks: 2 });
+  const first = tracker.compileExplicit(a);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(target, 'home');
+  const second = tracker.compileExplicit(b);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(seen.length, 2, 'second issue is not blocked by the first pending link');
+  assert.equal(target, 'home');
+  readyB = true;
+  await second;
+  let settledA = false; first.then(() => { settledA = true; });
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(settledA, false, 'the second material variant cannot settle the first');
+  readyA = true;
+  await first;
+  assert.equal(target, 'home');
+});
+
+test('issue split caps unsettled owners and preserves rejection after issue', async () => {
+  const gates = new Map(), issued = [];
+  const tracker = createPipelineAdmissionTracker((subjects, options) => {
+    const id = subjects[0];
+    issued.push(id);
+    options.onIssueComplete();
+    return new Promise((resolve, reject) => gates.set(id, { resolve, reject }));
+  }, { maxSettlingLinks: 2, onRejected() {} });
+  const first = tracker.compileExplicit('first');
+  const second = tracker.compileExplicit('second');
+  const third = tracker.compileExplicit('third');
+  const failure = new Error('owner retired');
+  const observedFirst = assert.rejects(first, error => error === failure);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(issued, ['first', 'second']);
+  gates.get('first').reject(failure);
+  await observedFirst;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(issued, ['first', 'second', 'third']);
+  gates.get('second').resolve({ ready: true }); gates.get('third').resolve({ ready: true });
+  await Promise.all([second, third]);
+});
+
+test('overlapping link owners observe context loss without publishing readiness', async () => {
+  const material = { isMaterial: true }, props = {}, canvas = fakeCanvas();
+  const renderer = { domElement: canvas, properties: { get: () => props }, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] }, getRenderTarget: () => null,
+    setRenderTarget() {}, compileAsync() { throw new Error('unexpected fallback'); },
+    compile(program) { props.currentProgram = program; return new Set([material]); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, null, subjects[0], {}, {}, options), { maxSettlingLinks: 2 });
+  const first = tracker.compileExplicit(fakeProgram('lost-a', 1e9));
+  const second = tracker.compileExplicit(fakeProgram('lost-b', 1e9));
+  await new Promise(resolve => setTimeout(resolve, 5));
+  canvas.fire('webglcontextlost');
+  assert.equal((await first).contextLost, true);
+  assert.equal((await second).contextLost, true);
+});
+
+test('failed issue restores the target before a successor runs', async () => {
+  const expected = new Error('issue failed'), canvas = fakeCanvas();
+  let target = 'home', nextTarget = null;
+  const renderer = { domElement: canvas, properties: { get: () => ({}) }, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, info: { programs: [] }, getRenderTarget: () => target,
+    setRenderTarget: value => { target = value; }, compileAsync() { throw new Error('unexpected fallback'); },
+    compile(subject) { if (subject === 'bad') throw expected; nextTarget = target; return new Set(); } };
+  const tracker = createPipelineAdmissionTracker((subjects, options) =>
+    compileScenePipelinesForRenderTarget(renderer, 'target', subjects[0], {}, {}, options),
+  { maxSettlingLinks: 2, onRejected() {} });
+  const failed = tracker.compileExplicit('bad');
+  const next = tracker.compileExplicit('good');
+  await assert.rejects(failed, error => error === expected);
+  await next;
+  assert.equal(nextTarget, 'target'); assert.equal(target, 'home');
+});
 
 // A stand-in for three's WebGLProgram readiness handle. `isReady()` reports the driver's
 // COMPLETION_STATUS_KHR; it becomes true after `ticks` polls.

@@ -202,7 +202,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de71cdf2504989dbca101b70e0db9468291ccc275a176a50b50c08979bd9382c",
+  "contentHash": "9cdbdfd2434267fc5156dafe4cc9c471cf47e59ca1d6140609386f042280a01c",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-kit-lod1.node.lod1-motion-towline-acknowledge-armor.dynamic",
@@ -1496,14 +1496,14 @@
       "uri": "towline_kit_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 366972,
-    "sha256": "3e749229f3a55e81399ceeecfccb31abb25ea53329f60552e333a17a4e990a15",
+    "bytes": 367024,
+    "sha256": "3fe1e618d1202c28286e97c4de5955cc22819421bbca25f7e5722c026a053342",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1606,6 +1606,117 @@
       },
       {
         "matrix": [
+          0.3499999940395355,
+          0,
+          0,
+          0,
+          0,
+          0.3499999940395355,
+          0,
+          0,
+          0,
+          0,
+          0.3499999940395355,
+          0,
+          -0.09999999403953552,
+          3.299999952316284,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Armor",
+        "planIndex": 11,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Armor",
+            "recordIds": [
+              "sf.render.towline-kit-lod1.node.lod1-motion-towline-acknowledge-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.20000000670552254,
+          0,
+          0,
+          0,
+          0,
+          0.20000000670552254,
+          0,
+          0,
+          0,
+          0,
+          0.20000000670552254,
+          0,
+          -0.10000000521540642,
+          3.299999952316284,
+          0.36487236618995667,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Lights_Warm",
+        "planIndex": 13,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Lights_Warm",
+            "recordIds": [
+              "sf.render.towline-kit-lod1.node.lod1-motion-towline-acknowledge-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.9030484892427921,
+          0,
+          0,
+          0,
+          0,
+          0.9030484892427921,
+          0,
+          0,
+          0,
+          0,
+          0.9030484892427921,
+          0,
+          -1.0048052333295345,
+          2.8900002241134644,
+          7.450580596923828e-9,
+          1
+        ],
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_MechanicalDark",
+            "recordIds": [
+              "sf.render.towline-kit-lod1.node.lod1-motion-towline-acknowledge-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -1624,7 +1735,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 14,
+        "planIndex": 17,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1676,7 +1787,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 15,
+        "planIndex": 18,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1728,7 +1839,7 @@
           1
         ],
         "name": "SOCKET_Massline",
-        "planIndex": 16,
+        "planIndex": 19,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1780,7 +1891,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 17,
+        "planIndex": 20,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -1863,17 +1974,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
+        "planIndex": 12,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 14,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
+        "planIndex": 16,
         "role": "mechanical"
       }
     ],
@@ -1883,7 +1994,7 @@
       "sha256": "61e4745851229f868454c068b3629d599bba67913dc04efd13d009aa2ea245b8",
       "uri": "assets/ships/motions/towline-kit.motion.json"
     },
-    "nodeCount": 18,
+    "nodeCount": 21,
     "primitives": [
       {
         "canopy": false,
@@ -2086,8 +2197,8 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Armor",
-        "planIndex": 11,
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Armor_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2115,8 +2226,8 @@
           0.36487236618995667,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Lights_Warm",
-        "planIndex": 12,
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_Lights_Warm_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2144,8 +2255,8 @@
           7.450580596923828e-9,
           1
         ],
-        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_MechanicalDark",
-        "planIndex": 13,
+        "name": "LOD1_MOTION_TOWLINE_ACKNOWLEDGE_MechanicalDark_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -2158,7 +2269,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb"
   },
-  "runtimeHash": "10ce44afc1c45819e04c126c5b2b6d0d4e98a829516d74df931278b857d235a3",
+  "runtimeHash": "ba864a0a7e5c80e1acaea902c414ab429834b1d8e33e49c8c12d4195bfdecd02",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

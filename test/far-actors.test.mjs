@@ -6,19 +6,22 @@ import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../src/world/activityClassification.js';
-import { ensureActivityClassified } from '../src/world/activityRuntime.js';
+import { ensureActivityClassified, requestActivityPhysicsInterest } from '../src/world/activityRuntime.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import { getDressingRow, insertDressingRow } from '../src/world/dressingTable.js';
 import { BORROWED_SUN } from '../src/data/borrowedSun.js';
 import { resolveFarEncounters } from '../src/world/farEncounterOutcomes.js';
+import { world } from '../src/systems/world.js';
 import {
   FAR_ACTOR_SCHEMA,
   farActorCensus,
   farActorHoldsWorldRecord,
   farActorTableRadius,
+  findFarActorForTargetIdentity,
   getFarActor,
   insertFarActor,
   promoteFarActor,
+  promoteFarActorForTargetIdentity,
   restoreFarActorTable,
   serializeFarActorTable,
   shouldVirtualizeFarActor,
@@ -84,6 +87,32 @@ test('the carrier owns its transient parts instead of shelving anonymous far NPC
   assert.equal([...table.grid.values()].flat().includes(shell), false);
 });
 
+test('a live encounter keeps its cast resident beyond the far radius', () => {
+  const { state } = boot();
+  const nestId = 'campaign47a:charon:nest:v1';
+  // The nest's authored escape lane requires the player to clear 3000 WU from the
+  // carrier — past the far-actor exit radius. If the cast virtualizes first, the
+  // encounter aborts 'unresolved_nest_carrier' and the visit orphans 'active'.
+  const cast = [
+    { nestCarrier: true, nestEncounterId: nestId, nestSlot: 'carrier' },
+    { nestEncounterId: nestId, nestSlot: 'door:0' },
+    { nestEncounterId: nestId, nestSlot: 'wasp:0' },
+  ];
+  cast.forEach((data, i) => {
+    const body = { id: 5000 + i, alive: true, type: 'ship', pos: { x: 9000, z: 0 }, data,
+      activity: { simTier: SIM_TIER.S2_ABSTRACT, pinnedExact: false } };
+    assert.equal(shouldVirtualizeFarActor(body, state), false, data.nestSlot);
+  });
+  // Generic live-encounter membership — no nest stamp — is residency too: an
+  // encounter-bound actor must stay materialized while its row is live.
+  state.encounterDirector = { live: {}, squadMembership: { 6001: 'enc_1' } };
+  const bound = { id: 6001, alive: true, type: 'ship', pos: { x: 9000, z: 0 }, data: {},
+    activity: { simTier: SIM_TIER.S2_ABSTRACT, pinnedExact: false } };
+  assert.equal(shouldVirtualizeFarActor(bound, state), false, 'live-encounter squad member');
+  assert.equal(shouldVirtualizeFarActor({ ...bound, id: 6002 }, state), true,
+    'an unbound far actor still shelves');
+});
+
 test('far dormant ships leave the combat list and rematerialize on approach', () => {
   const { state, helpers, bus, player } = boot();
   const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
@@ -108,6 +137,8 @@ test('far dormant ships leave the combat list and rematerialize on approach', ()
   const restored = state.entities.get(farId);
   assert.ok(restored);
   assert.equal(restored.type, 'ship');
+  assert.equal(restored.physicsBody, undefined,
+    'an entity with no authored physics descriptor keeps the normal default-body path');
   assert.equal(getFarActor(state, farId), null);
 });
 
@@ -199,6 +230,229 @@ test('a far actor never comes back onto an id a dressing prop or field rock hold
   assert.equal(getAsteroidFieldRock(state, idB), rock);
   assert.equal(getFarActor(state, idA), null);
   assert.equal(getFarActor(state, idB), null);
+});
+
+test('a booked far salvage target promotes by stable identity through the world owner', () => {
+  const { state, helpers, bus } = boot();
+  state.world.currentSectorId = 'sector_ceres_belt';
+  const target = helpers.spawnEntity({
+    type: 'wreck', pos: { x: 12000, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 5, mass: 80, hull: 100, hullMax: 100, collides: true,
+    physicsBody: { schemaVersion: 1, mass: 80, inertiaY: 320, centerOfMass: { x: 0, y: 0, z: 0 },
+      radius: 5, shape: 'capsule', dynamic: true, ccd: true, material: 'debris',
+      attachmentPoints: { massline: { x: 0, y: 0, z: 0 } }, thrusters: [], revision: 7,
+      useMeasuredSkin: false },
+    data: { worldRecordId: 'wr_booked_salvage', salvorTargetKey: 'salvor:booked-test',
+      salvagePointId: 'zone_ceres_derelict:sal0',
+      sectorId: 'sector_ceres_belt', homeSectorId: 'sector_ceres_belt',
+      salvagePool: { cmdty_scrap_metal: 1 } },
+  });
+  target.homeSectorId = 'sector_ceres_belt';
+  const targetId = target.id;
+  insertFarActor(state, target, state.simTime, helpers);
+  helpers.removeEntity(targetId, { immediate: true, reason: 'virtualize' });
+  assert.equal(state.entities.has(targetId), false);
+  const savedRows = JSON.parse(JSON.stringify(serializeFarActorTable(state.world.farActors)));
+  restoreFarActorTable(state, savedRows);
+  assert.equal(getFarActor(state, targetId).physicsBody.dynamic, true,
+    'the authored dynamic body survives the ordinary far-row save/load projection');
+  assert.equal(getFarActor(state, targetId).physicsBody.shape, 'capsule');
+  assert.equal(getFarActor(state, targetId).physicsBody.material, 'debris');
+  assert.equal(getFarActor(state, targetId).physicsBody.mass, 80);
+  assert.equal(getFarActor(state, targetId).physicsBody.useMeasuredSkin, false);
+  assert.equal(findFarActorForTargetIdentity(state, {
+    kind: 'worldRecord', worldRecordId: 'wr_booked_salvage',
+  }, { type: 'wreck', sectorId: 'sector_ceres_belt' })?.id, targetId);
+
+  // A foreign live body may reuse the old numeric slot. It must not be returned as the
+  // booked wreck or cause the stable far record to be discarded.
+  const foreign = spawnShip(helpers, {
+    id: targetId, pos: { x: 200, z: 0 }, data: { worldRecordId: 'wr_foreign' },
+    activity: { simTier: SIM_TIER.S1_NEAR, pinnedExact: false },
+  });
+  const worker = helpers.spawnEntity({
+    type: 'ship', pos: { x: 11500, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    mass: 14, hull: 50, hullMax: 50, collides: true,
+    data: { worldRecordId: 'wr_scavenger', jobId: 'job:wr_scavenger',
+      homeSectorId: 'sector_ceres_belt', sectorId: 'sector_ceres_belt' },
+  });
+  state.npcJobs = { byId: {
+    'job:wr_scavenger': {
+      entityId: worker.id, worldRecordId: 'wr_scavenger', sectorId: 'sector_ceres_belt',
+      job: { id: 'job:wr_scavenger', kind: 'salvor', phase: 'transit',
+        route: [{ id: 'cut:hold' }, { id: `hulk:${targetId}`, pos: { x: 12000, z: 0 } }],
+        payload: { role: 'scavenger', targetId, targetType: 'wreck',
+          targetIdentity: { kind: 'worldRecord', worldRecordId: 'wr_booked_salvage' } } },
+    },
+  } };
+  state.world.records = { byId: {
+    wr_booked_salvage: { recordId: 'wr_booked_salvage', kind: 'wreck', alive: true,
+      sectorId: 'sector_ceres_belt', pos: { x: 12000, z: 0 }, hull: 100, hullMax: 100 },
+  } };
+  const owner = Object.create(world);
+  owner.state = state;
+  owner.bus = bus;
+  owner.helpers = helpers;
+  owner._adoptedSalvorMaterializationRequests = new Map();
+  const request = {
+    jobId: 'job:wr_scavenger', workerWorldRecordId: 'wr_scavenger',
+    targetIdentity: { kind: 'worldRecord', worldRecordId: 'wr_booked_salvage' },
+    targetType: 'wreck', sectorId: 'sector_ceres_belt', approachBandWU: 80,
+  };
+  let restoredEvent = null;
+  const emit = bus.emit.bind(bus);
+  bus.emit = (name, payload) => {
+    if (name === 'world:farActorRestored') restoredEvent = payload;
+    return emit(name, payload);
+  };
+  const pose = owner.requestAdoptedSalvorTargetMaterialization(request);
+  assert.deepEqual(pose.pos, { x: 12000, z: 0 }, 'world owner returns the current far-row pose');
+  assert.equal(owner._adoptedSalvorMaterializationRequests.size, 0,
+    'the world does not request a restore while the worker is outside its physical approach band');
+  worker.pos.x = 11950;
+  owner.requestAdoptedSalvorTargetMaterialization(request);
+  assert.equal(owner._adoptedSalvorMaterializationRequests.size, 1,
+    'only the exact booked target is queued once the worker reaches the approach band');
+
+  // The ordinary sweep is player-centered and must leave this distant row shelved. The targeted
+  // request then uses the same far-actor promotion and spawn-budget owner, with identity checked
+  // before the numeric slot is considered.
+  tickFarActors(state, helpers, bus);
+  assert.ok(getFarActor(state, targetId));
+  owner._processAdoptedSalvorMaterializationRequests(state);
+  const restored = [...state.entities.values()].find(entity =>
+    entity.type === 'wreck' && entity.data?.worldRecordId === 'wr_booked_salvage');
+  assert.ok(restored, 'the same live wreck record is promoted');
+  assert.notEqual(restored.id, targetId, 'a reused id is never mistaken for the booked wreck');
+  assert.equal(restored.physicsBody.dynamic, true, 'promotion restores the explicit dynamic physics body');
+  assert.equal(restored.physicsBody.shape, 'capsule');
+  assert.equal(restored.physicsBody.material, 'debris');
+  assert.equal(restored.physicsBody.mass, 80);
+  assert.equal(restored.physicsBody.inertiaY, 320);
+  assert.equal(restored.physicsBody.attachmentPoints.massline.x, 0);
+  assert.equal(restored.physicsBody.useMeasuredSkin, false);
+  assert.equal(state.entities.get(targetId), foreign, 'the unrelated live body remains untouched');
+  assert.deepEqual(restored.data.salvagePool, { cmdty_scrap_metal: 1 }, 'promotion preserves the salvage pool');
+  assert.equal(getFarActor(state, targetId), null, 'the exact far row is consumed once');
+  assert.equal(owner._adoptedSalvorMaterializationRequests.size, 0, 'successful promotion releases its request');
+  assert.equal(restoredEvent?.jobId, null,
+    'the restored wreck event carries the wreck job id, not the requesting worker job');
+  assert.equal(restoredEvent?.causeJobId, 'job:wr_scavenger',
+    'the approach request job is reported separately as the restoration cause');
+  assert.equal(owner._adoptedSalvorApproachHolds.get('job:wr_scavenger')?.targetEntity, restored,
+    'the world owner briefly hands the physical body to the existing latch/physics loop');
+  tickFarActors(state, helpers, bus,
+    entity => owner._retainAdoptedSalvorApproachBody(entity, state));
+  assert.equal(state.entities.get(restored.id), restored,
+    'the exact approached body survives the next player-centered sweep for physical claiming');
+
+  const entry = state.npcJobs.byId['job:wr_scavenger'];
+  const activeLine = { id: 'line:npc-tow', state: 'active', controlMode: 'npc_tow',
+    ownerId: worker.id, targetId: restored.id };
+  owner.registry = { get: name => name === 'combat'
+    ? { kernel: { attachments: { get: id => id === activeLine.id ? activeLine : null } } } : null };
+  entry.towAttachmentId = activeLine.id;
+  entry.towTargetId = restored.id;
+  entry.towTargetRef = restored;
+  const attachedHold = owner._adoptedSalvorApproachHolds.get('job:wr_scavenger');
+  const attachedLease = attachedHold?.activityLease;
+  assert.ok(attachedLease, 'promotion obtains a bounded classifier-owned native-body lease');
+  assert.equal(owner._retainAdoptedSalvorApproachBody(restored, state), true);
+  assert.equal(owner._adoptedSalvorApproachHolds.has('job:wr_scavenger'), false,
+    'a real active npc_tow binding ends the temporary handoff');
+  assert.equal(attachedHold.activityLease, null, 'the exact lease is released when the real line is active');
+
+  entry.towAttachmentId = null;
+  entry.towTargetId = null;
+  entry.towTargetRef = null;
+  const makeHold = (expiresAt = state.simTime + 3) => {
+    const activityLease = requestActivityPhysicsInterest(state, worker, restored,
+      { expiresAt, sectorId: 'sector_ceres_belt' });
+    assert.ok(activityLease);
+    const hold = { jobId: 'job:wr_scavenger', workerWorldRecordId: 'wr_scavenger',
+      workerEntityId: worker.id, activityOwner: worker, activityLease,
+      targetIdentity: { kind: 'worldRecord', worldRecordId: 'wr_booked_salvage' },
+      targetEntity: restored, targetGeneration: restored.occupantGeneration ?? null,
+      sectorId: 'sector_ceres_belt', approachBandWU: 80, expiresAt };
+    owner._adoptedSalvorApproachHolds.set('job:wr_scavenger', hold);
+    return hold;
+  };
+
+  const retargetHold = makeHold();
+  state.npcJobs.byId['job:wr_scavenger'].job.payload.targetIdentity = {
+    kind: 'worldRecord', worldRecordId: 'wr_different_booked_target',
+  };
+  assert.equal(owner._retainAdoptedSalvorApproachBody(restored, state), false,
+    'same-kind retargeting releases the old target residency handoff');
+  assert.equal(owner._adoptedSalvorApproachHolds.has('job:wr_scavenger'), false);
+  assert.equal(retargetHold.activityLease, null, 'retargeting releases the exact activity lease');
+  state.npcJobs.byId['job:wr_scavenger'].job.payload.targetIdentity = {
+    kind: 'worldRecord', worldRecordId: 'wr_booked_salvage',
+  };
+  restored.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
+  const distanceHold = makeHold();
+  worker.pos.x = 11799;
+  assert.equal(owner._retainAdoptedSalvorApproachBody(restored, state), false);
+  assert.equal(owner._adoptedSalvorApproachHolds.has('job:wr_scavenger'), false,
+    'the handoff releases when the same worker leaves its bounded approach area');
+  assert.equal(distanceHold.activityLease, null);
+  worker.pos.x = 11950;
+  const expiryHold = makeHold(state.simTime + 0.5);
+  state.simTime = 4;
+  assert.equal(owner._retainAdoptedSalvorApproachBody(restored, state), false);
+  assert.equal(owner._adoptedSalvorApproachHolds.has('job:wr_scavenger'), false,
+    'the handoff also expires on sim time');
+  assert.equal(expiryHold.activityLease, null);
+  const rewindHold = makeHold(state.simTime + 3);
+  owner._adoptedSalvorMaterializationRequests.set('stale-request', { nextAttemptAt: 8 });
+  owner._adoptedSalvorLeaseClock = 9;
+  state.simTime = 2;
+  owner._resetAdoptedSalvorApproachOnClockRewind(state);
+  assert.equal(owner._adoptedSalvorApproachHolds.size, 0,
+    'a rewound Continue clock releases the transient approach handoff');
+  assert.equal(owner._adoptedSalvorMaterializationRequests.size, 0,
+    'a rewound Continue clock drops stale retry deadlines');
+  assert.equal(rewindHold.activityLease, null, 'clock rewind releases the classifier lease');
+  assert.equal(shouldVirtualizeFarActor(restored, state), true,
+    'after expiry the normal far-actor policy can shelf the body again');
+});
+
+test('malformed stable far-actor identities never match missing row keys', () => {
+  const state = { world: { farActors: { rows: [
+    { id: 1, type: 'wreck', alive: true, data: {} },
+  ] } } };
+  for (const identity of [
+    { kind: 'worldRecord' },
+    { kind: 'worldRecord', worldRecordId: '' },
+    { kind: 'marker' },
+    { kind: 'salvagePoint', salvagePointId: 'point' },
+    { kind: 'salvagePoint', sourceKey: 'source' },
+    { kind: 'salvorTarget' },
+  ]) {
+    assert.equal(findFarActorForTargetIdentity(state, identity), null,
+      `${identity.kind} identity with a missing/empty key fails closed`);
+  }
+});
+
+test('a destroyed booked far wreck cannot be restored by an adopted salvage request', () => {
+  const { state, helpers } = boot();
+  const wreck = helpers.spawnEntity({
+    type: 'wreck', pos: { x: 12000, z: 0 }, vel: { x: 0, z: 0 }, radius: 5,
+    mass: 80, hull: 0, hullMax: 100, collides: true,
+    data: { worldRecordId: 'wr_destroyed_salvage', sectorId: 'sector_ceres_belt',
+      salvagePool: { cmdty_scrap_metal: 1 } },
+  });
+  insertFarActor(state, wreck, state.simTime, helpers);
+  helpers.removeEntity(wreck.id, { immediate: true, reason: 'virtualize' });
+  state.world.records = { byId: {
+    wr_destroyed_salvage: { recordId: 'wr_destroyed_salvage', kind: 'wreck', alive: false,
+      outcome: 'destroyed', sectorId: 'sector_ceres_belt', hull: 0 },
+  } };
+  assert.equal(promoteFarActorForTargetIdentity(state,
+    { kind: 'worldRecord', worldRecordId: 'wr_destroyed_salvage' },
+    { type: 'wreck', sectorId: 'sector_ceres_belt' }, helpers), null);
+  assert.ok(getFarActor(state, wreck.id), 'a denied destroyed record remains unpromoted');
+  assert.equal(state.entities.has(wreck.id), false);
 });
 
 test('survival/swarm holds every live ship on the table', () => {

@@ -1,5 +1,8 @@
+import { playerBearingHyphen } from '../core/playerCompass.js';
+import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { pallasShiftStatus } from './pallasWorkShift.js';
+import { heliosFreightHailLine } from './heliosFreightHail.js';
 import { charonSupplyPresentation } from '../world/charonSupplyReadout.js';
 import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
@@ -26,6 +29,8 @@ import {
   isPriorityCourierItinerary,
   PASSENGER_LINER_SERVICE,
 } from './laneContacts.js';
+import { TRAFFIC_ROLES } from './trafficPresentationReads.js';
+import { hailRegistrySlot } from './shipRegistry.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { DEED_KINDS, notorietyIn, pickDeedToTell } from '../systems/deedRecord.js';
 import { deedLine } from './deedPhrases.js';
@@ -33,6 +38,11 @@ import { LAWFUL_STATION_FACTIONS } from './factions/index.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 import { SECTORS } from './sectors.js';
+import {
+  VARIANCE_ADJUSTMENT_BERTH,
+  isVarianceAdjustmentBerthEntity,
+} from './varianceAdjustmentBerth.js';
+import { SLATE_COLUMN } from './slate.js';
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
 // to walk the whole entity map per call. The subset preserves entities.values() order and
@@ -83,7 +93,7 @@ const CERES_DISABLED_HAULER_ACTIVE_STATES = new Set([
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
 // Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
-const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'ore_carrier', 'rescue', 'tug']);
+const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'prospector', 'ore_carrier', 'rescue', 'tug']);
 // The single heave-to authority: which traffic roles answer a heave-to order. traffic.js consumes
 // this for compliance; commsRadial for the unavailable reason. Keep role keys in sync with
 // TRAFFIC_ROLES — 'trader' is an ai archetype, never a role.
@@ -180,6 +190,21 @@ function entityById(state, id) {
   if (id == null || !state) return null;
   if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
   return (state.entityList || []).find((row) => row && row.id === id) || null;
+}
+
+function isLiveVarianceAdjustmentTarget(state, entity, expectedId = entity?.id) {
+  return entity?.id === expectedId
+    && state?.entities && typeof state.entities.get === 'function'
+    && state.entities.get(entity.id) === entity
+    && isVarianceAdjustmentBerthEntity(entity);
+}
+
+function varianceAdjustmentStatusLine(state) {
+  const raw = Number(state?.story?.flags?.[SLATE_COLUMN.spikeFlag]);
+  const spikes = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+  const count = spikes === 0 ? 'NO WELD-SPIKES LOGGED YET'
+    : `${spikes} WELD-SPIKE${spikes === 1 ? '' : 'S'} LOGGED`;
+  return `${VARIANCE_ADJUSTMENT_BERTH.statusLine} · CURRENT SLATE LEDGER: ${count}.`;
 }
 
 function playerEntity(state) {
@@ -461,10 +486,30 @@ export function ceresDisabledHaulerTruth(state, entity) {
   });
 }
 
-function callsign(entity) {
+// The plain role labels traffic.js stamps at spawn — the only traffic labels that read as
+// anonymous. A hull wearing one (or none) mints its registry name; a hull wearing an authored
+// line (a route hook, a scanLabel, a writer's callsign) keeps exactly what was written.
+// Keys stay in sync with TRAFFIC_ROLES (trafficPresentationReads.js), which is read directly.
+export const GENERIC_ROLE_LABELS = new Set(
+  Object.values(TRAFFIC_ROLES).map((role) => role && role.label).filter(Boolean),
+);
+
+function saveSeedOf(state) {
+  return state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+}
+
+function callsign(entity, seed = 0) {
   const data = entity && entity.data || {};
   const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
-  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || aceBoss || 'UNIDENTIFIED VESSEL')
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
+  if (authored) {
+    return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+  // Contacts stop being anonymous: an unnamed hull answers with the name painted on it and
+  // the captain who signs the manifest (src/data/shipRegistry.js, deterministic per hull).
+  const registry = hailRegistrySlot(entity, seed, GENERIC_ROLE_LABELS);
+  if (registry) return String(registry).replace(/\s+/g, ' ').trim().toUpperCase();
+  return String(data.trafficLabel || 'UNIDENTIFIED VESSEL')
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
@@ -636,6 +681,20 @@ export function contactHailAvailability(state) {
   if (!player || player.alive === false) return unavailable('no_player');
   const distance = distanceBetween(player, target);
   if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
+  if (state.world?.currentSectorId === VARIANCE_ADJUSTMENT_BERTH.sectorId
+    && isLiveVarianceAdjustmentTarget(state, target, targetId)) {
+    return {
+      enabled: true,
+      reason: null,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      label: `HAIL ${VARIANCE_ADJUSTMENT_BERTH.callsign}`,
+      distance,
+      entity: target,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+    };
+  }
   const classification = contactKind(state, target);
   if (!classification.kind) return unavailable('unsupported_contact');
   return {
@@ -643,7 +702,7 @@ export function contactHailAvailability(state) {
     reason: null,
     targetId: target.id,
     kind: classification.kind,
-    label: `HAIL ${callsign(target)}`,
+    label: `HAIL ${callsign(target, saveSeedOf(state))}`,
     distance,
     entity: target,
     parley: classification.parley,
@@ -1010,7 +1069,7 @@ function aceHailIdentifyText(state, entity) {
   const found = aceHailRecord(state, entity);
   const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
   const tier = found && found.rec.returnTier | 0;
-  return `${callsign(entity)}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
+  return `${callsign(entity, saveSeedOf(state))}${titleSegment(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
 }
 
 // THE WORLD REMEMBERS (U-E): a lawful patrol hailing a pilot this loud in this sector opens with
@@ -1037,6 +1096,23 @@ function patrolGrievanceHail(state, entity) {
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
+  if (lantern) return lantern;
+  if (availability.kind === 'variance_adjustment') {
+    const target = availability.entity;
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || !isLiveVarianceAdjustmentTarget(state, target, availability.targetId)) return null;
+    return {
+      requestId,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      expiresAt,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+      lines: [`${VARIANCE_ADJUSTMENT_BERTH.callsign} · YARD REGISTRY`, 'HAIL ACCEPTED · REGISTRY READ ONLY.'],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+    };
+  }
   if (isOrchardReceiver(state, availability?.entity)) {
     const repair = orchardReceiverRepairFacts(state, availability.entity);
     if (repair?.disabled || repair?.unavailable) return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
@@ -1075,7 +1151,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   }
 
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
-  const name = callsign(availability.entity) + titleSegment(availability.entity);
+  const name = callsign(availability.entity, saveSeedOf(state)) + titleSegment(availability.entity);
   const voice = hailVoiceLine(state, availability.entity);
   if (availability.kind === 'ace') {
     const found = aceHailRecord(state, availability.entity);
@@ -1097,6 +1173,8 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
       ...(grievance ? { deedId: grievance.deedId } : {}),
     };
   }
+  const heliosFreight = combatDriveDisabled(state, availability.entity)
+    ? null : heliosFreightHailLine(state, availability.entity);
   if (availability.kind === 'worker') {
     if (availability.disabledHauler) {
       return {
@@ -1111,10 +1189,11 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     const charon = charonSupplyPresentation(state, availability.entity, { detailed: false });
     const salvorSource = salvorSourceTruth(state, availability.entity);
-    const actions = [{ id: 'status', label: 'STATUS' }];
+    const actions = heliosFreight ? [{ id: 'route', label: 'ROUTE' }]
+      : [{ id: 'status', label: 'STATUS' }];
     // A source-backed cutter uses the existing, read-only manifest response rather than a new
     // action type. The compact scanner presenter still receives at most three choices.
-    actions.push(charon ? { id: 'route', label: 'SUPPLY ROUTE' }
+    if (!heliosFreight) actions.push(charon ? { id: 'route', label: 'SUPPLY ROUTE' }
       : salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
     if (availability.towAssistBodyId != null) {
       actions.push({ id: CONTACT_HAIL_ACTION_TOW_ASSIST, label: 'HIRE TOW' });
@@ -1123,10 +1202,17 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     if (availability.heaveToAvailable && actions.length < 3) {
       actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     }
+    // The voice belongs inside the worker family. Its existing physical assistance owns
+    // the compact action slots before optional private manifest inspection.
+    if (heliosFreight && actions.length < 3 && playerHasFittedCargoScanner(state)
+        && traderManifestForTarget(state, availability.entity)) {
+      actions.push({ id: 'manifest', label: 'MANIFEST' });
+    }
     const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
+      lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`,
+        remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
       actions,
     };
   }
@@ -1166,7 +1252,8 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: charon ? charon.compact : [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
+    lines: charon ? charon.compact : [`${name} · CIVILIAN FREIGHT`,
+      remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
     actions,
   };
 }
@@ -1660,9 +1747,37 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_yard_break:huddle': 'TOOLS DOWN · SHIFT BREAK AT THE YARD',
   'ev_yard_break:back_to_it': 'BACK ON TOOLS · WORK RESUMING',
   'ev_scavengers_at_fresh_wreck:scatter': 'LAW CONTACT · SCATTERING OFF THE FACE',
+  // Dione convoy-day chain: the catalog pins the law-lock lamp on the escort's flank join and the
+  // tender-callout lamp on the spine-up ripple — no hull is locked and no tender is inbound; the
+  // convoy is forming and lighting in order.
+  'ev_convoy_forms_up:escort_arrives': 'ESCORT JOINING · PIN ON THE FLANK',
+  'ev_convoy_forms_up:spine_up': 'ENGINES LIT · ROLLING SOON',
 });
 
 function workerStatusText(target, state = null) {
+  if (target?.data?.trafficRole === 'prospector') {
+    const truth = ordinaryJobTruth(state, target);
+    const field = truth.job?.payload?.prospectorField;
+    if (field && truth.job.kind === 'surveyor') {
+      const now = Number(state?.simTime) || 0, sector = state?.world?.currentSectorId;
+      if (truth.entry.sectorId !== sector || field.sectorId !== sector) return 'STATUS · FIELD READING UNAVAILABLE';
+      const marks = state.npcJobs?.surveyMarks?.[sector];
+      const mark = Array.isArray(marks) ? marks.find(m => m?.fieldId === field.fieldId
+        && m.jobId === truth.job.id && Number.isFinite(m.measuredAt)
+        && Number.isFinite(field.commissionedAt) && m.measuredAt >= field.commissionedAt && now >= m.measuredAt
+        && now - m.measuredAt <= 420 && Number.isFinite(m.depletion) && m.depletion >= 0 && m.depletion <= 1
+        && Number.isFinite(m.pos?.x) && Number.isFinite(m.pos?.z)) : null;
+      const player = playerEntity(state);
+      if (!mark || !player?.pos) return 'STATUS · NO RECENT COMPLETED FIELD READING';
+      const dx = mark.pos.x - player.pos.x, dz = mark.pos.z - player.pos.z;
+      const distance = Math.hypot(dx, dz);
+      if (!Number.isFinite(distance)) return 'STATUS · FIELD READING UNAVAILABLE';
+      const location = distance < 25 ? 'NEAR YOUR POSITION'
+        : `ABOUT ${Math.round(distance / 25) * 25} WU ${playerBearingHyphen(dx, dz).toUpperCase()} OF YOU`;
+      return `FIELD REPORT · ${Math.round(mark.depletion * 100)}% DEPLETED WHEN MEASURED · ${Math.floor(now - mark.measuredAt)}s AGO · RECORDED POSITION ${location}`;
+    }
+    if (truth.unavailable) return 'STATUS · WORK UNAVAILABLE';
+  }
   const pallas = pallasShiftStatus(state, target);
   if (pallas) return `STATUS · ${pallas.text}`;
   const orchard = orchardReceiverRepairFacts(state, target)?.status;
@@ -1759,14 +1874,14 @@ function salvorSourceTruth(state, target) {
   return null;
 }
 
-function workerIdentifyText(target) {
+function workerIdentifyText(target, seed = 0) {
   const data = target && target.data || {};
   const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
   const eventId = data.ceresCausalEventId
     ? String(data.ceresCausalEventId).replace(/^ev_/, '').replace(/_/g, ' ').toUpperCase()
     : null;
   const eventBit = eventId ? ` · CHAIN ${eventId}` : '';
-  return `${callsign(target)}${titleSegment(target)} · ${role}${eventBit}`;
+  return `${callsign(target, seed)}${titleSegment(target)} · ${role}${eventBit}`;
 }
 
 function routeText(state, target) {
@@ -1813,16 +1928,40 @@ function priorityCourierStatusText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
+  if (offer?.lanternWardHail) return lanternWardHailResponse(state, offer, choice, authority.lanternRepair);
   if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
-    && offer.kind !== 'ace')) {
+    && offer.kind !== 'ace' && offer.kind !== 'variance_adjustment')) {
     return null;
   }
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
+  if (offer.kind === 'variance_adjustment') {
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || offer.worldRecordId !== VARIANCE_ADJUSTMENT_BERTH.worldRecordId
+      || offer.identityKey !== VARIANCE_ADJUSTMENT_BERTH.identityKey
+      || !isLiveVarianceAdjustmentTarget(state, target, offer.targetId)) return null;
+    const line = id === 'status' ? varianceAdjustmentStatusLine(state)
+      : id === 'identify' ? VARIANCE_ADJUSTMENT_BERTH.identifyLine : null;
+    if (!line) return null;
+    return {
+      requestId: offer.requestId,
+      targetId: offer.targetId,
+      kind: offer.kind,
+      choice: id,
+      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
+      lines: [line],
+    };
+  }
   let line = null, detailLines = null;
   const pallas = pallasShiftStatus(state, target);
-  if (pallas && id === 'status' && authority.weaponsAuthorized !== true) {
+  const heliosFreight = combatDriveDisabled(state, target) ? null : heliosFreightHailLine(state, target);
+  if (target.data?.activityActorSlotId === 'helios_starter_ore_carrier'
+      && id === 'route' && (offer.kind === 'trader' || offer.kind === 'worker')
+      && offer.actions?.some(action => action.id === 'route')) {
+    line = routeText(state, target);
+    if (heliosFreight) detailLines = [line, heliosFreight];
+  } else if (pallas && id === 'status' && authority.weaponsAuthorized !== true) {
     line = `STATUS · ${pallas.text}`;
   } else if (pallas && id === 'route') {
     line = 'ROUTE · Sker run marks to Smuggler Den at Hollow Hub.';
@@ -1835,7 +1974,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
-    line = `${callsign(target)}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
+    line = `${callsign(target, saveSeedOf(state))}${titleSegment(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
     const charon = charonSupplyPresentation(state, target, { detailed: false });
@@ -1851,7 +1990,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     const guidance = orchardReceiverRepairGuidance(state, target);
     if (status) { line = `ROUTE · ${status}`; detailLines = guidance ? [line, guidance] : [line]; }
   } else if (offer.kind === 'worker' && id === 'identify') {
-    line = workerIdentifyText(target);
+    line = workerIdentifyText(target, saveSeedOf(state));
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
     const available = richSeamHelpAvailable(state, target, 'worker');
     const entities = state.entities && typeof state.entities.values === 'function'
@@ -1914,7 +2053,10 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       line = manifestText(state, target, manifest);
     }
   } else if (offer.kind === 'worker' && id === 'manifest') {
-    line = manifestText(state, target);
+    // A Helios carrier with a job stamp keeps the same private scanner gate as civilian freight.
+    if (target.data?.activityActorSlotId !== 'helios_starter_ore_carrier'
+        || (offer.actions?.some(action => action.id === 'manifest')
+          && playerHasFittedCargoScanner(state))) line = manifestText(state, target);
   } else if (id === CONTACT_HAIL_ACTION_HEAVE_TO) {
     const result = authority.heaveTo || {};
     if (result.granted === true) line = 'HEAVE TO · COMPLYING.';

@@ -254,6 +254,9 @@ function mountArrowFixture({ worldToScreen } = {}) {
   const hudRoot = doc.createElement('div');
   hudRoot.id = 'hud';
   doc.body.appendChild(hudRoot);
+  const toastsLane = doc.createElement('div');
+  toastsLane.id = 'toasts';
+  doc.body.appendChild(toastsLane);
 
   globalThis.document = doc;
   globalThis.window = {
@@ -267,6 +270,8 @@ function mountArrowFixture({ worldToScreen } = {}) {
   globalThis.performance = { now: () => 1000 };
   globalThis.getComputedStyle = (element) => ({
     display: element?.style?.display === 'none' ? 'none' : (element?.style?.display || 'block'),
+    visibility: element?.style?.visibility || 'visible',
+    opacity: element?.style?.opacity || '1',
     getPropertyValue: () => '',
   });
 
@@ -325,13 +330,16 @@ function mountArrowFixture({ worldToScreen } = {}) {
     }),
   };
 
-  const hud = createHud({ bus: createBus(), state, helpers });
+  const bus = createBus();
+  const hud = createHud({ bus, state, helpers });
 
   return {
     doc,
     player,
     state,
     hud,
+    bus,
+    toastsLane,
     arrow: () => hudRoot.querySelector('.sf-objarrow'),
     step(dt = 1 / 60) {
       state.simTime += dt;
@@ -365,6 +373,96 @@ function edgePresentation(arrow) {
     aria: arrow.getAttribute('aria-label'),
   };
 }
+
+test('flight text obstacles omit deferred captions and include visible captions', () => {
+  const fx = mountArrowFixture();
+  const deferred = fx.doc.createElement('div');
+  deferred.style.opacity = '0';
+  deferred.getBoundingClientRect = () => ({ left: 40, top: 90, right: 240, bottom: 120, width: 200, height: 30 });
+  fx.doc.body.appendChild(deferred);
+  try {
+    assert.equal(fx.hud.registerExternalFlightCaption(deferred), true);
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
+      'a no-room deferred discovery does not claim world-label space while transparent');
+
+    let rectReads = 0;
+    const visibleCaption = fx.doc.createElement('div');
+    visibleCaption.getBoundingClientRect = () => {
+      rectReads += 1;
+      return { left: 240, top: 90, right: 440, bottom: 120, width: 200, height: 30 };
+    };
+    fx.doc.body.appendChild(visibleCaption);
+    assert.equal(fx.hud.registerExternalFlightCaption(visibleCaption), true);
+    const visible = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'flight-caption');
+    assert.deepEqual(visible && [visible.left, visible.top, visible.right, visible.bottom], [240, 90, 440, 120],
+      'a live caption reserves its actual box');
+    const readsAfterRefresh = rectReads;
+    fx.hud.getFlightTextObstacles();
+    assert.equal(rectReads, readsAfterRefresh, 'reading the published snapshot does not touch the DOM');
+
+    visibleCaption.style.visibility = 'hidden';
+    fx.hud.refreshExternalFlightCaption(visibleCaption);
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
+      'CSS-hidden captions are omitted on the next cached refresh');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('active entering receipt reserves its measured box while transparent', () => {
+  const fx = mountArrowFixture();
+  const receipt = fx.doc.createElement('div');
+  receipt.className = 'sf-toast sf-toast--info';
+  receipt.style.opacity = '0';
+  receipt.getBoundingClientRect = () => ({
+    left: 40, top: 90, right: 240, bottom: 130, width: 200, height: 40,
+  });
+  fx.toastsLane.appendChild(receipt);
+  // This fixture's small selector shim does not parse :not(), so model the production active-card
+  // queries explicitly while keeping createHud and its toast listener real.
+  fx.toastsLane.querySelector = (selector) => selector.includes('.sf-toast')
+    && !receipt.classList.contains('sf-toast--out') ? receipt : null;
+  fx.toastsLane.querySelectorAll = (selector) => selector.includes('.sf-toast')
+    && !receipt.classList.contains('sf-toast--out') ? [receipt] : [];
+  try {
+    fx.bus.emit('toast', { text: 'New delivery receipt', kind: 'info' });
+    const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'receipt');
+    assert.deepEqual(active && [active.left, active.top, active.right, active.bottom], [40, 90, 240, 130],
+      'an entering active receipt reserves its actual box before the opacity transition starts');
+
+    receipt.classList.add('sf-toast--out');
+    fx.bus.emit('toast', { text: 'Receipt dismissed', kind: 'info' });
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'receipt'), false,
+      'a retired receipt releases its box');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('an entering visible presentation caption reserves its measured box while transparent', () => {
+  const fx = mountArrowFixture();
+  const prevSetTimeout = globalThis.setTimeout;
+  const prevClearTimeout = globalThis.clearTimeout;
+  globalThis.setTimeout = () => 1; // Keep the real caption TTL/fade timers from outliving this DOM fixture.
+  globalThis.clearTimeout = () => {};
+  const caption = fx.doc.querySelector('.sf-caption');
+  caption.style.opacity = '0'; // Models the computed opacity at the first frame of the production fade-in.
+  caption.getBoundingClientRect = () => ({
+    left: 700, top: 720, right: 1220, bottom: 780, width: 520, height: 60,
+  });
+  try {
+    fx.bus.emit('presentation:caption', { text: 'Impact registered', assertive: false });
+    assert.equal(caption.hidden, false);
+    assert.equal(caption.classList.contains('show'), true);
+    const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'caption');
+    assert.deepEqual(active && [active.left, active.top, active.right, active.bottom], [700, 720, 1220, 780],
+      'a visible entering caption reserves its actual box before the opacity transition starts');
+  } finally {
+    fx.restore();
+    globalThis.setTimeout = prevSetTimeout;
+    globalThis.clearTimeout = prevClearTimeout;
+  }
+});
 
 test('an in-camera objective never arms the edge chevron (the diamond owns the mark)', () => {
   const fx = mountArrowFixture({
@@ -407,7 +505,7 @@ test('an off-screen objective seats the chevron on the true edge with the direct
     fx.step();
     fx.step();
     const travel = objectiveTravelReadout(fx.state, { pos: { x: 0, z: 600 } });
-    assert.equal(travel.distanceText, '600 WU');
+    assert.equal(travel.distanceText, '600 u');
     assert.equal(travel.etaText, 'ETA —');
     const view = edgePresentation(fx.arrow());
     assert.equal(view.edgeClass, true, 'an off-camera objective takes the edge state');
@@ -420,7 +518,7 @@ test('an off-screen objective seats the chevron on the true edge with the direct
       `the angle must name up-screen toward +Z, got ${view.angleRad}`);
     assert.equal(view.label, `GOAL · ORE SILO · ${travel.distanceText} · ${travel.etaText}`,
       'the arrow label is the tracker’s own distance wording');
-    assert.equal(view.aria, 'Current objective: ORE SILO, 600 WU, ETA —');
+    assert.equal(view.aria, 'Current objective: ORE SILO, 600 u, ETA —');
     assert.equal(fx.arrow().title, 'Ore Silo', 'the hover title names the goal');
   } finally {
     fx.restore();
@@ -441,7 +539,7 @@ test('D135 north-up: flying SOUTH toward the goal seats the chevron on the LOW e
     fx.step();
     fx.step();
     const travel = objectiveTravelReadout(fx.state, { pos: { x: 0, z: -800 } });
-    assert.equal(travel.distanceText, '800 WU');
+    assert.equal(travel.distanceText, '800 u');
     assert.equal(travel.etaText, 'ETA 16s', 'closing flight reports an honest ETA');
     const view = edgePresentation(fx.arrow());
     assert.equal(view.edge, 'bottom', 'a southern goal seats on the low edge');

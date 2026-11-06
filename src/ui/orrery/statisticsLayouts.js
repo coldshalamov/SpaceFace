@@ -9,6 +9,8 @@ const BONE = '236 230 216';
 const WARM = '248 244 234';
 const ST = 'html body #screens > .k-screen.orr-statistics.orr-statistics';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
+// Back and its keycap reset all properties with !important, so their label voice must match.
+const LABEL_I = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';
 const NUMERAL = 'font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 250, "wdth" 100; font-weight:250; font-variant-numeric:tabular-nums lining-nums;';
@@ -75,7 +77,7 @@ ${ST} > .k-foot .k-word.sf-back {
   all:unset !important; box-sizing:border-box !important; cursor:pointer !important;
   display:inline-flex !important; align-items:baseline !important; gap:0 !important;
   padding:10px 0 12px !important; min-height:44px !important;
-  ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  ${LABEL_I} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important;
   text-shadow:none !important; }
 ${ST} > .k-foot .k-word.sf-back::before {
@@ -83,7 +85,7 @@ ${ST} > .k-foot .k-word.sf-back::before {
   font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${ST} > .k-foot .k-word.sf-back::after {
   all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important;
-  padding:3px 7px 4px !important; ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  padding:3px 7px 4px !important; ${LABEL_I} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important;
   border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${ST} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) {
@@ -93,7 +95,8 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
 
 /* short frames: keep LAW Status on first paint without crushing 1080 */
 @media (max-height:820px) {
-  ${ST} { row-gap:6px !important; padding-top:clamp(14px, 2.4vh, 28px) !important; padding-bottom:10px !important; }
+  /* the title keeps the same top margin as Credits/Achievements instead of hugging the frame edge (14–17px read as cropped) */
+  ${ST} { row-gap:6px !important; padding-top:clamp(24px, 5vh, 40px) !important; padding-bottom:10px !important; }
   ${ST} > .k-title .k-t-title, ${ST} > .k-title .fh-title { font-size:clamp(28px, 5.2vh, 48px) !important; }
   ${ST} > .k-title .k-sentence, ${ST} > .k-title > p { margin-top:4px !important; font-size:13.5px !important; }
   ${ST} > .sf-statistics.k-stage { padding-bottom:20px !important; max-width:min(640px, 100%) !important; }

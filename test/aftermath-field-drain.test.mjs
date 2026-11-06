@@ -54,6 +54,7 @@ test('a mounted aftermath card resolves when its field drains in-sector', () => 
 
   // Pre-existing field wreck, no fight receipt: salvage + escape mounts the card.
   h.state.aftermathWrecks = { bySector: { [SECTOR]: [{ markerId: 'wreck-1', victimId: 900 }] } };
+  h.bus.emit('combat:outcome', { sectorId: SECTOR, killerId: h.state.playerId });
   h.bus.emit('sector:enter');
   assert.equal(deck.mounted.has('aftermath:field'), true, 'card should mount on the live field');
   assert.deepEqual(
@@ -78,6 +79,7 @@ test('a live field keeps its card across a no-op republish', () => {
   createAftermathChoicePrompt({ bus: h.bus, state: h.state, deck });
 
   h.state.aftermathWrecks = { bySector: { [SECTOR]: [{ markerId: 'wreck-1', victimId: 900 }] } };
+  h.bus.emit('combat:outcome', { sectorId: SECTOR, killerId: h.state.playerId });
   h.bus.emit('sector:enter');
   assert.equal(deck.mounted.has('aftermath:field'), true);
 

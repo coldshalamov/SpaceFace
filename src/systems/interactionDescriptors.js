@@ -25,6 +25,7 @@ import { worldSiteOperationReadiness } from './worldSiteKernel.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardPhase } from '../data/anvilOrchard.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { readPlayerOrchardFeed } from './planetRuntime.js';
 import {
   VERB_TYPE_MEMBERSHIP, verbAcceptsType, DENIAL,
   COMPONENT_KINDS, COMPONENT_KIND_VERB, stableEntityKey, capabilityFlagsForEntity,
@@ -318,6 +319,7 @@ function orchardSocketComponents(state, entity, stableKey) {
       && slot.handoff === 'fixed'
       && !!lot;
     const phaseReady = phase && phase.phase === 'calm';
+    const feed = readPlayerOrchardFeed(state, entity, socket);
     let inactiveReason = null;
     if (row.frameStatus !== 'intact') inactiveReason = 'frame-destroyed';
     else if (!phaseReady) inactiveReason = 'phase-ineligible';
@@ -346,6 +348,10 @@ function orchardSocketComponents(state, entity, stableKey) {
       phase: phase && phase.phase || null,
       active: !!(phaseReady && row.frameStatus === 'intact' && (stowed || opening)),
       inactiveReason,
+      feedEligible: feed.eligible,
+      feedReason: feed.reason,
+      feedMode: state.planet?.player?.collectorOn === true,
+      contributor: lot?.contributor || 'worker',
       live: true,
     };
   });

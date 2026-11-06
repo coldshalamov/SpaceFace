@@ -45,11 +45,13 @@ function fixture() {
   new Function('state', 'cam', 'THREE', 'openingSubmissionCamera', '_meshLocalXZ',
     'rendererGenerationIsActive', 'releaseOpeningGraphPublication', 'createOpeningLoadingAdmission',
     'enqueueMissingMeshBuildsSteps', 'observePipelineAdmission', 'yieldToBrowser',
-    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', loadingSource)
+    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity',
+    'resumeAuthoredUpgradeQueueForLoadingHulls', 'scene', loadingSource)
     .call(owner, state, { follow() { calls.push('begin'); }, obj: { updateMatrixWorld() {} } },
       { Sphere: class { constructor(center, radius) { this.center = center; this.radius = radius; } }, Vector3: class {} },
       () => null, {}, () => true, api.releaseOpeningGraphPublication, api.createOpeningLoadingAdmission,
-      function* () {}, api.observePipelineAdmission, () => Promise.resolve(), () => 1, () => false);
+      function* () {}, api.observePipelineAdmission, () => Promise.resolve(), () => 1, () => false,
+      () => false, null);
   Object.assign(state.render, {
     prepareOpeningFirstPicture: async () => { calls.push('seal'); return true; },
     captureOpeningSubmissionPlan: () => {

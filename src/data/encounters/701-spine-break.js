@@ -9,7 +9,16 @@
 //
 // The re-link is physical (faction_meridian's recouple radius), never a menu.
 import { deepFreeze, defineEncounter } from './catalog.js';
-import { faction as MTS } from '../factions/mts.js';
+import {
+  SPINE_BREAK_CONFIG,
+  SPINE_BREAK_CONTAINER_VALUE_CR,
+  SPINE_BREAK_DEADLINE_S,
+  SPINE_BREAK_HEAD_LINKED,
+  SPINE_BREAK_LEAVE_RADIUS_WU,
+  SPINE_BREAK_SELL_RADIUS_WU,
+  SPINE_BREAK_TAIL_LOOSE,
+  spineBreakContainerLayout,
+} from '../../missions/spineBreakWorksite.js';
 
 export const encounterOrder = 701;
 export const trigger = deepFreeze({
@@ -27,19 +36,12 @@ export const trigger = deepFreeze({
   gates: {},
 });
 
-const CFG = (MTS.custom && MTS.custom.spineBreak) || {};
-const SPINE = (MTS.custom && MTS.custom.cargoSpine) || {};
-const FEE_PER_BOX = Math.max(0, Number(CFG.recoupleFeePerContainerCr) || 120);
-const RECOUPLE_GOAL = Math.max(1, Math.round(Number(CFG.recoupleGoal) || 3));
-const PITBORN_FRAC = Math.min(1, Math.max(0, Number(CFG.pitbornPriceFrac) || 0.35));
-const LINK_GAP = Math.max(20, Number(SPINE.linkGapWu) || 46);
-const STRETCH = Math.max(40, Number(SPINE.couplerStretchWu) || 90);
-const CONTAINER_VALUE_CR = 4200;
-const HEAD_LINKED = 2;           // containers still on the tug when we arrive
-const TAIL_LOOSE = 4;            // the spill the Reach left behind
-const SELL_RADIUS_WU = 120;      // buyer skiff's catch volume
-const LEAVE_RADIUS_WU = 1900;
-const DEADLINE_S = 300;
+const FEE_PER_BOX = SPINE_BREAK_CONFIG.feePerBox;
+const RECOUPLE_GOAL = SPINE_BREAK_CONFIG.recoupleGoal;
+const PITBORN_FRAC = SPINE_BREAK_CONFIG.pitbornFrac;
+const SELL_RADIUS_WU = SPINE_BREAK_SELL_RADIUS_WU;
+const LEAVE_RADIUS_WU = SPINE_BREAK_LEAVE_RADIUS_WU;
+const DEADLINE_S = SPINE_BREAK_DEADLINE_S;
 
 function releaseCast(live) {
   if (!live) return;
@@ -92,19 +94,15 @@ export const runtime = Object.freeze({
     // already out past the stretch — the coupler law cuts it loose on the first update,
     // so the spill is the real mechanic, not a scripted stamp.
     const spineId = `spine_${live.id}`;
-    const dir = { x: -1, z: 0 }; // the train points back down-lane
     const all = [];
-    for (let i = 0; i < HEAD_LINKED + TAIL_LOOSE; i++) {
-      const linked = i < HEAD_LINKED;
+    for (let i = 0; i < SPINE_BREAK_HEAD_LINKED + SPINE_BREAK_TAIL_LOOSE; i++) {
+      const layout = spineBreakContainerLayout(center, i, rng);
+      const linked = layout.linked;
       // Linked boxes ride at link spacing; the tail starts past the stretch limit so the
       // coupler law itself cuts it loose — the break is authored, the spill is real.
-      const gap = linked
-        ? LINK_GAP * (i + 1)
-        : LINK_GAP * HEAD_LINKED + STRETCH * 1.4 + LINK_GAP * (i - HEAD_LINKED);
-      const jitter = linked ? 0 : (rng() - 0.5) * 90; // z-scatter only: x must stay past the stretch
       const pod = d.spawnCargoPod(live, {
-        pos: { x: center.x + dir.x * gap, z: center.z + dir.z * gap + jitter },
-        vel: { x: linked ? 0 : (rng() - 0.5) * 8, z: linked ? 0 : (rng() - 0.5) * 8 },
+        pos: layout.pos,
+        vel: layout.vel,
         commodityId: 'cmdty_electronics', amount: 6, unitMass: 6,
         ownerName: 'Meridian Trade Syndicate', factionId: 'faction_mts',
       });
@@ -112,7 +110,7 @@ export const runtime = Object.freeze({
       pod.data = pod.data || {};
       pod.data.spineId = spineId;
       pod.data.spineIndex = i + 1;
-      pod.data.cargoValueCr = CONTAINER_VALUE_CR - i * 150;
+      pod.data.cargoValueCr = SPINE_BREAK_CONTAINER_VALUE_CR - i * 150;
       pod.data.authoredLoose = !linked;
       pod.data.encounterId = live.id;
       all.push(pod);

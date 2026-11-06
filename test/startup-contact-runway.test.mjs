@@ -142,8 +142,8 @@ function makePublicationFixture(entityPos) {
   const wreck = {
     id: 331, type: 'wreck', alive: true, pos: entityPos, radius: 14, data: {},
   };
-  const gate = {};
-  gate.promise = new Promise((resolve) => { gate.release = resolve; });
+  let resolveGate;
+  const gate = { promise: new Promise((resolve) => { resolveGate = resolve; }) };
   const state = {
     mode: 'flight',
     playerId: 1,
@@ -157,6 +157,10 @@ function makePublicationFixture(entityPos) {
       activityFrame: null,
     },
     world: { currentSectorId: 'sector_helios_prime' },
+  };
+  gate.release = () => {
+    state.render.openingGraphPublicationFrozen = false;
+    resolveGate();
   };
   return { state, wreck, gate };
 }
@@ -224,20 +228,12 @@ test('the gate still owns ambiguous waits: no entity and pre-picture both park',
   await withSfState(state, async () => {
     const anonymous = waitForOpeningGraphPublicationRelease();
     assert.ok(anonymous instanceof Promise, 'no entity means the legacy parked wait');
-    const loading = makePublicationFixture({ x: 60, z: 0 });
-    const previousRender = state.render;
-    state.render = { ...loading.state.render, firstPlayableFrameAt: undefined };
-    try {
-      const prePicture = waitForOpeningGraphPublicationRelease({ entity: wreck });
-      assert.ok(prePicture instanceof Promise,
-        'before the first picture the gate batches publications exactly as before');
-      gate.release();
-      loading.gate.release();
-      await anonymous;
-      await prePicture;
-    } finally {
-      state.render = previousRender;
-    }
+    state.render.firstPlayableFrameAt = undefined;
+    const prePicture = waitForOpeningGraphPublicationRelease({ entity: wreck });
+    assert.ok(prePicture instanceof Promise,
+      'before the first picture the gate batches publications exactly as before');
+    gate.release();
+    await Promise.all([anonymous, prePicture]);
   });
 });
 

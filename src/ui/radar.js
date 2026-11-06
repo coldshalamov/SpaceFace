@@ -22,6 +22,7 @@ import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer, playerSensorBlock } from '../systems/scanner.js';
 import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { objectiveIsOffSector } from './objectiveSector.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
 import {
@@ -46,6 +47,7 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
+export const MOBILE_RADAR_METRICS = Object.freeze({ size: 88, center: 44, radius: 40 });
 const COMPACT_SIZE = 208;
 const COMPACT_C = COMPACT_SIZE / 2;
 const COMPACT_R = 100;
@@ -1113,6 +1115,22 @@ function waypointLabel(waypoint) {
   return sanitizeMapLabel(cleaned || 'OBJECTIVE', 20);
 }
 
+export function resolveRadarObjective(state) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  // A foreign-sector coordinate is not a physical target on this local scope.
+  if (objectiveIsOffSector(state, waypoint)) return null;
+  let waypointPos = resolveWaypointPresentationPosition(state, waypoint);
+  let cueOwner = waypoint;
+  if (!waypointPos) {
+    const gateFix = resolveObjectiveGatePresentation(state);
+    if (gateFix) {
+      cueOwner = { label: gateFix.label, kind: 'gate-fallback' };
+      waypointPos = gateFix.pos;
+    }
+  }
+  return cueOwner ? { cueOwner, waypointPos, label: waypointLabel(cueOwner) } : null;
+}
+
 function drawWaypointDiamond(g, cue, now, reducedMotion) {
   const pulse = reducedMotion ? 0 : 0.5 + 0.5 * Math.sin(now * 0.0042);
   drawObjectiveBracket(g, cue.x, cue.y, { pulse });
@@ -1251,8 +1269,52 @@ function drawRangePlate(g, metrics, range, expanded) {
   g.restore();
 }
 
+// The heat ring is the costliest single layer (clip + huge-arc fill + dashed stroke). Its look is a pure
+// function of the dial-space geometry, so keep the last render on an offscreen layer and blit it while the
+// ring has moved less than half a pixel (hovering, slow drift, mining). Fast flight misses and repaints.
+const heatLayer = { canvas: null, ctx: null, key: '', owner: null };
 function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   if (!zone || !zone.active || !(zone.radius > 0) || !(zone.level > 0)) return;
+  const target = g.canvas;
+  if (!target || typeof document === 'undefined' || typeof g.getTransform !== 'function') {
+    drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius);
+    return;
+  }
+  const zx = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
+  const zz = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
+  const dx = zx - playerX;
+  const dz = zz - playerZ;
+  const outside = dx * dx + dz * dz > zone.radius * zone.radius;
+  const remaining = outside && (zone.clearAfterS || 0) > 0
+    ? Math.max(0, Math.ceil(zone.clearAfterS - (zone.outsideS || 0))) : 0;
+  const key = [Math.round((center - dx * scale) * 2), Math.round((center - dz * scale) * 2),
+    Math.round(Math.max(2, zone.radius * scale) * 2), outside ? 1 : 0, zone.level, remaining,
+    center, radius, target.width, target.height].join('|');
+  if (!heatLayer.canvas || heatLayer.owner !== target || heatLayer.canvas.width !== target.width
+    || heatLayer.canvas.height !== target.height) {
+    heatLayer.canvas = heatLayer.canvas || document.createElement('canvas');
+    heatLayer.canvas.width = target.width;
+    heatLayer.canvas.height = target.height;
+    heatLayer.ctx = heatLayer.canvas.getContext('2d');
+    heatLayer.owner = target;
+    heatLayer.key = '';
+  }
+  const lg = heatLayer.ctx;
+  if (!lg) { drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius); return; }
+  if (heatLayer.key !== key) {
+    lg.setTransform(1, 0, 0, 1, 0, 0);
+    lg.clearRect(0, 0, heatLayer.canvas.width, heatLayer.canvas.height);
+    lg.setTransform(g.getTransform());
+    drawHeatZoneDirect(lg, zone, playerX, playerZ, scale, center, radius);
+    heatLayer.key = key;
+  }
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.drawImage(heatLayer.canvas, 0, 0);
+  g.restore();
+}
+
+function drawHeatZoneDirect(g, zone, playerX, playerZ, scale, center, radius) {
   const zoneX = Number.isFinite(zone.center && zone.center.x) ? zone.center.x : 0;
   const zoneZ = Number.isFinite(zone.center && zone.center.z) ? zone.center.z : 0;
   const dx = zoneX - playerX;
@@ -1273,11 +1335,37 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.fillStyle = 'rgba(255,84,112,0.03)';
   g.strokeStyle = outside ? 'rgba(255,205,95,0.68)' : 'rgba(255,84,112,0.58)';
   g.lineWidth = outside ? 1.25 : 1;
-  g.setLineDash(outside ? [7, 4] : [4, 5]);
-  g.beginPath();
-  g.arc(x, y, zoneRadius, 0, Math.PI * 2);
-  g.fill();
-  g.stroke();
+  const dash = outside ? [7, 4] : [4, 5];
+  const toDial = Math.hypot(center - x, center - y);
+  if (toDial + radius < zoneRadius - 2) {
+    // Dial wholly inside the zone: no ring visible, just the tint.
+    g.fillRect(center - radius, center - radius, radius * 2, radius * 2);
+  } else {
+    g.beginPath();
+    g.arc(x, y, zoneRadius, 0, Math.PI * 2);
+    g.fill();
+    // Dashing a huge circle is expensive; stroke only the arc that can reach the dial.
+    let a0 = 0;
+    let a1 = Math.PI * 2;
+    let offset = 0;
+    if (zoneRadius > radius * 3 && toDial > 1e-3) {
+      const cosA = (zoneRadius * zoneRadius + toDial * toDial - radius * radius) / (2 * zoneRadius * toDial);
+      if (cosA > -1 && cosA < 1) {
+        const half = Math.min(Math.PI, Math.acos(cosA) + 0.05);
+        const mid = Math.atan2(center - y, center - x);
+        a0 = mid - half;
+        a1 = mid + half;
+        const period = dash[0] + dash[1];
+        offset = -(((a0 * zoneRadius) % period) + period) % period;
+      }
+    }
+    g.setLineDash(dash);
+    g.lineDashOffset = a1 - a0 < Math.PI * 2 ? offset : 0;
+    g.beginPath();
+    g.arc(x, y, zoneRadius, a0, a1);
+    g.stroke();
+    g.lineDashOffset = 0;
+  }
   g.setLineDash([]);
   g.restore();
 
@@ -1421,19 +1509,26 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
 const FRAME_PAD = 26;
 function createRadarFrame(size, center, radius) {
   injectOrrery();
+  const phone = size === MOBILE_RADAR_METRICS.size;
+  const pad = phone ? 16 : FRAME_PAD;
   const root = orrSvg('svg', {
     class: 'orr-svg sf-radar-orrery',
-    viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
+    viewBox: `${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`,
     'aria-hidden': 'true',
   });
   const rim = orrRing({ cx: center, cy: center, r: radius + 1, tone: 'hi', width: 2.4, bloom: 10 });
   root.appendChild(rim);
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
-  root.appendChild(orrSvg('path', {
+  if (!phone) root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
     class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
   }));
-  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 12 });
+  const north = orrSvg('text', { x: center, y: center - radius - (phone ? 3 : 22), 'text-anchor': 'middle', 'font-size': 12 });
+  if (phone) {
+    north.setAttribute('paint-order', 'stroke');
+    north.setAttribute('stroke', 'var(--dp-void,#05070a)');
+    north.setAttribute('stroke-width', '3');
+  }
   north.textContent = 'N';
   root.appendChild(north);
   const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
@@ -1453,11 +1548,12 @@ function createRadarFrame(size, center, radius) {
   let hintNow = false;
   return {
     el: root,
+    pad,
     setRange(text) {
       if (text === rangeText) return;
       rangeText = text;
       if (rangeNode) rangeNode.remove();
-      rangeNode = circularText(center, center, radius + 19, `RANGE  ${text}`.toUpperCase(),
+      rangeNode = circularText(center, center, radius + (phone ? 12 : 19), `RANGE  ${text}`.toUpperCase(),
         { startDeg: 270, size: 12, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
       root.appendChild(rangeNode);
     },
@@ -1581,7 +1677,7 @@ export function createRadar(ctx) {
     frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
     // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
     // size (208 / 172 / 132) and the expanded scope without a layout read.
-    const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
+    const span = `${(((configuredSize + frame.pad * 2) / configuredSize) * 100).toFixed(3)}%`;
     frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
     dial.appendChild(frame.el);
   }
@@ -1592,6 +1688,12 @@ export function createRadar(ctx) {
     drawBackground(background, configuredCenter, configuredRadius, { grid: !orreryFrame });
     if (orreryFrame) mountOrreryFrame();
     else if (frame) { frame.dispose(); frame = null; }
+  }
+
+  function restingMetrics() {
+    const root = document.documentElement;
+    return root?.dataset?.sfMobile === '1' && root?.dataset?.sfMobileFlight === '1'
+      ? MOBILE_RADAR_METRICS : tacticalRadarMetrics(false);
   }
 
   function configureCanvas(size, center, radius) {
@@ -1683,10 +1785,11 @@ export function createRadar(ctx) {
       expandedHome = null;
     }
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
-    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
+    else { const m = restingMetrics(); configureCanvas(m.size, m.center, m.radius); }
     wrap.style.cssText = expanded
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
+    bus?.emit?.('hud:layoutChanged', { key: 'radar' });
     // Resizing a canvas clears its bitmap, and the background plate only blits inside draw() —
     // without a repaint here the scope sits blank until the next HUD frame (a visible flash on
     // the live route, a permanent blank on a still page). One draw settles the new size.
@@ -1703,7 +1806,7 @@ export function createRadar(ctx) {
       const y = ((ev.clientY - rect.top) / rect.height) * configuredSize;
       const baseRange = (state.ui && state.ui.radarRange) || 4000;
       const range = expanded ? baseRange * 2 : baseRange;
-      const course = radarDialCourse(state, player.pos, range, tacticalRadarMetrics(expanded), x, y);
+      const course = radarDialCourse(state, player.pos, range, (expanded ? tacticalRadarMetrics(true) : restingMetrics()), x, y);
       if (course) {
         bus.emit('ui:setCourse', course);
         bus.emit('toast', { text: 'Autopilot set: ' + course.label, kind: 'info', ttl: 3 });
@@ -2002,9 +2105,9 @@ export function createRadar(ctx) {
     stanceMemo.clear();
     if (state.mode !== 'flight') clearHostileCourse();
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
-    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
+    else { const m = restingMetrics(); configureCanvas(m.size, m.center, m.radius); }
 
-    const metrics = tacticalRadarMetrics(expanded);
+    const metrics = expanded ? tacticalRadarMetrics(true) : restingMetrics();
     const size = configuredSize;
     const center = configuredCenter;
     const radius = configuredRadius;
@@ -2449,20 +2552,10 @@ export function createRadar(ctx) {
       }
     }
 
-    const waypoint = state.nav && state.nav.waypoint;
-    let waypointPos = resolveWaypointPresentationPosition(state, waypoint);
-    let label = waypointLabel(waypoint);
-    let cueOwner = waypoint;
-    if (!waypointPos) {
-      // Cross-sector objective: point the scope at the gate that starts the trip instead of
-      // parking the unresolved mark. Presentation-only — the plot step stays a map verb.
-      const gateFix = resolveObjectiveGatePresentation(state);
-      if (gateFix) {
-        cueOwner = { label: gateFix.label, kind: 'gate-fallback' };
-        label = waypointLabel(cueOwner);
-        waypointPos = gateFix.pos;
-      }
-    }
+    const objective = resolveRadarObjective(state);
+    const waypointPos = objective && objective.waypointPos;
+    const cueOwner = objective && objective.cueOwner;
+    const label = objective && objective.label;
     const cue = cueOwner
       ? (
         waypointPos
@@ -2551,7 +2644,7 @@ export function createRadar(ctx) {
     if (frame) frame.setRange(dialDistance(range));
     else drawRangePlate(g, metrics, range, expanded);
 
-    const ariaLabel = waypoint
+    const ariaLabel = cueOwner
       ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${dialDistance(cue && cue.distance)}.`
       : 'Local tactical radar. You are the lit centre hull. Hostiles are red class silhouettes, stations are cyan berth hexagons, gates are violet double rings, allied ships are green, and nearby traffic is blue-grey. Distant small traffic stays off the dial.';
     lastAriaLabel = ariaLabel;

@@ -9,6 +9,15 @@ export const PAINTED_RING_URL = '/assets/background/quiet-ringed-planet.png';
 export const PAINTED_RING_URL_2 = '/assets/background/quiet-ringed-planet-2.png';
 // The generated bodies fill about 86% of each cell. Transparent gutters isolate mip filtering.
 export const PAINTED_PLANET_DIAMETER = 0.86;
+// DUST P3: on the ringed images the BODY disc and the RING SYSTEM are different fractions of the
+// image, and paintedPlanetDiameter has always carried the SYSTEM fraction (0.445/0.474 — it sizes
+// the sprite quad). The terminator needs the BODY diameter (~0.88 of the image, the disc out to
+// where the measured coverage falls off). Using the system fraction there — as the first P3a
+// increment did — shaded only the inner half of ringed bodies, leaving an unlit outer annulus:
+// exactly the look gate's "ringed gas giant uniformly lit". paintedBodyDiameter is the body disc;
+// atlas views need no override (their bodies fill the cell).
+export const PAINTED_RING_BODY_DIAMETER = 0.885;
+export const PAINTED_RING_BODY_DIAMETER_2 = 0.88;
 
 // Cells of the second atlas a planet type may wear, by index into `extraViews` (0 ember, 1 ice giant, 2 frozen, 3 dune).
 const EXTRA_CELLS = Object.freeze({ gas: [1], ice: [2], rocky: [0, 3] });
@@ -57,6 +66,7 @@ export class PaintedPlanets {
     this.ringTexture.colorSpace = THREE.SRGBColorSpace;
     this.ringTexture.userData.paintedPlanet = true;
     this.ringTexture.userData.paintedPlanetDiameter = 0.445;
+    this.ringTexture.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER;
     // The second atlas loads after the first pair and is not part of `ready`: the first four looks are a
     // complete sky on their own. A load failure uses the same reported bake fallback as the first atlas, so
     // a planet that picked a second-atlas cell can never be left blank.
@@ -70,6 +80,7 @@ export class PaintedPlanets {
     this.ringTexture2.colorSpace = THREE.SRGBColorSpace;
     this.ringTexture2.userData.paintedPlanet = true;
     this.ringTexture2.userData.paintedPlanetDiameter = 0.474;
+    this.ringTexture2.userData.paintedBodyDiameter = PAINTED_RING_BODY_DIAMETER_2;
   }
 
   get(spec) {

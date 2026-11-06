@@ -46,6 +46,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { makeShipEntitySpec } from './ships.js';
+import { strideDt } from '../core/catchupPolicy.js';
 
 const FACTION_ID = 'faction_choir';
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
@@ -1706,8 +1707,10 @@ export const choirResonance = {
   update(dt, state) {
     ensureChoirState(state);
     if (state.mode === 'flight') this._tickSites(state);
-    this._tickBells(state);
-    this._shatterCrystal(state, dt);
+    // Bell beats are 6 s and crystal hum lasts seconds: 15 Hz censuses are exact enough.
+    if (strideDt(this, 'bells', dt, 4, state) > 0) this._tickBells(state);
+    const shatterDt = strideDt(this, 'shatter', dt, 4, state);
+    if (shatterDt > 0) this._shatterCrystal(state, shatterDt);
     this._bellHeads(state);
     this._tickBlessings(state);
     // Sector-scale rites only move while the player is flying: a heresy mark

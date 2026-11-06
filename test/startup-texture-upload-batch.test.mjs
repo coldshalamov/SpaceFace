@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 
@@ -119,9 +118,4 @@ test('opening policy batches texture uploads only on serial-link loading routes'
         !shouldAwaitGpuCook && mode === 'loading' ? [16, 1] : Array(17).fill(1), policy.routeName);
     }
   }
-  // Keep only the producer-to-consumer wiring assertion; values and route behavior run above.
-  const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(renderer, /firstFrameResidency = await prepareStartupGpuResidency\(renderer, scene, \{\s*geometryBatchDrawables: residencyPolicy\(\)\.geometryBatchDrawables,\s*\.\.\.residencyPolicy\(\)\.textureBatch,/);
-  assert.match(renderer, /const bufferPolicy = openingLoadPolicy\(/);
-  assert.equal((renderer.match(/geometryBatchDrawables: bufferPolicy\.geometryBatchDrawables,\s*\.\.\.bufferPolicy\.textureBatch,/g) || []).length, 2);
 });

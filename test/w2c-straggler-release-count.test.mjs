@@ -1,11 +1,9 @@
-// W2-C / O21: the straggler release was disarmed whenever more than two hulls were still
-// actionable, so three or more stranded hulls held a won round open forever. Hulls past the
-// leash are off screen whatever their number; the grace timer alone decides.
+// Distant pursuit applies to every actionable survivor without resolving its cohort slot.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as mod from '../src/systems/survivalWave.js';
 
-const proto = Object.values(mod).find((v) => v && typeof v === 'object' && typeof v._releaseStragglers === 'function');
+const proto = Object.values(mod).find((v) => v && typeof v === 'object' && typeof v._commitStragglers === 'function');
 const TICKS_PER_SECOND = 60;
 const GRACE_TICKS = 8 * TICKS_PER_SECOND;
 
@@ -16,7 +14,7 @@ function wave(positions) {
   const cohort = new Map();
   positions.forEach((pos, i) => {
     const id = 20 + i;
-    const enemy = { id, alive: true, type: 'ship', pos: { ...pos }, data: { runCohort: 'survival' } };
+    const enemy = { id, alive: true, type: 'ship', pos: { ...pos }, data: { runCohort: 'survival', ai: { combatDoctrineId: 'pack_pursuit' } } };
     entities.set(id, enemy);
     cohort.set(id, { entity: enemy });
   });
@@ -44,35 +42,34 @@ function wave(positions) {
   return { sys, removed, cohort };
 }
 
-test('five stranded hulls beyond the leash all break off within the grace window plus ten seconds', () => {
+test('five distant hulls commit after the grace period without resolving', () => {
   const { sys, removed, cohort } = wave([
     { x: 2500, z: 0 }, { x: 3000, z: 100 }, { x: -2600, z: 40 }, { x: 0, z: 4000 }, { x: 5000, z: -300 },
   ]);
-  const budget = GRACE_TICKS + 10 * TICKS_PER_SECOND;
-  let clearedAt = null;
-  for (let tick = 1; tick <= budget; tick++) {
-    sys._releaseStragglers();
-    if (cohort.size === 0) { clearedAt = tick; break; }
-  }
-  assert.ok(clearedAt != null, 'the stranded tail resolved inside grace + 10 s');
-  assert.ok(clearedAt >= GRACE_TICKS, 'not before the grace window');
-  assert.equal(removed.length, 5);
+  for (let tick = 1; tick < GRACE_TICKS; tick++) sys._commitStragglers();
+  assert.ok([...cohort.values()].every(({ entity }) => entity.data.ai.combatDoctrineId === 'pack_pursuit'));
+  sys._commitStragglers();
+  assert.equal(cohort.size, 5);
+  assert.deepEqual(removed, []);
+  assert.ok([...cohort.values()].every(({ entity }) => entity.alive && entity.data.ai.combatDoctrineId === 'brawler_commit'));
 });
 
 test('the grace timer still protects a hull that comes back inside the leash', () => {
   const { sys, removed } = wave([
     { x: 2500, z: 0 }, { x: 3000, z: 100 }, { x: -2600, z: 40 },
   ]);
-  for (let tick = 0; tick < GRACE_TICKS - 5; tick++) sys._releaseStragglers();
+  for (let tick = 0; tick < GRACE_TICKS - 5; tick++) sys._commitStragglers();
   assert.deepEqual(removed, []);
   sys.state.entities.get(20).pos.x = 600; // one hull returns to the fight
-  for (let tick = 0; tick < 20; tick++) sys._releaseStragglers();
-  assert.deepEqual(removed.sort(), [21, 22], 'the two still stranded break off; the returnee keeps its slot');
-  assert.ok(sys._cohort.has(20));
+  for (let tick = 0; tick < 20; tick++) sys._commitStragglers();
+  assert.deepEqual(removed, []);
+  assert.equal(sys.state.entities.get(20).data.ai.combatDoctrineId, 'pack_pursuit');
+  assert.equal(sys.state.entities.get(21).data.ai.combatDoctrineId, 'brawler_commit');
+  assert.equal(sys.state.entities.get(22).data.ai.combatDoctrineId, 'brawler_commit');
 });
 
 test('hulls inside the leash are never released however many there are', () => {
   const { sys, removed } = wave(Array.from({ length: 6 }, (_, i) => ({ x: 400 + i * 50, z: 0 })));
-  for (let tick = 0; tick < GRACE_TICKS * 2; tick++) sys._releaseStragglers();
+  for (let tick = 0; tick < GRACE_TICKS * 2; tick++) sys._commitStragglers();
   assert.deepEqual(removed, []);
 });

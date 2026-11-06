@@ -24,12 +24,14 @@ import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
+import { localizeText } from '../localization/sourceText.js';
+import { CAPTAIN_HONORIFIC_COPY } from '../data/shipRegistry.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
+import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargetingRead.js';
 import { initialMouseToolLane, resolveActionLabel } from '../systems/input.js';
 import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';
@@ -43,7 +45,7 @@ import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js'
 import { exploitableStatusChips, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
-import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetConditionReadout } from './targetCondition.js';
@@ -54,6 +56,8 @@ import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
 import { faunaPileFact, faunaSpeciesById, faunaTollFact } from '../data/alienFauna.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
+import { worldSiteManifestById } from '../data/worldSiteManifests.js';
+import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -171,8 +175,16 @@ function getGimmickLabel(gimmick) {
     || String(gimmick).replace(/_/g, ' ').toUpperCase();
 }
 
-export function targetDisplayName(e, { concealWreck = false } = {}) {
+export function targetDisplayName(e, { concealWreck = false, state = null } = {}) {
   if (!e) return '—';
+  const workLoad = crackerRunWorkLoadRead(state, e);
+  if (workLoad) return workLoad.name;
+  if (isOrchardFrame(e)) return readableIdentity(e.data?.name, e) || 'Orchard frame';
+  if (isOrchardPod(e)) {
+    const commodity = COMMODITY_BY_ID.get(e.data?.commodityId);
+    return commodity ? `${commodity.name} pod` : 'Orchard pod';
+  }
+  if (isWorldSiteWorkTarget(e)) return readableIdentity(e.data?.name, e) || 'Work site component';
   // A broadcast callsign is already public. Scan-only identity stays concealed until resolved —
   // on every surface, not just the roster that opts in (wreck-like covers fx dressing and
   // set-piece props, not only literal type:'wreck').
@@ -198,10 +210,83 @@ export function targetDisplayName(e, { concealWreck = false } = {}) {
   return interactionDisplayName(e);
 }
 
-export function targetInteractionClass(e) {
+export function targetInteractionClass(e, state = null) {
+  if (isCrackerRunWorkLoad(state, e)) return 'Movable yard load';
+  if (isOrchardFrame(e)) return 'Harvest facility';
+  if (isOrchardPod(e)) return 'Orchard pod';
+  if (isWorldSiteWorkTarget(e)) return e.data.worldSiteStructural ? 'Structural section' : 'Work site';
   const interaction = interactionProfileForEntity(e);
   if (interaction.kind === 'asteroid') return asteroidClassLine(e);
   return interactionClassLine(e);
+}
+
+function isWorldSiteWorkTarget(entity) {
+  const d = entity?.data;
+  return !!(d?.worldSiteId && d.worldSiteComponentId
+    && (d.role === 'world_site_component' || d.worldSiteStructural === true));
+}
+
+// Null means an ordinary contact: callers must keep its usual scanner/manifest disclosure.
+export function authoredSiteRosterDetail(state, entity, player, distance) {
+  if (isWorldSiteWorkTarget(entity)) return worldSiteTargetInfoLine(entity, state, player, distance);
+  if (isOrchardFrame(entity)) return orchardSocketInfoLine(entity, state);
+  return null;
+}
+
+// This target is already the selected site component. Read its operation and finite payload
+// from the same descriptor/record that the industrial beam uses, not its wreck envelope.
+export function worldSiteTargetInfoLine(target, state, player, distance) {
+  const d = target.data;
+  const record = state?.sites?.worldById?.[d.worldSiteId];
+  const manifest = record && worldSiteManifestById(record.manifestId || d.worldSiteId);
+  const component = listSelectableComponents(state, target).find(c => c.componentId === d.worldSiteComponentId);
+  if (!manifest || !component) return 'Work site status unavailable';
+  const operation = manifest.operations.find(op => op.id === component.operationId);
+  const payload = manifest.payloads.find(item => item.id === (d.worldSitePayloadId || component.payloadId)
+    || item.componentId === component.componentId
+    || item.structural?.supportComponentId === component.componentId);
+  const facts = [];
+  const payloadFacts = [];
+  if (component.status) facts.push(String(component.status).replace(/_/g, ' '));
+  if (payload?.structural) {
+    const mass = d.worldSiteStructural ? Number(target.physicsBody?.mass ?? target.mass) : Number(payload.mass);
+    const label = d.worldSiteStructural ? 'Mass' : (payload.label || 'Section');
+    if (Number.isFinite(mass) && mass > 0) payloadFacts.push(`${label} · ${mass.toLocaleString('en-US')} T`);
+    const payloadState = record.payloads?.[payload.id];
+    if (payloadState?.status === 'released') {
+      const support = record.components?.[payload.structural.supportComponentId];
+      payloadFacts.push(support?.status === payload.structural.supportStatus ? 'Supported' : 'Released');
+    }
+  }
+  if (payload) {
+    const pool = record.payloads?.[payload.id]?.remainingPool ?? payload.salvagePool;
+    const materials = Object.entries(pool || {}).filter(([, qty]) => finiteWholePickupAmount(qty) > 0)
+      .map(([id, qty]) => `${COMMODITY_BY_ID.get(id)?.name || 'Unidentified material'} ×${finiteWholePickupAmount(qty)}`);
+    if (materials.length) payloadFacts.push(`Payload: ${materials.join(', ')}`);
+  }
+  if (component.active && operation) {
+    const word = operation.to === 'braced' ? 'brace' : operation.to === 'released' ? 'release' : component.verb;
+    const progress = component.workThreshold > 0 && component.workApplied > 0
+      ? ` ${Math.min(100, Math.round(component.workApplied / component.workThreshold * 100))}%` : '';
+    const range = beamRangeFor(player, state);
+    if (range == null) facts.push('Beam unavailable');
+    else if (distance > range + (target.radius || 0)) facts.push('Out of beam range');
+    else {
+      const key = resolveActionLabel(state, 'siteBeam');
+      facts.push(`${key ? `Hold ${key}` : 'Hold site beam'} · ${word}${progress}`);
+    }
+  } else if (component.inactiveReason === 'dependency-incomplete') {
+    const candidate = manifest.operations.find(op => op.componentId === component.componentId
+      && op.from?.includes(component.status) && !record.completedOperations?.[op.id]);
+    const dependency = candidate?.dependsOn?.find(id => !record.completedOperations?.[id]);
+    const prerequisite = manifest.operations.find(op => op.id === dependency);
+    const name = manifest.components.find(item => item.id === prerequisite?.componentId)?.label;
+    facts.push(name ? `Select ${name} first` : 'Previous work required');
+  } else if (component.inactiveReason === 'section-already-cut') facts.push('Section already cut');
+  else if (component.inactiveReason === 'complete') facts.push('Work complete');
+  else facts.push('Work unavailable');
+  facts.push(...payloadFacts);
+  return facts.join(' · ');
 }
 
 /**
@@ -298,7 +383,7 @@ export function lawfulInspectionStatusText(target, state) {
 // rest of the build already uses, so the badge teaches nothing new -- it just says it sooner.
 const THREAT_TIER_WORD = ['', 'LIGHT', 'HEAVY', 'CAPITAL'];
 
-function entityClass(e) {
+function entityClass(e, state) {
   if (!e) return '';
   if (e.type === 'ship') {
     const d = e.data || {};
@@ -311,7 +396,7 @@ function entityClass(e) {
   if (e.type === 'station') {
     return e.data && e.data.isGate ? 'Gate' : 'Station';
   }
-  const interactionClass = targetInteractionClass(e);
+  const interactionClass = targetInteractionClass(e, state);
   if (interactionClass) return interactionClass;
   return typeof e.type === 'string' && e.type
     ? e.type.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -429,7 +514,7 @@ export function engagedContactReadout(state) {
   const subjectId = subjectIsEngaged ? gunId : selId;
   let text = '';
   if (subjectIsEngaged) text = '⌖ LINE TARGET · NO SELECTION';
-  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged)}`;
+  else if (engaged && liveSelection) text = `⌖ LINE TARGET ▸ ${targetDisplayName(engaged, { state })}`;
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
@@ -614,7 +699,26 @@ function orchardSocketInfoLine(target, state) {
     return `${reserve} ${reserve === 1 ? 'unit' : 'units'} in reserve · select a pod socket`;
   }
   const units = `${component.units} ${component.units === 1 ? 'unit' : 'units'}`;
-  if (component.status === 'empty') return 'Empty socket · awaiting harvest';
+  const beam = resolveActionLabel(state, 'siteBeam');
+  const rig = resolveActionLabel(state, 'rig');
+  const hold = beam ? `hold ${beam}` : 'hold the release beam';
+  const feedHold = beam ? `hold ${beam}` : 'hold the site beam';
+  const scoop = rig ? `${rig} · Scoop` : 'Scoop control';
+  const releaseGesture = `close Scoop${rig ? ` (${rig})` : ''}, let go${beam ? ` ${beam}` : ''}, then ${hold} to release`;
+  const feedReason = {
+    'frame-unavailable': 'Frame unavailable', 'reserve-empty': 'Reserve exhausted',
+    'worker-pod': 'Worker pod', 'socket-unavailable': 'Socket unavailable',
+    'wait-calm': 'Wait for calm', 'site-unavailable': 'Harvest site unavailable',
+    'open-scoop': `Open Scoop (${scoop}) in a planet band`,
+    'enter-skim': 'Enter the skim band', 'increase-speed': 'Fly faster in the skim band',
+    'beam-reach': 'Move into beam range',
+  };
+  if (component.status === 'empty') {
+    const reserve = state.sites.anvilOrchard.sourceRemaining;
+    const instruction = component.feedEligible ? `${feedHold} to feed skim`
+      : (feedReason[component.feedReason] || 'Harvest unavailable');
+    return `Empty socket · ${instruction} · ${reserve} units in reserve`;
+  }
   if (component.operation === 'closing') {
     const progress = Math.round(component.workRemaining / component.workThreshold * 100);
     const outcome = component.status === 'delivered' ? 'Collected' : component.status === 'lost' ? 'Pod lost' : units;
@@ -627,8 +731,11 @@ function orchardSocketInfoLine(target, state) {
   const opening = component.operation === 'opening';
   const progress = opening ? ` · opening ${Math.round(component.workApplied / component.workThreshold * 100)}%` : '';
   if (component.inactiveReason === 'phase-ineligible') return `${units}${progress} · wait for calm`;
-  const beam = resolveActionLabel(state, 'siteBeam');
-  const hold = beam ? `hold ${beam}` : 'hold the release beam';
+  if (!opening && component.feedMode) {
+    if (component.feedEligible) return `${units} · ${feedHold} to feed skim · ${releaseGesture}`;
+    const reason = feedReason[component.feedReason] || 'Feed unavailable';
+    return component.active ? `${units} · ${reason} · ${releaseGesture}` : `${units} · ${reason}`;
+  }
   if (opening) return `${units}${progress} · ${hold}`;
   if (component.active) {
     const commodity = COMMODITY_BY_ID.get(ANVIL_ORCHARD.commodityId)?.name || 'Hydrogen';
@@ -661,6 +768,9 @@ export function passengerLinerLastLegLine(entity) {
 }
 
 export function objectInfoLine(t, state, p, dist) {
+  const workLoad = crackerRunWorkLoadRead(state, t);
+  if (workLoad) return `${workLoad.classLine} · ${workLoad.note}`;
+  if (isWorldSiteWorkTarget(t)) return worldSiteTargetInfoLine(t, state, p, dist);
   const pallasSeam = pallasSeamInfoLine(t, state);
   if (pallasSeam !== null) return pallasSeam;
   if (t.type === 'ship' || t.type === 'drone') {
@@ -737,6 +847,34 @@ export function objectInfoLine(t, state, p, dist) {
     // line once scanned, and an unscanned hulk stays anonymous.
     if (!record && t.type === 'wreck' && d.scanned && d.provenance && d.provenance.killerLabel) {
       facts.push(`Killer: ${d.provenance.killerLabel}`);
+    }
+    // The rest of the history the aftermath owner recorded at kill time, read through the
+    // same scan gate: how it died (the cause's black-box evidence), what shipment it was
+    // flying (freight identity), and how long it has been dead (the wreck's own kill stamp
+    // against the 10-sim-minute day the world clock shares). Unscanned hulls tell nothing.
+    if (!record && t.type === 'wreck' && d.scanned) {
+      const evidence = d.causeContract && typeof d.causeContract.evidence === 'string'
+        ? d.causeContract.evidence.trim() : '';
+      if (evidence) facts.push(localizeText('Black box: {how}', { how: evidence }));
+      // The person the history was missing (inf-wreck-captain): the registry captain the
+      // aftermath owner captured at kill time, named with the hull they commanded. Only a
+      // minted hull carries one — an authored hull's scan already says who it was.
+      const registry = d.provenance && d.provenance.victimRegistry;
+      const captain = registry && typeof registry.captain === 'string'
+        ? registry.captain.trim() : '';
+      const shipName = registry && typeof registry.shipName === 'string'
+        ? registry.shipName.trim() : '';
+      if (captain && shipName) {
+        const honorific = String(CAPTAIN_HONORIFIC_COPY.text).replace('{name}', captain);
+        facts.push(localizeText('{line} of the {ship}', { line: honorific, ship: shipName }));
+      }
+      const manifestId = d.provenance && d.provenance.freightIdentity
+        && typeof d.provenance.freightIdentity.manifestId === 'string'
+        ? d.provenance.freightIdentity.manifestId.trim() : '';
+      if (manifestId) facts.push(localizeText('Manifest {id}', { id: manifestId }));
+      const daysAgo = Number.isFinite(d.killedAt) && Number.isFinite(state && state.simTime)
+        ? Math.max(0, Math.floor((state.simTime - d.killedAt) / 600)) : 0;
+      if (daysAgo > 0) facts.push(localizeText('{days}d ago', { days: daysAgo }));
     }
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
@@ -951,8 +1089,8 @@ export function createTargetPanel(ctx) {
       if (elEngaged.style.display !== show) elEngaged.style.display = show;
     }
 
-    const nextName = targetDisplayName(t);
-    const nextClass = entityClass(t);
+    const nextName = targetDisplayName(t, { state });
+    const nextClass = entityClass(t, state);
     const targetChanged = tid !== lastTargetId || nextName !== lastName || nextClass !== lastClass || t.factionId !== lastFactionId;
     if (targetChanged) {
       lastTargetId = tid;
@@ -1059,7 +1197,7 @@ export function createTargetPanel(ctx) {
     // PQ-015 component chip: the target's selectable components (combat subsystems / salvage weak-
     // point) and the current sub-selection, from the shared descriptor. Clicking cycles it. Hidden
     // for targets with no targetable components (e.g. bare asteroids).
-    const comps = listSelectableComponents(state, t);
+    const comps = isWorldSiteWorkTarget(t) ? [] : listSelectableComponents(state, t);
     if (comps.length) {
       const sel = state.ui && state.ui.componentSelection;
       const selHere = sel && sel.targetId === t.id ? sel : null;
@@ -1153,7 +1291,24 @@ export function createTargetPanel(ctx) {
         lastObjectKey = objectKey;
         setText(elObject, objectLine);
         const show = objectLine ? 'block' : 'none';
-        if (elObject.style.display !== show) elObject.style.display = show;
+        // Work-site actions are the immediate decision, not optional scan detail. The compact
+        // card's stylesheet hides object facts with !important, so promote only this row here.
+        if ((isWorldSiteWorkTarget(t) || isOrchardFrame(t)) && elObject.style.setProperty) {
+          elObject.style.setProperty('display', show, 'important');
+          elObject.style.fontSize = '14px';
+          elObject.style.color = 'var(--hud-paper)';
+          elObject.style.textShadow = '0 1px 4px #080c12';
+          elObject.style.background = 'rgba(8,12,18,.86)';
+          elObject.style.padding = '3px 4px';
+        } else {
+          if (elObject.style.getPropertyPriority?.('display')) elObject.style.removeProperty('display');
+          if (elObject.style.display !== show) elObject.style.display = show;
+          elObject.style.fontSize = 'var(--k-fs-data)';
+          elObject.style.color = 'var(--k-bone-62)';
+          elObject.style.textShadow = '';
+          elObject.style.background = '';
+          elObject.style.padding = '';
+        }
       }
       // Threat badge. Tier drives a data attribute so colour AND the printed word both carry it --
       // never colour alone (grammar: no state may be colour-only).

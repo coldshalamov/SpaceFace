@@ -29,6 +29,7 @@ const IS_NODE_RUNTIME = typeof process !== 'undefined' && Boolean(process.versio
   && import.meta.url.startsWith('file:');
 
 let englishMessages = null;
+let englishInventoryDigest = null;
 let englishCatalogLoadPromise = null;
 let barkTranslationsLoadPromise = null;
 
@@ -47,6 +48,7 @@ function validateEnglishCatalogPayload(payload) {
 function installEnglishCatalog(payload) {
   validateEnglishCatalogPayload(payload);
   englishMessages = Object.freeze(payload.messages);
+  englishInventoryDigest = payload.inventoryDigest;
   return englishMessages;
 }
 
@@ -176,16 +178,12 @@ export function isEnglishCatalogReady() {
   return englishMessages !== null;
 }
 
+export function englishCatalogInventoryDigest() { return englishInventoryDigest; }
+
 if (!IS_RETAIL_BUILD && IS_NODE_RUNTIME) readNodeEnglishCatalog();
-// Make the synchronous localization API safe as soon as import() resolves. If the first
-// request fails, leave the module usable so ensureLocalizationReady() can retry and surface the
-// failure through the ordinary boot error path.
-if (IS_BROWSER_RUNTIME) {
-  await Promise.all([
-    ensureEnglishCatalogLoaded().catch(() => {}),
-    ensureBarkTranslationsLoaded().catch(() => {}),
-  ]);
-}
+// Source-text consumers do not need the inventory. The full keyed compatibility entry and
+// explicit locale preparation own this barrier; importing the translator never starts HTTP.
+// Node tools retain their local sidecar initialization and synchronous keyed lookup contract.
 
 const PLACEHOLDER_SPLIT_RE = /(\{[A-Za-z_][A-Za-z0-9_.-]*\})/g;
 const PLACEHOLDER_TOKEN_RE = /^\{[A-Za-z_][A-Za-z0-9_.-]*\}$/;
@@ -689,15 +687,23 @@ function isReviewedString(locale, english, key, barkMap) {
 export function localeReadiness(locale) {
   const id = String(locale);
   if (readinessByLocale.has(id)) return readinessByLocale.get(id);
+  const readiness = localeReadinessForMessages(id, requireEnglishMessages());
+  readinessByLocale.set(id, readiness);
+  return readiness;
+}
+
+/** The canonical coverage calculation, also used by the generated lightweight picker metadata. */
+export function localeReadinessForMessages(locale, messages) {
+  const id = String(locale);
   let reviewed = 0;
   let total = 0;
   if (id === 'en-US') {
     // The source locale is reviewed by definition — every string is its own authored copy.
-    total = Object.keys(requireEnglishMessages()).length;
+    total = Object.keys(messages).length;
     reviewed = total;
   } else {
     const barkMap = barkTextMap(id);
-    for (const [key, entry] of Object.entries(requireEnglishMessages())) {
+    for (const [key, entry] of Object.entries(messages)) {
       total += 1;
       const english = typeof entry === 'string' ? entry : entry && entry.message;
       if (typeof english === 'string' && isReviewedString(id, english, key, barkMap)) reviewed += 1;
@@ -711,7 +717,6 @@ export function localeReadiness(locale) {
     coverage: Math.round(coverage * 10000) / 10000,
     preview: coverage < LOCALE_REVIEWED_GATE,
   });
-  readinessByLocale.set(id, readiness);
   return readiness;
 }
 

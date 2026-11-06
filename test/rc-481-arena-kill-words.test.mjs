@@ -34,14 +34,18 @@ const FAMILY_PROBE = Object.freeze({
   slung: { cause: 'collision', surface: 'craft' },
   mined: { cause: 'explosive', surface: null },
   shredded: { cause: 'direct', surface: null },
+  // The DoT end speaks through the emitter's label (combat.killEndLabelFor), not a cause.
+  wasted: { killLabel: 'wasted' },
   down: { cause: null, surface: null },
 });
+/** The six cause families every room names, plus the attrition end the label carries. */
+const ENDS = Object.freeze([...FAMILIES, 'wasted']);
 
 const ARENAS = Object.freeze(Object.keys(SWARM_ARENA_KILL_WORDS));
 
 // --- the vocabulary -----------------------------------------------------------------
 
-test('every live arena is in the table and names all six cause families', () => {
+test('every live arena is in the table and names all six cause families plus the wasted end', () => {
   assert.deepEqual(
     [...ARENAS].sort(),
     Object.keys(ARENA_LAWS).sort(),
@@ -50,8 +54,8 @@ test('every live arena is in the table and names all six cause families', () => 
   assert.equal(ARENAS.length, 7, 'Helios, Lagrange, Cinder, Cryo, Storm, Mill, Hive');
   for (const arenaId of ARENAS) {
     const words = SWARM_ARENA_KILL_WORDS[arenaId];
-    assert.deepEqual(Object.keys(words).sort(), [...FAMILIES].sort(), `${arenaId} names every family`);
-    for (const family of FAMILIES) {
+    assert.deepEqual(Object.keys(words).sort(), [...ENDS].sort(), `${arenaId} names every family`);
+    for (const family of ENDS) {
       const word = words[family];
       assert.equal(typeof word, 'string', `${arenaId}.${family} is a word`);
       assert.ok(word.length > 0 && word === word.toUpperCase(), `${arenaId}.${family} reads loud`);
@@ -60,7 +64,7 @@ test('every live arena is in the table and names all six cause families', () => 
 });
 
 test('each room names a cause differently from every other room and from the generic word', () => {
-  for (const family of FAMILIES) {
+  for (const family of ENDS) {
     const spoken = ARENAS.map((arenaId) => SWARM_ARENA_KILL_WORDS[arenaId][family]);
     assert.equal(new Set(spoken).size, spoken.length,
       `${family} is distinct per arena (${spoken.join(', ')})`);
@@ -72,7 +76,7 @@ test('each room names a cause differently from every other room and from the gen
 });
 
 test('a missing or unknown arena falls back to the room-agnostic words', () => {
-  for (const family of FAMILIES) {
+  for (const family of ENDS) {
     const probe = { ...FAMILY_PROBE[family] };
     assert.equal(swarmKillCauseWord(probe), SWARM_KILL_WORDS[family], `${family} with no arenaId`);
     for (const arenaId of [null, undefined, '', 'not_a_room', 'constructor', '__proto__', 'HELIOS_CORE']) {
@@ -84,7 +88,7 @@ test('a missing or unknown arena falls back to the room-agnostic words', () => {
 
 test('friendly fire outranks every arena table entry in every arena', () => {
   for (const arenaId of ARENAS) {
-    for (const family of FAMILIES) {
+    for (const family of ENDS) {
       const probe = FAMILY_PROBE[family];
       assert.equal(
         swarmKillCauseWord({ ...probe, arenaId, friendlyFire: true }),

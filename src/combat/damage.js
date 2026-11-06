@@ -11,13 +11,15 @@ import {
   signedHitSide,
 } from './impulseKernel.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import {
   currentPlayerRewardIdentity,
   readPlayerFirstHitTruth,
   writePlayerFirstHitTruth,
 } from './rewardEligibility.js';
 import { wardScreenTarget } from '../ai/specialistCounterplay.js';
+import { breakSwarmGuard } from '../ai/swarmSpecialistRuntime.js';
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { deliverPhysicalImpulseDetailed } from './physicalEffects.js';
 import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -26,6 +28,7 @@ import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
 import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
+import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
 
 /**
  * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
@@ -165,7 +168,38 @@ export function createDamageRouter(context, statusService, options = {}) {
     const aimed = entity(input && input.targetId);
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
     if (screen && screen.id !== (input && input.targetId)) {
-      input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
+      const link = screen.data?.swarmSpecialist;
+      if (isSwarmSpecialistRun(state) && link?.kind === 'warden'
+        && link.phase === 'active' && link.targetId === aimed?.id) {
+        const normalized = normalizeDamagePacket(input?.packet, catalog.damageModel.channelOrder);
+        const total = sumChannels(normalized.channels);
+        const redirectedRaw = Math.min(Math.max(0, link.linkEnergy || 0),
+          total * SWARM_SPECIALIST_TUNING.warden.redirectFraction);
+        if (redirectedRaw > 0 && total > 0) {
+          const share = redirectedRaw / total;
+          link.linkEnergy = Math.max(0, link.linkEnergy - redirectedRaw);
+          link.linkHp = link.linkEnergy;
+          const scaled = (fraction, guard = false) => ({
+            ...normalized,
+            channels: Object.fromEntries(catalog.damageModel.channelOrder.map(channel =>
+              [channel, (normalized.channels[channel] || 0) * fraction])),
+            flags: { ...normalized.flags },
+            statuses: guard ? [] : [...normalized.statuses],
+            heat: guard ? 0 : normalized.heat * fraction,
+            impulse: guard ? null : normalized.impulse,
+          });
+          const origin = input.origin && typeof input.origin === 'object' ? input.origin : {};
+          const guard = routeDamage({ ...input, targetId: screen.id, wardFromId: aimed.id,
+            packet: scaled(share, true),
+            origin: { ...origin, swarmWardRedirected: true, wardedId: aimed.id } });
+          const remainder = routeDamage({ ...input, packet: scaled(1 - share),
+            origin: { ...origin, swarmWardRedirected: true } });
+          if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
+          return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
+            warderId: screen.id, wardedId: aimed.id };
+        }
+        // A zero-damage packet cannot bypass the finite guard pool or carry conditions for free.
+      } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
     }
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
     const target = entity(input && input.targetId);
@@ -180,6 +214,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       for (const channel of catalog.damageModel.channelOrder) {
         packet.channels[channel] = (packet.channels[channel] || 0) * directional.factor;
       }
+    }
+    const coreFactor = shieldOnly || difficultyInvariantDisablePacket(packet)
+      ? 1 : ironKrakenCoreDamageMultiplier(state, target, input);
+    if (coreFactor !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) packet.channels[channel] *= coreFactor;
     }
     // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
     // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
@@ -353,6 +392,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     // fields on entry. Nested fields stay fresh-per-emit or externally owned (channels, before,
     // after, pos/approach/normal, origin), so no one sees a rewritten sub-object.
     const totalApplied = shieldDamage + armorDamage + subsystemDamage + hullDamage;
+    if (totalApplied > 0 && isSwarmSpecialistRun(state)
+      && target.data?.runCohort === 'survival' && target.data?.swarmSpecialist?.kind === 'warden'
+      && input?.origin?.swarmWardRedirected !== true) {
+      breakSwarmGuard(target, state.tick | 0);
+    }
     const result = {
       ok: true,
       attackerId: input && input.attackerId == null ? null : input.attackerId,
@@ -368,6 +412,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       subsystemResult,
       directionalArc: directional.arc,
       directionalFactor: directional.factor,
+      ...(coreFactor === 1 ? null : { ironKrakenCoreFactor: coreFactor }),
       heatApplied,
       shieldBroke,
       dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
@@ -384,6 +429,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     const playerId = state.playerId;
     const player = entity(playerId);
     const playerAttack = !!player && result.attackerId === playerId;
+    if (coreFactor > 1 && playerAttack && totalApplied > 0 && bus?.emit) {
+      bus.emit('combat:weakPointHit', { targetId: target.id, ownerId: playerId,
+        label: 'MANTLE CORE', mult: coreFactor, critical: true, criticalLabel: 'CORE',
+        pos: { x: packet.hit.pos.x, z: packet.hit.pos.z } });
+    }
     const playerIdentity = playerAttack ? currentPlayerRewardIdentity(state, player) : null;
     const durableTruth = playerAttack ? readPlayerFirstHitTruth(target, playerIdentity) : null;
     const fallbackTruth = playerAttack && !durableTruth ? playerDamageTruthByTarget.get(target) : null;
@@ -565,10 +615,17 @@ export function createDamageRouter(context, statusService, options = {}) {
         ? packet.tumbleTorque
         : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
       const environmentImpulse = packet.source && packet.source.environmentImpulse;
+      // Weapon packets carry momentum, unlike authored Force/field response. Keep
+      // explicit nonweapon sources authoritative; older weapon packets may name
+      // their origin or provenance without a source kind.
+      const sourceKind = packet.source && packet.source.kind;
+      const weaponImpact = sourceKind === 'weapon' || (!sourceKind
+        && (origin?.kind === 'weapon' || (!origin?.kind && tag && weaponId != null)));
       const delivery = deliverPhysicalImpulseDetailed(state, target, vector, {
         ...provenance, provenance: provenance || { tag: reason }, reason, maxTorque,
         point: input && input.packet && input.packet.hit && input.packet.hit.pos || null,
-      }, { port: combatPhysics(), referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
+      }, { port: combatPhysics(), scaleEnvironment: weaponImpact ? false : undefined,
+        referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
       if (!delivery.accepted) return { applied: false, reason: 'physics_rejected' };
       const magnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
       const victimMass = Math.max(0.1, Number(resolvePhysicsBodySpec(target)?.mass) || Number(target.mass) || 1);

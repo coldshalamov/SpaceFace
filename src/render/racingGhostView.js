@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { getRacingGhostPlayback, sampleRacingGhost, sampleRacingGhostLine, resetRacingGhostSession } from '../systems/racingGhosts.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
+import { retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree } from './staticBatchGeometryCache.js';
 
 export const RACING_GHOST_OPACITY = 0.3;
 
@@ -32,22 +33,30 @@ function cloneHull(source,materials) {
   source.traverse(object=>{originals.push([object,object.userData]);object.userData={};});
   let clone;
   try{clone=source.clone(true);}finally{for(const [object,data] of originals)object.userData=data;}
-  const cache=new Map();
-  function material(base){
-    if(!base)return base;
-    if(cache.has(base))return cache.get(base);
-    const data=base.userData;let next;
-    try{base.userData={};next=cloneMaterialPreservingShaderHooks(base);}finally{base.userData=data;}
-    next.transparent=true;next.opacity=Math.min(1,base.opacity??1)*RACING_GHOST_OPACITY;
-    next.depthWrite=false;next.color?.lerp?.({r:0.36,g:0.84,b:1},0.35);
-    cache.set(base,next);materials.push(next);return next;
+  retainStaticBatchGeometryTree(clone);
+  const firstMaterial=materials.length;
+  try {
+    const cache=new Map();
+    function material(base){
+      if(!base)return base;
+      if(cache.has(base))return cache.get(base);
+      const data=base.userData;let next;
+      try{base.userData={};next=cloneMaterialPreservingShaderHooks(base);}finally{base.userData=data;}
+      next.transparent=true;next.opacity=Math.min(1,base.opacity??1)*RACING_GHOST_OPACITY;
+      next.depthWrite=false;next.color?.lerp?.({r:0.36,g:0.84,b:1},0.35);
+      cache.set(base,next);materials.push(next);return next;
+    }
+    clone.traverse(object=>{
+      object.castShadow=false;object.receiveShadow=false;object.raycast=noRaycast;
+      if(object.material)object.material=Array.isArray(object.material)?object.material.map(material):material(object.material);
+    });
+    clone.name='Personal racing ghost';clone.userData={racingGhost:true,presentationOnly:true};
+    clone.matrixAutoUpdate=true;clone.visible=false;return clone;
+  } catch(error) {
+    releaseStaticBatchGeometryTree(clone);
+    for(const owned of materials.splice(firstMaterial))owned.dispose();
+    throw error;
   }
-  clone.traverse(object=>{
-    object.castShadow=false;object.receiveShadow=false;object.raycast=noRaycast;
-    if(object.material)object.material=Array.isArray(object.material)?object.material.map(material):material(object.material);
-  });
-  clone.name='Personal racing ghost';clone.userData={racingGhost:true,presentationOnly:true};
-  clone.matrixAutoUpdate=true;clone.visible=false;return clone;
 }
 
 export function createRacingGhostView(scene,state,{storage}={}) {
@@ -56,6 +65,7 @@ export function createRacingGhostView(scene,state,{storage}={}) {
   const linePositions=new Float32Array(6);
   function release(){
     root?.removeFromParent();
+    releaseStaticBatchGeometryTree(root);
     for(const material of materials)material.dispose();
     for(const geometry of geometries)geometry.dispose();
     materials.length=0;geometries.length=0;

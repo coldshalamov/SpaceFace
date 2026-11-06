@@ -81,6 +81,11 @@ test('ordinary cargo payloads are sensed as objectives; unrelated payloads, empt
     const target = frame.contacts.find(contact => contact.id === cargo.id);
     assert.equal(target?.kind, 'objective');
     assert.deepEqual(target.vel, { x: -5, z: 0 });
-    for (const other of [unrelated, empty, far]) assert.equal(frame.contacts.some(c => c.id === other.id), false);
+    // Solid non-cargo payloads read as navigation hazards (ce28f74785dd), never objectives.
+    for (const other of [unrelated, empty]) {
+      const seen = frame.contacts.find(c => c.id === other.id);
+      assert.equal(seen?.kind, 'hazard');
+    }
+    assert.equal(frame.contacts.some(c => c.id === far.id), false);
   } finally { sim.dispose(); }
 });

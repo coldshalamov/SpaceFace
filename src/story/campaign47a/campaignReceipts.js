@@ -34,6 +34,76 @@ function campaignReceiptIntent(kind, payload) {
 }
 
 /**
+ * Strict, read-only validation for the one authored B1 refinery settlement.
+ * It never repairs, clamps, or infers feed/loss counts. Old receipts without these
+ * fields intentionally remain neutral.
+ */
+export function normalizeFurnaceSettlement(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)
+    || raw.beatIndex !== 1 || raw.stepId !== 'infested'
+    || raw.signal !== 'mission:completed'
+    || (raw.furnaceStoryTag ?? raw.storyTag) !== 'campaign47a:b1:infested') return null;
+  const rawMissionId = raw.furnaceMissionId ?? raw.missionId;
+  const missionId = (typeof rawMissionId === 'string' || Number.isSafeInteger(rawMissionId))
+    ? String(rawMissionId).trim() : '';
+  if (!missionId || missionId.length > 96) return null;
+  const feeds = raw.furnaceFeeds;
+  const losses = raw.furnaceLosses;
+  if (!Number.isInteger(feeds) || feeds < 0 || feeds > 3
+    || !Number.isInteger(losses) || losses < 0 || losses > 3
+    || feeds + losses !== 3) return null;
+  const outcome = feeds === 3 ? 'full_disposal'
+    : feeds === 0 ? 'clearance_only_cargo_lost' : 'partial_disposal';
+  if (raw.furnaceOutcome !== outcome) return null;
+  return {
+    furnaceMissionId: missionId,
+    furnaceStoryTag: 'campaign47a:b1:infested',
+    furnaceFeeds: feeds,
+    furnaceLosses: losses,
+    furnaceOutcome: outcome,
+  };
+}
+
+/**
+ * Extract only the already-settled result from the authored B1 mission owner.
+ * The physical lot ledger and proportional reward must still agree; completion alone
+ * is never evidence that a pod reached CR-FEED.
+ */
+export function furnaceSettlementFromMission(mission, beatIndex = 1, stepId = 'infested', signal = 'mission:completed') {
+  const params = mission && mission.params;
+  const lots = params && params.furnaceLots;
+  const slots = new Set();
+  if (!mission || !params || mission.status !== 'completed'
+    || mission.storyTag !== 'campaign47a:b1:infested'
+    || mission.destSectorId !== 'sector_ceres_belt'
+    || params.furnaceWorksiteVersion !== 1 || params.furnaceFeedsNeeded !== 3
+    || params.furnaceSettlementAnnounced !== true || !!params.furnaceLedgerInvalid
+    || !Array.isArray(lots) || lots.length !== 3
+    || !lots.every((lot) => {
+      if (!lot || !Number.isInteger(lot.slot) || lot.slot < 0 || lot.slot > 2
+        || slots.has(lot.slot) || !(lot.received === true || lot.lost === true)
+        || (lot.received === true && lot.lost === true)) return false;
+      slots.add(lot.slot);
+      return true;
+    }) || slots.size !== 3) return null;
+  const feeds = lots.filter((lot) => lot.received === true).length;
+  const losses = lots.filter((lot) => lot.lost === true && lot.received !== true).length;
+  if (feeds !== params.furnaceFeeds || losses !== params.furnaceLosses
+    || !Number.isFinite(params.furnaceRewardBase) || params.furnaceRewardBase < 0
+    || mission.reward_cr !== Math.floor(params.furnaceRewardBase * feeds / 3)) return null;
+  return normalizeFurnaceSettlement({
+    missionId: mission.id,
+    storyTag: mission.storyTag,
+    beatIndex,
+    stepId,
+    signal,
+    furnaceFeeds: params.furnaceFeeds,
+    furnaceLosses: params.furnaceLosses,
+    furnaceOutcome: params.furnaceOutcome,
+  });
+}
+
+/**
  * Step progress on the observed canonical beat (no spine advance).
  */
 export function buildStepProgressReceipt({
@@ -47,8 +117,29 @@ export function buildStepProgressReceipt({
   physicalVerb = null,
   completionMethod = null,
   assetKind = null,
+  missionId = null,
+  storyTag = null,
+  furnaceSettlement = null,
 }) {
   const def = beatDefAt(beatIndex);
+  const normalizedFurnace = normalizeFurnaceSettlement({
+    ...(furnaceSettlement || {}),
+    furnaceMissionId: furnaceSettlement && furnaceSettlement.furnaceMissionId,
+    furnaceStoryTag: furnaceSettlement && furnaceSettlement.furnaceStoryTag,
+    beatIndex,
+    stepId,
+    signal,
+  });
+  const furnaceContextMatches = normalizedFurnace
+    && (missionId == null || normalizedFurnace.furnaceMissionId === String(missionId))
+    && (storyTag == null || normalizedFurnace.furnaceStoryTag === storyTag);
+  const furnace = furnaceContextMatches ? {
+    furnaceMissionId: normalizedFurnace.furnaceMissionId,
+    furnaceStoryTag: normalizedFurnace.furnaceStoryTag,
+    furnaceFeeds: normalizedFurnace.furnaceFeeds,
+    furnaceLosses: normalizedFurnace.furnaceLosses,
+    furnaceOutcome: normalizedFurnace.furnaceOutcome,
+  } : null;
   const id = receiptId('step_progress', {
     beat: beatIndex,
     step: stepId || '',
@@ -70,6 +161,7 @@ export function buildStepProgressReceipt({
     completedSteps: completedSteps.slice(),
     stepsComplete: !!stepsComplete,
     attempt,
+    ...(furnace || {}),
     intents: [
       {
         event: CAMPAIGN_EVENTS.stepProgress,
@@ -81,6 +173,7 @@ export function buildStepProgressReceipt({
           completedSteps: completedSteps.slice(),
           stepsComplete: !!stepsComplete,
           atSimTime: Number(simTime) || 0,
+          ...(furnace || {}),
         },
       },
       campaignReceiptIntent('step_progress', {
@@ -90,6 +183,7 @@ export function buildStepProgressReceipt({
         physicalVerb: physicalVerb || null,
         stepsComplete: !!stepsComplete,
         atSimTime: Number(simTime) || 0,
+        ...(furnace || {}),
       }),
     ],
   };

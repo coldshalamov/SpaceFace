@@ -43,7 +43,7 @@ test('the player hull names the part that died and the part that comes back', ()
   assert.deepEqual(captions(events), ['Drive out — the ship is not pushing']);
 });
 
-test('another hull and an unnamed part keep the generic line', () => {
+test('another hull names its broken part, and an unnamed part keeps the generic line', () => {
   const { sys, events } = host();
   sys._applyUi({ id: 'subsystem.disabled', targetId: 3, subsystemId: 'subsystem_weapon' });
   sys._applyUi({ id: 'subsystem.disabled', targetId: 7, subsystemId: 'subsystem_cargo' });
@@ -53,6 +53,6 @@ test('another hull and an unnamed part keep the generic line', () => {
     subsystemId: 'subsystem_drive',
     accessibilityText: 'Owner line',
   });
-  assert.deepEqual(alerts(events), ['SUBSYSTEM DISABLED', 'SUBSYSTEM DISABLED']);
+  assert.deepEqual(alerts(events), ['GUNS DISABLED', 'SUBSYSTEM DISABLED']);
   assert.deepEqual(captions(events), ['Owner line']);
 });

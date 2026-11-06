@@ -33,6 +33,61 @@ function canonicalKeeperBody(body) {
 }
 
 const selections=new WeakMap(), certificateOwners=new WeakMap();
+const cradleProxyId=layout=>`ceres-workfleet:cradle:open:v${layout==='keepers-v2'?2:1}`;
+const validWorldGeneration=value=>Number.isSafeInteger(value)&&value>=0;
+
+// Only the simulation realm can inspect the live native owner. A recipe choice or
+// an absence of a recorded failure is not evidence that a body was constructed.
+export function readCeresCradlePublicLayout(entity,state,nativeOwner,worldGeneration){
+  const selection=selections.get(entity);
+  if(!validWorldGeneration(worldGeneration)||state?.world?.currentSectorId!==C.sectorId
+    ||selection?.public
+    ||!canPublishCeresCradleLayout(entity,state)||!physicsBodyNativeReady(entity)
+    ||!Number.isSafeInteger(entity?.occupantGeneration)||entity.collides!==true
+    ||!entity.physicsBody||!nativeOwner?.world)return null;
+  const layout=readCeresCradleLayout(entity,state),record=nativeOwner.records?.get(entity.id);
+  const proxyId=cradleProxyId(layout),revision=entity.physicsBody.revision;
+  if(!Number.isSafeInteger(revision)||revision<0||record?.entity!==entity
+    ||record.revision!==revision||record.spec?.revision!==revision||record.spec?.dynamic!==false
+    ||record.proxyId!==proxyId||entity.physicsBody.collisionProxyManifest?.id!==proxyId
+    ||record.colliders?.length!==(layout==='keepers-v2'?11:9)
+    ||!record.body||record.body.isEnabled?.()!==true
+    ||nativeOwner.world.getRigidBody(record.body.handle)!==record.body)return null;
+  for(const collider of record.colliders)if(collider.isEnabled?.()!==true
+    ||nativeOwner._colliderOwners?.get(collider.handle)?.rec!==record)return null;
+  const cached=selection.publicReceipt;
+  if(cached&&cached.worldGeneration===worldGeneration&&cached.bodyRevision===revision
+    &&cached.layout===layout&&selection.publicNativeRecord===record)return cached;
+  selection.publicNativeRecord=record;
+  return selection.publicReceipt=Object.freeze({schemaVersion:1,entityId:entity.id,occupantGeneration:entity.occupantGeneration,
+    worldRecordId:C.identities.cradle,sectorId:C.sectorId,worldGeneration,bodyRevision:revision,proxyId,layout});
+}
+
+// This entry point is exclusively for the trusted worker snapshot applier. The
+// public receipt is ephemeral and bound to its mirror object and world envelope.
+export function bindCeresCradlePublicLayout(entity,state,receipt,worldGeneration){
+  const prior=selections.get(entity);
+  if(prior&&!prior.public)return false;
+  if(receipt==null){if(prior?.public)selections.delete(entity);return false;}
+  const layout=receipt.layout;
+  if(!validWorldGeneration(worldGeneration)||receipt.schemaVersion!==1
+    ||receipt.worldGeneration!==worldGeneration||!['open-v1','keepers-v2'].includes(layout)
+    ||receipt.proxyId!==cradleProxyId(layout)||!Number.isSafeInteger(receipt.bodyRevision)||receipt.bodyRevision<0
+    ||receipt.entityId!==entity?.id||receipt.occupantGeneration!==entity?.occupantGeneration
+    ||!Number.isSafeInteger(entity?.occupantGeneration)||receipt.worldRecordId!==C.identities.cradle
+    ||receipt.sectorId!==C.sectorId||state?.entities?.get(entity.id)!==entity||entity.alive===false
+    ||ceresWorkfleetRoleForEntity(entity)!=='cradle'||entity.data.persistenceOwner!=='worldRecords'
+    ||entity.data.ceresWorkfleetCradleLayout!==layout
+    ||entity.data.itinerary?.ceresWorkfleet?.cradleLayout!==layout){
+    if(prior?.public)selections.delete(entity);return false;
+  }
+  if(prior?.public&&prior.state===state&&prior.entity===entity&&prior.life===entity.occupantGeneration
+    &&prior.data===entity.data&&prior.layout===layout&&prior.worldGeneration===worldGeneration
+    &&prior.bodyRevision===receipt.bodyRevision&&prior.proxyId===receipt.proxyId)return true;
+  selections.set(entity,{public:true,state,entity,life:entity.occupantGeneration,data:entity.data,
+    layout,worldGeneration,bodyRevision:receipt.bodyRevision,proxyId:receipt.proxyId});
+  return true;
+}
 // This is recipe selection, not a native-readiness receipt. Only the simulation
 // owner binds constructor provenance; render readers cannot create that authority.
 export function bindCeresCradleLayout(entity,state){
@@ -49,6 +104,12 @@ export function bindCeresCradleLayout(entity,state){
 }
 export function readCeresCradleLayout(entity,state=selections.get(entity)?.state){
   const r=selections.get(entity);
+  if(r?.public)return r.state===state&&state?.entities?.get(entity.id)===entity&&r.entity===entity
+    &&entity.alive!==false&&entity.occupantGeneration===r.life&&entity.data===r.data
+    &&ceresWorkfleetRoleForEntity(entity)==='cradle'&&entity.data.persistenceOwner==='worldRecords'
+    &&entity.data.ceresWorkfleetCradleLayout===r.layout
+    &&entity.data.itinerary?.ceresWorkfleet?.cradleLayout===r.layout
+    &&(!state.world?.currentSectorId||state.world.currentSectorId===C.sectorId)?r.layout:null;
   return r&&r.state===state&&state?.entities?.get(entity.id)===entity&&r.entity===entity
     &&entity.alive!==false&&entity.occupantGeneration===r.life&&entity.data===r.data
     &&ceresWorkfleetRoleForEntity(entity)==='cradle'&&entity.data.persistenceOwner==='worldRecords'

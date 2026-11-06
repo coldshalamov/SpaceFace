@@ -32,7 +32,11 @@ for (const id of blenderMcp) {
   const bytes = readFileSync(glb);
   const jsonLen = bytes.readUInt32LE(12);
   const json = JSON.parse(bytes.subarray(20, 20 + jsonLen).toString('utf8').replace(/\0+$/, ''));
-  assert.ok(String(json.asset?.generator || '').includes('author_place_archetype.py'), `${id} generator`);
+  // The place family shipped through the Forge remaster: provenance lives on the
+  // spacefaceAsset contract block (partId + identitySource), not a rewritten generator tag.
+  const sf = json.asset?.extras?.spacefaceAsset;
+  assert.equal(sf?.partId, id, `${id} spacefaceAsset partId`);
+  assert.equal(sf?.identitySource, 'tools/blender/forge', `${id} identitySource`);
 }
 
 const wiredCities = conceptIdx.entries.filter((e) => e.target_asset_role?.includes('/city') && e.blender_part_id);

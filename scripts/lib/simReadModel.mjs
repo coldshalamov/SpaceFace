@@ -1,4 +1,8 @@
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
+import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
+import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
+import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
+import { LAST_SHIFT, lastShiftFactIds, lastShiftLocalReport } from '../../src/data/lastShift.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -30,9 +34,11 @@ import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
 import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
-import { projectNpcJobsById } from './npcJobsMirror.mjs';
+import { projectNpcJobsById, projectLanternWard, LANTERN_WARD_VITAL_KEYS,
+  lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
 import { latestPlayerImpactFromTrace } from '../../src/combat/presentationImpact.js';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
@@ -80,13 +86,23 @@ function foldMineVitals(row, fields) {
   row.data.armed = fields.mineArmed;
 }
 
+// Reject an old occupant's phase even if a recycled entity id is still in flight.
+function foldRiderTell(row, fields, life = row.occupantGeneration) {
+  const tell = fields.swarmRideTell;
+  if (!Number.isSafeInteger(tell) || tell === 0 || Math.abs(tell) !== life) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.swarmRideTellLife = life;
+  row.data.swarmRideActive = tell > 0;
+}
+
 // Story props change scanner text as work progresses after their spawn; the scanned flag flips
 // on the same path and gates wreck identity concealment on the read model.
 function foldScanLabel(row, fields) {
-  if (fields.dataScanLabel === undefined && fields.dataScanned === undefined) return;
+  if (fields.dataScanLabel === undefined && fields.dataScanned === undefined && fields.dataBeaconExpireAt === undefined) return;
   if (!row.data || typeof row.data !== 'object') row.data = {};
   if (fields.dataScanLabel !== undefined) row.data.scanLabel = fields.dataScanLabel;
   if (fields.dataScanned !== undefined) row.data.scanned = fields.dataScanned;
+  if (fields.dataBeaconExpireAt !== undefined) row.data.expireAt = fields.dataBeaconExpireAt;
 }
 
 // Revelation changes labels and the sail's silhouette after its spawn.
@@ -117,6 +133,21 @@ function foldAiState(row, fields) {
   row.data.ai.state = fields.aiFsm;
 }
 
+function seekerVitalsMatch(row, fields, generation = row.occupantGeneration) {
+  return !Object.hasOwn(fields, 'seekerSourceGeneration')
+    || row.type === 'projectile' && generation != null && fields.seekerSourceGeneration === generation;
+}
+
+function foldSeekerVitals(row, fields, generation = row.occupantGeneration) {
+  if (!Object.hasOwn(fields, 'seekerSourceGeneration') || !seekerVitalsMatch(row, fields, generation)) return;
+  const data = row.data || (row.data = {});
+  data.targetId = fields.seekerTargetId ?? null;
+  data.targetGeneration = fields.seekerTargetGeneration ?? null;
+  data.turnRate = Number.isFinite(fields.seekerTurnRate) ? fields.seekerTurnRate : 0;
+  data.diverted = fields.seekerDiverted === true;
+  data.guidanceBroken = fields.seekerGuidanceBroken === true;
+}
+
 function foldPallasSeamVitals(row, fields) {
   if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
   if (!row.data || typeof row.data !== 'object') row.data = {};
@@ -125,6 +156,37 @@ function foldPallasSeamVitals(row, fields) {
   if (fields.pallasSeamStandbyTick === null || Number.isSafeInteger(fields.pallasSeamStandbyTick)) {
     data.pallasSeamStandbyTick = fields.pallasSeamStandbyTick;
   }
+}
+
+// The visuals retain this data object. Update it from the authoritative work phase, including
+// explicit cleared flags, and reject a delayed update for a prior occupant or another record.
+function foldLanternWardVitals(row, fields, life = row.occupantGeneration) {
+  if (fields.lanternWardLife !== life || !Number.isSafeInteger(life) || life < 1
+    || fields.lanternWardRecordId !== row.data?.worldRecordId
+    || lanternWardPresentationLife({ type: row.type, data: row.data, occupantGeneration: life }) == null) return;
+  const data = row.data;
+  const projected = { worldRecordId: data.worldRecordId };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (!Object.hasOwn(fields, key)) return;
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') projected[key] = fields[key];
+  }
+  projected.lanternWardCustody = { holder: fields.lanternWardCustodyHolder };
+  projected.cargoManifest = { custody: { holderId: fields.lanternWardCargoHolderId } };
+  const candidate = { data: projected };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (lanternWardVitalValue(candidate, key, life) !== fields[key]) return;
+  }
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') data[key] = fields[key];
+  }
+  if (fields.lanternWardCustodyHolder != null) {
+    // The mirror describes custody; native attachment receipts remain private to the worker.
+    data.lanternWardCustody = { holder: fields.lanternWardCustodyHolder,
+      ...(data.lanternWardSerial ? { serial: data.lanternWardSerial } : {}) };
+  } else delete data.lanternWardCustody;
+  if (data.cargoManifest) data.cargoManifest.custody = { holderId: fields.lanternWardCargoHolderId };
 }
 
 // Retain one small presentation object per deployment so VFX can follow later replies.
@@ -144,6 +206,7 @@ function foldCountermeasureVitals(row, fields) {
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
+    rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
     weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
@@ -187,7 +250,7 @@ export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
   }
 }
 
-export function applySpawnInfos(readModel, spawnInfos) {
+export function applySpawnInfos(readModel, spawnInfos, state = null, worldGeneration = null) {
   for (const info of spawnInfos || []) {
     if (!info || !Number.isSafeInteger(info.entityId)) continue;
     const row = {
@@ -204,6 +267,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       isPlayer: info.isPlayer === true,
       farResident: info.farResident === true,
       fieldResident: info.fieldResident === true,
+      _noMesh: info.noMesh === true,
       sectorId: info.sectorId || null,
       flags: info.flags || {},
       data: info.data && typeof info.data === 'object'
@@ -227,11 +291,15 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
+      foldSwarmSpecialistPresentation(row, info.vitals);
+      foldRiderTell(row, info.vitals, info.occupantGeneration);
       foldScanLabel(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
+      foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
+      foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -245,11 +313,15 @@ export function applySpawnInfos(readModel, spawnInfos) {
       && existing.occupantGeneration !== life;
     if (newOccupant) existing.alive = false; // Captured admissions now lose their old owner.
     const target = existing && typeof existing === 'object' && !newOccupant ? existing : row;
+    if (existing && newOccupant) bindCeresWorkfleetPublicActuation(existing, state, null, worldGeneration);
     if (life != null) Object.defineProperty(target, 'occupantGeneration', {
       value: life, writable: true, configurable: true, enumerable: false,
     });
     if (target === existing) {
       delete row.prevPos;
+      // A renderer-owned failure latch stays with this occupant across a journal rebuild.
+      // A new occupant takes its own transported value through the other branch.
+      if (existing._noMeshByRenderer === true) row._noMesh = true;
       Object.assign(existing, row);
       // A stamped admission verdict outranks the fresh spawn's 'pending' —
       // presentationAdmission isn't a mirrored field, so the render realm
@@ -262,6 +334,24 @@ export function applySpawnInfos(readModel, spawnInfos) {
       // map) can stamp them 'ready' exactly as on the main lane.
       initializePresentationAdmission(row);
       readModel.entities.set(info.entityId, row);
+      readModel.rosterVersion++;
+    }
+    if (state && Object.hasOwn(info, 'ceresCradleReceipt')) {
+      bindCeresCradlePublicLayout(target, state, info.ceresCradleReceipt, worldGeneration);
+    }
+    if (target.data?.ceresWorkfleetRole === 'breaker' || target.data?.ceresWorkfleetRole === 'cutterHead') {
+      bindCeresWorkfleetPublicActuation(target, state, null, worldGeneration);
+    }
+  }
+}
+
+// A world lifetime change invalidates public physics receipts immediately.
+export function revokeCeresCradleReceipts(readModel, state) {
+  if (!state) return;
+  for (const entity of readModel.entities.values()) {
+    if (entity.data?.ceresWorkfleetRole === 'cradle') bindCeresCradlePublicLayout(entity, state, null, null);
+    if (entity.data?.ceresWorkfleetRole === 'breaker' || entity.data?.ceresWorkfleetRole === 'cutterHead') {
+      bindCeresWorkfleetPublicActuation(entity, state, null, null);
     }
   }
 }
@@ -271,8 +361,8 @@ export function applySpawnInfos(readModel, spawnInfos) {
  * prevPos, and the yaw/bank/pitch rotation tuple. The journal IS the pose truth
  * the presentation lane consumes, so the facade answers the same values.
  */
-export function applyFacadePose(readModel, entityId, pose) {
-  const row = readModel && readModel.entities.get(entityId);
+export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
+  const row = knownRow || (readModel && readModel.entities.get(entityId));
   if (!row || !pose || typeof pose !== 'object') return;
   if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
   if (Number.isFinite(pose.x)) { row.prevPos.x = row.pos.x; row.pos.x = pose.x; }
@@ -291,7 +381,24 @@ export function applyFacadePose(readModel, entityId, pose) {
  * Stage-8: apply the vitals diff channel — [entityId, fields] pairs replacing
  * named scalar fields on the facade row (null entity ids / unknown facades skip).
  */
-export function applyEntityVitals(readModel, vitals) {
+// 0 = plain scalar assigned onto the row; 1 = fold family key that is also
+// assigned; 2 = fold-only key (never assigned). The fold functions read only
+// names under these prefixes plus vx/vz, so any other key can skip them.
+const VITAL_KEY_KIND = new Map();
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
+const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
+  'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
+function classifyVitalKey(key) {
+  if (VITAL_FOLD_ONLY.has(key) || LANTERN_WARD_VITAL_SET.has(key)) return 2;
+  if (key === 'vx' || key === 'vz') return 1;
+  for (let i = 0; i < VITAL_FOLD_PREFIXES.length; i++) {
+    if (key.startsWith(VITAL_FOLD_PREFIXES[i])) return 1;
+  }
+  return 0;
+}
+
+export function applyEntityVitals(readModel, vitals, state = null, worldGeneration = null) {
   if (!Array.isArray(vitals) || !vitals.length) return;
   for (const entry of vitals) {
     if (!Array.isArray(entry) || entry.length < 2) continue;
@@ -300,20 +407,56 @@ export function applyEntityVitals(readModel, vitals) {
     if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
     const row = readModel.entities.get(id);
     if (!row) continue;
-    foldNemesisHullVitals(row, fields);
-    for (const key of Object.keys(fields)) {
+    if (!seekerVitalsMatch(row, fields)) continue;
+    // One key pass: plain scalars (hull, shield, pose...) assign directly; only a
+    // key from a fold family (prefix table below) arms the fold chain, so the
+    // common pose/vitals entry skips a dozen no-op fold calls.
+    // Nemesis decode compares against the row's previous JSON, so it runs before assignment.
+    if (fields.nemesisLivingHullJson !== undefined) foldNemesisHullVitals(row, fields);
+    let needsFold = false;
+    for (const key in fields) {
+      let kind = VITAL_KEY_KIND.get(key);
+      if (kind === undefined) {
+        kind = classifyVitalKey(key);
+        VITAL_KEY_KIND.set(key, kind);
+      }
+      if (kind !== 0) {
+        needsFold = true;
+        if (kind === 2) continue;
+      }
       const v = fields[key];
       if (v === undefined) delete row[key];
       else row[key] = v;
     }
+    if (!needsFold) continue;
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
+    foldSwarmSpecialistPresentation(row, fields);
+    foldRiderTell(row, fields);
     foldScanLabel(row, fields);
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
+    foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
+    foldLanternWardVitals(row, fields);
+    foldOrchardPodVitals(row, fields);
+    if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
+      const update = fields.ceresCradlePublic;
+      if (update && Object.hasOwn(update, 'layout') && row.data) {
+        row.data.ceresWorkfleetCradleLayout = update.layout;
+        if (row.data.itinerary?.ceresWorkfleet) row.data.itinerary.ceresWorkfleet.cradleLayout = update.itineraryLayout;
+      }
+      bindCeresCradlePublicLayout(row, state, update?.receipt ?? null, worldGeneration);
+    }
+    if (state && fields.ceresWorkfleetPublic && Object.hasOwn(fields.ceresWorkfleetPublic, 'playerOwned') && row.data) {
+      const update = fields.ceresWorkfleetPublic;
+      row.playerOwned = update.playerOwned === true;
+      row.data.playerOwned = update.dataPlayerOwned === true;
+      row.data.controlLease = update.controlled === true;
+      row.data.disabled = update.disabled === true;
+    }
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.
@@ -325,15 +468,52 @@ export function applyEntityVitals(readModel, vitals) {
   }
 }
 
+// Reconstitute only the canonical public body and three bounded pod facts. This is
+// presentation data: no native lease, motor, body handle, or simulation writer crosses.
+function foldOrchardPodVitals(row, fields) {
+  if (typeof fields.orchardPodPublic !== 'string' || fields.orchardPodPublic.length > 256
+    || !isOrchardPod(row)) return;
+  let value;
+  try { value = JSON.parse(fields.orchardPodPublic); } catch { return; }
+  if (!Array.isArray(value) || value.length !== 6) return;
+  const [life, lotId, dynamic, revision, tetherable, amount] = value;
+  if (!Number.isSafeInteger(life) || life < 1 || life !== row.occupantGeneration
+    || lotId !== row.data.worldRecordId || typeof dynamic !== 'boolean'
+    || !Number.isSafeInteger(revision) || revision < 1 || revision < row.physicsBody.revision
+    || (revision === row.physicsBody.revision && dynamic !== row.physicsBody.dynamic)
+    || typeof tetherable !== 'boolean' || tetherable !== dynamic
+    || !Number.isSafeInteger(amount) || amount < 1 || amount > ANVIL_ORCHARD.unitsPerPod) return;
+  if (revision !== row.physicsBody.revision || dynamic !== row.physicsBody.dynamic) {
+    row.physicsBody = orchardPodBodySpec({ dynamic, revision });
+  }
+  row.data.masslineTetherable = tetherable;
+  row.data.amount = amount;
+}
+
+// Current-tick workfleet samples bind only after the caller applies the same
+// packet's domains, entity vitals and simulation clock.
+export function applyCeresWorkfleetActuation(readModel, vitals, state, worldGeneration) {
+  if (!state || !Array.isArray(vitals)) return;
+  for (const entry of vitals) {
+    if (!Array.isArray(entry) || !entry[1] || !Object.hasOwn(entry[1], 'ceresWorkfleetPublic')) continue;
+    const entity = readModel.entities.get(entry[0]);
+    if (entity) bindCeresWorkfleetPublicActuation(entity, state, entry[1].ceresWorkfleetPublic?.receipt ?? null, worldGeneration);
+  }
+}
+
 // Journal DESTROY == state.entities.delete (fired at removal, inside the same
 // tick sweep, before the collect probe). Delete keeps `entities.has` parity with
 // the live far-row check (`state.entities.has(rec.id)`).
-export function applyDestroyIds(readModel, ids) {
+export function applyDestroyIds(readModel, ids, state = null) {
   for (const id of ids || []) {
     if (!Number.isSafeInteger(id)) continue;
     const row = readModel.entities.get(id);
-    if (row) row.alive = false;
-    readModel.entities.delete(id);
+    if (row) {
+      if (state && row.data?.ceresWorkfleetRole === 'cradle') bindCeresCradlePublicLayout(row, state, null, null);
+      bindCeresWorkfleetPublicActuation(row, state, null, null);
+      row.alive = false;
+    }
+    if (readModel.entities.delete(id)) readModel.rosterVersion++;
   }
 }
 
@@ -365,6 +545,16 @@ export function applyAuxUpserts(readModel, upserts) {
       sectorId: u.sectorId || null,
       cell,
     };
+    // A journaled dressing entity also has a stable renderer facade. Its ordinary
+    // transform journal does not tick table rows; the bounded aux delta owns this pose.
+    const facade = u.kind === 'dressing' && readModel.entities.get(u.id);
+    const pose = u.warmFreighterPose;
+    if (facade?.data?.warmFreighterHostMarkerId && pose
+        && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)) {
+      facade.pos.x = finite(u.x); facade.pos.z = finite(u.z); facade.rot = finite(u.rot);
+      const dest = facade.data.warmFreighterVisualPose || (facade.data.warmFreighterVisualPose = {});
+      dest.height = pose.height; dest.bank = pose.bank; dest.pitch = pose.pitch; dest.localYaw = pose.localYaw;
+    }
     if (!prev) {
       let bucket = readModel.auxCells.get(cell);
       if (!bucket) {
@@ -390,6 +580,11 @@ export function applyAuxRemovals(readModel, ids) {
   for (const id of ids) {
     const prev = readModel.aux.get(id);
     if (!prev) continue;
+    const facade = prev.kind === 'dressing' && readModel.entities.get(id);
+    if (facade?.data?.warmFreighterHostMarkerId) {
+      facade.alive = false;
+      if (readModel.entities.delete(id)) readModel.rosterVersion++;
+    }
     const bucket = readModel.auxCells.get(prev.cell);
     if (bucket) {
       bucket.delete(id);
@@ -624,9 +819,14 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'ilexGreenhousePublic',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
+  // Current score-backed fights feed the main-side warning and boss readouts.
+  'capitalBossEncounters',
   'physicsVenueSession', 'world.wreckCourtRulings',
   // Home/worksite labels and offers join native bodies through the ordinary entity journal.
   'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
+  'counterweightCircuitOffer', 'counterweightCircuitView', 'counterweightCircuitGhost',
+  'breakwaterSpurOffer', 'breakwaterSpurView',
+  'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -635,12 +835,11 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'heroManeuverReadModel',
   'lossLedger.impound',
   'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
-  'automation.meta', 'automation.traders', 'automation.fleet',
+  'automation.meta', 'automation.traders', 'automation.fleet', 'automation.outposts',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
   'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
-  'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
-  'drill.asteroidId',
+  'drill',
   'save.slots', 'save.currentSlot',
   // Stage-E facade coverage: the claims facade's read view needs the whole root
   // (galaxyMap reads state.claims.stationGrowth directly, not just bodies), and
@@ -650,6 +849,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  'world.counterweightCircuit.discovered',
+  // Filed local evidence and original-recorder custody feed the existing Ceres host.
+  // The presentation projection excludes live body poses and the owner's other internals.
+  'world.lastShift',
   // Bounded paired-passage receipt for main-side Pallas Hail, not the traffic owner graph.
   'traffic.pallasWorkLoop',
   // The existing survey ledger caps this sector at24 plain records; no global history mirror.
@@ -673,6 +876,23 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // Keep the sector epoch after event replay's temporary emit-time shim ends.
   // Appending preserves existing domain slots and their staggered cadences.
   'world.enterSerial',
+  // The simulation owns Line acquisition; the main HUD needs its current bounded preview.
+  'masslineAcquisition',
+  'massline2', 'fields', 'gyreSnare', 'travelLanes',
+  // Station contacts read the bounded incident book, never the wreck/sector graph.
+  // Append new roots so existing domain slots keep their deterministic cadence.
+  'aftermathWrecks.causes',
+  // Line class and live strain are simulation-owned; the HUD and recovery appraisal need them.
+  'lineProgression',
+  // Small player-facing facts; preserve the other planet and factionPresence subtrees.
+  'planet.active', 'planet.siteId', 'planet.player',
+  'factionPresence.servicesByStation', 'economyContracts.massScale.slips',
+  'stationServices', 'planet.center',
+  // The case board is authored by the simulation and shared by station and Codex readers.
+  'shipLedger.board',
+  'dockingPresentation',
+  // Hail and the Ward's contact readers need a bounded account of the actual work history.
+  'npcJobs.lanternWard',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -741,14 +961,17 @@ export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
 export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
+  'npcJobs.lanternWard': 6,
   sites: 10,
   salvageOutfits: 10,
+  cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   'save.sharedStoreStatus': 1,
-  'heroManeuverReadModel': 6,
+  'heroManeuverReadModel': 6, 'dockingPresentation': 1,
+  'counterweightCircuitGhost': 60,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
-  'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,
+  'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1, 'run.retireToken': 1,
   // The completion census is sampled alongside phase by player-truth and the HUD. Keep the
   // resolved count on the same reply as cleanup so a finished wave cannot present a stale kill
   // total after its phase has already advanced.
@@ -759,6 +982,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.
   'missions.active': 1,
+  'stationServices': 6,
   'world.sectors': 10, 'world.discovery': 10, 'world.records': 60,
   'world.frontierRumors': 10, 'world.scanPings': 10, 'world.activeSector': 10,
   'world.vestaOreCache': 60, 'world.pallasHiddenCache': 60,
@@ -815,6 +1039,7 @@ const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' })
 const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
 const ILEX_GREENHOUSE_MIRROR_RULE = Object.freeze({ project: 'ilexGreenhouse' });
 const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
+const AFTERMATH_CAUSES_MIRROR_RULE = Object.freeze({ project: 'aftermathCauses' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the station
 // profile before the first differ is created and ships the same object to the
@@ -874,9 +1099,29 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
+  if (segs.length === 1 && ['dockingPresentation', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'planet.player') return { project: 'planetPlayer', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'planet.center') return { project: 'planetCenter', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'factionPresence.servicesByStation') return { project: 'dockedFactionService', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'economyContracts.massScale.slips') return { project: 'heliosWeightSlip', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'stationServices') return { project: 'stationYard' };
+  if (segs.length === 1 && segs[0] === 'drill') return { project: 'drillPresentation', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'lineProgression') return { project: 'lineProgression', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'masslineAcquisition') return { project: 'masslineAcquisition' };
+  if (segs.length === 1 && ['massline2', 'fields', 'gyreSnare', 'travelLanes'].includes(segs[0])) {
+    return { project: segs[0], hotPresentation: true };
+  }
+  if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
+  if ((segs.length === 1 && segs[0] === 'world.lastShift')
+      || (segs.length === 2 && segs[0] === 'world' && segs[1] === 'lastShift')) {
+    return { project: 'lastShiftLocalReport', hotPresentation: true };
+  }
   if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
+  if (segs.length === 1 && segs[0] === 'aftermathWrecks.causes') return AFTERMATH_CAUSES_MIRROR_RULE;
   if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
     return COMBAT_TRACE_PRESENTATION_RULE;
   }
@@ -885,6 +1130,10 @@ function domainLeafViewFor(segs) {
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
       || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId')) {
     return NPC_JOBS_MIRROR_RULE;
+  }
+  if ((segs.length === 1 && segs[0] === 'npcJobs.lanternWard')
+      || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'lanternWard')) {
+    return { project: 'lanternWard', hotPresentation: true };
   }
   for (const rule of activeDomainConfig.leafViews) {
     if (segs.length !== rule.leafSegs) continue;
@@ -965,15 +1214,245 @@ function projectOrchardExposure(state, records) {
   return out;
 }
 
+function selectPresentationFields(source, keys) {
+  if (!source || typeof source !== 'object') return null;
+  const out = {};
+  for (const key of keys) if (Object.prototype.hasOwnProperty.call(source, key)) out[key] = source[key];
+  return out;
+}
+
+const AFTERMATH_CAUSE_FIELDS = ['fingerprint', 'shapeId', 'sectorId', 'outcome',
+  'createdTick', 'manifestId', 'commodityId'];
+
+// The appraisal normalizes the class from its earned/granted inputs; the cable and HUD also
+// read the owner's current heat and verdict. Keep private, unbounded stamp history off the wire.
+const LINE_PROGRESSION_FIELDS = ['schemaVersion', 'tonnageLoggedT', 'highestHeldMassT',
+  'classIndex', 'grantedClassSteps', 'trialClassSteps', 'classFullControlMassT', 'overClass', 'winchHeat'];
+
+function projectAftermathCauses(causes) {
+  // aftermathWrecks owns the 24-cause cap and restore normalization. Mirror only
+  // the conversation facts; an absent restored book must also clear old facade rows.
+  const out = {};
+  if (isCanonicalObject(causes)) {
+    for (const [id, cause] of Object.entries(causes)) {
+      if (isCanonicalObject(cause)) out[id] = selectPresentationFields(cause, AFTERMATH_CAUSE_FIELDS);
+    }
+  }
+  return out;
+}
+
+const LINE_SOLUTION_FIELDS = ['valid','onSolution','errorRad','tolRad','interceptAngle','payloadSpeed',
+  'clearance','decisionStale','fieldAware','degraded','turnRate','sampleTick','sampleAgeTicks',
+  'sampleIntervalTicks','sampleSequence','sampled','timeToSolution','timeOfFlight','predicted',
+  'projectedPath','window','relativeSpeed','missDistance','impactTime','model','decisionTick','reachable',
+  'targetId','targetPos','targetKind'];
+const FIELD_PRESENTATION_FIELDS = ['id','kind','sourceId','ownerId','tag','center','dir','radius','strength',
+  'falloff','phase','lifecyclePhase','halfAngleRad','halfWidth','volume','palette','expireAt','engaged',
+  'distortionRadius','distortionStrength','hitchedCount','edgeSoftRad','innerRadius','innerSoft','damping',
+  'thermal','filters','frame','lockStrength'];
+const GYRE_PRESENTATION_FIELDS = ['phase','nose','maw','coneLen','halfAngleRad','endRadius','coreId',
+  'coreMaterial','coreTypeId','clumpMass','clumpRadius','absorbs','maxClumpMass','strain01','corePos',
+  'coreAngVel','launchDir','members','launchedId','ballPos','ballVx','ballVz','ballAngVel','ballMass',
+  'ballTtl01','ballTtlLeftS','basinCount','ballClumpRadius','launchWindup01','launchBurst01','ballGrave',
+  'graves','thrownBeat','thrownTick','basinSpots','dropReason','fuseS','liveBalls','absorbDir','absorbR',
+  'balls','tornId','tornPos','tornDir','tornGentle','deflectCount','deflectLane','ballOverflow','suckRadius',
+  'swirlBlend','orbitSeed','ballTtlS','full','refusals','refusal','towCount','tooHeavyCount'];
+
+// The canonical drill owner has a 28 x 45 board. Keep its presentation atomic:
+// an avatar from a new session must never be paired with an old field or target life.
+function projectDrillPresentation(source) {
+  if (!source || typeof source !== 'object') return null;
+  const fields = (value, names) => {
+    if (!value || typeof value !== 'object') return null;
+    const out = {};
+    for (const key of names) {
+      const entry = value[key];
+      if (entry === null || typeof entry === 'boolean' || (typeof entry === 'number' && Number.isFinite(entry))) out[key] = entry;
+      else if (typeof entry === 'string') out[key] = entry.slice(0, 128);
+    }
+    return out;
+  };
+  const point = value => fields(value, ['col', 'row']);
+  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
+    'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
+    'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
+  out.avatar = fields(source.avatar, ['col','row','fromCol','fromRow','moveDuration','moveElapsed','faceDir','isDrilling','drillBlocked']);
+  if (out.avatar) out.avatar.drillTarget = point(source.avatar.drillTarget);
+  out.scan = fields(source.scan, ['cooldown','active','serial','contacts']);
+  out.chargeAim = point(source.chargeAim);
+  out.charge = fields(source.charge, ['col','row','fuse','fuseS','payload']);
+  if (out.charge && Array.isArray(source.charge.pattern)) out.charge.pattern = source.charge.pattern.slice(0, 1260).map(point);
+  out.cableTrail = Array.isArray(source.cableTrail) ? source.cableTrail.slice(0, 1260).map(point) : [];
+  out.yieldLog = {};
+  for (const key of Object.keys(source.yieldLog || {}).slice(0, 128)) {
+    if (key.length <= 128 && Number.isFinite(source.yieldLog[key])) {
+      Object.defineProperty(out.yieldLog, key, { value: source.yieldLog[key], enumerable: true, writable: true, configurable: true });
+    }
+  }
+  out.field = Array.isArray(source.field) ? source.field.slice(0, 28).map(column => Array.isArray(column)
+    ? column.slice(0, 45).map(tile => {
+      const shown = fields(tile, ['type','hp','maxHp','ore','yieldU','hazard','tierReq','hardness','risk',
+        'stratum','rich','cave','fault','cracked','rubble','vented','structure']);
+      if (shown && tile.structure && typeof tile.structure === 'object') shown.structure = fields(tile.structure, ['id','defId']);
+      return shown;
+    }) : null) : null;
+  return out;
+}
+
+function projectLastShiftLocalRecord(source) {
+  if (source?.schema !== 1 || source.siteId !== LAST_SHIFT.siteId) return null;
+  const status = source.bodies?.recorder?.status;
+  const shown = {
+    schema: 1, siteId: LAST_SHIFT.siteId,
+    knownClueIds: lastShiftFactIds(source.knownClueIds),
+    revision: Number.isInteger(source.revision) && source.revision >= 0 && source.revision <= 16
+      ? source.revision : 0,
+    receipts: [],
+    bodies: ['live', 'returned', 'destroyed', 'salvaged'].includes(status)
+      ? { recorder: { status } } : {},
+  };
+  // Use the same evidence/custody validator as the actual contact reader. A new scan
+  // does not silently revise the last filed report; invalid receipts reveal no report.
+  const report = lastShiftLocalReport({ world: { lastShift: source } });
+  if (!report) return shown;
+  const receipt = source.receipts.at(-1);
+  shown.receipts.push({ id: receipt.id, revision: receipt.revision,
+    clueIds: lastShiftFactIds(receipt.clueIds),
+    destroyedClueIds: lastShiftFactIds(receipt.destroyedClueIds),
+    text: receipt.text, at: receipt.at });
+  if (report.recorderReturned) {
+    const returned = source.recorderReturn;
+    shown.recorderReturn = { id: returned.id, bodyKey: returned.bodyKey,
+      stationId: returned.stationId, at: returned.at };
+  }
+  return shown;
+}
+
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'lastShiftLocalReport') return projectLastShiftLocalRecord(v);
+  if (rule?.project === 'stationYard') {
+    const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
+    const player = v?.player;
+    if (!stationId || !player || player.stationId !== stationId || v._departedLatch === true) return { player: null, stations: {} };
+    const jobs = Array.isArray(player.jobs) ? player.jobs : [];
+    let count = 0, head = null, hasRepair = false, hasRefuel = false, repairHull = 0, repairArmor = 0;
+    for (const job of jobs) {
+      if (!job) continue;
+      count++;
+      if (!head) head = selectPresentationFields(job, ['type', 'status', 'total', 'applied']);
+      if (job.type === 'refuel') hasRefuel = true;
+      if (job.type === 'repair') {
+        hasRepair = true;
+        const remaining = Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));
+        const shares = job.meta?.shares;
+        repairHull += remaining * (Number.isFinite(Number(shares?.hull)) ? Number(shares.hull) : 1);
+        repairArmor += remaining * (Number.isFinite(Number(shares?.armor)) ? Number(shares.armor) : 0);
+      }
+    }
+    const yard = v.stations?.[stationId];
+    return { player: { stationId, padIdx: player.padIdx, _lastHoldingEmit: player._lastHoldingEmit,
+      summary: { count, head, hasRepair, hasRefuel, repairHull, repairArmor } },
+    stations: yard ? { [stationId]: selectPresentationFields(yard, ['waitingClients', 'busyCrews']) } : {} };
+  }
+  if (rule?.project === 'planetPlayer') return selectPresentationFields(v,
+    ['region', 'regionRank', 'heat', 'stage', 'collectorOn']);
+  if (rule?.project === 'planetCenter') return state?.planet?.active === true
+    && Number.isFinite(v?.x) && Number.isFinite(v?.z) ? { x: v.x, z: v.z } : null;
+  if (rule?.project === 'dockedFactionService') {
+    const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
+    const row = stationId && v?.[stationId];
+    const projected = selectPresentationFields(row, ['factionId', 'services', 'requiredRep', 'closedReason']);
+    return projected ? { [stationId]: projected } : {};
+  }
+  if (rule?.project === 'heliosWeightSlip') {
+    const id = 'mass-slip:eco_mass_scale_weight_audit_station_helios:0';
+    const slip = v?.[id];
+    const projected = selectPresentationFields(slip, ['slipId', 'sourceOfferId', 'missionId', 'kind',
+      'issuer', 'reference', 'targetSlot', 'declaredMassT', 'measuredMassT', 'issuingStationId']);
+    if (!projected) return {};
+    const filing = slip.filedAtStations?.station_helios;
+    projected.filedAtStations = filing ? { station_helios: selectPresentationFields(filing, ['outcome']) } : {};
+    return { [id]: projected };
+  }
+  if (rule?.project === 'lineProgression') {
+    const out = selectPresentationFields(v, LINE_PROGRESSION_FIELDS);
+    if (!out) return null;
+    const tether = state?.player?.tether;
+    const targetId = tether?.active ? tether.targetId ?? null : null;
+    out.presentationHold = {
+      targetId,
+      attachmentId: tether?.active ? tether.attachmentId ?? null : null,
+      occupantGeneration: targetId == null ? null : state?.entities?.get?.(targetId)?.occupantGeneration ?? null,
+    };
+    return out;
+  }
+  if (rule?.project === 'aftermathCauses') return projectAftermathCauses(v);
+  if (rule?.project === 'drillPresentation') return projectDrillPresentation(v);
+  if (rule?.project === 'massline2') {
+    if (!v || typeof v !== 'object') return null;
+    const line = v.throw;
+    const shown = selectPresentationFields(line, ['armed','payloadId','aimTargetId','aimSynthetic']);
+    if (shown) {
+      shown.releaseTarget = selectPresentationFields(line.releaseTarget, ['kind','source','targetId','pos','radius','stable']);
+      shown.lastThrow = selectPresentationFields(line.lastThrow, ['tick','releaseId','payloadId']);
+      shown.solution = selectPresentationFields(line.solution, LINE_SOLUTION_FIELDS);
+      shown.selfSolution = selectPresentationFields(line.selfSolution, LINE_SOLUTION_FIELDS);
+    }
+    return { throw: shown, cloak: selectPresentationFields(v.cloak, ['active','available','energy','radius','baseRadius']),
+      bulletTime: selectPresentationFields(v.bulletTime, ['active','energy']) };
+  }
+  if (rule?.project === 'fields') {
+    if (!v || typeof v !== 'object') return null;
+    const deployed = {};
+    for (const [id, item] of Object.entries(v.deployed || {})) deployed[id] = selectPresentationFields(item, ['fieldId','kind','emitterId','deployedAt','expireAt']);
+    return { coneActive: v.coneActive, cooldowns: selectPresentationFields(v.cooldowns, ['well','repulsor']),
+      lastDenial: selectPresentationFields(v.lastDenial, ['kind','reason','at','readyAt']), deployed,
+      active: Array.isArray(v.active) ? v.active.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      snapshot: Array.isArray(v.snapshot) ? v.snapshot.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      familyRead: selectPresentationFields(v.familyRead, ['edge','pin','bend','breakout']),
+      telemetry: selectPresentationFields(v.telemetry, ['orbitNodes']) };
+  }
+  if (rule?.project === 'gyreSnare') return selectPresentationFields(v, GYRE_PRESENTATION_FIELDS);
+  if (rule?.project === 'travelLanes') return selectPresentationFields(v, ['manufactured','inLane','infrastructureStage','infrastructureOperational','ceilingMult']);
+  if (rule?.project === 'masslineAcquisition') {
+    if (!v || typeof v !== 'object') return null;
+    const selected = v.selected;
+    return {
+      schemaVersion: v.schemaVersion, id: v.id, publishedTick: v.publishedTick,
+      publishedAt: v.publishedAt, validUntil: v.validUntil, reason: v.reason,
+      selected: selected ? {
+        targetId: selected.targetId, occupantGeneration: selected.occupantGeneration,
+        targetType: selected.targetType, targetLabel: selected.targetLabel,
+        context: selected.context, intentLabel: selected.intentLabel, confidence: selected.confidence,
+        status: selected.status, reason: selected.reason,
+        isMassSeedTetherEligible: selected.isMassSeedTetherEligible, seedStateWord: selected.seedStateWord,
+      } : null,
+    };
+  }
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'capitalBossPresentation') {
+    const fights = {};
+    for (const [id, fight] of Object.entries(v?.fights || {})) {
+      if (!fight || fight.started !== true || fight.terminal != null) continue;
+      const cast = fight.cast;
+      fights[id] = { fightId: fight.fightId, encounterId: fight.encounterId,
+        bossId: fight.bossId, targetId: fight.targetId, started: true,
+        suspended: fight.suspended, terminal: null, actIndex: fight.actIndex,
+        phase: fight.phase, clock: fight.clock,
+        plates: Array.isArray(fight.plates) ? fight.plates.map(p => ({ id: p.id, attached: p.attached, strainTicks: p.strainTicks })) : null,
+        cast: cast ? { id: cast.id, beatId: cast.beatId, startedAt: cast.startedAt,
+          locked: cast.locked, shapes: cast.shapes } : null };
+    }
+    return { fights };
+  }
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
+  if (rule?.project === 'lanternWard') return projectLanternWard(v);
   if (rule && rule.project === 'marketLive') return projectMarketLive(v);
   if (rule && rule.project === 'combatPause') return projectCombatTraceForPause(v, state && state.playerId);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
@@ -991,7 +1470,9 @@ function expandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
-  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
+  if (segs[0] === 'drill' || segs[0] === 'capitalBossEncounters' || segs[0] === 'planet.ships'
+    || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic'
+    || segs[0] === 'aftermathWrecks.causes' || segs[0] === 'lineProgression') return 0;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.
@@ -1689,6 +2170,10 @@ export function createDomainDiffer(options = {}) {
     // ordinary in-place market updates still use the explicit lower bound.
     const marketLiveSourceChanged = leafRule && leafRule.project === 'marketLive'
       && node.lastSign >= 0 && node.marketLiveSource !== v;
+    // The selected PB tape is immutable for an attempt. Ship its start/clear edge immediately,
+    // but do not re-sign a large unchanged tape on every simulation reply.
+    const circuitGhostChanged = path === 'counterweightCircuitGhost'
+      && node.lastSign >= 0 && node.circuitGhostSource !== v;
     // The first admitted threat in an active wave is a bootstrap edge, not a
     // recurring progress sample.  A new game can leave the run root already
     // expanded with spawnedThreat=0; if the worker then reaches active and
@@ -1709,9 +2194,9 @@ export function createDomainDiffer(options = {}) {
     }
     // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
     // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
-    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
-        && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
-      const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
+    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !leafRule?.hotPresentation && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+        && !runAdmissionBootstrap && !marketLiveSourceChanged && !circuitGhostChanged && !combatTracePlayerChanged) {
+      const tierTicks = leafRule?.project === 'capitalBossPresentation' ? 1 : node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       // minCadenceTicks is a true minimum after a sign, rather than a slot
       // phase. This keeps a projected market below 4 KiB from falling back to
@@ -1767,6 +2252,7 @@ export function createDomainDiffer(options = {}) {
     node.lastSign = tick;
     node.bytes = sig.length;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
+    if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
     if (currentCombatTraceWatermark) {
       const eventRefs = node.combatTraceEventRefs || [];
       eventRefs.length = currentCombatTraceWatermark.events.length;
@@ -1806,6 +2292,29 @@ export function createDomainDiffer(options = {}) {
       if (!node || !node.leaf) return false;
       node.urgentSign = true;
       return true;
+    },
+    // A bounded result receipt may expose several values from one native owner
+    // before their staggered leaf slots are due. Urgent-sign only the existing
+    // leaves under that owner; signatures remain authoritative, so equal values
+    // do not ship, and the next successful sign restores the ordinary cadence.
+    // Unseen children need no special treatment: their first sign is already eager.
+    invalidateSubtree(path) {
+      const node = paths.get(path);
+      if (!node) return 0;
+      let invalidated = 0;
+      const markLeaves = (current) => {
+        if (!current || !current.alive) return;
+        if (!current.kids) {
+          if (current.leaf) {
+            current.urgentSign = true;
+            invalidated++;
+          }
+          return;
+        }
+        for (const child of current.kids.values()) markLeaves(child);
+      };
+      markLeaves(node);
+      return invalidated;
     },
     diff(state, tick) {
       const start = nowNs();

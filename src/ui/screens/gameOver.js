@@ -38,6 +38,9 @@ import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
 import { rangeRungIndex } from './range.js';
 import { killcamStageRequestFor } from '../../sim/killcamTape.js';
+import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, wantedTierInfo } from '../../systems/heat.js';
+import { wantedReasonText } from '../wantedReason.js';
+import { DEFEAT_HUNT_COPY, lawDeskLine } from '../../data/lawDeskCopy.js';
 
 export { restoredDefeatIntent } from '../sim/restoredDefeatIntent.js';
 
@@ -178,6 +181,28 @@ export function lastDeathSummary(ctx = {}) {
     cause: deathCauseLabel(entry),
     lifespan: entry && entry.lifespanMs != null ? fmtMs(entry.lifespanMs) : '-',
   };
+}
+
+/**
+ * inf-defeat-situation — the after-action sheet's situation clause: the loss receipt names the
+ * hull that killed you, but until now it never said the SITUATION you died in. When the law's
+ * hunt was live at death, the sheet names it: the wanted band the hull died under, the escape
+ * clock it carried, and — through the same no-false-witness trace the flight alert uses — the
+ * convicting incident the sheet stood on (suspicion without a receipt names nothing, and a
+ * clean or sub-threshold sheet gets no clause at all). The defeat freezes heat (heat decays
+ * only in flight), so the values here are the situation AT death, not the sheet's later state.
+ * Pure read; '' whenever any part would have to be invented.
+ */
+export function deathSituationClause(state = null) {
+  const player = state && state.player;
+  const heat = player && Number.isFinite(Number(player.heat)) ? Number(player.heat) : 0;
+  if (!isPlayerWanted({ player: { heat } })) return '';
+  const parts = [lawDeskLine(DEFEAT_HUNT_COPY.band, { band: wantedTierInfo(heat).label })];
+  const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
+  if (clearS > 0) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.clearClock, { seconds: Math.ceil(clearS) }));
+  const trace = wantedReasonText(null, player);
+  if (trace) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.tracedTo, { trace: trace.replace(/^ · /, ' ') }));
+  return parts.join(', ');
 }
 
 /** What the sortie's black box kept: the moments of the lost hull's last sortie, from the session's own
@@ -454,6 +479,14 @@ export const gameOverScreen = {
     const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
     this._recoveryEl = recovery;
     stage.appendChild(recovery);
+    // SP2-188 — the results sheet gains one line on the defeat where the channel noticed a
+    // session of zero dismissed popups (state.ui.readEverythingFired, written by the
+    // special500ReadEverything leg on the same receipt). Hidden otherwise; no flag read past
+    // this session — the next session's quiet channel is story.js's own read.
+    const channelLine = el('p', 'k-sentence sf-go-channel');
+    channelLine.hidden = true;
+    this._channelEl = channelLine;
+    stage.appendChild(channelLine);
     rootEl.appendChild(stage);
     // The career record beside the loss report: what this pilot had done before the hull went, so
     // the screen reads as the end of a chapter, not a receipt alone. Refilled on every show.
@@ -957,6 +990,8 @@ export const gameOverScreen = {
       recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
       deathRangeOfferText(receipt),
       latestSlot,
+      state.player && state.player.heat,
+      state.player && state.player.heatLastIncident ? 1 : 0,
     ].join('|');
     if (sig === this._summarySig) return;
     this._summarySig = sig;
@@ -1035,6 +1070,10 @@ export const gameOverScreen = {
       const pairs = [];
       if (values.lifespan && values.lifespan !== '-') pairs.push(LABEL.lifespan + ' ' + values.lifespan);
       if (values.damage && values.damage !== 'Unresolved') pairs.push(lower(LABEL.damage) + ' ' + lower(values.damage));
+      // inf-defeat-situation — the situation the hull died in rides the same line: the live
+      // hunt, its escape clock, and (only on a real receipt) what the sheet traced to.
+      const situation = deathSituationClause(state);
+      if (situation) pairs.push(lower(situation));
       const text = pairs.join(' · ');
       if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
       this._lineEl.hidden = !text;
@@ -1068,6 +1107,15 @@ export const gameOverScreen = {
         if (recoverable) this._recoveryEl.classList.add('is-receipt');
         else this._recoveryEl.classList.remove('is-receipt');
       }
+    }
+    if (this._channelEl) {
+      const ui = ctx && ctx.state && ctx.state.ui;
+      const fired = !!(ui && ui.readEverythingFired);
+      this._channelEl.textContent = fired
+        ? 'One last popup arrives as the sheet renders and dismisses itself: YOU READ '
+          + 'EVERYTHING. THE CHANNEL NOTICED.'
+        : '';
+      this._channelEl.hidden = !fired;
     }
     setWordHidden(this._retryButton, !recoverable);
     // Row 463: the retry-act verb rides with recoverable but adds its own gates — the receipt's

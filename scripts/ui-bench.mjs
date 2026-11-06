@@ -65,6 +65,11 @@ async function shoot(page, id, outDir, base) {
   const file = path.join(outDir, `${safeName(id)}.png`);
   await page.screenshot({ path: file, timeout: args.timeoutMs });
   const report = await page.evaluate(() => window.BENCH.report());
+  const effectiveMode = await page.evaluate(() => ({
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    forcedColors: matchMedia('(forced-colors: active)').matches,
+    locale: document.documentElement.dataset.locale || document.documentElement.lang,
+  }));
   console.log(`\n${id}  ${path.relative(ROOT, file)}  ${((Date.now() - started) / 1000).toFixed(1)}s`);
   if (report.broken) {
     console.log(`  NOT MOUNTABLE  ${report.broken}\n  Live route: node scripts/ui-look.mjs --only=${id}`);
@@ -76,7 +81,7 @@ async function shoot(page, id, outDir, base) {
   if (args.probe) await probe(page, args.probe);
   const walked = args.walk ? await walk(page, id, outDir) : null;
   findingCount += walked?.actions.reduce((n, row) => n + (row.controlReachability?.length || 0), 0) || 0;
-  return { ok: !walked || walked.complete, report, findingCount, file: path.relative(ROOT, file), walk: walked,
+  return { ok: !walked || walked.complete, report, effectiveMode, findingCount, file: path.relative(ROOT, file), walk: walked,
     visualReview: 'required; empty geometry findings do not prove a good picture' };
 }
 
@@ -208,6 +213,7 @@ async function walk(page, id, outDir) {
         continue;
       }
       row.attempted = true;
+      row.activationMethod = 'HTMLElement.click() — behavior-only; pointer reachability is measured separately';
       await page.waitForTimeout(160);
       await settleAnimations(page);
       const clicked = await page.evaluate(() => window.BENCH.signature()), clickEffect = describe(beforeClick, clicked);
@@ -215,20 +221,25 @@ async function walk(page, id, outDir) {
       row.status = 'attempted';
       row.controlReachability = await page.evaluate(() => window.BENCH.reachability());
       for (const finding of row.controlReachability) console.log(`  UNREACHABLE after ${label}  ${finding}`);
-      if (clickEffect === 'no visible change' || clickEffect === 'disabled') { console.log(`  ${name} ${clickEffect}`); continue; }
+      if (clickEffect === 'no visible change' || clickEffect === 'disabled') {
+        console.log(`  ${name} synthetic activation  ${clickEffect}`);
+        continue;
+      }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
       await page.screenshot({ path: clickFile, timeout: args.timeoutMs }); row.clickFile = path.relative(ROOT, clickFile);
-      console.log(`  ${name} click  ${clickEffect}  ${row.clickFile}`);
+      console.log(`  ${name} synthetic activation  ${clickEffect}  ${row.clickFile}`);
     } catch (error) {
       const message = error.message.split('\n')[0];
       errors.push({ index, identity, kind: 'probe-error', message });
       console.log(`  control ${index + 1} probe failed: ${message}`);
     }
   }
-  console.log('  Open every PNG this walk printed. Each line is one control, tried from the arrival screen.');
+  console.log('  Open every PNG this walk printed. Each line is one control synthetically activated from the arrival screen; this is behavior evidence, not pointer proof.');
   const attempted = actions.filter(row => row.attempted).length;
   return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted,
-    untried: controls.length - attempted, actions, errors };
+    untried: controls.length - attempted,
+    activation: 'HTMLElement.click() behavior only; it does not prove a trusted pointer can reach the control',
+    actions, errors };
 }
 
 async function controlFromInventory(page, action, { index, identity }) {

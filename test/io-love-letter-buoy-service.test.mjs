@@ -210,7 +210,9 @@ for (const kind of ['legacy', 'other-sector', 'foreign-owner', 'pinned', 'schedu
   if (kind === 'other-sector') t.buoy.data.loveLetterSectorId = 'sector_ceres_belt';
   if (kind === 'foreign-owner') t.buoy.data.persistenceOwner = 'foreign';
   if (kind === 'pinned') t.buoy.flags.missionPinned = true;
-  if (kind === 'scheduled') t.buoy.data.despawnAt = 900;
+  // A schedule with no matching despawnBy is foreign: it did not come from this buoy's own
+  // releasing encounter, so the new live must not touch it.
+  if (kind === 'scheduled') { t.buoy.data.despawnAt = 900; delete t.buoy.data.despawnBy; }
   if (kind === 'dead') t.buoy.hull = 0;
   const owner = t.buoy.data.encounterId, next = admitAgain(t, 'new-letter');
   assert.notEqual(next._loveLetterBuoy, t.buoy); assert.equal(t.buoy.data.encounterId, owner);

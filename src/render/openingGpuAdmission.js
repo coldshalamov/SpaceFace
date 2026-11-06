@@ -843,6 +843,8 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   const childSplices = [];
   const hiddenForTouch = new Map();
   const drawn = [];
+  const pendingPrograms = new Set();
+  let invalidProgram = false;
   let releaseUploadLeases = () => {};
   try {
     // Shallowest-first so a nested null-geometry node is re-seated before its own
@@ -932,18 +934,49 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         // same turn would empty them again before texStorage reads mipmaps[0].
         releaseUploadLeases = retainPresentedTextureLeases(collectStartupTextures(drawableSubjects));
         for (const item of subjects) assertSubjectActive(item);
-        renderer.render(lightingScene, camera);
+        // The exact draw can select a variant absent from the completed compile cohort.
+        // Capture Three's selected wrapper without queueing a recursive admission.
+        const previousDepth = renderer.__sfUnreadyDrawGuardDepth;
+        const previousDefer = renderer.__sfDeferSelectedProgram;
+        const previousExact = renderer.__sfExactTargetTouch;
+        const hadDepth = Object.hasOwn(renderer, '__sfUnreadyDrawGuardDepth');
+        const hadDefer = Object.hasOwn(renderer, '__sfDeferSelectedProgram');
+        const hadExact = Object.hasOwn(renderer, '__sfExactTargetTouch');
+        renderer.__sfExactTargetTouch = true;
+        renderer.__sfUnreadyDrawGuardDepth = (previousDepth || 0) + 1;
+        renderer.__sfDeferSelectedProgram = (program) => {
+          let ready = !!program && (!Object.hasOwn(program, 'program') || !!program.program);
+          if (ready && typeof renderer.__sfExactProgramInvalid === 'function'
+              && renderer.__sfExactProgramInvalid(program)) {
+            invalidProgram = true;
+            ready = false;
+          }
+          if (ready && typeof program.isReady === 'function') {
+            try { ready = program.isReady() === true; } catch (_) { ready = false; }
+          }
+          if (!ready) { pendingPrograms.add(program); return true; }
+          return false;
+        };
+        try { renderer.render(lightingScene, camera); }
+        finally {
+          if (hadDepth) renderer.__sfUnreadyDrawGuardDepth = previousDepth; else delete renderer.__sfUnreadyDrawGuardDepth;
+          if (hadDefer) renderer.__sfDeferSelectedProgram = previousDefer; else delete renderer.__sfDeferSelectedProgram;
+          if (hadExact) renderer.__sfExactTargetTouch = previousExact; else delete renderer.__sfExactTargetTouch;
+        }
       }, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
     }
     return {
-      skipped: drawableSubjects.length === 0,
+      skipped: drawableSubjects.length === 0 || pendingPrograms.size > 0,
+      incomplete: pendingPrograms.size > 0,
+      contextLost: invalidProgram,
+      pendingPrograms: [...pendingPrograms],
       subjects: subjects.length,
       drawn: drawn.length,
       drawnSubjects: drawn,
       skippedSubjects: geometryless.length,
       skippedNullGeometry: geometryless.map(({ node, ...row }) => row),
-      reason: drawableSubjects.length === 0 ? 'null-geometry' : undefined,
+      reason: invalidProgram ? 'invalid-program' : pendingPrograms.size ? 'pending-exact-program' : drawableSubjects.length === 0 ? 'null-geometry' : undefined,
     };
   } finally {
     releaseUploadLeases();
@@ -999,6 +1032,46 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
 const PACE_BUDGET_MS = 24;
 const PACE_MAX_UNITS = 8;
 
+// Retry only the wrappers actually selected by Three at the exact-target draw. Waiting is
+// outside the serial GPU reservation, so the owner never queues behind its own admission.
+export async function retryPendingExactTouch(touch, { renderer, isActive, timeoutMs = 20000 } = {}) {
+  const now = () => globalThis.performance?.now?.() ?? Date.now();
+  const deadline = now() + Math.max(0, timeoutMs);
+  const canvas = renderer?.domElement;
+  let lost = false;
+  const onLost = () => { lost = true; };
+  canvas?.addEventListener?.('webglcontextlost', onLost);
+  try {
+    let attempted = false;
+    for (;;) {
+      if (lost || renderer?.getContext?.()?.isContextLost?.()) return { skipped: true, contextLost: true, reason: 'context-lost' };
+      if (isActive && !isActive()) return { skipped: true, cancelled: true, reason: 'owner-inactive' };
+      if (attempted && now() >= deadline) return { skipped: true, incomplete: true, readinessTimedOut: true, reason: 'pending-exact-program' };
+      attempted = true;
+      const receipt = await touch();
+      if (receipt?.reason !== 'pending-exact-program') return receipt;
+      const pending = receipt.pendingPrograms || [];
+      for (;;) {
+        if (lost || renderer?.getContext?.()?.isContextLost?.()) return { skipped: true, contextLost: true, reason: 'context-lost' };
+        if (isActive && !isActive()) return { skipped: true, cancelled: true, reason: 'owner-inactive' };
+        let allReady = pending.length > 0;
+        for (const program of pending) {
+          if (!program || (Object.hasOwn(program, 'program') && !program.program)
+              || (typeof renderer?.__sfExactProgramInvalid === 'function' && renderer.__sfExactProgramInvalid(program))
+              || typeof program.isReady !== 'function') return { skipped: true, contextLost: true, reason: 'invalid-program' };
+          let ready;
+          try { ready = program.isReady(); } catch (_) { ready = null; }
+          if (ready == null) return { skipped: true, contextLost: true, reason: 'invalid-program' };
+          if (ready !== true) allReady = false;
+        }
+        if (allReady) break;
+        if (now() >= deadline) return { skipped: true, incomplete: true, readinessTimedOut: true, reason: 'pending-exact-program' };
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+  } finally { canvas?.removeEventListener?.('webglcontextlost', onLost); }
+}
+
 export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const units = options.units || uniqueAdmissionUnits(options.subjects || []);
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
@@ -1052,7 +1125,23 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       ordered,
       async (subject) => {
         const compiled = compileOne ? await compileOne(subject) : null;
-        const touched = touchOne ? touchOne(subject) : null;
+        if (compiled?.contextLost || compiled?.readinessTimedOut || compiled?.incomplete) {
+          if (strict) {
+            const error = new Error('opening GPU admission incomplete: readiness did not settle');
+            if (compiled.readinessTimedOut && !compiled.contextLost) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+            throw error;
+          }
+          return { compiled, touched: null };
+        }
+        const touched = touchOne ? await retryPendingExactTouch(() => touchOne(subject), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        }) : null;
+        if (strict && touched?.skipped) {
+          const error = new Error(`opening GPU admission touch skipped: ${touched.reason || 'unknown reason'}`);
+          if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+          throw error;
+        }
         return { compiled, touched };
       },
       yieldToMain,
@@ -1060,6 +1149,8 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     );
     return {
       skipped: ordered.length === 0,
+      incomplete: results.some(({ compiled, touched }) => compiled?.contextLost || compiled?.readinessTimedOut
+        || compiled?.incomplete || touched?.skipped || touched?.incomplete || touched?.contextLost),
       subjects: ordered.length,
       materials: Number(units.materialCount) || (units.programSubjects || []).length,
       geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
@@ -1234,9 +1325,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const reportTouchResult = (touched, label) => {
     if (!strict || !touched || typeof touched !== 'object') return;
     if (touched.contextLost === true || touched.skipped === true) {
-      touchFailures.push(new Error(
+      const error = new Error(
         `opening GPU admission ${label} skipped: ${touched.reason || 'unknown reason'}`,
-      ));
+      );
+      if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+      touchFailures.push(error);
     }
   };
   // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
@@ -1256,9 +1349,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touchError = null;
       try {
         const touch = () => touchMany(group);
-        touched = submitSerial
-          ? await submitSerial(touch, submitAdmission)
-          : await touch();
+        touched = await retryPendingExactTouch(() => submitSerial
+          ? submitSerial(touch, submitAdmission) : touch(), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        });
         reportTouchResult(touched, `touch group ${index}`);
       } catch (error) {
         touchError = error;
@@ -1278,9 +1373,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       const touchUnitStarted = now();
       try {
         const touch = () => (touchOne ? touchOne(ordered[index]) : null);
-        touched = submitSerial
-          ? await submitSerial(touch, submitAdmission)
-          : await touch();
+        touched = await retryPendingExactTouch(() => submitSerial
+          ? submitSerial(touch, submitAdmission) : touch(), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        });
         reportTouchResult(touched, `touch ${index}`);
       } catch (error) {
         touchError = error;

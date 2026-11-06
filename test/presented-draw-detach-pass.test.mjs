@@ -159,3 +159,101 @@ test('an orientation hold overrides a matching texture stamp until real levels r
   assert.ok(texture.mipmaps[0].data.byteLength > 0);
   assert.equal(preparePresentedDraw(renderer, null, { map: texture }), false);
 });
+
+function detachedGeometryPackage(id, renderer, wait = null) {
+  const geometry = new THREE.BoxGeometry(), fresh = geometry.clone();
+  let decodes = 0;
+  createPackageDetachManifest({ contentHash: id, assetId: id, resources: [geometry] }, {
+    redecode: async () => { decodes++; if (wait) await wait; return { resources: [fresh] }; },
+    collectResources: value => value.resources,
+  });
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  return { geometry, decodes: () => decodes };
+}
+
+for (const route of ['direct', 'prescan']) {
+  test(`the actual ${route} draw guard cannot widen an orientation cohort to unrelated packages`, async () => {
+    resetPackageDetachManifestsForTests();
+    const renderer = { properties: new Map(), info: { programs: [] }, renderBufferDirect() { return 'drawn'; } };
+    let release;
+    const wait = new Promise(resolve => { release = resolve; });
+    const unrelated = detachedGeometryPackage(`unrelated-${route}`, renderer, wait);
+    const current = detachedGeometryPackage(`visible-${route}`, renderer);
+    const mesh = new THREE.Mesh(current.geometry, new THREE.MeshBasicMaterial());
+    const scene = new THREE.Scene(); scene.add(mesh);
+    const guard = createUnreadyDrawableGuard(renderer);
+    try {
+      noteOrientationDetachedHold(renderer, { geometries: [current.geometry], textures: [] });
+      if (route === 'direct') {
+        assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, mesh.material, mesh), undefined);
+      } else {
+        current.geometry.attributes.normal.needsUpdate = true;
+        guard.hide(scene);
+        assert.equal(mesh.layers.mask, 0);
+      }
+      await new Promise(setImmediate);
+      assert.equal(unrelated.decodes(), 0, 'guard recovery may request only the blocked drawable');
+      await presentedDetachRehydrateInFlight();
+      assert.equal(current.decodes(), 1);
+      guard.restore();
+      assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, mesh.material, mesh), 'drawn');
+    } finally {
+      release(); guard.restore();
+      await presentedDetachRehydrateInFlight();
+      resetPackageDetachManifestsForTests();
+    }
+  });
+}
+
+test('the actual direct guard joins a cloned material texture package without refilling the fleet', async () => {
+  resetPackageDetachManifestsForTests();
+  const renderer = { properties: new Map(), info: { programs: [] }, renderBufferDirect() { return 'drawn'; } };
+  let release, textureDecodes = 0;
+  const wait = new Promise(resolve => { release = resolve; });
+  const unrelated = detachedGeometryPackage('unrelated-texture-guard', renderer, wait);
+  const current = detachedGeometryPackage('initial-orientation-cohort', renderer);
+  const texture = compressedTexture();
+  createPackageDetachManifest({ contentHash: 'guard-map', resources: [texture] }, {
+    redecode: async () => { textureDecodes++; return { resources: [compressedTexture()] }; },
+    collectResources: value => value.resources,
+  });
+  assert.equal(detachPackageTexture(texture), true);
+  const clone = texture.clone();
+  const material = new THREE.MeshBasicMaterial({ map: clone });
+  const geometry = new THREE.BoxGeometry();
+  const mesh = new THREE.Mesh(geometry, material);
+  createUnreadyDrawableGuard(renderer);
+  try {
+    noteOrientationDetachedHold(renderer, { geometries: [current.geometry], textures: [] });
+    assert.equal(renderer.renderBufferDirect(null, null, geometry, [null, material], mesh), undefined);
+    await new Promise(setImmediate);
+    assert.equal(unrelated.decodes(), 0);
+    await presentedDetachRehydrateInFlight();
+    assert.equal(textureDecodes, 1, 'the actually blocked material array joins its texture package');
+    assert.equal(renderer.renderBufferDirect(null, null, geometry, [null, material], mesh), 'drawn');
+    assert.ok(clone.mipmaps[0].data.byteLength > 0, 'the cloned map binds real immutable donor levels');
+  } finally {
+    release(); await presentedDetachRehydrateInFlight();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('a cold program without detached drawable data never starts a CPU fleet refill', async () => {
+  resetPackageDetachManifestsForTests();
+  const renderer = { properties: new Map(), info: { programs: [] }, userData: {
+    spacefaceQueuePipelineAdmission() { return Promise.resolve(); },
+  }, renderBufferDirect() {} };
+  const unrelated = detachedGeometryPackage('cached-program-neighbor', renderer);
+  const material = new THREE.MeshBasicMaterial();
+  material.userData.spacefaceProgramCanon = 'pending-program-only';
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const guard = createUnreadyDrawableGuard(renderer);
+  try {
+    guard.hide(scene);
+    renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh);
+    await Promise.resolve();
+    assert.equal(unrelated.decodes(), 0);
+    assert.equal(presentedDetachRehydrateInFlight(), null);
+  } finally { guard.restore(); resetPackageDetachManifestsForTests(); }
+});

@@ -50,7 +50,10 @@ async function boot({ playerAt = null } = {}) {
   return { host, state, director, live, g, events, ent, at };
 }
 
-const outcomes = (h) => h.events.filter((e) => e.name === 'encounter:resolved').map((e) => e.p.outcome);
+// Ambient life (patrol scans, cadence encounters) resolves 'clean' inside the test window; only
+// the garden's own resolution counts.
+const outcomes = (h) => h.events.filter((e) => e.name === 'encounter:resolved'
+  && e.p.shape === SHAPE).map((e) => e.p.outcome);
 const record = (h) => h.state.story.depthProgramEncounters.completed[SHAPE];
 
 function withFields(fn) {

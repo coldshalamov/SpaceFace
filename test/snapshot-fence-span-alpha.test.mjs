@@ -156,7 +156,10 @@ test('delayed worker replies never replay a forward-moving hull backwards', asyn
     }
     assert.ok(drawn[1] > drawn[0], 'the pending hull continues toward its completed pose');
     assert.ok(drawn[2] >= drawn[1], `the pending hull must not rewind: ${drawn}`);
-    assert.ok(drawn.every((x) => x <= 210 * DT + 1e-6), 'waiting never predicts physics past the completed pose');
+    // Bounded extrapolation: silence may carry the hull at most 100 ms of its own velocity
+    // (210 WU per sim second) past the completed pose, then it holds.
+    assert.ok(drawn.every((x) => x <= 210 * (DT + 0.1) + 1e-6), `extrapolation is bounded: ${drawn}`);
+    assert.ok(drawn[2] > 210 * DT + 1e-6, 'worker silence extrapolates instead of freezing the hull');
     packOne(fence, { x: 210 * 5 * DT, simTime: 5 * DT });
     const alpha = fence.samplePresentationAlpha(0.04, state.accumulator, DT);
     applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 }, fence.previousSnapshot(), alpha);
@@ -176,4 +179,36 @@ test('the presentation clock respects pause, pose epochs, and a restarted simula
   packOne(fence, { x: 10, simTime: DT, poseEpoch: 1 });
   assert.ok(Math.abs(fence.samplePresentationAlpha(0.01, 0.5 * DT, DT) - 0.5) < 1e-12,
     'clock rewind resets presentation even when the same fence is reused');
+});
+
+test('worker silence keeps motion continuous, bounded, and eases back without rewinding', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  packOne(fence, { x: 0, simTime: 0 });
+  packOne(fence, { x: 100, simTime: 0.5 }); // 200 WU / sim second
+  const mesh = meshStub();
+  const xs = [];
+  const frame = (elapsed) => {
+    const a = fence.samplePresentationAlpha(elapsed, 0.2 * DT, DT);
+    applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 }, fence.previousSnapshot(), a);
+    xs.push(mesh.position.x);
+  };
+  frame(0.016);
+  for (let i = 0; i < 20; i++) frame(0.016); // 320 ms of silence
+  for (let i = 1; i < xs.length; i++) assert.ok(xs[i] >= xs[i - 1] - 1e-9, `no rewind: ${xs}`);
+  assert.ok(xs.at(-1) <= 100 + 200 * 0.1 + 1e-6, 'never beyond 100 ms of velocity');
+  assert.ok(xs.at(-1) > 100, 'ran past the completed pose');
+  // A real reply lands that is BEHIND the extrapolated pose: hold/ease, never snap back.
+  const before = xs.at(-1);
+  packOne(fence, { x: 103.3, simTime: 0.5 + DT });
+  for (let i = 0; i < 6; i++) frame(0.016);
+  for (let i = xs.length - 6; i < xs.length; i++) assert.ok(xs[i] >= before - 1e-9, `eased: ${xs.slice(-6)}`);
+});
+
+test('teleport-sized hops are never extrapolated', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  packOne(fence, { x: 0, simTime: 0 });
+  packOne(fence, { x: 5000, simTime: DT });
+  const mesh = meshStub();
+  applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 }, fence.previousSnapshot(), 7);
+  assert.equal(mesh.position.x, 5000);
 });

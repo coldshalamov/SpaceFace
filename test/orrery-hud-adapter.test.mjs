@@ -227,9 +227,11 @@ test('D240: the live context strip is a measured obstacle again, for arrows and 
   const src = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   assert.match(src, /objectiveEdgeBoxes\.left = plateBox\(leftContext\)/,
     'the mission strip is an edge-arrow obstacle (the retired leftStack was not)');
-  assert.match(src, /ResizeObserver\(invalidateObjectiveEdgeBoxes\)[^}]*observe\(leftContext\)/s,
+  assert.match(src, /ResizeObserver\(invalidateAndPlaceHudOverlays\)[^}]*observe\(leftContext\)/s,
     'content-driven strip growth refreshes the box, not only window resizes');
-  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, objectiveEdgeObstacles\(\)\.left\)/,
+  assert.match(src, /function invalidateAndPlaceHudOverlays\(\)\s*\{\s*invalidateObjectiveEdgeBoxes\(\)/s,
+    'the observed invalidator still marks the edge boxes stale');
+  assert.match(src, /const measuredLeft = objectiveEdgeObstacles\(\)\.left;[\s\S]*?resolveDoctrineTellPlacement\(w, h, proj, slotIndex,\s*\[measuredLeft, \.\.\.touchReserved, \.\.\.placed\]/,
     'doctrine tells yield to the same measured strip');
 });
 

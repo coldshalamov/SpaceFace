@@ -322,8 +322,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
 }
-/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
-@media (max-width:480px) and (min-height:601px) {
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
   ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
@@ -360,6 +361,16 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
   ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
@@ -681,6 +692,10 @@ ${T} .sx-fab-in.is-missing .sx-fab-in__q { color:rgb(${BONE} / .85) !important; 
 ${T} .sx-fab-in.is-missing .sx-fab-in__source { order:3; }
 ${T} .sx-fab-notes { margin-top:4px !important; }
 ${T} .sx-fab-status { margin-top:8px !important; }
+/* System reduced motion can disable the entrance animation without setting the in-game class. */
+@media (prefers-reduced-motion: reduce) {
+  ${T} .orr-ind-chain .orr-chain__rise { animation:none !important; opacity:1 !important; }
+}
 ${T} .sx-fab-foot { margin-top:12px !important; align-self:end; }
 /* the ladder: the reason only on the chosen row; the tier alone on the rest */
 ${T} .sx-ind-row:not(.is-active, [aria-selected="true"]) .sx-ind-row__why { display:none !important; }
@@ -1565,6 +1580,15 @@ ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 /* ================================ ROUND 5: INDUSTRY ========================================= */
 /* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
 ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* In a short wide berth the reason above the ring and the Fabricate key below it share the
+   same narrow stage. Lift the chain and its key together so the reason, disabled explanation,
+   and action remain visible without changing the button's live/disabled semantics. */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the dial compact and reserve real flow space for its action and live queue status. */
+  ${T} .sx-fab { display:block !important; height:auto !important; }
+  ${T} .orr-ind-chain { height:max(180px, calc(var(--orr-chain-input-count, 1) * 70px + 40px)) !important; margin:0 0 28px !important; }
+  ${T} .sx-fab > .sx-fab-foot { position:static !important; transform:none !important; margin:12px 0 0 !important; }
+}
 /* the block note under the reason; the disabled key's outline is enough */
 ${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
@@ -1712,6 +1736,10 @@ ${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label,
 /* ================================ ROUND 7: INDUSTRY ========================================= */
 /* the key is centred on the product's axis at every size */
 ${T} .sx-fab-foot { transform:translateX(-50%) !important; }
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the authored centered alignment while lifting the action clear of the short stage edge. */
+  ${T} .sx-fab-foot { transform:translate(-50%, -4px) !important; }
+}
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fab-foot { left:var(--fab-foot-x, 0) !important; right:auto !important; top:var(--fab-foot-y, auto) !important; bottom:auto !important; }
 }
@@ -2130,6 +2158,18 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
   ${D} .sx-talk__keys { display:none !important; }
 }
+/* Industry fab-chain at 651–1100 × ≤640: the short-body tuck above parks the product's
+   "1 · REFINED METALS per run" with translate(136px), which fits a wider reading but at
+   801–960-wide the stage is only ~429–553px — the unit hangs ~33–60px past stage right under
+   NEEDS REFINERY / Iron Ore / REFINE. Keep it within the stage width and below the reason/action block, with enough
+   separation for its multiline route button. The unit may wrap inside its own column. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(72px, -20px) !important; width:auto !important; max-width:38% !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
+}
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
    takes the whole first row; the standing keeps the right corner of the name's row, under the
@@ -2199,6 +2239,25 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
   ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:stretch; width:auto !important; height:auto !important; min-height:180px; margin:0 !important; }
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+
+/* Ledger eligibility card at 1101–1440 × 461–720 (ui-polish-287): the card stacked eight lines in a 34ch column
+   under the tape, so at 1280×720 everything past Net worth fell below the panel. The tape gives up what the frame
+   lacks (172px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
+   scrolls (as its 651–1100 frames do) so an open reading never buries the card. */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
+  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0; padding:8px 14px;
+    display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__rows { grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0 18px;
+    margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--dp-ink, #e8e4d8) 12%, transparent); }
+  ${D} .sx-ledger__right > .dust-em .dust-em__row { grid-template-columns:minmax(0, 1fr); row-gap:2px; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__fig { text-align:left; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__foot { grid-column:1 / -1; margin-top:5px; font-size:12px; }
 }
 
 /* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
@@ -2380,16 +2439,15 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
-   carries its rules: the empty state stretches and stands on ruled lines with the margin
-   column, so the void reads as a page waiting for its first entry, not dead glass. */
-${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
-  background:
-    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
 }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
 /* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
    a quiet field rule instead. The market search answers focus with a tick on its underline. */
 ${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }

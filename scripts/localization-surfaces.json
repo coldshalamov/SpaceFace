@@ -5,6 +5,7 @@
     { "path": "index.html", "kind": "html" },
     { "path": "src/careers", "kind": "js" },
     { "path": "src/data", "kind": "js" },
+    { "path": "src/features", "kind": "js" },
     { "path": "src/story", "kind": "js" },
     { "path": "src/systems", "kind": "js" },
     { "path": "src/ui", "kind": "js" }
@@ -55,5 +56,22 @@
     "prose"
   ],
   "domTextProperties": ["textContent", "innerText"],
+  "scopedCopyFields": {
+    "src/features/cinderglassJob/definition.js": [
+      "template", "offerTitle", "offerLine", "offerDetail", "accept", "decline", "declinedLine",
+      "scanHint", "markedLine", "negotiateLine", "serviceLine", "serviceInterrupted",
+      "watchedLine", "tooFastLine", "releasedNegotiated", "releasedQuiet", "releasedViolent",
+      "cradleHint", "brokerHint", "paidTala", "paidDamaged", "podDestroyed", "convoyLeftLine",
+      "brokerPaid", "daskRefused", "daskAccepted", "depositTaken", "depositRefunded", "staleRefusal"
+    ],
+    "src/features/counterweightCircuit/readModel.js": ["detailTemplate"]
+  },
+  "scopedReturnFunctions": {
+    "src/features/breakwaterSpur/project.js": ["nextActionFor", "operatingAction"],
+    "src/features/cinderglassJob/readModel.js": ["objective"]
+  },
+  "scopedTextCalls": {
+    "src/features/breakwaterSpur/": ["pushReceipt", "logItinerary"]
+  },
   "htmlAttributes": ["aria-label", "title", "placeholder", "alt"]
 }

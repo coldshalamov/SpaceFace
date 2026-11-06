@@ -23,6 +23,8 @@ export const RUBRIC_GLOBAL_ANCHOR = Object.freeze(sectorLocalToGlobalForSector(C
 const HULL_REST = Object.freeze({ x: RUBRIC_GLOBAL_ANCHOR.x + 34, z: RUBRIC_GLOBAL_ANCHOR.z + 40 });
 const F41 = 'f41';
 const SELF = 'self';
+// SP2-120 — the signature gate: ten witnessed marks before the player's own hull takes one.
+const SIGNATURE_WITNESS = 10;
 // Stencil wheel cartridges: 0 level bars, 1 working dots, 2 alarm wedges, 3 struck eyes, 4 blank.
 export const WHEEL = Object.freeze({ calm: 0, work: 1, alarm: 2, struck: 3, blank: 4 });
 const isMarkEntity = e => e?.alive && e.data?.rubricPart === 'mark';
@@ -221,8 +223,11 @@ export function createRubric() {
       d.rubricTruth = rec.x;
       if (d.isCommunicator || d.parentType === 'communicator' || d.wreckMissionId || d.playerWreck) return;
       const base = String(d.wreckClassLabel || 'Wreck').slice(0, 24);
+      // SP2-120 — once the player is co-marked, every marked hull reads the shared register.
+      const coMarked = this.state && this.state.story && this.state.story.flags
+        && this.state.story.flags.rubric_signed != null ? ' \u00b7 co-marked' : '';
       d.scanLabel = `${base} · marked: ${rec.c === 'p' ? 'yours' : rec.c === 'o' ? 'killed by another hull'
-        : rec.c === 'l' ? 'ledger loss' : 'cause unlogged'}`.slice(0, 64);
+        : rec.c === 'l' ? 'ledger loss' : 'cause unlogged'}${coMarked}`.slice(0, 64);
     },
     _followMarks() {
       const wrecks = this._wrecksByKey();
@@ -313,10 +318,21 @@ export function createRubric() {
       if (distanceXZ(body.pos, player.pos) > Math.min(C.scanRadius, p.radius)) return;
       if (m.last === 'done') { this._say('memorialScan', true); return; }
       if (!m.met) {
-        m.met = true; this._say('hello', true); this._sound('sfx_rubric_wake'); this._later(7, 'brief'); this._publish(); return;
+        m.met = true; this._stampFirstSighting(); this._say('hello', true); this._sound('sfx_rubric_wake'); this._later(7, 'brief'); this._publish(); return;
       }
       this._speak(this._statusLine(), 'status', true);
     },
+    // SP2-120 "Rubric's Autograph" — the witnessed-marks counter is the register's own
+    // `m.witness`; the signature reads it at the moment the player's own hull takes its mark.
+    _stampFirstSighting() {
+      const state = this.state;
+      if (!state.story) state.story = { flags: {} };
+      if (!state.story.flags || typeof state.story.flags !== 'object') state.story.flags = {};
+      if (state.story.flags.rubric_first_sighting == null) {
+        state.story.flags.rubric_first_sighting = Number(state.simTime) || 0;
+      }
+    },
+
     _statusLine() {
       const m = this.state.rubric;
       const bits = [`RUBRIC: Marks on file: ${m.witness}.`, `Red lead: ${Math.round(m.paint * 100)} percent.`];
@@ -435,7 +451,33 @@ export function createRubric() {
       }
       if (m.witness === 3) this._later(9, 'witness3');
       this.bus.emit('rubric:marked', { key, style, cause, text, witness: m.witness });
+      // SP2-120 — after ten witnessed marks, the player's own hull takes the stencil,
+      // unasked: "HM-11 ✕ [callsign]", dated the day of the first sighting, not today.
+      if (facts.isPlayerHull && m.witness >= SIGNATURE_WITNESS) this._signPlayerHull(tgt);
       if (m.paint < C.lowPaint) this._startReload(now);
+    },
+
+    _signPlayerHull(wreck) {
+      const state = this.state;
+      if (!state.story) state.story = { flags: {} };
+      if (!state.story.flags || typeof state.story.flags !== 'object') state.story.flags = {};
+      const flags = state.story.flags;
+      if (flags.rubric_signed != null) return;
+      flags.rubric_signed = {
+        at: Number(state.simTime) || 0,
+        firstSighting: Number(flags.rubric_first_sighting) || 0,
+        witness: this.state.rubric ? this.state.rubric.witness : 0,
+      };
+      if (wreck && wreck.data) {
+        wreck.data.scanLabel = 'Your hull · marked: HM-11 \u2715 co-signed';
+      }
+      this.bus.emit('comms:log', {
+        from: 'RUBRIC',
+        text: 'A small stencil dries near your airlock: HM-11 \u2715 [callsign]. The date under '
+          + 'it is not today \u2014 it is the day of your first sighting. It has been planning '
+          + 'this since you met.',
+        kind: 'special500',
+      });
     },
     _startReload(now) {
       this._mode = 'reload'; this._reloadUntil = now + C.reloadSeconds; this._abortWork(); this._target = null;

@@ -1,3 +1,5 @@
+import { solveLeadAngle } from '../combat/leadAngle.js';
+export { solveLeadAngle } from '../combat/leadAngle.js';
 import { addEnvironmentHeat } from './environmentMaterials.js';
 import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
 import { steerAfterBounce } from '../combat/surfaceReflection.js';
@@ -2318,10 +2320,10 @@ export const weapons = {
           this.helpers.routeCombatDamage({
             attackerId: rec.ownerId ?? null,
             targetId: body.id,
-            packet: scalarHitToDamagePacket({
+            packet: { ...scalarHitToDamagePacket({
               damage: dmg * fall, damageType: 'explosive', pos,
               source: { kind: 'weapon', weaponId: rec.weaponId },
-            }),
+            }), flags: { splash: true } },
             origin: { kind: 'weapon', id: rec.weaponId },
           });
         }
@@ -2691,40 +2693,6 @@ export function refineLeadForLaunch(angle, projSpeed, shooterVel, target, muzzle
   return a;
 }
 
-export function solveLeadAngle(shooter, tgt, projSpeed) {
-  const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
-  const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
-  const tp = (tgt && tgt.pos) || { x: 0, z: 0 };
-  const tv = (tgt && tgt.vel) || { x: 0, z: 0 };
-  const px = tp.x - sp.x, pz = tp.z - sp.z;
-  if (!Number.isFinite(projSpeed)) return Math.atan2(pz, px);
-  const rvx = tv.x - sv.x, rvz = tv.z - sv.z;
-  const ps = Math.max(1, Number.isFinite(projSpeed) ? projSpeed : 1);
-  const a = rvx * rvx + rvz * rvz - ps * ps;
-  const b = 2 * (px * rvx + pz * rvz);
-  const c = px * px + pz * pz;
-  let t = 0;
-  if (c > 1e-9) {
-    if (Math.abs(a) < 1e-9) {
-      const linearT = Math.abs(b) > 1e-9 ? -c / b : -1;
-      if (linearT > 0) t = linearT;
-    } else {
-      const disc = b * b - 4 * a * c;
-      if (disc >= 0) {
-        const root = Math.sqrt(disc);
-        const t0 = (-b - root) / (2 * a);
-        const t1 = (-b + root) / (2 * a);
-        if (t0 > 0 && t1 > 0) t = Math.min(t0, t1);
-        else if (t0 > 0) t = t0;
-        else if (t1 > 0) t = t1;
-      }
-    }
-  }
-  const aimx = px + tv.x * t;
-  const aimz = pz + tv.z * t;
-  return Math.atan2(aimz, aimx);
-}
-
 /** A missile may finish its old solution. It may not adopt a body that reused the target id. */
 export function guidanceAcceptsTarget(data, target) {
   if (!data || !target) return false;
@@ -2909,7 +2877,9 @@ export function applyProjectilePhysicalContact(host, payload) {
     const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
-      { port: host.helpers?.combatPhysics, referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+      // Scenery contacts obey the same authored momentum as the damage route.
+      { port: host.helpers?.combatPhysics, scaleEnvironment: false,
+        referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
     if (delivery.accepted) {
       recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
       if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
@@ -2944,7 +2914,8 @@ export function applyProjectilePhysicalContact(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
@@ -2977,7 +2948,8 @@ function detonateInterceptedSplash(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
