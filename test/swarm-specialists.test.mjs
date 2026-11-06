@@ -82,11 +82,15 @@ test('Jackal freezes a three-mine wake at its telegraph and uses physical mine l
     return owner.placeMine(opts);
   };
 
-  applyMineLayerVerb({ state, entity: jackal, doctrinePhase: 'wake_cue', tick: 100,
-    doctrineStartedTick: 100, placeMine });
+  const tuning = SWARM_SPECIALIST_TUNING.jackal;
+  const cueTick = 100;
+  applyMineLayerVerb({ state, entity: jackal, doctrinePhase: 'wake_cue', tick: cueTick,
+    doctrineStartedTick: cueTick, placeMine });
   jackal.pos.x = 700;
-  const drops = [130, 148, 166].map((tick) => applyMineLayerVerb({ state, entity: jackal,
-    doctrinePhase: 'mine_drop', tick, doctrineStartedTick: 100, placeMine }));
+  const releaseTicks = Array.from({ length: tuning.salvoCount }, (_, index) =>
+    cueTick + tuning.windupTicks + index * tuning.salvoSpacingTicks);
+  const drops = releaseTicks.map((tick) => applyMineLayerVerb({ state, entity: jackal,
+    doctrinePhase: 'mine_drop', tick, doctrineStartedTick: cueTick, placeMine }));
   assert.equal(drops.filter(Boolean).length, 3);
   assert.equal(new Set(points.map(({ x, z }) => `${x.toFixed(1)},${z.toFixed(1)}`)).size, 3);
   for (const mine of drops) {

@@ -53,6 +53,7 @@ import {
 } from '../combat/lifecycle.js';
 import { aftermathForSector } from './aftermathWrecks.js';
 import { spawnCollisionTearOff } from './hullFracture.js';
+import { swarmFeel } from '../data/swarmFeelProfile.js';
 
 /** Bounded forces of a failing hull (prototype values; tune through comparative motion review). */
 export const DYING_FORCE_LAW = Object.freeze({
@@ -302,6 +303,8 @@ export const dyingHull = {
       mass: marker.victimMass,
       radius: marker.victimRadius,
       overkill: kill && Number.isFinite(kill.overkill) ? kill.overkill : 0,
+      // S1: null outside a live Swarm run — the dying law is untouched in Adventure.
+      feel: swarmFeel(state),
     });
     // Keep the pool bounded: a massacre ruptures the oldest hull early instead of stacking records.
     if (rt.count >= RECORD_CAP) this._ruptureOldest(state);
@@ -432,7 +435,19 @@ export const dyingHull = {
     }
     // A few important physical fragments, from the real parent's motion, by the existing owner.
     let pieceIds = [];
-    const count = DYING_FRAGMENTS[rec.tier] || 0;
+    const feel = swarmFeel(state);
+    // S8: under the Swarm profile a heavy break-up is a pile of ammunition — a seeded 3–6
+    // chunk burst (mediums 1–2) stamped into the round so the Line's VERB-12 latch reads
+    // them as ropable before the shop. Outside the profile the authored table is untouched.
+    let count = DYING_FRAGMENTS[rec.tier] || 0;
+    let pieceCap = 0;
+    if (feel && count > 0) {
+      const band = rec.tier === 'heavy' || rec.tier === 'capital' ? 'heavy' : 'medium';
+      const lo = feel.death[band + 'ChunksMin'];
+      const hi = feel.death[band + 'ChunksMax'];
+      count = lo + Math.floor((typeof state.rng === 'function' ? state.rng() : 0.5) * (hi - lo + 1));
+      pieceCap = count;
+    }
     if (count > 0 && now - rec.ruptureAt <= LATE_RUPTURE_S) {
       const spawned = spawnCollisionTearOff({ state, helpers: this.helpers, bus: this.bus }, {
         victimId: wreck.id,
@@ -442,6 +457,7 @@ export const dyingHull = {
         normal: dir,
         closingSpeed: 40 + 0.5 * speed,
         count,
+        ...(pieceCap > 0 ? { pieceCap } : {}),
         tick: state.tick | 0,
         mass: Math.max(0.1, finite(wreck.physicsBody && wreck.physicsBody.mass, finite(wreck.mass, rec.mass))),
         radius: Math.max(1, finite(wreck.radius, rec.radius)),
@@ -449,7 +465,42 @@ export const dyingHull = {
         sectorId: (state.world && state.world.currentSectorId) || null,
         dyingHullRupture: true,
       });
-      if (spawned) pieceIds = spawned.map((piece) => piece.id);
+      if (spawned) {
+        pieceIds = spawned.map((piece) => piece.id);
+        if (feel) {
+          const run = state.run || {};
+          for (const piece of spawned) {
+            if (!piece || !piece.data) continue;
+            // VERB-12: a wreck made in this swarm round can be roped before the shop —
+            // the stamp is what the latch reads.
+            piece.data.runCohort = 'survival';
+            piece.data.runWave = Number.isInteger(run.wave) ? run.wave : (Number.isInteger(run.waveIndex) ? run.waveIndex : 0);
+          }
+        }
+      }
+    }
+    // S8: the heavy rupture lands with weight — a radial shockwave through the impulse
+    // membrane shoves every dynamic body in ~1 screen. One flat impulse, so fodder flies,
+    // heavies lurch and the pilot feels the kick; the cap keeps a point-blank chunk of
+    // light hull from leaving at cannon speed.
+    let shockwaveApplied = false;
+    if (feel && (rec.tier === 'heavy' || rec.tier === 'capital') && Array.isArray(state.entityList)) {
+      const { shockwaveRadiusWu: R, shockwaveImpulse: J, shockwaveMaxDv: DV_CAP } = feel.death;
+      const r2 = R * R;
+      for (const body of state.entityList) {
+        if (!body || body === wreck || body.alive === false || !body.pos) continue;
+        if (!isDynamicPhysicsBodyEntity(body)) continue;
+        const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= r2 || d2 < 1e-6) continue;
+        const d = Math.sqrt(d2);
+        const falloff = 1 - d / R;
+        const mass = Math.max(0.4, finite(body.physicsBody && body.physicsBody.mass, finite(body.mass, 1)));
+        const dv = Math.min(DV_CAP, (J / mass) * falloff);
+        queuePhysicsImpulse(body, { x: (dx / d) * dv * mass, z: (dz / d) * dv * mass },
+          { externalEffect: 'swarm_breakup_shockwave', sourceId: rec.victimId });
+      }
+      shockwaveApplied = true;
     }
     if (this.bus) {
       this.bus.emit('dyingHull:ruptured', {
@@ -467,6 +518,7 @@ export const dyingHull = {
         windowS: rec.windowS,
         late: now - rec.ruptureAt > LATE_RUPTURE_S,
         pieceIds,
+        shockwave: shockwaveApplied,
         tick: state.tick | 0,
       });
     }

@@ -5,6 +5,9 @@ import { aiPorts } from '../src/systems/aiPorts.js';
 import { CombatDoctrineRuntime, CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { ObjectiveKind } from '../src/ai/contracts.js';
 import { applySpecialistCounterplay, wardScreenTarget } from '../src/ai/specialistCounterplay.js';
+import { SWARM_SPECIALIST_TUNING } from '../src/data/swarmSpecialists.js';
+
+const WARDEN_WINDUP = SWARM_SPECIALIST_TUNING.warden.windupTicks;
 
 function ship(x, z, team, data = {}) {
   return { type: 'ship', alive: true, team, pos: { x, z }, vel: { x: 0, z: 0 }, rot: 0,
@@ -57,7 +60,9 @@ test('production Warden sensor, custody, screen point and active link share one 
   assert.equal(h.guard.data.swarmSpecialist.targetId ?? null, null,
     'the candidate is not an active guard link during deployment');
 
-  const active = h.step(30);
+  assert.ok(WARDEN_WINDUP >= 36, 'the Warden retains the authored minimum warning');
+  assert.equal(h.step(WARDEN_WINDUP - 1).doctrine.phase, 'screen_deploy');
+  const active = h.step(WARDEN_WINDUP);
   assert.equal(active.doctrine.phase, 'screen_hold');
   assert.equal(h.guard.data.swarmSpecialist.phase, 'active');
   assert.equal(h.guard.data.swarmSpecialist.targetId, h.ward.id);
@@ -71,10 +76,10 @@ test('production Warden sensor, custody, screen point and active link share one 
 test('a nearer newcomer cannot silently move an active Warden screen to another friendly', (t) => {
   const h = fixture(t);
   h.step(0);
-  h.step(30);
+  h.step(WARDEN_WINDUP);
   const newcomer = h.sim.spawn(ship(0, 10, 1,
     { runCohort: 'survival', runWave: 9, lootTableId: 'wasp_swarmer' }));
-  const held = h.step(32);
+  const held = h.step(WARDEN_WINDUP + 2);
   assert.ok(held.frame.contacts.some(c => c.id === newcomer.id));
   assert.equal(held.frame.self.swarmWardTargetId, h.ward.id);
   assert.equal(held.custody, h.ward.id);
@@ -82,7 +87,7 @@ test('a nearer newcomer cannot silently move an active Warden screen to another 
   assert.deepEqual(held.doctrine.flightPoint, { x: 60, z: 0 });
 
   h.state.run.ruleset = 'adventure';
-  const adventure = h.step(34);
+  const adventure = h.step(WARDEN_WINDUP + 4);
   assert.equal(adventure.frame.self.swarmSpecialistKind, null);
   assert.equal(adventure.frame.self.swarmWardTargetId, null);
   assert.equal(adventure.custody, newcomer.id,
@@ -91,8 +96,9 @@ test('a nearer newcomer cannot silently move an active Warden screen to another 
 
 test('a hit against a dead ward does not consume an active Warden link', (t) => {
   const h = fixture(t);
-  h.step(0); h.step(30);
+  h.step(0); h.step(WARDEN_WINDUP);
   const energy = h.guard.data.swarmSpecialist.linkEnergy;
+  assert.ok(Number.isFinite(energy) && energy > 0, 'the test starts with an active finite guard link');
   h.ward.alive = false;
   assert.equal(wardScreenTarget(h.state, h.player, h.ward, { kind: 'weapon' }), null);
   assert.equal(h.guard.data.swarmSpecialist.linkEnergy, energy);
@@ -110,17 +116,21 @@ test('production Anchor timing keeps the announced active window and caps close-
   assert.equal(frame.self.swarmSpecialistKind, 'anchor');
   const runtime = new CombatDoctrineRuntime({ seed: 4242 });
   const directive = { objective: { kind: ObjectiveKind.ENGAGE, targetId: h.player.id }, formation: {} };
+  const { windupTicks, activeTicks, recoveryMaxTicks } = SWARM_SPECIALIST_TUNING.anchor;
+  const recoveryAt = windupTicks + activeTicks;
+  const reformAt = recoveryAt + recoveryMaxTicks;
   const phases = new Map();
-  for (let tick = 0; tick <= 411; tick++) {
+  for (let tick = 0; tick <= reformAt + 1; tick++) {
     phases.set(tick, runtime.update({ tick, entityId: anchor.id,
       doctrineId: CombatDoctrineId.FIELD_ANCHOR_CONTROLLER, perception: frame, directive }).phase);
   }
-  assert.equal(phases.get(29), 'field_spool');
-  assert.equal(phases.get(30), 'anchor_hold');
-  assert.equal(phases.get(209), 'anchor_hold', 'crossing the ring does not cancel its commitment');
-  assert.equal(phases.get(210), 'recover');
-  assert.equal(phases.get(409), 'recover');
-  assert.equal(phases.get(410), 'reform');
+  assert.ok(windupTicks >= 36, 'the Anchor retains the authored minimum warning');
+  assert.equal(phases.get(windupTicks - 1), 'field_spool');
+  assert.equal(phases.get(windupTicks), 'anchor_hold');
+  assert.equal(phases.get(recoveryAt - 1), 'anchor_hold', 'crossing the ring does not cancel its commitment');
+  assert.equal(phases.get(recoveryAt), 'recover');
+  assert.equal(phases.get(reformAt - 1), 'recover');
+  assert.equal(phases.get(reformAt), 'reform');
 });
 
 test('production Jackal doctrine retains the complete release window for its finite salvo', (t) => {
@@ -135,13 +145,16 @@ test('production Jackal doctrine retains the complete release window for its fin
   assert.equal(frame.self.swarmSpecialistKind, 'jackal');
   const runtime = new CombatDoctrineRuntime({ seed: 4242 });
   const directive = { objective: { kind: ObjectiveKind.ENGAGE, targetId: h.player.id }, formation: {} };
+  const { windupTicks, activeTicks } = SWARM_SPECIALIST_TUNING.jackal;
+  const disengageAt = windupTicks + activeTicks;
   const phases = new Map();
-  for (let tick = 0; tick <= 101; tick++) {
+  for (let tick = 0; tick <= disengageAt + 1; tick++) {
     phases.set(tick, runtime.update({ tick, entityId: jackal.id,
       doctrineId: CombatDoctrineId.MINE_LAYER_WAKE, perception: frame, directive }).phase);
   }
-  assert.equal(phases.get(29), 'wake_cue');
-  assert.equal(phases.get(30), 'mine_drop');
-  assert.equal(phases.get(99), 'mine_drop');
-  assert.equal(phases.get(100), 'disengage');
+  assert.ok(windupTicks >= 36, 'the Jackal retains the authored minimum warning');
+  assert.equal(phases.get(windupTicks - 1), 'wake_cue');
+  assert.equal(phases.get(windupTicks), 'mine_drop');
+  assert.equal(phases.get(disengageAt - 1), 'mine_drop');
+  assert.equal(phases.get(disengageAt), 'disengage');
 });

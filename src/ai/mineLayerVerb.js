@@ -3,6 +3,7 @@
 // geometry and cadence, and goes through the mines system's `helpers.placeMine` — the same owner
 // the minefield_wake encounter uses. It never writes entities, physics, or damage directly.
 
+import { occupantGenerationOf } from '../core/entity.js';
 import { isSwarmSpecialistRun, swarmMineWakeSalvoLayout, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 
 const MINE_DROP_INTERVAL_TICKS = 42; // ~0.7 s between seeds across the drop line
@@ -34,18 +35,21 @@ function isDriftingDebris(e) {
 
 /**
  * Pure: re-point a planned salvo onto the room's drifting rocks. Returns
- * { points, anchors } — anchors[i] identifies the selected rock, or null for a wake point.
+ * { points, anchors, anchorGenerations } — each selected rock is bound to its current
+ * occupant, or null for a wake point. Both identity arrays describe occupants in the current run.
  * The verb refreshes live drift forecasts and samples velocity at deployment. No entity writes.
  */
 export function anchorSalvoToDriftingDebris(state, entity, wakePoints, count) {
   const points = Array.isArray(wakePoints) ? wakePoints.map((point) => ({ ...point })) : [];
   const wants = Number.isInteger(count) && count > 0 ? Math.min(count, points.length) : 0;
   const anchors = new Array(points.length).fill(null);
-  if (!state || !entity || !entity.pos || wants <= 0) return { points, anchors };
+  const anchorGenerations = new Array(points.length).fill(null);
+  if (!state || !entity || !entity.pos || wants <= 0) return { points, anchors, anchorGenerations };
   const candidates = [];
   const list = Array.isArray(state.entityList) ? state.entityList : [];
   for (const e of list) {
-    if (!isDriftingDebris(e) || e === entity) continue;
+    if (!isDriftingDebris(e) || e === entity || occupantGenerationOf(e) == null
+      || state.entities?.get?.(e.id) !== e) continue;
     const speed = Math.hypot(e.vel.x, e.vel.z);
     if (speed < SALVO_DEBRIS_MIN_SPEED) continue;
     const dx = e.pos.x - entity.pos.x;
@@ -54,7 +58,7 @@ export function anchorSalvoToDriftingDebris(state, entity, wakePoints, count) {
     if (distSq > SALVO_DEBRIS_BAND_WU * SALVO_DEBRIS_BAND_WU) continue;
     candidates.push({ rock: e, speed, distSq, id: e.id });
   }
-  if (!candidates.length) return { points, anchors };
+  if (!candidates.length) return { points, anchors, anchorGenerations };
   // Score, then distance, then id — the same ordering discipline as the chain selectors.
   candidates.sort((a, b) => (b.speed - a.speed)
     || (a.distSq - b.distSq)
@@ -65,8 +69,9 @@ export function anchorSalvoToDriftingDebris(state, entity, wakePoints, count) {
     // hull, just clear of the collider, so it is visible, shootable and never inside the rock.
     points[i] = pointOnDebrisSkin(rock, entity);
     anchors[i] = rock.id;
+    anchorGenerations[i] = occupantGenerationOf(rock);
   }
-  return { points, anchors };
+  return { points, anchors, anchorGenerations };
 }
 
 function pointOnDebrisSkin(rock, owner) {
@@ -77,13 +82,12 @@ function pointOnDebrisSkin(rock, owner) {
   return { x: rock.pos.x + (ox / len) * off, z: rock.pos.z + (oz / len) * off };
 }
 
-function liveDriftingDebris(state, id) {
-  if (id == null) return null;
-  const mapped = state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(id) : null;
-  if (isDriftingDebris(mapped)) return mapped;
-  const list = Array.isArray(state.entityList) ? state.entityList : [];
-  return list.find((entity) => entity?.id === id && isDriftingDebris(entity)) || null;
+function liveDriftingDebris(state, id, generation) {
+  if (id == null || generation == null) return null;
+  const mapped = state.entities?.get?.(id);
+  // Numeric IDs recycle, and entityList can briefly retain a departed occupant.
+  // Missing/legacy identity keeps the last warned point; it never adopts a new rock.
+  return isDriftingDebris(mapped) && occupantGenerationOf(mapped) === generation ? mapped : null;
 }
 
 function activeSpecialistMineCount(state, ownerId) {
@@ -124,6 +128,7 @@ function endSwarmJackalSalvo(view, tick) {
   if (view.phase !== 'windup' && view.phase !== 'active' && !view.salvoPoints) return;
   view.salvoPoints = null;
   view.salvoAnchors = null;
+  view.salvoAnchorGenerations = null;
   view.salvoNextReleaseTick = null;
   view.salvoWave = null;
   view.phase = 'recovery';
@@ -138,9 +143,12 @@ function refreshJackalForecast(state, entity, view) {
   for (let index = view.salvoCursor; index < view.salvoPoints.length; index++) {
     const anchorId = view.salvoAnchors?.[index];
     if (anchorId == null) continue;
-    const anchor = liveDriftingDebris(state, anchorId);
+    const anchor = liveDriftingDebris(state, anchorId, view.salvoAnchorGenerations?.[index]);
     if (anchor) view.salvoPoints[index] = pointOnDebrisSkin(anchor, entity);
-    else view.salvoAnchors[index] = null; // The last visible point is the fallback, not a new target.
+    else {
+      view.salvoAnchors[index] = null; // Keep the last visible point, not a new target.
+      if (view.salvoAnchorGenerations) view.salvoAnchorGenerations[index] = null;
+    }
   }
 }
 
@@ -150,7 +158,7 @@ function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }
   let view = data.swarmSpecialist;
   if (!view || view.kind !== 'jackal') {
     view = data.swarmSpecialist = { kind: 'jackal', phase: 'idle', phaseStartedAt: tick,
-      phaseEndsAt: null, salvoPoints: null, salvoAnchors: null, salvoCursor: 0, nextSalvoTick: 0 };
+      phaseEndsAt: null, salvoPoints: null, salvoAnchors: null, salvoAnchorGenerations: null, salvoCursor: 0, nextSalvoTick: 0 };
   }
   if (view.phase === 'recovery' && tick >= view.phaseEndsAt) {
     view.phase = 'idle'; view.phaseStartedAt = tick; view.phaseEndsAt = null;
@@ -177,6 +185,7 @@ function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }
         swarmMineWakeSalvoLayout(entity, tuning.salvoCount), tuning.salvoCount);
       view.salvoPoints = planned.points;
       view.salvoAnchors = planned.anchors;
+      view.salvoAnchorGenerations = planned.anchorGenerations;
       view.salvoCursor = 0;
       view.salvoWave = data.runWave;
       // Start when this geometry is first published. A stale doctrine timestamp cannot
@@ -191,8 +200,8 @@ function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }
     return null;
   }
   if (!Array.isArray(view.salvoPoints)) return null;
-  // Older saves used remaining-count or cue-relative cadence. Adopt their unspent slots,
-  // but never compress an unknown release interval into an immediate burst on Continue.
+  // Older data shapes used remaining-count or cue-relative cadence. Adopt their unspent slots,
+  // but never compress an unknown release interval into an immediate burst when adopting them.
   if (!Number.isInteger(view.salvoCursor)) view.salvoCursor = Number.isInteger(view.salvoRemaining)
     ? Math.max(0, view.salvoPoints.length - view.salvoRemaining) : 0;
   if (!Number.isFinite(view.salvoNextReleaseTick)) {
@@ -217,7 +226,7 @@ function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }
   if (typeof placeMine !== 'function' || tick < view.salvoNextReleaseTick) return null;
   const index = view.salvoCursor;
   const position = view.salvoPoints[index];
-  const anchor = liveDriftingDebris(state, view.salvoAnchors?.[index]);
+  const anchor = liveDriftingDebris(state, view.salvoAnchors?.[index], view.salvoAnchorGenerations?.[index]);
   const mine = placeMine({
     ownerId: entity.id,
     pos: { x: position.x, z: position.z },
