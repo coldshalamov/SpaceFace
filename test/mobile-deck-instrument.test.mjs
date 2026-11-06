@@ -64,23 +64,28 @@ test('mobile stylesheet comments do not swallow or corrupt following rules', () 
     'the informational receipt rule remains a standalone selector after comments are removed');
 });
 
-test('flight receipts occupy their own touch-through lane in both orientations', () => {
-  const lanes = MOBILE_CSS.slice(MOBILE_CSS.indexOf('/* Mobile flight lanes:'));
-  const portrait = MOBILE_CSS.match(/:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts \{([^}]+)\}/)?.[1];
-  const landscape = lanes.match(/#toasts \{([^}]+)\}/)?.[1];
-  assert.match(portrait || '', /left:calc\(14px \+ var\(--sf-safe-left,0px\)\); top:auto; bottom:calc\(max\(224px/,
-    'portrait keeps its authored bottom-up fallback lane');
-  assert.match(landscape || '', /top:calc\(118px \+ var\(--sf-safe-top,0px\)\); bottom:auto;/,
-    'short landscape keeps its authored below-HUD fallback lane');
-  for (const lane of [portrait || '', landscape || '']) {
-    assert.doesNotMatch(lane, /(?:left|right|top|bottom|width|max-width):[^;]*!important/,
-      'live inline placement by the HUD owner can override the fallback geometry');
+test('flight receipts use HUD-measured safe bands and preserve the touch-through lane', () => {
+  const receiptRule = portraitReceipt;
+  assert.ok(receiptRule, 'mobile flight layout owns the receipt seat');
+  assert.equal(value(receiptRule, 'position'), 'fixed!important');
+  assert.equal(value(receiptRule, 'left'), 'calc(8px + var(--sf-safe-left,0px))!important');
+  assert.equal(value(receiptRule, 'top'), 'calc(208px + var(--sf-safe-top,0px))!important');
+  assert.equal(value(receiptRule, 'right'), 'auto!important');
+  assert.equal(value(receiptRule, 'bottom'), 'auto!important');
+  assert.match(value(receiptRule, 'width'), /min\(320px,calc\(100vw - 144px/,
+    'receipt width follows the same collision-safe text lane as mobile objectives');
+  const hudSource = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+  const place = hudSource.slice(hudSource.indexOf('function placeReceiptLane('), hudSource.indexOf("  if (typeof window !== 'undefined' && window.addEventListener)", hudSource.indexOf('function placeReceiptLane(')));
+  assert.match(place, /freeOverlayBands\(slot, h, layout\)/,
+    'active receipts are seated in measured free bands around HUD obstacles');
+  for (const property of ['left', 'top', 'bottom', 'right']) {
+    assert.ok(place.includes(`write(laneRoot, '${property}',`), `HUD owner writes live ${property} placement`);
   }
   assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
   assert.equal(readFileSync(new URL('../styles/mobile.generated.css', import.meta.url), 'utf8'), MOBILE_CSS,
-    'the generated mobile sidecar ships the same fallback CSS as its source');
-  assert.doesNotMatch(lanes, /#toasts \{[^}]*overflow:hidden/,
-    'critical receipts must not be clipped to make a layout test pass');
+    'generated mobile CSS remains synchronized');
+  assert.doesNotMatch(MOBILE_CSS, /#toasts \{[^}]*overflow:hidden/,
+    'critical receipts remain fully readable and are never clipped by the mobile stylesheet');
 });
 
 function withDoc(fn) {
@@ -282,7 +287,7 @@ const objective = mobileRule('#hud > .sf-leftcontext');
 const expandedFace = mobileRule('#hud .sf-radar-wrap--expanded .sf-radar canvas');
 const landscapeDock = mobileRule('#hud .sf-rightdock', authoredRules, 'max-height:500px');
 const landscapeRail = mobileRule('#race-tape[data-compact="true"]', authoredRules, 'max-height:500px');
-const portraitReceipt = mobileRule('#toasts', screenRules, null);
+const portraitReceipt = mobileRule('body #hud #toasts', authoredRules);
 const sectorLaw = mobileRule('#ui-root > #sf-sector-law', authoredRules, null);
 const powers = mobileRule('#sf-touch-overlay .mf-edge', authoredRules, 'orientation:portrait');
 const powersWord = mobileRule('#sf-touch-overlay .mf-edge-word', authoredRules, 'orientation:portrait');
@@ -293,37 +298,35 @@ test('the authored mobile flight stylesheet parses and is composed into HUD CSS'
   for (const [name, rule] of Object.entries({ dock, compactFace, objective, expandedFace, landscapeDock, landscapeRail, portraitReceipt, powers, powersWord, sectorLaw })) {
     assert.ok(rule, `${name} has a rule active for its mobile flight condition`);
   }
-  assert.equal(px(value(compactFace, 'width')), 116, 'the current phone radar face keeps its authored 116px diameter');
+  assert.equal(px(value(compactFace, 'width')), 88, 'the compact phone radar uses the current 88px instrument face');
   assert.equal(px(value(expandedFace, 'width')), 290, 'expanded radar retains its full tactical face');
   assert.equal(px(value(powers, 'min-height')), 44, 'Powers keeps a thumb-sized target');
   assert.equal(value(powersWord, 'writing-mode'), 'horizontal-tb', 'Powers label stays readable horizontally');
 });
 
-test('portrait objective and receipt text lanes clear the current radar dock at supported widths', () => {
+test('portrait objective and receipt lanes clear the compact radar dock at supported widths', () => {
   const dockWidth = px(value(dock, 'width'));
   const dockRight = px(value(dock, 'right'));
-  const objectiveMax = px(value(objective, 'width'));
   const objectiveInset = px(value(objective, 'left'));
-  const objectiveReserve = Number(value(objective, 'width').match(/100vw - (\d+)px/)?.[1]);
-  const receiptWidthMax = Number(value(portraitReceipt, 'width').match(/min\((\d+)px/)?.[1]);
+  const laneMax = Number(value(objective, 'width').match(/min\((\d+)px/)?.[1]);
+  const laneReserve = Number(value(objective, 'width').match(/100vw - (\d+)px/)?.[1]);
   const receiptInset = px(value(portraitReceipt, 'left'));
-  const thumbFloor = Number(value(portraitReceipt, 'width').match(/max\((\d+)px/)?.[1]);
-  const thumbFactor = Number(value(portraitReceipt, 'width').match(/\* ([\d.]+)\)/)?.[1]);
-  for (const [width, safeLeft, safeRight, cluster] of [
-    [390,0,0,196], [390,16,16,240], [360,0,0,320], [320,0,0,196], [320,16,16,320],
+  assert.equal(receiptInset, objectiveInset, 'receipts share the clear objective text lane');
+  assert.equal(value(portraitReceipt, 'right'), 'auto!important');
+  assert.doesNotMatch(value(portraitReceipt, 'overflow-y'), /hidden/);
+  for (const [width, safeLeft, safeRight] of [
+    [390,0,0], [390,16,16], [360,0,0], [320,0,0], [320,16,16],
   ]) {
-    const objectiveWidth = Math.min(objectiveMax, width - objectiveReserve - safeLeft - safeRight);
-    const objectiveRight = objectiveInset + safeLeft + objectiveWidth;
+    const laneWidth = Math.min(laneMax, width - laneReserve - safeLeft - safeRight);
+    const laneRight = objectiveInset + safeLeft + laneWidth;
     const radarLeft = width - dockRight - safeRight - dockWidth;
-    const receiptWidth = Math.min(receiptWidthMax, width - 26 - Math.max(thumbFloor, cluster * thumbFactor) - safeLeft - safeRight);
-    assert.ok(objectiveWidth >= 100, `${width}px objective retains a readable wrapping column`);
-    assert.ok(radarLeft - objectiveRight >= 8, `${width}px objective clears the 148px radar dock`);
-    assert.ok(receiptWidth >= 128, `${width}px receipt retains a wrapping text lane (got ${receiptWidth})`);
+    assert.ok(laneWidth >= 100, `${width}px objective retains a readable wrapping column`);
+    assert.ok(radarLeft - laneRight >= 8, `${width}px information lane clears the 120px radar dock`);
+    assert.ok(laneWidth >= 128, `${width}px receipts retain a wrapping text lane (got ${laneWidth})`);
   }
-  assert.equal(value(portraitReceipt, 'right'), 'auto');
+  assert.match(value(portraitReceipt, 'top'), /208px/);
   assert.doesNotMatch(value(portraitReceipt, 'overflow-y'), /hidden/);
 });
-
 test('landscape camera and Circuits rail remains visible between status and Pause', () => {
   const dockWidth = px(value(dock, 'width'));
   const dockRight = px(value(landscapeDock, 'right'));
@@ -345,7 +348,7 @@ test('landscape camera and Circuits rail remains visible between status and Paus
 });
 
 test('mobile dock and compact controls keep their authored flow and touch target sizing', () => {
-  assert.equal(px(value(dock, 'width')), 148);
+  assert.equal(px(value(dock, 'width')), 120, 'the phone dock follows the current 120px radar wrapper');
   assert.equal(value(dock, 'align-items'), 'flex-end');
   assert.equal(value(dock, 'overflow'), 'visible!important');
   assert.equal(value(sectorLaw, 'position'), 'fixed !important');

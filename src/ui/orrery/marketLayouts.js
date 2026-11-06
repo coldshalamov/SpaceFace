@@ -1037,6 +1037,16 @@ const CSS_TAIL = `
     box-sizing:border-box !important; display:flex !important; height:20px !important; min-height:20px !important; max-height:20px !important;
     margin:0 !important; transform:none !important; z-index:auto !important; }
   ${MD} .sx-mkt-browser__rail { grid-column:1 / -1 !important; grid-row:3 !important; }
+  /* Short-landscape table: readable prices and wrapping names stay tappable inside the existing rail scroll. */
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table { table-layout:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):first-child { width:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):nth-child(n+2) { width:1% !important; padding-left:4px !important; padding-right:4px !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td { height:30px !important; padding-top:1px !important; padding-bottom:1px !important; vertical-align:middle !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price { line-height:14px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price > .sx-mkt-row__tr { display:block !important; margin-left:0 !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td.sx-mkt-row__name { min-width:0 !important; max-width:none !important; white-space:normal !important; overflow:visible !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__none { white-space:normal !important; line-height:14px !important; }
+  ${MD} .sx-mkt-browser__rail thead th { padding-top:0 !important; padding-bottom:2px !important; line-height:14px !important; height:auto !important; }
   /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
   ${MD} .sx-mkt__stage.dp-work__stage { min-width:0 !important; min-height:0 !important; grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:4px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:100% !important; min-width:0 !important; max-width:100% !important; max-height:none !important; overflow-x:hidden !important; overflow-y:visible !important; }

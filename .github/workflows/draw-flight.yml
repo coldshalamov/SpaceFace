@@ -78,6 +78,11 @@ jobs:
               ln -s "$RUNNER_TEMP/elemaudio/node_modules/$dep" "node_modules/$dep"
             fi
           done
+          # The stroke-speed path imports the current camera clearance query. Use its
+          # locked BVH version and the same vendored Three instance as the game.
+          npm install --prefix "$RUNNER_TEMP/draw-flight-bvh" --ignore-scripts --no-audit --no-fund --legacy-peer-deps three-mesh-bvh@0.9.15
+          ln -s "$GITHUB_WORKSPACE/node_modules/three" "$RUNNER_TEMP/draw-flight-bvh/node_modules/three"
+          ln -s "$RUNNER_TEMP/draw-flight-bvh/node_modules/three-mesh-bvh" node_modules/three-mesh-bvh
           git rev-parse HEAD > .devshots/draw-flight/source-sha.txt
       - name: Sustained speed, actual collision authority, gun lead and lifecycle regression
         run: |
