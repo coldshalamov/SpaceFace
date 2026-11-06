@@ -11,14 +11,14 @@ import { MENU_MODE_GLOSSES } from '../src/ui/screens/mainMenu.js';
 
 const SRC = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 
-test('all five non-primary mode verbs carry a one-line gloss', () => {
-  for (const action of ['crucible', 'archive', 'circuits', 'sandbox', 'physics']) {
+test('all six non-primary mode verbs carry a one-line gloss', () => {
+  for (const action of ['swarm', 'crucible', 'archive', 'circuits', 'sandbox', 'physics']) {
     const gloss = MENU_MODE_GLOSSES[action];
     assert.equal(typeof gloss, 'string', `missing gloss for ${action}`);
     assert.ok(gloss.length > 8 && gloss.length < 60, `${action} gloss should be a one-liner, got "${gloss}"`);
     assert.equal(gloss, gloss.trim(), `${action} gloss has stray whitespace`);
   }
-  assert.equal(Object.keys(MENU_MODE_GLOSSES).length, 5, 'no stray verbs in the gloss table');
+  assert.equal(Object.keys(MENU_MODE_GLOSSES).length, 6, 'no stray verbs in the gloss table');
 });
 
 test('the glosses say what the mode is, not the verb again', () => {
