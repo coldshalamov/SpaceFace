@@ -11,6 +11,7 @@ import { combat } from '../src/systems/combat.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { barkText } from '../src/data/encounters.js';
+import { save } from '../src/save/saveSystem.js';
 
 const SECTOR_ID = 'sector_tethys_junction';
 const ANCHOR = Object.freeze({ x: 6200, z: 4800 });
@@ -234,4 +235,60 @@ test('a broadcaster lost before arrival retires its mark without starting a figh
   assert.equal(live.data.onScene, false);
   assert.equal(grants.length, 0);
   h.sim.dispose();
+});
+
+
+for (const previous of [null, { kind: 'mission', missionId: 'homeward', label: 'HOME', pos: { x: 20, z: 30 } }]) {
+  test(`Continue during distress Assist retains ${previous ? 'the prior destination' : 'an empty nav slot'} without an ownerless signal`, () => {
+    const h = boot();
+    try {
+      const live = fire(h, previous ? '-save-prior' : '-save-empty');
+      h.state.nav = { waypoint: previous };
+      h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+      const liveMark = h.state.nav.waypoint;
+      const owner = { state: h.state, bus: h.bus };
+      const savedNav = JSON.parse(JSON.stringify(save._serializeNav.call(owner)));
+      const savedDirector = JSON.parse(JSON.stringify(save._serializeEncounterDirector.call(owner)));
+      assert.equal(savedDirector.live, undefined, 'distress actors retain their existing transient lifetime');
+      assert.deepEqual(savedNav.waypoint, previous, 'the envelope retains the destination that can still be resumed');
+      assert.equal(h.state.nav.waypoint, liveMark, 'saving does not seize the live navigation slot');
+      assert.equal(live.data.markSaved, true, 'saving does not retire the active encounter');
+      assert.equal(live.phase, 'offer');
+      // The real restore owner installs the incoming durable director bag before save:loaded.
+      h.state.encounterDirector = savedDirector;
+      save._restoreNav.call(owner, savedNav);
+      h.bus.emit('save:loaded', {});
+      assert.deepEqual(h.state.nav.waypoint, previous);
+      assert.equal(h.state.encounterDirector.live[live.id], undefined);
+    } finally { h.sim.dispose(); }
+  });
+}
+
+test('saving after replacing a distress mark preserves the new navigation owner', () => {
+  const h = boot();
+  try {
+    const live = fire(h, '-save-new-owner');
+    h.state.nav = { waypoint: { kind: 'mission', missionId: 'old', label: 'OLD' } };
+    h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+    const selected = { kind: 'mission', missionId: 'new', label: 'NEW', pos: { x: 70, z: 80 } };
+    h.state.nav.waypoint = selected;
+    assert.deepEqual(save._serializeNav.call({ state: h.state }).waypoint, selected);
+    assert.equal(h.state.nav.waypoint, selected);
+  } finally { h.sim.dispose(); }
+});
+
+test('legacy and nested ownerless distress markers are discarded at the save boundary', () => {
+  const h = boot();
+  try {
+    const owner = { state: h.state, bus: h.bus };
+    const legacy = { kind: 'distress_assist', label: 'Distress signal', pos: { x: 6200, z: 4800 } };
+    save._restoreNav.call(owner, { waypoint: legacy });
+    assert.equal(h.state.nav.waypoint, null, 'an old envelope cannot revive a position without its broadcasting hull');
+    const live = fire(h, '-save-nested');
+    h.state.nav.waypoint = legacy;
+    h.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'assist' });
+    assert.equal(save._serializeNav.call(owner).waypoint, null, 'only one prior lease is considered; a transient predecessor is not persisted');
+    h.state.nav.waypoint = { ...legacy, encounterId: 'missing-owner' };
+    assert.equal(save._serializeNav.call(owner).waypoint, null);
+  } finally { h.sim.dispose(); }
 });
