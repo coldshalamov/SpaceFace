@@ -82,6 +82,10 @@ function buyCalled(h, offerId, wave = 2) {
   // The wave the charge fights in: the run goes active after the shop.
   h.state.run.phase = 'active';
   h.state.mode = 'flight';
+  // S5: a bought called charge queues at purchase; the player's Q press deploys it.
+  h.state.input = { actions: { callIn: true } };
+  survivalArena.update(1 / 60, h.state);
+  h.state.input.actions.callIn = false;
 }
 
 function teamZeroAllies(h) {

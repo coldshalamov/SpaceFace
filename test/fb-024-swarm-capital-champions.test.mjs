@@ -1,6 +1,6 @@
 // FB-024 — the Foreman and the Regent field as AUTHORED CAPITAL SCORES, not scaled raiders.
 //
-// Wave 20 and wave 30 put a single capital hull on the board whose fight is the shipped score
+// Wave 15 and wave 25 put a single capital hull on the board whose fight is the shipped score
 // machine: `capitalBoss:start` opens a fight record, the system's orders gate the hull's fire
 // and movement, its acts advance on hull thresholds, its wing request spawns through the
 // survival budget as run cohort, and its end detaches with the wave. These tests drive the
@@ -111,39 +111,39 @@ test('the rotation walks the champions — capital scores at wave 20, 30, 70 and
   const order = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
     'quiet_choir', 'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
     'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk'];
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140].entries()) {
+  for (const [i, wave] of [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135].entries()) {
     const boss = swarmBossFor(wave);
     assert.equal(boss && boss.id, order[i], `wave ${wave}`);
   }
-  assert.equal(swarmBossFor(150).id, 'iron_maw', 'the rotation wraps after the fourteenth');
-  const w20 = planFor(20).swarm;
+  assert.equal(swarmBossFor(145).id, 'iron_maw', 'the rotation wraps after the fourteenth');
+  const w20 = planFor(15).swarm;
   assert.equal(w20.bossScoreId, 'capital_boss_foreman');
   assert.equal(w20.bossEnemyId, 'mirrorjaw_foreman');
   assert.equal(w20.bossRoom, 'mirror_lane');
   assert.equal(w20.bossTrickId, null, 'a capital row never carries a hunter trick');
-  const w30 = planFor(30).swarm;
+  const w30 = planFor(25).swarm;
   assert.equal(w30.bossScoreId, 'capital_boss_regent');
   assert.equal(w30.bossEnemyId, 'forge_regent');
   assert.equal(w30.bossRoom, 'crown_furnace');
   // Each capital row fields exactly one champion package — the hull the score will fly.
-  for (const wave of [20, 30]) {
+  for (const wave of [15, 25]) {
     const champions = planFor(wave).packages.filter((p) => p.champion === true);
     assert.equal(champions.length, 1, `wave ${wave} fields one capital hull`);
-    assert.equal(champions[0].enemyId, wave === 20 ? 'mirrorjaw_foreman' : 'forge_regent');
+    assert.equal(champions[0].enemyId, wave === 15 ? 'mirrorjaw_foreman' : 'forge_regent');
     assert.equal(champions[0].count, 1);
   }
 });
 
 test('a landed capital champion opens its score and hands its hull to the orders', () => {
-  const h = boot(20);
-  startWave(h, 20);
+  const h = boot(15);
+  startWave(h, 15);
   const boss = capitalBody(h);
   assert.ok(boss, 'the Foreman hull is a real cohort body');
   assert.equal(boss.data.lootTableId, 'mirrorjaw_foreman');
-  assert.equal(boss.data.runWave, 20);
+  assert.equal(boss.data.runWave, 15);
   assert.equal(boss.data.bountyHunt, undefined, 'capital champions never enter the hunter path');
 
-  const fight = fightStore(h).fights['swarm:w20'];
+  const fight = fightStore(h).fights['swarm:w15'];
   assert.ok(fight, 'capitalBoss:start opened a fight record');
   assert.equal(fight.encounterId, 'capital_boss_foreman');
   assert.equal(fight.bossId, boss.id);
@@ -157,12 +157,12 @@ test('a landed capital champion opens its score and hands its hull to the orders
 });
 
 test('the score runs: the fight starts, telegraphs, and the wing request fields a real screen', () => {
-  const h = boot(20);
-  startWave(h, 20);
+  const h = boot(15);
+  startWave(h, 15);
   const boss = capitalBody(h);
   // Drive through the 180-tick intro — the fight must reach an act on its own observation.
   tick(h, 210);
-  const fight = fightStore(h).fights['swarm:w20'];
+  const fight = fightStore(h).fights['swarm:w15'];
   assert.equal(fight.started, true, 'the score is running on the live pair');
   assert.ok(named(h, 'capitalBoss:started').length > 0);
 
@@ -174,7 +174,7 @@ test('the score runs: the fight starts, telegraphs, and the wing request fields 
 
   // The wing spawned through the survival port: run-cohort stamped, hunting the pilot,
   // and joined into the wave's own accounting. The join receipt — not a role guess — is the
-  // member list, since ordinary wave-20 chaff carries the same `runWave` stamp.
+  // member list, since ordinary wave-15 chaff carries the same `runWave` stamp.
   const joins = named(h, 'survivalWave:cohortJoined');
   assert.ok(joins.length > 0, 'wing members were registered into the wave cohort');
   const memberIds = joins.flatMap((e) => e.payload.ids);
@@ -182,7 +182,7 @@ test('the score runs: the fight starts, telegraphs, and the wing request fields 
   assert.ok(wingMembers.length >= 2, 'the wing materialized as real bodies');
   for (const member of wingMembers) {
     assert.equal(member.data.runCohort, SURVIVAL_COHORT_TAG);
-    assert.equal(member.data.runWave, 20);
+    assert.equal(member.data.runWave, 15);
     assert.equal(member.data.ai.huntPlayer, true);
     assert.equal(member.data.ai.forcePlayerTarget, true);
   }
@@ -190,40 +190,40 @@ test('the score runs: the fight starts, telegraphs, and the wing request fields 
   // The wing flies under the fight's fire gate, not on its own stock triggers.
   for (const member of wingMembers) {
     const o = fightStore(h).orders[capitalOrderKey(member.id)];
-    assert.ok(o && o.fightId === 'swarm:w20', 'wing member is under the fight\'s order ledger');
+    assert.ok(o && o.fightId === 'swarm:w15', 'wing member is under the fight\'s order ledger');
     assert.equal(o.suppressStockFire, true, 'wing fire waits for the recovery gate');
   }
 });
 
 test('killing the champion ends the fight, and the next wave detaches the record', () => {
-  const h = boot(20);
-  startWave(h, 20);
+  const h = boot(15);
+  startWave(h, 15);
   const boss = capitalBody(h);
   tick(h, 200);
-  assert.equal(fightStore(h).fights['swarm:w20'].started, true);
+  assert.equal(fightStore(h).fights['swarm:w15'].started, true);
 
   boss.alive = false;
   boss.hull = 0;
   h.bus.emit('entity:killed', { id: boss.id });
   tick(h, 3);
-  const fight = fightStore(h).fights['swarm:w20'];
+  const fight = fightStore(h).fights['swarm:w15'];
   assert.ok(fight.terminal, 'champion death is the score\'s victory, not a disappearance');
   assert.equal(fight.terminal, 'victory');
 
   // Wave planning reaps the fight record — the ledger never outlives its round.
   h.bus.emit('run:wavePlanned', { wave: 21, plan: planFor(21) });
-  assert.equal(fightStore(h).fights['swarm:w20'], undefined, 'the fight detached at wave reset');
-  const leftover = Object.values(fightStore(h).orders).filter((o) => o.fightId === 'swarm:w20');
+  assert.equal(fightStore(h).fights['swarm:w15'], undefined, 'the fight detached at wave reset');
+  const leftover = Object.values(fightStore(h).orders).filter((o) => o.fightId === 'swarm:w15');
   assert.equal(leftover.length, 0, 'its orders released with it');
 });
 
-test('the Regent fields the same machinery on wave 30', () => {
-  const h = boot(30);
-  startWave(h, 30);
+test('the Regent fields the same machinery on wave 25', () => {
+  const h = boot(25);
+  startWave(h, 25);
   const boss = capitalBody(h);
   assert.ok(boss, 'the Regent hull landed');
   assert.equal(boss.data.lootTableId, 'forge_regent');
-  const fight = fightStore(h).fights['swarm:w30'];
+  const fight = fightStore(h).fights['swarm:w25'];
   assert.ok(fight);
   assert.equal(fight.encounterId, 'capital_boss_regent');
   tick(h, 200);

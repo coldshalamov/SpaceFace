@@ -458,6 +458,14 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 }
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
+/* 1200–1500: a slot caption is ~145px wide, so "BLACK FLAG PUBLIC RECOVERY · CURRENT" wrapped with its
+   separator dot stranded at the start of the last line. The badge takes its own line (as it already
+   does under 1200) and the dot retires with it. */
+@media (min-width:1200px) and (max-width:1500px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badges { display:block !important; margin-top:2px !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
+}
 @media (forced-colors: active) {
   ${SL} .sf-slot-frame { background:none; border:1px solid CanvasText; }
   ${SL} .orr-film__list > .k-row[aria-selected="true"] { outline:2px solid Highlight !important; }

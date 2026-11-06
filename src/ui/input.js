@@ -28,6 +28,7 @@ import { resolveDockDeny } from './dockDenyBanner.js';
 import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
+import { isSwarmControls } from '../data/swarmControls.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -643,6 +644,35 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
 
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
+
+    // S5 — a live Swarm run admits only its compact set on this route: Esc pause, F1/H help,
+    // Tab scoreboard, F interact. Every Adventure instrument key (maps, comms, codex, find,
+    // fleet, photo, debug overlays) is inert while the run is live.
+    if (isSwarmControls(state)) {
+      if (key === 'Escape' || key === 'p' || key === 'P') {
+        ev.preventDefault();
+        screenManager.pushScreen('pause');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      if (key === 'F1' || key === 'h' || key === 'H') {
+        ev.preventDefault();
+        screenManager.pushScreen('help');
+        return;
+      }
+      if (key === 'Tab') {
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('swarm:scoreboardToggle', {});
+        return;
+      }
+      if ((key === 'f' || key === 'F') && !ev.repeat && dockInRange) {
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        doDock();
+      }
+      return;
+    }
 
     if (matchesBinding(ev, BINDINGS.steeringView)) {
       if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;

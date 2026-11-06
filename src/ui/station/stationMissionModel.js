@@ -70,10 +70,49 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
 }
 
 /**
- * Best next contract from the posted slots, or null. Readiness dominates, then reward over risk;
- * the first loop is gated to Risk 0-1 work (prep-gated, never hidden) until a choice is made.
+ * W1 Journey (owner direction 2026-11-06): a campaign47a book/chain/intro offer on the board IS
+ * the journey's next step, so it outranks the procedural rows — reward/risk scoring is meaningless
+ * for rows whose acceptance floor is the story contract's own. Final-disposition filings are not
+ * journey steps (the contracts screen filters them before this runs; the guard repeats that
+ * policy here so the model stays safe for any caller).
+ */
+function journeyStepCandidate(slots) {
+  return (Array.isArray(slots) ? slots : []).find((m) => m
+    && typeof m.storyTag === 'string'
+    && !m.storyDisposition
+    && (m.storyTag.startsWith('campaign47a:') || m.storyTag === 'story.branch_intro')) || null;
+}
+
+/**
+ * Best next contract from the posted slots, or null. A journey step (the spine's own book job,
+ * branch intro, or chain leg) dominates when one is posted; otherwise readiness dominates, then
+ * reward over risk; the first loop is gated to Risk 0-1 work (prep-gated, never hidden) until a
+ * choice is made.
  */
 export function recommendMissionBoardOffer(slots = [], state = {}) {
+  const journey = journeyStepCandidate(slots);
+  if (journey) {
+    const preflight = missionPreflight(journey, state);
+    const readiness = missionBoardReadiness(preflight);
+    const consequences = missionConsequenceSummary(journey);
+    const risk = missionRiskTier(journey);
+    const route = missionDestName(journey || {});
+    const reward = consequences.reward || 0;
+    const blocked = readiness.state === 'blocked';
+    return {
+      mission: journey,
+      missionId: String(missionOfferId(journey)),
+      kind: blocked ? 'warn' : readiness.kind,
+      state: readiness.state,
+      label: blocked ? 'PREP FIRST' : 'THE BOOK',
+      title: journey.title || prettyType(journey.type),
+      reason: blocked
+        ? 'The book posts this job. Prep first: ' + (preflight.blocker || readiness.title || 'clear the blocker') + '.'
+        : 'The book posts this job — the journey\'s next step. ' + reward + ' cr, Risk ' + risk + ', ' + route + '.',
+      actionLabel: blocked ? 'Resolve Prep' : 'Accept the Book Job',
+      disabled: blocked,
+    };
+  }
   const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
   let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {

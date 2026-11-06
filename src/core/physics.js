@@ -10,6 +10,8 @@ import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
 import { reconcileLatchBeforePhysics } from './latchNineMaterialization.js';
 import { resolveDockRange } from './dockRange.js';
+import { getSimStepProfiler, nowNs } from './simStepProfiler.js';
+import { simCoreFlag } from './simCoreFlags.js';
 // Physics system: integrate positions, rebuild the spatial hash, broad-phase + circle/circle
 // collision with response, swept projectile tests. Runs as steps 5-7 of the sim spine (§2.3).
 // Velocity is updated by flight (thrust/drag); physics integrates position from velocity.
@@ -241,9 +243,15 @@ export const physics = {
   },
 
   update(dt, state) {
+    // E2 sub-phase attribution. `ph` is the realm profiler; when it is off every phase
+    // branch below is a single boolean read, so the production step is unchanged.
+    const ph = getSimStepProfiler();
+    const phOn = ph.active;
+    let phT = phOn ? nowNs() : 0;
     tickPhysicalEffects(state, dt, this.helpers);
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
+    if (phOn) { ph.record('physics.pre', nowNs() - phT); phT = nowNs(); }
     const t0 = perfNow();
     this._diag.sweptShipContacts = 0;
     this._diag.sweptProjectileHits = 0;
@@ -253,13 +261,17 @@ export const physics = {
     this._diag.pickupSpatialQueries = 0;
     if (usesSg02DynamicAuthority(state)) {
       this._updateSg02DynamicAuthority(dt, state);
+      if (phOn) { ph.record('physics.authority', nowNs() - phT); phT = nowNs(); }
       this._syncDynamicSpatialHash(state);
+      if (phOn) { ph.record('physics.hash', nowNs() - phT); phT = nowNs(); }
       this.collectPickups(state);
       this.sweepProjectiles(dt, state);
       this.updateDockRange(state);
+      if (phOn) { ph.record('physics.post', nowNs() - phT); phT = nowNs(); }
       this._countCollisionPairWork(state);
       this._diag.tickMs = Math.max(0, perfNow() - t0);
       this._publishRuntime(state);
+      if (phOn) { ph.record('physics.publish', nowNs() - phT); }
       return;
     }
     this._disableSg02DynamicAuthority();
@@ -362,10 +374,24 @@ export const physics = {
   _publishRuntime(state) {
     state.physicsRuntime = state.physicsRuntime || {};
     state.physicsRuntime.diagnostics = this._diag;
-    if (this._sg02 && this._diag.backend === 'rapier-dynamic' && shouldPublishSg02Snapshot(state)) {
-      state.physicsRuntime.sg02Snapshot = this._sg02.quantizedSnapshot({ liveOnly: true });
+    const runtime = state.physicsRuntime;
+    // E2: the quantized per-body snapshot is a verification view (simSnapshot), not sim state.
+    // Building it per tick allocated one record per body per step for a reader that only asks at
+    // a checkpoint. Publish it only when a host explicitly opts in; otherwise hand out a lazy
+    // provider so `snapshotSimState` still sees identical data at the moment it asks.
+    if (this._sg02 && this._diag.backend === 'rapier-dynamic') {
+      if (!this._sg02SnapshotProvider) {
+        this._sg02SnapshotProvider = () => (this._sg02 ? this._sg02.quantizedSnapshot({ liveOnly: true }) : []);
+      }
+      runtime.sg02SnapshotProvider = this._sg02SnapshotProvider;
+      if (shouldPublishSg02Snapshot(state)) {
+        runtime.sg02Snapshot = this._sg02SnapshotProvider();
+      } else {
+        delete runtime.sg02Snapshot;
+      }
     } else {
-      delete state.physicsRuntime.sg02Snapshot;
+      delete runtime.sg02Snapshot;
+      delete runtime.sg02SnapshotProvider;
     }
   },
 
@@ -919,9 +945,14 @@ export const physics = {
     this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
+    const phPre = getSimStepProfiler();
+    const phPreOn = phPre.active;
+    let phPreT = phPreOn ? nowNs() : 0;
     const owner=this._sg02, world=owner.world, epoch=this._sg02Token;
     const sdiag = owner.step(dt, state.tick);
+    if (phPreOn) { phPre.record('physics.worldStep', nowNs() - phPreT); phPreT = nowNs(); }
     const sg02ImpactCount = owner.publishCompletedOrchardContacts(owner.completedOrchardTail(),()=>this._emitSg02ContactImpacts(state));
+    if (phPreOn) { phPre.record('physics.impacts', nowNs() - phPreT); }
     if(this._sg02!==owner || owner.world!==world || this._sg02Token!==epoch || this.state!==state) return;
     if(!owner.orchardAuthorityAvailable()) {this._diag.rapierReady=false;this._diag.sg02Ready=false;return;}
     this._diag.rapierReady = true;
@@ -2020,11 +2051,16 @@ function maxLiveCollectorRadius(collectors) {
 
 function shouldPublishSg02Snapshot(state) {
   const runtime = state && state.physicsRuntime;
-  // Headless realms (Node, a future sim worker) used to publish unconditionally — that made the
-  // quantized per-body snapshot a per-tick cost the browser only pays on demand. Keep the
-  // headless default ON for evidence parity, but honor an explicit runtime opt-out so a host
-  // can match the browser's flag-gated behavior (and a worker can run the production default).
-  if (typeof window === 'undefined') return !(runtime && runtime.publishSg02Snapshot === false);
+  if (!simCoreFlag('lazySg02Snapshot')) {
+    // Legacy shape: headless realms publish every tick unless explicitly opted out.
+    if (typeof window === 'undefined') return !(runtime && runtime.publishSg02Snapshot === false);
+    return !!(runtime && runtime.publishSg02Snapshot === true)
+      || window.__SF_PUBLISH_SG02_SNAPSHOT__ === true;
+  }
+  // E2: default OFF in both realms. The snapshot is a verification view; a host that needs it
+  // per tick opts in explicitly (`runtime.publishSg02Snapshot = true` or the window flag), while
+  // `snapshotSimState` reads the lazy provider installed beside it.
+  if (typeof window === 'undefined') return !!(runtime && runtime.publishSg02Snapshot === true);
   return !!(runtime && runtime.publishSg02Snapshot === true)
     || window.__SF_PUBLISH_SG02_SNAPSHOT__ === true;
 }
