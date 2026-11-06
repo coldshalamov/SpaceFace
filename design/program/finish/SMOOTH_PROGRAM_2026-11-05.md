@@ -83,7 +83,7 @@ Twelve parallel packages, disjoint file ownership, focused tests only. Measured 
 | R2-A Draw-call merge | Packaged hulk leaves merge per material (shared cached merged geometry); fallback drone body 3 meshes → 1. Ship-hull merge still open — the biggest leaf count |
 | R2-B HUD/radar | Selector walks + band solves memoized per flush; radar heat ring on an offscreen layer repainted only when it moves; line-strain readout dirty-gated, viewport cached |
 | R2-C In-flight loading | Quantized/normalized position bounds take the plain fast path exactly (was the ~0.5 s/30 s slow path on new ship models) |
-| R2-D Physics solver | **Not started** — needs the save-contract migration; owner decision, §6 |
+| R2-D Physics solver | **Landed** — Rapier `numSolverIterations` 12 → 6 in `sg02DynamicBodyOwner.js` (owner approval 2026-11-05). Dense-contact + rope microbench: physics step −25–30 % (0.69–0.76 vs 0.89–1.00 ms/step, 44 bodies/10 ropes). Migration = the designed path: a legacy-iterations snapshot is refused by the native runtime contract and rebuilds scalar — old saves still load, they just take the already-tested slow-adopt once. Golden re-record was deliberate and reviewed: in-tree A/B reproduced both prior hashes exactly under 12, then under 6 only motion leaf fields moved (≤1.5 WU player, ≤0.3 WU others, ≤0.4 WU/s) — identical fires/hits/tether ticks/damage; both gated envelopes updated with the evidence in `notes` |
 | R2-E AI/flight at scale | Far-from-player combat members refresh perception/doctrine at half rate; NPC job threat scans read the ship lane of the entity index (map-validated) instead of all entities |
 | R2-G Stand-ins + sector prewarm | Pending roots already drawing a resident proxy stay on glass; `_noMesh` rows stop holding the opening gate; every asteroid size class the range can spawn is warmed |
 
@@ -124,8 +124,8 @@ Each row is a self-contained agent package: owned files, measured before-cost, t
 
 1. **Sim step under 8 ms at 30 hostiles.** Worker per-system timing RPC (wrap `s.update` in
    `authoritativeSimStep.js`, expose next to `probePerformance`) so every later package measures the
-   worker directly; then physics (solver, contact fan-out listeners on `physics:impact`, proxy-id
-   dirty flag in `syncFromEntityLayers`), AI, flight.
+   worker directly; then physics (contact fan-out listeners on `physics:impact`, proxy-id
+   dirty flag in `syncFromEntityLayers` — solver-iteration reduction landed in R2-D), AI, flight.
 2. **Draw calls under 300 in a Swarm fight.** Merged hulls (R2-A), instanced drones/pickups/debris,
    far-ship impostors, fewer distinct materials (each is a program + uniform upload).
 3. **Zero first-use compiles in flight.** CI-style check: `renderer.info.programs` must not grow after
@@ -152,7 +152,7 @@ Each row is a self-contained agent package: owned files, measured before-cost, t
 | Option | Gain | Cost |
 |---|---|---|
 | Cap the exceptional-speed zoom-out 3.5× → ~2.5× (`tabletopPolicy.js` `PHYSICS_EARNED_SPEED_ZOOM_MAX`, FEEL_CONTRACT §C) | far fewer objects on screen while boosting (drawables doubled at 3.5×) | the "world opens up" at extreme speed is less dramatic |
-| Rapier solver iterations 12 → 6 (R2-D) | up to ~20–30 % of the physics step | piles/tethers slightly softer; needs a save-contract migration |
+| ~~Rapier solver iterations 12 → 6~~ | **approved and landed (R2-D)** | — |
 | NPC headlight beams (removed in Round 1) | 2 fewer lights in every shader | NPC ships no longer cast beams |
 
 ## 7. Finish line
