@@ -1,0 +1,122 @@
+name: UI PR review
+
+on:
+  pull_request:
+    paths:
+      - 'src/ui/**'
+      - 'styles/**'
+      - '.github/workflows/ui-pr-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-pr-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  affected-screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
+            /assets/**/*.css
+            /assets/**/*.woff2
+            /assets/ui/**
+            /assets/cinematics/boot-visualizer.jpg
+            !/design/
+            !/tools/blender/
+            !/docs/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Select fixtures from changed screen owners
+        id: surfaces
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          routes = {
+              'lampKey.js': ['station-contracts', 'station-industry', 'clips'],
+              'stationStandard.js': ['station-dock', 'station-market', 'station-contracts'],
+              'stationLayouts.js': ['station-dock', 'station-industry', 'asteroid-works'],
+              'stationTabsLayouts.js': ['station-industry', 'station-shipworks'],
+              'shipworksLayouts.js': ['station-shipworks'],
+              'mobileScreenLayouts.js': ['station-dock', 'station-industry', 'station-shipworks'],
+              'marketLayouts.js': ['station-market'],
+              'pauseLayouts.js': ['pause'],
+              'helpLayouts.js': ['help'],
+              'settingsLayouts.js': ['settings'],
+              'achievementsLayouts.js': ['achievements'],
+              'achievements.js': ['achievements'],
+              'crucible-doorLayouts.js': ['crucible-door'],
+              'codexLayouts.js': ['codex', 'codex-record'],
+              'sandboxLayouts.js': ['sandbox'],
+              'chartLayouts.js': ['chart-local', 'chart-galaxy', 'chart-route'],
+              'rangeLayouts.js': ['range'],
+              'range.js': ['range'],
+              'popupsLayouts.js': ['popup-dossier', 'popup-confirm-danger'],
+              'tech-treeLayouts.js': ['tech-tree', 'tech-tree-progress'],
+              'flight-radialsLayouts.js': ['comms-radial', 'wingman-radial'],
+              'gameOverLayouts.js': ['game-over', 'gameOver-empty'],
+              'newGameLayouts.js': ['new-game'],
+              'physics-raceLayouts.js': ['physicsVenues', 'raceBoard'],
+              'cruciblePreparationLayouts.js': ['crucible-rearm', 'crucible-fortify'],
+          }
+          base, head = os.environ.get('BASE_SHA'), os.environ.get('HEAD_SHA')
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', base, head, '--', 'src/ui', 'styles'],
+              text=True).splitlines() if base and head else []
+          selected = {screen for name in changed for screen in routes.get(Path(name).name, [])}
+          # A shared/unknown owner needs the whole mapped set, rather than silently
+          # reporting an untested screen as covered. This is fixture evidence only.
+          if not selected or any(Path(name).name not in routes for name in changed):
+              selected = {screen for screens in routes.values() for screen in screens}
+          shots = ','.join(sorted(selected))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'shots={shots}\n')
+          print('Real screen fixtures:', shots)
+          PY
+      - name: Install bench dependencies without Electron
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify mission selection and real hold acceptance
+        if: contains(steps.surfaces.outputs.shots, 'station-contracts')
+        run: node --test test/contract-hold-identity-p04.test.mjs test/station-contracts-short-dossier.test.mjs
+      - name: Capture affected layouts and exercise fixture controls
+        env:
+          SHOTS: ${{ steps.surfaces.outputs.shots }}
+          SPACEFACE_PLAYER_STORE_DIR: ''
+        run: >-
+          node scripts/ui-bench.mjs --shot="$SHOTS"
+          --viewports=700x461,960x540,390x844,1920x1080
+          --walk --max=200 --timeout-ms=60000 --out=.devshots/ui-pr-review
+      - name: Preserve screenshots and partial reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-pr-review-${{ github.event.pull_request.number || github.run_id }}
+          path: .devshots/ui-pr-review/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14

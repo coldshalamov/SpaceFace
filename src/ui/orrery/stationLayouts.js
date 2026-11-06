@@ -328,7 +328,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
    one nowrap line, so at 901-1100 the strip spilled left over the mechanic's note and its last verb
    hung across its neighbour's. Here the note column is a fixed measure and the strip owns the rest. */
 @media (min-width:901px) and (max-width:1100px) {
-  ${S} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 280px) minmax(0, 1fr) !important; }
+  /* 280px clipped Helios Station's ident to "SOLAR CONCOR" and left the 30px name ~42px short of
+     its ink at 960×540 (scroll 322 vs client 280). 360 clears the nameplate + full eyebrow
+     ("Trade Hub · Class L · Solar Concord Navy") while the crown still owns the rest. */
+  ${S} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 360px) minmax(0, 1fr) !important; }
   ${S} .sxb-berth .sxb-crown { width:auto !important; justify-self:stretch !important; left:0 !important; right:auto !important; }
   ${S} .sxb-crown .sxb-vitals { max-width:none !important; gap:6px !important; justify-content:space-between !important; }
   /* a blocked verb ("REPAIR  NO YARD", ~14px wider than a price) left the row 5px too wide for the 6px

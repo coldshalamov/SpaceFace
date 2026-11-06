@@ -278,7 +278,8 @@ export const MOBILE_SCREEN_CSS = `
   }
   ${B} .orr-ind-chain .orr-chain__reason,
   ${B} .orr-ind-chain .orr-chain__reason.is-compact {
-    white-space:normal !important; overflow-wrap:normal !important; word-break:keep-all !important;
+    /* Break an overlong token only when it cannot fit; normal phrases still wrap at spaces. */
+    white-space:normal !important; overflow-wrap:anywhere !important; word-break:normal !important;
     max-width:100% !important; font-size:18px !important; letter-spacing:.1em !important; line-height:1.15 !important;
     text-align:center !important;
   }
