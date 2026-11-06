@@ -166,12 +166,10 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
     const entry = { state: st, key: labels[slot.index] || '', arsenalId };
-    // S5: the Swarm bar draws icons only — key number + radial cooldown, no words (aria keeps
-    // the names). The Line socket wears RMB: the tether verb has no keyboard code in Swarm.
-    if (isSwarmControls(state)) {
-      entry.iconOnly = true;
-      if (slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
-    }
+        // S5 + X3: the flight rail draws icons and key caps, no words  the names live on the
+    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
+    entry.iconOnly = true;
+    if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
