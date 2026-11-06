@@ -204,9 +204,13 @@ html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-device { transit
     font-size:12px !important; margin:0 !important; min-height:0 !important;
   }
 }
-/* Very short: drop the receipt line that doubled the foot band. */
+/* Very short: keep purchase feedback beside the verbs when space permits.
+   This live status owns refusals and build/repair/rearm results, so it must remain readable. */
 @media (max-height:500px) {
-  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-receipt { display:none !important; }
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-receipt {
+    flex:1 1 22ch !important; min-width:0 !important;
+    line-height:1.3 !important; overflow-wrap:anywhere;
+  }
   html body #screens > .k-screen.sf-crucible-fortify > .k-foot { padding:4px 0 2px !important; }
   html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan svg {
     min-height:100px !important; max-height:min(180px, 38vh) !important;
