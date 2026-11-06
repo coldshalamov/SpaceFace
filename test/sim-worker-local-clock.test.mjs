@@ -1553,6 +1553,91 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
   }
 });
 
+test('a lost presentation ACK self-heals through a full rebuild instead of freezing the lane', { timeout: 30000 }, async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  const workerReplies = [];
+  const workerSelf = {
+    postMessage(message) { workerReplies.push(message); },
+  };
+  globalThis.self = workerSelf;
+  try {
+    await import(`../src/core/wholeSimBrowserWorker.js?stale-ack-${Date.now()}`);
+    const workerOnMessage = workerSelf.onmessage;
+    assert.equal(typeof workerOnMessage, 'function');
+    const scenarioContract = JSON.parse(readFileSync(
+      new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8',
+    ));
+    workerOnMessage({ data: {
+      kind: 'init',
+      seq: 'stale-ack-init',
+      profile: 'production',
+      clockMode: 'worker-local',
+      timeScale: 0,
+      seed: 4242,
+      settings: {},
+      domainMirroring: {},
+      bridgeAll: false,
+      tacticalAI: false,
+      viewport: { w: 800, h: 600 },
+      scenarioContract,
+      scenarioContractPath: 'src/data/scenarios/47a.scenario.json',
+      scenarioContractHash: 'stale-ack-fixture',
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'ready'), 30000);
+    workerOnMessage({ data: {
+      kind: 'clockControl',
+      seq: 'stale-ack-control',
+      active: true,
+      generation: 1,
+      lifecycleGeneration: 0,
+      timeScale: 1,
+    } });
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.clockDiagnostics?.scale === 1), 10000);
+
+    // The first live publish now awaits an ACK that never comes — the wedged
+    // sentAwaitingAck state that previously froze presentation forever while
+    // the sim ran blind (or hard-stopped once the durable limit tripped).
+    const wedgedPublish = workerReplies.filter((reply) => reply.kind === 'clockTick').at(-1);
+    const wedgedSteps = wedgedPublish.clockDiagnostics?.steps || 0;
+    const repliesBeforeWedge = workerReplies.filter((reply) => reply.kind === 'clockTick').length;
+
+    // No ACK is ever sent. Within the stale-ack budget the worker must declare
+    // it lost, arm a journal rebuild, and publish again — self-healing instead
+    // of retaining indefinitely.
+    await waitFor(() => workerReplies.some((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1), 8000);
+
+    const recovered = workerReplies.filter((reply) => reply.kind === 'clockTick'
+      && reply.journalFullRebuild === true
+      && (reply.clockDiagnostics?.staleAckRecoveries || 0) >= 1).at(-1);
+    assert.ok(
+      recovered.clockDiagnostics.steps > wedgedSteps,
+      'the authoritative clock kept stepping through the wedged publish instead of stopping',
+    );
+    assert.ok(
+      recovered.clockSequence > wedgedPublish.clockSequence,
+      'the recovery publishes on a fresh sequence so the late duplicate ACK is rejected',
+    );
+    // While the publish was wedged, ordinary ticks coalesced into the retained
+    // reply rather than posting — the single rebuild replaces that whole window.
+    assert.ok(
+      workerReplies.filter((reply) => reply.kind === 'clockTick').length
+        >= repliesBeforeWedge,
+      'recovery adds publishes on top of the wedged window rather than replaying it',
+    );
+  } finally {
+    try {
+      workerSelf.onmessage?.({ data: { kind: 'shutdown', seq: 'stale-ack-shutdown' } });
+    } catch (_) {}
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('active worker-local commands wait for the next timer tick', { timeout: 60000 }, async () => {
   // This is the bounded queue contract for the next worker-clock repair. An
   // active presentation command must join the next real fixed-step tick; it
