@@ -23,6 +23,7 @@ import {
   capitalBossInRange,
 } from './capitalBossEncounters.js';
 import { spawnCapitalBossWing } from '../missions/capitalBossSpawn.js';
+import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { missions } from './missions.js';
 import { SECTORS } from '../data/sectors.js';
@@ -76,9 +77,144 @@ function sectorLevelForMission(state, mission) {
   return Math.round((lvLo + lvHi) / 2);
 }
 
+/**
+ * S14 — a fallen swarm capital pays its mass forward: four to six big chunks spawned where the
+ * hull died, every one an ordinary tetherable throw-mass that outlives the round. The run's
+ * rng deals the count and the scatter; a record-stamped ledger keeps a restore or a second
+ * start from minting a second field.
+ */
+const SWARM_BOSS_CHUNKS = Object.freeze({
+  min: 4, max: 6,
+  radius: [14, 18],
+  mass: [90, 140],
+  hull: 320,
+  scatterMin: 18, scatterMax: 64,
+});
+
+function spawnSwarmBossChunks(context, record, boss) {
+  const spawn = context && context.helpers && context.helpers.spawnEntity;
+  const state = context && context.state;
+  if (typeof spawn !== 'function' || !state || !boss || !boss.pos) return [];
+  const rng = typeof state.rng === 'function' ? state.rng : null;
+  const roll = (lo, hi) => lo + (rng ? rng() : 0.5) * (hi - lo);
+  const count = Math.round(roll(SWARM_BOSS_CHUNKS.min, SWARM_BOSS_CHUNKS.max + 0.999));
+  const bossName = (boss.data && (boss.data.scanLabel || boss.data.name)) || 'capital hulk';
+  const label = `${String(bossName).replace(/\s+/g, ' ').toUpperCase()} CHUNK`;
+  const vel = boss.vel && Number.isFinite(boss.vel.x) ? boss.vel : { x: 0, z: 0 };
+  const ids = [];
+  for (let i = 0; i < count; i++) {
+    const angle = roll(0, Math.PI * 2);
+    const dist = roll(SWARM_BOSS_CHUNKS.scatterMin, SWARM_BOSS_CHUNKS.scatterMax);
+    const kick = roll(4, 14);
+    const spec = {
+      type: 'wreck',
+      team: 2,
+      pos: { x: boss.pos.x + Math.cos(angle) * dist, z: boss.pos.z + Math.sin(angle) * dist },
+      vel: { x: vel.x + Math.cos(angle) * kick, z: vel.z + Math.sin(angle) * kick },
+      radius: roll(SWARM_BOSS_CHUNKS.radius[0], SWARM_BOSS_CHUNKS.radius[1]),
+      mass: roll(SWARM_BOSS_CHUNKS.mass[0], SWARM_BOSS_CHUNKS.mass[1]),
+      hull: SWARM_BOSS_CHUNKS.hull,
+      hullMax: SWARM_BOSS_CHUNKS.hull,
+      collides: true,
+      data: {
+        tetherable: true,
+        masslineTetherable: true,
+        physicalRole: 'throw_mass',
+        swarmBossChunk: true,
+        scanLabel: label,
+        capitalBossActorKey: `${record.fightId}/boss_chunk/${i}`,
+        capitalBossEncounterId: record.encounterId,
+      },
+      flags: { persistent: true },
+    };
+    const entity = spawn(spec);
+    if (entity && entity.id != null) ids.push(entity.id);
+  }
+  return ids;
+}
+
+/**
+ * S14 rites — wrapped around the production encounters object the same way withLastArgument
+ * is: the system mutates, never forks. Three swarm-only beats ride the existing seams:
+ *   - `capitalBoss:actChanged` → the act's own three-word callout through `swarm:announce`.
+ *   - `entity:killed` on the champion → the death into ammunition chunks above.
+ *   - the run's FIRST fallen champion → `run.swarmFirstBossDown`, the milestone the results
+ *     plate turns into the IRON MAW DOWN variant, plus the push that mounts it.
+ * All of it is gated on `swarm:` fight ids — contract bosses and Adventure never see it.
+ */
+function withSwarmBossRites(system) {
+  const original = { init: system.init, destroy: system.destroy };
+  const unsubs = [];
+  let context = null;
+  system.init = function (ctx) {
+    original.init.call(system, ctx);
+    context = ctx;
+    const listen = (event, fn) => {
+      const off = ctx.bus.on(event, fn);
+      if (typeof off === 'function') unsubs.push(off);
+      else if (typeof ctx.bus.off === 'function') unsubs.push(() => ctx.bus.off(event, fn));
+    };
+
+    listen('capitalBoss:actChanged', (change) => {
+      if (!change || !Number.isInteger(change.index)) return;
+      const state = context.state;
+      const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+      if (!fights) return;
+      // The change carries no fightId — correlate the live swarm record at that act.
+      const record = Object.values(fights).find((r) => r && !r.terminal
+        && isSwarmFightId(r.fightId) && r.actIndex === change.index);
+      if (!record) return;
+      const act = (requireCapitalBossEncounter(record.encounterId).score.acts || [])[change.index];
+      if (!act || typeof act.callout !== 'string' || !act.callout) return;
+      ctx.bus.emit('swarm:announce', { kind: 'bossact', text: act.callout, count: 1 });
+    });
+
+    listen('entity:killed', (p) => {
+      if (!p || p.id == null) return;
+      const state = context.state;
+      const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+      if (!fights) return;
+      for (const [fightId, record] of Object.entries(fights)) {
+        if (!isSwarmFightId(fightId) || record.bossId !== p.id || record.swarmAmmoChunks) continue;
+        const boss = state.entities && typeof state.entities.get === 'function'
+          ? state.entities.get(record.bossId) : null;
+        record.swarmAmmoChunks = spawnSwarmBossChunks(context, record, boss);
+        // The run's first fallen champion is the milestone: the results plate turns the
+        // stamp into the IRON MAW DOWN variant, and Keep going hands the run back.
+        const run = state.run;
+        const telemetry = run && (run.telemetry || (run.telemetry = {}));
+        if (run && run.kind === 'survival' && run.ruleset === 'swarm' && telemetry.firstBossDown == null) {
+          const encounter = requireCapitalBossEncounter(record.encounterId);
+          telemetry.firstBossDown = {
+            name: (encounter.score && encounter.score.name) || 'BOSS',
+            line: (encounter.score && encounter.score.victory) || '',
+            lesson: (encounter.score && encounter.score.lesson) || '',
+            wave: run.wave,
+            pending: true,
+          };
+          ctx.bus.emit('ui:pushScreen', { id: 'crucibleResults', source: 'swarm:bossMilestone' });
+        }
+      }
+    });
+
+    // The milestone plate acked on mount — consume the pending stamp so the run's real end
+    // renders the ordinary record.
+    listen('swarm:bossMilestoneAck', () => {
+      const telemetry = context.state && context.state.run && context.state.run.telemetry;
+      if (telemetry && telemetry.firstBossDown) telemetry.firstBossDown.pending = false;
+    });
+  };
+  system.destroy = function () {
+    for (const off of unsubs.splice(0)) off();
+    if (typeof original.destroy === 'function') original.destroy.call(system);
+    context = null;
+  };
+  return system;
+}
+
 /** Production port construction, shared by the registry singleton and per-runtime instances. */
 export function createProductionCapitalBossEncounters() {
-  return withLastArgument(createCapitalBossEncounters({
+  return withSwarmBossRites(withLastArgument(createCapitalBossEncounters({
     observe(record, state, helpers) {
       if (isLastArgumentFight(record)) return observeLastArgument(record, state, helpers);
       const swarmFight = isSwarmFightId(record.fightId);
@@ -214,7 +350,7 @@ export function createProductionCapitalBossEncounters() {
         spawnEntity: (spec) => owner.spawnOwnedCapitalBossActor(mission, spec),
       });
     },
-  }));
+  })));
 }
 
 /** The production singleton registered by the browser registry and the Node factory table. */
