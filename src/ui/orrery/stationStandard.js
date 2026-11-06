@@ -403,8 +403,10 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
-    grid-template-columns:minmax(0,170fr) minmax(0,95fr) minmax(0,90fr) minmax(0,120fr) minmax(0,118fr) !important;
-    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 10px !important; margin:0 !important; padding:5px 10px 6px !important;
+    /* Fuel/Hold/Munitions need ~100/98/125px once the absolute figure sits beside its label; the prior
+       95/90/118 tracks left Fuel/Hold/Munitions −3/−3/−6px under their labels at 700×461. */
+    grid-template-columns:minmax(0,150fr) minmax(0,108fr) minmax(0,102fr) minmax(0,110fr) minmax(0,130fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 8px !important; margin:0 !important; padding:5px 10px 6px !important;
     width:auto !important; max-width:none !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
@@ -412,6 +414,16 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  /* Absolute figures still collide once a cell drops under the label+figure ink (Fuel/Hold/Munitions
+     −3/−3/−6px at 700×461 on the prior 95/90/118 tracks). Cap the label so it cannot run under the
+     right-pinned figure, and densify the type so 100/100 and Munitions 0/100 clear inside the new tracks. */
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__label {
+    font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    max-width:calc(100% - 56px) !important; overflow:hidden !important; text-overflow:clip !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value {
+    font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vnum { font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vden { font-size:12px !important; }
   ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
     margin:3px 0 0 !important; gap:3px !important; }
   ${P} .sxb-crown .sxb-vital__acts > button { min-height:22px !important; padding:1px 5px !important; }
