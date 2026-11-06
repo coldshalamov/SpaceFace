@@ -38,7 +38,9 @@ const CSS = `
   ${T} .k-foot { row-gap: 3px; min-height: 0; }
   ${T} .sf-range__ladder {
     column-gap: 8px;
-    max-height: max(56px, calc(100dvh - 300px));
+    /* Keep at most two readable rows: the 161px ladder at 700×461 reduced the
+       flight course to a thin strip. Remaining rungs stay in this scroll owner. */
+    max-height: clamp(44px, calc(100dvh - 360px), 80px);
     /* Wide ladders wrap into rows; narrow ladders run horizontally. Both axes must remain
        scrollable once height is bounded, otherwise later wrapped rungs cannot be reached. */
     overflow: auto;
