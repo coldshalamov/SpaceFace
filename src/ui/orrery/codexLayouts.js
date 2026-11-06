@@ -89,7 +89,7 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .cx-search::before { top:3px; }
   ${CX} .cx-search::after { top:13px; }
   ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
-  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.12em !important; }
+  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.12em !important; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:6px !important; }
@@ -113,7 +113,7 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .cx-search::before { top:3px; }
   ${CX} .cx-search::after { top:13px; }
   ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
-  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.12em !important; }
+  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.12em !important; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
@@ -121,6 +121,23 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 20px) !important; }
   ${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 0px) + 36px) !important; }
   ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
+}
+/* Compact sections remain real controls: reserve a 28px target and allow expanded names
+   to wrap. The section column owns overflow instead of making Ledger collide with Close or
+   compressing all ten choices into 18px hit areas. */
+@media (min-width:640px) and (max-width:1100px) and (max-height:519px) {
+  ${CX} > .k-hang > .sf-tabbar {
+    min-height:0; overflow:hidden auto; overscroll-behavior:contain;
+    scrollbar-width:thin; scroll-padding-block:4px;
+  }
+  ${CX} .sf-tabbar > li { flex:0 0 auto; }
+  ${CX} .sf-tabbar .sf-tab {
+    height:auto !important; min-height:28px !important; padding-block:4px !important;
+    white-space:normal !important; overflow-wrap:anywhere; line-height:1.2 !important;
+  }
+  ${CX} .sf-tabbar .sf-tab:focus-visible {
+    outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px;
+  }
 }
 `;
 

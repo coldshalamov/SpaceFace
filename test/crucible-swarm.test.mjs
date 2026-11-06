@@ -278,6 +278,8 @@ test('a swarm run reaches active with the room already under pressure', () => {
   );
   assert.equal(liveHostiles(h).length, swarmConcurrent(1), 'the room opened at full strength');
   for (const entity of h.spawned) {
+    // Gate flares are wave presentation artifacts, not roster bodies — no cohort stamp.
+    if (entity.type === 'beacon') continue;
     assert.equal(entity.data.runCohort, SURVIVAL_COHORT_TAG);
     assert.equal(entity.data.runWave, 1);
   }
@@ -395,7 +397,8 @@ test('a fast clear never overfills the finite round budget', () => {
   for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
     while (killOne(h)) {} tick(h);
   }
-  assert.equal(h.spawned.length, swarmQuota(1));
+  // The quota counts bodies; gate flares (beacon-type story props) arrive alongside them.
+  assert.equal(h.spawned.filter((e) => e.type !== 'beacon').length, swarmQuota(1));
   assert.equal(h.state.run.phase, 'draft');
   assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });

@@ -1491,12 +1491,19 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       }
       return null;
     });
-    if (!record || runtime.retiring || !authoredConsumerIsActive(options)) return null;
+    if (!record || runtime.retiring) return null;
+    const stalePackage = record.renderPackage
+      && (record.renderPackage.evicted === true || record.renderPackage.released === true);
+    if (stalePackage) {
+      // Only this exact source task may be retired; a later generation owns its own request.
+      // Cache validity belongs to the package, not the observer's lifetime. A departed
+      // observer still retires an unmountable record, but must not start or join its retry.
+      if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+    }
+    if (!authoredConsumerIsActive(options)) return null;
     if (handoffResidency && handoffResidency.isOwnerReleased(options.residencyOwner)) return null;
     if (handoff && !handoff.shouldDecode()) return null;
-    if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
-      // Only this exact source task may be retired; a later generation owns its own request.
-      if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+    if (stalePackage) {
       if (handoff) handoff.cancel('stale-cache-hit');
       return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
     }
