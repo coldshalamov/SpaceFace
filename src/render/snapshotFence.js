@@ -736,11 +736,11 @@ export function createSnapshotFence(options = {}) {
       // NaN before the first sample). Intervals up to the 2 Hz floor are cadence; a multi-second
       // silence is never learned, so it still trips the gap detector below.
       packElapsedS += elapsed;
-      // "Idle" means silence longer than the learned cadence, not merely a low reply rate:
-      // at a steady 600 ms cadence the old fixed 0.3 s test skipped rate measurement on
-      // every reply and left the playback rate stuck at 1. The 0.3 s floor still covers
-      // fast streams whose ring has not learned an interval yet.
-      const afterIdle = rateIdleS > Math.max(0.3, recentCadenceS * 2);
+      // A long idle is a gap, not evidence of the playback rate; keep the fast-stream
+      // heuristic here. Slow steady cadences (400–600 ms) skip the 1 s window update and
+      // keep the accurate seed, because a window shorter than two replies is boundary-biased
+      // (600 ms at 1x read 0.859x and left the presented clock 68 ms behind its target).
+      const afterIdle = rateIdleS > 0.3;
       if (current.sequence !== lastPackSequence) {
         const previousPackSimTimeS = lastPackSimTimeS;
         const packIntervalElapsedS = packElapsedS;
@@ -761,14 +761,22 @@ export function createSnapshotFence(options = {}) {
           // read 0.756x at 0.109x. Summing until 100 ms of presented time averages the
           // quantisation out, and a coalesced reply still gains its ticks over the same window.
           if (!rateSeeded) {
-            if (afterIdle) {
+            // The seed window must look like a reply interval, not a stall: a 320 ms idle
+            // carrying one 16.7 ms tick is not a 0.05x playback rate. Slow steady cadences
+            // (hundreds of ms) still qualify because the learned cadence is equally slow.
+            const seedWindowS = Math.max(recentCadenceS * 2, 0.05);
+            if (packIntervalElapsedS > seedWindowS) {
               rateSeedSimS = 0;
               rateSeedWallS = 0;
             } else {
               rateSeedSimS += packDeltaS;
               rateSeedWallS += packIntervalElapsedS;
             }
-            if (rateSeedWallS >= 0.1) {
+            // Average whole reply intervals until the window is long enough that one frame of
+            // quantisation cannot bias the seed: 1 s of presented time, and at least four
+            // replies at a slow cadence.
+            const seedMinS = Math.max(PRESENTATION_RATE_WINDOW_S, recentCadenceS * 4);
+            if (rateSeedWallS >= seedMinS) {
               presentationRate = Math.max(0, Math.min(
                 PRESENTATION_RATE_MAX, rateSeedSimS / rateSeedWallS,
               ));

@@ -50,9 +50,9 @@
   timeline events.
 - **Measured reserve/recovery (this pass, Node, exact sub-frame pack timing):** 124 ms replies at
   60 fps over 30 s → lead p50 145.7 ms, 0 extrapolated frames; 12.3 fps at 1× / 123 ms replies →
-  p50 86.4 ms, 0 extrapolated frames; 12.3 fps at 0.109× → p50 43.5 ms. Steady 400/500/600 ms
-  cadence at 60/12.3 fps holds lead p50 427.0/521.3/626.0 and 361.5/467.4/558.8 ms with
-  **0 gap resets** and worst jump ≤ 0.71×; the 349/351 ms knife edge is 0 resets at both rates.
+  p50 86.4 ms, 0 extrapolated frames; 12.3 fps at 0.109× → p50 43.6 ms. Steady 400/500/600 ms
+  cadence at 60/12.3 fps holds lead p50 421.8/521.3/620.9 and 365.0/461.7/563.9 ms with
+  **0 gap resets** and worst jump ≤ 0.61×; the 349/351 ms knife edge is 0 resets at both rates.
   A 3 s worker silence re-seats once (`gapResets = 1`, gap 3000 ms) and the first post-burst frame
   is back at lead 50.0 ms.
 - Tests: `test/frame-truth.test.mjs` **7/7** (ring wrap, held/pause classification, heldMs,

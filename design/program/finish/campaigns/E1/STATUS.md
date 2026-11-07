@@ -91,21 +91,21 @@
   - **3 s worker silence + burst:** `gapResets = 1`, gap priced 3000 ms, first post-burst
     `leadMs = 50.0`, recovery frame 0 (<1 s), re-seat jump 546 wu = the 2.8 s of travel not
     already played, no backward pose, every post-re-seat frame < 2× the presented-rate bar.
-  - **Steady cadence, 60 fps, 30 s:** 400 ms → lead p50 **427.0**, min 381.5, max 453.5, target
-    443 ms, **0** gap resets, worst jump **0.64×**; 500 ms → p50 **521.3**, min 514.4, max 528.2,
-    **0** resets, worst **0.50×**; 600 ms → p50 **626.0**, min 490.3, max 713.1, **0** resets,
-    worst **0.64×**. No held frames, no extrapolated frames.
-  - **Steady cadence, 12.3 fps, 30 s:** 400 ms → p50 **361.5**, min 332.6, max 468.5, **0**
-    resets, worst **0.65×**; 500 ms → p50 **467.4**, min 380.4, max 490.6, **0** resets, worst
-    **0.71×**; 600 ms → p50 **558.8**, min 448.1, max 689.9, **0** resets, worst **0.63×**.
-  - **349/351 ms knife edge,** 60 fps → p50 374.1 / 376.0, **0** resets, worst 0.58× both;
-    12.3 fps → p50 313.5 / 315.0, **0** resets, worst 0.61× / 0.70×. The old 350 ms fixed
+  - **Steady cadence, 60 fps, 30 s:** 400 ms → lead p50 **421.8**, min 414.4, max 428.1, target
+    433 ms, **0** gap resets, worst jump **0.50×**; 500 ms → p50 **521.3**, min 514.4, max 528.2,
+    **0** resets, worst **0.50×**; 600 ms → p50 **620.9**, min 614.3, max 628.3, **0** resets,
+    worst **0.50×**. No held frames, no extrapolated frames.
+  - **Steady cadence, 12.3 fps, 30 s:** 400 ms → p50 **365.0**, min 365.0, max 429.0, **0**
+    resets, worst **0.59×**; 500 ms → p50 **461.7**, min 397.1, max 463.8, **0** resets, worst
+    **0.51×**; 600 ms → p50 **563.9**, min 531.5, max 580.1, **0** resets, worst **0.60×**.
+  - **349/351 ms knife edge,** 60 fps → p50 370.4 / 372.2, **0** resets, worst 0.58× / 0.51×;
+    12.3 fps → p50 313.5 / 314.4, **0** resets, worst 0.60× / 0.61×. The old 350 ms fixed
     threshold produced 65 resets at 351 ms and 4.65× jumps.
-  - **124 ms replies, 60 fps, 30 s:** lead p50 **145.7 ms**, min 134.8, max 157.7, target 159.0 ms,
-    effective max 169.0 ms, **0** extrapolated frames, 0 held frames, worst jump 0.55×, 0 resets.
-  - **12.3 fps, 1×, 123 ms replies, 30 s:** lead p50 **86.4 ms**, min 46.4, max 102.8, target
+  - **124 ms replies, 60 fps, 30 s:** lead p50 **145.7 ms**, min 130.9, max 157.7, target 159.0 ms,
+    effective max 169.0 ms, **0** extrapolated frames, 0 held frames, worst jump 0.56×, 0 resets.
+  - **12.3 fps, 1×, 123 ms replies, 30 s:** lead p50 **86.4 ms**, min 46.4, max 100.8, target
     168.0 ms, **0** extrapolated frames, 0 held frames, 0 resets.
-  - **12.3 fps, 0.109×, 123 ms replies, 30 s:** lead p50 **43.5 ms**, min 36.4, max 44.6, **0**
+  - **12.3 fps, 0.109×, 123 ms replies, 30 s:** lead p50 **43.6 ms**, min 36.7, max 44.5, **0**
     extrapolated frames, 0 held frames, 0 resets.
 - Transport-named cohort: the one red is
   `test/anvil-orchard-forecast-worker-transport.test.mjs` (authoritative `physicsBody` is defined
