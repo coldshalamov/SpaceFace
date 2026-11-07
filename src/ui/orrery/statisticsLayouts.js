@@ -1,6 +1,8 @@
 // ORRERY composition for the Statistics screen (design/frontend/ORRERY.md §6 Meta).
-// Layout and type only: title, reading bands, foot rail. Scoped to `.orr-statistics` so nothing
-// reaches another screen. Selectors/IDs unchanged for player-truth and pause wiring.
+// Layout and type only: title, reading bands, foot rail. Reading bands and the career instrument
+// wear hairline cards (border / radius / faint fill) in the same family as the empty-state
+// promise-scale. Scoped to `.orr-statistics` so nothing reaches another screen. Selectors/IDs
+// unchanged for player-truth and pause wiring.
 
 import { injectOrrery } from './tokens.js';
 
@@ -44,7 +46,11 @@ ${ST} > .sf-statistics.k-stage, ${ST} > .sf-statistics.k-hang { grid-area:stage 
   animation:none !important; max-width:min(780px, 100%) !important; ${PLAIN} }
 ${ST} > .sf-statistics.k-stage::before { content:""; position:absolute; z-index:-1; inset:-24px -48px -20px -40px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .78), rgb(4 6 9 / .52) 60%, rgb(4 6 9 / 0)); }
-${ST} .sf-statistics__group { margin:0 0 clamp(16px, 2.2vh, 32px); padding:0; border:0; }
+/* each reading band is one hairline card (shadcn-ish), matching the empty-state promise-scale */
+${ST} .sf-statistics__group {
+  margin:0 0 clamp(12px, 1.8vh, 22px); padding:clamp(10px, 1.3vh, 16px) clamp(12px, 1.4vw, 18px);
+  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025);
+  box-sizing:border-box; }
 ${ST} .sf-statistics__group > .k-caps {
   ${LABEL} margin:0 0 clamp(6px, .9vh, 12px); padding:0; display:flex; align-items:center; gap:12px;
   font-size:clamp(12px, .66vw, 13.5px) !important; letter-spacing:.22em !important;
@@ -58,9 +64,14 @@ ${ST} .sf-statistics .k-row {
   display:grid !important; grid-template-columns:minmax(0, 1fr) auto; align-items:baseline;
   gap:clamp(16px, 2vw, 40px); min-height:clamp(36px, 4.4vh, 46px);
   margin:0; padding:clamp(6px, .75vh, 10px) 0 !important;
-  border:0 !important; border-top:1px solid rgb(${BONE} / .24) !important; ${PLAIN} }
-${ST} .sf-statistics .k-rows > .k-row:first-child { border-top-color:rgb(${BONE} / .36) !important; }
-${ST} .sf-statistics .k-rows > .k-row:last-child { border-bottom:1px solid rgb(${BONE} / .2) !important; }
+  border:0 !important; border-top:1px solid rgb(${BONE} / .14) !important; ${PLAIN} }
+${ST} .sf-statistics .k-rows > .k-row:first-child { border-top:0 !important; padding-top:2px !important; }
+${ST} .sf-statistics .k-rows > .k-row:last-child { border-bottom:0 !important; padding-bottom:2px !important; }
+/* career instrument: same hairline card language as the reading bands (pool stays behind) */
+${ST} .orr-statistics__career {
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
+  background:rgb(${BONE} / .025) !important; box-sizing:border-box !important;
+  padding:clamp(12px, 1.5vh, 20px) clamp(14px, 1.5vw, 22px) !important; }
 ${ST} .sf-statistics .k-row__name {
   ${BODY} font-size:clamp(14px, min(.95vw, 1.7vh), 18px) !important; font-weight:500; line-height:1.3;
   color:rgb(${BONE} / .94) !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -100,8 +111,9 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
   ${ST} > .k-title .k-t-title, ${ST} > .k-title .fh-title { font-size:clamp(28px, 5.2vh, 48px) !important; }
   ${ST} > .k-title .k-sentence, ${ST} > .k-title > p { margin-top:4px !important; font-size:13.5px !important; }
   ${ST} > .sf-statistics.k-stage { padding-bottom:20px !important; max-width:min(640px, 100%) !important; }
-  ${ST} .sf-statistics__group { margin-bottom:10px; }
+  ${ST} .sf-statistics__group { margin-bottom:8px; padding:8px 12px; border-radius:8px; }
   ${ST} .sf-statistics .k-row { min-height:30px; padding:3px 0 !important; }
+  ${ST} .orr-statistics__career { padding:10px 12px !important; border-radius:8px !important; }
   ${ST} .sf-statistics .k-row__name { font-size:13.5px !important; }
   ${ST} .sf-statistics .k-row__num { font-size:15px !important; }
 }
@@ -119,7 +131,8 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
     padding:0 0 44px !important; max-width:min(560px, 100%) !important;
     -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 52px), transparent 100%) !important;
     mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 52px), transparent 100%) !important; }
-  ${ST} .sf-statistics__group { margin-bottom:4px; }
+  ${ST} .sf-statistics__group { margin-bottom:4px; padding:6px 10px; border-radius:8px; }
+  ${ST} .orr-statistics__career { padding:8px 10px !important; border-radius:8px !important; }
   ${ST} .sf-statistics__group > .k-caps { margin-bottom:2px; gap:8px;
     font-size:12px !important; letter-spacing:.16em !important; }
   ${ST} .sf-statistics__group > .k-sentence { font-size:12px; line-height:1.25; }
@@ -140,7 +153,8 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
     padding:0 0 40px !important;
     -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 48px), transparent 100%) !important;
     mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 48px), transparent 100%) !important; }
-  ${ST} .sf-statistics__group { margin-bottom:2px; }
+  ${ST} .sf-statistics__group { margin-bottom:2px; padding:4px 8px; border-radius:6px; }
+  ${ST} .orr-statistics__career { padding:6px 8px !important; border-radius:6px !important; }
   ${ST} .sf-statistics .k-row { min-height:18px; padding:0 !important; }
   ${ST} .sf-statistics .k-row__name { font-size:12px !important; }
   ${ST} .sf-statistics .k-row__num { font-size:12px !important; }
