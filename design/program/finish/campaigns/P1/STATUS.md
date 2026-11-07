@@ -1,6 +1,6 @@
 # P1 — the Ship Sheet — status
 
-**2026-11-06, Lane 4 (SHIP). Re-reviewed and corrected after independent review.**
+**2026-11-07, Lane 4 (SHIP). Final P1/P2 review pass: one tow law on the sheet and the band.**
 
 ## Done
 
@@ -14,9 +14,9 @@
 | Firepower counts every damaging mount (including emergent primitives), ignores the phantom starter fallback gun, and pays each mount its own heat/energy duty. The ceiling is 3200: the strongest corrected full legal fit is **Leviathan 2184.48**, so no hull saturates at 10 | `shipStats.firepowerRawFor`, `SHIP_STAT_DEFS` |
 | Speed reads the governed fight speed times the live burner gain (`boost.topSpeedPct`), never the boost reservoir | `shipStats.speedRawFor` |
 | Power is a duration: `sustainedFireForFit` seconds, with the capacitor reserve at a documented 20/s reference draw when the limit is open or no gun is fitted | `shipStats.powerRawFor` |
-| Muscle is the tow class rated at the hull's DRY mass (`hasTowRating` reads that dry rating); cargo only ever lowers it. A hull with no rating says "No Line load — this hull rams instead."; a rated hull whose hold is heavier than the drive says "Too loaded to tow." | `shipStats.muscleRawFor`, `hasTowRating`, `shipCapabilities.towClassMassFor` |
+| Muscle is the tow class rated at the hull's DRY mass (`hasTowRating` reads that dry rating); cargo only ever lowers it. The capability band names the heaviest roster hull at or under the SAME `towClassMassFor` rating, so the bar and the band's lead cannot disagree. A hull with no rating says "No Line load — this hull rams instead."; a rated hull whose hold is heavier than the drive says "Too loaded to tow." | `shipStats.muscleRawFor`, `shipCapabilities.hasTowRating` / `towClassMassFor` / `towPickFor`, `shipBandModels.leadFromTow` |
 | Hover deltas print `before → after (+0.2)` in **tenths** (`6.3 → 5.5 (−0.8)`), never the contradiction `6 → 6 (−0.8)`; the aria text carries the exact after tenths. Each mounted sheet gets its own Details id | `shipSheet.js`, `deckplate/shipSheetStyles.js` |
-| The hull record (`entityResolver.hullDossier`), the Shipworks side panel and the scanned-target badge all speak the sheet's class + build word. The old roster-relative `handlingBandModel` paragraph and the raw side-panel module tonnes / power-used fraction are gone | `entityResolver.js`, `shipworks.js`, `targetPanel.js` |
+| The hull record (`entityResolver.hullDossier`), the Shipworks side panel and the scanned-target badge all speak the sheet's class + build word. The hull record no longer repeats a raw Role fact; Hull/Cargo and module Mass/draw sit behind a Details disclosure. The old roster-relative `handlingBandModel` paragraph and the raw side-panel module tonnes / power-used fraction are gone | `entityResolver.js`, `entityLinks.js`, `shipworks.js`, `targetPanel.js` |
 | New Game mounts the compact sheet and no longer draws the raw Mass/Thrust/Line arcs. Starter rail labels print the authored class beside the build word (`Starter · Skirmisher`), and Hitch/Pelican/Wasp differ by at least two whole bars | `newGame.js`, `starterAirCard.js`, `data/newGameDefaults.js` |
 | A11y: stat rows are honest focusable list items (no fake `role="button"`), the delta is in the aria-label, and the meaning line is `aria-hidden` rather than a duplicate live region | `shipSheet.js` |
 | The model test: exactly six stats, 1–10 bounds, full-fit Firepower headroom, per-gun duty fuzz, speed/power/muscle meaning, monotonic same-fit mass, starter shapes, deltas, rendered a11y contract | `test/ship-stats.test.mjs` |
@@ -76,13 +76,22 @@ never rises; an overloaded rated hull reads 0 and says "Too loaded to tow".
 - `node scripts/check-new-game-layout.mjs --headless` — **PASS** at 1024×768, 1280×720 and 1440×900 on the final run (an earlier cold-start run timed out before boot); the exact six-stop tab order holds.
 - `node scripts/ui-bench.mjs --shot=station-shipworks --shot=new-game` — both render clean; the PNGs were opened. The New Game shot shows the six-stat sheet and the classed rail labels (`STARTER · SKIRMISHER`, `MINING · HAULER`, `FIGHTER · SKIRMISHER`) with no Mass/Thrust/Line arcs. The Shipworks shot shows `STARTER · Skirmisher`, `1/7 systems fitted`, no module tonnes or power-used fraction, and no raw variant-percentage row.
 
+### 2026-11-07 follow-up (one tow law + one-source sweep)
+
+- `node --test test/ship-stats.test.mjs test/part-facts.test.mjs` — **30/30 pass** (20 + 10).
+- `node --test test/lg-tow-predict.test.mjs test/ship-tow-consistency.test.mjs test/ship-surface-consistency.test.mjs` — **12/12 pass** (3 + 4 + 5). The tow check covers Atlas/Hawser, Mule/Ironback and every roster pair with a rating.
+- `node --test test/lg-hull-dossier.test.mjs test/lg-module-dossier.test.mjs test/pq-142-00-capability-verbs.test.mjs` — **10/10 pass**.
+- `node scripts/check-player-facing-labels.mjs`, `check:outfitting-buy-fit` — **OK**; `check:ui-a11y` — **9 ok, 0 fail**; `check-ui-screen-imports` — **55 ok, 0 fail**.
+- `node scripts/check-new-game-layout.mjs` — **PASS** at 1024×768, 1280×720 and 1440×900 on the final run. Two earlier runs stopped before New Game while waiting for the first-light `.sf-confirm` to detach (the same race reproduced headless); page issues were empty. The final run held the exact six-stop tab order.
+- `node scripts/ui-bench.mjs --shot=station-shipworks --viewports=1280x800` — clean render; the buy column shows `Starter · Skirmisher` and a folded `Details` door.
+
 ## Not done / open — stated plainly
 
 - **The `Details` door is the only raw-engineering reading, and it now records both what moved and
-  what changed.** The old handling profile's Heat reading (`continuousDrain`, actually the
-  always-on module draw) is back as `Heat · X/s continuous`. `Mass` is the **operational** mass
-  (hull + modules + cargo), not `derived.mass` in isolation; the status below says so rather than
-  pretending it is a dry hull figure.
+  what changed.** The old handling profile's `continuousDrain` reading (actually the always-on
+  module draw, not weapon heat) is labelled `Draw · X/s continuous`. `Mass` is the **operational**
+  mass (hull + modules + cargo), not `derived.mass` in isolation; the status below says so rather
+  than pretending it is a dry hull figure.
 - **The old `handlingProfile.js` module still exists for `shipBandModels.js` and
   `check-handling-profile.mjs`.** It is no longer reachable from the P1 hull surfaces
   (`entityResolver.hullDossier` now reads the sheet; `outfittingGuidance.buildOutfittingEngineeringFeel`

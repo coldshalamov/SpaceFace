@@ -134,6 +134,16 @@ const ATTACK_TRAIT_ROLES = Object.freeze({
   mod_storm_carom: 'Storm rig',
 });
 
+/**
+ * Live weapons whose job is positioning rather than direct damage. They are still bought to win a
+ * fight, so they read as Fight with a specific role — not as a generic Tool mount / Work chip.
+ */
+const WEAPON_ROLE_OVERRIDES = Object.freeze({
+  wpn_vector_mine_m: 'Shove mine',
+  wpn_mass_driver: 'Slug driver',
+  wpn_gravity_well_m: 'Gravity well',
+});
+
 function attackTraitFor(def) {
   return def && ATTACK_TRAIT_BY_ID[def.id] ? ATTACK_TRAIT_BY_ID[def.id] : null;
 }
@@ -162,6 +172,7 @@ export function roleForPart(def, kind) {
   if (!def) return '';
   const mods = modsOf(def);
   if (kind === 'weapon') {
+    if (WEAPON_ROLE_OVERRIDES[def.id]) return WEAPON_ROLE_OVERRIDES[def.id];
     if (def.emergentPrimitive) {
       if (def.dmg > 0) return 'Special mount';
       return 'Tool mount';
@@ -258,6 +269,7 @@ export function intentForPart(def, kind) {
   if (!def) return 'work';
   const mods = modsOf(def);
   if (kind === 'weapon') {
+    if (WEAPON_ROLE_OVERRIDES[def.id]) return 'fight';
     if (finite(def.dmg, 0) <= 0 || def.utilityVerb) return 'work';
     return 'fight';
   }

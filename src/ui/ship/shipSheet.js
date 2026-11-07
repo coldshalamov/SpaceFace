@@ -144,7 +144,7 @@ export function shipSheetHtml(sheet, opts = {}) {
     ['Shield', detail.shield],
     ['Armour', detail.armor],
     ['Capacitor', `${detail.capMax} (+${detail.capRegen}/s)`],
-    ['Heat', `${detail.continuousDrain || 0}/s continuous`],
+    ['Draw', `${detail.continuousDrain || 0}/s continuous`],
     ['Cargo', `${detail.cargo} u`],
     ['Fight speed', `${detail.fightSpeed} wu/s`],
     ['Burn gain', `${detail.burnPct || 0} %`],

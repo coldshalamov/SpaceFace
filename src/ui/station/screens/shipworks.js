@@ -112,7 +112,7 @@ import {
   sanitizePresetSelectionMap,
   applyPresetRejection,
 } from '../../ship/loadoutPresets.js';
-import { shipSheetSentence, shipStatDelta, shipStatSheet } from '../../ship/shipStats.js';
+import { roleLabelFor, shipSheetSentence, shipStatDelta, shipStatSheet } from '../../ship/shipStats.js';
 import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../../ship/shipSheet.js';
 import { compareParts, intentDiffersFromSlot, partFacts, sortIdsByIntent } from '../../ship/partFacts.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
@@ -2380,7 +2380,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const def = SHIP_BY_ID.get(buyId);
     if (def) {
       const len = hullLengthM(def.id);
-      const role = short ? '' : ((describeHullRole(def.id) || {}).roleLabel || def.role || '');
+      const role = short ? '' : ((describeHullRole(def.id) || {}).roleLabel || roleLabelFor(def.role));
       // the caption keeps clear of the nearest socket word beside it (8 deg): the role, which the list
       // beside also names, is the first thing it gives up
       const mineNow = activeOwnedDef();
@@ -3730,7 +3730,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // The hang column: the hulls you own as rows (name · role, "Active" as the number).
       railListEl.innerHTML = o.length ? o.map((s, i) => {
         const def = SHIP_BY_ID.get(s.defId) || {};
-        const roleLabel = describeHullRole(s.defId)?.roleLabel || def.role || 'ship';
+        const roleLabel = describeHullRole(s.defId)?.roleLabel || roleLabelFor(def.role);
         // The row is narrow: "STARTER SCOUT · T0" wrapped to an orphaned "· T0" line — a line
         // opening on a middot. Every middot glues to the word BEFORE it, so a wrap can end a
         // line on the separator but never open one with it.
@@ -3752,7 +3752,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const yard = shipyardPurchaseQuote(ctx.state, s.id);
         if (!yard.listed) return '';
         const on = s.id === buyId ? ' is-active' : '';
-        const roleLabel = describeHullRole(s.id)?.roleLabel || s.role || 'ship';
+        const roleLabel = describeHullRole(s.id)?.roleLabel || roleLabelFor(s.role);
         // the roster row's glue (see the fleet rail): every middot glues to the word before it,
         // so a wrap ends a line on the separator and never opens one with it
         const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${s.tier}` +
@@ -3853,6 +3853,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const mine = activeOwnedDef();
       const mineFacts = railCompare.current || (mine ? catalogHullFacts(mine.id) : null);
       const compare = !!(mine && mine.id !== def.id);
+      // One class + build word: the same sheet the stage already mounts. The authored role and the
+      // bare tier digit used to stand here beside the sheet's own words, naming the hull twice.
+      const sideSheet = shipStatSheet({
+        shipId: def.id,
+        fittings: [],
+        player: declaredLoadPlayer(ctx.state.player),
+      });
+      const sideClass = sideSheet
+        ? `${sideSheet.roleLabel} \u00b7 ${sideSheet.identity.label}`
+        : roleLabelFor(def.role);
       const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
         const v = Number(value) || 0; const o = Number(ownValue) || 0;
         let ghost = '';
@@ -3864,17 +3874,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       };
       sideEl.innerHTML =
         `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(hullLabel))}</h3>` +
-        `<p class="sx-sw-side__class">${escapeHtml(def.role || 'ship')} \u00b7 T${def.tier}</p>` +
+        `<p class="sx-sw-side__class">${escapeHtml(sideClass)}</p>` +
         `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${price > 0 ? fmt(price) : 'Starter'}</span><span class="k-hero__w">${price > 0 ? (usedHull ? 'credits · used hull' : yard.offer ? 'credits · yard offer' : 'credits') : 'hull'}</span></div>` +
         (usedHull ? `<p class="k-sentence sx-muted">${escapeHtml(usedHull.scarSentence)} ${escapeHtml(usedHull.deedLine)} Thrusters bored out; pulls harder than stock.</p>` : '') +
-        `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
-          reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
-          reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
-          reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
-        `</ul>` +
-        (compare
-          ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)} — both at your ${fmt(railCompare.loadMass)} t load</p>`
-          : '') +
+        // Engineering readings do not lead the buy decision; they are one press away.
+        `<details class="sx-sw-side__details">` +
+          `<summary>Details</summary>` +
+          `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
+            reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
+            reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
+            reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
+          `</ul>` +
+          (compare
+            ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)} — both at your ${fmt(railCompare.loadMass)} t load</p>`
+            : '') +
+        `</details>` +
         `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
         `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
           (isOwned
@@ -3901,7 +3915,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // The side panel's identity is the SHIP SHEET's class + build word, never the authored role
     // alone: the sheet beside it and the rail must not name the same hull two different things.
     const sideSheet = shipStatSheet({ shipId: def.id, fittings, player: ctx.state.player });
-    const sideClass = sideSheet ? sideSheet.roleLabel : titleCaseWords(def.role || 'ship');
+    const sideClass = sideSheet ? sideSheet.roleLabel : roleLabelFor(def.role);
     const sideWord = sideSheet ? ` \u00b7 ${sideSheet.identity.label}` : '';
     const systemDraw = new Map();
     for (const t of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);

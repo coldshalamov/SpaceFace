@@ -37,7 +37,7 @@ export function mountSableDemo(host,{state,owned,moduleId,slotIndex,afterFitting
     for(const [index,run] of packet.runs.entries()){
       const tone=index?'hand':'rest',y=index?94:32;
       const sample=run.samples.reduce((selected,s)=>s.time<=time?s:selected,run.samples[0]);
-      const text=svg('text',{x:4,y:y-10,class:'orr-rest'});text.textContent=`${run.label.toUpperCase()} · ${run.identity.label} · ${number(run.mass)} mass`;graphic.appendChild(text);
+      const text=svg('text',{x:4,y:y-10,class:'orr-rest'});text.textContent=`${run.label.toUpperCase()} · ${number(run.mass)} mass`;graphic.appendChild(text);
       if(packet.family==='drive'){
         const path=run.samples.map((s,i)=>`${i?'L':'M'} ${4+s.time/packet.duration*324} ${y+38-s.speed/max*32}`).join(' ');
         graphic.appendChild(lightPath(path,{tone,width:1.3,bloom:4}));

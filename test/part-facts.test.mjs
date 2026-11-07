@@ -158,6 +158,12 @@ test('intent is authored for the job, not the slot letter', () => {
   assert.equal(partFacts('bomb_anchor').intent, 'fight', 'a ballast bomb is a fight tool, not stealth');
   assert.equal(partFacts('bomb_emp').intent, 'sneak');
   assert.equal(partFacts('wpn_thermal_cooker').intent, 'fight');
+  // Live non-damaging weapons are still fight tools: a shove mine and a slug driver reposition a
+  // target, so they read as Fight with a specific role rather than Tool mount / Work.
+  assert.equal(partFacts('wpn_vector_mine_m').intent, 'fight');
+  assert.equal(partFacts('wpn_vector_mine_m').role, 'Shove mine');
+  assert.equal(partFacts('wpn_mass_driver').intent, 'fight');
+  assert.equal(partFacts('wpn_mass_driver').role, 'Slug driver');
   assert.equal(partFacts('tool_grav_anchor').intent, 'work');
   for (const def of PURCHASABLE) {
     const facts = partFacts(def.id);

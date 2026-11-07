@@ -121,7 +121,7 @@ function testStopEstimateAndSummary() {
     'and it is the live braking solution at the governed fight cap, not the retired formula');
   assert.ok(liveStopDistance(beforeLive) > stopDistanceEstimate(beforeModel) * 1.5,
     'the governed-speed stop dwarfs the quote the retired spec field would have printed');
-  assert.match(delta.summary, /Turn [+-]?\d+(\.\d+)?% · Top speed [+-]?\d+(\.\d+)?% · Stop distance [+-]?\d+m · Bank -/,
+  assert.match(delta.summary, /Turn [+-]?\d+(\.\d+)?% · Top speed [+-]?\d+(\.\d+)?% · Stop distance [+-]?\d+ u · Bank -/,
     'summary is a compact outfit-hover delta row');
   assert.doesNotMatch(delta.summary, /Top speed -/, 'a cargo pod must not claim to slow the ship');
   assert.doesNotMatch(delta.summary, /Turn -/, 'a cargo pod must not claim to dull the yaw ceiling');

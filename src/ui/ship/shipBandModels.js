@@ -1201,6 +1201,13 @@ export function capabilityBandModel({ derived, state, fittings = [] }) {
  */
 function leadFromTow(tow) {
   const hullName = tow && tow.hullName ? String(tow.hullName) : null;
+  if (tow && tow.hasTowRating === false) {
+    return {
+      value: 'no Line load',
+      word: 'rams instead',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
   if (hullName) {
     return {
       value: 'can tow',
@@ -1215,9 +1222,16 @@ function leadFromTow(tow) {
       why: (tow && tow.why) || (tow && tow.verb) || '',
     };
   }
+  if (tow && !(tow.massT > 0) && tow.hasTowRating === true) {
+    return {
+      value: 'no tow',
+      word: 'too loaded',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
   return {
-    value: 'no tow',
-    word: 'too loaded',
+    value: 'no hull',
+    word: 'in reach',
     why: (tow && tow.why) || (tow && tow.verb) || '',
   };
 }

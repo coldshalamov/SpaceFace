@@ -35,6 +35,7 @@ import {
   forwardAccelFor,
   governedFightSpeedFor,
   governedYawRateFor,
+  hasTowRating,
   towClassMassFor,
 } from '../../systems/shipCapabilities.js';
 import { sustainedFireForFit } from './fitReadout.js';
@@ -47,7 +48,7 @@ export const SHIP_STAT_DEFS = Object.freeze([
   Object.freeze({
     id: 'firepower',
     label: 'Firepower',
-    meaning: 'Damage per second you can keep on a target.',
+    meaning: 'Damage per second you can keep on a target, mount by mount.',
     floor: 10,
     // Anchored above the strongest fit the catalogue can actually reach. The corrected strongest
     // full legal fit (every weapon slot at its best legal gun, every module slot at its best legal
@@ -68,7 +69,7 @@ export const SHIP_STAT_DEFS = Object.freeze([
   Object.freeze({
     id: 'speed',
     label: 'Speed',
-    meaning: 'How fast you fly with the throttle down, and how much a burner adds.',
+    meaning: 'How fast you fly at full throttle, and how much a burner adds.',
     floor: 130,
     ceiling: 430,
     unit: 'wu/s',
@@ -110,7 +111,7 @@ const STAT_BY_ID = new Map(SHIP_STAT_DEFS.map((def) => [def.id, def]));
  * The identity words. Each is the ship's STRONGEST stat said as a job, so the word is a statement
  * about how the ship plays and never about which modules happen to be bolted on. Order is the
  * tie-break when two stats are level. `roles` is the authored hull class (data/ships.js) the word
- * belongs to: when the hull's own job is within one point of the strongest stat, the job wins the
+ * belongs to: when the hull's own job is within two points of the strongest stat, the job wins the
  * word, so a tug does not print "Runner" just because its drive is quick.
  *
  * These words deliberately do not reuse the scanner's hull-role vocabulary (`Gunship`,
@@ -239,7 +240,10 @@ function realWeaponRuntimes(shipDef, fittings, player, derived) {
     if (!runtime) return false;
     if (runtime.intrinsic) return true;
     const fittedId = fit[runtime.slotIndex];
-    return !!(fittedId && WEAPON_BY_ID.has(fittedId));
+    // The runtime must be the gun that is actually in that slot. A weapon id sitting in the slot
+    // is not enough: an illegal mount makes `buildWeaponList` inject the starter fallback on the
+    // same slot index, and a Vector Mine alone must not count a phantom Pulse Laser.
+    return !!(runtime.defId && runtime.defId === fittedId && WEAPON_BY_ID.has(runtime.defId));
   });
 }
 
@@ -353,14 +357,10 @@ export function muscleRawFor(derived) {
 
 /**
  * True when the HULL publishes a real tow rating at its dry mass. This deliberately does not read
- * the current load: an overloaded tug still has a rating, it just cannot use it right now.
+ * the current load: an overloaded tug still has a rating, it just cannot use it right now. The law
+ * lives in `shipCapabilities.js` so the sheet and the capability band share one definition.
  */
-export function hasTowRating(derived) {
-  if (!derived) return false;
-  const dryMass = Math.max(0, finite(derived.dryMass, finite(derived.mass, 0)));
-  if (!(dryMass > 0)) return false;
-  return towClassMassFor({ ...derived, mass: dryMass, operationalMass: dryMass }) > 0;
-}
+export { hasTowRating };
 
 const RAW_READERS = Object.freeze({
   firepower: (shipDef, fittings, player, derived) => firepowerRawFor(shipDef, fittings, player, derived),
@@ -405,6 +405,10 @@ export function shipStatSheet(input = {}) {
     if (def.id === 'firepower' && (!hasGuns || !(raw > 0))) {
       note = 'No damaging gun fitted.';
       meaning = 'No damaging gun fitted. Nothing on this fit puts damage on a target.';
+    }
+    if (def.id === 'power' && !hasDamagingGuns) {
+      note = 'Capacitor reserve — no gun fitted.';
+      meaning = 'No gun fitted, so this is the capacitor reserve at the reference draw, not a gun clock.';
     }
     if (def.id === 'muscle') {
       if (!towRating) {

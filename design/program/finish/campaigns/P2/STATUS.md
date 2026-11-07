@@ -11,8 +11,10 @@
 | The catalogue's ordering: intent → Mk ladder → name (`sortIdsByIntent`), replacing slot-letter + price ordering in the fitter. This is intent-first **within one selected slot list**, not a cross-slot catalogue sort | `shipworks.js` chooser candidates |
 | Intent headings with counts in the shop and the hold list (`FIGHT 10`, `WORK 2`), so a large Work bucket is a section, not a wall | `shipworks.js` `intentGroupedHtml` |
 | Every fitter row reads `role · Mk` plus the part's full sentence from the one reader. The stat effect is the Ship Sheet's own tenths delta (`+1.9 Firepower`), not raw DPS/range/mass/draw chips | `shipworks.js` rows |
+| The entity dossier for a module reads the same `partFacts` role/tier/sentence; Mass and Power draw are engineering readings behind its Details disclosure, not decision facts | `entityResolver.js`, `entityLinks.js` |
 | Ordnance uses the same facts: `Tar bomb · Mk I`, its authored sentence, intent sort and intent headings; no bare `T2` or `Fuze/cooldown` engineering line | `shipworks.js` bomb chooser |
 | The attack-rig family is read from `attackTraits.js`, not mistaken for bare utility: 17 rigs have specific roles (Piercing rig, Forked rig, Bank rig, Warhead core, Relay rig, Tether amp, Cryo rig, Spread rig, Storm rig, Mount rig) and all are **Fight** | `partFacts.js` attack-trait taxonomy |
+| Live non-damaging weapons read Fight with a specific role: Vector Mine is a **Shove mine**, Mass Driver a **Slug driver**, and the Gravity Wellhead a **Gravity well** — never `Tool mount` / Work | `partFacts.js` weapon-role overrides |
 | Engines read **Drive**, not "Manoeuvre kit": a neutral `turnMult/strafeMult/brakeMult` of 1 is the stock value, not a positive move. Mount rigs, warhead cores and heat sinks are Fight; Jump Drive is Move | `partFacts.js` role/intent maps |
 | Six display names that repeated the tier token (`Jump Drive T2 M`, four `Mk2` names, `Shroud Cloak Mk1`) are cleaned through `PART_DISPLAY_NAMES`; the tier column carries the ladder | `partFacts.js` |
 | The duplicate probe uses **exact** authored signatures: slot, size, mass, draw, tier plus mods for modules, authored weapon/ordnance fields for the rest, and the trait id for attack rigs. It never claims role+intent+tier is enough. A known true duplicate is found (`mod_ram_plate` / `mod_ram_plate_scarred`); a known false positive is rejected (Swing Drive M vs S differ by size/mass) | `partFacts.js` `partSignature` / `duplicateGroups` |
@@ -31,7 +33,7 @@
   modules + weapons only.
 - Purchasable role buckets: largest 12 (`Line head`), then `Gun · M` 9, `Sensor` 8, `Gun · S` 7,
   `Manoeuvre kit` 6, `Hull burst` 6, `Drive` 5. No role bucket exceeds 30% of the purchasable set.
-- **`Utility` is no longer a bucket at all: 0 of 166.** The 12 attack rigs that used to fall there
+- **`Utility` is no longer a bucket at all: 0 of 166.** The 17 attack rigs that used to fall there
   now read their specific rig role and Fight.
 - Purchasable intents: Work 54, Fight 54, Move 19, Survive 18, Sneak 14, Carry 7. Work is a
   section heading with a count, not an undifferentiated wall; it is no longer 74.

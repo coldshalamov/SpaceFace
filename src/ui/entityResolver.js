@@ -29,7 +29,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
-import { airSentenceForId } from './ship/fitReadout.js';
+import { partFacts } from './ship/partFacts.js';
 import { shipStatSheet, shipSheetSentence } from './ship/shipStats.js';
 
 export const ENTITY_TYPES = Object.freeze([
@@ -348,11 +348,15 @@ function sectorDossier(state, id) {
 function hullDossier(state, id) {
   const s = SHIP_BY_ID.get(id);
   if (!s) return null;
+  // `Build` below already names the authored class and the build word. A separate raw Role fact
+  // would name the class a second time; Hull and Cargo are engineering readings and live behind
+  // the Details disclosure, not on the decision deck.
   const facts = [
-    { k: 'Role', v: String(s.role || '').replace(/_/g, ' '), tone: 'calm' },
+    { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
+  ];
+  const details = [
     { k: 'Hull', v: String(s.hull), tone: 'calm', num: true },
     { k: 'Cargo', v: String(s.cargo) + ' u', tone: 'calm', num: true },
-    { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
   ];
   const lines = [];
   // The hull record reads the same six-stat sheet every hull surface mounts. It deliberately does
@@ -364,34 +368,36 @@ function hullDossier(state, id) {
     const sentence = shipSheetSentence(sheet);
     if (sentence) lines.push({ label: 'Flies', text: sentence });
   }
-  return { kicker: 'Hull · tier ' + String(s.tier ?? '?'), facts, lines, links: [], route: { screen: 'ship', focus: 'hull:' + id } };
+  return { kicker: 'Hull · tier ' + String(s.tier ?? '?'), facts, details, lines, links: [], route: { screen: 'ship', focus: 'hull:' + id } };
 }
 
 function moduleDossier(state, id) {
   const m = MODULE_BY_ID.get(id);
   if (!m) return null;
+  const factsForPart = partFacts(id);
   const facts = [];
   if (m.slotType || m.size) facts.push({ k: 'Slot', v: `${String(m.slotType || '').replace(/_/g, ' ')} · ${m.size || ''}`.trim(), tone: 'calm' });
-  if (m.mass != null) facts.push({ k: 'Mass', v: String(m.mass), tone: 'calm', num: true });
   if (m.price != null || m.cost != null) facts.push({ k: 'Price', v: creditText(m.price ?? m.cost), tone: 'goal', num: true });
-  if (m.slots != null) facts.push({ k: 'Site slots', v: String(m.slots), tone: 'calm', num: true });
-  // Every module advertises a power DRAW against a capacity the UI has never shown (§11.11 #2).
-  // Naming it here is the cheapest place that gap becomes visible before J2 lands.
-  if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: 'calm', num: true });
+  // Mass, draw and site slots are engineering readings: they stay behind Details, so the record
+  // leads with what the part IS rather than with catalogue numbers.
+  const details = [];
+  if (m.mass != null) details.push({ k: 'Mass', v: String(m.mass), tone: 'calm', num: true });
+  if (m.energyDraw != null) details.push({ k: 'Power draw', v: String(m.energyDraw), tone: 'calm', num: true });
+  if (m.slots != null) details.push({ k: 'Site slots', v: String(m.slots), tone: 'calm', num: true });
   const lines = [];
-  const sentence = airSentenceForId(id);
-  if (sentence) {
-    lines.push({ label: 'Does', text: sentence });
-  } else {
-    const mods = m.mods && Object.keys(m.mods);
-    if (mods && mods.length) {
-      lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
-    }
+  if (factsForPart) {
+    // The same role word, tier ladder and sentence the fitter prints. The old kicker carried a bare
+    // tier digit and the old `Changes` dump repeated raw modifier keys.
+    lines.push({ label: 'Does', text: factsForPart.sentence });
   }
   if (m.desc) lines.push({ label: 'About', text: String(m.desc) });
-  const kind = m.slotType === 'weapon' ? 'Weapon' : (m.slotType ? 'Module' : 'Installation');
-  const kicker = m.tier != null ? `${kind} · tier ${m.tier}` : kind;
-  return { kicker, facts, lines, links: [], route: { screen: 'ship', focus: 'module:' + id } };
+  const kindWord = factsForPart && factsForPart.kind === 'weapon'
+    ? 'Weapon'
+    : (factsForPart && factsForPart.kind === 'bomb' ? 'Ordnance' : (m.slotType ? 'Module' : 'Installation'));
+  const kicker = factsForPart
+    ? `${kindWord} · ${factsForPart.role} · ${factsForPart.tier}`
+    : kindWord;
+  return { kicker, facts, details, lines, links: [], route: { screen: 'ship', focus: 'module:' + id } };
 }
 
 function rosterCaptains(state) {
@@ -528,11 +534,12 @@ const DOSSIERS = {
 /**
  * resolveEntity(state, ref) -> dossier | null
  *
- * dossier = { type, id, ref, label, kicker, accent?, facts[], lines[], links[], route }
- *   facts  tier-1: what you need to decide, as { k, v, tone } — tone is a grammar §4 role name
- *   lines  tier-3: the record, as { label, text, tone? }
- *   links  the graph — other refs reachable from here. This is what makes it one system.
- *   route  where to go to ACT on it, or null. A request; entityLinks.js honours it.
+ * dossier = { type, id, ref, label, kicker, accent?, facts[], details[], lines[], links[], route }
+ *   facts    tier-1: what you need to decide, as { k, v, tone } — tone is a grammar §4 role name
+ *   details  tier-2: engineering readings behind a Details disclosure, same shape as facts
+ *   lines    tier-3: the record, as { label, text, tone? }
+ *   links    the graph — other refs reachable from here. This is what makes it one system.
+ *   route    where to go to ACT on it, or null. A request; entityLinks.js honours it.
  *
  * NULL for an unknown ref, and the caller renders NOTHING. No placeholder dossier ever.
  */
@@ -551,6 +558,7 @@ export function resolveEntity(state, ref) {
     kicker: body.kicker || parsed.type,
     accent: body.accent || null,
     facts: (body.facts || []).filter((f) => f && f.k && f.v != null && f.v !== ''),
+    details: (body.details || []).filter((f) => f && f.k && f.v != null && f.v !== ''),
     lines: (body.lines || []).filter((l) => l && l.text),
     links: (body.links || []).filter((l) => l && l.ref && l.label),
     route: body.route || null,

@@ -6,7 +6,6 @@ import { physics } from './physics.js';
 import { flightV3 } from '../systems/flightV3.js';
 import { combat } from '../systems/combat.js';
 import { makeShipEntitySpec } from '../systems/ships.js';
-import { classifyBuildIdentity } from '../systems/buildIdentity.js';
 import { MODULES } from '../data/modules.js';
 
 const MODULE_BY_ID=new Map(MODULES.map(m=>[m.id,m]));
@@ -38,7 +37,7 @@ export async function measureSableDemo({defId,beforeFittings,afterFittings,modul
         if(tick%24===23){await yieldControl();cancelled(signal);}
       }
       runs.push({label,mass:ship.mass,shieldMax:ship.shieldMax,capMax:ship.capMax,peakSpeed,stoppedSpeed:samples.at(-1).speed,
-        samples,impacts,identity:classifyBuildIdentity(ship)});
+        samples,impacts});
     }finally{
       sim.registry.get('physics')._disableSg02DynamicAuthority?.();sim.dispose();
     }

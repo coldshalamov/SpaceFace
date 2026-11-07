@@ -235,7 +235,11 @@ const shipworksSource = readFileSync(new URL('../src/ui/station/screens/shipwork
 assert.match(shipworksSource, /data-refused-module=/, 'the chooser lists refused weapons instead of hiding them');
 assert.match(shipworksSource, /mountRefusal\(slot, d\)/, 'the chooser speaks the refusal sentence from the one fit rule');
 assert.match(shipworksSource, /data-ring-law/, 'a ring slot explains its law once, above the list');
-assert.match(shipworksSource, /mountOutputFactor\(def, slot\)/, 'the DPS on a row is the DPS on this mount');
+assert.match(shipworksSource, /mountOutputFactor\(d, slot\)/, 'the chooser reads the mount law for its ring note');
+assert.match(shipworksSource, /sheetDeltaChipsHtml\(liveSheet, def, fittings, slotIndex, d\)/,
+  'the DPS on a row is the same six-stat sheet the stage mounts');
+assert.match(shipworksSource, /const after = shipStatSheet\(/,
+  'and that sheet prices the candidate through buildWeaponList, which pays the mount output');
 const guidanceSource = readFileSync(new URL('../src/ui/station/outfittingGuidance.js', import.meta.url), 'utf8');
 assert.match(guidanceSource, /const hasSlot = safeSlots\.some\(\(s\) => fits\(s, def\)\)/, 'purchase guidance uses the one fit rule');
 

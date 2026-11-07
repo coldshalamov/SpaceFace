@@ -138,6 +138,26 @@ export function createEntityLinks(ctx) {
       kids.push(deck);
     }
 
+    // Tier 2 — engineering readings behind a disclosure. A dossier can carry them without making
+    // the decision deck a spec sheet; the same fact row styling is reused inside the fold.
+    if (Array.isArray(d.details) && d.details.length) {
+      const deck = el('div', 'sf-drawer__facts');
+      for (const f of d.details) {
+        deck.appendChild(el('div', 'sf-tile sf-tile--' + (f.tone || 'calm') + (f.num ? ' sf-tile--data' : ''), {
+          children: [
+            el('span', 'sf-tile__k', { text: f.k }),
+            el('span', 'sf-tile__v', { text: String(f.v), attrs: { 'data-sf-text': '' } }),
+          ],
+        }));
+      }
+      kids.push(el('details', 'sf-drawer__details', {
+        children: [
+          el('summary', 'sf-drawer__details-summary', { text: 'Details' }),
+          deck,
+        ],
+      }));
+    }
+
     // Tier 3 — the record.
     for (const line of d.lines) {
       kids.push(el('div', 'sf-deck', {

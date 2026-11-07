@@ -119,9 +119,9 @@ export function handlingProfileForShip(shipId, options = {}) {
   const reverseAccel = firstLive(propulsion, HANDLING_PROFILE_AXES[3].fields).value;
   const maxYawRate = firstLive(propulsion, ['maxYawRate']).value;
   // LG-TOW-PREDICT (row 278): tow class before you pay. The same derived block the bars
-  // read feeds the live tow law, so the prediction can never drift from the sentence
+  // read feeds the live tow rating, so the prediction can never drift from the sentence
   // shipCapabilityVerbs prints for the same fit: one law, two readers. The named hull is
-  // the one a player tow holds within 20% of the under-way bar.
+  // the heaviest roster hull at or under the line's printed rating.
   const towClassMassT = towClassMassFor(derived);
   const towableHull = towableHullFor(derived);
   const predictions = Object.freeze({

@@ -20,4 +20,9 @@ test('seed 4242 a hull record reads the Ship Sheet, not the old profile paragrap
   assert.equal(dossier.lines.some((line) => line.label === 'Mass'), false,
     'raw engineering is behind the sheet Details door, not the hull record');
   assert.equal(dossier.lines.some((line) => line.label === 'Handling'), false);
+  assert.equal(dossier.facts.some((fact) => fact.k === 'Role'), false,
+    'Build already names the authored class; a Role fact would duplicate it');
+  assert.deepEqual(dossier.facts.map((fact) => fact.k), ['Price'], 'the decision deck keeps the price');
+  assert.deepEqual(dossier.details.map((fact) => fact.k), ['Hull', 'Cargo'],
+    'hull and cargo are engineering readings behind Details');
 });

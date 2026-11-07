@@ -120,7 +120,16 @@ test('Firepower ignores the phantom starter gun and counts every damaging mount'
   const empty = shipStatSheet({ shipId: 'ship_kestrel' });
   assert.equal(stat(empty, 'firepower').raw, 0, 'an empty fit carries no gun');
   assert.match(stat(empty, 'firepower').meaning, /No damaging gun fitted/);
+  assert.match(SHIP_STAT_DEFS.find((def) => def.id === 'firepower').meaning, /mount by mount/i,
+    'Firepower is stated per mount');
   assert.equal(stat(empty, 'firepower').value, 1);
+
+  // A Vector Mine is a launcher for a live weapon; in the Kestrel's S mount it is an illegal fit.
+  // The fallback Pulse Laser injected on that same slot index is not the fitted gun and must not
+  // be counted as one.
+  const mine = shipStatSheet({ shipId: 'ship_kestrel', fittings: ['wpn_vector_mine_m'] });
+  assert.equal(stat(mine, 'firepower').raw, 0, 'a Vector Mine alone is not a phantom Pulse Laser');
+  assert.match(stat(mine, 'firepower').meaning, /No damaging gun fitted/);
 
   const thermal = shipStatSheet({ shipId: 'ship_kestrel', fittings: ['wpn_thermal_cooker'] });
   const arc = shipStatSheet({ shipId: 'ship_kestrel', fittings: ['wpn_arc_caster'] });
@@ -256,6 +265,8 @@ test('Power is a duration: sustained fire when bounded, capacitor reserve when o
   const reserveSeconds = (derived.capMax + 5 * derived.capRegen) / 20;
   assert.ok(Math.abs(stat(empty, 'power').raw - reserveSeconds) < 0.06,
     `a gunless fit falls back to the capacitor reserve (${stat(empty, 'power').raw} vs ${reserveSeconds})`);
+  assert.match(stat(empty, 'power').note, /capacitor reserve/i, 'the no-gun note names the reserve');
+  assert.match(stat(empty, 'power').meaning, /capacitor reserve/i);
 
   const hot = shipStatSheet({ shipId: 'ship_kestrel', fittings: ['wpn_pulse_laser_s'] });
   assert.ok(stat(hot, 'power').raw > 2 && stat(hot, 'power').raw < 6, `a heat-bound gun reads its own clock (${stat(hot, 'power').raw} s)`);
@@ -362,7 +373,7 @@ test('the identity word follows the shape, never the scanner vocabulary', () => 
     { id: 'power', value: 8, tenths: 80 },
     { id: 'muscle', value: 4, tenths: 40 },
   ], 'gunship');
-  assert.equal(wardenish.label, 'Gunboat', 'the authored gunship class wins a one-point near-tie');
+  assert.equal(wardenish.label, 'Gunboat', 'the authored gunship class wins a two-point near-tie');
   const hawserish = buildIdentityForStats([
     { id: 'firepower', value: 4, tenths: 40 },
     { id: 'toughness', value: 5, tenths: 50 },
@@ -371,7 +382,7 @@ test('the identity word follows the shape, never the scanner vocabulary', () => 
     { id: 'power', value: 5, tenths: 50 },
     { id: 'muscle', value: 7, tenths: 70 },
   ], 'tug');
-  assert.equal(hawserish.label, 'Hauler', 'the authored tug class wins a one-point near-tie');
+  assert.equal(hawserish.label, 'Hauler', 'the authored tug class wins a two-point near-tie');
 });
 
 test('deltas are tenths of the same scale and the hover line shows the before and after', () => {
