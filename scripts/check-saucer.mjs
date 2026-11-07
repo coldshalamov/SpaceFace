@@ -17,7 +17,7 @@ const commands = [
   ['scripts/check-data.mjs'],
   ['scripts/check-data-refs.mjs'],
   ['scripts/sf-sim.mjs', 'compare', '47a', '--seed', '47', '--ticks', '720',
-    '--inputs', 'test/47a.inputs.json', '--expect', 'test/47a.telemetry.save-v23.expected.json', '--reload-at', '600'],
+    '--inputs', 'test/47a.inputs.json', '--expect', 'test/47a.telemetry.save-v24.expected.json', '--reload-at', '600'],
 ];
 for (const args of commands) {
   console.log(`\n> node ${args.join(' ')}`);

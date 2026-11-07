@@ -22,7 +22,7 @@
 //   * a failed run, a mismatched inspect hash, or an existing version file never writes.
 //
 // Commands:
-//   node scripts/reference.mjs record --from test/47a.telemetry.save-v23.expected.json \
+//   node scripts/reference.mjs record --from test/47a.telemetry.save-v24.expected.json \
 //     --reason "why this re-record is intentional and reviewed" --ticket Q5 [--id 47a-save-v23] \
 //     [--events-changed] [--clean-runs 5] [--ticks 720] [--reload-at 600] [--json]
 //   node scripts/reference.mjs diff --id 47a-save-v23 [--from v1] [--to v2|working] [--json]

@@ -264,6 +264,19 @@ test('Adventure flight: the release verdict is one plain word, not a telemetry s
     assert.doesNotMatch(preview.textContent, /KEPT|84|·/);
     // Outside Adventure the authored grade + measured cause still reads in full.
     assert.equal(releaseVerdictCopy({ classification: 'clean', ride: { keptFraction: 0.84 } }), 'CLEAN · KEPT 84%');
+
+    // The acquisition bracket says a plain verdict too — never "MASS 2000 · WON'T BUDGE".
+    state.masslineReleaseVerdict = null;
+    const heavy = {
+      id: 77, alive: true, type: 'asteroid', pos: { x: 120, z: 60 }, vel: { x: 0, z: 0 },
+      radius: 12, mass: 2000, physicsBody: { mass: 2000 }, data: {},
+    };
+    state.entities.set(heavy.id, heavy);
+    state.masslineAcquisition = { id: 'acq-1', selected: { targetId: heavy.id, status: 'ready' } };
+    hud.update(1 / 60, state);
+    const bracket = findAll(t.doc.getElementById('sf-ml2'), (n) => n.classList && n.classList.contains('ml2-preview'))[0];
+    assert.equal(bracket.textContent, 'TOO HEAVY');
+    assert.doesNotMatch(bracket.textContent, /MASS|BUDGE/);
   } finally {
     hud.destroy();
     MASSLINE2_FLAGS.enabled = previousEnabled;
