@@ -85,8 +85,10 @@ second independent X4 review pass and the final Gate E review.
   `combat:statusApplied`, the massline verbs, `loot:drop`, the run awards, `mining:tick`,
   `asteroid:chunked`, cargo pickup/jettison, dock/undock and mission accept/complete. They are named
   in `AUDIO_CENSUS.md`; only the 19 rows that actually reach a `play()` call have the rotation.
-  The **sample library is 13.92 MiB across 157 samples against a 12 MiB payload ceiling** — also
-  open; the ceiling is not being raised silently. The five 16 s stems are 5.12 MiB of it.
+  The sample library was 13.92 MiB across 157 samples against a 12 MiB payload ceiling.
+  **Fixed 2026-11-07:** the five 16 s stems are canonical 16 kHz/16-bit mono PCM (512,044 bytes
+  each), taking the library to **11.48 MiB**. The ceiling was not raised; the audio tests still
+  pass 38/38 (`pq-158-00`, `pq-158-03`, `x4-boss-stem`).
 - **The runtime score is synthesized, not the WAVs.** The five 16 s files are the authored
   reference loops (tier 2, test evidence, the listening/motif source); the heard stems come from
   `_seq*` sequencers and the motif data. The earlier "five authored stems are the heard score"
@@ -96,12 +98,10 @@ second independent X4 review pass and the final Gate E review.
 
 ## Known red in the shared tree (not this pass's contract)
 
-- `test/pq-158-00-sample-library.test.mjs` — the encoded library measures **13.92 MiB across 157
-  samples** against its **12 MiB** payload ceiling. The five 16 s stems are **5.12 MiB** of that
-  (the older 4 s stems were 1.28 MiB); the ceiling breach arrived with the 16 s expansion in
-  `c4f6627`, not with this revision. Fixing it means either a smaller music format (16 kHz mono
-  lands at ~12.0 MB total, tight) or a deliberate budget change — a product decision, recorded not
-  taken.
+- ~~`test/pq-158-00-sample-library.test.mjs` — 13.92 MiB against the 12 MiB ceiling.~~ **Fixed
+  2026-11-07** by the 16 kHz stem delivery above: 11.48 MiB, test green. The trade is top-end air
+  above 8 kHz on five music loops; the note-window, hum and 4 s autocorrelation evidence is
+  unchanged. A future lossless/compressed music format can revisit it, but the payload gate is met.
 - `test/ear-score-host.test.mjs` — fails on `threat: quantised (21.666… → 21.666…)`. It is on the
   2026-10-27 bughunt re-fail list and predates this pass; the failing assertion is the first
   `threat` phase's fader boundary, which is stale because the tension stem idled during 20 s of

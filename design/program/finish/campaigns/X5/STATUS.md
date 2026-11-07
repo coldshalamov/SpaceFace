@@ -70,15 +70,19 @@ the final Gate E review on 2026-11-07.
   capture of the combat card refusing the chart. The unit tests drive the real gates and the real
   map opener; they are not a player-route capture.
 - Gamepad physical check (the code path is the same gate; no controller was attached).
-- `test/help-gamepad-rebind.test.mjs` has one stale expectation (`Brake / reverse` vs the shipped
-  `Brake / full stop` label) that fails independently of this pass — it is a pre-existing fixture
-  drift, not an X5 regression. `test/teach-09-pad-chord-sheet.test.mjs` pins the same retired
-  `Brake / reverse` label and fails the same way; also pre-existing, not caused by the long-sheet
-  filter.
+- ~~Stale pad-help expectations~~ **fixed 2026-11-07:** both fixtures asked for the retired
+  `Brake / reverse` label; they now assert the shipped `Brake / full stop` row.
+  `test/teach-09-pad-chord-sheet.test.mjs` 16/16 together with the time-trial binding test. The
+  same pass removed the phantom `raceRestart` pad row: `raceRestart` is an F8 keyboard binding, not
+  a `GAMEPAD_DEFAULT_BINDINGS` action, so the pad table now covers exactly the declared actions.
+  (The keyboard Help rows still list it.)
+- The live four-context walk and physical pad check above remain open; the code gates are green but
+  are not a player-route capture.
 
 ## Next
 
 1. Walk the four contexts on the ordinary route and capture the Help card in each; try `M` in a
    fight and confirm nothing opens.
 2. Attach a pad and confirm the combat set gates travel drive/map/codex while fire/Line/powers work.
-3. Reconcile the stale pad-help expectation with the shipped `Brake / full stop` row.
+3. ~~Reconcile the stale pad-help expectation~~ done; keep the keyboard-only time-trial row out of
+   the pad table when adding future bindings.

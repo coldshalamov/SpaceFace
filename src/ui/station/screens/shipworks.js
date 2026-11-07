@@ -3117,7 +3117,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const slotName = SLOT_LABEL[slot.type] || slot.type;
       const ring = hardpointClassOf(slot) === 'ring' ? ' · ring' : '';
       const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.stockDrive;
-      const name = fitted ? fitted.name : (stockDrive || slotName);
+      const name = fitted ? fitted.name : slotName;
       const state = fitted ? `${slotName} · ${slot.size || ''}${ring}` : (stockDrive ? `stock · ${slot.size || ''}` : `empty · ${slot.size || ''}${ring}`);
       const html = `<span class="orr-sw-node__num">${String(i + 1).padStart(2, '0')}</span>`
         + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(name)}</b>`

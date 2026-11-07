@@ -107,6 +107,15 @@ try {
   });
 
   await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
+  // The boot overlay owns the whole viewport until it is dismissed. A pointer navigation that
+  // lands while the intro video is still up hits the video, not the dock (a real first-run race).
+  await page.waitForFunction(() => {
+    const overlay = document.getElementById('boot-overlay');
+    if (!overlay) return true;
+    if (overlay.classList.contains('hidden')) return true;
+    const style = getComputedStyle(overlay);
+    return style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.01;
+  }, null, { timeout: 30000 }).catch(() => {});
   // The station sheet is injected on first dock; measuring geometry before it applies would grade
   // the browser's default styles, not the shipped layout.
   await page.waitForFunction(() => {

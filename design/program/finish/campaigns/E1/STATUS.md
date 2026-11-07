@@ -2,6 +2,29 @@
 
 **Owner:** Lane 1 PIPELINE. **Diagnosis:** [DIAGNOSIS.md](DIAGNOSIS.md).
 
+## 2026-11-07 fresh 1× gap capture — Verify MET
+
+Same stall pattern, same laptop, headed Chromium at 1280×720, real New Game boot, 30 s of flight
+with `?simGap=400@2500@3500` (a 400 ms completed-pack hold every 3.5 s). The only difference is the
+fence kill-switch.
+
+| Run | File | Frames | Rate | Gaps / held frames | Frames over 2× bar | Worst jump | Pose held >2 frames |
+|---|---|---|---:|---:|---:|---:|---:|
+| BEFORE (`&playout=0`) | `evidence/before-gap-trace-2026-11-07.json` | 1800 | 0.844× | 20 / 234 | **1** | **4.49×** | 0 |
+| AFTER (fence live) | `evidence/after-gap-trace-2026-11-07.json` | 1771 | 0.973× | 19 / 199 | **0** | **0** | **0** |
+
+- Worst absolute pose jump: BEFORE **5.17 WU**, AFTER **0 WU**. No after frame repeats the player
+  pose while velocity is non-zero (`heldPoseFrames` max 0, `heldMs` max 0).
+- The after delay settled at p50 50 ms (target 65 ms) and held through the injected gaps instead of
+  jumping; the fence reports 18 history packs, 3 bracket packs, 0 extrapolation at export.
+- Videos: `evidence/before-gap-video-2026-11-07.mp4` / `after-gap-video-2026-11-07.mp4`
+  (960×540 H.264 from the raw Playwright recording; audio muted).
+- Recorder: a temporary Playwright harness over the ordinary boot route; it exports the live
+  `state.frameTruth` JSON with `download:false` and records the same page. The traces and videos are
+  the artifacts; the harness is not a new acceptance surface.
+- **Verify now meets the written bar** (jump ≤ 2× speed×frame time, no >2-frame pose hold, matched
+  before/after video). Reviewer agreement is still required before the gate is called closed.
+
 ## Done
 - Diagnosis memo committed (2026-11-06): the presented clock chased the newest snapshot with a
   100 ms extrapolation cap then held; only 2 comparable packs existed; the correction was a 4-frame
@@ -128,7 +151,7 @@
 - The 3 s stale-ACK worker watchdog is worker-owner work, not claimed here.
 - E5 SAB/COOP headers: see Next 2.
 
-## Verify — NOT re-recorded under the new contract
+## Verify — historical traces (superseded by the 2026-11-07 capture)
 
 The current browser traces predate the wall-paced timeline, the cadence-sized delay, the gap
 re-seat and the epoch-filtered bracket. They are retained as BEFORE/AFTER history but cannot be
@@ -165,7 +188,8 @@ used to claim the new bar.
 - The videos are a separate take from the trace table: `after-video-window-trace.json` is the
   window behind `after-playout-buffer-stalls.mp4` (p50 8.6 fps, 0.395× sim), not a controlled A/B
   against the before take. Do not quote the encoded video frame rate as the run's frame rate.
-- A fresh browser capture at 1× sim rate is required before this campaign can claim Verify.
+- A fresh browser capture at 1× sim rate was required before this campaign could claim Verify; the
+  2026-11-07 section above is that capture.
 
 ## Evidence
 - `evidence/before-stall-trace.json`, `evidence/after-stall-trace.json`,
