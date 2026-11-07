@@ -112,6 +112,51 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
   ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:34px !important; padding:6px 0 8px !important; }
   ${D} .sf-crd-zone { margin:4px 0 0 !important; }
 }
+/* Short densify (960×540 / 801×461): the stake purse sat 7px under the stage fold (cutBy 7 at
+   960×540) and pressure/yield painted through Training / Quick play; at ≤800 wide the four mode
+   faces wrapped to a second row and Foundry Block / Daily clipped mid-glyph. Compact the decoration,
+   keep complete decision facts, and let the existing stage scroll when those facts need more room. */
+@media (max-height:560px) {
+  ${D} .orr-prep-settings.orr-prep-settings { gap:8px !important; }
+  ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)) !important; }
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:48px !important; padding:4px 4px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { height:22px !important; }
+  ${D} .sf-crd-modes .fh-tile-art svg { width:22px !important; height:22px !important; }
+  ${D} .sf-crd-modes .fh-tile-legend { font-size:12px !important; letter-spacing:.08em !important; }
+  ${D} > .k-stage { scroll-padding-block:12px; scrollbar-width:thin; }
+  ${D} .orr-tile { scroll-margin-block:12px; }
+  ${D} :is(.sf-crd-mode-sub, .sf-crd-stake-sub) {
+    display:block !important; overflow:visible !important; -webkit-line-clamp:unset !important;
+    white-space:normal !important; overflow-wrap:anywhere; margin-top:4px !important;
+  }
+  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; height:auto !important;
+    padding:6px 4px !important; gap:4px !important; }
+  ${D} .orr-prep-stake-number { font-size:17px !important; line-height:1.05 !important; }
+  /* Purse, pressure and yield are the stake's tradeoff. They must remain readable before choosing. */
+  ${D} :is(.orr-prep-stake-pressure, .orr-prep-stake-yield) {
+    display:block !important; white-space:normal; overflow-wrap:anywhere; max-width:100%;
+    margin:0; font-size:12px !important; line-height:1.3 !important;
+  }
+  ${D} .k-row > .k-row__name { margin-bottom:4px !important; font-size:12px !important; }
+  ${D} .sf-crd-zones .sf-crd-zone-pick { min-height:28px !important; padding:4px 0 6px !important; }
+  ${D} .sf-crd-zone { margin:2px 0 0 !important; font-size:12px !important; }
+  ${D} .sf-crd-stakes .fh-tile-legend { white-space:normal !important; overflow:visible !important;
+    text-overflow:clip !important; font-size:12px !important; letter-spacing:.06em !important;
+    font-variation-settings:'wdth' 92 !important; line-height:1.15 !important; }
+}
+@media (max-height:500px) {
+  /* 801×461 stage is ~191px once the hero claims the right column. Drop Daily chrome and
+     tighten Mode so Stake legend+purse clear the fold; pressure/yield stay for scroll. */
+  ${D} .orr-prep-daily { display:none !important; }
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:40px !important; height:auto !important; padding:2px 2px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { height:16px !important; }
+  ${D} .sf-crd-modes .fh-tile-art svg { width:16px !important; height:16px !important; }
+  ${D} .sf-crd-mode-sub { margin-top:2px !important; font-size:12px !important; line-height:1.25 !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:40px !important; height:auto !important; padding:3px 2px !important; gap:2px !important; }
+  ${D} .orr-prep-stake-number { font-size:16px !important; }
+  ${D} .orr-prep-settings.orr-prep-settings { gap:4px !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:2px !important; }
+}
 /* --- the arena strip reads by its words --------------------------------------------------- */
 ${D} .sf-crd-arenas .fh-tile-art img { width:100% !important; height:44px !important; object-fit:cover !important;
   opacity:.7 !important; filter:saturate(.8) !important; transition:opacity .18s linear, filter .18s linear; }
@@ -155,6 +200,14 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not
 @media (max-height:820px) {
   ${D} .orr-prep-brief { border-top:0 !important; padding-top:8px !important; }
   ${D} .orr-door-hero__words { bottom:150px !important; }
+}
+/* Short densify hero: the 150px climb pushed the arena sentence above the short hero crop
+   ("machinery…" cut mid-glyph at 801×461). Drop the words into the visible frame. */
+@media (max-height:560px) {
+  ${D} .orr-door-hero__words { bottom:100px !important; }
+}
+@media (max-height:500px) {
+  ${D} .orr-door-hero__words { bottom:110px !important; }
 }
 /* reduced motion: the one transition this sheet adds follows the game's own setting */
 html.sf-reduce-motion ${D} .sf-crd-arenas .fh-tile-art img { transition:none !important; }
