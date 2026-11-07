@@ -7,6 +7,8 @@ const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-prep
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
 const RD = `html:root:not([data-sf-mobile="1"]) ${R.replace(/^html /, '')}`;
+/* Scored Gauntlet rearm: three sky cards, no shop/orr-armory class. Armory densify (A) misses it. */
+const RE = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-visual-armory:not(.orr-armory)';
 const CSS = `
 ${D} .orr-prep-daily { color:var(--dp-phos); font:500 14px var(--dp-face-body,'Instrument Sans'),sans-serif; margin:8px 0 16px; }
 ${D} .orr-cabinet-preview { position:absolute; top:4%; right:8%; width:80%; max-width:380px; z-index:3; pointer-events:none; background:var(--dp-void); }
@@ -860,6 +862,84 @@ ${A} .k-foot .k-word:is(:disabled, [aria-disabled="true"]) { opacity:.45 !import
   ${A} .orr-armory-item { min-height:170px; height:190px; }
   ${A} .orr-armory-item > .orr-equipment-glyph { width:140px; height:140px; }
   ${A} .orr-armory-reading__jig { height:200px !important; min-height:160px; }
+}
+
+/* —— UI polish: scored Rearm (three sky cards, no orr-armory) ——
+   At ≤560 tall the kit's 48px row-gap + tall cards spill through a transparent foot
+   (651/700/801×461: card∩foot mash ~15–19k, elementFromPoint leaks into activation text).
+   Opaque sticky foot curtain + stage clip + compressed cards keep verbs clear of offers. */
+${RE} > .k-foot {
+  z-index:6 !important; position:relative !important; isolation:isolate;
+  border-top:1px solid rgb(${BONE} / .16) !important;
+  background:rgb(${VOID}) !important;
+  box-shadow:0 -18px 22px -4px rgb(${VOID} / .95) !important;
+}
+${RE} .k-foot .k-words { position:relative; z-index:1; }
+@media (max-height:560px) {
+  ${RE} {
+    gap:10px 16px !important;
+    padding:12px 18px 8px !important;
+    overflow:hidden !important;
+    align-content:stretch !important;
+  }
+  ${RE} > .k-title { margin:0 !important; padding:0 !important; }
+  ${RE} > .k-title h1, ${RE} > .k-title .k-t-title { font-size:clamp(24px, 5.5vh, 32px) !important; line-height:.92 !important; }
+  ${RE} > .k-title .sf-cru-sub { font-size:12px !important; margin-top:2px !important; line-height:1.3 !important; }
+  ${RE} > .sf-cru-stage {
+    min-height:0 !important; overflow:hidden !important;
+    display:flex !important; flex-direction:column !important;
+  }
+  ${RE} .sf-cru-cards {
+    flex:1 1 auto !important; min-height:0 !important; max-height:100% !important;
+    height:auto !important; overflow:auto !important; align-items:flex-start !important;
+    gap:10px !important; padding:4px 4px 24px !important;
+    scroll-padding:4px 4px 24px; overscroll-behavior:contain; scrollbar-width:thin;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+  }
+  /* One scroll owner, natural-height cards: the activation and replacement/slot are part of
+     the choice. A viewport-height cap on each button clipped those lines inside the scroller. */
+  ${RE} .sf-cru-card.sf-cru-card {
+    min-height:0 !important; height:auto !important; max-height:none !important;
+    padding:6px 6px 8px 10px !important; gap:3px !important; overflow:visible !important;
+  }
+  ${RE} .sf-cru-card:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:2px; }
+  ${RE} .sf-cru-card :is(.sf-cru-name, .sf-cru-blurb, .sf-cru-activation, .sf-cru-slot) {
+    white-space:normal !important; overflow-wrap:anywhere;
+  }
+  ${RE} .sf-cru-card > .orr-equipment-glyph, ${RE} .sf-cru-card > svg.orr-equipment-glyph {
+    width:36px !important; height:36px !important; flex:none !important;
+  }
+  ${RE} .sf-cru-card .sf-cru-cardhead { min-height:0 !important; gap:6px !important; }
+  ${RE} .sf-cru-card .sf-cru-verb { font-size:12px !important; letter-spacing:.12em !important; }
+  ${RE} .sf-cru-card .sf-cru-name { font-size:15px !important; line-height:1.15 !important; }
+  ${RE} .sf-cru-card .sf-cru-blurb {
+    font-size:12px !important; line-height:1.3 !important;
+    display:block !important; -webkit-line-clamp:unset; line-clamp:unset;
+    overflow:visible !important;
+  }
+  ${RE} .sf-cru-card .sf-cru-activation { font-size:12px !important; margin-block:2px !important; line-height:1.25 !important; }
+  ${RE} > .k-foot {
+    z-index:8 !important; flex:none !important;
+    padding:8px 0 4px !important;
+    background:rgb(${VOID}) !important;
+    box-shadow:0 48px 0 0 rgb(${VOID}), 0 -28px 28px -2px rgb(${VOID} / .97) !important;
+  }
+  ${RE} > .k-foot::before {
+    content:'' !important; display:block !important; pointer-events:none !important;
+    position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
+    height:22px !important;
+    background:linear-gradient(180deg, transparent, rgb(${VOID})) !important;
+  }
+  ${RE} .k-foot .k-words { flex-wrap:wrap !important; gap:8px 14px !important; align-items:center !important; }
+  ${RE} .k-foot .k-word { font-size:13px !important; min-height:32px !important; padding:0 10px !important; }
+  ${RE} .k-foot .sf-cru-kbd { margin-left:6px !important; font-size:12px !important; }
+  ${RE} .sf-cru-fine, ${RE} .orr-armory-wallet { font-size:12px !important; }
+}
+/* Narrow+short: foot verbs were wrapping to ~84px and stealing stage height; keep one compact row when possible. */
+@media (min-width:641px) and (max-width:820px) and (max-height:560px) {
+  ${RE} .k-foot .k-words { gap:8px 12px !important; }
+  ${RE} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:normal !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
