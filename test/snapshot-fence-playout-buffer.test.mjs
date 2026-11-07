@@ -279,6 +279,40 @@ test('a 124 ms pack cadence at 60 fps and 1x stays under the 2x jump bar', () =>
   assert.ok(maxHeld <= 1, `the cadence does not freeze the hull: ${maxHeld} held frames`);
 });
 
+test('a 30 Hz present cadence plays the world at wall speed', () => {
+  // The 30 fps cap presents every second 60 Hz callback. The fence must receive the elapsed
+  // time since the last present (33.3 ms), not the last callback's 16.7 ms; the old source could
+  // only reach 0.9x wall speed and drifted back through the pack ring.
+  const fence = createSnapshotFence({ capacity: 20 });
+  const speed = 60;
+  let simNow = 0;
+  let lastPack = 0;
+  let x = 0;
+  let first = null;
+  let last = null;
+  for (let present = 0; present < 300; present++) {
+    simNow += 1 / 30;
+    while (lastPack + 0.1 <= simNow + 1e-9) {
+      lastPack += 0.1;
+      x += speed * 0.1;
+      packOne(fence, { x, simTime: lastPack });
+    }
+    const alpha = fence.samplePresentationAlpha(1 / 30, 0, 1 / 60);
+    assert.ok(Number.isFinite(alpha) || alpha === 0, 'the sampled alpha stays finite');
+    const diag = fence.getPlayoutDiagnostics({});
+    if (present > 30 && Number.isFinite(diag.presentedTimeS)) {
+      if (!first) first = { sim: simNow, presented: diag.presentedTimeS };
+      last = { sim: simNow, presented: diag.presentedTimeS,
+        depth: diag.bufferDepthPacks, rate: diag.playbackRate };
+    }
+  }
+  assert.ok(first && last, 'the fence presented during the window');
+  const slope = (last.presented - first.presented) / (last.sim - first.sim);
+  assert.ok(Math.abs(slope - 1) < 0.02, `presented clock ran at ${slope.toFixed(3)}x wall speed`);
+  assert.ok(last.depth <= 2, `the presented bracket stayed near the newest pack (depth ${last.depth})`);
+  assert.ok(last.rate <= 1.05, `the playout rate was not saturated (${last.rate.toFixed(3)})`);
+});
+
 test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', () => {
   // The presentation consumer withholds completed packs for 400 ms while the sim keeps
   // running; the fence sees a real 400 ms gap in sim time. The runway modulation keeps the
