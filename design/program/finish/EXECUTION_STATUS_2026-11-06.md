@@ -23,7 +23,7 @@ the implementation is optimal.
 | Campaign | Lane | Claimed | Verified here | Next action |
 |---|---|---|---|---|
 | E10 frame truth | 1 | DONE | pending review | gate A |
-| E1 playout buffer | 1 | **Verify MET 2026-11-07**: matched 400 ms gap, 1×, before 1 violation/5.17 WU vs after 0/0, no held pose; videos + traces in `campaigns/E1/evidence/` | pending 3-reviewer agreement | reviewers |
+| E1 playout buffer | 1 | **Verify NOT met**: moving 400 ms-gap capture cuts 28 violations/84 WU/3 s holds to 4/21 WU/0 holds; the 4 are collision decelerations, not gaps | open: collision-free capture or an agreed presented-speed bar | reviewers |
 | E5 shared memory | 1 | Landed (Electron probe open) | partial | gate A |
 | E9 load in seconds | 1 | Diagnosed only | no | implement |
 | E3 mode-scoped sim | 2 | COMPLETE (LOD retracted) | pending review | gate C |

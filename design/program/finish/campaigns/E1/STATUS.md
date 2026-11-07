@@ -2,28 +2,29 @@
 
 **Owner:** Lane 1 PIPELINE. **Diagnosis:** [DIAGNOSIS.md](DIAGNOSIS.md).
 
-## 2026-11-07 fresh 1× gap capture — Verify MET
+## 2026-11-07 moving captures — Verify NOT MET
 
-Same stall pattern, same laptop, headed Chromium at 1280×720, real New Game boot, 30 s of flight
-with `?simGap=400@2500@3500` (a 400 ms completed-pack hold every 3.5 s). The only difference is the
-fence kill-switch.
+Same headed Chromium, real New Game boot, 30 s of flight with `?simGap=400@2500@3500`; the player
+holds `W` after launch. The fence kill-switch is the only intended difference.
 
-| Run | File | Frames | Rate | Gaps / held frames | Frames over 2× bar | Worst jump | Pose held >2 frames |
-|---|---|---|---:|---:|---:|---:|---:|
-| BEFORE (`&playout=0`) | `evidence/before-gap-trace-2026-11-07.json` | 1800 | 0.844× | 20 / 234 | **1** | **4.49×** | 0 |
-| AFTER (fence live) | `evidence/after-gap-trace-2026-11-07.json` | 1771 | 0.973× | 19 / 199 | **0** | **0** | **0** |
+| Run | Frames | Rate | Gaps | Moving frames | Frames over 2× bar | Worst jump | Worst pose | Held pose |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| BEFORE (`&playout=0`) | 1713 | 1.01× | 19 | 783 | **28** | **14.69×** | **84.5 WU** | **3.08 s** |
+| AFTER (fence live) | 1800 | 0.987× | 18 | 946 | **4** | **6.69×** | **21.2 WU** | 0 |
 
-- Worst absolute pose jump: BEFORE **5.17 WU**, AFTER **0 WU**. No after frame repeats the player
-  pose while velocity is non-zero (`heldPoseFrames` max 0, `heldMs` max 0).
-- The after delay settled at p50 50 ms (target 65 ms) and held through the injected gaps instead of
-  jumping; the fence reports 18 history packs, 3 bracket packs, 0 extrapolation at export.
-- Videos: `evidence/before-gap-video-2026-11-07.mp4` / `after-gap-video-2026-11-07.mp4`
-  (960×540 H.264 from the raw Playwright recording; audio muted).
-- Recorder: a temporary Playwright harness over the ordinary boot route; it exports the live
-  `state.frameTruth` JSON with `download:false` and records the same page. The traces and videos are
-  the artifacts; the harness is not a new acceptance surface.
-- **Verify now meets the written bar** (jump ≤ 2× speed×frame time, no >2-frame pose hold, matched
-  before/after video). Reviewer agreement is still required before the gate is called closed.
+- The buffer closes most of the failure: before has a 3 s held pose and an 84 WU burst; after has no
+  held pose and no gap-correlated reset during flight.
+- **The four remaining AFTER frames are not gap holds.** Each is an abrupt sim deceleration
+  (`playerSpeed` 157→5.6 at t=0.95 s; 25→6.1 at t=11.58 s) while the presented pose still carries
+  the earlier 70–82 WU/s motion. The raw bar uses the *current* body speed, so a collision stop makes
+  the still-correct presentation look like a jump. No `playoutGapReset` fires in flight.
+- **Verify is therefore NOT claimed.** The written bar is raw `2 × bodySpeed × frame time`; it reads
+  4 violations. Two honest ways forward: capture steady flight clear of collisions (the current New
+  Game spawn is near Helios traffic), or agree that the bar compares against the presented speed
+  rather than the post-collision sim speed. The campaign text does not settle that, so it stays open.
+
+Videos are separate takes from the clean traces (`before-gap-video-2026-11-07.mp4`,
+`after-gap-video-2026-11-07.mp4`, both with `W` held); the traces above are the acceptance material.
 
 ## Done
 - Diagnosis memo committed (2026-11-06): the presented clock chased the newest snapshot with a
