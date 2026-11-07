@@ -22,6 +22,9 @@ holds `W` after launch. The fence kill-switch is the only intended difference.
   4 violations. Two honest ways forward: capture steady flight clear of collisions (the current New
   Game spawn is near Helios traffic), or agree that the bar compares against the presented speed
   rather than the post-collision sim speed. The campaign text does not settle that, so it stays open.
+- **Three independent reviewers agreed NOT OPTIMAL** on the earlier vacuous after-take and on this
+  moving take: the metric must be exercised by a moving player, and the four collision frames are
+  real raw-bar violations. No gate was closed.
 
 Videos are separate takes from the clean traces (`before-gap-video-2026-11-07.mp4`,
 `after-gap-video-2026-11-07.mp4`, both with `W` held); the traces above are the acceptance material.

@@ -35,7 +35,7 @@ the implementation is optimal.
 | P2 parts explain themselves | 4 | Partial; taxonomy + one-source record landed; previews/merge open | partial | implement |
 | P4 fits you can see | 4 | Contract only; nothing mounts | no | implement |
 | P3 pilot progression | 4 | Design doc; owner gate | no | approve + implement |
-| W1 Journey | 5 | Implementation landed; play walk blocked | partial | gate F + walk |
+| W1 Journey | 5 | Implementation landed; 300-sim-second Adventure walk passes route/control/popping/LOD; act beats + ten moments open | partial | scripted act walk |
 | W5 first hour | 5 | Not started | no | implement |
 | W2 40 levels | 5 | Not started | no | implement |
 | W3 sectors | 5 | Not started | no | implement |
