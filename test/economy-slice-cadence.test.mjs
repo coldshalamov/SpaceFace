@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
+import { partitionUpdateSystems } from '../src/core/catchupPolicy.js';
 import { getSimStepProfiler } from '../src/core/simStepProfiler.js';
 import { resetSimCoreFlags, setSimCoreFlags, simCoreFlagDefaults } from '../src/core/simCoreFlags.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -75,6 +76,21 @@ function countEvents(sim) {
 
 test.before(() => {
   setSimCoreFlags({ ...simCoreFlagDefaults(), economySlicing: true });
+});
+
+test('a per-tick drain only runs inside its owner declared mode scope', () => {
+  const drained = [];
+  const fake = (name) => ({ name, update() {}, drainTick() { drained.push(name); } });
+  const partitions = partitionUpdateSystems([fake('economy'), fake('swarmArena')], { state: {} });
+  partitions.drainStep(DT, { mode: 'flight', run: { kind: 'survival', phase: 'active' } });
+  assert.deepEqual(drained, ['swarmArena'],
+    'the Adventure economy pass does not advance inside a Swarm run');
+  drained.length = 0;
+  partitions.drainStep(DT, { mode: 'flight' });
+  assert.deepEqual(drained, ['economy'], 'the economy pass drains in Adventure flight');
+  drained.length = 0;
+  partitions.drainStep(DT, { mode: 'docked' });
+  assert.deepEqual(drained, [], 'a frozen docked label has no scheduling scope');
 });
 
 test.after(() => {

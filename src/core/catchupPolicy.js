@@ -317,7 +317,14 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
      * their ordinary fixed-step path, after core.preStep and before the system queue.
      */
     drainStep(dt, currentState) {
-      for (const system of tickDrains) system.drainTick(dt, currentState);
+      // A per-tick drain belongs to its owner's declared mode scope. The economy owner is an
+      // Adventure/Yard calendar system; without this filter an in-flight pass kept advancing
+      // once per tick inside a Swarm run, where the economy queue never runs at all.
+      const mode = resolveActiveSimMode(currentState);
+      for (const system of tickDrains) {
+        if (system && system.name && !systemRunsInMode(system.name, mode)) continue;
+        system.drainTick(dt, currentState);
+      }
     },
     dispose,
   };
