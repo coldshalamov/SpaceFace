@@ -45,11 +45,11 @@ the implementation is optimal.
 | X4 sound/music | 6 | Stems landed; 30-event pass open | partial | gate E + implement |
 | X3 Adventure glass | 6 | Landed; before capture open | partial | gate E |
 | X5 controls/contexts | 6 | Landed; live route open | partial | gate E |
-| Q1 census | 7 | Not started | no | implement |
-| Q3 taste gate | 7 | Not started | no | implement |
-| Q5 tests | 7 | Not started | no | implement |
-| Q2 route walkers | 7 | Not started | no | implement |
-| Q4 razor | 7 | Not started | no | implement |
+| Q1 census | 7 | In flight (census) | survey | finish decisions |
+| Q3 taste gate | 7 | **DONE** — five-axis rubric + reviewer procedure | `campaigns/Q3/RUBRIC.md` | apply per visible slice |
+| Q5 tests | 7 | In flight (tiers + ref tool) | survey | finish `test:fast` |
+| Q2 route walkers | 7 | Route list + R1 green | partial | walk R2/R3/R5/R6 after fixers |
+| Q4 razor | 7 | Not started | no | survey + delete |
 | E8 native verdict | 7 | Not started (depends E1/E2) | no | implement |
 
 ## Ground truth at takeover (2026-11-06)
