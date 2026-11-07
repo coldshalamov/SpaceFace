@@ -85,10 +85,24 @@ the implementation is optimal.
 
 | Gate | Scope | State |
 |---|---|---|
-| A | E10 + E1 + E5 | not started |
-| B | E6 | not started |
-| C | E3 + E2 profiler | not started |
-| D | P1 + P2 | not started |
+| A | E10 + E1 + E5 | A1/A2: NOT OPTIMAL (sector-transition old pose, boost snap, delay not maintained, E10 clamp); fixer in flight |
+| B | E6 | B1/B2/B3: NOT OPTIMAL (orphan holds, counter blind spots); fixer in flight |
+| C | E3 + E2 profiler | C2/C3: NOT OPTIMAL (telemetryDemand breaks readers, mode-switch dt burst); E3 Line regression fixed; fixer in flight |
+| D | P1 + P2 | D1/D2/D3: NOT OPTIMAL (Firepower/Muscle/Power lie, tab order, P2 coverage); fixer in flight |
 | E | X1 + X3 + X4 + X5 | not started |
-| F | W1 | not started |
-| G | repo quality baseline (Q1/Q5/Q4 survey) | not started |
+| F | W1 | F1/F2/F3: NOT OPTIMAL (act surface, March credits, missions init contract); fixer in flight; live route suite 10 red |
+| G | repo quality baseline (Q1/Q5/Q4 survey) | Q5 audit complete; Q5 implementation in flight |
+
+## PR queue (triage 2026-11-06)
+
+35 open PRs. The displayed GitHub diff is stale for the `ui-polish` batch; the real merge delta is
+1-5 files each. **No open PR is superseded** by master. Dispositions:
+
+- **Disposition documented:** port 894 and 895 first (self-contained); then the layout batch
+  897 -> 896 -> 893 -> 892 -> 890 -> 888 -> 886 -> 885 -> 884 -> 883 -> 882 -> 881 -> 880 -> 879
+  -> 878 -> 877 -> 875/874 (shared `kit/dom.js`; land once) -> 873 -> 872 -> 861 -> 891 -> 887 ->
+  889, regenerating the UI-budget digest after each.
+- **Deep review before port:** 858 (opening-rescue salvage), 857 (distress navigation/save), 742
+  (Iron Kraken), 776 (Swarm specialists), 748 then 667 (shader warming), 657/724/840 (drafts).
+- **Do not add:** the `.github/workflows/ui-pr-review.yml` + `uiBenchArrival` scaffolding shown in
+  the stale display diff; it is not in any real merge delta.
