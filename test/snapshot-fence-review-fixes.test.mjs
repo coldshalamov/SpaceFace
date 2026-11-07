@@ -24,8 +24,8 @@ function meshStub() {
   return { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, userData: {} };
 }
 
-function draw(fence, mesh, elapsedS) {
-  const alpha = fence.samplePresentationAlpha(elapsedS, 0, DT);
+function draw(fence, mesh, elapsedS, rawElapsedS = elapsedS) {
+  const alpha = fence.samplePresentationAlpha(elapsedS, 0, DT, 1, rawElapsedS);
   applySnapshotPoseToMesh(
     mesh,
     fence.latestSnapshot(),
@@ -43,16 +43,18 @@ function leadStats(fence, scratch) {
 }
 
 // Wall-paced cadence: `rate` is the game time scale, so the fence receives time-scaled frame
-// elapsed exactly like presentationRunner does. Packs arrive every `packMs` of WALL time,
-// carrying the sim time at that wall moment (rate-scaled).
+// elapsed exactly like presentationRunner does. Packs are placed at their EXACT scheduled sim
+// times (sub-frame), so `packMs` is the real emulated reply interval rather than the next frame
+// boundary: at 12.3 fps a 123 ms reply is 123 ms, not 162.6 ms.
 function runCadence({ fps, packMs, seconds, rate = 1, warmS = 6, speed = SPEED }) {
   const fence = createSnapshotFence({ capacity: 4 });
   const mesh = meshStub();
   const scratch = {};
   const wallDt = 1 / fps;
   const presentedDt = wallDt * rate;
+  const packIntervalS = (packMs / 1000) * rate;
   let sim = 0;
-  let lastPack = -Infinity;
+  let nextPackSim = packIntervalS;
   let previousX = null;
   let held = 0;
   let maxHeld = 0;
@@ -66,9 +68,13 @@ function runCadence({ fps, packMs, seconds, rate = 1, warmS = 6, speed = SPEED }
   const frames = Math.ceil(seconds * fps);
   for (let frame = 0; frame < frames; frame++) {
     sim += presentedDt;
-    if (sim - lastPack >= packMs * rate / 1000) {
-      lastPack = sim;
-      packOne(fence, { x: speed * sim, simTime: sim });
+    // Sub-frame pack timing: a frame that crosses one or more scheduled reply moments packs
+    // each at its own sim stamp, so the fence sees the named cadence exactly.
+    let packedThisFrame = 0;
+    while (sim + 1e-12 >= nextPackSim && packedThisFrame < 8) {
+      packOne(fence, { x: speed * nextPackSim, simTime: nextPackSim });
+      nextPackSim += packIntervalS;
+      packedThisFrame++;
     }
     const alpha = fence.samplePresentationAlpha(presentedDt, 0, DT);
     applySnapshotPoseToMesh(
@@ -98,9 +104,12 @@ function runCadence({ fps, packMs, seconds, rate = 1, warmS = 6, speed = SPEED }
   }
   leads.sort((a, b) => a - b);
   const p50 = leads[Math.floor(leads.length * 0.5)] || 0;
+  const diag = fence.getPlayoutDiagnostics(scratch);
   return {
-    fence, diag: fence.getPlayoutDiagnostics(scratch), p50, minLead, maxLead,
+    fence, diag, p50, minLead, maxLead,
     sampledFrames, extrapolatedFrames, maxHeld, backward, worstRatio,
+    packIntervalMs: packIntervalS * 1000,
+    gapResets: diag.gapResets,
   };
 }
 
@@ -169,8 +178,10 @@ test('a long no-frame interval re-seats instead of replaying the occlusion backl
   }
   draw(fence, mesh, DT);
   const before = mesh.position.x;
-  // A 2 s hidden-tab frame: raw elapsed is far beyond a playable frame.
-  draw(fence, mesh, 2);
+  // A 2 s hidden-tab frame reaches the fence as TWO values: the loop-clamped 0.25 s presented
+  // elapsed and the unclamped 2 s raw interval (presentationRunner stamps rawFrameDt and the
+  // renderer forwards it). The raw value is what re-seats.
+  draw(fence, mesh, 0.25, 2);
   const diag = fence.getPlayoutDiagnostics();
   assert.equal(diag.gapResets, 1, 'the long frame re-seated');
   assert.ok(diag.lastGapResetRawElapsedMs >= 1900);
@@ -181,6 +192,9 @@ test('a long no-frame interval re-seats instead of replaying the occlusion backl
 test('124 ms replies at 60 fps hold the reserve inside the documented band for 30 s', () => {
   const result = runCadence({ fps: 60, packMs: 124, seconds: 30 });
   const { diag } = result;
+  assert.ok(Math.abs(result.packIntervalMs - 124) < 1e-9,
+    `the emulated reply interval is the named one: ${result.packIntervalMs} ms`);
+  assert.equal(result.gapResets, 0, 'a steady 124 ms cadence is not worker silence');
   assert.equal(result.backward, 0, 'the cadence never rewinds the hull');
   assert.equal(result.maxHeld, 0, `the cadence never freezes the hull (${result.maxHeld} held)`);
   assert.ok(result.worstRatio <= 2,
@@ -200,8 +214,12 @@ test('124 ms replies at 60 fps hold the reserve inside the documented band for 3
 test('12.3 fps with 123 ms replies holds the reserve at 1x and 0.109x time scale', () => {
   // The reviewer's frame-rate reproduction: 12.3 fps / 1x with 123 ms packs had lead 19 ms
   // and 34 % extrapolated frames on the old 100 ms ceiling. The reserve now sizes from the
-  // observed interval; the 60 fps test cannot hide a low-frame-rate cap.
+  // observed interval; the 60 fps test cannot hide a low-frame-rate cap. Sub-frame pack timing
+  // makes 123 ms the real interval at 12.3 fps (frame-boundary packing would be 162.6 ms).
   const slow = runCadence({ fps: 12.3, packMs: 123, seconds: 30, rate: 1 });
+  assert.ok(Math.abs(slow.packIntervalMs - 123) < 1e-9,
+    `1x emulated interval is 123 ms: ${slow.packIntervalMs} ms`);
+  assert.equal(slow.gapResets, 0, '1x steady cadence is not worker silence');
   assert.ok(slow.minLead >= 33, `1x min lead ${slow.minLead.toFixed(1)} ms`);
   assert.ok(slow.p50 >= 33 && slow.p50 <= slow.diag.playoutDelayMaxMs + 5,
     `1x p50 in band: ${slow.p50.toFixed(1)} / max ${slow.diag.playoutDelayMaxMs.toFixed(1)}`);
@@ -210,12 +228,69 @@ test('12.3 fps with 123 ms replies holds the reserve at 1x and 0.109x time scale
   assert.equal(slow.maxHeld, 0, `1x never freezes: ${slow.maxHeld} held frames`);
 
   const slowed = runCadence({ fps: 12.3, packMs: 123, seconds: 30, rate: 0.109 });
+  assert.ok(Math.abs(slowed.packIntervalMs - 123 * 0.109) < 1e-9,
+    `0.109x emulated sim interval is 13.407 ms: ${slowed.packIntervalMs} ms`);
+  assert.equal(slowed.gapResets, 0, '0.109x steady cadence is not worker silence');
   assert.ok(slowed.minLead >= 33, `0.109x min lead ${slowed.minLead.toFixed(1)} ms`);
   assert.ok(slowed.p50 <= 100,
     `0.109x p50 inside the configured band: ${slowed.p50.toFixed(1)} ms`);
   assert.equal(slowed.extrapolatedFrames, 0,
     `0.109x stays inside history: ${slowed.extrapolatedFrames} extrapolated frames`);
   assert.equal(slowed.maxHeld, 0, `0.109x never freezes: ${slowed.maxHeld} held frames`);
+});
+
+test('a steady 400/500/600 ms reply cadence is learned, not re-seated, at 60 and 12.3 fps', () => {
+  // The final E1 review's material defect: the old fixed 350 ms gap threshold treated every
+  // 400/500/600 ms reply as silence, re-seated on each arrival, and never let the interval ring
+  // size the reserve. Each cadence must learn, hold the documented lead band, and never jump.
+  for (const fps of [60, 12.3]) {
+    for (const packMs of [400, 500, 600]) {
+      const label = `${packMs} ms replies @ ${fps} fps`;
+      const result = runCadence({ fps, packMs, seconds: 30 });
+      assert.ok(Math.abs(result.packIntervalMs - packMs) < 1e-9,
+        `${label}: real emulated interval ${result.packIntervalMs} ms`);
+      assert.equal(result.gapResets, 0,
+        `${label}: steady cadence must never re-seat (${result.gapResets} resets)`);
+      assert.equal(result.backward, 0, `${label}: never rewinds`);
+      assert.equal(result.maxHeld, 0, `${label}: never freezes (${result.maxHeld} held)`);
+      assert.ok(result.worstRatio <= 2,
+        `${label}: worst jump ${result.worstRatio.toFixed(2)}x the presented-rate bar`);
+      assert.ok(result.diag.playoutDelayTargetMs >= packMs - 1,
+        `${label}: the reserve sized to the cadence (${result.diag.playoutDelayTargetMs.toFixed(1)} ms)`);
+      const bandMax = result.diag.playoutDelayMaxMs + 5;
+      assert.ok(result.p50 >= 33 && result.p50 <= bandMax,
+        `${label}: lead p50 in [33, ${bandMax.toFixed(1)}]: ${result.p50.toFixed(1)} ms`);
+      assert.ok(result.minLead >= 33,
+        `${label}: lead never goes dry (min ${result.minLead.toFixed(1)} ms)`);
+      assert.equal(result.extrapolatedFrames, 0,
+        `${label}: stays inside history (${result.extrapolatedFrames} extrapolated frames)`);
+    }
+  }
+});
+
+test('349/351 ms replies sit on the cadence side of the old fixed 350 ms knife edge', () => {
+  // 351 ms is the exact first interval the old `simDelta > PLAYOUT_MAX_GAP_S` clause re-seated;
+  // 349 ms was just under it. Both must be learned as cadence at both frame rates.
+  for (const fps of [60, 12.3]) {
+    for (const packMs of [349, 351]) {
+      const label = `${packMs} ms replies @ ${fps} fps`;
+      const result = runCadence({ fps, packMs, seconds: 30 });
+      assert.ok(Math.abs(result.packIntervalMs - packMs) < 1e-9,
+        `${label}: real emulated interval ${result.packIntervalMs} ms`);
+      assert.equal(result.gapResets, 0,
+        `${label}: the knife edge is cadence, not silence (${result.gapResets} resets)`);
+      assert.equal(result.backward, 0, `${label}: never rewinds`);
+      assert.ok(result.worstRatio <= 2,
+        `${label}: worst jump ${result.worstRatio.toFixed(2)}x the presented-rate bar`);
+      assert.ok(result.diag.playoutDelayTargetMs >= packMs - 1,
+        `${label}: the reserve sized to the cadence (${result.diag.playoutDelayTargetMs.toFixed(1)} ms)`);
+      const bandMax = result.diag.playoutDelayMaxMs + 5;
+      assert.ok(result.p50 >= 33 && result.p50 <= bandMax,
+        `${label}: lead p50 in [33, ${bandMax.toFixed(1)}]: ${result.p50.toFixed(1)} ms`);
+      assert.ok(result.minLead >= 33,
+        `${label}: lead never goes dry (min ${result.minLead.toFixed(1)} ms)`);
+    }
+  }
 });
 
 test('the per-slot presented token finishes a stop on the hull and the anchor', () => {

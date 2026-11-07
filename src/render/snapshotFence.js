@@ -38,12 +38,22 @@ const PLAYOUT_DELAY_INTERVAL_MARGIN_S = 0.015;
 const PLAYOUT_DELAY_DYNAMIC_HEADROOM_S = 0.03;
 const PLAYOUT_INTERVAL_RING = 32;
 /**
- * Largest newest-pack sim delta the playout timeline can absorb by slowing down. Beyond it the
- * worker was silent (or the tab was hidden) long enough that stretching the gap would take
- * seconds; the presented clock re-seats to `newest − delay` instead of replaying the backlog.
+ * Absolute floor for the worker-silence detector. A newest-pack delta is a forward gap only when
+ * it exceeds this floor AND PLAYOUT_SILENCE_INTERVAL_FACTOR × the worst reply interval the ring
+ * has learned: a steady 2–10 Hz cadence (400/500/600 ms) is the cadence the reserve is sized for,
+ * not silence. The floor keeps a boot stream with no learned interval from treating a multi-second
+ * gap as cadence.
  */
 export const PLAYOUT_MAX_GAP_S = 0.35;
-/** Raw frame interval beyond which the presented clock treats the present as a re-entry. */
+/** A forward gap is a delta beyond this multiple of the learned reply interval. */
+const PLAYOUT_SILENCE_INTERVAL_FACTOR = 2.5;
+/**
+ * Longest reply interval the interval ring learns as cadence rather than silence. Covers the
+ * documented 2–10 Hz worker reply floor (500 ms) with jitter; a multi-second gap is never learned
+ * and therefore still re-seats.
+ */
+const PLAYOUT_INTERVAL_LEARN_MAX_S = 0.7;
+/** Raw (unclamped) frame interval beyond which the present treats the tab as re-entered. */
 const PLAYOUT_MAX_FRAME_GAP_S = 0.5;
 /**
  * Phase-correction horizon for the presented clock (the PLL's proportional band). A
@@ -297,10 +307,12 @@ export function createSnapshotFence(options = {}) {
   let rateWallS = 0;
   let rateSimS = 0;
   // E1 playout state: the adaptive delay and the buffer pair the presented moment
-  // interpolates between (buffer indices, re-resolved every sample).
+  // interpolates between (buffer indices, re-resolved every sample). The pair object is
+  // allocated once at fence creation and only its fields move — the per-frame path must not
+  // mint a bracket object per present.
   let playoutDelayS = PLAYOUT_DELAY_START_S;
   let playoutDelayTargetS = PLAYOUT_DELAY_START_S;
-  let presentedPair = null;          // { a: olderBufferIndex, b: newerBufferIndex, alpha }
+  const presentedPair = { a: -1, b: -1, alpha: 1 };
   let presentedValid = false;        // a presented sample has run at least once
   let playoutDryEvents = 0;          // commits that landed with the buffer already dry
   // The minimum applied lead (newest − presented) seen since the last commit. A commit
@@ -312,6 +324,9 @@ export function createSnapshotFence(options = {}) {
   // lead is used for the reserve target because it does not swing with the reply staircase.
   let packLagMinSinceCommitS = Infinity;
   let rateSeeded = false;            // first real sim interval has set the playback rate
+  let rateSeedSimS = 0;              // sim seconds accumulated for the seed
+  let rateSeedWallS = 0;             // presented seconds accumulated for the seed
+  let packElapsedS = 0;              // presented time since the last observed reply
   let rateIdleS = 0;                 // presented time since the newest pack last advanced
   // Wall-paced playout timeline (E1): the presented moment must not chase the newest pack's
   // staircase. `packAgeS` is the presented time elapsed since that pack landed; the estimated
@@ -323,14 +338,33 @@ export function createSnapshotFence(options = {}) {
   let lastGapResetGapS = NaN;
   let lastGapResetSimTimeS = NaN;
   let lastGapResetRawElapsedS = NaN;
-  // Worst recent pack interval (sim seconds) sizes the adaptive delay floor.
+  // Worst recent pack interval (sim seconds) sizes the adaptive delay floor; the same value is
+  // the learned cadence the silence detector multiplies, so a steady 400/500/600 ms stream is
+  // never mistaken for a worker silence.
   const packIntervalRing = new Float64Array(PLAYOUT_INTERVAL_RING);
   let packIntervalIndex = 0;
   let packIntervalCount = 0;
+  let recentCadenceS = 0;
   let effectiveDelayFloorS = PLAYOUT_DELAY_MIN_S;
   let effectiveDelayMaxS = PLAYOUT_DELAY_MAX_S;
+  // Last commit the sampler observed. The pack delta is derived here (not from presentedTime)
+  // so the first interval after boot is learnable and a restart rewind is ignored.
+  let lastPackSequence = -1;
+  let lastPackSimTimeS = NaN;
   // Scratch for the newest→oldest sealed-buffer ordering (no per-frame allocation).
   const bracketOrder = new Int32Array(SNAPSHOT_FENCE_BUFFERS);
+
+  function clearPresentedPair() {
+    presentedPair.a = -1;
+    presentedPair.b = -1;
+    presentedPair.alpha = 1;
+  }
+
+  function setPresentedPair(a, b, alpha) {
+    presentedPair.a = a;
+    presentedPair.b = b;
+    presentedPair.alpha = alpha;
+  }
 
   function notePackInterval(deltaS) {
     if (!(deltaS > 0)) return;
@@ -347,6 +381,7 @@ export function createSnapshotFence(options = {}) {
     effectiveDelayMaxS = Math.max(
       PLAYOUT_DELAY_MAX_S, effectiveDelayFloorS + PLAYOUT_DELAY_DYNAMIC_HEADROOM_S,
     );
+    recentCadenceS = worst;
     if (playoutDelayTargetS < effectiveDelayFloorS) playoutDelayTargetS = effectiveDelayFloorS;
     if (playoutDelayTargetS > effectiveDelayMaxS) playoutDelayTargetS = effectiveDelayMaxS;
   }
@@ -500,7 +535,7 @@ export function createSnapshotFence(options = {}) {
       // The adjustment is bounded in both directions, so the delay never leaves [33, 100].
       if (Number.isFinite(buffer.simTime) && presentedValid && Number.isFinite(presentedTime)) {
         if (buffer.poseEpoch !== presentedEpoch) {
-          presentedPair = null;
+          clearPresentedPair();
         } else if (Number.isFinite(delayMinSinceCommitS)) {
           if (Number.isFinite(packLagMinSinceCommitS) && packLagMinSinceCommitS <= 0.004) {
             // The presented clock actually reached the newest sample before this reply: a dry
@@ -638,17 +673,21 @@ export function createSnapshotFence(options = {}) {
     //   4. it may run past the newest sample by at most PRESENTATION_EXTRAPOLATION_S (150 ms):
     //      the returned alpha then exceeds 1 and applySnapshotPoseToMesh extrapolates each pose
     //      along its previous->latest velocity, bounded per row by EXTRAPOLATION_MAX_WU;
-    //   5. a newest-pack sim delta beyond PLAYOUT_MAX_GAP_S (or a long hidden-tab frame) is a
-    //      forward gap the buffer cannot stretch: the clock re-seats at `newest − delay` and
-    //      reports `gapResets` instead of replaying a 3 s backlog for 12–14 s.
+    //   5. a newest-pack sim delta beyond `max(PLAYOUT_MAX_GAP_S, 2.5 × learned interval)` (or a
+    //      raw/unclamped hidden-tab frame) is a forward gap the buffer cannot stretch: the clock
+    //      re-seats at `newest − delay` and reports `gapResets` instead of replaying a 3 s
+    //      backlog for 12–14 s. A steady 400/500/600 ms cadence is learned instead, so it sizes
+    //      the reserve and never re-seats.
     // The pair of history packs bracketing the presented moment is what latestSnapshot()/
     // previousSnapshot() serve until the next sample. Presentation only: the simulation stays
-    // authoritative.
-    samplePresentationAlpha(elapsedS, accumulatorS, fixedDt, fallbackAlpha = 1) {
+    // authoritative. `rawElapsedS` is the unclamped wall frame delta from the loop; it is a
+    // separate argument because the fence's presented elapsed is clamped (0.25 s) and time-scaled.
+    samplePresentationAlpha(elapsedS, accumulatorS, fixedDt, fallbackAlpha = 1, rawElapsedS = elapsedS) {
       if (latest < 0) return fallbackAlpha;
       const current = buffers[latest].published;
       const rawElapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
       const elapsed = Math.min(rawElapsed, 0.25);
+      const rawFrameElapsed = Number.isFinite(rawElapsedS) ? Math.max(0, rawElapsedS) : rawElapsed;
       if (PLAYOUT_DISABLED) {
         // Legacy clock (the "before"): chase newest.simTime + accumulator − fixedDt with the
         // per-frame catch-up gain and a fixed 100 ms extrapolation cap. Present for the
@@ -685,39 +724,93 @@ export function createSnapshotFence(options = {}) {
         presentedSnapshotTime = current.simTime;
         presentedValid = true;
         if (!(span > 0)) {
-          presentedPair = { a: -1, b: latest, alpha: 1 };
+          setPresentedPair(-1, latest, 1);
           return 1;
         }
         const alpha = (presentedTime - prior.simTime) / span;
-        presentedPair = { a: previous, b: latest, alpha: alpha < 0 ? 0 : alpha };
+        setPresentedPair(previous, latest, alpha < 0 ? 0 : alpha);
         return alpha < 0 ? 0 : alpha;
+      }
+      // Learn the reply cadence before the silence decision. A new commit's sim delta is the
+      // cadence sample (not the presented-clock delta, which is 0 on frames between replies and
+      // NaN before the first sample). Intervals up to the 2 Hz floor are cadence; a multi-second
+      // silence is never learned, so it still trips the gap detector below.
+      packElapsedS += elapsed;
+      // "Idle" means silence longer than the learned cadence, not merely a low reply rate:
+      // at a steady 600 ms cadence the old fixed 0.3 s test skipped rate measurement on
+      // every reply and left the playback rate stuck at 1. The 0.3 s floor still covers
+      // fast streams whose ring has not learned an interval yet.
+      const afterIdle = rateIdleS > Math.max(0.3, recentCadenceS * 2);
+      if (current.sequence !== lastPackSequence) {
+        const previousPackSimTimeS = lastPackSimTimeS;
+        const packIntervalElapsedS = packElapsedS;
+        const packSequenceDelta = current.sequence - lastPackSequence;
+        lastPackSequence = current.sequence;
+        lastPackSimTimeS = current.simTime;
+        packElapsedS = 0;
+        const packDeltaS = current.simTime - previousPackSimTimeS;
+        // A burst of commits between two samples is a backlog (a withheld-pack gate, a hidden
+        // tab, a test's coalesced burst), not a reply cadence: its newest delta is several
+        // replies wide. Learning it would hide the very gap the re-seat exists for.
+        const coalescedBurst = packSequenceDelta > 1;
+        if (!coalescedBurst && Number.isFinite(packDeltaS) && packDeltaS > 0
+            && packDeltaS <= PLAYOUT_INTERVAL_LEARN_MAX_S) {
+          notePackInterval(packDeltaS);
+          // Seed the playback rate from a short run of replies (not one frame-boundary
+          // interval): the presented elapsed is quantised to whole frames, so one interval can
+          // read 0.756x at 0.109x. Summing until 100 ms of presented time averages the
+          // quantisation out, and a coalesced reply still gains its ticks over the same window.
+          if (!rateSeeded) {
+            if (afterIdle) {
+              rateSeedSimS = 0;
+              rateSeedWallS = 0;
+            } else {
+              rateSeedSimS += packDeltaS;
+              rateSeedWallS += packIntervalElapsedS;
+            }
+            if (rateSeedWallS >= 0.1) {
+              presentationRate = Math.max(0, Math.min(
+                PRESENTATION_RATE_MAX, rateSeedSimS / rateSeedWallS,
+              ));
+              rateSeeded = true;
+              rateWallS = 0;
+              rateSimS = 0;
+            }
+          }
+        }
       }
       const simDeltaS = current.simTime - presentedSnapshotTime;
       const reset = presentedEpoch !== current.poseEpoch
         || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
-      // Forward gap the playout timeline cannot absorb: the worker was silent long enough
-      // that the newest pack is more than PLAYOUT_MAX_GAP_S ahead, or this is the first frame
-      // after a hidden/occluded interval. Replaying that backlog is the 12–14 s recovery the
-      // reviewer measured; re-seat in one frame instead.
+      // Forward gap the playout timeline cannot absorb: the newest pack is more than 2.5x the
+      // learned reply interval ahead (never less than the 350 ms floor), or this is the first
+      // frame after a hidden/occluded interval. A steady 2–10 Hz cadence stays below the learned
+      // threshold and is priced into the reserve instead of re-seating every reply. Replaying a
+      // true silence is the 12–14 s recovery the reviewer measured; re-seat in one frame instead.
+      const silenceThresholdS = Math.max(
+        PLAYOUT_MAX_GAP_S, recentCadenceS * PLAYOUT_SILENCE_INTERVAL_FACTOR,
+      );
       const gapReset = !reset && presentedValid && (
-        (Number.isFinite(simDeltaS) && simDeltaS > PLAYOUT_MAX_GAP_S)
-        || rawElapsed > PLAYOUT_MAX_FRAME_GAP_S);
+        (Number.isFinite(simDeltaS) && simDeltaS > silenceThresholdS)
+        || rawFrameElapsed > PLAYOUT_MAX_FRAME_GAP_S);
       if (reset || gapReset) {
         if (gapReset) {
           gapResets++;
           lastGapResetGapS = Number.isFinite(simDeltaS) ? simDeltaS : NaN;
           lastGapResetSimTimeS = current.simTime;
-          lastGapResetRawElapsedS = rawElapsed;
+          lastGapResetRawElapsedS = rawFrameElapsed;
         }
         // Teleport / rebuild / clock rewind / forward gap: snap to the delayed target (the
         // sim flagged the discontinuity via the pose epoch, or the gap detector did). The
         // tuned playback rate survives a sector jump (the worker cadence did not change);
         // only the phase, the rate window and the delay-measurement window restart.
         presentedTime = current.simTime - playoutDelayS;
-        presentedPair = null;
+        clearPresentedPair();
         rateWallS = 0;
         rateSimS = 0;
         rateSeeded = false;
+        rateSeedSimS = 0;
+        rateSeedWallS = 0;
         rateIdleS = 0;
         delayMinSinceCommitS = Infinity;
         packLagMinSinceCommitS = Infinity;
@@ -727,10 +820,9 @@ export function createSnapshotFence(options = {}) {
         playoutDelayS += (playoutDelayTargetS - playoutDelayS)
           * Math.min(1, elapsed / PLAYOUT_DELAY_TAU_S);
         // Sim-rate measurement over >= 1 s of presented frames: sim-seconds the newest pack
-        // gained per presented wall second. Seed from the first real interval after a reset
-        // so a worker already running at 0.5x does not play at 1x for a full window.
+        // gained per presented wall second. The one-time seed from a short run of replies is
+        // taken with the cadence sample above; this window keeps the EMA honest afterwards.
         if (Number.isFinite(simDeltaS) && simDeltaS >= 0) {
-          const afterIdle = rateIdleS > 0.3;
           if (simDeltaS > 0) {
             if (afterIdle) {
               // A pack that lands after a long gap carries the whole gap as one delta. It is
@@ -742,8 +834,8 @@ export function createSnapshotFence(options = {}) {
               rateWallS += elapsed;
               rateSimS += simDeltaS;
             }
-            // A cadence sample, not a gap: size the reserve from the worst recent reply.
-            if (simDeltaS <= PLAYOUT_MAX_GAP_S) notePackInterval(simDeltaS);
+            // The cadence sample was learned above (from the commit delta), including the
+            // 400/500/600 ms steady streams; this branch only prices the reserve.
             packAgeS = 0;
             rateIdleS = 0;
           } else {
@@ -760,17 +852,6 @@ export function createSnapshotFence(options = {}) {
               presentationRate += (Math.max(0, Math.min(PRESENTATION_RATE_MAX, sample))
                 - presentationRate) * 0.5;
             }
-            rateWallS = 0;
-            rateSimS = 0;
-          }
-          if (!rateSeeded && simDeltaS > 0 && rateWallS > 0.001) {
-            // Seed from the average since the reset, not the single frame: the first pack
-            // after a sparse interval carries several ticks and would otherwise read as an
-            // 8–10x rate for one frame.
-            presentationRate = Math.max(0, Math.min(
-              PRESENTATION_RATE_MAX, rateSimS / rateWallS,
-            ));
-            rateSeeded = true;
             rateWallS = 0;
             rateSimS = 0;
           }
@@ -855,7 +936,7 @@ export function createSnapshotFence(options = {}) {
     resolvePresentedBracket(timeS, fallbackAlpha = 1) {
       const count = orderedSealedBuffers();
       if (count === 0) {
-        presentedPair = null;
+        clearPresentedPair();
         return fallbackAlpha;
       }
       const newestIdx = bracketOrder[0];
@@ -872,14 +953,14 @@ export function createSnapshotFence(options = {}) {
       if (priorOfNewest < 0) {
         // No blend source in this epoch (boot, or the first pack after a teleport):
         // draw the arriving pose exactly instead of guessing.
-        presentedPair = { a: -1, b: newestIdx, alpha: 1 };
+        setPresentedPair(-1, newestIdx, 1);
         return 1;
       }
       if (!(timeS < newest.simTime)) {
         // Extrapolation zone: the newest pair carries the freshest known velocity.
         const span = newest.simTime - buffers[priorOfNewest].simTime;
         const alpha = span > 0 ? 1 + (timeS - newest.simTime) / span : 1;
-        presentedPair = { a: priorOfNewest, b: newestIdx, alpha };
+        setPresentedPair(priorOfNewest, newestIdx, alpha);
         return alpha;
       }
       // Walk only within the newest epoch. The first older pack from another epoch ends the
@@ -898,7 +979,7 @@ export function createSnapshotFence(options = {}) {
         if (timeS >= older.simTime && timeS <= newer.simTime) {
           const span = newer.simTime - older.simTime;
           const alpha = span > 0 ? (timeS - older.simTime) / span : 1;
-          presentedPair = { a: idx, b: newerIdx, alpha };
+          setPresentedPair(idx, newerIdx, alpha);
           // Guard the register: a must always be the older member (L4).
           if (buffers[presentedPair.a].sequence >= buffers[presentedPair.b].sequence) {
             presentedPair.a = -1;
@@ -910,10 +991,10 @@ export function createSnapshotFence(options = {}) {
       // Behind all same-epoch history (clock lagged past the ring after a long hold): serve
       // the oldest pack of THIS epoch at alpha 0; the servo re-seats without a rewind.
       if (oldestSameEpoch >= 0) {
-        presentedPair = { a: -1, b: oldestSameEpoch, alpha: 0 };
+        setPresentedPair(-1, oldestSameEpoch, 0);
         return 0;
       }
-      presentedPair = { a: -1, b: newestIdx, alpha: 1 };
+      setPresentedPair(-1, newestIdx, 1);
       return 1;
     },
   // E10 playout telemetry: the presented clock's latency behind the wall-paced sim moment,

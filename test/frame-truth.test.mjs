@@ -180,7 +180,7 @@ test('frame truth export carries provenance, timeline events and the live fence'
   recorder.ingestFrame({
     frameDtMs: 16.7, rawFrameDtMs: 16.7, playbackRate: 0.5, timeScale: 1,
     poseEpoch: 9, poseSource: 'presented', lane: 'worker', transport: 'worker-local',
-    sector: 'helios', simGapApplications: 3, simGapHeldFrames: 12,
+    sector: 'helios', simGapApplications: 3, simGapHeldFrames: 12, presentedTimeS: 12.5,
     playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
   });
   const trace = recorder.exportJSON({ download: false });
@@ -211,10 +211,12 @@ test('frame truth export carries provenance, timeline events and the live fence'
   assert.ok(trace.events.some((event) => event.kind === 'poseEpoch'
     && event.from === 0 && event.to === 9), 'the timeline carries the epoch change');
   for (const field of ['rawFrameDtMs', 'wallEpochMs', 'playbackRate', 'timeScale',
-    'presentedSpeed', 'jumpBarWu', 'jumpRatio', 'allocBytesPerSec', 'popIn', 'poseEpoch',
-    'heldMs', 'poseSourceCode', 'laneCode', 'transportCode', 'sectorCode']) {
+    'presentedTimeS', 'presentedSpeed', 'jumpBarWu', 'jumpRatio', 'allocBytesPerSec', 'popIn',
+    'poseEpoch', 'heldMs', 'poseSourceCode', 'laneCode', 'transportCode', 'sectorCode']) {
     assert.ok(Object.hasOwn(trace.columns, field), `column ${field} exists`);
   }
+  assert.equal(trace.columns.presentedTimeS.at(-1), 12.5,
+    'the presented clock rides the export as a column');
   // Per-frame provenance columns carry the last frame's values and a legend.
   assert.equal(trace.columns.poseSourceCode.at(-1), 2);
   assert.equal(trace.columns.laneCode.at(-1), 2);

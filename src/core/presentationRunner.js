@@ -303,6 +303,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const presentationFrame = {
     sequence: 0,
     frameDt: 0,
+    // Unclamped rAF delta for this present. Presentation consumes the loop-clamped frameDt;
+    // the fence uses this only to recognise a hidden-tab/occlusion re-entry (E1).
+    rawFrameDt: 0,
     alpha: 0,
     lifecycleState,
     lifecycleGeneration,
@@ -460,6 +463,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // recorder and the playout diagnostics fill these in place; no per-frame object churn.
   const frameTruthLaneScratch = {};
   const frameTruthPlayoutScratch = {};
+  const frameTruthIngestScratch = {};
   let frameTruthLastGapResets = 0;
   function captureWitness() {
     try {
@@ -1156,7 +1160,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     }
   }
 
-  function presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt) {
+  function presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt = frameDt) {
     // E1 gap harness: while the wall gate is open, completed packs stay in the runner's
     // completed ring and the fence keeps extrapolating. The worker keeps stepping; only
     // presentation consumption is withheld, so the gap is independent of the work budget.
@@ -1202,6 +1206,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     lastPresentedMoment = presentedMoment;
     presentationFrame.sequence++;
     presentationFrame.frameDt = frameDt;
+    presentationFrame.rawFrameDt = rawFrameDt;
     if (state && state.render) {
       const presentMs = frameDt * 1000;
       state.render.lastPresentDtMs = presentMs;
@@ -1433,7 +1438,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (capSkip) diagnostics.frameCapSkips++;
       if (!skipPresentation && !capSkip) {
         try {
-          presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt);
+          presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
           renderedSnapshot = true;
         } catch (error) {
           presentationError = error;
@@ -1613,42 +1618,43 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
             ? simulationRunner.clockOwner : 'main';
           const lane = clockOwner === 'worker-local' || clockOwner === 'worker-pump'
             ? 'worker' : 'main';
-          frameTruth.ingestFrame({
-            frameDtMs: frameDt * 1000,
-            rawFrameDtMs: rawFrameDt * 1000,
-            callbackMs: measureNow() - callbackStart,
-            presentMs: presentationMs,
-            steps: diagnostics.stepsThisFrame,
-            simTimeS: state.simTime,
-            tick: state.tick,
-            replyAgeMs: laneSample ? laneSample.replyAgeMs : null,
-            workerWorkMs: laneSample ? laneSample.workerWorkMs : null,
-            workerStepsMs: laneSample ? laneSample.workerStepsMs : null,
-            workerPackMs: laneSample ? laneSample.workerPackMs : null,
-            applyMs: laneSample ? laneSample.applyMs : null,
-            stallMs: laneSample ? laneSample.stallMs : null,
-            playoutDelayMs: playout ? playout.delayMs : null,
-            extrapolateMs: playout ? playout.extrapolateMs : null,
-            bufferDepthPacks: playout ? playout.bufferDepthPacks : null,
-            playbackRate: playout ? playout.playbackRate : (Number(state.timeScale) || 0),
-            timeScale: Number(state.timeScale) || 0,
-            poseEpoch: playout ? playout.poseEpoch : null,
-            poseSource,
-            presentedTimeS: playout ? playout.presentedTimeS : null,
-            docked: !!(state.ui && state.ui.docked === true),
-            simGapApplications: diagnostics.simGapApplications,
-            simGapHeldFrames: diagnostics.simGapHeldFrames,
-            playerRow: presentedPoseRow,
-            drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
-            trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,
-            heapMB,
-            popIn,
-            lane,
-            transport: clockOwner,
-            mode: state.mode,
-            sector: state.world && state.world.currentSectorId != null
-              ? String(state.world.currentSectorId) : null,
-          });
+          const sample = frameTruthIngestScratch;
+          sample.frameDtMs = frameDt * 1000;
+          sample.rawFrameDtMs = rawFrameDt * 1000;
+          sample.callbackMs = measureNow() - callbackStart;
+          sample.presentMs = presentationMs;
+          sample.steps = diagnostics.stepsThisFrame;
+          sample.simTimeS = state.simTime;
+          sample.tick = state.tick;
+          sample.replyAgeMs = laneSample ? laneSample.replyAgeMs : null;
+          sample.workerWorkMs = laneSample ? laneSample.workerWorkMs : null;
+          sample.workerStepsMs = laneSample ? laneSample.workerStepsMs : null;
+          sample.workerPackMs = laneSample ? laneSample.workerPackMs : null;
+          sample.applyMs = laneSample ? laneSample.applyMs : null;
+          sample.stallMs = laneSample ? laneSample.stallMs : null;
+          sample.playoutDelayMs = playout ? playout.delayMs : null;
+          sample.extrapolateMs = playout ? playout.extrapolateMs : null;
+          sample.bufferDepthPacks = playout ? playout.bufferDepthPacks : null;
+          sample.playbackRate = playout ? playout.playbackRate : (Number(state.timeScale) || 0);
+          sample.timeScale = Number(state.timeScale) || 0;
+          sample.poseEpoch = playout ? playout.poseEpoch : null;
+          sample.poseSource = poseSource;
+          sample.presentedTimeS = playout ? playout.presentedTimeS : null;
+          sample.docked = !!(state.ui && state.ui.docked === true);
+          sample.simGapApplications = diagnostics.simGapApplications;
+          sample.simGapHeldFrames = diagnostics.simGapHeldFrames;
+          sample.playerRow = presentedPoseRow;
+          sample.drawCalls = renderInfo && renderInfo.render ? renderInfo.render.calls : null;
+          sample.trianglesK = renderInfo && renderInfo.render
+            ? renderInfo.render.triangles / 1000 : null;
+          sample.heapMB = heapMB;
+          sample.popIn = popIn;
+          sample.lane = lane;
+          sample.transport = clockOwner;
+          sample.mode = state.mode;
+          sample.sector = state.world && state.world.currentSectorId != null
+            ? String(state.world.currentSectorId) : null;
+          frameTruth.ingestFrame(sample);
         }
         // In the same `finally` as recordFrameCallback so a frame that threw still closes its
         // counter frame. Without this an error would fold two frames' counts into one and

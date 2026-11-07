@@ -36,6 +36,7 @@ const FRAME_FIELDS = Object.freeze([
   'playbackRate',    // measured sim-seconds per TIME-SCALED presented second (not wall)
   'timeScale',       // game time scale at present
   'poseEpoch',       // fence pose epoch of the presented sample
+  'presentedTimeS',  // fence presented sim clock (s); 0 before the first presented sample
   'playerX',         // presented-or-mirrored player pose
   'playerZ',
   'playerSpeed',     // authoritative body speed (wu/s)
@@ -538,6 +539,9 @@ export function ensureFrameTruth(state) {
     values.playbackRate = playbackRate;
     values.timeScale = timeScale;
     values.poseEpoch = poseEpoch == null ? 0 : poseEpoch;
+    // The presented clock is sampled every frame by presentationRunner; carry the last real
+    // sample across a frame whose fence probe was absent, then export it as a column.
+    values.presentedTimeS = recorder.lastPresentedTimeS;
     values.playerX = poseFinite ? px : 0;
     values.playerZ = poseFinite ? pz : 0;
     values.playerSpeed = speed;

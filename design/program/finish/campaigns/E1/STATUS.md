@@ -29,14 +29,18 @@
     The documented reserve band is therefore **[33, playoutDelayMaxMs]**: at 60 Hz packs it is the
     configured 33–100 ms, and at a 124 ms cadence the target is ~160 ms and the presented moment
     stays inside history instead of draining to ~19 ms.
-  - **Forward-gap re-seat.** A newest-pack sim delta above `PLAYOUT_MAX_GAP_S` (350 ms), or a raw
-    frame interval above 500 ms (hidden/occluded tab), re-seats
+  - **Cadence vs silence (final-review fix).** The interval ring learns reply intervals up to
+    700 ms (the documented 2–10 Hz worker floor with jitter). A newest-pack delta re-seats only
+    beyond `max(350 ms, 2.5 × learned interval)`, so a steady **400/500/600 ms** cadence sizes the
+    reserve instead of re-seating on every reply; a coalesced burst of commits between samples is
+    treated as backlog, not cadence. A multi-second silence still re-seats
     `presentedTime = newest − playoutDelay`, clears the bracket/rate/phase windows, increments
-    `gapResets`, and emits a `playoutGapReset` timeline event. It does not replay a 3 s backlog.
-    Sub-gap bursts still ride out through the runway modulation.
+    `gapResets`, and emits a `playoutGapReset` timeline event. The hidden/occluded-tab arm reads the
+    **unclamped** raw frame interval (`presentationRunner` stamps `presentationFrame.rawFrameDt`;
+    the renderer forwards it), not the loop-clamped 0.25 s value.
   - **Symmetric bounded rate servo:** phase error against the wall-paced target speeds the clock
     up (to 1.2× the measured sim rate) or slows it (to 0.8×). It never rewinds. The measured sim
-    rate is accumulated over 1 s of presented frames and seeded from the first real interval after
+    rate is accumulated over 1 s of presented frames and seeded from a short run of replies after
     a reset.
   - **Runway modulation:** as history + the extrapolation window drain, the clock slows toward
     0.15× so a sub-gap stall reads as brief slow motion. Extrapolation is ≤ **150 ms** past the
@@ -70,25 +74,39 @@
     `playoutDelayMaxMs`, `playbackRate`, `poseEpoch`, `estimatedSimTimeS`, `packAgeMs`,
     `playoutDryEvents`, `gapResets`, `lastGapReset*`, `presentedScans`.
 - Tests (real counts from this checkout):
-  - The named E1/E10 cohort (eight files) is **76/76**.
-  - `test/snapshot-fence-review-fixes.test.mjs` **11/11**: 3 s silence re-seat + <1 s recovery,
-    long no-frame re-seat, 124 ms / 30 s reserve band, 12.3 fps at 1× and 0.109×, stop at 195 and
-    390 wu/s (hull + anchor within 0.1 wu), 60/41/39 wu one-tick hops, new-epoch pair selection,
-    restart re-seat, per-pack scan cache/slot hint, diagnostics scratch, static/moving token.
-  - `npm run check:smooth-flight` **48/48**. Persistence file alone **13/13** (not 14).
+  - The named E1/E10 cohort (eight files) is **77/77**; with the review file (**13/13**) the
+    full E1/E10 set is **90/90**.
+  - `test/snapshot-fence-review-fixes.test.mjs` **13/13**: 3 s silence re-seat + <1 s recovery,
+    long no-frame re-seat (clamped presented + unclamped raw), 124 ms / 30 s reserve band,
+    12.3 fps at 1× and 0.109×, **steady 400/500/600 ms at 60 and 12.3 fps**, **349/351 ms
+    knife edge**, stop at 195 and 390 wu/s (hull + anchor within 0.1 wu), 60/41/39 wu one-tick
+    hops, new-epoch pair selection, restart re-seat, per-pack scan cache/slot hint, diagnostics
+    scratch, static/moving token.
+  - `npm run check:smooth-flight` **49/49** (includes the production-path raw-frame-dt test).
+    Persistence file alone **13/13** (not 14).
   - `test/frame-truth.test.mjs` **7/7**; `test/weapon-ribbon-frame-truth.test.mjs` **2/2**;
     `test/sim-lane-stall-confirmation.test.mjs` **10/10**;
-    `test/presentation-runner.test.mjs` **17/17**; fence files 11/6/10.
-- Measured numbers (this pass):
+    `test/presentation-runner.test.mjs` **18/18**; fence files 11/6/10.
+- Measured numbers (this pass, exact sub-frame pack timing in the harness):
   - **3 s worker silence + burst:** `gapResets = 1`, gap priced 3000 ms, first post-burst
     `leadMs = 50.0`, recovery frame 0 (<1 s), re-seat jump 546 wu = the 2.8 s of travel not
     already played, no backward pose, every post-re-seat frame < 2× the presented-rate bar.
-  - **124 ms replies, 60 fps, 30 s:** lead p50 **152.4 ms**, min 144.3, max 159.0, **0**
-    extrapolated frames, target 160.3 ms, effective max 178.3 ms, 0 held frames, worst jump 0.53×.
-  - **12.3 fps, 1×, 123 ms replies, 30 s:** lead p50 **127.4 ms**, min 123.5, max 129.4, **0**
-    extrapolated frames, target/effective max 207.6 ms, 0 held frames.
-  - **12.3 fps, 0.109×, 123 ms replies, 30 s:** lead p50 **44.9 ms**, min 43.1, max 69.5, **0**
-    extrapolated frames, 0 held frames.
+  - **Steady cadence, 60 fps, 30 s:** 400 ms → lead p50 **427.0**, min 381.5, max 453.5, target
+    443 ms, **0** gap resets, worst jump **0.64×**; 500 ms → p50 **521.3**, min 514.4, max 528.2,
+    **0** resets, worst **0.50×**; 600 ms → p50 **626.0**, min 490.3, max 713.1, **0** resets,
+    worst **0.64×**. No held frames, no extrapolated frames.
+  - **Steady cadence, 12.3 fps, 30 s:** 400 ms → p50 **361.5**, min 332.6, max 468.5, **0**
+    resets, worst **0.65×**; 500 ms → p50 **467.4**, min 380.4, max 490.6, **0** resets, worst
+    **0.71×**; 600 ms → p50 **558.8**, min 448.1, max 689.9, **0** resets, worst **0.63×**.
+  - **349/351 ms knife edge,** 60 fps → p50 374.1 / 376.0, **0** resets, worst 0.58× both;
+    12.3 fps → p50 313.5 / 315.0, **0** resets, worst 0.61× / 0.70×. The old 350 ms fixed
+    threshold produced 65 resets at 351 ms and 4.65× jumps.
+  - **124 ms replies, 60 fps, 30 s:** lead p50 **145.7 ms**, min 134.8, max 157.7, target 159.0 ms,
+    effective max 169.0 ms, **0** extrapolated frames, 0 held frames, worst jump 0.55×, 0 resets.
+  - **12.3 fps, 1×, 123 ms replies, 30 s:** lead p50 **86.4 ms**, min 46.4, max 102.8, target
+    168.0 ms, **0** extrapolated frames, 0 held frames, 0 resets.
+  - **12.3 fps, 0.109×, 123 ms replies, 30 s:** lead p50 **43.5 ms**, min 36.4, max 44.6, **0**
+    extrapolated frames, 0 held frames, 0 resets.
 - Transport-named cohort: the one red is
   `test/anvil-orchard-forecast-worker-transport.test.mjs` (authoritative `physicsBody` is defined
   where the test expects `undefined`). It creates no fence and exercises the unchanged
@@ -139,7 +157,8 @@ used to claim the new bar.
 - The diagnostics field is `playoutDelayTargetMs` (the earlier status said `playoutTargetMs`).
 - The adaptive-delay claim is **not met by the browser evidence**: applied lead p50 15.6 ms, 39 %
   of frames below 10 ms, depth 0 in 75 % — the collapse the wall-paced timeline was written to
-  fix. The Node tests now hold the reserve at 60 fps, 124 ms replies, and 12.3 fps at 1×/0.109×.
+  fix. The Node tests now hold the reserve at 60 fps, 124 ms replies, 12.3 fps at 1×/0.109×, and
+  steady 400/500/600 ms cadence at both frame rates.
 - `trace.fence` is **nullable** before the first fence exists. The hotkey export reads the live
   fence, but a trace minted before the renderer creates one carries `fence: null`; do not claim it
   is never null.

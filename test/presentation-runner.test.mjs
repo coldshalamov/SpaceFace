@@ -4,6 +4,7 @@ import test from 'node:test';
 import { LOOP_FIXED_DT, startLoop } from '../src/core/loop.js';
 import { createPresentationJournal } from '../src/core/presentationJournal.js';
 import { createPresentationRuntimeCloser } from '../src/core/presentationRunner.js';
+import { createSnapshotFence } from '../src/render/snapshotFence.js';
 
 function createRaf() {
   let nextId = 1;
@@ -1057,5 +1058,52 @@ test('the simGap harness withholds completed packs for the requested wall time',
     controller.destroy();
     if (previousLocation === undefined) delete globalThis.location;
     else globalThis.location = previousLocation;
+  }
+});
+
+test('the loop forwards the unclamped raw frame delta to the fence for a hidden-tab re-seat', () => {
+  const raf = createRaf();
+  let clockMs = 1000;
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const fence = createSnapshotFence({ capacity: 4 });
+  for (let tick = 0; tick < 10; tick++) {
+    const snapshot = fence.beginPack(1, tick * LOOP_FIXED_DT, 0);
+    snapshot.write(1, 0, tick * 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0);
+    fence.commit();
+  }
+  // Establish a presented sample before the re-entry so the gap detector is armed.
+  fence.samplePresentationAlpha(LOOP_FIXED_DT, 0, LOOP_FIXED_DT, 1, LOOP_FIXED_DT);
+  const observed = [];
+  const registry = {
+    renderUpdate(alpha, frameDt, presentationFrame) {
+      observed.push({ frameDt, rawFrameDt: presentationFrame.rawFrameDt });
+      fence.samplePresentationAlpha(
+        frameDt * state.timeScale, 0, LOOP_FIXED_DT, alpha, presentationFrame.rawFrameDt,
+      );
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  try {
+    clockMs = 1016.7;
+    raf.flushOne(clockMs);
+    clockMs = 3016.7; // a 2 s hidden-tab callback: raw 2 s, loop-clamped 0.25 s
+    raf.flushOne(clockMs);
+    assert.equal(observed.length, 2);
+    assert.ok(Math.abs(observed[0].rawFrameDt - 0.0167) < 1e-9);
+    assert.equal(observed[1].frameDt, 0.25, 'the loop clamps the presented delta');
+    assert.ok(Math.abs(observed[1].rawFrameDt - 2) < 1e-9,
+      'the unclamped raw delta reaches presentation');
+    assert.equal(fence.getPlayoutDiagnostics().gapResets, 1,
+      'the fence re-seats from the production-path raw delta');
+  } finally {
+    controller.destroy();
   }
 });

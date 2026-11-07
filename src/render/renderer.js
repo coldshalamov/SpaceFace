@@ -30356,6 +30356,10 @@ export const render = {
       }
     }
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
+    // The loop clamps frameDt to 0.25 s; the playout fence still needs the true rAF interval to
+    // recognise a hidden-tab/occlusion re-entry. presentationRunner stamps it on the frame.
+    this._lastRawFrameDt = presentationFrame && Number.isFinite(presentationFrame.rawFrameDt)
+      ? Math.max(0, presentationFrame.rawFrameDt) : this._lastFrameDt;
     // World-anchored presentation integrates by the wall frame scaled by the live time-effects
     // scale — the same model _bgTime already uses below. Hit-stop and bullet-time slow it; a zero
     // scale (kill-cam freeze, pause, restore latch, lab hold) yields exactly 0 so consumers can
@@ -30771,6 +30775,7 @@ export const render = {
           this.state ? this.state.accumulator : 0,
           LOOP_FIXED_DT,
           alpha,
+          this._lastRawFrameDt,
         );
         this._snapshotPresentationSequence = this._snapshotFence.sequence;
       }

@@ -10,7 +10,8 @@
   rAF callback ms, present ms, sim steps, simTime/tick, reply age + worker
   workMs/stepsMs/packMs/applyMs/**stallMs**, presented-clock delay/extrapolation/**bracket
   depth**, **playbackRate** (sim-seconds per **time-scaled presented second**, not wall),
-  **timeScale**, **poseEpoch**, player presented-pose x/z/speed, **presentedSpeed**, per-frame
+  **timeScale**, **poseEpoch**, **presentedTimeS** (the fence's presented sim clock, now a
+  column), player presented-pose x/z/speed, **presentedSpeed**, per-frame
   pose jump, **jumpBarWu**, **jumpRatio**, held-pose classification, **heldMs** (wall duration of
   the current held streak), **maxHeldMs** (summary), draws, triangles, 1 Hz heap (carried across
   frames), **allocBytesPerSec**, **popIn**, and the applied playout delay. Per-frame provenance is
@@ -43,16 +44,23 @@
   object, so the per-frame path allocates nothing. `presentedRowPose` uses the same shared pose
   resolver as the mesh (including the extrapolation clamp).
 - `src/core/simLaneMain.js`: `stallMs` is recorded per reply; `getFrameTruthSample(out)` fills
-  caller-owned scratch instead of allocating one object per presented frame.
-- **Measured reserve/recovery (this pass, Node):** 124 ms replies at 60 fps over 30 s → lead p50
-  152.4 ms, 0 extrapolated frames; 12.3 fps at 1× / 123 ms replies → p50 127.4 ms, 0
-  extrapolated frames; 12.3 fps at 0.109× → p50 44.9 ms. A 3 s worker silence re-seats once
-  (`gapResets = 1`, gap 3000 ms) and the first post-burst frame is back at lead 50.0 ms.
+  caller-owned scratch instead of allocating one object per presented frame. `presentationRunner`
+  now also fills one caller-owned ingest sample per frame, and the fence reuses one preallocated
+  presented-pair object, so the E10 ingest path allocates only on export, the 1 Hz overlay and rare
+  timeline events.
+- **Measured reserve/recovery (this pass, Node, exact sub-frame pack timing):** 124 ms replies at
+  60 fps over 30 s → lead p50 145.7 ms, 0 extrapolated frames; 12.3 fps at 1× / 123 ms replies →
+  p50 86.4 ms, 0 extrapolated frames; 12.3 fps at 0.109× → p50 43.5 ms. Steady 400/500/600 ms
+  cadence at 60/12.3 fps holds lead p50 427.0/521.3/626.0 and 361.5/467.4/558.8 ms with
+  **0 gap resets** and worst jump ≤ 0.71×; the 349/351 ms knife edge is 0 resets at both rates.
+  A 3 s worker silence re-seats once (`gapResets = 1`, gap 3000 ms) and the first post-burst frame
+  is back at lead 50.0 ms.
 - Tests: `test/frame-truth.test.mjs` **7/7** (ring wrap, held/pause classification, heldMs,
   presented-rate bar on the clamped dt, raw dt, heap carry, provenance/fence/events incl. nullable
-  fence + per-frame codes + `simGap`, reply `stallMs`, simGap gate). The named E1/E10 cohort
-  (eight files) is **76/76**; `check:smooth-flight` **48/48**; the new review file is **11/11**;
-  `test/persistence-architecture-poles.test.mjs` alone is **13/13**.
+  fence + per-frame codes + `simGap` + `presentedTimeS`, reply `stallMs`, simGap gate). The named
+  E1/E10 cohort (eight files) is **77/77**; with the review file (**13/13**) the full set is
+  **90/90**; `check:smooth-flight` **49/49**; `test/persistence-architecture-poles.test.mjs` alone
+  is **13/13**.
 
 ## Next
 - The recorded E1 traces predate this export wiring: they still have `fence: null`, no `note`,
@@ -71,9 +79,9 @@
 
 ## Evidence
 - `test/frame-truth.test.mjs` 7/7; fence files 11/6/10; sim-lane 10/10; persistence 13/13;
-  presentation-runner 17/17; weapon-ribbon 2/2 — the focused E1/E10 cohort is **76/76**.
-- `test/snapshot-fence-review-fixes.test.mjs` 11/11 (new E1 contracts; not part of the named
-  eight-file cohort).
+  presentation-runner **18/18**; weapon-ribbon 2/2 — the focused E1/E10 cohort is **77/77**.
+- `test/snapshot-fence-review-fixes.test.mjs` **13/13** (new E1 contracts; not part of the named
+  eight-file cohort). With it the full E1/E10 set is **90/90**; `check:smooth-flight` is **49/49**.
 - The E1 evidence exports (`design/program/finish/campaigns/E1/evidence/*.json`) were recorded
   before `fence`/`note` were wired; their reply gaps are 123.6 / 511.4 / 7569.5 ms (p50/p95/max)
   for `after-stall-trace.json`, and the run held p50 20.0 fps / mean 12.3 fps at 0.109× sim rate.
