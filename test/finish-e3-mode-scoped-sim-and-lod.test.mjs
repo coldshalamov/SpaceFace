@@ -316,3 +316,23 @@ test('E3: catch-up steps in docked mode execute only table-clock docked systems'
   assert.equal(shouldSkipSystemOnCatchup('stationServices', catchupDockedState), false);
   assert.equal(shouldSkipSystemOnCatchup('physics', catchupDockedState), false);
 });
+
+test('E3: a live Crucible run keeps the Line — combat-flight systems are not skipped in Swarm', () => {
+  // Regression for the E3 review's critical finding: a survival run resolves to SWARM, and the
+  // Crucible's whole weapon grammar (latch, tow, throw, slam) lives in the massline family. If
+  // those are FLIGHT_ONLY they vanish from the arena while state.mode still reads "flight".
+  const liveRun = {
+    mode: 'flight',
+    run: { kind: 'survival', phase: 'active' },
+  };
+  assert.equal(resolveActiveSimMode(liveRun), SIM_MODE.SWARM);
+  for (const system of [
+    'tetherGameplay', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
+    'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lineHeads',
+  ]) {
+    assert.equal(systemRunsInMode(system, SIM_MODE.SWARM), true, `${system} must run in Swarm`);
+    assert.equal(shouldSkipSystemThisStep(system, liveRun), false, `${system} must not be skipped`);
+  }
+  // Adventure-only verb stays out of the arena.
+  assert.equal(shouldSkipSystemThisStep('mining', liveRun), true);
+});
