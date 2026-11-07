@@ -19,7 +19,7 @@ import {
 } from '../src/data/narrative.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { cargo, isPersistentCargo, removeCargo } from '../src/systems/cargo.js';
-import { codexProgressSummary, commUnlocked } from '../src/ui/screens/codex.js';
+import { codexProgressSummary, codexJourneyActRows, commUnlocked } from '../src/ui/screens/codex.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const readSource = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -170,8 +170,8 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
     'Codex status should count the always-present ship graffiti mark');
   assert.equal(valueFor(summary, 'Endgame'), '0/5 revealed',
     'Codex status should not reveal endgame choices before beat 7');
-  assert.equal(valueFor(summary, 'Phase'), 'Phase 1',
-    'Codex status should show the current narrative phase');
+  assert.equal(valueFor(summary, 'Act'), 'I',
+    'Codex status should name the live act in place of the retired Phase summary');
 
   storyState = {
     beatIndex: 4,
@@ -188,9 +188,34 @@ assert.match(uiInputSource, /matchesBinding\(ev, BINDINGS\.codex\)[\s\S]*screenM
   assert.equal(valueFor(summary, 'Comms'), countUnlockedComms(storyState, 4) + '/' + commsTotal + ' unlocked',
     'Codex status should count explicit seen flags, including persisted conditional trap signals');
 
-  summary = codexProgressSummary({ beatIndex: 7, seenComms: {}, graffitiShown: {} });
+  assert.equal(valueFor(summary, 'Act'), 'III',
+    'Codex status should advance the live act with the story');
+
+  const closedStory = {
+    beatIndex: 7,
+    seenComms: {},
+    graffitiShown: {},
+    flags: { endgame: true },
+    journeyActs: { seen: ['I', 'II', 'III', 'IV'], current: null },
+  };
+  summary = codexProgressSummary(closedStory);
   assert.equal(valueFor(summary, 'Endgame'), '5/5 revealed',
     'Codex status should reveal endgame counts only at the final beat');
+  assert.equal(valueFor(summary, 'Act'), undefined,
+    'Codex status should not name a live act after the book closes');
+  const closedRows = codexJourneyActRows(closedStory);
+  assert.equal(closedRows.some((row) => row.current), false,
+    'no Codex act row should read Current act after the book closes');
+  assert.equal(closedRows.some((row) => row.signal), false,
+    'no Codex act row should carry a live signal after the book closes');
+  assert.equal(closedRows.filter((row) => row.reached).every((row) => row.sub === 'Reached'), true,
+    'closed-book acts stay readable history, never a live chapter');
+
+  const sandboxSummary = codexProgressSummary({ beatIndex: 8, flags: { sandboxContinued: true } });
+  assert.equal(valueFor(sandboxSummary, 'Act'), undefined,
+    'a sandbox save names no live act in Codex status');
+  assert.equal(codexJourneyActRows({ beatIndex: 8, flags: { sandboxContinued: true } }).some((row) => row.signal), false,
+    'a sandbox save carries no Codex act signal');
 }
 
 // PERSISTENT_CARGO — unsellable personal effects (Ship tab).

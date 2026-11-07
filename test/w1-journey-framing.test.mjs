@@ -11,7 +11,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { recommendMissionBoardOffer } from '../src/ui/station/stationMissionModel.js';
 import { flightDestinationSurface } from '../src/ui/hud.js';
-import { codexJourneyActRows } from '../src/ui/screens/codex.js';
+import { codexJourneyActRows, codexProgressSummary } from '../src/ui/screens/codex.js';
 import { journalJourneyActStrip, storyActionForBeat } from '../src/ui/screens/missionLog.js';
 
 test('the four acts tile the 8-beat spine exactly', () => {
@@ -81,6 +81,41 @@ test('the Journal keeps a persistent act strip beside a tracked job, and drops i
     'the strip is suppressed once the book closes');
   assert.equal(journalJourneyActStrip({ story: { beatIndex: 8, flags: { sandboxContinued: true } } }), null,
     'a sandbox save names no live act');
+});
+
+test('the Codex names the live act, then stops calling one current after the book closes', () => {
+  const live = { beatIndex: 4, flags: {} };
+  const summary = codexProgressSummary(live);
+  assert.equal(summary.items.find((item) => item.key === 'Act')?.value, 'III',
+    'Codex status names the live act in place of the retired Phase row');
+  const rows = codexJourneyActRows(live);
+  assert.equal(rows.find((row) => row.id === 'act:III')?.current, true);
+  assert.equal(rows.find((row) => row.id === 'act:III')?.signal, true);
+
+  const closed = { beatIndex: 7, flags: { endgame: true }, journeyActs: { seen: ['I', 'II', 'III', 'IV'], current: null } };
+  assert.equal(codexProgressSummary(closed).items.find((item) => item.key === 'Act'), undefined,
+    'a closed book has no live act row');
+  const closedRows = codexJourneyActRows(closed);
+  assert.equal(closedRows.some((row) => row.current), false, 'no Codex act reads Current act after the ending');
+  assert.equal(closedRows.some((row) => row.signal), false, 'no Codex act carries a live signal after the ending');
+  assert.equal(closedRows.every((row) => row.sub !== 'Current act'), true,
+    'the reached acts stay readable history');
+});
+
+test('the Journal B4 action names the chosen door until its operation is live', () => {
+  const state = (branch, active = []) => ({
+    story: { beatIndex: 4, branch, flags: {} },
+    missions: { active },
+    player: { credits: 0 },
+  });
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders')).title, 'Run Spine Break');
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state('patrol')).title, 'Run The Weighing');
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state('free')).title, 'Run Barn Raising');
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state(null)).title, 'Choose a sponsor',
+    'before the door is chosen the sponsor prompt remains');
+  assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders', [{
+    id: 'b4-op', status: 'active', storyTag: 'campaign47a:b4:operation',
+  }])).title, 'Choose a sponsor', 'an active operation already owns Current action');
 });
 
 test('the Journal B2 what-next follows the same ordered steps as the tracker', () => {
@@ -319,12 +354,12 @@ function freshMissionHarness() {
   return { state, bus, missions, popups };
 }
 
-test('Act I announces once on a fresh save and every act keeps a persistent receipt', () => {
+test('Act I announces once on a fresh save while journeyActs stays the durable record', () => {
   const h = freshMissionHarness();
   const actOne = h.popups.find((p) => p && p.id === 'act:I');
-  assert.ok(actOne, 'the first act has a durable receipt on a fresh save');
+  assert.ok(actOne, 'the first act has a feed receipt on a fresh save');
   assert.match(actOne.text, /ACT I - THE PIT/);
-  assert.equal(actOne.persist, true, 'the act line survives a missed toast');
+  assert.notEqual(actOne.persist, true, 'the act line is transient; journeyActs is the durable surface');
   assert.equal(h.state.story.journeyActs.current, 'I', 'the act state is the durable destination');
   assert.deepEqual(h.state.story.journeyActs.seen, ['I']);
   const before = h.popups.filter((p) => p && p.id === 'act:I').length;
@@ -332,13 +367,13 @@ test('Act I announces once on a fresh save and every act keeps a persistent rece
   assert.equal(h.popups.filter((p) => p && p.id === 'act:I').length, before,
     'the same act is not re-announced');
 
-  // The turn itself: B5 -> B6 crosses into Act IV and must leave the same durable receipt
-  // (the dock modal can hide the toast; the persistent line cannot).
+  // The turn itself: B5 -> B6 crosses into Act IV and must leave the same turn receipt
+  // (journeyActs is the durable destination; the feed line may be swept).
   h.state.story.beatIndex = 5;
   h.missions._advanceStory(STORY_BEATS[5]);
   assert.equal(h.state.story.beatIndex, 6);
   const actFour = h.popups.find((p) => p && p.id === 'act:IV');
-  assert.ok(actFour, 'the act turn emits a persistent act:<n> line');
+  assert.ok(actFour, 'the act turn emits a transient act:<n> line');
   assert.match(actFour.text, /ACT IV - THE DEEP REACH/);
   assert.equal(h.state.story.journeyActs.current, 'IV');
   assert.deepEqual(h.state.story.journeyActs.seen, ['I', 'II', 'III', 'IV']);
@@ -358,23 +393,25 @@ test('a dropped popup cannot suppress the act: the state record is written befor
   assert.equal(system.state.story.flags.journey_act_II_announced, true);
 });
 
-test('Continue replays the current act from the saved state record', () => {
+test('Continue reads the durable act record without republishing an announced act', () => {
   const h = freshMissionHarness();
   h.state.story.beatIndex = 4;
+  // A normal run announced Acts I and II on their own turns before Act III.
+  h.state.story.flags.journey_act_I_announced = true;
+  h.state.story.flags.journey_act_II_announced = true;
   h.popups.length = 0;
   h.missions._announceJourneyAct(journeyActForBeat(4));
   assert.equal(h.state.story.journeyActs.current, 'III');
   assert.deepEqual(h.state.story.journeyActs.seen, ['I', 'II', 'III']);
   const savedStory = structuredClone(h.state.story);
-  // A save taken after the popup was dropped: the flag is already set. Continue must still
-  // publish the durable receipt because the popup is not itself saved.
+  // Continue on an already-announced act reads journeyActs and emits nothing: the old
+  // republish-on-every-load is what stacked four persistent lines over the live feed.
   const h2 = freshMissionHarness();
   h2.popups.length = 0;
   h2.state.story = savedStory;
   h2.missions._reconcileJourneyAct();
-  const replayed = h2.popups.find((p) => p && p.id === 'act:III');
-  assert.ok(replayed, 'the current act is replayed on load');
-  assert.equal(replayed.storyReceipt, true);
+  assert.equal(h2.popups.some((p) => p && p.id === 'act:III'), false,
+    'an already-announced act is not republished on load');
   assert.equal(h2.state.story.journeyActs.current, 'III');
 });
 
@@ -410,5 +447,5 @@ test('the act announcement method is the same shared writer used by the turn', (
   system._announceJourneyAct(journeyActForBeat(2));
   assert.equal(popups.length, 1);
   assert.equal(popups[0].id, 'act:II');
-  assert.equal(popups[0].persist, true);
+  assert.notEqual(popups[0].persist, true, 'the act receipt does not occupy a persistent live slot');
 });

@@ -44,7 +44,7 @@ import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedA
 import { FACTION_LABELS } from '../../data/encounterIdentity.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
-import { JOURNEY_ACTS, journeyActLabel } from '../../data/journeyActs.js';
+import { JOURNEY_ACTS, journeyActForBeat, journeyActLabel, journeyActStoryClosed } from '../../data/journeyActs.js';
 import { localizeText } from '../../localization/sourceText.js';
 import {
   abutmentChalkRows,
@@ -310,9 +310,13 @@ function storyBeatIndex(story = {}) {
  */
 export function codexJourneyActRows(story = {}) {
   const beat = storyBeatIndex(story);
+  const closed = journeyActStoryClosed(story);
   return JOURNEY_ACTS.map((act) => {
     const reached = Math.min(...act.beats) <= beat;
-    const current = act.beats.includes(beat);
+    // Endgame/sandbox is history with no live act: the rows stay readable as reached chapters,
+    // but nothing is marked current and no row carries a live signal. The HUD applies the same
+    // guard, so the Codex cannot name an act the tracker has already put down.
+    const current = !closed && act.beats.includes(beat);
     return {
       id: 'act:' + act.num,
       act,
@@ -427,13 +431,19 @@ export function codexProgressSummary(story = {}, state = null) {
   const graffitiUnlocked = Math.min(graffitiTotal, countEncounteredGraffiti(story));
   const storyUnlocked = Math.min(BEAT_CONTENT.length, beat + 1);
   const endgameUnlocked = beat >= 7 ? ENDGAME_CHOICES.length : 0;
+  const act = journeyActStoryClosed(story) ? null : journeyActForBeat(beat);
   const items = [
     { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
+  ];
+  // The act row replaced the retired Phase summary: progress reads as beats, the live chapter as
+  // its act numeral. A closed book names no act (same guard as the HUD and Journal).
+  if (act) items.push({ key: 'Act', value: act.num });
+  items.push(
     { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
     { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
     { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
     { key: 'Endgame', value: endgameUnlocked + '/' + ENDGAME_CHOICES.length + ' revealed' },
-  ];
+  );
   if (state) {
     const gal = galaxyExplorationSummary(state);
     const surveyed = surveyedLossCodexLine(state);

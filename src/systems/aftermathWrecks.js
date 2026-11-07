@@ -1129,18 +1129,18 @@ function trimAndSort(markers, retained) {
 /**
  * W1 provenance at the `salvage:completed` seam: March's reconciliation counts a hull the PLAYER
  * recovered, not every producer that retires a wreck through the same event.
- *  - The player beam (`mining.js`) is the only sourceless producer, so no source = player work.
+ *  - The player beam (`mining.js`) stamps `source: 'player_beam'`; the legacy `'mining'` value
+ *    stays accepted for older emitters.
+ *  - A missing or unknown source is not player work. Any future producer must opt in with an
+ *    explicit player-salvage source rather than inheriting credit by leaving the field off.
  *  - `gravedigger:bury` is the pit's disposal path. It is excluded whether the ground buried the
  *    hull autonomously or paid the keeper's compost fee (`paid: true`): a paid compost is a
  *    disposal transaction, not a recovered manifest.
  *  - `rook:booth*` sales are purchases, not salvage.
- *  - Any future producer must opt in with an explicit player-salvage source.
  */
 export function salvageCompletedByPlayer(payload) {
   const source = payload && payload.source;
-  if (source == null || source === '') return true;
-  if (source === 'mining' || source === 'player_beam') return true;
-  return false;
+  return source === 'mining' || source === 'player_beam';
 }
 
 export const aftermathWrecks = {

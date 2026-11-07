@@ -181,13 +181,14 @@ test('the battle report row keeps Record when War and Contact precede it', () =>
 
 test('the salvage:completed seam credits only the player beam, never a gravedigger or booth disposal', () => {
   const payloads = [
-    { wreckId: 1 },                                   // mining.js beam: sourceless
-    { wreckId: 2, source: 'mining' },
-    { wreckId: 3, source: 'gravedigger:bury' },       // autonomous bury
-    { wreckId: 4, source: 'gravedigger:bury', paid: true }, // paid compost
-    { wreckId: 5, source: 'rook:booth' },             // a sale, not a recovery
+    { wreckId: 1 },                                   // unknown/legacy producer: no source, no credit
+    { wreckId: 2, source: 'player_beam' },            // mining.js player beam
+    { wreckId: 3, source: 'mining' },                 // older beam emitter
+    { wreckId: 4, source: 'gravedigger:bury' },       // autonomous bury
+    { wreckId: 5, source: 'gravedigger:bury', paid: true }, // paid compost
+    { wreckId: 6, source: 'rook:booth' },             // a sale, not a recovery
   ];
-  assert.deepEqual(payloads.map(salvageCompletedByPlayer), [true, true, false, false, false]);
+  assert.deepEqual(payloads.map(salvageCompletedByPlayer), [false, true, true, false, false, false]);
 
   const calls = [];
   const owner = {
@@ -197,7 +198,7 @@ test('the salvage:completed seam credits only the player beam, never a gravedigg
     },
   };
   for (const payload of payloads) aftermathWrecks._salvageCompleted.call(owner, payload);
-  assert.deepEqual(calls.map((row) => row.byPlayer), [true, true, false, false, false],
+  assert.deepEqual(calls.map((row) => row.byPlayer), [false, true, true, false, false, false],
     'the seam passes byPlayer only for player beam work');
 });
 

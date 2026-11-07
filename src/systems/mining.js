@@ -2198,6 +2198,7 @@ export const mining = {
       this.bus.emit('salvage:completed', {
         wreckId: wreck.id,
         markerId: d.markerId || d.provenance && d.provenance.markerId || null,
+        source: 'player_beam',
         loot: got,
         // Presentation needs the last pose: the mesh is removed the same tick alive flips, so the
         // collapse burst below masks the disappearance instead of a pop while the player watches.
@@ -2245,7 +2246,7 @@ export const mining = {
       d._salvaged = true;
       wreck.alive = false;
       const loot = { [recovery.commodityId]: spawned };
-      this.bus.emit('salvage:completed', { wreckId: wreck.id, sourceGeneration: life, worldRecordId: recordId,
+      this.bus.emit('salvage:completed', { wreckId: wreck.id, source: 'player_beam', sourceGeneration: life, worldRecordId: recordId,
         markerId: null, loot, pos: { x: wreck.pos.x, z: wreck.pos.z }, radius: wreck.radius });
       this._protestClaimJump(player, wreck, loot);
       this.bus.emit('mining:yield', { commodityId: recovery.commodityId, qty: spawned,

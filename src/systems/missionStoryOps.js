@@ -2344,8 +2344,8 @@ export const missionStoryOps = {
     return true;
   },
 
-  /** Emit the one persistent act receipt. Kept separate so a load replay can publish without
-   *  re-moving the announced flag. */
+  /** Emit the transient act receipt. `state.story.journeyActs` is the durable surface; this
+   *  line only marks the turn and is TTL-swept or evicted like any other feed entry. */
   _publishJourneyAct(act) {
     if (!act) return false;
     const line = `${localizeText(journeyActLabel(act))}. ${localizeText(act.goal || '')}`.trim();
@@ -2354,7 +2354,6 @@ export const missionStoryOps = {
       sender: 'THE BOOK',
       category: 'story',
       ttl: 10,
-      persist: true,
       storyReceipt: true,
       text: line,
     });
@@ -2363,8 +2362,11 @@ export const missionStoryOps = {
 
   /**
    * Continue can land mid-act on a save written before W1 (no journeyActs record) or on a save
-   * whose popup was dropped. Backfill every act through the current beat as seen, and replay the
-   * current act's durable receipt exactly once. A closed book keeps history but names no live act.
+   * that never announced the act. Backfill every act through the current beat as seen, and publish
+   * one recovery receipt only when that backfill actually filled a missing announced flag. A save
+   * that already announced the act republishes nothing: `state.story.journeyActs` is the durable
+   * record, so a repeated Continue cannot keep stacking transient lines onto the live feed. A
+   * closed book keeps history but names no live act.
    */
   _reconcileJourneyAct() {
     const story = this.state && this.state.story;
@@ -2377,22 +2379,19 @@ export const missionStoryOps = {
       return false;
     }
     const through = journeyActsThroughBeat(story.beatIndex);
-    let replay = false;
+    let recovered = false;
     for (const row of through) {
       if (!record.seen.includes(row.num)) record.seen.push(row.num);
       story.flags = story.flags || {};
       const key = `journey_act_${row.num}_announced`;
       if (!story.flags[key]) {
         story.flags[key] = true;
-        replay = true;
+        recovered = true;
       }
     }
     record.current = act.num;
-    // The popup itself is transient (Adventure glass, eviction, modal). Re-publishing the current
-    // act's durable receipt on every load makes Continue a reliable replay even when the saved
-    // flag says the act was already announced.
-    this._publishJourneyAct(act);
-    return replay;
+    if (recovered) this._publishJourneyAct(act);
+    return recovered;
   },
 
   /** Lazily attach campaign47a sidecar under state.story (meta only). */

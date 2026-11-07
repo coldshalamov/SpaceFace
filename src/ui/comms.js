@@ -464,14 +464,16 @@ export function createComms(ctx) {
     while (backlog.length > MAX_BACKLOG) backlog.pop();
 
     requestAnimationFrame(() => entry.classList.add('sf-comm--in'));
-    // Persistent story receipts are not evicted by the four-line live cap; drop the newest
-    // ordinary line instead. If every live row is persistent, stop rather than removing one.
+    // Persistent story receipts skip the TTL sweep, not the four-line live cap. The newest row
+    // (index 0) was just admitted and is never evicted to make room for itself; older ordinary
+    // rows go first, then the oldest persistent row when the rest are receipts. Either way the
+    // full line stays in the backlog.
     while (live.length > MAX_LIVE) {
       let evict = -1;
-      for (let i = live.length - 1; i >= 0; i--) {
+      for (let i = live.length - 1; i > 0; i--) {
         if (!live[i].persist) { evict = i; break; }
       }
-      if (evict < 0) break;
+      if (evict < 0) evict = live.length - 1;
       dismissLive(live[evict]);
     }
     // pulse the backlog button when new content arrives while it's closed
