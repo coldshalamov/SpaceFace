@@ -3125,7 +3125,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       node.classList.toggle('is-stock', !!stockDrive);
       if (node.innerHTML !== html) node.innerHTML = html;
       node.classList.toggle('is-fitted', !!fitted);
-      node.classList.toggle('is-empty', !fitted);
+      node.classList.toggle('is-empty', !fitted && !stockDrive);
       return { el: node, slotType: slot.type, state: fitted || stockDrive ? 'fitted' : 'open', num: String(i + 1).padStart(2, '0') };
     });
     for (const stale of existing.values()) stale.remove();
@@ -3160,15 +3160,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // that it is open.
       const slotName = SLOT_LABEL[slot.type] || slot.type;
       const label = fitted ? fitted.name : slotName;
+      // The stock drive is installed hardware, not an open bay: the same `activeBandModel.stockDrive`
+      // the side table and the fitted count read must also own this callout, or THE SHIP says
+      // "OPEN / M" over a hull it counts as 1/7 fitted.
+      const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.stockDrive;
       const selected = i === selectedSlot ? ' is-selected' : '';
       const kind = anchor.authored ? 'PHYSICAL' : 'SYSTEM';
       // PQ-176.02: a turret ring is a different kind of mount; the pin says so before the chooser does.
       const ring = hardpointClassOf(slot) === 'ring' ? ' / RING' : '';
-      const sub = fitted ? `${kind} / ${slot.size || ''}${ring}` : `OPEN / ${slot.size || ''}${ring}`;
+      const sub = fitted || stockDrive ? `${stockDrive ? 'STOCK' : kind} / ${slot.size || ''}${ring}` : `OPEN / ${slot.size || ''}${ring}`;
       const aria = fitted
         ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
-        : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
-      return `<button type="button" ${stationControlAttrs('hardpoint')} class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted ? '' : ' is-empty'}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
+        : stockDrive
+          ? `${slotName} ${i + 1}: stock drive installed. Open compatible modules.`
+          : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
+      return `<button type="button" ${stationControlAttrs('hardpoint')} class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted || stockDrive ? '' : ' is-empty'}${stockDrive ? ' is-stock' : ''}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
         `<svg class="sx-hardpoint__leader" aria-hidden="true"><path></path></svg>` +
         `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
         `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +

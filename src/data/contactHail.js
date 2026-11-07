@@ -259,7 +259,8 @@ function contactKind(state, entity) {
   }
   // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
   // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
-  const hasLivingStamp = !!(data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
+  const hasLivingStamp = !!((role === 'rescue' && rescueCustodyStatus(state, entity))
+    || data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
     || data.ceresDisabledHauler
     || data.ceresHandoffStatus || data.jobPhase || (data.jobId && WORK_ROLES.has(role)));
   if (hasLivingStamp && entity && entity.team === 2
@@ -1754,7 +1755,33 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_convoy_forms_up:spine_up': 'ENGINES LIT · ROLLING SOON',
 });
 
+// Boarding is pending custody, not a completed rescue. Read the owner's exact live binding;
+// only survivorPod may reconcile a durable carrier onto a newly materialized entity.
+function rescueCustodyStatus(state, target) {
+  const data = target?.data;
+  if (data?.trafficRole !== 'rescue' || target.type !== 'ship' || target.alive === false
+    || state?.entities?.get(target.id) !== target
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || typeof data.rescueCustodyId !== 'string' || !data.rescueCustodyId) return null;
+  const receipts = state.survivorPod?.causal?.receipts;
+  if (!Array.isArray(receipts)) return null;
+  const matches = receipts.filter(row => row?.id === data.rescueCustodyId);
+  const row = matches.length === 1 ? matches[0] : null;
+  if (!row || row.outcome !== 'in_transit' || row.carrierWorldRecordId !== data.worldRecordId
+    || row.carrierEntityId !== target.id || row.carrierGeneration == null
+    || row.carrierGeneration !== target.occupantGeneration
+    || row.sectorId !== state.world?.currentSectorId) return null;
+  const rec = traderRecord(state, target.id);
+  const destination = rec?.role === 'rescue' && rec.rescueCustodyId === row.id
+    && rec.carryingSurvivor === true ? entityById(state, rec.targetId) : null;
+  const place = destination?.type === 'station' && destination.alive !== false
+    ? stationLabel(state, destination.id) : null;
+  return `STATUS · SURVIVOR ABOARD${place ? ` · DESTINATION ${place}` : ' · BERTH UNCONFIRMED'}`;
+}
+
 function workerStatusText(target, state = null) {
+  const rescue = rescueCustodyStatus(state, target);
+  if (rescue) return rescue;
   if (target?.data?.trafficRole === 'prospector') {
     const truth = ordinaryJobTruth(state, target);
     const field = truth.job?.payload?.prospectorField;

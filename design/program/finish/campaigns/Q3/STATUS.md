@@ -16,10 +16,12 @@
   Gate E (X1/X3/X4/X5) uses the style bible and audio brief as its taste bars; Gate D uses the P1
   blind comprehension check. A campaign is not "optimal" on a code review alone.
 - **2026-11-07 primary-screen pass:** six headed `ui-bench` captures (Shipworks, flight, market,
-  THE SHIP, Help, Pause). One real defect found and fixed: Shipworks socket 03 printed the raw
-  boolean "true" as the stock drive's name; it now reads "Drive / STOCK · M". Review:
-  [`reviews/2026-11-07-primary-screens.md`](reviews/2026-11-07-primary-screens.md). The required
-  second independent reader is still open.
+  THE SHIP, Help, Pause). Two real defects found and fixed: Shipworks socket 03 printed the raw
+  boolean "true" as the stock drive's name, and THE SHIP's over-hull callout still said "Drive
+  OPEN / M" while the table/count said stock/fitted. Both now read "Drive / STOCK · M". Review:
+  [`reviews/2026-11-07-primary-screens.md`](reviews/2026-11-07-primary-screens.md). The independent
+  second reader has signed that review; remaining notes are copy/fold nits (market "Hold after",
+  flight top-speed wording, Shipworks stat scroll), not blocking contradictions.
 
 ## Next
 

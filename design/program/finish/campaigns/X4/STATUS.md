@@ -102,10 +102,10 @@ second independent X4 review pass and the final Gate E review.
   2026-11-07** by the 16 kHz stem delivery above: 11.48 MiB, test green. The trade is top-end air
   above 8 kHz on five music loops; the note-window, hum and 4 s autocorrelation evidence is
   unchanged. A future lossless/compressed music format can revisit it, but the payload gate is met.
-- `test/ear-score-host.test.mjs` — fails on `threat: quantised (21.666… → 21.666…)`. It is on the
-  2026-10-27 bughunt re-fail list and predates this pass; the failing assertion is the first
-  `threat` phase's fader boundary, which is stale because the tension stem idled during 20 s of
-  travel. Not touched here.
+- ~~`test/ear-score-host.test.mjs` — `threat: quantised (21.666… → 21.666…)`.~~ **Fixed 2026-11-07:**
+  the phase turns exactly on the incoming downbeat, so `at === now` is the correct grid landing;
+  the assertion now accepts equality and still requires a non-grid turn to land within the next
+  bar. Test 2/2 green.
 
 ## Next
 
