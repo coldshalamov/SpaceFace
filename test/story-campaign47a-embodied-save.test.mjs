@@ -80,7 +80,16 @@ function completeMission(h, mission) {
 }
 
 function toB1(h) {
+  // B0 is the ordered mine -> Skim -> dock script. This fixture drives the story FSM, not the
+  // physical sample recovery, so secure the sample and emit the Skim receipt before docking.
+  const b0 = (h.state.missions.active || []).find((m) => m && m.storyTag === 'campaign47a:b0:recovery');
+  if (b0) {
+    b0.params = b0.params || {};
+    b0.params.sampleRecovered = true;
+    b0.objectiveProgress = 1;
+  }
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  h.bus.emit('story:skimResolved', { source: 'embodied-save-fixture' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 }
@@ -192,7 +201,7 @@ test('B2 cinder-board contract survives Continue', () => {
   completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
   acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
   const before = contractSnapshot(h.state);
-  assert.equal(before.type, 'patrol_clear');
+  assert.equal(before.type, 'salvage_retrieval');
   assert.equal(before.storyTag, 'campaign47a:b2:cinder');
   const next = roundTrip(h);
   assert.deepEqual(contractSnapshot(next.state), { ...before, targetEntityIds: [] });

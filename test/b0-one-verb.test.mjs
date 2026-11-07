@@ -268,7 +268,8 @@ check('onboarding panel does not duplicate the HUD B0 objective command', () => 
     !unconditionalMirror,
     'B0 panel must not unconditionally mirror beat.line into .sf-ob-title while HUD owns the verb',
   );
-  assert.match(refresh, /demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/,
+  assert.match(refresh,
+    /demoteObjectiveCopy\s*=\s*this\._beatPanelYields\(\)|demoteObjectiveCopy\s*=\s*!![\s\S]{0,180}waypoint\.onboarding/,
     'panel must yield exactly when the HUD owns an onboarding waypoint');
 
   // Progress/status may remain (step dots, kicker, B2 sample bar) — not re-asserted as forbidden.
