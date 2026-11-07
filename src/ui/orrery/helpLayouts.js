@@ -3,9 +3,9 @@
 // The frame: HELP and its profile line; the six sections on a ladder (a ruled spine, a tick per word,
 // the notched Hand on the open one -- warm bone, because the one amber on this screen belongs to the
 // instrument on the stage); the stage; Close as a word with its key glyph. Then the grammar the tabs
-// share: a Ladder of choices (one spine, ticks, the Hand), a reading that stands on a pool of shade
-// (its kicker, its name, a ledger of terms), and the search field as a lit rule. No box, no card, no
-// table rule. It styles the screen's own nodes (checks read .sf-tab, .sf-help-now, .sf-lc__search).
+// share: a Ladder of choices (one spine, ticks, the Hand), a reading in a promise-scale hairline
+// card (its kicker, its name, a ledger of terms), and the search field as a lit rule. No table
+// rule. It styles the screen's own nodes (checks read .sf-tab, .sf-help-now, .sf-lc__search).
 import { injectOrrery } from './tokens.js';
 import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
@@ -179,7 +179,7 @@ ${H} .orr-help-list__hero { position:relative; height:100%; min-height:0; min-wi
 ${H} .orr-help-loops { position:relative; height:100%; min-height:0; }
 /* ORES: the mix fills the stage; its reading runs under it as one line of terms */
 ${H} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) auto; row-gap:8px; align-items:stretch; }
-${H} .orr-help-list--ores .orr-help-reading { max-width:none; display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr); column-gap:clamp(24px, 3vw, 60px); align-items:start; padding:0 0 4px 40px; }
+${H} .orr-help-list--ores .orr-help-reading { max-width:none; display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr); column-gap:clamp(24px, 3vw, 60px); align-items:start; padding:16px 20px 16px 40px; }
 ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__kicker { grid-column:1; }
 ${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { grid-column:1; font-size:clamp(22px, 1.7vw, 34px); }
 ${H} .orr-help-list--ores .orr-help-terms { grid-column:2; grid-row:1 / span 2; margin:0; grid-template-columns:auto minmax(0, 1fr) auto minmax(0, 1fr); column-gap:18px; }
@@ -239,10 +239,16 @@ ${H} .orr-help-verb[aria-disabled="true"] .orr-hkey { opacity:.6; }
 ${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !important; color:rgb(${BONE} / .9) !important; }
 ${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
 
-/* the reading: no panel; a pool of shade, the figure, a ledger of terms */
-${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px); }
-${H} .orr-help-reading::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-40px; bottom:-40px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(5 7 10 / .88), rgb(5 7 10 / .58) 60%, rgb(5 7 10 / 0)); }
+/* the reading: promise-scale hairline card (was unbound Newgrounds shade pool) */
+/* ui-polish-393: .orr-help-reading wears 1px bone ~18% / radius 10 / faint fill; densify 8→6 */
+${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px);
+  box-sizing:border-box; padding:20px 24px;
+  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+${H} .orr-help-reading::before { content:none; display:none; }
+@media (max-height:820px) { ${H} .orr-help-reading { border-radius:8px; } }
+@media (max-height:460px) { ${H} .orr-help-reading { border-radius:8px; } }
+@media (max-height:400px) { ${H} .orr-help-reading { border-radius:6px; } }
+@media (max-width:760px) { ${H} .orr-help-reading { border-radius:8px; } }
 ${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${BONE} / .88); }
 ${H} .orr-help-reading__name { margin:0 0 6px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:clamp(24px, 2.1vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
@@ -343,7 +349,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   /* the tab rule now carries the line; the profile word's trailing flourish would run into it */
   ${HD} > .k-title > .sf-help-now::after { content:none; }
   /* the readings (Ships, Commodities) are taller than this stage: they scroll in place under a fade instead
-     of running past the frame's foot; the shade pool goes, since the hero now stands clear beside them */
+     of running past the frame's foot; the hairline card keeps its chrome while the hero stands clear beside them */
   ${HD} .orr-help-list__stage > .orr-help-reading { align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding-bottom:22px; box-sizing:border-box;
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
   ${HD} .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
@@ -358,7 +364,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   /* the 140px COMMON ROCK / 45% OF ROCKS pair ran onto the ring's inner arc at both ends; trimmed so it stands clear inside it */
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
-  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 22px; }
+  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:16px 16px 22px 20px; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
