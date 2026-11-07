@@ -10,6 +10,7 @@ import { getBeatStepStatus } from '../src/story/campaign47a/index.js';
 import { recommendedActions } from '../src/ui/screens/missionLog.js';
 import { flightDestinationSurface } from '../src/ui/hud.js';
 import { isDurableStoryReceipt } from '../src/ui/comms.js';
+import { journeyActForBeat, JOURNEY_ACTS } from '../src/data/journeyActs.js';
 
 function bootColdStart() {
   const state = createGameState(47);
@@ -106,3 +107,43 @@ test('the Journal recommendation does not attach an act after the book closes', 
     assert.equal(action.actLine, undefined, 'no dead actLine field survives the endgame guard');
   }
 });
+
+test('W1 act receipts do not move the ship, draw RNG, or emit combat/flight events', () => {
+  const state = createGameState(47);
+  state.mode = 'flight';
+  state.simTime = 10;
+  state.playerId = 1;
+  state.story = { beatIndex: 0, flags: {}, journeyActs: { seen: [], current: null } };
+  const player = {
+    id: 1, type: 'ship', alive: true, pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: {
+      fittings: ['wpn_pulse_laser_s', 'mod_mining_laser_s', 'mod_engine_ion_m', 'mod_shield_liner_s', 'mod_drill_amp'],
+      derived: { mass: 33, dryMass: 33, shield: 210, shieldMax: 210, maxSpeed: 142.129201 },
+    },
+  };
+  state.entities.set(1, player);
+  state.entityList = [player];
+  const bus = createBus();
+  const motionEvents = [];
+  for (const event of ['combat:fire', 'combat:damage', 'projectile:hit', 'ship:thrust', 'ship:boostStart', 'physics:impulse', 'tether:attached']) {
+    bus.on(event, () => motionEvents.push(event));
+  }
+  const system = Object.assign({}, missionsProto);
+  system.state = state;
+  system.bus = bus;
+  const fittingsBefore = structuredClone(player.data.fittings);
+  const derivedBefore = structuredClone(player.data.derived);
+  const rngBefore = structuredClone(state.rng.getState());
+
+  for (const act of JOURNEY_ACTS) system._announceJourneyAct(act);
+  state.story.beatIndex = 2;
+  system._reconcileJourneyAct();
+
+  assert.deepEqual(player.data.fittings, fittingsBefore, 'act framing never rewrites the starter fit');
+  assert.deepEqual(player.data.derived, derivedBefore, 'act framing never rewrites flight-derived stats');
+  assert.deepEqual(state.rng.getState(), rngBefore, 'act framing draws no simulation RNG');
+  assert.deepEqual(motionEvents, [], 'act framing emits no combat/flight/physics event');
+  assert.deepEqual(state.story.journeyActs.seen, ['I', 'II', 'III', 'IV'], 'the act record still advances');
+  assert.equal(state.story.journeyActs.current, 'II');
+});
+
