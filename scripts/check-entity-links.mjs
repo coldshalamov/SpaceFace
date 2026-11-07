@@ -309,7 +309,9 @@ for (const abs of walk(join(ROOT, 'src'))) {
   }
   for (const _ of src.matchAll(/data-entity="\$\{/g)) {
     tagged++;
-    if (!/entityExists|entityAttr|entitySpanHtml|decorateEntityNode/.test(src)) {
+    // `findRowOpens` is the state-aware form of `entityExists` (it also resolves live records such
+    // as contracts), so a file that gates its rows with it has the guard this rule asks for.
+    if (!/entityExists|findRowOpens|entityAttr|entitySpanHtml|decorateEntityNode/.test(src)) {
       fail('D/tag', `${rel} interpolates data-entity without an existence guard — a stale id becomes a dead door`);
     } else guarded++;
   }

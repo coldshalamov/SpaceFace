@@ -63,11 +63,15 @@ export function createGlobalFind(ctx) {
       return;
     }
     rows.forEach((row, i) => {
+      // A row is a door only while it still opens. A contract can complete or a captain can leave
+      // between render and a POINTER click, which bypasses `activateSelected`; a stale row keeps
+      // its text but loses the data-entity hook, so the delegate has nothing dead to open.
+      const opens = findRowOpens(state, row.ref);
       const btn = el('button', 'sf-find__row k-row' + (i === selIdx ? ' sf-find__row--sel' : ''), {
         attrs: {
           type: 'button',
           role: 'option',
-          'data-entity': row.ref,
+          ...(opens ? { 'data-entity': row.ref } : {}),
           'aria-selected': i === selIdx ? 'true' : 'false',
         },
       });
