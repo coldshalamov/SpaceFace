@@ -633,8 +633,8 @@ test('one Bomb command makes a physical V3 bank, drops one canonical bomb, and p
 
 for (const m02Case of [
   { warmupTicks: 30, minRange: 190, maxRange: 300 },
-  { warmupTicks: 120, minRange: 120, maxRange: 150 },
-]) test(`M02 commits against a moving production wave-1 target at ${m02Case.minRange}-${m02Case.maxRange} WU`, async () => {
+  { warmupTicks: 120, minRange: 120, maxRange: 150, acquireCohort: true },
+]) test(`M02 commits against a moving production wave-1 target at ${m02Case.minRange}-${m02Case.maxRange} WU`, async t => {
   const tactical = createTacticalAISystem({ config: { enemyMind: { enabled: false } } });
   const sim = createSimulation({ seed: 4242,
     systems: [aiPorts, tactical, heroManeuvers, bombs],
@@ -667,20 +667,44 @@ for (const m02Case of [
       enemyId: first.enemyId, count: first.count, seed: 4242, wave: 1, packageIndex: 0,
       batchIndex: 0, gateGroup: first.gateGroup, distance: plan.swarm.spawnDistance, swarm: true });
     assert.equal(receipt.admitted, first.count, 'the complete first authored wave package enters through its production materializer');
-    const target = state.entities.get(receipt.spawnedIds[0]);
-    assert.equal(target.data.runCohort, 'survival');
-    assert.equal(target.data.runWave, 1);
-    assert.equal(target.data.ai.forcePlayerTarget, true);
+    let target = state.entities.get(receipt.spawnedIds[0]);
+    const initialById = new Map(receipt.spawnedIds.map(id => [id, { ...state.entities.get(id).pos }]));
     state.player.targetId = target.id;
-    const initial = { x: target.pos.x, z: target.pos.z };
+    let initial = { x: target.pos.x, z: target.pos.z };
     state.physicsRuntime ||= {};
     state.physicsRuntime.diagnostics = { backend: 'rapier-dynamic', sg02Ready: true };
     native.syncFromEntities(state.entityList);
+    // Keep the far case's original first target and 30-tick setup. The close case locks
+    // the first moving authored cohort member to enter its exact band, in stable spawn order.
+    // 120 ticks remains a hard setup ceiling; no actor is moved or held to create the lock.
+    let acquired = null;
+    let warmupContacts = 0;
     for (let i = 0; i < m02Case.warmupTicks; i++) {
       sim.step(1 / 60);
       native.syncFromEntities(state.entityList);
       native.step(1 / 60, state.tick);
+      warmupContacts += native.drainContactImpacts().length;
+      if (m02Case.acquireCohort) {
+        acquired = receipt.spawnedIds.map(id => state.entities.get(id)).find(candidate => {
+          const start = initialById.get(candidate.id);
+          const distance = Math.hypot(candidate.pos.x - player.pos.x, candidate.pos.z - player.pos.z);
+          return candidate.alive && distance >= m02Case.minRange && distance <= m02Case.maxRange
+            && Math.hypot(candidate.pos.x - start.x, candidate.pos.z - start.z) > 4;
+        });
+        if (acquired) break;
+      }
     }
+    assert.equal(warmupContacts, 0, 'the authored cohort advances without a native hull collision during lock acquisition');
+    if (m02Case.acquireCohort) {
+      assert.ok(acquired, 'the unchanged authored cohort must naturally offer a moving lock in the exact band within 120 ticks');
+      target = acquired;
+      initial = initialById.get(target.id);
+      state.player.targetId = target.id;
+    }
+    const acquiredTick = state.tick;
+    assert.equal(target.data.runCohort, 'survival');
+    assert.equal(target.data.runWave, 1);
+    assert.equal(target.data.ai.forcePlayerTarget, true);
     assert.equal(target.alive, true);
     assert.ok(Math.hypot(target.pos.x - initial.x, target.pos.z - initial.z) > 4,
       `the production AI/flight/Rapier path moved the admitted hostile before the command (start=${JSON.stringify(initial)} end=${JSON.stringify(target.pos)} intent=${JSON.stringify(target.data.intent)} ai=${JSON.stringify(target.data.ai)} diagnostics=${JSON.stringify(sim.helpers.inspectAIPorts?.())})`);
@@ -751,6 +775,8 @@ for (const m02Case of [
     assert.ok(Math.abs(releasedBombVelocity.x - releasePayload.vel.x) < 1e-8
       && Math.abs(releasedBombVelocity.z - releasePayload.vel.z) < 1e-8,
     'the spawned canonical bomb keeps the physical release velocity before the later phase return');
+    t.diagnostic(JSON.stringify({ lockBand: [m02Case.minRange, m02Case.maxRange], acquiredTick,
+      targetId: target.id, lockDistance: distance, warmupContacts, releaseElapsed, maxAnchorDistance }));
     assert.ok(releaseElapsed > 4.4 && releaseElapsed <= 8,
       `physical attack commits during the bounded sortie (${releaseElapsed?.toFixed(2)} s)`);
     assert.equal(dashEvents.length, 1, 'the bank burst uses exactly one canonical V3 dash impulse');

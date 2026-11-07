@@ -9,12 +9,12 @@ import { pickLivedVignette } from '../src/systems/livedWorldDirector.js';
 import { economy } from '../src/systems/economy.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 
-test('actual Choir archetype factory, late acceptance and native escort', {timeout:120000}, async()=>{
+test('actual Choir archetype factory, rotated routes, late acceptance and native escort', {timeout:120000}, async()=>{
  const {bootRealPath,writeRealPathInput}=await import('../scripts/lib/bench/realPath.mjs');
  const hullId=ENEMY_TYPES.find(x=>x.id==='choir_zealot').shipId;
  assert.equal(hullId,'ship_wasp');
  const evidence=[];
- for(const [acceptAt,ux,uz] of [[20,1,0]]){
+ for(const [acceptAt,ux,uz] of [[0,1,0],[20,1,0],[20,-1,0],[20,0,1],[20,0,-1]]){
   const h=await bootRealPath({seed:913,systems:['tacticalAI','flightV3','aiPorts','physics',economy,encounterDirector],
    hulls:[{hullId,isPlayer:true,rot:Math.atan2(uz,ux),pos:{x:-290*ux,z:-290*uz}}]});
   try{
@@ -37,13 +37,13 @@ test('actual Choir archetype factory, late acceptance and native escort', {timeo
      runtime.choose(d,l,h.state,'a');assert.equal(grants.length,0);
     }
     const last=entities()[2],p=h.player;
-    // Test pilot trails the escorted hull on its own live heading — master's column motion
-    // curves, so a fixed scene-axis offset can never match speed. Same input packet as controls.
-    // Positions, velocities, native bodies and NPC intent are never written by this pilot.
-    const lh=last.rot||0,lux=Math.cos(lh),luz=Math.sin(lh);
-    const vx=last.vel.x+(last.pos.x-140*lux-p.pos.x)*.7;
-    const vz=last.vel.z+(last.pos.z-140*luz-p.pos.z)*.7;
-    const ax=(vx-p.vel.x)*.2,az=(vz-p.vel.z)*.2;
+    // Match the live hull's drift in a stable translating frame. Attaching the offset
+    // to its turning nose asks the pilot to circle it, creating relative velocity
+    // that conflicts with the escort contract. Use the same ordinary control packet;
+    // positions, velocities, native bodies and NPC intent are never written here.
+    const vx=last.vel.x+(last.pos.x-110*ux-p.pos.x)*.5;
+    const vz=last.vel.z+(last.pos.z-110*uz-p.pos.z)*.5;
+    const ax=(vx-p.vel.x)*.12,az=(vz-p.vel.z)*.12;
     const cx=Math.cos(p.rot),sz=Math.sin(p.rot);
     writeRealPathInput(h.state,{moveZ:ax*cx+az*sz,moveX:-ax*sz+az*cx,turnIntent:0});
     // Production encounterDirector samples scripts once per accumulated second.

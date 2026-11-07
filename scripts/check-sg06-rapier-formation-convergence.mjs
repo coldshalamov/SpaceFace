@@ -65,10 +65,28 @@ assert(explicitRamApproach.phases.includes('commit'),
 assert(explicitRamApproach.phases.indexOf('engine_flare') < explicitRamApproach.phases.indexOf('commit'),
   'ram authorization remains downstream of the readable engine-flare telegraph');
 
+// Clearances are geometric contracts: exercise changed world origin and heading too.
+const placements = [];
+for (const placement of [
+  { angle: Math.PI / 2, x: 12000, z: -9000 },
+  { angle: -Math.PI / 2, x: -8000, z: 5000 },
+]) {
+  const ordinary = await runHostileFlybyScenario({ placement });
+  const capital = await runHostileFlybyScenario({ placement, targetRadius: 34, targetMass: 800 });
+  assert(ordinary.minTargetSeparation >= 26,
+    `rotated ordinary flyby must clear both hulls: ${JSON.stringify({ placement, ordinary })}`);
+  assert(capital.minTargetSeparation >= 80,
+    `rotated capital flyby must retain authored clearance: ${JSON.stringify({ placement, capital })}`);
+  assert.equal(ordinary.ramAuthorized, false);
+  assert.equal(capital.ramAuthorized, false);
+  placements.push({ placement, ordinary: ordinary.minTargetSeparation, capital: capital.minTargetSeparation });
+}
+
 console.log('SG-06 Rapier formation + hostile flyby trajectory checks OK', JSON.stringify({
   flyby: flybyFirst,
   capitalApproach,
   explicitRamApproach,
+  placements,
 }));
 
 async function runScenario() {
@@ -197,6 +215,23 @@ async function runHostileFlybyScenario(options = {}) {
       },
     },
   }));
+  if (options.placement) {
+    // This is pre-physics fixture construction; every subsequent pose comes from SG-02.
+    const { angle, x: originX, z: originZ } = options.placement;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    for (const entity of [player, interceptor]) {
+      const { x, z } = entity.pos;
+      entity.pos.x = originX + cos * x - sin * z;
+      entity.pos.z = originZ + sin * x + cos * z;
+      entity.rot += angle;
+      const anchor = entity.data?.ai?.activity?.anchor;
+      if (anchor) {
+        const { x, z } = anchor;
+        anchor.x = originX + cos * x - sin * z;
+        anchor.z = originZ + sin * x + cos * z;
+      }
+    }
+  }
   interceptor.data.combat = { targetId: player.id };
   if (options.ramPlate) interceptor.data.intent = { ramPlate: true };
   state.playerId = player.id;

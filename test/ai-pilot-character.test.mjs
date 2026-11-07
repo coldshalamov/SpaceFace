@@ -244,6 +244,104 @@ test('authored recipes, passive hulls, and solo hostiles are left alone', () => 
   assert.equal(idle.data.ai.squadRecipe, undefined, 'an unengaged hull does not form up');
 });
 
+test('attrition preserves surviving flights and sockets instead of rechunking the wing', () => {
+  const state = { playerId: 'player', tick: 1 };
+  const ships = Array.from({ length: 8 }, (_, index) => mkShip(index + 10));
+  assignAutoSquadRecipes(state, ships, 7);
+  const before = new Map(ships.map(ship => [ship.id,
+    [ship.data.ai.squadFrameId, ship.data.ai.squadSocket]]));
+  ships[0].alive = false;
+  assignAutoSquadRecipes(state, ships.slice().reverse(), 7);
+  for (const ship of ships.slice(1)) {
+    assert.deepEqual([ship.data.ai.squadFrameId, ship.data.ai.squadSocket], before.get(ship.id),
+      `survivor ${ship.id} retains its flight station`);
+  }
+  assert.equal(ships[0].data.ai.squadRecipe, undefined);
+  const replacement = mkShip(18);
+  assignAutoSquadRecipes(state, [...ships, replacement], 7);
+  assert.equal(replacement.data.ai.squadFrameId, before.get(ships[0].id)[0]);
+  assert.equal(replacement.data.ai.squadSocket, before.get(ships[0].id)[1]);
+  assertUniqueAutoSockets([...ships.slice(1), replacement]);
+});
+
+test('a stranded singleton loses its auto frame and can form a new wing with a reinforcement', () => {
+  const state = { playerId: 'player', tick: 1 };
+  const ships = Array.from({ length: 8 }, (_, index) => mkShip(index + 10));
+  assignAutoSquadRecipes(state, ships, 7);
+  ships[0].alive = ships[1].alive = ships[2].alive = false;
+  assignAutoSquadRecipes(state, ships, 7);
+  const solo = ships[3];
+  assert.equal(solo.data.ai.squadRecipe, undefined, 'no phantom formation with only itself');
+  assert.equal(solo.data.ai.squadFrameId, undefined);
+  assert.equal(solo.data.ai.squadSocket, undefined);
+  const remainingFrame = ships[4].data.ai.squadFrameId;
+  const replacement = mkShip(18);
+  assignAutoSquadRecipes(state, [...ships, replacement], 7);
+  assert.equal(solo.data.ai.squadFrameId, replacement.data.ai.squadFrameId);
+  assert.notEqual(solo.data.ai.squadFrameId, remainingFrame);
+  assertUniqueAutoSockets([...ships.filter(ship => ship.alive), replacement]);
+});
+
+test('five arrivals form two coherent flights, and duplicate inherited auto sockets are repaired', () => {
+  const state = { playerId: 'player', tick: 1 };
+  const ships = Array.from({ length: 5 }, (_, index) => mkShip(index + 10));
+  assignAutoSquadRecipes(state, ships, 7);
+  const sizes = new Map();
+  for (const ship of ships) {
+    const id = ship.data.ai.squadFrameId;
+    assert.ok(id, 'every arrival belongs to a real flight');
+    sizes.set(id, (sizes.get(id) || 0) + 1);
+  }
+  assert.deepEqual([...sizes.values()].sort(), [2, 3]);
+  ships[1].data.ai.squadSocket = ships[0].data.ai.squadSocket;
+  assignAutoSquadRecipes(state, ships, 7);
+  assertUniqueAutoSockets(ships);
+});
+
+for (const [incumbents, reinforcements] of [[3, 2], [2, 3]]) {
+  test(`${incumbents} established pilots admit ${reinforcements} reinforcements without stranding a wingman`, () => {
+    const state = { playerId: 'player', tick: 1 };
+    const flight = Array.from({ length: incumbents }, (_, index) => mkShip(index + 10));
+    assignAutoSquadRecipes(state, flight, 7);
+    const stations = flight.map(ship => [ship.data.ai.squadFrameId, ship.data.ai.squadSocket]);
+    const arrivals = Array.from({ length: reinforcements }, (_, index) => mkShip(index + 20));
+    const roster = [...arrivals, ...flight].reverse();
+    assignAutoSquadRecipes(state, roster, 7);
+    const sizes = new Map();
+    for (const ship of roster) {
+      const id = ship.data.ai.squadFrameId;
+      assert.ok(id, `pilot ${ship.id} needs a wing when enough reinforcements are available`);
+      sizes.set(id, (sizes.get(id) || 0) + 1);
+    }
+    assert.deepEqual([...sizes.values()].sort(), [2, 3]);
+    assert.deepEqual(flight.map(ship => [ship.data.ai.squadFrameId, ship.data.ai.squadSocket]), stations,
+      'reinforcement admission must preserve the surviving maneuver and stations');
+    assertUniqueAutoSockets(roster);
+    assert.equal(assignAutoSquadRecipes(state, roster.reverse(), 7), 0,
+      'a different scan order does not reassign stable wings');
+  });
+}
+
+test('reinforcements fill open stations when doing so leaves no avoidable singleton', () => {
+  const state = { playerId: 'player', tick: 1 };
+  const flight = [mkShip(10), mkShip(11)];
+  assignAutoSquadRecipes(state, flight, 7);
+  const arrivals = [mkShip(20), mkShip(21)];
+  assignAutoSquadRecipes(state, [...flight, ...arrivals], 7);
+  assert.equal(new Set([...flight, ...arrivals].map(ship => ship.data.ai.squadFrameId)).size, 1);
+  assertUniqueAutoSockets([...flight, ...arrivals]);
+});
+
+function assertUniqueAutoSockets(ships) {
+  const claimed = new Set();
+  for (const ship of ships) {
+    const ai = ship.data.ai;
+    const key = `${ai.squadFrameId}:${ai.squadSocket}`;
+    assert.ok(!claimed.has(key), `two pilots cannot own ${key}`);
+    claimed.add(key);
+  }
+}
+
 // ── gunline choreography ─────────────────────────────────────────────────────
 
 test('the standoff gunline morphs to a line and volleys from the band', () => {
