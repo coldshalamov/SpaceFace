@@ -123,11 +123,11 @@ landed for data alone.
 |---|---|---|
 | A | E10 + E1 + E5 | **fix landed** (`bd1b166`), 77/77 E1 cohort; browser 1x re-record and E5 live shell receipt still open. Re-review required. |
 | B | E6 | **fix landed** (`84bfa5`..`53312b`), 97/97 + 103/103; single after-run is a measured FAIL (`visibleUnready 3`, `leftUndrawn 5`) on a contaminated tree. Clean-tree re-measure + re-review required. |
-| C | E3 + E2 profiler | **fix landed** (`762eb19`), 119/119, four gates green, 47-A v24 content-only. Bars still **p95 24.16 / p99 48.85 / max 50.66** vs 8/12/25. Re-review required. |
-| D | P1 + P2 | fixer in flight (stat model, part facts, tests) |
-| E | X1 + X3 + X4 + X5 | X3 landed (`6db9d84`, 30/30 + capture); X1/X4/X5 fixers in flight; X1 owner approval still open |
-| F | W1 | **fix landed** (`2c5980`), live 18/18, 50/50 focused, real B0 ordering defect fixed. Re-review required. |
-| G | repo quality baseline (Q1/Q5/Q4 survey) | Q1 census + Q5 tiers/tool landed; `test:fast` 39/39; Q4 razor in flight |
+| C | E3 + E2 profiler | **fix landed** (`762eb19` + `3196b76`), 119/119, four gates green, 47-A **v25** content-only for economy slicing. Bars now **p95 13.79 / p99 17.67 / max 28.99** vs 8/12/25. Re-review in flight. |
+| D | P1 + P2 | **fix landed** (`02b5ff11`), 25/25 focused, New Game tab order PASS, UI imports 55/0. Re-review in flight. |
+| E | X1 + X3 + X4 + X5 | **fix landed** (`4ee6b61` X1, `6db9d84` X3, `d309816` X4/X5); X1 61/61 + 1600×1000 captures, X3 30/30 + capture, X4/X5 48/48. X1 owner approval still open. Re-review in flight. |
+| F | W1 | **fix landed** (`2c5980`), live 18/18, 50/50 focused, real B0 ordering defect fixed. Re-review in flight. |
+| G | repo quality baseline (Q1/Q5/Q4 survey) | Q1 census + Q5 tiers/tool landed; Q4 razor landed (`9d352e9`, 8 files / 2,458 lines deleted); `test:fast` 39/39. |
 
 ## Current green evidence
 
@@ -139,6 +139,9 @@ landed for data alone.
 - E1/E10 cohort **77/77**, `check:smooth-flight` **48/48**.
 - E6 focused **97/97**, supporting **103/103**.
 - E2/E3 combined **119/119**; `check-sg02-*`, `check-sg06-*`, `check-depth-program-k1` green.
+  900-tick/211-body profile: **mean 8.74 / p95 13.79 / p99 17.67 / max 28.99 ms**; economy slicing on
+  with the content-only v25 reference.
+- Q4 razor: **8 files / 2,458 lines removed**, `check-gameplay-core` green, boot still 18/18.
 - W1 live route **18/18**, focused **50/50**.
 - X3 presenters **30/30**, re-shot capture at HEAD.
 - `check-runtime-asset-contract`: **PASS 0/0** after the Ashline LOD marker fix; `check-lod` 18/18;
