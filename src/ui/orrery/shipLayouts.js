@@ -79,9 +79,21 @@ ${W} .sx-sw-row .k-row__sub { ${LABEL} font-size:12px !important; letter-spacing
 ${W} .sx-sw-row .sx-sw-row__flag { ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; background:none !important; border:0 !important; }
 
 /* ---- the nameplate: the hull's word in the display role, the rename field a lit rule ----------- */
-${W} .sx-sw__nameplate { isolation:isolate; }
-${W} .sx-sw__nameplate::before { content:""; position:absolute; z-index:-1; inset:-20px -34px -16px -24px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(${POOL} / .72), rgb(${POOL} / .48) 60%, rgb(${POOL} / 0)); }
+/* ui-polish-408: nameplate wears the same hairline card as .sx-sw__stats / .sx-sw__side (1px bone
+   ~18% / radius 10 / padded). It sits over the hull stage, so the card keeps a settled pool fill
+   under the faint bone wash instead of the unbound shade-pool, whose feathered edges let forge
+   glow run through the crest. Densify radius 8→6 on short/narrow, matching the sibling cards. */
+${W} .sx-sw__nameplate { isolation:isolate; box-sizing:border-box; width:fit-content; max-width:100%;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:14px 18px 16px !important; }
+${W} .sx-sw__nameplate::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__nameplate { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__nameplate { padding:10px 14px 12px !important; } }
+@media (max-width:560px) { ${W} .sx-sw__nameplate { padding:12px 14px 14px !important; } }
 ${W} .sx-sw__name { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
   font-weight:800 !important; font-size:clamp(30px, min(2.7vw, 4.8vh), 46px) !important; line-height:1 !important; letter-spacing:.005em !important;
   color:${INK} !important; text-shadow:0 1px 12px rgb(${POOL} / .6) !important; }
@@ -99,11 +111,25 @@ ${W} .sx-sw__nameEdit:is(:focus, :focus-visible)::placeholder { color:var(--dp-h
 ${W} .sx-sw__blurb { font-family:var(--dp-face-body, "Instrument Sans"), sans-serif !important; font-size:14px !important; line-height:1.5 !important;
   color:rgb(${BONE} / .82) !important; max-width:52ch; text-shadow:0 1px 8px rgb(${POOL} / .55) !important; }
 
-/* ---- the six readings: a ledger line at the stage's foot, no plate ----------------------------- */
-${W} .sx-sw__gauges { ${PLAIN} isolation:isolate; gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important;
-  white-space:nowrap; padding:6px 28px !important; }
-${W} .sx-sw__gauges::before { content:""; position:absolute; z-index:-1; inset:-4px 0 -8px; pointer-events:none;
-  background:linear-gradient(180deg, rgb(${POOL} / 0), rgb(${POOL} / .62) 30% 72%, rgb(${POOL} / 0)); }
+/* ---- the six readings: a ledger line at the stage's foot --------------------------------------- */
+/* ui-polish-409: gauges ledger wears the same hairline card as .sx-sw__stats / .sx-sw__side /
+   .sx-sw__nameplate (1px bone ~18% / radius 10 / padded). It sits over the bright hull stage foot,
+   so the card keeps a settled pool fill under the faint bone wash instead of the unbound shade-pool,
+   whose feathered edges let forge glow run through the six readings. Densify radius 8→6 on
+   short/narrow, matching the sibling cards. width:fit-content hugs the ledger and stays centered. */
+${W} .sx-sw__gauges { position:relative; isolation:isolate; box-sizing:border-box;
+  gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important;
+  white-space:nowrap; width:fit-content; max-width:100%; margin-inline:auto;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:10px 28px !important; }
+${W} .sx-sw__gauges::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__gauges { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__gauges { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__gauges { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__gauges { padding:8px 20px !important; } }
+@media (max-width:560px) { ${W} .sx-sw__gauges { padding:8px 16px !important; } }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; }
 ${W} .sx-sw-gauge .k-row__num { ${NUM} font-size:13px !important; color:${INK} !important; }
@@ -122,7 +148,7 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__main { display:flex !important; flex-direction:column !important; gap:8px !important;
     min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${W} .sx-sw__main > .sx-sw__nameplate { position:relative !important; inset:auto !important; flex:none !important;
-    width:100% !important; max-width:none !important; padding:0 !important; }
+    width:fit-content !important; max-width:100% !important; /* hairline card hugs crest; keep base padding */ }
   ${W} .sx-sw__main > .sx-sw__nameplate .sx-sw__blurb { max-width:100% !important; font-size:14px !important;
     line-height:1.4 !important; max-height:none !important; overflow:visible !important; }
   ${W} .sx-sw__main > .sx-sw__stage { flex:0 0 320px !important; height:320px !important;
@@ -337,13 +363,23 @@ ${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} min-height:0 !important; padding
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 
-/* ---- the read-only chooser: a pool of its own, rows on the fleet's ruled ladder ---------------- */
-${W} .sx-sw__chooser { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__chooser::before { content:""; position:absolute; z-index:-1; inset:-6px; pointer-events:none; background:rgb(${POOL} / .82);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 92%, transparent), linear-gradient(180deg, transparent, #000 4%, #000 96%, transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 12%, #000 92%, transparent), linear-gradient(180deg, transparent, #000 4%, #000 96%, transparent);
-  mask-composite:intersect; }
-${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
+/* ---- the read-only chooser: hairline card over the stage, rows on the fleet's ruled ladder ----- */
+/* ui-polish-410: chooser wears the same hairline card as .sx-sw__stats / .sx-sw__side /
+   .sx-sw__nameplate (1px bone ~18% / radius 10 / padded). It sits over the stage/forge, so the
+   card keeps a settled pool fill under the faint bone wash instead of the unbound shade-pool.
+   Densify radius 8→6 on short/narrow, matching the sibling cards. Panel stays PLAIN inside. */
+${W} .sx-sw__chooser { position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:12px 14px; }
+${W} .sx-sw__chooser::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__chooser { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__chooser { padding:10px 12px; } }
+@media (max-width:560px) { ${W} .sx-sw__chooser { padding:12px 14px; } }
+${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 10px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important;
   font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
