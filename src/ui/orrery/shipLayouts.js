@@ -31,9 +31,20 @@ const CSS = `
 ${W} { ${PLAIN} }
 ${W} .sx-sw__main { ${PLAIN} }
 ${W} .sx-sw__rail { ${PLAIN} }
-${W} .sx-sw__stats { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__stats::before { content:""; position:absolute; z-index:-1; inset:-34px -56px -30px -56px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(${POOL} / .8), rgb(${POOL} / .55) 58%, rgb(${POOL} / 0)); }
+/* ui-polish-397: stats reading wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded); shade-pool ::before stands down. Densify radius 8→6 on short/narrow. */
+${W} .sx-sw__stats { position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:rgb(${BONE} / .025) !important; padding:16px 18px; }
+${W} .sx-sw__stats::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__stats { border-radius:8px; } }
+@media (max-height:460px) { ${W} .sx-sw__stats { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__stats { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__stats { border-radius:8px; } }
+/* short bands (651x461, 960x500): trim padding so the card stays clear of nameplate/gauges */
+@media (max-height:519px) { ${W} .sx-sw__stats { padding:10px 14px; } }
+@media (max-width:560px) { ${W} .sx-sw__stats { padding:14px 16px; } }
 ${W} .sx-sw__side { ${PLAIN} position:relative; isolation:isolate; }
 ${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; pointer-events:none; background:rgb(${POOL} / .8);
   -webkit-mask-image:linear-gradient(90deg, transparent, #000 20%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 94%, transparent);
