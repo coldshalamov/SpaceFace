@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "8a3e2cafb440da913d774b860d3c6ea00fc41a3592dbb2dd5f80e7b9fccfd7fd",
+  "uiSourceDigest": "3e944948d722ac471ea265ef74df629d5e479f4ba770ec120cd71839df9727ef",
   "uiSourceFiles": {
     "index.html": "43fb16a51ff36e5a2eee5078a63dcc68059734ebc95254de8c9833dbda292e93",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -212,7 +212,7 @@
     "src/ui/orrery/ledgerTape.js": "e7af086e6d2bb731b28123f9bec88cfc4d686f48bc1f121aca3d3e830c81d296",
     "src/ui/orrery/logbookLayouts.js": "524e68e72d1f6f4133c30f4e663998ec6b6fc0e2ca13b6beeb5f944f2e9851a6",
     "src/ui/orrery/manifestLayouts.js": "e9a96c7c1fac184f58d20c1f7a31cabca502044faf4e664fec7663dd40bfa85b",
-    "src/ui/orrery/marketLayouts.js": "f800b532c88622bb178d14b20e97cbd5762e02444003a8f78084f783ee0708d5",
+    "src/ui/orrery/marketLayouts.js": "46095a3e0b5c343f9e91dc69fbc401254018c3ee99fddfb538a8474fdfeedd6b",
     "src/ui/orrery/mission-logLayouts.js": "2a94e0be0bc9f89a4479f677a2d422054754356081ec741d0080888b94666e3d",
     "src/ui/orrery/mobileScreenLayouts.js": "f932672107c256eb4abc88c02aaf7b18678c8473d9657c3205936526fc0ae347",
     "src/ui/orrery/motion.js": "d6b91527f27e6cf6eef7f514a17105d37975d3f936596d987f72f20e15eb0878",
