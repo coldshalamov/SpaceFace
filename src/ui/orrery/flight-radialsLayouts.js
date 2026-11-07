@@ -29,7 +29,9 @@
 //     near-opaque faceted plate clipped to a cut-corner polygon, with an etched rim light drawn
 //     on the same clip so the edges read machined, not rounded;
 //   - at the ≤1400px tier the fan also shifts right (50% → 54%), so its bezel clears the LINE
-//     SPACE legend and the ability column by ~60px instead of feathering over them;
+//     SPACE legend and the ability column by ~60px instead of feathering over them; on short
+//     narrow frames (641–800 × ≤560) the same clearance steps to 58%, because the 54% band
+//     is gated on min-height:561px and otherwise leaves Shove/Pin/Bomb/Rig ∩ HAIL DECK;
 //   - the dial's hub pours deeper, so a live HUD line behind cannot print through onto the
 //     scope word either;
 //   - one Hand per screen: the surface NOT under the pointer stands down (fan verbs while the
@@ -66,6 +68,15 @@ ${NARROW} {
 ${W} .sf-wradial__face { width:126px; }
 ${W} .sf-wradial__label { letter-spacing:.12em; white-space:nowrap; }
 @media (max-width:760px), (max-height:560px) { ${W} .sf-wradial__face { width:150px; } }
+
+/* short narrow desktop (641–800 × ≤560, e.g. 651×461 / 700×461): the condensed-tier
+   left:54% shift above is gated on min-height:561px, so on short frames the fan stays
+   at 50% and its hub eats the ability column (Shove/Pin/Bomb/Rig ∩ HAIL DECK, mashVis
+   up to ~324px²). Step to 58% so the bezel clears the rightmost key (~207px) by ≥20px
+   while the right dock still has air; 801×461 already clears at 50%. */
+@media (min-width:641px) and (max-width:800px) and (max-height:560px) {
+  ${F} { left:58%; }
+}
 
 /* ── wingman press + arrival: transforms on the spring presets, a press is felt ─────────────── */
 ${W} .sf-wradial__hub { transition:transform .22s cubic-bezier(.22, 1, .36, 1); }
