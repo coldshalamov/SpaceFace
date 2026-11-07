@@ -363,13 +363,23 @@ ${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} min-height:0 !important; padding
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 
-/* ---- the read-only chooser: a pool of its own, rows on the fleet's ruled ladder ---------------- */
-${W} .sx-sw__chooser { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__chooser::before { content:""; position:absolute; z-index:-1; inset:-6px; pointer-events:none; background:rgb(${POOL} / .82);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 92%, transparent), linear-gradient(180deg, transparent, #000 4%, #000 96%, transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 12%, #000 92%, transparent), linear-gradient(180deg, transparent, #000 4%, #000 96%, transparent);
-  mask-composite:intersect; }
-${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
+/* ---- the read-only chooser: hairline card over the stage, rows on the fleet's ruled ladder ----- */
+/* ui-polish-410: chooser wears the same hairline card as .sx-sw__stats / .sx-sw__side /
+   .sx-sw__nameplate (1px bone ~18% / radius 10 / padded). It sits over the stage/forge, so the
+   card keeps a settled pool fill under the faint bone wash instead of the unbound shade-pool.
+   Densify radius 8→6 on short/narrow, matching the sibling cards. Panel stays PLAIN inside. */
+${W} .sx-sw__chooser { position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:12px 14px; }
+${W} .sx-sw__chooser::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__chooser { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__chooser { padding:10px 12px; } }
+@media (max-width:560px) { ${W} .sx-sw__chooser { padding:12px 14px; } }
+${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 10px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important;
   font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
