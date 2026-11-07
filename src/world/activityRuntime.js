@@ -2444,4 +2444,3 @@ export function entityNeedsAiThink(entity, state = null) {
   }
   return isExactTier(tier);
 }
-
