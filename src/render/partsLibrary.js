@@ -12137,14 +12137,14 @@ async function driveAuthoredBuildStepsAsync(steps, buildTrace, entity, ownerBoun
         try { steps.return(undefined); } catch { /* generator teardown is best-effort */ }
         if (buildTrace && buildTrace.root) {
           const partial = buildTrace.root;
-          for (let preScan = disposeAbortPartialPreScanSteps(partial); ;) {
-            if (preScan.next().done) break;
-            await composeYield();
-          }
+          // Package release can clear its child graph. Collect and retire the place/capsule
+          // resources before invoking it, using the same deduplicated ownership policy as
+          // a completed stale build; an early destructive pre-scan loses those children.
           try {
             const partialState = options.state || (options.renderer && options.renderer.state) || null;
-            if (!queuePacedDetachedTeardown(partial, disposeDetachedObjectSteps(partial, partialState))) {
-              disposeDetachedObject(partial, partialState);
+            if (!queuePacedDetachedTeardown(partial, detachedFallbackTeardownThenClearSteps(partial, partialState))) {
+              disposeDetachedPlaceFallback(partial, partialState);
+              partial.clear();
             }
           } catch { /* partial-root disposal is best-effort */ }
           buildTrace.root = null;
@@ -18177,6 +18177,7 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
   }
   const geometries = new Set();
   const materials = new Set();
+  const instances = new Set();
   const stack = [root];
   let visited = 0;
   while (stack.length) {
@@ -18184,6 +18185,9 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
     object.castShadow = false;
+    releaseStaticBatchGeometryForObject(object);
+    const instance = object.userData?.renderPackageInstance;
+    if (instance && typeof instance.dispose === 'function') instances.add(instance);
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);
@@ -18193,7 +18197,7 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
   let disposed = 0;
   for (const geometry of geometries) {
     if ((++disposed % 128) === 0) yield;
-    if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
+    if (geometry.userData?.spacefaceSharedFallback || geometry.userData?.spacefaceSharedAsset) continue;
     if (typeof geometry.dispose === 'function') {
       try { geometry.dispose(); } catch { /* per-node dispose — teardown continues */ }
     }
@@ -18204,6 +18208,12 @@ function* disposeDetachedPlaceFallbackSteps(root, state = null) {
     if (typeof material.dispose === 'function') {
       try { material.dispose(); } catch { /* per-node dispose — teardown continues */ }
     }
+  }
+  // A package owns its lease and may sever its whole tree on release. The resource journal
+  // and shadow membership must be complete before that destructive callback can run.
+  for (const instance of instances) {
+    if ((++disposed % 128) === 0) yield;
+    try { instance.dispose('detached-place-disposed'); } catch { /* other leases still retire */ }
   }
 }
 

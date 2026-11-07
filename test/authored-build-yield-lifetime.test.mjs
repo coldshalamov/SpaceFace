@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { notePacedFrameSpend, PACED_FRAME_BUDGET_MS } from '../src/render/decodeTaskBudget.js';
 import * as THREE from 'three';
 import { Object3D as VendoredObject3D, spacefaceShadowCastersIn } from '../vendor/three.module.js';
 import {
@@ -174,7 +175,7 @@ for (const kind of ['place', 'cargo']) {
   });
 }
 
-test('stale authored place cleanup preserves canonical fallback disposal policy', async () => {
+async function assertStalePlaceCleanup({ pacedAbort = false, clearPackage = true } = {}) {
   const record = recordFor(2, 2);
   record.primitives[0].geometry.userData.spacefaceSharedFallback = true;
   record.primitives[0].material.userData.spacefaceSharedAsset = true;
@@ -187,6 +188,12 @@ test('stale authored place cleanup preserves canonical fallback disposal policy'
   const localMaterial = new THREE.MeshStandardMaterial();
   let localGeometryDisposals = 0;
   let localMaterialDisposals = 0;
+  let packageDisposals = 0;
+  let releasedAfterResources = false;
+  const sharedAssetGeometry = new THREE.BoxGeometry();
+  sharedAssetGeometry.userData.spacefaceSharedAsset = true;
+  let sharedAssetGeometryDisposals = 0;
+  sharedAssetGeometry.dispose = () => { sharedAssetGeometryDisposals++; };
   localGeometry.dispose = () => { localGeometryDisposals++; };
   localMaterial.dispose = () => { localMaterialDisposals++; };
   let staleRoot = null;
@@ -204,7 +211,20 @@ test('stale authored place cleanup preserves canonical fallback disposal policy'
       mesh.castShadow = true;
       staleRoot.add(mesh);
     }
+    const sharedMesh = new THREE.Mesh(sharedAssetGeometry, localMaterial);
+    sharedMesh.castShadow = true;
+    localMeshes.push(sharedMesh);
+    staleRoot.add(sharedMesh);
+    const dispose = instance.dispose;
+    instance.dispose = () => {
+      packageDisposals++;
+      releasedAfterResources = localGeometryDisposals === 1 && localMaterialDisposals === 1
+        && localMeshes.every((mesh) => mesh.castShadow === false);
+      if (clearPackage) dispose();
+    };
     boundary.userData.admissionEpoch = 2;
+    // Reach cancellation at the next real compose yield even on a fast test host.
+    if (pacedAbort) notePacedFrameSpend(PACED_FRAME_BUDGET_MS);
     return instance;
   };
 
@@ -241,6 +261,9 @@ test('stale authored place cleanup preserves canonical fallback disposal policy'
     assert.equal(localMaterialDisposals, 1, 'repeated owner-local material is deduplicated');
     assert.equal(sharedGeometryDisposals, 0, 'shared fallback geometry remains owned by its cache');
     assert.equal(sharedMaterialDisposals, 0, 'shared authored material remains owned by its cache');
+    assert.equal(sharedAssetGeometryDisposals, 0, 'shared authored geometry remains owned by its cache');
+    assert.equal(packageDisposals, 1, 'the abandoned package releases its lease exactly once');
+    assert.equal(releasedAfterResources, true, 'package release cannot erase the pending cleanup graph');
     assert.ok(localMeshes.every((mesh) => mesh.castShadow === false),
       'the detached stale subtree is removed from shadow membership before disposal');
   } finally {
@@ -253,5 +276,15 @@ test('stale authored place cleanup preserves canonical fallback disposal policy'
     record.primitives[0].material.dispose = () => {};
     record.primitives[0].geometry.dispose();
     record.primitives[0].material.dispose();
+    sharedAssetGeometry.dispose = () => {};
   }
-});
+}
+
+for (const [label, options] of [
+  ['normal schedule', {}],
+  ['forced compose yield', { pacedAbort: true }],
+  ['forced compose yield with retained package graph', { pacedAbort: true, clearPackage: false }],
+]) {
+  test(`stale authored place cleanup preserves canonical fallback disposal policy (${label})`,
+    () => assertStalePlaceCleanup(options));
+}
