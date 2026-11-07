@@ -711,8 +711,53 @@ const ambush = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// D. DISTRESS — 60/40 genuine/bait preserved. Assist / scan-first / ignore, all flown, not clicked.
+// D. DISTRESS — 60/40 genuine/bait preserved. Assist commits a mark and a reply. Scan reads
+//    the hull when you are close enough, and says the range when you are not. Ignore drops it.
+//    The fight itself still starts when you arrive.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+function distressSpringR(live) {
+  const genuine = live.plan && live.plan.variantKind === 'distress_genuine';
+  return genuine ? (live.shape.approachR || 900) : (live.shape.springR || 650);
+}
+
+// The broadcasting hull can drift or be towed away from its spawn anchor. Navigation,
+// scanning and arrival must all refer to the same live signal, never an empty old site.
+function distressSignalPos(d, live) {
+  const role = live.plan && live.plan.variantKind === 'distress_genuine' ? 'victim' : 'bait';
+  const hull = d.entsOf(live, role)[0];
+  return hull && hull.pos && Number.isFinite(hull.pos.x) && Number.isFinite(hull.pos.z)
+    ? { x: hull.pos.x, z: hull.pos.z }
+    : null;
+}
+
+function refreshDistressMark(d, live, state, pos) {
+  const mark = state.nav && state.nav.waypoint;
+  // Following the hull must not reclaim navigation after the pilot selects another job.
+  if (!live.data.markSaved || !mark || mark.encounterId !== live.id || mark.kind !== 'distress_assist') return;
+  if (mark.pos && mark.pos.x === pos.x && mark.pos.z === pos.z) return;
+  d.markEncounter(live, { ...mark, pos });
+}
+
+/** The scan tell, shared by the C-key pulse and the card. False when the hull will not read. */
+function distressReadSignal(d, live) {
+  if (live.data.toldTell) return true;
+  const player = d.player();
+  const pos = distressSignalPos(d, live);
+  if (!player || !player.pos || !pos) return false;
+  if (dist2(player.pos.x, player.pos.z, pos.x, pos.z) > DIST_TELL_R * DIST_TELL_R) return false;
+  live.data.toldTell = true;
+  const genuine = live.plan && live.plan.variantKind === 'distress_genuine';
+  const tellRoll = d.stream(live, 'tell')();
+  const showsTell = !genuine && tellRoll < 0.7;
+  d.say(live, 'info', showsTell ? 'scan_tell_bait' : 'scan_tell_genuine');
+  return true;
+}
+
+function distressOfferAgain(d, live) {
+  live.offerConsumed = false;
+  d.offerChoices(live, ['assist', 'scan', 'ignore'], 'ignore', live.deadlineAt);
+}
+
 const distress = {
   fire(d, live, state) {
     const genuine = live.plan.variantKind === 'distress_genuine';
@@ -751,19 +796,22 @@ const distress = {
   tick(d, live, state, now) {
     const p = d.player(); if (!p) return d.abort(live, 'no_player');
     const genuine = live.plan.variantKind === 'distress_genuine';
-    const anchor = live.anchor || p.pos;
-    const pd2 = dist2(p.pos.x, p.pos.z, anchor.x, anchor.z);
-
     if (live.phase === 'offer') {
-      const springR = genuine ? (live.shape.approachR || 900) : (live.shape.springR || 650);
+      const pos = distressSignalPos(d, live);
+      if (!pos) return d.resolve(live, 'lost');
+      refreshDistressMark(d, live, state, pos);
+      const pd2 = dist2(p.pos.x, p.pos.z, pos.x, pos.z);
+      const springR = distressSpringR(live);
       if (pd2 <= springR * springR) {
         live.data.onScene = true;
         live.phase = 'conflict';
+        d.clearEncounterMark(live);
         d.setPassive(live, false, genuine ? 'threat' : null);   // genuine: harriers turn; bait: trap springs
         if (!genuine) d.say(live, 'alert', 'distress_bait_spring');
         return;
       }
       if (now >= live.deadlineAt) {                     // ignored: the signal fades. No punishment.
+        d.clearEncounterMark(live);
         d.despawnAll(live, 10);
         return d.resolve(live, 'ignored', { speak: false });
       }
@@ -794,23 +842,66 @@ const distress = {
   },
 
   choose(d, live, state, choiceId) {
-    // 'assist' and 'ignore' are flown, not clicked; 'scan' is the C-key pulse (routed as an event).
-    if (choiceId === 'ignore' && live.phase === 'offer') {
+    if (live.phase !== 'offer') return;
+    if (choiceId === 'ignore') {
+      d.clearEncounterMark(live);
       d.despawnAll(live, 10);
       d.resolve(live, 'ignored', { speak: false });
+      return;
+    }
+    if (choiceId === 'assist') {
+      const pos = distressSignalPos(d, live);
+      if (!pos) {
+        distressOfferAgain(d, live);
+        return;
+      }
+      const marked = d.markEncounter(live, {
+        kind: 'distress_assist',
+        markerKind: 'mission-objective',
+        encounterId: live.id,
+        sectorId: live.sectorId,
+        pos,
+        label: 'MAYDAY',
+        reason: 'You answered. Fly the mark — the fight starts when you arrive.',
+        arrivalRadius: distressSpringR(live),
+      });
+      if (!marked) {
+        distressOfferAgain(d, live);
+        return;
+      }
+      live.data.assisting = true;
+      // Info, not bark: the mayday just took the one-voice bark slot on this same tick.
+      d.say(live, 'info', 'distress_assist_ack');
+      return;
+    }
+    if (choiceId === 'scan') {
+      // A far click must not burn the card. The pulse path stays range-gated too.
+      if (!distressReadSignal(d, live)) {
+        const player = d.player();
+        const pos = distressSignalPos(d, live);
+        const range = player && player.pos && pos
+          ? Math.round(Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z))
+          : null;
+        d.say(live, 'info', range != null
+          ? `The mayday is ${range} WU out. Close in before a scan will hold.`
+          : 'The mayday will not read from here.', null, { literal: true });
+      }
+      // A successful read is information, not a commitment to abandon the rescue. Re-open
+      // the one-shot choice after either result so the pilot can still Assist or Ignore.
+      // toldTell remains latched, so a later card scan never rolls or speaks a second read.
+      distressOfferAgain(d, live);
     }
   },
 
   event(d, live, state, name) {
-    if (name !== 'scanPulse' || live.data.toldTell || live.phase !== 'offer') return;
-    const p = d.player(); if (!p) return;
-    const anchor = live.anchor || p.pos;
-    if (dist2(p.pos.x, p.pos.z, anchor.x, anchor.z) > DIST_TELL_R * DIST_TELL_R) return;
-    live.data.toldTell = true;                          // scan-first: one read, imperfect on purpose
-    const genuine = live.plan.variantKind === 'distress_genuine';
-    const tellRoll = d.stream(live, 'tell')();
-    const showsTell = !genuine && tellRoll < 0.7;       // 30% of baits scan clean — trust stays a read
-    d.say(live, 'info', showsTell ? 'scan_tell_bait' : 'scan_tell_genuine');
+    if (name !== 'scanPulse' || live.phase !== 'offer') return;
+    distressReadSignal(d, live);
+  },
+
+  retire(d, live) {
+    // All terminal paths, including sector exit and a lost broadcaster, release only
+    // this encounter's mark and restore the navigation it temporarily borrowed.
+    d.clearEncounterMark(live);
   },
 };
 

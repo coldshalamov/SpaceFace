@@ -9831,6 +9831,8 @@ function sanitizeNavLeg(leg) {
 
 function sanitizeNavWaypoint(waypoint, opts) {
   if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return null;
+  // Older saves kept this position after dropping its transient encounter owner.
+  if (waypoint.kind === 'distress_assist') return null;
   const out = {};
   for (const field of [
     'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName',
@@ -9924,6 +9926,14 @@ function persistentNavEntityId(value) {
 
 function navWithStableEntityIdentity(state) {
   const nav = clonePlain(state?.nav || {});
+  // Distress scenes are transient and their live coordinator is not saved. Retain
+  // the destination they borrowed without changing the pilot's current live mark.
+  // Resolve one owned lease only; another transient mark is rejected below.
+  if (nav.waypoint?.kind === 'distress_assist') {
+    const live = state.encounterDirector?.live?.[nav.waypoint.encounterId];
+    nav.waypoint = live?.script === 'distress' && live.id === nav.waypoint.encounterId
+      && live.data?.markSaved === true ? clonePlain(live.data.previousWaypoint) : null;
+  }
   for (const target of [nav.waypoint, nav.autopilot]) {
     if (!target || typeof target !== 'object') continue;
     // The stamped bind is the truth — it was proven at arm time and re-proven every tick.
