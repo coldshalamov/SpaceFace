@@ -21,7 +21,7 @@ boards are outcome detail, not a second queue. This page does not assign a compe
 | Product direction or system design | [`design/VISION.md`](../design/VISION.md) → relevant sections of [`design/GDD_2_0.md`](../design/GDD_2_0.md) and the selected active spec |
 | Tests, checks, or browser/Electron validation | [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md), plus `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` for the files involved |
 | Add a map-visible place or station | `src/data/PLACE_REGISTRATION.md` and its current atlas/map check |
-| Asset manifest, release bundle, or deploy issue | [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) and [`COMMON_BUGS.md`](./COMMON_BUGS.md) §15 |
+| Asset manifest, release bundle, or deploy issue | [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) and [`COMMON_BUGS.md`](./COMMON_BUGS.md) §15A |
 
 Read only the sections and artifacts required by the active task. Historical campaign plans, old
 acceptance packs, and completed-work ledgers are context, not automatic assignments or extra review

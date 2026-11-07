@@ -1,5 +1,9 @@
 # Tethys Scale 4: measured worksite
 
+> **Historical design note.** The worksite is implemented; this page explains the original scale
+> decision. Current story work is W1/W2 in `design/program/finish/MASTER_PLAN.md`; current source
+> owners are `src/story/campaign47a/` and `src/systems/missions.js`.
+
 The existing alloy-run route resolves to `station_tethys` in `sector_tethys_junction`. Scale 4 makes that destination readable without inventing a Tycho station, alias, POI, or navigation target.
 
 ## Worksite and reading

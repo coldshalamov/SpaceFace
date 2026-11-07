@@ -702,7 +702,7 @@ chase-camera frame membrane re-origins the scene); `scripts/probe-camera-clearan
 pass sim positions and reported "no roof" for a station that was right there. Cross
 `render._frameMembrane.toLocal` first.
 
-## 15. Vercel production build fails on "content hash does not match the shipping manifest"
+## 15A. Vercel production build fails on "content hash does not match the shipping manifest"
 
 **Symptom:** every push's Vercel deployment errors ~3 minutes in; the log ends with
 `[bundle] FAILED: assets/ships/release/render-packages/<key>/render-package.json content hash does

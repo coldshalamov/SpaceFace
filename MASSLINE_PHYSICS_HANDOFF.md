@@ -1,4 +1,9 @@
-# MASSLINE PHYSICS IDENTITY — Implementation Handoff
+# MASSLINE PHYSICS IDENTITY - Implementation Handoff
+
+> **Historical (July 2026).** This handoff is context, not a current assignment. The live Massline
+> owners are `src/systems/tetherGameplay.js`, the `massline*` systems and `src/core/sg02DynamicBodyOwner.js`;
+> current work is in `design/program/finish/MASTER_PLAN.md` (lane 2 SIM CORE / SWARM). Verify any
+> claim here against current source before acting.
 
 **For:** An autonomous implementation agent with high reasoning effort.
 **From:** A design conversation between Robin (the developer) and a planning agent, July 2026.

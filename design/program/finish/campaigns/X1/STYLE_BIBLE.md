@@ -2,8 +2,8 @@
 # The SpaceFace style bible — one page
 
 **X1, owner review 2026-11-06.** One rendering language, one value system, one scale system, from
-the sky to the HUD. It extends [`LOOK.md`](../../../../docs/visual-assets/LOOK.md) ("Neon Industrial")
-and [`FORGE.md`](../../../../tools/blender/forge/FORGE.md) from ships to the whole frame. Where this
+the sky to the HUD. It extends [`LOOK.md`](../../../../../docs/visual-assets/LOOK.md) ("Neon Industrial")
+and [`FORGE.md`](../../../../../tools/blender/forge/FORGE.md) from ships to the whole frame. Where this
 page and an older recipe disagree, this page wins for *composition*; LOOK.md still owns the mood
 numbers and FORGE.md still owns how a ship is built.
 
