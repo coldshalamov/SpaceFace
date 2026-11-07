@@ -217,10 +217,24 @@ ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 
-/* ---- the handling: no plate; the figures quieter; the bars as scales of light ---------------- */
-${W} .sx-sw__stats { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__stats::before { content:""; position:absolute; z-index:-1; inset:-40px -60px -40px -60px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(7 8 10 / .78), rgb(7 8 10 / .55) 60%, rgb(7 8 10 / 0)); }
+/* ---- the handling: a hairline card; the figures quieter; the bars as scales of light --------- */
+/* ui-polish-404: the handling wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded), the grammar the flight sheet gave the same node in ui-polish-397 (#909) and
+   the station series (#912-#915) gave the crown, dossier, factions and ledger readings. The dock
+   shade-pool ::before stands down here, in this sheet only (stationTabsLayouts.js untouched).
+   Densify radius 8 -> 6 and the padding on short / narrow bands. */
+${W} .sx-sw__stats { ${PLAIN} position:relative; isolation:isolate; box-sizing:border-box;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:rgb(${BONE} / .025) !important; padding:16px 18px; }
+${W} .sx-sw__stats::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__stats { border-radius:8px; padding:14px 16px; } }
+@media (max-width:820px) { ${W} .sx-sw__stats { border-radius:8px; } }
+@media (max-width:760px) { ${W} .sx-sw__stats { border-radius:8px; } }
+@media (max-height:600px) { ${W} .sx-sw__stats { padding:12px 14px; } }
+@media (max-height:540px) { ${W} .sx-sw__stats { padding:10px 12px; } }
+@media (max-height:460px) { ${W} .sx-sw__stats { border-radius:8px; padding:8px 10px; } }
+@media (max-height:400px) { ${W} .sx-sw__stats { border-radius:6px; } }
+@media (max-width:650px) { ${W} .sx-sw__stats { padding:14px 16px; } }
 ${W} .sx-sw-bands { gap:0 clamp(28px, 3vw, 56px) !important; }
 ${W} .sx-sw-hero { ${PLAIN} padding:2px 0 8px !important; min-height:0 !important; text-align:left; }
 ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
@@ -1412,6 +1426,33 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
     margin:0 !important; padding:2px 4px !important; justify-content:center !important;
     flex-wrap:wrap !important; gap:2px 12px !important; z-index:6;
   }
+}
+/* ui-polish-404: with the handling now a hairline card, its top edge has to seat under the fleet roster's
+   active row and the roster rule instead of crossing them (the shade pool used to hide the overlap). On
+   short laptop bands (<=800 tall) it clears the row text only, to keep the reading its height. Only the absolutely
+   seated desktop reading moves; the stacked (unseated / <=1100 short) readings keep their flow. */
+@media (min-width:1101px) and (max-height:959px) {
+  ${W}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) { top:174px !important; max-height:calc(100% - 182px) !important; }
+}
+@media (min-width:1101px) and (min-height:960px) {
+  ${W}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) { max-height:calc(100% - 200px) !important; }
+}
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) { top:140px !important; }
+}
+/* the narrower roster (1101-1200) wraps the active row's class onto a third line */
+@media (min-width:1101px) and (max-width:1200px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) { top:154px !important; }
+}
+/* ui-polish-404: the foot fold (ROUND 9 scroll-driven mask) also dissolved the card's hairline at the foot and
+   up its sides. Keep the fade on the reading, and composite the border ring back in at full strength:
+   fade (border-box) + [border-box minus padding-box]. */
+@supports (animation-timeline: scroll()) {
+  ${W} .sx-sw__stats {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent), linear-gradient(#000, #000), linear-gradient(#000, #000) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent), linear-gradient(#000, #000), linear-gradient(#000, #000) !important;
+    mask-clip:border-box, padding-box, border-box !important; mask-origin:border-box !important;
+    mask-size:100% 100% !important; mask-repeat:no-repeat !important; mask-composite:add, exclude, add !important; }
 }
 `;
 
