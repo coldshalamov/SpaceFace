@@ -98,11 +98,22 @@ ${S} .so-command-trigger:is(:hover, :focus-visible) { color:rgb(246 241 230) !im
 ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !important; }
 
 /* ---- the crown: the purse is the one numeral; the vitals are dials of light under it ----------- */
-${S} .sxb-crown { background:none !important; border:0 !important; box-shadow:none !important; position:relative !important; isolation:isolate; }
-/* a pool of shade under the readings (no edge): the bay's truss stays the picture, the small words stay legible */
-${S} .sxb-crown::before { content:""; position:absolute; z-index:-1; left:50%; top:55%; width:max(980px, 170%); height:max(520px, 250%);
-  transform:translate(-50%, -50%); pointer-events:none;
-  background:radial-gradient(closest-side, rgb(7 8 10 / .93), rgb(7 8 10 / .84) 42%, rgb(7 8 10 / .6) 62%, rgb(7 8 10 / 0)); }
+/* ui-polish-400: crown readings wear the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded); shade-pool ::before stands down. Densify radius 8→6 on short/narrow. */
+${S} .sxb-crown { position:relative !important; isolation:isolate; box-sizing:border-box !important;
+  background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  box-shadow:none !important; padding:16px 18px !important; }
+${S} .sxb-crown::before { content:none; display:none; }
+@media (max-height:820px) { ${S} .sxb-crown { border-radius:8px; } }
+@media (max-height:460px) { ${S} .sxb-crown { border-radius:8px; } }
+@media (max-height:400px) { ${S} .sxb-crown { border-radius:6px; } }
+@media (max-width:760px) { ${S} .sxb-crown { border-radius:8px; } }
+@media (max-width:820px) { ${S} .sxb-crown { border-radius:8px; } }
+@media (max-width:1100px) { ${S} .sxb-crown { padding:12px 10px !important; } }
+@media (max-height:600px) { ${S} .sxb-crown { padding:10px 10px !important; } }
+@media (max-height:540px) { ${S} .sxb-crown { padding:4px 6px !important; } }
+@media (max-height:460px) { ${S} .sxb-crown { padding:4px 6px !important; } }
+@media (max-width:560px) { ${S} .sxb-crown { padding:14px 16px !important; } }
 ${S} .sxb-purse__value { color:rgb(248 244 234) !important; text-shadow:0 0 22px rgb(0 0 0 / .55) !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-weight:500 !important; font-size:40px !important; line-height:1 !important; letter-spacing:.01em !important; font-variant-numeric:tabular-nums; }

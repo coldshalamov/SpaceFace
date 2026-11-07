@@ -19,6 +19,24 @@ const BONE = '236 230 216';
 const ROW = `${T} .sx-fac__rows .sx-fac-row`;
 
 const CSS = `
+/* ui-polish-401: factions reading wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded); shade-pool ::before stands down. Densify radius 8→6. One class deeper than
+   stationTabsLayouts.js (.sx-fac .sx-fac-reading) so the override wins without editing that file. */
+${T} .sx-fac .sx-fac-reading {
+  box-sizing:border-box !important; position:relative !important; isolation:isolate;
+  background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .18) !important;
+  border-radius:10px; box-shadow:none !important; padding:16px 18px !important; min-width:0; }
+${T} .sx-fac .sx-fac-reading::before { content:none; display:none; }
+@media (max-height:820px) { ${T} .sx-fac .sx-fac-reading { border-radius:8px; } }
+@media (max-height:460px) { ${T} .sx-fac .sx-fac-reading { border-radius:8px; } }
+@media (max-height:400px) { ${T} .sx-fac .sx-fac-reading { border-radius:6px; } }
+@media (max-width:760px) { ${T} .sx-fac .sx-fac-reading { border-radius:8px; } }
+@media (max-width:820px) { ${T} .sx-fac .sx-fac-reading { border-radius:8px; } }
+@media (max-height:600px) { ${T} .sx-fac .sx-fac-reading { padding:12px 14px !important; } }
+@media (max-height:540px) { ${T} .sx-fac .sx-fac-reading { padding:10px 12px !important; } }
+@media (max-height:460px) { ${T} .sx-fac .sx-fac-reading { padding:8px 10px !important; } }
+@media (max-width:650px) { ${T} .sx-fac .sx-fac-reading { padding:14px 16px !important; } }
+
 /* hover and keyboard focus answer identically: the row's tick leans in and the name comes forward
    (the Missions rows' grammar, stationTabsLayouts.js). The chosen row keeps its amber notch — the
    lean-in belongs to the rows the Hand is not already pointing at. */

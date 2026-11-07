@@ -43,10 +43,45 @@ ${BOTH} .dp-title__eyebrow { color:rgb(${BONE} / .82) !important;
   text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .85) !important; }
 
 /* ---------- flight brief: hierarchy — kicker / name / next / save ---------- */
+/* ui-polish-398: flight brief wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded); shade-pool ::before and console lit-face stand down. Densify radius 8→6. */
+/* desktop dial brief stays position:absolute (screenLayouts); phone column stays in-flow */
+${BOTH} .sf-pause-brief.orr-brief,
+${BOTH} > .sf-pause-brief.orr-brief {
+  isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
+  background:rgb(${BONE} / .025) !important; padding:16px 18px !important; }
+${PH} .sf-pause-brief,
+${PN} .sf-pause-brief {
+  position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
+  background:rgb(${BONE} / .025) !important; padding:16px 18px !important; }
+${BOTH} .sf-pause-brief.orr-brief::before,
 ${BOTH} > .sf-pause-brief.orr-brief::before,
-${BOTH} .sf-pause-brief.orr-brief::before {
-  background:radial-gradient(closest-side, rgb(4 6 9 / .9), rgb(4 6 9 / .62) 58%, transparent) !important;
-  inset:-40px -60px !important; }
+${PH} .sf-pause-brief::before,
+${PN} .sf-pause-brief::before {
+  content:none !important; display:none !important; }
+@media (max-height:820px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { border-radius:8px !important; } }
+@media (max-height:460px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { border-radius:8px !important; } }
+@media (max-height:400px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { border-radius:6px !important; } }
+@media (max-width:760px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { border-radius:8px !important; } }
+/* short bands (651x461, 960x500): trim padding so the card stays clear of dial/foot */
+@media (max-height:519px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { padding:10px 14px !important; } }
+@media (max-width:560px) {
+  ${BOTH} .sf-pause-brief.orr-brief, ${BOTH} > .sf-pause-brief.orr-brief,
+  ${PH} .sf-pause-brief, ${PN} .sf-pause-brief { padding:14px 16px !important; } }
 ${BOTH} .sf-pause-brief .dp-etch,
 ${BOTH} .sf-pause-brief > .dp-etch.sf-slot-sub:first-child,
 ${BOTH} .orr-brief__kind {
