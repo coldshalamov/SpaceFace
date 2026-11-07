@@ -348,6 +348,22 @@ export function applyQualityPreset(settings, presetId) {
   return { preset: tier.id, tier: tier.id, changed };
 }
 
+/**
+ * Apply a preset as an AUTOMATIC posture: the picture keys move, but the quality policy stays Auto
+ * so the dynamic-resolution controller, the hitch governor and the Auto presentation cap keep
+ * working. Manual choices still go through `applyQualityPreset`.
+ */
+export function applyAutoQualityPreset(settings, presetId) {
+  const applied = applyQualityPreset(settings, presetId);
+  if (!applied) return applied;
+  const video = settings && settings.video;
+  if (video && video.qualityMode !== 'auto') {
+    video.qualityMode = 'auto';
+    if (!applied.changed.includes('qualityMode')) applied.changed.push('qualityMode');
+  }
+  return { ...applied, qualityMode: 'auto' };
+}
+
 /** Resolve automatic/manual policy without changing existing player settings. Older saves have no
  * policy key: an untouched (possibly older, partial) Balanced profile adopts Auto, while a named
  * non-default or hand-edited profile remains manual. The former dynamic-resolution opt-in also

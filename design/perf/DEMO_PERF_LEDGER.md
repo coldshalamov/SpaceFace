@@ -28,23 +28,98 @@ from the same laptop and must name their context.
 | integrated Auto v1 | headed witness, New Game | **36.8 ms** | **25.6** | **12.1** | **135** | **349** | auto High performance, 30 cap |
 | stress scene | headed hitch gate | — | **54.4** | 16.6 | 143 frames >32 ms | 150 | 6 enemies / 10 rocks; still red |
 
+Two back-to-back tagged samples under a 59 % busy host (`perf-truth-1/2`) measured presentation
+p95 55.9 / 58.3, render p95 39.0 / 39.8, UI p95 17.3 / 18.1. They are recorded as **contended
+samples**, not a regression: the matching earlier sample at lower host load was 36.8 / 25.6 / 12.1.
+The initial `[render]` console line reports the pre-preset 0.90 buffer; the live probe after flight
+reads the applied 0.75 buffer (960×540).
+
 The auto profile is `applyQualityPreset(..., 'low')` on an integrated GPU whose quality mode is Auto
 (`src/render/renderer.js`, `src/render/adaptiveQuality.js`). It is reversible from Settings → Video
 and never overrides a Manual choice.
 
-## Open bottlenecks (ranked hypotheses until the audit reports land)
+## Configuration for this game (2026-11-07 owner direction)
 
-1. **Scene render at 54 ms in stress** — draw submission/fill, not bloom quads (bloomScene p95 ~20 ms
-   in normal flight). Investigate instancing, overdraw, shadow/depth passes, per-entity material
-   switches, and the tabletop submission population.
-2. **UI 12–17 ms p95** — always-mounted HUD doing per-frame DOM writes. Candidate: dirty-flag HUD,
-   30/15 Hz instrument tiers, batched writes, cached nodes.
-3. **External scheduling / long tasks** — host contention (CPU busy 58%) and 135 long tasks even in
-   normal flight. Candidate: boot/admission work, GC, texture/GLB decode, event storms.
-4. **Stress-scene authored queue** — 3+ jobs and 257+ entities; admission and per-entity setup can
-   land inside presented frames.
-5. **First-flight loading** — authored-visuals/render-pipelines stages and pending roots; cached
-   second launches are faster but a cold demo still pays.
+SpaceFace is top-down: a ship is either on screen at a readable size or it is not. Whole-ship LOD
+demotion is therefore **not** a performance lever for ordinary play. Keep it off
+(`WHOLE_SHIP_LOD_RUNTIME_DEMOTION = false`); only a true speck (< 32 CSS px at first admission) may
+start on the authored LOD2 sibling. Everything the player can read admits the authored LOD0 body.
+LOD stays available for a race camera view if that mode is built; it is not a substitute for fixing
+model loading or frame cost.
+
+Resolution is a readability contract, not a free lever. The auto profile's own `renderScale` now
+joins the combined-readability product, so dynamic resolution and hitch relief cannot compound a
+0.75 preset down to ~0.45 of display (the observed blurry zoom-out failure). The combined raster
+stays at or above 0.6; CAS sharpens the one intentional 0.75 scale.
+
+## Measurement truth (2026-11-07)
+
+The 60 fps-era thresholds were calling healthy capped frames hitches. All live/reporting thresholds
+are now cadence-relative:
+
+- Hitch = 1.5 × (1000 / live frame cap); 33.3 ms at 30 fps is on time, >50 ms is a missed present.
+- `perfRuntime.beginFrame` receives the live cadence, not a hardcoded 16.67 ms.
+- `check:hitch-budget` derives its budget from the live cap (or `--frame-budget-ms`), so the 30 fps
+  demo route no longer fails on its own healthy cadence.
+- The hitch governor uses the same cadence-relative ring.
+
+## Landed since the first baseline
+
+| Change | Expected effect | Proof |
+|---|---|---|
+| Auto preset keeps `qualityMode: auto` (`applyAutoQualityPreset`) | dyn-res/relief stay live; the preset no longer persists Manual | live probe: preset low, mode auto, 960×540, cap 30 |
+| Combined readability floor includes the auto `renderScale` | no dyn-res compounding below 0.6; removes zoom-out blur | live probe: `dynResScale` 0.8 → 1.0 |
+| Receipt/caption lane re-places from measured geometry on the 10 Hz safety tick; rowGap cached; real invalidations still re-measure | cut the 2.5–6 ms flush to rect reuse; target UI p95 ≤6 | `test/hud-receipt-geometry` 13/13 |
+| Stunt callout resolves its eleven singleton obstacles once and stops forcing a rect read on the unchanged branch | ~0.3–0.5 ms UI + removes a 1–2 ms spike per callout | `pq-146-03` / `stunt-combo` 28/28 |
+| Content-hash fast path in the render-package loader | warm re-admission needs no metadata fetch, re-serialize or re-hash | `render-package-loader` 51/51 (fast-path fetch count 1) |
+| Collapse policy-walk yields for repeat archetypes | 3–6 fewer present waits per resident hull | `authored-async-liveness` + glass/lifetime suite 81/81 |
+| Batch ambient flight texture uploads (4 maps / 4 MiB; on-glass stays per-item) | fewer residency present waits per hull | residency tests green |
+| Budget-relative hitch truth in witness/probe/governor | a healthy 30 fps present is no longer reported as a hitch | `hitch-classifier` + witness suites: focused 266/266 |
+| Initial ship LOD only for <32 px specks | readable contacts keep the authored body | `ordinary-ship-lod` / policy 72/72 |
+
+## Open bottlenecks (ranked)
+
+1. **Scene render** — normal-flight render p95 is still 25–39 ms depending on host load; the stress
+   scene (6 enemies/10 rocks) is the pole. Draw submission/program switches (E7: setProgram 5.7 ms,
+   drawPreparedFrame 15.75 ms), 52k stress-scene points, and 32 visible light slots are the candidates.
+   No whole-ship LOD substitution.
+2. **HUD** — the always-mounted HUD remains 12–17 ms p95 under load; the receipt lane fix targets the
+   largest single flush, then contact marks / radar / ORRERY springs.
+3. **Admission wall** — cold first flight still stages authored bodies late. Fast paths reduce the
+   warm path; the cold decode/compile lane and fallback disposal are the next fixes.
+4. **Host contention** — every claim here must be a matched/median result; single runs at 59 % CPU
+   are samples only.
+
+## Resolution is not the frame pole (same-session slope, 2026-11-07)
+
+One headed session, manual quality (no dyn-res/relief), 7 s reset window per scale, host 59 % busy:
+
+| renderScale | buffer | render avg / p95 | presentation avg / p95 |
+|---:|---|---:|---:|
+| 0.90 | 1152×648 | 27.3 / 34.1 | 34.7 / 43.4 |
+| 0.75 | 960×540 | 29.5 / 37.0 | 38.5 / 49.9 |
+| 0.60 | 768×432 | 29.5 / 36.4 | 36.5 / 45.0 |
+| 0.75 (repeat) | 960×540 | 31.1 / 38.7 | 37.4 / 45.1 |
+
+A 2.25× pixel cut changed render p95 by ~1 ms (inside the noise band). Under this host's CPU
+contention the render phase is **submission/CPU-bound, not fill-bound**. Cutting resolution further
+would only blur the picture. The next real lever is E7: fewer draws and program switches
+(`setProgram` 5.72 ms, `drawPreparedFrame` 15.75 ms at 152 draws / 86.7 switches), then the retained
+render list. Re-check the slope on a quiet host before ever raising or lowering the preset again.
+
+## First-flight loading is the other red (2026-11-07)
+
+Cold boots currently take 32–42 s to `entering-flight`, with 15–18 s in the `render-pipelines`
+stage. The route labels the wait "Linking the first-flight render pipelines"; the assets audit
+showed `precompile.js` has no production caller and the label is held while
+`waitForRequiredOpeningPicture` runs. The host was 59 % busy for both samples; the whole route was
+about 2× slower, so these are not a clean before/after.
+
+A cap bypass during loading was tried and reverted: the sample came out slower (14.7 → 18.1 s in
+the stage), and uncapping can steal main-thread time from the admission lanes on a contended host.
+Re-test only on a quiet host, with the admission stage spans as the matched metric. The real
+candidates remain the serial admission wall (per-hull compile/upload paced waits) and the four
+permanently `missing` opening roots.
 
 ## Rules
 

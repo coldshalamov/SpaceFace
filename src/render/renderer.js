@@ -361,7 +361,7 @@ import {
   detectGpu,
   createAdaptiveResolution,
   shouldSuggestIntegratedPreset,
-  applyQualityPreset,
+  applyAutoQualityPreset,
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   adaptiveFrameBudgetMs,
@@ -9538,6 +9538,9 @@ export const render = {
     } catch (_) { /* binary cache is opportunistic */ }
     // Opaque order is depth-tested. Skipping the default painter sort saves a
     // full scene comparison on the iGPU thread; transparent objects still sort.
+    // The station depth prepass (partsLibrary.js) also relies on this: prepass meshes are
+    // PREPENDED and must draw before their sources, which only holds while opaque draw order is
+    // scene-traversal order. Re-enabling material/depth sorting needs that owner reworked first.
     if (typeof renderer.setOpaqueSort === 'function') {
       renderer.setOpaqueSort(() => 0);
     }
@@ -11408,7 +11411,7 @@ export const render = {
     if (gpu && gpu.tier === 'integrated' && qualityModeForVideo(integratedVideo) === 'auto'
         && !this._integratedAutoApplied) {
       this._integratedAutoApplied = true;
-      applyQualityPreset(state.settings, 'low');
+      applyAutoQualityPreset(state.settings, 'low');
       try { bus.emit('settings:changed', { section: 'video', key: null }); } catch (_) { /* live apply is best-effort */ }
       scheduleTimeout(() => {
         try {
@@ -12107,6 +12110,9 @@ export const render = {
         // unSliced is the on-glass deadline lane: its residency batches ride the
         // urgent chain instead of queueing behind ambient uploads.
         urgent: unSliced,
+        // Ambient flight admissions share one serial unit across four maps (bounded by bytes).
+        // The on-glass lane stays per-item so the first visible frame is never split.
+        ...(unSliced ? {} : { textureBatchCount: 4, textureBatchBytes: 4 * 1024 * 1024 }),
         beforeSubmit: () => assertResidencyOwnerActive(subject, admissionOptions),
         yieldToMain: async () => {
           if (yieldSlice) await yieldSlice();
@@ -25231,7 +25237,11 @@ export const render = {
       presentationFrame && presentationFrame.frameDebt,
     );
     if (!this._hitchRing) this._hitchRing = createHitchRing();
-    noteHitchRing(this._hitchRing, present, Number(renderState.lastPresentDtMs));
+    // The relief ladder reacts to missed presents on the live cadence. At the integrated 30 Hz cap
+    // that is >50 ms, not >33.4 ms: a healthy capped frame must not shed the authored picture.
+    const liveCap = Number(renderState.frameCap) || 0;
+    const hitchThresholdMs = liveCap > 0 ? (1000 / liveCap) * 1.5 : undefined;
+    noteHitchRing(this._hitchRing, present, Number(renderState.lastPresentDtMs), hitchThresholdMs);
     renderState.hitchRing = this._hitchRing;
     this._notePresentInputEdges(renderState, present);
     this._updateHitchRelief(renderState, present);
@@ -25302,8 +25312,16 @@ export const render = {
     if (!gpu || gpu.tier === 'software') return this._dynFloor || dynResFloorForTier(gpu && gpu.tier);
     const vd = (this.state.settings && this.state.settings.video) || {};
     const hitch = finiteInRange(renderState && renderState.hitchReliefScale, 0.5, 1, 1);
-    const relief = gpu.tier === 'integrated' && adaptiveResolutionEnabledForSettings(gpu, vd)
+    // In Auto, the configured renderScale is an automatic posture, not a player Manual choice: it
+    // shrinks the drawing buffer, so it belongs in the same readability product as the reliefs.
+    // Without this, the integrated demo preset (0.75) multiplied by dyn-res and hitch relief
+    // rendered the scene at ~0.45 of display — the blurry zoom-out picture. Manual keeps its own
+    // choices out of the rescue.
+    const autoMode = qualityModeForVideo(vd) === 'auto';
+    const autoScale = autoMode ? finiteInRange(vd.renderScale, 0.33, 1, 1) : 1;
+    const tierRelief = gpu.tier === 'integrated'
       ? Math.min(hitch, INTEGRATED_RELIEF_RASTER_CAP) : hitch;
+    const relief = tierRelief * autoScale;
     return adaptiveFloorForCombinedScale(this._dynFloor || dynResFloorForTier(gpu.tier), relief);
   },
 

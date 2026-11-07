@@ -1376,7 +1376,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       const fixedDt = Number.isFinite(simulationRunner.fixedDt)
         ? simulationRunner.fixedDt
         : LOOP_FIXED_DT;
-      const frameBudgetMs = fixedDt * 1000;
+      // The budget is the cadence the loop is actually on: 30 Hz on the integrated profile, an
+      // uncapped/60 Hz route otherwise. Backlog and hitch attribution compare against this, never a
+      // hardcoded 60 Hz when the player sees 30.
+      const liveCap = Number(state.render && state.render.frameCap) || 0;
+      const frameBudgetMs = liveCap > 0 ? 1000 / liveCap : fixedDt * 1000;
       perf.beginFrame(
         frameDt,
         callbackStart,
