@@ -101,9 +101,15 @@ try {
   assert.equal(routeReport.screenVisible, true, 'New Game panel should be visible');
   assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
   assert.equal(routeReport.steps.length, 4, 'first-15 route rail should have four steps');
-  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam', 'Dock and pick work']) {
+  for (const phrase of ['Wake at the beacon', 'Tether the derelict', 'Mine the first seam']) {
     assert(routeReport.steps.some((step) => step.includes(phrase)), 'route rail missing step: ' + phrase);
   }
+  // The fourth row's heading follows the selected hull's actual Helios ticket (df437c6); the
+  // authored "Dock and pick work" is still acceptable when the preview has not painted yet.
+  assert(routeReport.steps[3].length > 0, 'fourth rail step must carry its text');
+  assert(routeReport.steps[3].includes('Dock and pick work')
+    || routeReport.steps[3].includes('Cut iron at Helios'),
+  'fourth rail step must name the default Hitch work: ' + routeReport.steps[3]);
   assert.equal(routeReport.routeVisible, true, 'first-15 route rail should be visible');
   if (routeReport.startingShipRect) {
     assert(routeReport.routeRect.bottom <= routeReport.startingShipRect.top,
@@ -229,6 +235,11 @@ try {
       trackerText: (trackerRoot?.textContent || '').replace(/\s+/g, ' ').trim(),
       firstFlightHint: !!hints.firstFlight,
       waypoint: state.nav && state.nav.waypoint || null,
+      trackedStoryTag: (() => {
+        const tracked = state.ui && state.ui.trackedMissionId;
+        const m = tracked && (state.missions?.active || []).find((row) => row?.id === tracked && row.status === 'active');
+        return m && typeof m.storyTag === 'string' ? m.storyTag : null;
+      })(),
       controlHints: controlHints.visible ? controlHints.text : '',
       toastBlob,
       voiceText,
@@ -245,10 +256,18 @@ try {
   // Opening marker must exist and be lifecycle-owned by the staged tutorial or story spine —
   // never a bare kind:'mission' / local / trade claim while B0 is teaching.
   assert.ok(b0Report.waypoint, 'opening must expose one authoritative waypoint/goal marker');
+  // Opening marker must exist and be lifecycle-owned by the staged tutorial or story spine.
+  // The first tether exercise deliberately yields to the live 47-A campaign contract at B0
+  // (missionStoryOps `_onboardingOwnsOpeningNav`); a random side mission still fails.
+  const openingStoryMission = b0Report.waypoint.kind === 'mission'
+    && (/47-A/i.test(String(b0Report.waypoint.label || ''))
+      || /47-A/i.test(String(b0Report.waypoint.reason || '')));
   assert.ok(
-    b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true,
-    'any opening waypoint must remain story/onboarding-owned'
-    + ` (got kind=${b0Report.waypoint.kind} onboarding=${b0Report.waypoint.onboarding})`,
+    b0Report.waypoint.kind === 'story' || b0Report.waypoint.onboarding === true || openingStoryMission,
+    'any opening waypoint must remain story/onboarding-owned or the 47-A campaign contract'
+    + ` (got kind=${b0Report.waypoint.kind} onboarding=${b0Report.waypoint.onboarding}`
+    + ` mission=${b0Report.waypoint.missionId || '-'} storyTag=${b0Report.trackedStoryTag || '-'}`
+    + ` label=${b0Report.waypoint.label || '-'} reason=${b0Report.waypoint.reason || '-'})`,
   );
 
   const panelCmd = !!(b0Report.panelVisible && b0Report.panelTitle);
