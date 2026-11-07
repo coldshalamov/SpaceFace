@@ -91,18 +91,27 @@ Focused W1 47/47; live campaign suite 18/18; board checks green (2026-11-06 fina
   contains foreign edits, so this pass proves the model/contract and the focused modules, not the
   live composed route.
 
-## Unproven: the W1 Verify play walk (act 1 on the ordinary route)
+## The W1 Verify play walk (act 1 on the ordinary route)
 
-- A prior pass recorded the working tree's `game:new → flight` transition blocked by foreign
-  in-flight edits, with `check-game-playable` BOOT failing and a direct CDP probe never reaching
-  flight. This final pass did not re-run that walk or capture browser screenshots; the current
-  tree still carries foreign edits outside W1. The focused model/contract checks in this file are
-  not a substitute for the ordinary route.
-- Interlude reliability (piece 3): wired in code (`missionStoryOps` 4 s scan + retry); its
-  fire-rate on the ordinary route remains unmeasured.
-- Ten-moments check: pending the same walk. The persistent "what do I do next" surface already
-  exists (`_ensureStoryWaypoint` covers every beat incl. world-work steps) and carries the act as
-  its own tracker line.
+- **2026-11-07: an ordinary Adventure walk was run** with `node scripts/player-truth/run.mjs
+  --mode=adventure --gate` on the published tree: 661 s wall / 300 sim s, 5,047 frames, 180
+  screenshots, public controls only. Verdict `INCOMPLETE`, not FAIL:
+  - PASS: route (intro → menu → first-run prompt → mode select → preparation → spawn → play),
+    player control (2/2 probes), no spawn motion, no tumble, player ship 0.4% bad frames, LOD churn
+    0.04/s, popping 3/min, VFX/backdrop coverage, sim not stalled, HUD held.
+  - UNKNOWN: readability (0 enemy/asteroid/projectile/pickup samples in the headless software
+    renderer), frame_time (SwiftShader; no baseline), offscreen marker (not read). These are
+    measurement limits, not route failures.
+  - Artifacts: `scratch/player-truth/adventure/verdict.md`, `verdict.json`, `trace.json.gz`,
+    `frames/`, `contact-sheet.jpg`.
+- This proves the opening is reachable, controllable and stable on the ordinary route. It does not
+  yet script the act-specific beats (B0 mine → skim → dock Helios; B1 alloy run → Scale 4) or the
+  ten "what do I do next?" moments, so the W1 Verify walk is **partly met, not closed**.
+- Interlude reliability (piece 3): wired in code (`missionStoryOps` 4 s scan + retry); its fire-rate
+  on the ordinary route remains unmeasured.
+- Ten-moments check: pending the scripted act walk. The persistent "what do I do next" surface
+  already exists (`_ensureStoryWaypoint` covers every beat incl. world-work steps) and carries the
+  act as its own tracker line.
 
 ## Resume here (next agent)
 
