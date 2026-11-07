@@ -56,8 +56,29 @@ ${T} .con-star-btn:is(:focus, :focus-visible) { outline:none !important; box-sha
 ${T} > .con-side { grid-area:side; position:relative; z-index:1; min-width:0; min-height:0; align-self:stretch; box-sizing:border-box;
   padding:clamp(6px, 3vh, 44px) 0 10px; overflow:visible; }
 ${T} > .con-side::before { ${POOL('-10% -18% -6% -22%')} }
-${T} .con-dossier { display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px); }
+/* reading dossier: promise-scale hairline card (was unbound Newgrounds plate over the soft pool) */
+${T} .con-dossier {
+  display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px);
+  box-sizing:border-box;
+  border:1px solid rgb(${BONE} / .18);
+  border-radius:10px;
+  background:rgb(${BONE} / .025);
+  padding:clamp(10px, 1.2vh, 16px) clamp(12px, 1.2vw, 18px);
+}
 ${T} .con-dossier > * { margin:0; }
+/* short frames: compress card chrome with the shared densify bands */
+@media (max-height:820px) {
+  ${T} .con-dossier { border-radius:8px; }
+}
+@media (max-height:460px) {
+  ${T} .con-dossier { border-radius:8px; }
+}
+@media (max-height:400px) {
+  ${T} .con-dossier { border-radius:6px; }
+}
+@media (max-width:760px) {
+  ${T} .con-dossier { border-radius:8px; }
+}
 ${T} .con-dossier__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${T} .con-dossier__kicker span { margin:0 .3em; }
 ${T} .con-dossier__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
