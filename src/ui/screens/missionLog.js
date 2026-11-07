@@ -27,6 +27,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
+import { journeyActForBeat, journeyActLabel } from '../../data/journeyActs.js';
 import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
 import {
@@ -1733,6 +1734,17 @@ function offeredEndingAction(state) {
   };
 }
 
+/** W1 Journey: the act is its own line/chip on a story action, never a label prefix. */
+function attachJourneyAct(action, beatIndex) {
+  if (!action) return action;
+  const act = journeyActForBeat(beatIndex);
+  if (!act) return action;
+  const line = journeyActLabel(act);
+  action.actLine = line;
+  action.meta = action.meta ? `${line} · ${action.meta}` : line;
+  return action;
+}
+
 export function storyActionForBeat(beat, state) {
   const story = state && state.story || {};
   const postEnding = postEndingStoryAction(state);
@@ -1882,7 +1894,7 @@ const PERSISTENT_CAMPAIGN_LABELS = new Set([
  */
 export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null, commissionSelected = false) {
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
-  const action = storyActionForBeat(STORY_BEATS[beatIndex], state);
+  const action = attachJourneyAct(storyActionForBeat(STORY_BEATS[beatIndex], state), beatIndex);
   const label = String(action && action.label || '');
   const isEndingLabel = /^ENDING [A-E]$/.test(label);
   if (!action || (!PERSISTENT_CAMPAIGN_LABELS.has(label) && !isEndingLabel)) return null;
@@ -1905,7 +1917,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
   const storyBeat = STORY_BEATS[beatIndex];
-  const storyAction = storyActionForBeat(storyBeat, state);
+  const storyAction = attachJourneyAct(storyActionForBeat(storyBeat, state), beatIndex);
   const activeTradeRoute = tradeRouteAction(state);
   const setPieceContinuation = setPieceContinuationAction(state);
   const cargo = cargoLoad(state);

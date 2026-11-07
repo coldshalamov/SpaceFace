@@ -1503,12 +1503,13 @@ export function campaign47aOutcomeKey(state) {
 }
 
 export const missions = {
-  // The ops spreads live in init, not the literal: each ops module imports this composite
-  // (missions.foo() inside method bodies), so an eager spread reads their exports while the
-  // import cycle still has them uninitialized. Attaching in init keeps every consumer's
-  // `missions.x()` identical while letting the cycle resolve. Precedence is preserved:
-  // first-wins iteration from last-spread to first-spread matches the literal order, and
-  // keys the literal already declares (overrides like _adoptLiveMissionTargets) still win.
+  // The ops spreads must stay in the literal, not only in init: tests and tools clone or
+  // call the exported composite without init, and a consumer that never initializes must
+  // still see every method. init re-attaches idempotently for any future consolidation.
+  ...missionBoardOps,
+  ...missionObjectiveOps,
+  ...missionSpawningOps,
+  ...missionStoryOps,
   name: 'missions',
 
   _adoptLiveMissionTargets(m) {
@@ -4098,9 +4099,15 @@ export const missions = {
     const state = this.state;
     const currentSectorId = state.world && state.world.currentSectorId || null;
     const sector = SECTOR_BY_ID.get(currentSectorId);
+    const act = journeyActForBeat(beat.beat);
     const base = {
       kind: 'story',
       storyBeat: beat.beat,
+      // Separate act state, not a label prefix: the tracker and Mission Log paint it as its own
+      // line, and a downstream spread (scale/nest/operation) cannot overwrite it.
+      actNum: act ? act.num : null,
+      actTitle: act ? act.title : null,
+      actLine: act ? `ACT ${act.num} - ${act.title.toUpperCase()}` : null,
       label: storyBeatTitle(beat),
       reason: beat.objective || BEAT_HINT[beat.beat] || 'Follow the current story objective.',
       sectorId: currentSectorId,
@@ -7025,18 +7032,17 @@ export const BEAT_HINT = {
   7: 'The Deep Reach: run your side\u2019s operation — the blockade, the siege, or the evidence tow — or bring the ledger, then settle at the Ash Cache desk.',
 };
 
-function storyBeatTitle(beat) {
+export function storyBeatTitle(beat) {
   if (!beat) return 'Story Objective';
   const hint = BEAT_HINT[beat.beat] || '';
   const colon = hint.indexOf(':');
-  const beatName = colon > 0 ? hint.slice(0, colon) : String(beat.id || `Beat ${beat.beat}`)
+  // W1 Journey framing: the act is a separate field. The label carries only the beat's own
+  // actionable words, so a tracker/popup never hides the act inside a truncated string and a
+  // beat-specific `reason` never overwrites it.
+  return colon > 0 ? hint.slice(0, colon) : String(beat.id || `Beat ${beat.beat}`)
     .replace(/^b\d+_?/i, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
-  // W1 Journey framing: the act names where the pilot is in the whole story. The beat name stays
-  // the actionable part; the act only prefixes the label, never the instruction lines.
-  const act = journeyActForBeat(beat.beat);
-  return act ? `${act.title} · ${beatName}` : beatName;
 }
 
 function hasActiveMissionEntityIndex(state) {

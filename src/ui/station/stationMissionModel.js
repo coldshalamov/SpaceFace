@@ -3,6 +3,7 @@
 // recommendation policy (best next contract or prep blocker), the active-mission reader, and the
 // keyboard-activation rule for focusable mission cards.
 import { SECTORS } from '../../data/sectors.js';
+import { STORY_BEATS } from '../../data/missions.js';
 import { missionPreflight, missionConsequenceSummary } from '../missionPreflight.js';
 import { prettyId, prettyType } from './stationHubFormatters.js';
 import { missionBoardReadiness } from './stationHubModel.js';
@@ -70,42 +71,82 @@ function missionRecommendationReason(m, preflight, readiness, consequences) {
 }
 
 /**
+ * The live spine beat, or null once the book is closed/past the spine. While a beat is live the
+ * board does not compete with it: no journey row posted means no recommendation badge at all
+ * (B0 and B6 post world work, not board rows), rather than promoting procedural side work.
+ */
+function liveSpineBeat(state) {
+  const story = state && state.story;
+  if (!story) return null;
+  const flags = story.flags || {};
+  if (flags.endgame === true || flags.sandboxContinued === true
+    || story.endgameChoice || story.endgameResolved === true) return null;
+  const beatIndex = Math.floor(Number(story.beatIndex) || 0);
+  if (beatIndex < 0 || beatIndex > 7) return null;
+  const def = STORY_BEATS[beatIndex];
+  return def && def.beat === beatIndex ? def : null;
+}
+
+/**
  * W1 Journey (owner direction 2026-11-06): a campaign47a book/chain/intro offer on the board IS
  * the journey's next step, so it outranks the procedural rows — reward/risk scoring is meaningless
  * for rows whose acceptance floor is the story contract's own. Final-disposition filings are not
  * journey steps (the contracts screen filters them before this runs; the guard repeats that
- * policy here so the model stays safe for any caller).
+ * policy here so the model stays safe for any caller). The doubled interdiction contract is
+ * explicitly "never a book step" and keeps its own row.
+ *
+ * The row must belong to the live beat (`campaign47aBeat`) and carry a real id; a stale or
+ * unposted tag must not badge as THE BOOK. The first ready row wins over a blocked one; when
+ * every posted journey row is blocked, the first blocked row becomes the prep target.
  */
-function journeyStepCandidate(slots) {
-  return (Array.isArray(slots) ? slots : []).find((m) => m
-    && typeof m.storyTag === 'string'
-    && !m.storyDisposition
-    && (m.storyTag.startsWith('campaign47a:') || m.storyTag === 'story.branch_intro')) || null;
+function journeyStepCandidate(slots, state) {
+  const beat = liveSpineBeat(state);
+  if (!beat) return null;
+  const rows = (Array.isArray(slots) ? slots : [])
+    .filter((m) => m
+      && typeof m.storyTag === 'string'
+      && !m.storyDisposition
+      && m.storyTag !== 'campaign47a:b4:doubled'
+      && (m.storyTag.startsWith('campaign47a:') || m.storyTag === 'story.branch_intro')
+      && m.campaign47aBeat != null
+      && Math.floor(Number(m.campaign47aBeat)) === beat.beat
+      && missionOfferId(m) != null && missionOfferId(m) !== '')
+    .map((mission) => {
+      const preflight = missionPreflight(mission, state);
+      return {
+        mission,
+        preflight,
+        readiness: missionBoardReadiness(preflight),
+        consequences: missionConsequenceSummary(mission),
+      };
+    });
+  return rows.find((row) => row.readiness.state !== 'blocked') || rows[0] || null;
 }
 
 /**
  * Best next contract from the posted slots, or null. A journey step (the spine's own book job,
  * branch intro, or chain leg) dominates when one is posted; otherwise readiness dominates, then
  * reward over risk; the first loop is gated to Risk 0-1 work (prep-gated, never hidden) until a
- * choice is made.
+ * choice is made. The journey row is exempt from the first-loop gate: it is the authored route,
+ * not side work.
  */
 export function recommendMissionBoardOffer(slots = [], state = {}) {
-  const journey = journeyStepCandidate(slots);
+  const journey = journeyStepCandidate(slots, state);
   if (journey) {
-    const preflight = missionPreflight(journey, state);
-    const readiness = missionBoardReadiness(preflight);
-    const consequences = missionConsequenceSummary(journey);
-    const risk = missionRiskTier(journey);
-    const route = missionDestName(journey || {});
+    const { mission, preflight, readiness, consequences } = journey;
+    const risk = missionRiskTier(mission);
+    const route = missionDestName(mission || {});
     const reward = consequences.reward || 0;
     const blocked = readiness.state === 'blocked';
     return {
-      mission: journey,
-      missionId: String(missionOfferId(journey)),
+      mission,
+      missionId: String(missionOfferId(mission)),
       kind: blocked ? 'warn' : readiness.kind,
       state: readiness.state,
       label: blocked ? 'PREP FIRST' : 'THE BOOK',
-      title: journey.title || prettyType(journey.type),
+      // The badge stays compact; the specific blocker is a separate field the board can paint.
+      blocker: blocked ? (preflight.blocker || readiness.title || null) : null,
+      title: mission.title || prettyType(mission.type),
       reason: blocked
         ? 'The book posts this job. Prep first: ' + (preflight.blocker || readiness.title || 'clear the blocker') + '.'
         : 'The book posts this job — the journey\'s next step. ' + reward + ' cr, Risk ' + risk + ', ' + route + '.',
@@ -113,6 +154,9 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
       disabled: blocked,
     };
   }
+  // A live spine with no posted journey row keeps the board quiet. Procedural work stays
+  // available as rows; it just does not claim the one recommendation badge.
+  if (liveSpineBeat(state)) return null;
   const firstLoopSafeWork = firstLoopNeedsSafeWork(state);
   let candidates = (Array.isArray(slots) ? slots : [])
     .map((mission, index) => {
@@ -153,6 +197,11 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
     kind: firstLoopRiskBlocked ? 'warn' : best.readiness.kind,
     state: firstLoopRiskBlocked ? 'blocked' : best.readiness.state,
     label: blocked ? 'PREP FIRST' : (best.readiness.state === 'caution' ? 'RECOMMENDED - CHECK' : 'RECOMMENDED'),
+    blocker: blocked
+      ? (firstLoopRiskBlocked
+        ? 'take a Risk 0-1 contract first'
+        : (best.preflight.blocker || best.readiness.title || null))
+      : null,
     title: best.mission.title || prettyType(best.mission.type),
     reason,
     actionLabel: blocked ? 'Resolve Prep' : 'Accept Recommended',

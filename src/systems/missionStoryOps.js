@@ -27,12 +27,12 @@ import { QUIET_BERTH_TUNING, QUIET_BERTH_TYPE, SPLIT_MANIFEST_LOTS, SPLIT_MANIFE
 import { missionIdentityOf } from '../world/worldRecords.js';
 import { passengerBeatLine } from '../data/barks.js';
 import { MISSION_TUNING, STORY_BEATS, STORY_BRANCH_INTRO_TAG } from '../data/missions.js';
-import { journeyActForBeat } from '../data/journeyActs.js';
+import { journeyActForBeat, journeyActLabel } from '../data/journeyActs.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
-import { buildMissionBoardContract, completeBeatStepsForLegacy, commsForBeat, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
+import { buildMissionBoardContract, completeBeatStepsForLegacy, commsForBeat, getBeatStepStatus, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CAMPAIGN_INTERLUDES, CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX, interludeByEncounterId, interludeEligible, interludeSeen } from '../story/campaign47a/interludes.js';
 import { pushCampaignHistory, pushChoiceLog } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/narrative.js';
@@ -1952,7 +1952,10 @@ export const missionStoryOps = {
   },
 
   /** Dock fallback: the Skim resolves inline when the player reaches the Pit first. Runs
-   *  before the dock story trigger so the ordered 'skim' step lands before 'dock'. */
+   *  before the dock story trigger so the ordered 'skim' step lands before 'dock'. A dock
+   *  before the mine step is recorded (no sample aboard, or an inconsistent save) must not
+   *  latch the skim: the recorder would reject the out-of-order signal and the step could
+   *  never be landed later. */
   _resolveContract47aSkimForDock(stationId) {
     const m = (this.state.missions.active || []).find((row) => row
       && row.storyTag === CONTRACT_47A_B0_TAG
@@ -1960,6 +1963,9 @@ export const missionStoryOps = {
       && row.params.skimResolved !== true
       && row.destStationId === stationId) || null;
     if (!m) return false;
+    const status = getBeatStepStatus(this.state, 0);
+    const mineDone = !!(status && (status.steps || []).some((s) => s.id === 'mine' && s.done));
+    if (!mineDone) return false;
     return this._resolveContract47aSkim(m, 'dock');
   },
 
@@ -2287,9 +2293,36 @@ export const missionStoryOps = {
     const fromAct = journeyActForBeat(fromIndex);
     const toAct = journeyActForBeat(story.beatIndex);
     const actLine = (fromAct && toAct && fromAct.num !== toAct.num)
-      ? `ACT ${toAct.num} — ${toAct.title.toUpperCase()}. ` : '';
+      ? `${journeyActLabel(toAct)}. ` : '';
+    if (fromAct && toAct && fromAct.num !== toAct.num) this._announceJourneyAct(toAct);
     if (dir) this._sayStoryLine(actLine + dir, actLine ? 8 : 6);
     this.bus.emit('mission:updated', { missionId: null });
+  },
+
+  /**
+   * W1 Journey: the act line needs a surface that survives a dock modal and a missed toast.
+   * One persistent comms entry per act (stable id `act:<num>`) is the durable receipt; the
+   * direction toast still carries the immediate line. A moved flag prevents a re-announcement
+   * on newGame double-calls or a replayed act turn.
+   */
+  _announceJourneyAct(act) {
+    if (!act) return false;
+    const story = this.state && this.state.story;
+    if (!story) return false;
+    story.flags = story.flags || {};
+    const key = `journey_act_${act.num}_announced`;
+    if (story.flags[key]) return false;
+    story.flags[key] = true;
+    const line = `${journeyActLabel(act)}. ${act.goal || ''}`.trim();
+    this.bus.emit('comms:popup', {
+      id: `act:${act.num}`,
+      sender: 'THE BOOK',
+      category: 'story',
+      ttl: 10,
+      persist: true,
+      text: line,
+    });
+    return true;
   },
 
   /** Lazily attach campaign47a sidecar under state.story (meta only). */
@@ -2676,6 +2709,9 @@ export const missionStoryOps = {
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [] };
     initCampaignSidecar(state, state.simTime || 0);
+    // Act I owns a durable receipt too. The opening direction toast is suppressed while the
+    // tutorial owns the opening, so this persistent line is how a fresh save sees the act.
+    this._announceJourneyAct(journeyActForBeat(state.story.beatIndex));
     this._installThreadBFragment();
     this._installContract47aColdStart();
     this._spawnSeq = 0;

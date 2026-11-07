@@ -1180,7 +1180,7 @@ export const aftermathWrecks = {
       yield* this._spawnForSectorSteps(sectorId);
     };
     this._onSectorExit = (payload) => { clearChainWreckWitnesses(this.state); this._clearLiveRefs(payload && payload.sectorId); };
-    this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
+    this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {}, { byPlayer: true });
     this._onEncounterResolved = (payload) => {
       const cause = rememberCause(this.state, this.bus, payload || {});
       // The wreck materializes on the kill, which is before the raid resolves. Stamp the
@@ -2879,7 +2879,8 @@ export const aftermathWrecks = {
     }
   },
 
-  _completeByEntity(payload) {
+  _completeByEntity(payload, options = {}) {
+    const byPlayer = options && options.byPlayer === true;
     const wreckId = payload && typeof payload === 'object' ? payload.wreckId : payload;
     const claimedMarkerId = payload && typeof payload === 'object' ? payload.markerId : null;
     // The producer includes markerId for durable aftermath wrecks. A numeric entity ID alone is not
@@ -2903,7 +2904,7 @@ export const aftermathWrecks = {
       this._writeBackBoundWreck(siteMarker);
       siteMarker.siteOutcome = 'exhausted';siteMarker.salvagePool = {};
       this._spawned.delete(markerId);this._retireMarkerShard(markerId);
-      this.bus?.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
+      this.bus?.emit('aftermathWreck:completed', { markerId, wreckId, sectorId, ...(byPlayer ? { byPlayer: true } : {}) });
       return true;
     }
     // One real consumed body retires every malformed duplicate of its durable id,
@@ -2915,7 +2916,7 @@ export const aftermathWrecks = {
     this._spawned.delete(markerId);
     this._retireMarkerShard(markerId);
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
+      this.bus.emit('aftermathWreck:completed', { markerId, wreckId, sectorId, ...(byPlayer ? { byPlayer: true } : {}) });
     }
     return true;
   },

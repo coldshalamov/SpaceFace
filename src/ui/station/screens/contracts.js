@@ -267,8 +267,21 @@ export function boardRecommendedOfferId(list = [], state = {}) {
   const ordinary = offers.filter((offer) => !finalDispositionPresentation(offer));
   if (!ordinary.length) return { missionId: null, label: '' };
   const pick = recommendMissionBoardOffer(ordinary, state);
-  if (!pick || pick.missionId == null) return { missionId: null, label: '' };
-  return { missionId: String(pick.missionId), label: String(pick.label || '') };
+  if (!pick || pick.missionId == null) return { missionId: null, label: '', blocker: '' };
+  return {
+    missionId: String(pick.missionId),
+    label: String(pick.label || ''),
+    blocker: String(pick.blocker || ''),
+  };
+}
+
+/** The badge names the blocker when the pick is prep-gated; a bare PREP FIRST hides the work. */
+function recommendedBadge(pick, missionId) {
+  if (!pick || pick.missionId == null || String(pick.missionId) !== String(missionId)) return '';
+  const label = String(pick.label || '');
+  const blocker = String(pick.blocker || '').replace(/[.。]$/, '');
+  if (!blocker) return label;
+  return `${label} - ${blocker}`;
 }
 
 function sortBoardOffers(list, state, focusId) {
@@ -724,8 +737,7 @@ export function createContractsScreen(ctx) {
         // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
         // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
         const badge = firstHour ? firstHour.label
-          : (m.featured ? 'FEATURED'
-            : (recommended.label && recommended.missionId === id ? recommended.label : ''));
+          : (m.featured ? 'FEATURED' : recommendedBadge(recommended, id));
         const badgePrefix = badge ? `${badge}${destTag ? ' ' + destTag : ''} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`

@@ -14,9 +14,11 @@ import { fileURLToPath } from 'node:url';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { missions as missionsProto } from '../src/systems/missions.js';
+import { missions as missionsProto, CONTRACT_47A_SAMPLE_ID } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { heat as heatProto } from '../src/systems/heat.js';
+import { factionMeridian } from '../src/systems/faction_meridian.js';
+import { spineBreakContainers, spineBreakOutcome } from '../src/missions/spineBreakWorksite.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { STORY_BRANCH_INTRO_TAG } from '../src/data/missions.js';
 import { COND, ENDGAME_CHOICES } from '../src/data/narrative.js';
@@ -59,7 +61,48 @@ function cloneSystem(proto) {
   return Object.assign({}, proto);
 }
 
-function makeLiveHarness(seed = 47) {
+function secureB0Sample(h) {
+  const { state } = h;
+  const b0 = (state.missions.active || []).find((m) => m && m.storyTag === 'campaign47a:b0:recovery');
+  if (!b0) return false;
+  b0.params = b0.params || {};
+  b0.params.sampleRecovered = true;
+  b0.params.sampleRecoveredAt = state.simTime;
+  b0.objectiveProgress = 1;
+  // "Secured" means the physical sample is in the hold and locked for its authorized turn-in;
+  // dock delivery re-marks the site when the cargo is missing, so the fixture must carry it.
+  addCargo(state, CONTRACT_47A_SAMPLE_ID, 1);
+  state.story.persistentCargo = state.story.persistentCargo || [];
+  if (!state.story.persistentCargo.includes(CONTRACT_47A_SAMPLE_ID)) {
+    state.story.persistentCargo.push(CONTRACT_47A_SAMPLE_ID);
+  }
+  return true;
+}
+
+// The real marked-rock recovery for the ordering check: a live asteroid in the contract's
+// sector, the yield at its position, and the mission owner binds and recovers the sample.
+function mineB0Sample(h) {
+  const { state, bus } = h;
+  const b0 = (state.missions.active || []).find((m) => m && m.storyTag === 'campaign47a:b0:recovery');
+  assert.ok(b0, 'the 47-A recovery contract is active');
+  state.world.currentSectorId = b0.destSectorId;
+  const rock = h.helpers.spawnEntity({
+    type: 'asteroid', alive: true, pos: { x: 40, z: 20 },
+    homeSectorId: b0.destSectorId,
+    data: {
+      fieldId: 'field_fixture_47a', asteroidSlotId: 4747,
+      homeSectorId: b0.destSectorId, oreHP: 24,
+    },
+  });
+  state.entities.get(state.playerId).pos = { x: rock.pos.x, z: rock.pos.z };
+  bus.emit('mining:yield', {
+    commodityId: 'cmdty_ore_iron', qty: 2, minerId: state.playerId, pos: { ...rock.pos },
+  });
+  assert.equal(b0.params.sampleRecovered, true, 'the marked rock yields the 47-A sample');
+  return rock;
+}
+
+function makeLiveHarness(seed = 47, options = {}) {
   const state = createGameState(seed);
   state.mode = 'flight';
   state.simTime = 10;
@@ -127,6 +170,15 @@ function makeLiveHarness(seed = 47) {
       };
     },
     voice: { say: () => true },
+    player: () => state.entities.get(state.playerId),
+    removeEntity: (id) => {
+      const entity = state.entities.get(id);
+      if (!entity) return false;
+      entity.alive = false;
+      state.entities.delete(id);
+      state.entityList = (state.entityList || []).filter((row) => row !== entity);
+      return true;
+    },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
       const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
@@ -140,24 +192,32 @@ function makeLiveHarness(seed = 47) {
   const missions = cloneSystem(missionsProto);
   const story = cloneSystem(storyProto);
   const heat = cloneSystem(heatProto);
+  const meridian = cloneSystem(factionMeridian);
   const registry = {
     get: (name) => {
       if (name === 'missions') return missions;
       if (name === 'story') return story;
       if (name === 'heat') return heat;
+      if (name === 'faction_meridian') return meridian;
       return null;
     },
   };
 
+  meridian.init({ state, bus, helpers });
   missions.init({ state, bus, helpers, registry });
   story.init({ state, bus, helpers, registry });
   heat.init({ state, bus, helpers, registry });
   missions.newGame();
   // story re-init narrative fields after missions wiped story
   story._ensureState(true);
+  // The live B0 now requires the marked 47-A sample before the bare yield counts. Most checks
+  // drive the story FSM, not the physical sample recovery (the focused worksite tests own that),
+  // so stand the contract at the already-secured step: mine -> Skim -> dock. The ordering check
+  // opts out and drives the real marked-rock recovery instead.
+  if (options.secureSample !== false) secureB0Sample({ state });
 
   return {
-    state, bus, missions, story, heat,
+    state, bus, missions, story, heat, meridian, helpers,
     grantCredits, repDeltas, beatAdvances, heatClears, heatChanged,
     loopBacks, endgameOffers, encounterReceipts, elroyResolved,
   };
@@ -346,6 +406,30 @@ const PHYSICAL_ROUTE = Object.freeze({
   }),
 });
 
+// Spine Break is a physical worksite: Meridian closes a coupler only when a loose authored
+// box drifts to the surviving train's tail. Drive the real owner, not a hand-set outcome.
+function recoupleSpineBreak(h, mission) {
+  const { state } = h;
+  for (let tick = 0; tick < 240; tick++) {
+    // The first tick snaps the authored tail beyond the stretch limit; later ticks close a
+    // coupler when a loose box has drifted to the surviving train's tail.
+    state.simTime += 1 / 60;
+    h.meridian.update(1 / 60, state);
+    const outcome = spineBreakOutcome(state, mission);
+    if (outcome.recoupled >= outcome.goal) break;
+    const live = spineBreakContainers(state, mission);
+    const tail = live.filter((entity) => entity.data?.spineLoose !== true)
+      .sort((a, b) => (b.data?.spineIndex || 0) - (a.data?.spineIndex || 0))[0];
+    const loose = live.find((entity) => entity.data?.authoredLoose === true
+      && entity.data?.spineLoose === true);
+    assert.ok(tail && loose, 'Spine Break keeps a live tail and one loose authored box');
+    loose.pos = { x: tail.pos.x - 12, z: tail.pos.z };
+    loose.vel = { x: 0, z: 0 };
+  }
+  assert.equal(spineBreakOutcome(state, mission).status, 'spine_recoupled',
+    'three loose boxes re-couple to the live spine before the tug docks');
+}
+
 function completePhysicalMission(h, mission) {
   assert.ok(mission && mission.status === 'active', 'physical mission must be active');
   if (mission.type === 'bulk_trade') {
@@ -370,6 +454,7 @@ function completePhysicalMission(h, mission) {
   // ring alive, then the berth read settles it. Killing the escortee fails the op.
   if (mission.type === 'escort') {
     h.missions._ensureMissionTargets(mission);
+    if (mission.params?.bookScene === 'spine_break') recoupleSpineBreak(h, mission);
     const berth = [...h.state.entities.values()].find((entity) => (
       entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
     )) || h.helpers.spawnEntity({
@@ -493,9 +578,10 @@ function advanceToB5(h, branch = 'traders') {
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 0, 'dock alone must not advance B0');
   bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  bus.emit('story:skimResolved', { source: 'live-skim' });
   assert.equal(state.story.beatIndex, 0, 'mine alone must not advance B0');
   bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.equal(state.story.beatIndex, 1, 'B0 completes on mine then dock');
+  assert.equal(state.story.beatIndex, 1, 'B0 completes on mine, skim, then dock');
 
   advanceEmbodiedB1B2(h, outcome);
   completeB3(h, outcome);
@@ -620,8 +706,9 @@ function advanceLiveToB7(h, branch) {
   const { state, bus } = h;
   assert.equal(state.story.beatIndex, 0);
   bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  bus.emit('story:skimResolved', { source: 'live-skim' });
   bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.equal(state.story.beatIndex, 1, 'B0 completes on mine then dock');
+  assert.equal(state.story.beatIndex, 1, 'B0 completes on mine, skim, then dock');
   advanceEmbodiedB1B2Live(h, branch === 'patrol' ? 'custody' : 'force');
   completeB3(h, null);
   completeB4Live(h, branch);
@@ -672,22 +759,27 @@ check('one canonical story reward grant per beat advance (B0–B6 credits)', () 
   void uniqueFroms;
 });
 
-check('B0 rejects dock-before-mine; ordered mine→dock only', () => {
-  const h = makeLiveHarness();
+check('B0 rejects dock-before-mine; ordered mine→skim→dock only', () => {
+  const h = makeLiveHarness(47, { secureSample: false });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 0);
   assert.equal(isBeatStepsComplete(h.state, 0), false);
-  h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  // The Skim cannot land before the sample is mined.
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   assert.equal(h.state.story.beatIndex, 0);
+  assert.equal(isBeatStepsComplete(h.state, 0), false);
+  mineB0Sample(h);
+  assert.equal(h.state.story.beatIndex, 0, 'mine alone must not advance B0');
   assert.ok(h.state.story.campaign47a);
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.equal(h.state.story.beatIndex, 1);
+  assert.equal(h.state.story.beatIndex, 1, 'B0 completes on mine, skim, then dock');
 });
 
 check('B4 live story.branch_intro + single opposing rep map', () => {
   const h = makeLiveHarness();
   // Reach and settle B4 through the force-specific physical Tethys contract.
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   advanceEmbodiedB1B2(h, 'force');
   completeB3(h, 'force');
@@ -881,6 +973,7 @@ check('Choice E requirement reads canonical state.story.endgameDeclined', () => 
 check('fail/recover does not advance beatIndex; no director encounter:receipt', () => {
   const h = makeLiveHarness();
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 
@@ -933,6 +1026,7 @@ check('unrelated mission failure does not fail or gate the story spine', () => {
   h.missions._failMission(m, h.state.missions.active.indexOf(m), 'ordinary_failure');
   assert.notEqual(h.state.story.campaign47a.beatStatus, 'failed');
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 });
@@ -942,6 +1036,7 @@ check('failed story chain cannot advance before deterministic recovery', () => {
   advanceToB7(h, 'traders');
   // Start a fresh physical route and stop at B5 without direct spine mutation.
   h.missions.newGame();
+  secureB0Sample(h);
   advanceToB5(h, 'traders');
   assert.equal(h.state.story.beatIndex, 5);
   const failed = acceptCurrentStoryOffer(h, 'station_tethys', 'campaign47a:b5:traders:1');
@@ -956,6 +1051,7 @@ check('failed story chain cannot advance before deterministic recovery', () => {
 check('missions serialize/deserialize preserves campaign47a sidecar', () => {
   const h = makeLiveHarness();
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
   const blob = h.missions.serialize();
@@ -1029,6 +1125,7 @@ check('post-ending sandbox remains playable after Ending A', () => {
 check('live route: B1–B3 book contracts stamp embodied_route; the writ stamps the outcome', () => {
   const h = makeLiveHarness(57);
   h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
   advanceEmbodiedB1B2Live(h);
@@ -1046,6 +1143,7 @@ check('live route: the register outcome pins exactly one B4 door', () => {
   ]) {
     const h = makeLiveHarness(outcome === 'force' ? 58 : 59);
     h.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  h.bus.emit('story:skimResolved', { source: 'live-skim' });
     h.bus.emit('dock:docked', { stationId: 'station_helios' });
     advanceEmbodiedB1B2Live(h, outcome);
     completeB3(h, null);

@@ -43,6 +43,7 @@ import { BINDINGS, promptLabel } from './bindings.js';
 import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
 import { coreText } from './localizedCoreCopy.js';
 import { localizeText } from '../localization/sourceText.js';
+import { journeyActForBeat, journeyActLabel } from '../data/journeyActs.js';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
@@ -751,23 +752,38 @@ function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
 }
 
 /**
+ * W1 Journey: the act is its own tracker line, never folded into the objective verb. It stays
+ * hidden once the book closes (endgame/sandbox) because there is no live act to name.
+ */
+function journeyActTrackerLine(state) {
+  const story = state && state.story;
+  if (!story) return '';
+  const flags = story.flags || {};
+  if (flags.endgame === true || flags.sandboxContinued === true
+    || story.endgameChoice || story.endgameResolved === true) return '';
+  const act = journeyActForBeat(story.beatIndex);
+  return act ? localizeText(journeyActLabel(act)) : '';
+}
+
+/**
  * One painted destination for the live flight tracker: where, then a line break, then the readings
  * (the tracker sets white-space:pre-line). Titles and GOAL restatements stay off.
  */
 export function flightDestinationSurface(state, command) {
+  const actLine = journeyActTrackerLine(state);
   // Crucible runs are sealed from campaign navigation. Keep the mission tracker quiet at its
   // owner, rather than relying only on the run-focus stylesheet to catch inherited story state.
   if (state && state.run && state.run.kind === 'survival' && isRunSealed(state)) {
-    return { show: false, line: '', urgent: false };
+    return { show: false, line: '', urgent: false, actLine: '' };
   }
-  if (!command) return { show: false, line: '', urgent: false };
+  if (!command) return { show: false, line: '', urgent: false, actLine };
   if (command.owner === 'counterweight-course') {
     const title = localizeText(command.attempt.title);
     const hint = localizeText(command.attempt.legs[command.attempt.legIndex].hint);
     const line = command.preparing
       ? localizeText('{title} — preparing course', { title })
       : `${hint}\n${title}`;
-    return { show: true, line, urgent: false };
+    return { show: true, line, urgent: false, actLine };
   }
   if (command.owner === 'tracked-mission') {
     const tracked = command.mission;
@@ -808,7 +824,7 @@ export function flightDestinationSurface(state, command) {
     const term = missionTermWord(state, tracked && tracked.id);
     if (term) urgent = urgent || term.tone === 'broken';
     const objectiveLine = term ? `${action} · ${term.text}` : action;
-    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent };
+    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent, actLine };
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
@@ -819,7 +835,7 @@ export function flightDestinationSurface(state, command) {
         objectiveTravelReadout(state, mouth).distanceText, '');
       const entryReading = mtReadingsLine(objectiveBearingGlyph(state, entry.entry),
         objectiveTravelReadout(state, entry.entry).distanceText, '');
-      return { show: true, urgent: false,
+      return { show: true, urgent: false, actLine,
         line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
     }
     const travel = objectiveTravelReadout(state, wp);
@@ -834,6 +850,7 @@ export function flightDestinationSurface(state, command) {
       show: true,
       line: readings ? `${action}\n${readings}` : action,
       urgent: false,
+      actLine,
     };
   }
   if (command.owner === 'untracked-mission') {
@@ -845,6 +862,7 @@ export function flightDestinationSurface(state, command) {
         contract: candidate.title || candidate.name || 'one contract',
       }),
       urgent: false,
+      actLine,
     };
   }
   if (command.owner === 'story') {
@@ -852,9 +870,10 @@ export function flightDestinationSurface(state, command) {
       show: true,
       line: coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }),
       urgent: false,
+      actLine,
     };
   }
-  return { show: false, line: '', urgent: false };
+  return { show: false, line: '', urgent: false, actLine };
 }
 
 /**
@@ -5885,11 +5904,16 @@ export function createHud(ctx, alerts) {
         }
       }
       setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
-      setDisplay(mtTitle, false);
       // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
       // flipped its inline display none -> block on every tick while a caption was up.
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
       const showObjective = objectiveVisible(objectiveRecall, dest.show);
+      // W1 Journey: the act is its own line above the objective, not a prefix buried in the
+      // action string (which prefers the beat-specific reason). The line also survives a
+      // dock-modal because the persistent `act:<n>` receipt is separate.
+      const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
+      setText(mtTitle, actLine);
+      setDisplay(mtTitle, !!actLine);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
       // the objective's verb, distance and recall state above are untouched.
       const showCaption = paintTutorialTrackerCaption(mtTime, state);

@@ -1532,10 +1532,12 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   if (war) add('War', `${factionShortName(war.rivalId)} — the front holds ${warFrontName(war)}`, 'bad');
 
   const memory = stationContactMemoryFor(state, contact.id);
-  if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
-  else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
+  // Record before Contact: a two-tag row must never clip the live counter (War owns the first
+  // slot; Record owns the second when the contact has filed a deed).
   const deedMemory = contactDeedMemory(contact.id, state.player?.stationContactCounters);
   if (deedMemory) add('Record', `${deedMemory.glyph} ${deedMemory.band} · ${deedMemory.value}`, 'story');
+  if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
+  else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
 
   // INF-074: the one remembered rescue. Barkeeps only, unacknowledged only — it sits beside
   // the barkeep's standing Survey/service tags, pairing the recognition with the existing

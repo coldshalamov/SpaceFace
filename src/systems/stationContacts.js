@@ -742,13 +742,15 @@ export const stationContacts = {
 
   /**
    * G16 — Provost March, the yard reconciliation clerk: "Every hull you dragged home is filed
-   * here. I square the sums." The deed is an aftermath wreck recovery completing — the towed
-   * hull's sums reconciled — deduped per wreck by receipt so one hull files once. This was the
-   * only depth counter with no writer (W1); the def bounds (0..5) clamp the rest.
+   * here. I square the sums." Only a player recovery files the deed: `aftermathWreck:completed`
+   * also fires for a rival scavenger stripping a field wreck and for a site auto-reconcile, so
+   * the event's `byPlayer` receipt is required. The dedupe key prefers the durable `markerId`;
+   * a numeric `wreckId` alone can be recycled by a later hull.
    */
   _noteMarchReconciliation(payload = {}) {
-    const receiptId = payload.wreckId != null ? String(payload.wreckId)
-      : payload.markerId != null ? String(payload.markerId) : null;
+    if (payload.byPlayer !== true) return false;
+    const receiptId = payload.markerId != null ? String(payload.markerId)
+      : payload.wreckId != null ? String(payload.wreckId) : null;
     if (!receiptId) return false;
     return this._rememberCastDeed('march.reconciliation', receiptId, 1);
   },

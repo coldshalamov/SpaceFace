@@ -102,7 +102,10 @@ function state({ rep = 0, capVolume = 20, credits = 5000 } = {}) {
       nextId: 1,
       config: { ...MISSION_TUNING, maxActive: 8 },
     },
-    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    // This check covers procedural board policy, not the live spine. A live spine deliberately
+    // suppresses the recommendation badge when no journey row is posted; mark the book closed so
+    // the procedural assertions below remain the subject under test.
+    story: { beatIndex: 0, branch: null, flags: { endgame: true }, chainProgress: 0 },
     ui: {},
     nav: {},
     world: { currentSectorId: 'sector_helios_prime' },

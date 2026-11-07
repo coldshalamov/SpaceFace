@@ -44,6 +44,8 @@ import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedA
 import { FACTION_LABELS } from '../../data/encounterIdentity.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
+import { JOURNEY_ACTS, journeyActLabel } from '../../data/journeyActs.js';
+import { localizeText } from '../../localization/sourceText.js';
 import {
   abutmentChalkRows,
   alignmentRows,
@@ -129,10 +131,7 @@ function staggerRise(nodes, { base = 0, step = 40, cls = '' } = {}) {
     i += 1;
   }
 }
-/** The highest story phase the beats reach (the phase dial's full scale). */
-const MAX_PHASE = BEAT_CONTENT.reduce((max, beat) => Math.max(max, Number(beat && beat.phase) || 0), 1);
-
-/** Honest org → faction id only. Unknown orgs stay plain text — never invent a door. */
+/** Honest org → faction id only. Unknown orgs stay plain text - never invent a door. */
 const FIGURE_FACTION = Object.freeze({
   vale: 'faction_scn',
   hale: 'faction_scn',
@@ -401,14 +400,12 @@ export function codexProgressSummary(story = {}, state = null) {
   const graffitiUnlocked = Math.min(graffitiTotal, countEncounteredGraffiti(story));
   const storyUnlocked = Math.min(BEAT_CONTENT.length, beat + 1);
   const endgameUnlocked = beat >= 7 ? ENDGAME_CHOICES.length : 0;
-  const phase = BEAT_CONTENT[beat] && BEAT_CONTENT[beat].phase || 1;
   const items = [
     { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
     { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
     { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
     { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
     { key: 'Endgame', value: endgameUnlocked + '/' + ENDGAME_CHOICES.length + ' revealed' },
-    { key: 'Phase', value: 'Phase ' + phase },
   ];
   if (state) {
     const gal = galaxyExplorationSummary(state);
@@ -421,7 +418,6 @@ export function codexProgressSummary(story = {}, state = null) {
   }
   return {
     beat,
-    phase,
     note: 'Locked entries are hidden on purpose until you reach them in the story.',
     items,
   };
@@ -2223,14 +2219,9 @@ export const codexScreen = {
       const value = String(item.value);
       let figure = value;
       let words = item.key;
-      if (item.key === 'Phase') {
-        figure = value.replace(/^Phase\s*/, '');
-        words = 'Story phase';
-      } else {
-        const m = value.match(/^(\S+)\s*(.*)$/);
-        if (m) { figure = m[1]; words = (item.key + ' ' + m[2].replace(/[()]/g, '')).trim(); }
-      }
-      // The reading: "6/11" is six of eleven, "0%" a share, a phase one of MAX_PHASE.
+      const m = value.match(/^(\S+)\s*(.*)$/);
+      if (m) { figure = m[1]; words = (item.key + ' ' + m[2].replace(/[()]/g, '')).trim(); }
+      // The reading: "6/11" is six of eleven, "0%" a share.
       let num = figure;
       let of = '';
       let frac = 0;
@@ -2238,7 +2229,6 @@ export const codexScreen = {
       const pct = /^(\d+(?:\.\d+)?)%$/.exec(figure);
       if (ratio) { num = ratio[1]; of = '/' + ratio[2]; frac = Number(ratio[2]) > 0 ? Number(ratio[1]) / Number(ratio[2]) : 0; }
       else if (pct) { num = pct[1]; of = '%'; frac = Number(pct[1]) / 100; }
-      else if (item.key === 'Phase' && /^\d+$/.test(figure)) { of = '/' + MAX_PHASE; frac = Number(figure) / MAX_PHASE; }
       const cell = el('div', 'cx-index__item');
       cell.dataset.key = item.key.toLowerCase();
       // STATION_STANDARD §4: a catalogue count is a bar + figure, not one dial per section —
@@ -2248,7 +2238,7 @@ export const codexScreen = {
       meter.style.setProperty('--cx-p', frac.toFixed(3));
       cell.appendChild(meter);
       // the reading is labelled by its section's name; the rest of the sentence is read, not shown
-      const shortWord = item.key === 'Phase' ? 'Phase' : item.key;
+      const shortWord = item.key;
       const dt = el('dt', 'cx-index__w', shortWord);
       const rest = words.toLowerCase().startsWith(shortWord.toLowerCase()) ? words.slice(shortWord.length) : ' ' + words;
       if (rest.trim()) dt.appendChild(el('span', 'cx-sr', rest));
@@ -2581,19 +2571,31 @@ export const codexScreen = {
   _renderStory(ctx) {
     const s = safeStory(ctx);
     const beat = storyBeatIndex(s);
-    const beats = BEAT_CONTENT.map((content, i) => {
-      const reached = i <= beat;
-      const phase = reached ? ('Phase ' + content.phase + (i === beat ? ' · Current beat' : '')) : 'Locked';
-      return makeEntry({
-        id: 'beat:' + i,
-        name: BEAT_TITLES[i] || ('Beat ' + i),
-        sub: phase,
-        meta: phase,
-        body: reached ? content.hint : '— not yet encountered —',
-        locked: !reached,
-      });
-    });
-    this._section('The Eight Beats', beats);
+    // W1 Journey: the eight beats file under the four canon acts. The act row carries the act's
+    // goal, verb and one line; the beat rows carry only their own words, never a Phase column.
+    for (const act of JOURNEY_ACTS) {
+      const entries = [makeEntry({
+        id: 'act:' + act.num,
+        name: localizeText(act.title),
+        sub: localizeText(act.verb),
+        meta: 'Act ' + act.num,
+        body: localizeText(act.goal) + '\n' + localizeText(act.line),
+        signal: act.beats.includes(beat),
+      })];
+      for (const i of act.beats) {
+        const content = BEAT_CONTENT[i];
+        if (!content) continue;
+        const reached = i <= beat;
+        entries.push(makeEntry({
+          id: 'beat:' + i,
+          name: BEAT_TITLES[i] || ('Beat ' + i),
+          sub: reached ? (i === beat ? 'Current beat' : 'Reached') : 'Locked',
+          body: reached ? content.hint : '— not yet encountered —',
+          locked: !reached,
+        }));
+      }
+      this._section(localizeText(journeyActLabel(act)), entries);
+    }
 
     // Endgame: the 5 choices. Unlock only after the player has chosen (state.story.endgameChoice),
     // OR reached B7 (so they can see what's on offer). Before B7: locked entirely.
