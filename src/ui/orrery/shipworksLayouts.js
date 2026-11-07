@@ -285,6 +285,10 @@ ${W} .sx-sw__chooser::before { content:none; display:none; }
 @media (max-width:760px) { ${W} .sx-sw__chooser { border-radius:8px; } }
 @media (max-height:519px) { ${W} .sx-sw__chooser { padding:10px 12px; } }
 @media (max-width:560px) { ${W} .sx-sw__chooser { padding:12px 14px; } }
+/* ui-polish-412 fix: on short/mid desktops the dock chooser column is ~190px, so the 14px side pad
+   clipped the "Remove <module>" verb; densify the side pad and let long verbs wrap inside the card. */
+@media (min-width:561px) and (max-height:820px) { ${W} .sx-sw__chooser { padding-left:8px; padding-right:8px; } }
+${W} .sx-sw__chooser .sx-chooser__unfit { white-space:normal !important; overflow-wrap:anywhere; text-align:left !important; max-width:100%; }
 ${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 12px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
