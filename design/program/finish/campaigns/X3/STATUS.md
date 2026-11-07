@@ -50,12 +50,12 @@
 - A matched **before** capture of the same Adventure frame. The baseline `swarm/baseline/03` is a
   Swarm frame with the same jargon, not the Adventure frame.
 - One independent image review of the Adventure glass before/after.
-- The onboarding store sentence (`Light ships are ammunition. Swing a rock. Keep the speed.`) still
-  draws over rescue flight through the **voice** path, not the receipt lane. It is the exact
-  multi-sentence prose case `attentionGlass` names; `comms.js` cannot stop a toast. W5 owns the
-  first hour, so the finding stays filed in `design/program/NOW.md` (the X3 line is re-confirmed
-  below). **This is still on the glass and X3 acceptance remains open for it** — routing it is an
-  onboarding-owner change, not a second receipt filter.
+- The onboarding prose finding is **fixed**: the store page keeps its three-sentence tagline, but the
+  rescue-start lesson now speaks `Light ships are ammunition.` through `_sayTutorial`, the voice
+  arbiter and the fallback toast (`src/onboarding/storeSentence.js` `STORE_FLIGHT_SENTENCE`). It is
+  one sentence, so the Adventure glass rule admits it; the drill still teaches swing and speed by
+  doing. `node --test test/pq-163-03-sentence.test.mjs` 7/7 green. X3 still needs the matched before
+  capture and one independent review above.
 - Unrelated suites currently red in this shared checkout and not caused by this pass:
   `test/pq-146-03-stunt-callout.test.mjs` (physics-log lines are multi-word and the Adventure gate
   drops them; the S2 gate already did), `test/swarm-feedback-priority.test.mjs`,
