@@ -89,7 +89,7 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .cx-search::before { top:3px; }
   ${CX} .cx-search::after { top:13px; }
   ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
-  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.12em !important; }
+  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.06em !important; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:6px !important; }
@@ -113,7 +113,7 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .cx-search::before { top:3px; }
   ${CX} .cx-search::after { top:13px; }
   ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
-  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.12em !important; }
+  ${CX} .sf-tabbar .sf-tab { font-size:12px !important; letter-spacing:.06em !important; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
@@ -122,9 +122,9 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 0px) + 36px) !important; }
   ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
 }
-/* Compact sections remain real controls: reserve a 28px target and allow expanded names
-   to wrap. The section column owns overflow instead of making Ledger collide with Close or
-   compressing all ten choices into 18px hit areas. */
+/* Compact sections remain real controls: reserve a 28px target. Keep names on one line
+   (no mid-word wrap / no clip): reclaim pad-right + wdth 100 under the scrollable column's
+   overflow:hidden. Column owns overflow instead of Ledger∩Close or 18px hit areas. */
 @media (min-width:640px) and (max-width:1100px) and (max-height:519px) {
   ${CX} > .k-hang > .sf-tabbar {
     min-height:0; overflow:hidden auto; overscroll-behavior:contain;
@@ -133,7 +133,10 @@ ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
   ${CX} .sf-tabbar > li { flex:0 0 auto; }
   ${CX} .sf-tabbar .sf-tab {
     height:auto !important; min-height:28px !important; padding-block:4px !important;
-    white-space:normal !important; overflow-wrap:anywhere; line-height:1.2 !important;
+    padding-right:4px !important; /* reclaim tick gutter so DISCOVERIES fits under overflow:hidden */
+    white-space:nowrap !important; overflow-wrap:normal; word-break:normal; line-height:1.2 !important;
+    letter-spacing:0 !important; font-stretch:100% !important;
+    font-variation-settings:"wdth" 100, "wght" 650 !important;
   }
   ${CX} .sf-tabbar .sf-tab:focus-visible {
     outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px;
