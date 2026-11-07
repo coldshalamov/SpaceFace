@@ -153,6 +153,13 @@ export function hullLodContractIssue(row, manifestPart, assetsByPath = new Map()
     const tier = tiers[index], member = assetsByPath.get(files[index]);
     if (!member || member.issues.some(issue => issue.code === 'parse-error')) return `hull LOD family is missing readable ${tier}: ${files[index]}`;
     if (!row.authoredAssetId || member.authoredAssetId !== row.authoredAssetId) return `hull LOD family has a foreign authored identity at ${tier}`;
+    // An embedded body carries all three tiers inside its canonical file (the first entry). That is
+    // a complete authored LOD chain, not a stray marker: the runtime selects tiers by marker and the
+    // separate lod1/lod2 files remain the streaming members. Require the exact-tier proof only for
+    // the extracted members; a pure LOD0 file with stray LOD1/LOD2 nodes still fails below.
+    const embeddedBody = index === 0
+      && member.lod.lod0 && member.lod.lod1 && member.lod.lod2;
+    if (embeddedBody) continue;
     if (!member.lod[tier] || tiers.some(other => other !== tier && member.lod[other])) return `hull LOD family requires exact ${tier} markers in ${files[index]}`;
   }
   return null;
