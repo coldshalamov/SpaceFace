@@ -15,7 +15,7 @@ live writer or no player route.
 | id | Setting (file:line) | What it gates | Now | Decision | Evidence | Risk | Owner |
 |---|---|---|---|---|---|---|---|
 | Q1-01 | `simCoreFlags.economySlicing`, `src/core/simCoreFlags.js:32` | Economy pass spreads a 130–150 ms spike over ~35 ticks | **off** | **turn on** + `save-v24` | 130–150 ms → ~3 ms/call, `.devshots/sim-step-profile/econ-probe.json`; hash `134e1e7…`→`2198d1e…` | 47-A moves once | E2 |
-| Q1-02 | Electron static headers, `electron/main.cjs:496` | `crossOriginIsolated` → SAB sim lane in Electron | **absent** | **turn on** | `vercel.json:17-30` sends COOP/COEP; Electron passes only `Content-Security-Policy` to `createGameServer`; `simLaneMain.js:317-322` needs isolation | Transport fallback only; no determinism change | E5 |
+| Q1-02 | Electron static headers, `electron/main.cjs:496` + `scripts/lib/gameServer.cjs:390-397` | `crossOriginIsolated` → SAB sim lane in Electron | **on (shared server)** | **verify live** | The shared server always sets COOP `same-origin` + COEP `credentialless` and merges Electron's CSP over them; `main.cjs` passes only CSP, so it adds, not replaces. `simLaneMain.js:317-322` auto-arms when isolated. | Transport fallback only; no determinism change | E5 |
 | Q1-03 | `COMBAT_FLAGS.momentumInherit`, `src/runtime/runtimeProfiles.js:14,78` | Bullets inherit shooter velocity (weighty, aim-untrue) | **off everywhere** | **keep off** | measured aim regression, `src/systems/weapons.js:2663-2674` | Every TTK/lead table invalid | Q4 + FEEL A8 |
 | Q1-04 | `wallClockOfflineProgress`, `src/systems/automation.js:4002` | Offline automation catch-up | **no writer** | **delete** | `rg wallClockOffline` → readers only; `pendingOfflineElapsedSec` also writer-less | Hides a player-facing feature that never was | Q4 |
 | Q1-05 | Phase-14 sim worker, `src/core/simWorkerHost.js:62` | Second ballistic-kernel worker lane | **test-only** | **delete** | `__simWorkerPhase14` written nowhere; only `test/*` import the host | None; production uses `wholeSimBrowserWorker.js` | Q4 |
@@ -52,16 +52,16 @@ process, not code: generate `save-v24`, keep `test/47a.telemetry.save-v23.expect
 and bisect the flag against the new reference. Risk: a versioned reference change, no save-schema
 change. Owner E2 (STATUS rows 7 and 41-44 name the same flip).
 
-**Q1-02 — E5's shared-memory lane is open on the web and shut in Electron.**
+**Q1-02 - E5's shared-memory lane is open on the web and armed by the shared Electron server.**
 `vercel.json:17-30` now sends `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: credentialless`, so `simLaneMain.js:317-322` auto-arms the SAB journal
-in a browser. Electron serves the same route from its own loopback server
-(`electron/main.cjs:1289,1418`), but the only `staticHeaders` it passes at `main.cjs:496` is a
-`Content-Security-Policy`; the server helper accepts arbitrary headers, and COOP/COEP are not among
-them. **Decision: turn on** by adding the same two headers there. This is transport only: no sim
-result, RNG draw or save byte moves, so no versioned reference is needed; the proof is
-`crossOriginIsolated === true` plus the lane's own trace. Owner E5, whose NOW.md row already flags
-"Electron live probe" as open.
+in a browser. Electron serves the same route through the shared `createGameServer`
+(`electron/main.cjs:1289,1418`), which always sets COOP `same-origin` + COEP `credentialless` and
+then merges Electron's `Content-Security-Policy` over them, so the isolation headers are present.
+**Decision: verify live** with a `crossOriginIsolated === true` receipt from the packaged shell and
+the lane's own trace; do not add a second header path. This is transport only: no sim result, RNG
+draw or save byte moves, so no versioned reference is needed. Owner E5, whose NOW.md row already
+flags "Electron live probe" as open.
 
 **Q1-03 — Momentum inheritance is the one combat flag off in every profile.**
 `runtimeProfiles.js:14` (production) and `:78` (legacy47a) both say false;
@@ -211,9 +211,9 @@ agent's; do not revert it.
   (`simCoreFlags.js:32`); the profiler is off, intentionally, as instrumentation; and the concurrent
   working-tree flip has just turned its demand-driven telemetry back off because it removed a player
   feature (Q1-26).
-- **E5** — the web half is on (`vercel.json` headers; SAB auto-arms), the **Electron half is absent**
-  (`electron/main.cjs` has no isolation headers), so "Electron-first shared memory" is not the
-  shipped reality. This is the only campaign whose *outcome* is half-off.
+- **E5** — the web half is on (`vercel.json` headers; SAB auto-arms), and the Electron half is armed
+  by the shared server's COOP/COEP defaults; what is missing is a live `crossOriginIsolated` receipt
+  and the matched SAB on/off A/B. The transport code is not half-off; the proof is.
 - **Q1's own brief** cited BatchedMesh as off and `mergeGroups` as 1/414; both are stale (batch is on
   for supported GPUs; merge groups are 0/422). Treat those two examples as closed.
 - Everything else claimed landed is on the player route: E1 playout (`?playout=0` is the kill
@@ -225,9 +225,9 @@ agent's; do not revert it.
 1. **Q1-01 economy slicing on.** The only change with a *measured* 40–50× reduction of a recurring
    130–150 ms spike (E2/STATUS:15, `.devshots/sim-step-profile/econ-probe.json`). It attacks the
    freeze/blip the owner reports, and the cost is one generated reference.
-2. **Q1-02 Electron isolation.** The owner plays on the Electron/iGPU target; without COOP/COEP the
-   SAB lane can never arm there, so the platform keeps the transfer fallback the worker was designed
-   to avoid. The web proof already exists; the Electron header is the missing half.
+2. **Q1-02 Electron isolation proof.** The owner plays on the Electron/iGPU target; the shared
+   server already sends COOP/COEP, so the next step is a live `crossOriginIsolated` + SAB receipt and
+   a matched on/off A/B, not another header path. The web proof already exists.
 3. **Q1-09 integrated preset under a measured miss.** The hardware is known (integrated, GPU p50
    23.7 ms in a busy round) and the lighter tier is already authored and tested; today it is a
    one-shot toast. A receipted auto-apply converts an existing measured deficit into frames without a
