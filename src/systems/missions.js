@@ -1830,7 +1830,12 @@ export const missions = {
     const mission = (state.missions.active || []).find((m) => m.id === missionId && m.status === 'active');
     if (!mission) return false;
     state.ui.trackedMissionId = mission.id;
-    this._refreshTrackedMissionNav(mission, { forceRoute: true });
+    this._refreshTrackedMissionNav(mission, {
+      forceRoute: true,
+      // An explicit Track click outranks the staged rail; a silent auto-track (departure/book)
+      // must not take the opening marker away from the B0 tutorial.
+      allowOnboardingOverride: options.silent !== true,
+    });
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
       const ownsWaypoint = wp && wp.kind === 'mission' && wp.missionId === mission.id;
@@ -2080,7 +2085,7 @@ export const missions = {
     // Direct callers (trackMission, objective progress) must not clobber the staged opening marker.
     // Use active-teaching (not the broader pre-init _tutorialOwnsOpening) so headless harnesses
     // without an onboarding subtree still get normal mission nav ownership.
-    if (this._onboardingOwnsOpeningNav()) return;
+    if (this._onboardingOwnsOpeningNav() && options.allowOnboardingOverride !== true) return;
     const trackedId = this.state.ui && this.state.ui.trackedMissionId;
     if (!trackedId) return;
     const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');

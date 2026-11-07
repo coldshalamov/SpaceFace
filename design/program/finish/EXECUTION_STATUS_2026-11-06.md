@@ -26,13 +26,13 @@ the implementation is optimal.
 | E1 playout buffer | 1 | Implementation landed; **Verify NOT met** (1× browser re-record + new-servo after-video open) | fix landed `bd1b166` | gate A re-review |
 | E5 shared memory | 1 | Landed (Electron probe open) | partial | gate A |
 | E9 load in seconds | 1 | Diagnosed only | no | implement |
-| E3 mode-scoped sim | 2 | COMPLETE | pending review | gate C |
-| E2 hot path | 2 | Partial; drain shipped, bars NOT met | no | implement |
+| E3 mode-scoped sim | 2 | COMPLETE (LOD retracted) | pending review | gate C |
+| E2 hot path | 2 | Partial; mode-scoped drain + main-lane profiler landed; bars NOT met; slicing OFF | no | equivalence + idle A/B |
 | E4 data-oriented core | 2 | Not started | no | implement |
 | E6 residency/pop-in | 3 | Landed; counters 0 | pending review | gate B |
 | E7 renderer rebuild | 3 | Diagnosed only | no | implement |
-| P1 Ship Sheet | 4 | Landed | pending review | gate D |
-| P2 parts explain themselves | 4 | Partial (no previews, no merge) | partial | implement |
+| P1 Ship Sheet | 4 | Landed; one tow law + one-source dossiers; 44/44 focused | pending review | blind check + five-screen walk |
+| P2 parts explain themselves | 4 | Partial; taxonomy + one-source record landed; previews/merge open | partial | implement |
 | P4 fits you can see | 4 | Contract only; nothing mounts | no | implement |
 | P3 pilot progression | 4 | Design doc; owner gate | no | approve + implement |
 | W1 Journey | 5 | Implementation landed; play walk blocked | partial | gate F + walk |
@@ -42,15 +42,54 @@ the implementation is optimal.
 | W4 characters | 5 | Not started | no | implement |
 | X1 art direction | 6 | Work landed; after re-shot, before unmatched | partial | owner approval in `campaigns/X1/STATUS.md` + E10 delta |
 | X2 asset production | 6 | Gated on X1 | no | implement |
-| X4 sound/music | 6 | Stems landed; 30-event pass open | partial | gate E + implement |
-| X3 Adventure glass | 6 | Landed; before capture open | partial | gate E |
-| X5 controls/contexts | 6 | Landed; live route open | partial | gate E |
+| X4 sound/music | 6 | Stems landed; 30-event pass open; payload 13.92>12 MiB | partial | gate E + implement |
+| X3 Adventure glass | 6 | Landed; rescue lesson now one sentence; before capture open | partial | matched capture + review |
+| X5 controls/contexts | 6 | Landed; phantom pad row removed; teach-09 16/16 | partial | live contexts + pad |
 | Q1 census | 7 | In flight (census) | survey | finish decisions |
 | Q3 taste gate | 7 | **DONE** — five-axis rubric + reviewer procedure | `campaigns/Q3/RUBRIC.md` | apply per visible slice |
 | Q5 tests | 7 | In flight (tiers + ref tool) | survey | finish `test:fast` |
 | Q2 route walkers | 7 | Route list + R1 green | partial | walk R2/R3/R5/R6 after fixers |
 | Q4 razor | 7 | Not started | no | survey + delete |
 | E8 native verdict | 7 | Not started (depends E1/E2) | no | implement |
+
+## 2026-11-07 integration pass
+
+- **Open PR queue drained.** Every open PR was integrated locally and published
+  (`293216e1..19e204a0`), including the 35-PR batch and the later #909/#910–914 hairline cards.
+  `#657` was merged then reverted (`150bb98d`) because it is on B13 acceptance hold and moved the
+  gated v3 47-A hash without a reviewed reference; the PR carries the explanation.
+- **Determinism stays on v26** (`ebbfe82a…` legacy, `67416291…` v3). `check:baseline` 17/17 green
+  after the revert.
+- **P1/P2 final pass:** one tow law shared by the sheet and capability band, one-source hull/module
+  dossiers with a Details disclosure, Fight roles for positioning weapons, 44/44 focused tests.
+- **E2:** per-tick drains now obey the owner's mode scope; the main-lane registry feeds the same
+  per-system profiler; `effectiveEq` reads the sliced pass time. Full one-shot/sliced equivalence
+  and the 8/12/25 ms bars remain open, so slicing stays OFF.
+- **X3:** the rescue lesson is one sentence (`STORE_FLIGHT_SENTENCE`); the store page keeps its
+  tagline. **X5:** the keyboard-only time-trial restart is out of the pad sheet; `teach-09` 16/16.
+- **UI budgets re-pinned** with the canonical headed 1920×1080 shoot; `check:ui:budgets` passes
+  (30 measured surfaces + 10 named gaps).
+- **Verification on the published tree:** `test:fast` 39/39, `check:playable` 18/18,
+  `check:baseline` 17/17, type floor, UI a11y, WCAG contrast, entity links, UI imports 55/0.
+  The route tier was run; its browser commands hit the 120 s cap on a loaded host, so only the
+  individual re-runs are evidence (below).
+- **Q3 primary-screen pass:** six headed captures reviewed; Shipworks socket 03 printed the raw
+  boolean "true" for the stock drive and now reads "Drive / STOCK · M" (`3de6121`). Review:
+  `campaigns/Q3/reviews/2026-11-07-primary-screens.md`.
+
+## Known reds on this host (2026-11-07)
+
+- `test/tethys-tally-passage.test.mjs`: the native fixture's count keg acquires a small drift
+  (~1.6 WU/s) before the courier reaches the wait mark, so the lane is already clear when the
+  clearance check runs and `firstHeldAt` never sets. The focused physical fixtures pass; the
+  integrated native choreography is open.
+- `test/pq-158-00-sample-library.test.mjs`: 13.92 MiB encoded vs the 12 MiB ceiling. The five 16 s
+  PCM theme stems are the bulk; compressing them would break the authored note-window/decode tests,
+  so this needs a content or ceiling decision, not a silent re-pin.
+- `check:new-game-layout.mjs` 1440×900 intermittently waits on the first-light `#sf-confirm` detach;
+  the 1024/1280 viewports pass and the earlier final run passed all three.
+- The route tier's browser commands time out at 120 s under this host's long-running Chrome load.
+  Individual re-runs: `check:playable` 18/18, trail-streak-instancing-webgl PASS.
 
 ## Ground truth at takeover (2026-11-06)
 
