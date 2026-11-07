@@ -24,9 +24,13 @@ export function sweptDiscsOverlap(pos, radius, other, {
   const dx = rx + vx * t;
   const dz = rz + vz * t;
   const nativeRadius = resolvePhysicsBodySpec(other)?.radius;
-  const otherRadius = Number.isFinite(nativeRadius) && nativeRadius >= 0
-    ? nativeRadius
-    : Math.max(0, finite(other.radius, 10));
+  // A pending spawn spec is not an entity yet: `resolvePhysicsBodySpec` can answer a default
+  // radius while the authored `radius` is the hull that is about to exist. Clear the LARGER of
+  // the two, so a reserved neighbour is never treated as smaller than its arriving body.
+  const authoredRadius = finite(other.radius, 10);
+  const measured = [nativeRadius, authoredRadius]
+    .filter((r) => Number.isFinite(r) && r >= 0);
+  const otherRadius = measured.length ? Math.max(...measured) : 10;
   const reach = Math.max(0, finite(radius)) + otherRadius
     + Math.max(0, finite(clearance));
   return dx * dx + dz * dz < reach * reach;
