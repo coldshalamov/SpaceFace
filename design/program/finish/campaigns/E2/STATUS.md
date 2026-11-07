@@ -71,9 +71,10 @@ matched capture of the same incomplete shape; it is not the provenance for the c
    is in flight, and the save cursor resumes. `drainStep` now filters by the owner's declared mode
    scope, so an in-flight Adventure pass no longer advances inside a Swarm round or a docked step
    (`test/economy-slice-cadence.test.mjs`, mode-scope case). Still open before flipping the flag:
-   the slice evaluates `cycleFactorAt`/effective demand against live `state.simTime` per tick, so a
-   sliced pass is not yet byte-equivalent to the one-shot pass; capture the pass time and thread it
-   through those readers first. Bar measurements below stay the gate.
+   the slice now evaluates `effectiveEq` at the pass time, but a direct one-shot-vs-sliced market
+   comparison still diverges somewhere else in the demand/price chain. Capture the pass time in
+   every time-dependent reader and prove byte-equivalence before enabling. Bar measurements below
+   stay the gate.
 4. **Telemetry stays demand-driven and OFF by default.** `simCoreFlags` no longer claims every flag
    is ON; the header names the per-flag defaults.
 

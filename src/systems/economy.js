@@ -791,17 +791,20 @@ export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
 /** Effective stock drift target = equilibrium * event mods * mild cycle pull.
  *  Cycle motion is applied directly to mid in recomputePrices (charts need it);
  *  stock only soft-tracks so produce/consume roles stay authoritative. */
-function effectiveEq(entry, state, stationId, cmdtyId, knownCycle = undefined) {
+function effectiveEq(entry, state, stationId, cmdtyId, knownCycle = undefined, asOfSimTime = undefined) {
   const m = clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]);
+  const asOf = Number.isFinite(asOfSimTime) ? asOfSimTime : (state && state.simTime) || 0;
   // E2: the drift pass already resolved this listing's live cycle a few statements earlier.
   // Passing it in removes a second `getCycleCore` + map walk per listing per tick with byte-
-  // identical output (the lookup is a pure read of the value the caller just computed).
+  // identical output (the lookup is a pure read of the value the caller just computed). The
+  // pass time is threaded in too: a sliced pass must evaluate every row at its due tick, not at
+  // whatever tick that row happens to land on.
   const cycle = knownCycle !== undefined
     ? knownCycle
     : (state && state.economy && state.economy.cycles
-      ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
+      ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), asOf)
       : null);
-  const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
+  const cf = cycle ? cycleFactorAt(cycle, asOf) : 1;
   // Same structural mix the forecast band uses.
   return stockDriftTarget(entry.equilibrium, cf, m);
 }
@@ -2100,7 +2103,7 @@ export const economy = {
         }
         const liveCycle = econ.cycles[sid][cid] || nextCycle || cycle;
         if (ephOn) { tCycle += nowNs() - t; t = nowNs(); }
-        const eff = effectiveEq(entry, state, sid, cid, liveCycle);
+        const eff = effectiveEq(entry, state, sid, cid, liveCycle, asOf);
         if (ephOn) { tEq += nowNs() - t; t = nowNs(); }
         const driftMod = eventModMult(entry, 'drift');
         entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
