@@ -45,11 +45,21 @@ ${W} .sx-sw__stats::before { content:none; display:none; }
 /* short bands (651x461, 960x500): trim padding so the card stays clear of nameplate/gauges */
 @media (max-height:519px) { ${W} .sx-sw__stats { padding:10px 14px; } }
 @media (max-width:560px) { ${W} .sx-sw__stats { padding:14px 16px; } }
-${W} .sx-sw__side { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; pointer-events:none; background:rgb(${POOL} / .8);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 20%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 94%, transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 20%, #000 82%, transparent), linear-gradient(180deg, transparent, #000 6%, #000 94%, transparent);
-  mask-composite:intersect; }
+/* ui-polish-406: the fitting column wears the same hairline card as the stats (1px bone ~18% /
+   radius 10 / padded). It sits over the brightest part of the hull stage (forge glow, gantries),
+   so the card keeps a settled pool fill under the faint bone wash instead of the masked shade-pool,
+   whose feathered edges let crates and trusses run through the system rows. Desktop: the card hugs
+   its content (align-self:start) and still scrolls inside the stage row when short (max-height).
+   Densify radius 8→6 on short/narrow, matching .sx-sw__stats. */
+${W} .sx-sw__side { position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important; }
+${W} .sx-sw__side::before { content:none; display:none; }
+@media (min-width:761px) { ${W} .sx-sw__side { align-self:start; max-height:100%; } }
+@media (max-height:820px) { ${W} .sx-sw__side { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__side { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__side { border-radius:8px; } }
 
 /* ---- the fleet rail: inspect-only, one row, the Hand at the active hull ----------------------- */
 ${W} .sx-sw__carousel { ${PLAIN} }
