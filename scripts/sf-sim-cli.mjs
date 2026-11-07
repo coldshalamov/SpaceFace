@@ -705,10 +705,17 @@ async function compareRuns(baseline, candidate, options) {
     for (const diff of compareExpectedEnvelope(options.expectedEnvelope, candidate, options)) diffs.push(diff);
   }
   const expectedEnvelopeStaleOnly = hashEqual && diffs.every(isPending47aEnvelopeDiff);
+  // W1's durable act receipt is replayed once on Continue so a missed popup is not lost. That is
+  // one extra content-only comms:popup on the reload arm, while the authoritative hash is equal.
+  // Allow exactly that known UI receipt; any other count or a moved hash still fails.
+  const actReceiptReplayOnly = hashEqual && diffs.length === 1
+    && diffs[0].kind === 'traceCount'
+    && diffs[0].path === '$.traceSummary.types.comms:popup'
+    && diffs[0].actual === diffs[0].expected + 1;
 
   return {
     schema: 'spaceface.sfSimComparison.v1',
-    ok: diffs.length === 0 || expectedEnvelopeStaleOnly,
+    ok: diffs.length === 0 || expectedEnvelopeStaleOnly || actReceiptReplayOnly,
     mode: 'uninterrupted-vs-reload',
     reloadAt: options.reloadAt,
     hashEqual,
