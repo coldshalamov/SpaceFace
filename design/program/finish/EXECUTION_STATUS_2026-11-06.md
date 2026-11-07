@@ -81,6 +81,17 @@ the implementation is optimal.
 - **Duplicate mission system removed** from `src/data/missions.js`; the canonical system remains
   `src/systems/missions.js` and data stays pure in `src/data/missionsData.js`.
 
+## Open verification risks
+
+- **47-A hash:** the dirty tree currently produces `1fedbd09...` against the v23 reference
+  `134e1e7f...`. `snapshotSimState` does not include `simLOD`/`activityRuntime`; the likely cause is
+  the in-flight W1 `missions`/`missionStoryOps` delta, not E2. Re-run on a clean tree after W1 lands
+  before versioning anything. Do not re-record v23 to make a red run green.
+- **Authored pipeline staging:** the playable route warns after 25 s (`pipelineReady:false`) on a
+  contended host while still drawing a stand-in. E6/E9 own the root cause; it is not a Q2 pass.
+- **E6 after-run:** the single run reports `visibleUnready 3`, `leftUndrawn 5`, `refusedDraws 912`
+  on a contaminated checkout. Re-measure on a clean tree before a verdict.
+
 ## Content queue (special-500, assigned but unlanded)
 
 42 units are `assigned` in `design/program/special-500/BUILD_LEDGER.json`, all with a ratified
