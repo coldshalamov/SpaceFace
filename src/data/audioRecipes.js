@@ -4028,6 +4028,8 @@ export const COLLISION_LADDER = Object.freeze({
 });
 
 // 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).
+// X4 #5 — `bpm` here is the ONE tempo for the state: `src/audio/themeMatrix.js` reads it for the
+// motif and the runtime sequencer reads it for the phrase grid. Do not hard-code a second tempo.
 export const MUSIC_STEMS = [
   {
     id: 'stem_a',
@@ -4089,7 +4091,7 @@ export const MUSIC_STEMS = [
     motif: 'C E G B',
     authoredSampleId: 'theme_station',
     triggerCondition: 'docked && !bossActive',
-    bpm: 116,
+    bpm: 72,
     key: 'C',
     loopBars: 8,
     layers: [
@@ -4107,7 +4109,7 @@ export const MUSIC_STEMS = [
     motif: 'A D A F#',
     authoredSampleId: 'theme_boss',
     triggerCondition: 'bossActive',
-    bpm: 132,
+    bpm: 100,
     key: 'Am',
     loopBars: 4,
     layers: [

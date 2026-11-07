@@ -8,6 +8,7 @@ import {
   THEME_MATRIX_SEED,
   THEME_STATES,
   THEME_MOTIFS,
+  MOTIF_STEPS_PER_BAR,
   SECTOR_BEDS,
   resolveSectorBed,
 } from './themeMatrix.js';
@@ -75,6 +76,45 @@ function sixteenthSeconds(motif) {
   return (60 / bpm) / 4;
 }
 
+/**
+ * X4 #1 — a motif row's time on the loop, in seconds. `beat` is a SIXTEENTH index inside its bar
+ * (the sequencer reads `step % 16`), so `bar` advances sixteen sixteenths, not one. Reading `beat`
+ * alone put the boss's bar-1 F# on top of its bar-0 A and the whole performance lost its tune.
+ */
+export function motifStepSeconds(row, sixteenth) {
+  const bar = Math.max(0, Number(row && row.bar) || 0);
+  const beat = Math.max(0, Number(row && row.beat) || 0);
+  return (bar * MOTIF_STEPS_PER_BAR + beat) * sixteenth;
+}
+
+/** One phrase's length in seconds: the last note's end, rests after it excluded. */
+export function motifSpanSeconds(motif) {
+  const sixteenth = sixteenthSeconds(motif);
+  let end = 0;
+  for (const row of motifSteps(motif)) {
+    const t1 = motifStepSeconds(row, sixteenth) + (Number(row.dur) || 0) * sixteenth;
+    if (t1 > end) end = t1;
+  }
+  return end;
+}
+
+/** Write one enveloped oscillator note into `pcm` at `t0`. */
+function addTone(pcm, sr, hz, t0, dur, peak, wave) {
+  if (!(hz > 0) || !(dur > 0) || !(peak > 0)) return;
+  const i0 = Math.round(t0 * sr);
+  const len = Math.round(dur * sr);
+  const attack = Math.max(2, Math.round(0.012 * sr));
+  const release = Math.max(2, Math.round(Math.min(0.08, dur * 0.22) * sr));
+  for (let i = 0; i < len && i0 + i < pcm.length; i++) {
+    if (i0 + i < 0) continue;
+    let env = 1;
+    if (i < attack) env = i / attack;
+    const remain = len - 1 - i;
+    if (remain < release) env *= remain / release;
+    pcm[i0 + i] += peak * env * sampleOsc((i / sr) * hz, wave);
+  }
+}
+
 /** Isolated hummable lead: one oscillator per motif step, gaps between notes, no pad. */
 export function renderMotifLeadPcm(motif, options = {}) {
   const steps = motifSteps(motif);
@@ -83,7 +123,7 @@ export function renderMotifLeadPcm(motif, options = {}) {
   const extra = options.tailS == null ? 0.25 : options.tailS;
   let endS = extra;
   for (const row of steps) {
-    const t1 = row.beat * sixteenth + row.dur * sixteenth;
+    const t1 = motifStepSeconds(row, sixteenth) + (Number(row.dur) || 0) * sixteenth;
     if (t1 > endS) endS = t1;
   }
   endS += extra;
@@ -92,21 +132,12 @@ export function renderMotifLeadPcm(motif, options = {}) {
   const peak = options.peak == null ? 0.62 : options.peak;
   const wave = options.wave || 'sine';
   for (const row of steps) {
-    const f = noteToHz(row.note, row.oct);
-    const t0 = row.beat * sixteenth;
-    const dur = row.dur * sixteenth * 0.82;
-    const i0 = Math.round(t0 * sr);
-    const len = Math.round(dur * sr);
-    const attack = Math.max(2, Math.round(0.012 * sr));
-    const release = Math.max(2, Math.round(Math.min(0.08, dur * 0.22) * sr));
-    for (let i = 0; i < len && i0 + i < n; i++) {
-      let env = 1;
-      if (i < attack) env = i / attack;
-      const remain = len - 1 - i;
-      if (remain < release) env *= remain / release;
-      const phase = (i / sr) * f;
-      pcm[i0 + i] += peak * env * sampleOsc(phase, wave);
-    }
+    addTone(
+      pcm, sr, noteToHz(row.note, row.oct),
+      motifStepSeconds(row, sixteenth),
+      (Number(row.dur) || 0) * sixteenth * 0.82,
+      peak, wave,
+    );
   }
   return pcm;
 }
@@ -136,51 +167,119 @@ export function renderSectorBedPcm(bed, options = {}) {
   return pcm;
 }
 
-function addPad(pcm, sr, hz, wave, amp) {
-  for (let i = 0; i < pcm.length; i++) {
-    const t = i / sr;
-    const fade = Math.min(1, t / 0.04, (pcm.length / sr - t) / 0.04);
-    pcm[i] += amp * fade * sampleOsc(t * hz, wave);
+function addPadWindow(pcm, sr, hz, wave, amp, t0, t1) {
+  if (!(hz > 0) || !(amp > 0)) return;
+  const i0 = Math.max(0, Math.round(t0 * sr));
+  const i1 = Math.min(pcm.length, Math.round(t1 * sr));
+  if (i1 <= i0) return;
+  const fade = Math.max(1, Math.round(0.12 * sr));
+  for (let i = i0; i < i1; i++) {
+    const a = Math.min(1, (i - i0) / fade, (i1 - i) / fade);
+    pcm[i] += amp * a * sampleOsc((i / sr) * hz, wave);
   }
 }
 
-/** Authored stem: the motif phrased across the loop, a quiet chord pad and a bar bass pulse. */
+/**
+ * X4 #2 — the 16 s form. Four passes, each one motif phrase long, and they are NOT the same bar:
+ * A the written line, B the same line walked backwards with a fill (a musical answer, not a key
+ * change), A again with a fill and a held fifth, C the same notes from the second degree and a
+ * pad on the fourth. A tiled 4 s loop was the brief's own never-list ("a 4-bar loop with no
+ * development"); this is the change across the loop the listener hears.
+ */
+export const STEM_PASS_FORM = Object.freeze([
+  Object.freeze({ id: 'A', order: Object.freeze([0, 1, 2, 3]), padInterval: 0, fill: false, fifth: false, gain: 1 }),
+  Object.freeze({ id: 'B', order: Object.freeze([3, 2, 1, 0]), padInterval: 0, fill: true, fifth: false, gain: 0.9 }),
+  Object.freeze({ id: 'A2', order: Object.freeze([0, 1, 2, 3]), padInterval: 0, fill: true, fifth: true, gain: 1 }),
+  Object.freeze({ id: 'C', order: Object.freeze([1, 0, 2, 3]), padInterval: 5, fill: false, fifth: false, gain: 0.92 }),
+]);
+
+/** Authored stem: the motif phrased across a developing 16 s form, a moving chord pad and bass. */
 export function renderThemeStemPcm(state, options = {}) {
   const motif = THEME_MOTIFS[state] || THEME_MOTIFS.travel;
   const sr = options.sampleRate || THEME_SAMPLE_RATE;
   const seconds = options.seconds == null ? THEME_STEM_SECONDS : options.seconds;
   const n = Math.max(1, Math.round(seconds * sr));
   const pcm = new Float64Array(n);
-  const lead = renderMotifLeadPcm(motif, {
-    sampleRate: sr,
-    peak: 0.58,
-    wave: state === 'combat' || state === 'boss' ? 'sawtooth' : 'sine',
-  });
-  // Phrase the motif across the whole loop. Alternates sit ~1.5 dB down, so a 16 s stem breathes
-  // instead of sounding like the same 3 s bar four times.
-  const period = Math.max(1, lead.length);
-  let repeat = 0;
-  for (let base = 0; base < n; base += period, repeat += 1) {
-    const gain = repeat % 2 === 0 ? 1 : 0.82;
-    const copy = Math.min(period, n - base);
-    for (let i = 0; i < copy; i++) pcm[base + i] += lead[i] * gain;
-  }
-  // Pad: the motif's own unique notes, low and slow. Quiet enough that the lead stays the
-  // hummable line (the stranger-hum test still reads the motif, not the pad).
+  const sixteenth = sixteenthSeconds(motif);
+  const steps = motifSteps(motif);
+  const span = Math.max(0.25, motifSpanSeconds(motif));
+  // A short breath between phrases keeps the form legible without silence inside the loop.
+  const passSpan = span + Math.min(0.2, span * 0.05);
+  const leadPeak = 0.58;
+  const hard = state === 'combat' || state === 'boss';
+  const waveA = hard ? 'sawtooth' : 'sine';
+  const waveB = hard ? 'square' : 'triangle';
   const unique = [...new Set(motif.notes)];
-  const root = noteToHz(unique[0], Math.max(2, (motif.octaves[0] || 4) - 1));
-  const padGain = state === 'boss' ? 0.045 : 0.028;
-  addPad(pcm, sr, root, 'triangle', padGain);
-  if (unique[1]) addPad(pcm, sr, noteToHz(unique[1], 4), 'sine', padGain * 0.6);
-  if (unique[2]) addPad(pcm, sr, noteToHz(unique[2], 4), 'sine', padGain * 0.5);
-  // A root pulse at each bar: the body that makes the loop feel like a piece, not a lead line.
+  const rootOct = Math.max(2, (motif.octaves[0] || 4) - 1);
   const barS = (60 / Math.max(40, Number(motif.bpm) || 80)) * 4;
-  for (let t0 = 0; t0 < seconds; t0 += barS) {
-    const i0 = Math.round(t0 * sr);
-    const len = Math.min(n - i0, Math.round(barS * 0.6 * sr));
-    for (let i = 0; i < len; i++) {
-      pcm[i0 + i] += 0.045 * Math.exp(-3 * (i / Math.max(1, len)))
-        * sampleOsc((i / sr) * root * 0.5, 'sine');
+  const padGain = state === 'boss' ? 0.045 : 0.028;
+  const passes = Math.max(1, Math.ceil(seconds / passSpan));
+
+  for (let p = 0; p < passes; p++) {
+    const base = p * passSpan;
+    const form = STEM_PASS_FORM[p % STEM_PASS_FORM.length];
+    const passEnd = Math.min(seconds, base + passSpan);
+    // The pass's line: the motif's note slots in this section's order. Reordering the notes
+    // (never the rhythm) is the answer phrase; the key stays the key.
+    const line = steps.map((row, i) => steps[form.order[i] % steps.length] && {
+      note: steps[form.order[i] % steps.length].note,
+      oct: steps[form.order[i] % steps.length].oct,
+      dur: row.dur,
+      at: motifStepSeconds(row, sixteenth),
+    });
+
+    // Lead: the line in this pass's voice. Alternating passes change timbre as well as pitch
+    // order, so the loop's four sections are distinguishable even at low volume.
+    for (const row of line) {
+      if (!row) continue;
+      const t0 = base + row.at;
+      if (t0 >= seconds) continue;
+      addTone(
+        pcm, sr, noteToHz(row.note, row.oct), t0,
+        (Number(row.dur) || 0) * sixteenth * 0.82,
+        leadPeak * form.gain,
+        p % 2 === 1 ? waveB : waveA,
+      );
+    }
+    // Fill: two passing sixteenths an octave up, laid over the phrase's tail.
+    if (form.fill && unique[1] && unique[2]) {
+      const fillAt = base + span - sixteenth * 2;
+      addTone(pcm, sr, noteToHz(unique[1], (motif.octaves[1] || 4) + 1), fillAt, sixteenth * 0.9, leadPeak * 0.42, waveB);
+      addTone(pcm, sr, noteToHz(unique[2], (motif.octaves[2] || 4) + 1), fillAt + sixteenth, sixteenth * 0.9, leadPeak * 0.36, waveB);
+    }
+
+    // Pad: the pass's own root, low and slow, re-voiced each section.
+    const padRatio = Math.pow(2, form.padInterval / 12);
+    const rootHz = noteToHz(unique[0], rootOct) * padRatio;
+    addPadWindow(pcm, sr, rootHz, 'triangle', padGain, base, passEnd);
+    if (unique[1]) addPadWindow(pcm, sr, noteToHz(unique[1], 4) * padRatio, 'sine', padGain * 0.6, base, passEnd);
+    if (unique[2]) addPadWindow(pcm, sr, noteToHz(unique[2], 4) * padRatio, 'sine', padGain * 0.5, base, passEnd);
+    // A2 holds the fifth under the phrase: the one section with a counter-voice.
+    if (form.fifth) addPadWindow(pcm, sr, rootHz * 1.5, 'triangle', padGain * 0.8, base, passEnd);
+
+    // The advertised layers that a pad alone does not carry: choir (boss/station) and a brass
+    // answer (combat/boss). Both sit well under the lead so the stranger still names the motif.
+    if (state === 'boss' || state === 'station') {
+      const choir = state === 'boss' ? 0.055 : 0.03;
+      addPadWindow(pcm, sr, rootHz, 'sine', choir, base, passEnd);
+      addPadWindow(pcm, sr, rootHz * 1.5, 'triangle', choir * 0.7, base, passEnd);
+      addPadWindow(pcm, sr, rootHz * 2, 'sine', choir * 0.5, base, passEnd);
+    }
+    if (hard) {
+      const brass = state === 'boss' ? 0.06 : 0.045;
+      const stabAt = base + span * 0.5;
+      addTone(pcm, sr, rootHz * 2, stabAt, sixteenth * 4, brass, 'sawtooth');
+      addTone(pcm, sr, rootHz * 3, stabAt, sixteenth * 4, brass * 0.7, 'sawtooth');
+    }
+
+    // A root pulse at each bar: the body that makes the loop feel like a piece, not a lead line.
+    for (let t0 = base; t0 < passEnd; t0 += barS) {
+      const i0 = Math.round(t0 * sr);
+      const len = Math.min(n - i0, Math.round(barS * 0.6 * sr));
+      for (let i = 0; i < len; i++) {
+        pcm[i0 + i] += 0.045 * Math.exp(-3 * (i / Math.max(1, len)))
+          * sampleOsc((i / sr) * rootHz * 0.5, 'sine');
+      }
     }
   }
   return pcm;
@@ -335,6 +434,30 @@ function goertzelMag(pcm, sampleRate, freq) {
   return Math.hypot(real, imag) / Math.max(1, i1 - i0);
 }
 
+/**
+ * Energy at one frequency inside a time window (Goertzel). The note-window tests use it to prove
+ * which pitch is actually sounding at a moment, independent of the motif's label.
+ */
+export function toneEnergy(pcm, sampleRate, hz, t0 = 0, t1 = null) {
+  if (!(hz > 20) || !pcm || !pcm.length) return 0;
+  const i0 = Math.max(0, Math.round(t0 * sampleRate));
+  const i1 = Math.min(pcm.length, Math.round((t1 == null ? pcm.length / sampleRate : t1) * sampleRate));
+  if (i1 - i0 < 32) return 0;
+  const w = 2 * Math.PI * hz / sampleRate;
+  const coeff = 2 * Math.cos(w);
+  let s0 = 0;
+  let s1 = 0;
+  let s2 = 0;
+  for (let i = i0; i < i1; i++) {
+    s0 = pcm[i] + coeff * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
+  const real = s1 - s2 * Math.cos(w);
+  const imag = s2 * Math.sin(w);
+  return Math.hypot(real, imag) / Math.max(1, i1 - i0);
+}
+
 export function measureBedFromPcm(pcm, sampleRate = THEME_SAMPLE_RATE) {
   const f0 = detectPitchHz(
     pcm,
@@ -430,6 +553,18 @@ export const AUTHORED_STEM_SAMPLES = Object.freeze({
   wanted: 'theme_wanted',
   boss: 'theme_boss',
 });
+
+/**
+ * X4 #3 — residency on first use. The five 16 s loops are tier 2 (a reference/listening asset and
+ * the runtime's authored body), ~1 MB encoded each and ~10 MB decoded for the set. Acquiring all
+ * five when the audio graph is built made the menu pay for music the player may never reach;
+ * the runtime calls this when a state is first heard instead.
+ */
+export function acquireThemeStem(samples, state) {
+  const id = AUTHORED_STEM_SAMPLES[state];
+  if (!id || !samples || typeof samples.acquire !== 'function') return null;
+  return samples.acquire(id);
+}
 
 export const THEME_ASSETS = Object.freeze([
   ...THEME_STATES.map((state) => Object.freeze({

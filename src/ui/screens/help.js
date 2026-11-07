@@ -311,12 +311,14 @@ export function controlSections(state) {
     ]],
   ];
   // X5: the short card for where the player is, before the full reference. The long sheet stays
-  // below it, so discoverability is not lost.
+  // below it, so discoverability is not lost. X5 #5: the card's keys are resolved LIVE, so a
+  // rebind moves the card and a verb this context refuses is dropped instead of taught.
   const context = inputContextFor(state);
   const contextTitle = context === 'combat' ? 'Combat now'
     : context === 'station' ? 'Station now'
       : context === 'map' ? 'Map now' : 'Flight now';
-  const contextCard = contextHelpRows(state).map(([keys, verb]) => [verb, null, keys]);
+  const contextCard = contextHelpRows(state, (action) => resolveActionLabel(state, action, { sep: ' ' }))
+    .map(([keys, verb]) => [verb, null, keys]);
   return [[contextTitle, contextCard], ...sections];
 }
 

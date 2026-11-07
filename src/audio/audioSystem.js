@@ -68,6 +68,9 @@ import {
   COMBAT_MOTIF,
   STATION_MOTIF,
   WANTED_MOTIF,
+  BOSS_MOTIF,
+  MOTIF_STEPS_PER_BAR,
+  motifPhraseBars,
   THEME_STEM_WEIGHTS,
   sectorBedToBandIntent,
 } from './themeMatrix.js';
@@ -77,7 +80,7 @@ import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
-import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
+import { noteToHz, acquireThemeStem } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
 // A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
@@ -104,6 +107,7 @@ import {
   ENVIRONMENT_CLASSES,
 } from './environmentMix.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
+import { cueVariantFor } from './cueVariants.js';
 import {
   admitLayerVoice,
   damageLayer,
@@ -239,7 +243,42 @@ const STEM_WEIGHTS = {
   travel: THEME_STEM_WEIGHTS.travel,
   wanted: THEME_STEM_WEIGHTS.wanted,
   station: THEME_STEM_WEIGHTS.station,
+  boss:   THEME_STEM_WEIGHTS.boss,
 };
+
+/**
+ * X4 P0 — one sequencer per stem key. The dispatch used to list A–D only while STEM_KEYS carried
+ * E, so a boss fight raised a gain node no oscillator fed. This map is the contract: every key in
+ * STEM_KEYS must name a real `_seq*` method, and the focused test proves each one starts voices.
+ */
+export const STEM_SEQUENCER_BY_KEY = Object.freeze({
+  A: '_seqCalm',
+  B: '_seqTense',
+  C: '_seqCombat',
+  D: '_seqDocked',
+  E: '_seqBoss',
+});
+
+export function stemSequencerName(key) {
+  return Object.prototype.hasOwnProperty.call(STEM_SEQUENCER_BY_KEY, key)
+    ? STEM_SEQUENCER_BY_KEY[key]
+    : null;
+}
+
+/**
+ * Is this entity a boss BODY (the thing that owns the boss music)? Mirrors the boss marks in
+ * `src/data/enemies.js` isEliteCombatant and adds the arena dressing + capital mission tag. No
+ * mutation; the spawn/kill listeners and the save-restore seed both read it.
+ */
+export function isBossBody(entity) {
+  const d = entity && entity.data;
+  if (!d || typeof d !== 'object') return false;
+  return d.isBoss === true
+    || d.encounterBoss != null
+    || d.missionBoss != null
+    || d.bossDressing != null
+    || d.missionTag === 'capital_boss';
+}
 
 export const MAX_AUDIO_VOICES = 12;
 // Sustained-beam voices (INST-34). _onFire routes these to a per-owner loop drone instead of a
@@ -2888,25 +2927,38 @@ export const audio = {
     bus.on('entity:destroyed', (p) => this._onDestroyed(p), { presentation: true });
     // X4 boss read: a boss body's spawn/end is the music's own event, not a per-frame scan.
     // A capital boss or an arena boss (bossDressing) enters the boss stem; its death releases it.
+    // The marks are the canonical boss flags the elite-intent vocabulary already reads
+    // (`data/enemies.js` isEliteCombatant): isBoss / encounterBoss / missionBoss, plus the arena
+    // dressing and the capital-boss mission tag. Aces, nemeses and rare specialists deliberately
+    // stay out — they are elite, not a boss piece.
     const noteBossSpawn = (p) => {
       const e = p && p.entity;
-      const d = e && e.data;
-      if (!e || !d) return;
-      if (d.isBoss === true || d.bossDressing != null || d.missionTag === 'capital_boss') {
-        const rt = this.rt;
-        rt._bossIds = rt._bossIds || new Set();
-        rt._bossIds.add(e.id);
-        rt._bossActive = true;
-      }
+      if (!isBossBody(e)) return;
+      const rt = this.rt;
+      rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+      rt._bossIds.add(e.id);
+      rt._bossActive = true;
+      this._markMusicDirty();
     };
     const noteBossEnd = (p) => {
       const rt = this.rt;
-      if (!rt || !rt._bossIds || p == null || p.id == null) return;
-      if (rt._bossIds.delete(p.id)) rt._bossActive = rt._bossIds.size > 0;
+      if (!rt || !(rt._bossIds instanceof Set) || p == null || p.id == null) return;
+      if (rt._bossIds.delete(p.id)) {
+        rt._bossActive = rt._bossIds.size > 0;
+        this._markMusicDirty();
+      }
     };
     bus.on('entity:spawned', noteBossSpawn, { presentation: true });
     bus.on('entity:killed', noteBossEnd, { presentation: true });
     bus.on('entity:destroyed', noteBossEnd, { presentation: true });
+    // A capital fight ends by its own event, not always by the boss body's death packet.
+    bus.on('capitalBoss:ended', () => {
+      const rt = this.rt;
+      if (!rt || !(rt._bossIds instanceof Set)) return;
+      rt._bossIds.clear();
+      rt._bossActive = false;
+      this._markMusicDirty();
+    }, { presentation: true });
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
     bus.on('mining:start', (p) => this._onMiningStart(p));
@@ -3459,6 +3511,9 @@ export const audio = {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
       this._sessionBoundaryReset();
+      // A save restored mid-boss has no spawn event to replay: seed the latch from the live
+      // entities once, so the boss stem follows the fight across the load.
+      this._seedBossLatchFromState();
       this._applySettings();
       this._markMusicDirty();
     });
@@ -3652,7 +3707,7 @@ export const audio = {
     if (!ctx || !w) return;
     const t = ctx.currentTime;
     let lead = 'A';
-    for (const key of ['B', 'C', 'D']) if ((w[key] || 0) > (w[lead] || 0)) lead = key;
+    for (const key of ['B', 'C', 'D', 'E']) if ((w[key] || 0) > (w[lead] || 0)) lead = key;
     const leadStem = rt.stems && rt.stems[lead];
     let at = t;
     if (quantizeBars > 0 && leadStem && typeof leadStem.nextBoundary === 'function') {
@@ -3958,7 +4013,9 @@ export const audio = {
       // falls back to full-synth while its designed layer fetches. The LRU budget keeps
       // the whole library resident anyway, so this only moves the decode earlier.
       rt._samples.prefetchTier(1);
-      for (const id of Object.values(AUTHORED_STEM_SAMPLES)) rt._samples.acquire(id);
+      // X4 #3: the five 16 s authored stems are tier 2 and are NOT force-acquired here. Each one
+      // is fetched+decoded the first time its state is actually heard (`_setMusicState`), so a
+      // menu dwell no longer pays ~10 MB of decoded music for a state the player has not reached.
     }
 
     this._applySettings();
@@ -4497,6 +4554,13 @@ export const audio = {
       lockRate = true;
     }
     let callGain = (opts.gain == null ? 1 : opts.gain);
+    // X4 #4: the rotation for cues a player actually hears. Three form takes per body, advanced
+    // per cue id, so a long fight does not replay one sample identically.
+    const variant = cueVariantFor(rt, recipeId, opts);
+    if (variant) {
+      rate *= variant.rate;
+      callGain *= variant.gain;
+    }
     if (this._motionReduced() && (busName === 'ambient' || recipeId.includes('traffic') || recipeId.includes('machinery'))) {
       callGain *= 0.35;
     }
@@ -6572,6 +6636,14 @@ export const audio = {
     rt._commsDuckGain = COMMS_DUCK.gain;
     rt._commsDuckLive = 1;
     this._reconcileDockedState(forceUndock);
+    // X4 P0: the boss latch is entity-ID state from the outgoing session. A mid-boss quit must not
+    // leave the next run in the boss stem (nothing would ever release those IDs).
+    rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+    rt._bossIds.clear();
+    rt._bossActive = false;
+    rt._bossMixLatch = false;
+    // A new run starts the cue rotation from take 0, so two runs of the same fight sound alike.
+    rt._cueVariants = null;
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
     rt._standingCueAt = null;
@@ -6580,6 +6652,27 @@ export const audio = {
     // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
     if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
     rt._scoreTransitionsSeen = null;
+  },
+
+  /**
+   * X4 P0 — re-derive the boss latch from the live entity list. Only a save restore needs it
+   * (spawn/kill events own the running case), but it is a pure read of `state.entities`, so it
+   * cannot double-count: the set is cleared first.
+   */
+  _seedBossLatchFromState() {
+    const rt = this.rt;
+    if (!rt) return 0;
+    const entities = this.state && this.state.entities;
+    rt._bossIds = rt._bossIds instanceof Set ? rt._bossIds : new Set();
+    rt._bossIds.clear();
+    if (entities && typeof entities.values === 'function') {
+      for (const e of entities.values()) if (isBossBody(e)) rt._bossIds.add(e.id);
+    } else if (entities && typeof entities.forEach === 'function') {
+      entities.forEach((e) => { if (isBossBody(e)) rt._bossIds.add(e.id); });
+    }
+    rt._bossActive = rt._bossIds.size > 0;
+    rt._bossMixLatch = false;
+    return rt._bossIds.size;
   },
 
   _onDocked(p) {
@@ -7702,8 +7795,16 @@ export const audio = {
   },
 
   _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, busNode, delayNode, vel, wave) {
-    if (bar % 4 !== 0 || !motif || !Array.isArray(motif.steps)) return false;
-    const stepRow = motif.steps.find((row) => row.beat === beat);
+    if (!motif || !Array.isArray(motif.steps)) return false;
+    // X4 #1 — `bar` is a bar COUNTER and `beat` is the sixteenth inside the current bar. A motif
+    // that spans bars (the boss's two-bar phrase) must be read on its own phrase grid, or its
+    // bar-1 note lands on top of its bar-0 note. One-bar motifs keep the long-standing every-four-
+    // bars hook so the Adventure stems do not turn into a jingle.
+    const phraseBars = motifPhraseBars(motif);
+    const everyBars = phraseBars > 1 ? phraseBars : 4;
+    if (bar % everyBars !== 0) return false;
+    const stepInPhrase = ((bar % phraseBars) * MOTIF_STEPS_PER_BAR) + beat;
+    const stepRow = motif.steps.find((row) => ((Number(row.bar) || 0) * MOTIF_STEPS_PER_BAR + (Number(row.beat) || 0)) === stepInPhrase);
     if (!stepRow) return false;
     this._playNote(ctx, this._noteFreq(stepRow.note, stepRow.oct), stepRow.dur * sixteenth, vel, wave, busNode, delayNode, t, {
       detune: 7,
@@ -7914,7 +8015,7 @@ export const audio = {
     // Shared filter for all notes in this stem
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = key === 'C' ? 2400 : key === 'D' ? 1600 : key === 'B' ? 1500 : 1300;
+    lp.frequency.value = key === 'C' ? 2400 : key === 'D' ? 1600 : key === 'B' ? 1500 : key === 'E' ? 900 : 1300;
     lp.Q.value = key === 'C' ? 1.6 : 0.8;
     lp.connect(parentGain);
 
@@ -7924,12 +8025,12 @@ export const audio = {
     sidechainPump.gain.value = 1.0;
     sidechainPump.connect(lp);
 
-    // BPM and timing:
-    // A: 122 BPM (exploration progressive house)
-    // B: 124 BPM (tense dark progressive)
-    // C: 128 BPM (combat French electro house)
-    // D: 116 BPM (docked warm deep house)
-    const BPM = key === 'C' ? 128 : key === 'B' ? 124 : key === 'D' ? 116 : 122;
+    // BPM and timing: the ARRANGEMENT grid (see scoreDirector.STEM_BPM). The boss is the one stem
+    // whose authored tempo is also its arrangement tempo — `_seqBoss` must breathe at the same 100
+    // BPM the WAV and the Warden motif are written in.
+    const bossRow = MUSIC_STEMS.find((row) => row && row.id === 'stem_e');
+    const BPM = key === 'C' ? 128 : key === 'B' ? 124 : key === 'D' ? 116
+      : key === 'E' ? Math.max(40, Number(bossRow && bossRow.bpm) || 100) : 122;
     const beatS = 60 / BPM;
     const sixteenthS = beatS / 4;
 
@@ -7938,7 +8039,7 @@ export const audio = {
     delay = ctx.createDelay(1.2);
     delayFb = ctx.createGain();
     delay.delayTime.value = key === 'C' ? beatS * 0.5 : beatS * 0.75; // dotted-eighth
-    delayFb.gain.value = key === 'C' ? 0.20 : key === 'A' ? 0.38 : key === 'D' ? 0.42 : 0.28;
+    delayFb.gain.value = key === 'C' ? 0.20 : key === 'A' ? 0.38 : key === 'D' ? 0.42 : key === 'E' ? 0.30 : 0.28;
     const delayLp = ctx.createBiquadFilter();
     delayLp.type = 'lowpass';
     delayLp.frequency.value = 2400;
@@ -7950,8 +8051,8 @@ export const audio = {
     // Slow filter sweep LFO for breathing movement
     const filterLfo = ctx.createOscillator();
     const filterLfoGain = ctx.createGain();
-    filterLfo.frequency.value = key === 'C' ? 0.25 : key === 'B' ? 0.12 : 0.05;
-    filterLfoGain.gain.value = key === 'C' ? 600 : key === 'D' ? 300 : key === 'B' ? 300 : 350;
+    filterLfo.frequency.value = key === 'C' ? 0.25 : key === 'B' ? 0.12 : key === 'E' ? 0.04 : 0.05;
+    filterLfoGain.gain.value = key === 'C' ? 600 : key === 'D' ? 300 : key === 'B' ? 300 : key === 'E' ? 180 : 350;
     filterLfo.connect(filterLfoGain);
     filterLfoGain.connect(lp.frequency);
     try { filterLfo.start(ctx.currentTime); } catch (_) {}
@@ -7976,10 +8077,10 @@ export const audio = {
         const t = seq.nextNoteTime;
         const step = seq.step;
 
-        if (key === 'A') self._seqCalm(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
-        else if (key === 'B') self._seqTense(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
-        else if (key === 'C') self._seqCombat(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
-        else if (key === 'D') self._seqDocked(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        const sequencer = stemSequencerName(key);
+        if (sequencer && typeof self[sequencer] === 'function') {
+          self[sequencer](ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        }
 
         seq.step = (seq.step + 1) % 64;
         if (seq.step === 0) seq.macroBar++;
@@ -8324,10 +8425,74 @@ export const audio = {
     }
   },
 
+  // ---- Boss: the Warden's walk (X4 P0) ----
+  // A different piece, not the combat loop louder: 100 BPM against the fight's 130, half-time
+  // weight, a two-bar A-minor / D-minor phrase with real rests, and the choir/brass/strings
+  // weight `stem_e.layers` advertises. The boss fader fed a silent gain node before this method
+  // existed, so a boss fight got quieter and lost the combat lead.
+  _seqBoss(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Two-bar harmonic floor: Am, then Dm. Slow enough that one chord is a place, not a bar.
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), choir: [N('A', 2), N('E', 3), N('A', 3)] },
+      { root: N('D', 1), bass: N('D', 2), choir: [N('D', 3), N('A', 3), N('D', 4)] },
+    ];
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[Math.floor(totalBar / 2) % chords.length];
+
+    // Drums: one weight per bar, a shallow duck so the choir keeps its body.
+    if (beat === 0 || beat === 8) {
+      this._playKick(ctx, t, parentBus, 0.22);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.55, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 1.1);
+    }
+    if (beat === 4 || beat === 12) this._playHiHat(ctx, t, parentBus, 0.018, false);
+
+    // Bass: a long low root, twice a bar and never a rolling 16th line.
+    if (beat === 0 || beat === 10) {
+      this._playBass(ctx, chord.bass, beatS * 2.6, 0.14, t, sidechainPump, 'sawtooth');
+    }
+
+    // Choir: the layer the fight does not have. Slow attack, close voicing, well under the lead.
+    if (beat === 0) {
+      for (let i = 0; i < chord.choir.length; i++) {
+        this._playNote(ctx, chord.choir[i], beatS * 3.4, 0.055 - i * 0.008, 'triangle', sidechainPump, delayNode, t, {
+          detune: 6, attack: 0.35, release: 0.6,
+        });
+      }
+    }
+
+    // Brass: the answer on the second half of the bar. Short and filtered, never a siren.
+    if (beat === 12) {
+      this._playNote(ctx, chord.choir[1], sixteenth * 3, 0.08, 'sawtooth', sidechainPump, null, t, {
+        detune: 9, attack: 0.02, release: 0.12, pluckFilter: true,
+      });
+      this._playNote(ctx, chord.choir[2], sixteenth * 3, 0.06, 'square', sidechainPump, null, t, {
+        detune: 7, attack: 0.02, release: 0.12, pluckFilter: true,
+      });
+    }
+
+    // Strings: a low pedal under every other bar.
+    if (beat === 0 && totalBar % 2 === 0) {
+      this._playNote(ctx, chord.root, beatS * 7.4, 0.045, 'sine', sidechainPump, null, t, {
+        detune: 4, attack: 0.5, release: 0.8,
+      });
+    }
+
+    // The Warden motif (A D A F#) on its own two-bar phrase. The rests are in the written steps.
+    this._playThemeMotif(BOSS_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.2, 'sawtooth');
+  },
+
   _setMusicState(stateName, instant) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
     rt.musicState = stateName;
+    // X4 #3: the authored 16 s reference loop becomes resident when its state is first heard.
+    acquireThemeStem(rt._samples, rt._themeMatrix && rt._themeMatrix.state);
     const frame = rt.bandBed && rt.bandBed.scoreFrame;
     const w = (!instant && scoreStemWeights(frame, rt._themeMatrix))
       || (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
@@ -8442,13 +8607,22 @@ export const audio = {
       // A director phase change inside one host state (arrival, threat, aftermath, departure)
       // lands on that phase's phrase grid; plain intensity drift rides now.
       const frame = rt.bandBed && rt.bandBed.scoreFrame;
-      const w = scoreStemWeights(frame, theme);
+      const bossNow = theme.state === 'boss';
+      const bossMoved = bossNow !== (rt._bossMixLatch === true);
+      // X4 #1 — a boss arriving MID-FIGHT cannot change `desired`: the boss maps to the combat
+      // music state, so this branch is the only place its authored row can land. `scoreStemWeights`
+      // returns null for a boss frame by design, so the authored row is used instead. When the
+      // boss dies, the same branch must put the fight mix back.
+      const w = (bossNow || bossMoved)
+        ? (theme.audibleStemWeights || theme.stemWeights)
+        : scoreStemWeights(frame, theme);
+      rt._bossMixLatch = bossNow;
       const last = rt._stemTargets;
       const phaseMoved = !!frame && rt._scoreTransitionsSeen !== frame.transitions;
       if (frame) rt._scoreTransitionsSeen = frame.transitions;
-      if (w && (phaseMoved || !last || ['A', 'B', 'C', 'D'].some((k) => Math.abs((w[k] || 0) - (last[k] || 0)) > 0.04))) {
+      if (w && (phaseMoved || bossMoved || !last || ['A', 'B', 'C', 'D', 'E'].some((k) => Math.abs((w[k] || 0) - (last[k] || 0)) > 0.04))) {
         rt._musicFeed = STEM_KEYS.reduce((sum, key) => sum + (w[key] || 0), 0);
-        this._applyStemTargets(w, phaseMoved ? XFADE_S / 3 : 1.2, phaseMoved ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 0);
+        this._applyStemTargets(w, (phaseMoved || bossMoved) ? XFADE_S / 3 : 1.2, phaseMoved ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 0);
       }
       this._idleQuietStems();
       return;

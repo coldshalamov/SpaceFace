@@ -67,7 +67,7 @@ import {
   gateAuditCatalogEntry,
   tideBand,
 } from '../data/worldPressure.js';
-import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
+import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus, setMapOpen } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
 import { entityAttr } from './entityResolver.js';
@@ -5163,6 +5163,8 @@ export const galaxyMapScreen = {
     this._labelSolveReuse = null;
     this._clearFieldCache = null;
     if (ctx) this._ctx = ctx;
+    // X5 #7: the input context reads this latch; the map owner is its only writer.
+    setMapOpen(ctx && ctx.state, true);
     this._visible = true;
     this._selectedTarget = null;
     this._hoverTarget = null;
@@ -5251,6 +5253,7 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._labelSolveReuse = null;
+    setMapOpen(this._ctx && this._ctx.state, false);
     this._visible = false;
     this._iris = null;
     this._releaseSensorLattice();

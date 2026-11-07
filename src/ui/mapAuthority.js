@@ -86,6 +86,19 @@ export function setMapOpenIntent(state, intent) {
   return normalized;
 }
 
+/**
+ * X5 #7 — the map's presence latch. `src/data/inputContexts.js` resolves the map context from
+ * this bit (and from the top of `state.ui.screenStack`); before this writer existed, nothing in
+ * live play set it and the map context could not resolve outside a test. The map owner writes it
+ * on show/hide, so a docked pilot with the chart open reads Map, not Station.
+ */
+export function setMapOpen(state, open) {
+  if (!state) return false;
+  if (!state.ui) state.ui = {};
+  state.ui.mapOpen = open === true;
+  return state.ui.mapOpen;
+}
+
 /** Read and clear the pending open intent. */
 export function takeMapOpenIntent(state) {
   if (!state || !state.ui) return null;
@@ -114,6 +127,7 @@ function resolveScreenManager(ctx) {
 export function openGalaxyMap(ctx, intent = {}) {
   if (!ctx) return false;
   setMapOpenIntent(ctx.state, { source: intent && intent.source, ...intent });
+  setMapOpen(ctx.state, true);
   const mgr = resolveScreenManager(ctx);
   if (mgr) {
     if (typeof mgr.top === 'function' && mgr.top() === MAP_SCREEN_ID) {

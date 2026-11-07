@@ -18,6 +18,7 @@ import {
   THEME_STATES,
   THEME_MOTIFS,
   TRAVEL_MOTIF,
+  STEM_ID_BY_STATE,
   SECTOR_BEDS,
   FACTION_STINGS,
   THEME_STEM_WEIGHTS,
@@ -63,6 +64,14 @@ test(`seed ${MEASURE_SEED}: five state themes, each with a hummable motif and au
     assert.equal(stem.motif, motif.hummable);
   }
   console.log(`[pq-158.03 themes] seed=${MEASURE_SEED} travel="${TRAVEL_MOTIF.hummable}" combat="${THEME_MOTIFS.combat.hummable}" station="${THEME_MOTIFS.station.hummable}" wanted="${THEME_MOTIFS.wanted.hummable}"`);
+});
+
+test('X4 #5: every motif tempo is the MUSIC_STEMS row tempo — one source', () => {
+  for (const state of THEME_STATES) {
+    const row = MUSIC_STEMS.find((r) => r.id === STEM_ID_BY_STATE[state]);
+    assert.ok(row, `${state} has no MUSIC_STEMS row`);
+    assert.equal(THEME_MOTIFS[state].bpm, row.bpm, `${state}: motif ${THEME_MOTIFS[state].bpm} vs row ${row.bpm}`);
+  }
 });
 
 test('a stranger can hum the travel theme: rising A-minor arpeggio to the octave', () => {
@@ -227,6 +236,24 @@ test('the adaptive matrix drives authored stems; Band intent carries the sector 
   assert.notEqual(helios.bed.kind, sker.bed.kind);
 });
 
+/** Normalized autocorrelation of a mono PCM buffer at a lag in seconds. 1 = exact repeat. */
+function autocorrelation(pcm, sampleRate, lagSeconds) {
+  const lag = Math.max(1, Math.round(lagSeconds * sampleRate));
+  const n = pcm.length - lag;
+  if (n <= 0) return 0;
+  let acc = 0;
+  let e1 = 0;
+  let e2 = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pcm[i];
+    const b = pcm[i + lag];
+    acc += a * b;
+    e1 += a * a;
+    e2 += b * b;
+  }
+  return acc / Math.sqrt(e1 * e2 + 1e-12);
+}
+
 test(`seed ${MEASURE_SEED}: authored travel WAV is the phrase a stranger hums`, () => {
   const entry = SAMPLE_MANIFEST.get('theme_travel');
   assert.ok(entry, 'theme_travel missing from SAMPLE_MANIFEST');
@@ -235,17 +262,35 @@ test(`seed ${MEASURE_SEED}: authored travel WAV is the phrase a stranger hums`, 
   const decoded = decodePcmWav(readFileSync(file));
   assert.ok(decoded, 'theme_travel is not a PCM WAV');
   const hummed = humMelodyFromPcm(decoded.pcm, decoded.sampleRate);
-  // X4 authored a 16 s loop: the four-note phrase repeats across it. The stranger must hear the
-  // same motif on every pass, not a drifting one.
-  assert.ok(hummed.length >= 4, `authored stem hummed ${hummed.join(' ') || '(silence)'}`);
+  // X4 authored a 16 s loop: the first phrase is the written motif, so a stranger still hums it.
+  assert.ok(hummed.length >= 8, `authored stem hummed ${hummed.join(' ') || '(silence)'}`);
   assert.deepEqual(hummed.slice(0, 4), ['A', 'C', 'E', 'A'], `authored stem opened ${hummed.slice(0, 4).join(' ')}`);
-  for (let i = 4; i + 4 <= hummed.length; i += 4) {
-    assert.deepEqual(hummed.slice(i, i + 4), ['A', 'C', 'E', 'A'], `repeat at ${i}`);
-  }
+  // X4 #2: the loop DEVELOPS. Pass two is the same line walked backwards (the answer phrase),
+  // so a 16 s listen is not the same 4 s bar four times.
+  assert.deepEqual(hummed.slice(4, 8), ['A', 'E', 'C', 'A'], `answer at 4: ${hummed.slice(4, 8).join(' ')}`);
+  // The brief's never-list: "a 4-bar loop with no development". The old tiled stem measured
+  // 0.976 at 4.00 s; the developing form must not repeat at that period.
+  const r4 = autocorrelation(decoded.pcm, decoded.sampleRate, 4);
+  assert.ok(r4 < 0.5, `travel stem still repeats at 4.00 s (r=${r4.toFixed(3)})`);
   for (const asset of THEME_ASSETS) {
     const row = SAMPLE_MANIFEST.get(asset.id);
     assert.ok(row, `${asset.id} missing from SAMPLE_MANIFEST`);
     assert.ok(existsSync(path.join(ROOT, row.file)), `${asset.id} file missing`);
   }
-  console.log(`[pq-158.03 authored-stem] seed=${MEASURE_SEED} file=${entry.file} hummed="${hummed.join(' ')}" assets=${THEME_ASSETS.length}`);
+  console.log(`[pq-158.03 authored-stem] seed=${MEASURE_SEED} file=${entry.file} hummed="${hummed.join(' ')}" r4=${r4.toFixed(3)} assets=${THEME_ASSETS.length}`);
+});
+
+test('X4 #2: no authored stem is a tiled 2–4 s loop', () => {
+  const measured = [];
+  for (const asset of THEME_ASSETS.filter((a) => a.kind === 'stem')) {
+    const decoded = decodePcmWav(readFileSync(path.join(ROOT, SAMPLE_MANIFEST.get(asset.id).file)));
+    assert.ok(decoded, `${asset.id} is not a PCM WAV`);
+    assert.equal(Math.round(decoded.seconds), 16, `${asset.id} is not a 16 s loop`);
+    for (const lag of [2, 3, 4]) {
+      const r = autocorrelation(decoded.pcm, decoded.sampleRate, lag);
+      assert.ok(r < 0.5, `${asset.id} repeats at ${lag}.00 s (r=${r.toFixed(3)})`);
+      measured.push(`${asset.id}@${lag}s=${r.toFixed(2)}`);
+    }
+  }
+  console.log(`[x4 stem-form] ${measured.join(' ')}`);
 });

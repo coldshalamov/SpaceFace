@@ -440,9 +440,13 @@ function binding(state, action) {
   const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
   const scheme = SCHEME_BINDINGS[activeScheme(state)];
   const power = powerVerbFor(action);
-  // X5: the active context admits only its short set — every other verb resolves to no binding.
-  // Swarm keeps S5's exact set; station/map have no flight verbs; combat has the fight set.
-  if (!contextActionAllowed(state, power)) return [];
+  // X5 P0 — LABELS STAY HONEST. This resolver feeds the Help sheet, HUD prompts and the tick.
+  // Gating it by CONTEXT blanked every verb the player's current place refuses (a docked pilot
+  // read "-" for the whole flight sheet, a fighter lost Travel burn), so the Adventure contexts
+  // resolve the full binding here and the TICK gates in `_held` / `_heldExcept` / `_padEdge` /
+  // `_padHeld`. Swarm is the one exception: S5's compact arcade set IS the run's published
+  // contract, and `test/swarm-controls.test.mjs` pins that every Adventure-only verb is inert.
+  if (isSwarmControls(state) && !contextActionAllowed(state, power)) return [];
   const saved = power === action ? (cfg && cfg[action]) : undefined;
   const custom = saved || (POWER_VERBS.includes(power) ? savedCodesForPower(cfg, power) : undefined);
   const list = custom
@@ -1662,14 +1666,17 @@ export const input = {
     this._cmHeld = false;
   },
 
-  // True if any of the bound codes for `action` is currently held.
+  // True if any of the bound codes for `action` is currently held. The CONTEXT gate lives here
+  // (the tick), never in `binding()` — see the label comment on `binding`.
   _held(state, action) {
+    if (!contextActionAllowed(state, action)) return false;
     const k = this._keys;
     for (const code of binding(state, action)) if (k[code]) return true;
     return false;
   },
 
   _heldExcept(state, action, exceptCode) {
+    if (!contextActionAllowed(state, action)) return false;
     const k = this._keys;
     for (const code of binding(state, action)) if (code !== exceptCode && k[code]) return true;
     return false;

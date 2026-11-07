@@ -25,11 +25,16 @@ export const BARS_PER_PHRASE = 4;
 // refresh without the threat context) cannot drop a fight into its aftermath for one tick.
 export const PHASE_DEBOUNCE_S = 0.3;
 
-// Engine-native tempi of the four progressive stems (audioSystem stems A..D).
+// Engine-native ARRANGEMENT tempi of the four Adventure stems (audioSystem stems A..D) plus the
+// boss. This is the sequencer's own grid — its 16th patterns are written for these tempi and the
+// stunt layer's 59–65 ms double-time contract depends on them. It is NOT the authored theme
+// tempo: `src/data/audioRecipes.js` MUSIC_STEMS.bpm owns that (read by themeMatrix, the WAV
+// renderer and the boss sequencer). X4 #5 fixed the authored-theme drift (station 116 vs 72 in two
+// files); the arrangement value is a different musical layer and is deliberately not the same number.
 export const PHASE_STEM = Object.freeze({
   arrival: 'A', travel: 'A', work: 'A', threat: 'B', fight: 'C', aftermath: 'A', dock: 'D', departure: 'A',
 });
-export const STEM_BPM = Object.freeze({ A: 122, B: 124, C: 128, D: 116 });
+export const STEM_BPM = Object.freeze({ A: 122, B: 124, C: 128, D: 116, E: 100 });
 
 // How long the music may wait before a change lands: a fight cannot wait a phrase, a
 // resolution should. Units are bars of the incoming stem.

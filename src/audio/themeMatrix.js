@@ -14,13 +14,28 @@ export const THEME_STATES = Object.freeze(['travel', 'combat', 'station', 'wante
 // loop in the audio host reads this one list; a sixth stem is one edit here plus one data row.
 export const STEM_KEYS = Object.freeze(['A', 'B', 'C', 'D', 'E']);
 
+// X4 #5 — ONE tempo per state. `src/data/audioRecipes.js` owns the MUSIC_STEMS row (id, label,
+// bpm); the motif reads it so the authored theme, the runtime sequencer and the Help/spec text
+// cannot disagree. A row-less state falls back to its old authored tempo.
+export const STEM_ID_BY_STATE = Object.freeze({
+  travel: 'stem_a',
+  wanted: 'stem_b',
+  combat: 'stem_c',
+  station: 'stem_d',
+  boss: 'stem_e',
+});
+function stemBpm(state, fallback) {
+  const row = MUSIC_STEMS.find((r) => r && r.id === STEM_ID_BY_STATE[state]);
+  return row && Number.isFinite(row.bpm) ? row.bpm : fallback;
+}
+
 // Huggable travel lead: rising A-minor arpeggio to the octave. A stranger can hum "A C E A".
 export const TRAVEL_MOTIF = Object.freeze({
   id: 'travel_outbound',
   name: 'Outbound',
   hummable: 'A C E A',
   key: 'Am',
-  bpm: 80,
+  bpm: stemBpm('travel', 80),
   stem: 'A',
   notes: Object.freeze(['A', 'C', 'E', 'A']),
   octaves: Object.freeze([4, 5, 5, 5]),
@@ -37,7 +52,7 @@ export const COMBAT_MOTIF = Object.freeze({
   name: 'Press',
   hummable: 'A E A C',
   key: 'Am',
-  bpm: 130,
+  bpm: stemBpm('combat', 130),
   stem: 'C',
   notes: Object.freeze(['A', 'E', 'A', 'C']),
   octaves: Object.freeze([3, 4, 3, 4]),
@@ -54,7 +69,7 @@ export const STATION_MOTIF = Object.freeze({
   name: 'Berth',
   hummable: 'C E G B',
   key: 'C',
-  bpm: 72,
+  bpm: stemBpm('station', 72),
   stem: 'D',
   notes: Object.freeze(['C', 'E', 'G', 'B']),
   octaves: Object.freeze([4, 4, 4, 4]),
@@ -71,7 +86,7 @@ export const WANTED_MOTIF = Object.freeze({
   name: 'Mark',
   hummable: 'A Bb A E',
   key: 'Am',
-  bpm: 95,
+  bpm: stemBpm('wanted', 95),
   stem: 'B',
   notes: Object.freeze(['A', 'Bb', 'A', 'E']),
   octaves: Object.freeze([3, 3, 3, 3]),
@@ -86,22 +101,43 @@ export const WANTED_MOTIF = Object.freeze({
 // X4: a fifth authored theme for the boss. Low fourths, then a raised sixth answering them —
 // the same "something is walking toward you" shape as the combat motif, a register lower and
 // slower to breathe. Distinct from every other interval signature by test.
+//
+// X4 #3: a boss fight is not the combat loop louder. 100 BPM (the fight is 130), a two-bar phrase
+// with real rests, and the phrase's last note lands on bar 2 — `bar` is a BAR, i.e. sixteen
+// sixteenth steps, the same grid the sequencer's `step % 16` uses.
 export const BOSS_MOTIF = Object.freeze({
   id: 'boss_warden',
   name: 'Warden',
   hummable: 'A D A F#',
   key: 'Am',
-  bpm: 132,
+  bpm: stemBpm('boss', 100),
   stem: 'E',
   notes: Object.freeze(['A', 'D', 'A', 'F#']),
   octaves: Object.freeze([2, 2, 2, 3]),
   steps: Object.freeze([
     Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 2, dur: 6 }),
-    Object.freeze({ bar: 0, beat: 6, note: 'D', oct: 2, dur: 6 }),
-    Object.freeze({ bar: 0, beat: 12, note: 'A', oct: 2, dur: 4 }),
-    Object.freeze({ bar: 1, beat: 0, note: 'F#', oct: 3, dur: 8 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'D', oct: 2, dur: 6 }),
+    Object.freeze({ bar: 1, beat: 0, note: 'A', oct: 2, dur: 4 }),
+    Object.freeze({ bar: 1, beat: 8, note: 'F#', oct: 3, dur: 8 }),
   ]),
 });
+
+/** Sixteenth steps in one motif bar. `beat` is the sequencer's sixteenth index (step % 16). */
+export const MOTIF_STEPS_PER_BAR = 16;
+
+/** How many bars a written motif occupies (its last step's bar + 1). */
+export function motifPhraseBars(motif) {
+  const steps = (motif && Array.isArray(motif.steps) && motif.steps.length) ? motif.steps : motifStepsLike(motif);
+  let bars = 1;
+  for (const row of steps) bars = Math.max(bars, (Number(row && row.bar) || 0) + 1);
+  return bars;
+}
+
+/** The read-only estimate a motif without explicit steps would produce (notes at quarter notes). */
+function motifStepsLike(motif) {
+  const notes = (motif && motif.notes) || [];
+  return notes.map((note, i) => ({ bar: 0, beat: i * 4 }));
+}
 
 export const THEME_MOTIFS = Object.freeze({
   travel: TRAVEL_MOTIF,

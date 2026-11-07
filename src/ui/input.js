@@ -29,6 +29,7 @@ import { dedupError } from '../core/warnDedup.js';
 import { createDockIntent } from '../core/dockIntent.js';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { isSwarmControls } from '../data/swarmControls.js';
+import { contextUiAllowed } from '../data/inputContexts.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -690,6 +691,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       return;
     }
     if (matchesBinding(ev, BINDINGS.band)) {
+      if (!contextUiAllowed(state, 'band')) return;
       ev.preventDefault();
       // Consumed UI key: stopPropagation is the only suppression the window-level flight
       // adapter honors (defaultPrevented is never inspected — see the dock case below).
@@ -699,6 +701,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     }
 
     if (matchesBinding(ev, BINDINGS.recallObjective)) {
+      if (!contextUiAllowed(state, 'recallObjective')) return;
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('hud:recallObjective');
@@ -708,6 +711,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // PQ-183.02: one key finds anything. In flight the palette mounts on #screens itself and
     // carries the .screen marker so the dossier drawer still has a host.
     if (matchesBinding(ev, BINDINGS.find)) {
+      if (!contextUiAllowed(state, 'find')) return;
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('ui:globalFind', {});
@@ -717,6 +721,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // PRO-09: dismiss the one-voice floor pill. The arbiter owns what may be cleared (danger and
     // the onboarding floor are protected); the key just asks.
     if (matchesBinding(ev, BINDINGS.dismissVoice)) {
+      if (!contextUiAllowed(state, 'dismissVoice')) return;
       ev.preventDefault();
       if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
       bus.emit('voice:dismiss', { source: 'keyboard' });
@@ -753,24 +758,30 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       // Legacy localmap/starmap screens remain registered for tools/checks only.
       case BINDINGS.localmap.key:
       case BINDINGS.localmap.label:
+        if (!contextUiAllowed(state, 'localmap')) return;
         ev.preventDefault();
         openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.LOCAL, source: 'keyboard' });
         return;
       case BINDINGS.starmap.key:
       case BINDINGS.starmap.label:
+        if (!contextUiAllowed(state, 'starmap')) return;
         ev.preventDefault();
         openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'keyboard' });
         return;
       case BINDINGS.techTree.key:
       case BINDINGS.techTree.label:
+        if (!contextUiAllowed(state, 'techTree')) return;
         ev.preventDefault(); screenManager.pushScreen('techTree'); return;
       case BINDINGS.missionLog.key:
       case BINDINGS.missionLog.label:
+        if (!contextUiAllowed(state, 'missionLog')) return;
         ev.preventDefault(); screenManager.pushScreen('missionLog'); return;
       case BINDINGS.codex.key:
       case 'K':
+        if (!contextUiAllowed(state, 'codex')) return;
         ev.preventDefault(); screenManager.pushScreen('codex'); return;
       case 'F1': case 'h': case 'H':
+        if (!contextUiAllowed(state, 'help')) return;
         ev.preventDefault(); screenManager.pushScreen('help'); return;
       case 'Tab':
         ev.preventDefault();
@@ -809,6 +820,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case 'F2':
         // THE SHIP (grammar §10.5 canonical key table; build map §11.3). uiRoot owns its
         // demand-loaded registration so a repeated F2 can cancel a still-pending open.
+        if (!contextUiAllowed(state, 'ship')) return;
         if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -816,18 +828,21 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       case 'F3':
         // THE FOOTPRINT (grammar §10.5; build map §11.12 J10). Pausing instrument, same ruling.
+        if (!contextUiAllowed(state, 'footprint')) return;
         ev.preventDefault();
         screenManager.pushScreen('footprint');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       case 'F4':
         // THE RANGE (grammar §10.5 / SCREENS_B §2): pausing playable teaching box.
+        if (!contextUiAllowed(state, 'range')) return;
         ev.preventDefault();
         screenManager.pushScreen('range');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
+        if (!contextUiAllowed(state, 'debug')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         const dbg = state.render && state.render.debug;
@@ -836,6 +851,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       }
       case BINDINGS.drill.key:
       case BINDINGS.drill.label:
+        if (!contextUiAllowed(state, 'drill')) return;
         // B is the rebindable contextual World Site beam while a site proxy is explicitly selected.
         // Leave the event unconsumed for the simulation input owner; ordinary asteroid B retains
         // the established drill-view behavior below.
@@ -847,12 +863,14 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         return;
       case BINDINGS.cargo.key:
       case BINDINGS.cargo.label:
+        if (!contextUiAllowed(state, 'cargo')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:toggleCargo');
         return;
       case 'o': case 'O':
         // Auto-repeat must not strobe the contacts-strip pin: one toggle per keypress.
+        if (!contextUiAllowed(state, 'overview')) return;
         if (ev.repeat) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -861,6 +879,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case BINDINGS.fleetCommand.key:
       case BINDINGS.fleetCommand.label:
         // Wingman command radial (Micro-Loops): pop the quick fleet-command wheel.
+        if (!contextUiAllowed(state, 'fleetCommand')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:wingmanRadial');
@@ -869,12 +888,14 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case BINDINGS.comms.label:
         // Comms log (narrative overlay): open the channel backlog. The feed itself
         // streams on the left edge continuously; this opens the full searchable history.
+        if (!contextUiAllowed(state, 'comms')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('ui:toggleComms');
         return;
       case BINDINGS.claimBase.key:
       case BINDINGS.claimBase.label:
+        if (!contextUiAllowed(state, 'claimBase')) return;
         // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
         // screen for an already-claimed body to build modules / teleport. In OPEN SPACE (no claimable
         // body) the UI router does NOT own the key — it falls through so the flight-input verb
@@ -886,11 +907,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         }
         return;
       case 'F5':
+        if (!contextUiAllowed(state, 'save')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:save', { slot: 'quick' });
         return;
       case 'F9':
+        if (!contextUiAllowed(state, 'load')) return;
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
         bus.emit('game:load', { slot: 'quick' });

@@ -15,7 +15,7 @@ export function stuntBankTier(bank) {
 }
 
 export function stuntScoreBpm(musicState) {
-  return STEM_BPM[musicState === 'combat' ? 'C' : musicState === 'tense' ? 'B' : musicState === 'docked' ? 'D' : 'A'];
+  return STEM_BPM[musicState === 'combat' ? 'C' : musicState === 'tense' ? 'B' : musicState === 'docked' ? 'D' : musicState === 'boss' ? 'E' : 'A'];
 }
 
 // Double-time performance sixteenths nest inside the score's sixteenths. Their 59–65 ms
