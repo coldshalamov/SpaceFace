@@ -23,6 +23,7 @@ import { stationControlAttrs, stationControlLabel } from '../stationBindingMap.j
 import { createChainBeam } from '../../orrery/chainBeam.js';
 import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
+import { injectOrreryStationIndustry } from '../../orrery/station-industryLayouts.js';
 import { industryPictogram } from '../../orrery/industryGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
@@ -159,6 +160,7 @@ export function industryBlocker(bp, r) {
 }
 
 export function createIndustryScreen(ctx) {
+  injectOrreryStationIndustry();
   const el = document.createElement('div');
   el.className = 'k-panel sx-ind';
   el.innerHTML = industryFrameHtml();
