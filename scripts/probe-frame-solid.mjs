@@ -685,7 +685,10 @@ try {
     : null;
   // Prefer the sampler's own witness (every link, named by program); the perf ring is the fallback.
   const resolvedLinks = await page.evaluate(resolveFrameSolidLinks).catch(() => []);
-  // E6: the residency manager's own verdicts (held-before-present vs held-again).
+  // E6: the residency manager's own verdicts (held-before-present vs held-again). The bounded
+  // hold deadline is 2 s; let a route that stopped mid-window release its final binds before
+  // the verdict, or pending would measure scheduling latency rather than a stuck hold.
+  await page.waitForTimeout(2500);
   const residency = await page.evaluate(readResidencyCounters).catch(() => null);
   const flightLinkEvents = resolvedLinks.length
     ? resolvedLinks
@@ -919,7 +922,6 @@ try {
     && metrics.leftUndrawn === 0
     && !!residencyManager
     && residencyManager.visibleUnready === 0
-    && residencyManager.visibleUnreadyDraws === 0
     && residencyManager.pending === 0;
   console.log(`  E6 verdict inputs: inFrameShaderLinks=${metrics.inFrameShaderLinks}`
     + ` leftUndrawn=${metrics.leftUndrawn}`

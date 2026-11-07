@@ -507,7 +507,13 @@ export function createResidencyManager(options = {}) {
   }
 
   function pendingCount() {
-    return pendingRoots.length + inFlight.size + heldUnqueued.size;
+    // In-flight roots released by the bounded deadline (or unbound) are upload work, not a
+    // held drawable: they must not report as pending visibility.
+    let count = pendingRoots.length + heldUnqueued.size;
+    for (const root of inFlight) {
+      if (isHeld(root)) count += 1;
+    }
+    return count;
   }
 
   /** Whether the root still has unuploaded geometry (nil driver treats every hold as pending). */
