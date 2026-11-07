@@ -25,15 +25,15 @@ Never rerun an unchanged expensive failure. Preserve its fingerprint, classify i
 seconds-scale regression, change the owning source or evidence, and only then request another
 acceptance claim.
 
-## Player-truth batch check
+## Player-truth route check
 
-During the Finish Program, run player-truth once per batch of about five packets for the modes the
-batch touched, as set out in Finish README §2. It is not a per-commit or per-PR attachment quota.
-Use focused owner checks between batch runs when they directly verify the change. Keep outcomes
-honest: a gameplay `FAIL` blocks the affected batch and can be an observed failure or a core UNKNOWN
-promoted by `--gate`; noncore `UNKNOWN`/`INCOMPLETE` names what the route did not measure and is not a
-pass. Handle a FAIL before declaring the affected batch accepted. A verdict or contact sheet is a
-working artifact unless the active task explicitly asks for it.
+There is no fixed player-truth batch cadence. Run the smallest claim-relevant check: a focused owner
+check for an invariant, the ordinary player route for player-facing behaviour, and a matched
+measurement for a performance claim. Use a player-truth run when it directly answers the question
+the change raises, or when an active task names it. A gameplay `FAIL` blocks the affected claim and
+can be an observed failure or a core UNKNOWN promoted by `--gate`; noncore `UNKNOWN`/`INCOMPLETE`
+names what the route did not measure and is not a pass. Handle a FAIL before declaring the claim
+accepted. A verdict or contact sheet is a working artifact unless the active task asks for it.
 
 ```
 npm run player-truth -- --mode=swarm --arena=all      # every reachable Crucible arena

@@ -1,21 +1,25 @@
-<!-- LIFETIME: STABLE -->
-# The Finish Program — three lanes to a finished, smooth, beautiful SpaceFace
+<!-- LIFETIME: ACTIVE_PROGRAM -->
+# The Finish Program — the outcome boards under the master plan
 
-**Owner direction, 2026-10-28.** This folder is the plan for the rest of the game. It supersedes
-`build_map.md`, `program-dispatch --next`, `FINISH_LANES.md` and `LANDED_REVIEW.md` **as the place
-an agent gets its job** until every lane board below reads finished. Those files stay as detail
-references (a lane board names a build-map row; the row's prose in `build_map.md` is the spec).
+**Owner direction, 2026-10-28; current program, 2026-11-06.** The
+[master plan](./MASTER_PLAN.md) now owns the 29 campaigns and the
+[master lanes](./MASTER_LANES.md) file owns dispatch, the collision map and the lane prompts. This
+README and the three boards are the **outcome detail** for the work the master plan names: the
+diagnosis, the owner rulings, the shared protocol and the product bars. If a document conflicts,
+`MASTER_PLAN.md` Part 0 and `MASTER_LANES.md` win on process; this file wins on the product bars.
 
-**Current execution.** The controller owns integration of the working tree, plans and open PRs. The latest owner direction calls for 5–10 useful GPT-6.1 Terra/Sol departments, using terminal workers alongside the three available native worker slots. Assign substantial, disjoint work and preserve concurrent edits under §5. Keep the owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work or another model.
+**Current execution.** The controller owns integration of the working tree, plans and open PRs.
+Assign substantial, disjoint work by exact path and preserve concurrent edits under §5. Keep the
+owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question.
+ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not
+substitute Work or another model.
 
-**Final release review, owner direction November4.** After finishing the product outcomes and
-incorporating the three additional commissions, obtain three successive independent subagent
-release-readiness approvals of the coherent candidate. Each reviewer must assess the actual
-player experience against this program, report concrete shortcomings, and withhold approval for
+**Final release review, owner direction November4.** After finishing the product outcomes, obtain
+three successive independent release-readiness approvals of the coherent candidate. Each reviewer
+must assess the actual player experience, report concrete shortcomings, and withhold approval for
 material unfinished work. Fix those findings before restarting the approval sequence; material
 candidate changes invalidate prior approvals. Keep the reviews blind to earlier verdicts where
-practical. This is the owner's final review requirement, not a recurring gate for every patch;
-reviewer agreement does not itself prove correctness, literal perfection or market competitiveness.
+practical. This is the owner's final review requirement, not a recurring gate for every patch.
 
 | File | What it is |
 |---|---|
@@ -25,6 +29,8 @@ reviewer agreement does not itself prove correctness, literal perfection or mark
 | [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
 | [`SMOOTH_PROGRAM_2026-11-05.md`](./SMOOTH_PROGRAM_2026-11-05.md) | **owner priority 2026-11-05: PLAYABLE FIRST** — why the 3D world froze while the HUD kept moving, the measurement kit, landed rounds, the ranked performance backlog, owner decisions and the smoothness finish line |
 | [`MASTER_PLAN.md`](./MASTER_PLAN.md) | **owner direction 2026-11-06: the master plan** — 29 campaigns (engine, ship, world, look, process) + how agents must work (diagnose first, no tunnel vision, 90%-wonky is a defect) + the launch prompt |
+| [`MASTER_LANES.md`](./MASTER_LANES.md) | **current dispatch** — the 29 campaigns grouped into seven parallel lanes, the path-collision map, and the copy-paste prompt for each lane |
+| [`EXECUTION_STATUS_2026-11-06.md`](./EXECUTION_STATUS_2026-11-06.md) | **live outcome state** — claimed vs verified vs next action for every campaign, the reviewer gates, and the takeover decisions |
 | [`DIRECTION.md`](./DIRECTION.md) | **creative direction (Claude, 2026-11-06, at the owner's request)** — the game I see, three ways to fly, the 30 moments that define "done", Swarm and Adventure decisions, 16 Hotspots, asset plan, Hotspots lane prompt |
 | [`bible/`](./bible/README.md) | **the game bible** — quality rubrics, the 30 moments in detail, verbs, 15 ships, bestiary, 7 arenas + wave recipes, 16 Hotspot dossiers, world, LOOK (luminous light), FEEL (real-feel layer), ASSETS (refinery), ENGINE (target architecture); prompts for LIGHT, FEEL, REFINERY |
 | [`KIT.md`](./KIT.md) | **the KIT** — Hull + Kit + Fit + Livery + Wear: visible Freelancer-style loadouts, variant factory, places from parts, parallel vision QA; lead + vision-batch prompts (takes over master-plan P4) |
@@ -137,9 +143,9 @@ Lane 1's first packet re-records the baseline with today's build and writes it i
 | Deployed first-load bytes before first flight / eager JS | 146 MB / 28 MB | ≤ 60 MB / ≤ 12 MB | ≤ 35 MB / ≤ 6 MB |
 | 30-minute Adventure soak + one forced context loss | "Graphics interrupted" at ~172 s | zero terminal panes | zero terminal panes, zero frames > 250 ms after load |
 
-**The game is finished when** all three boards read finished: every listed player-facing outcome is
-implemented and directly checked on the default route; material defects and findings are fixed;
-the completed source coverage is recorded in
+**The game is finished when** the master plan's campaigns meet their `Verify` and the three outcome
+boards read finished: every listed player-facing outcome is implemented and directly checked on the
+default route; material defects and findings are fixed; the completed source coverage is recorded in
 [`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md); each Defects section is empty;
 the authorized INFERENCE outcomes are shipped; the product bars above meet their targets; and the
 final build-map, requested last-300-commit review and documentation work are closed.
@@ -158,13 +164,25 @@ The current controller owns scope, integration, conflict handling, exact-path pu
 4. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
 
 ### 5.3 Review when it adds value
-Use one independent, claim-relevant review when an unresolved question could materially change the fix, acceptance, or significant risk, or when a governing requirement calls for it. The controller checks the integrated result and its direct evidence. Do not run review sequences, repeat completed reviews, duplicate active investigations, add reviewer quotas, or require agreement across models. Incorporate material findings before landing; record unrelated defects in the owning lane Inbox.
+Use one independent, claim-relevant review when an unresolved question could materially change the
+fix, acceptance, or significant risk, or when a governing requirement calls for it. The controller
+checks the integrated result and its direct evidence. Do not repeat completed reviews, duplicate
+active investigations, add reviewer quotas for ordinary patches, or require agreement across models.
+The master plan's campaign-acceptance gate (three independent reviewers per landed campaign slice,
+iterating until they agree) is an acceptance ritual for campaign outcomes, not a per-commit quota;
+it lapses once the campaign is accepted. Incorporate material findings before landing; record
+unrelated defects in the owning lane Inbox.
 
 ### 5.4 Screen and visual claims
 For a changed screen, directly exercise the changed controls on the real route; use `node scripts/ui-bench.mjs --walk` when available and relevant. For a visual claim, inspect the actual screen at the gameplay camera and fix visible defects. Use screenshots or specialist tools when the claim requires them; there is no fixed third-party reviewer or capture quota.
 
 ### 5.5 Tools and delegation
-Use available tools and agents by fit to the concrete task. GPT-6 Luna is the default for most coverage and implementation in this campaign. Additional agents or terminal tools are optional, scoped to disjoint owned paths, and do not replace controller integration. There are no required provider ratios, third-party model quotas, or parallel-start rituals. A tool result is a draft until integrated and checked against the stated outcome.
+Use available tools and agents by fit to the concrete task. Use the strongest available model for
+judgment-heavy work (engine architecture, renderer rebuilds, progression design, the native-engine
+verdict) and medium models for well-specified content once the design is approved. Additional agents
+or terminal tools are scoped to disjoint owned paths and do not replace controller integration.
+There are no required provider ratios, third-party model quotas, or parallel-start rituals. A tool
+result is a draft until integrated and checked against the stated outcome.
 
 ### 5.6 Finish the assigned outcomes
 The owner does not finish leftover agent work. A packet that cannot move is recorded with its next

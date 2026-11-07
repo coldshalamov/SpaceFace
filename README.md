@@ -52,11 +52,11 @@ Asteroids live out in the **belt sectors** (e.g. Ceres Belt) — the starting hu
 
 - **Flight & combat** — semi‑Newtonian thrust/drag flight, mouse‑aim, boost; lasers/autocannons/missiles with energy + heat; enemy AI archetypes (swarmer/sniper/brawler/pirate/trader/capital); 4‑layer health (hull/armor/shield/cap); loot, bounties, death + respawn.
 - **Mining & cargo** — beam mining of 6 asteroid types into a volume‑capped hold; ore pickups + magnet; salvage.
-- **Living economy** — 33 commodities across a real supply/demand market per station (price‑from‑stock, spreads, price impact, drift, economic events, contraband + fines). Profitable trade routes actually exist.
-- **Progression** — 13 ships (T0–T5), ~35 weapons/modules across a 6‑type slot grid, a 28‑node tech tree, shipyard + drag‑fit outfitting with live stat deltas.
-- **World** — 10 sectors as a jump graph, fuel + jump drive, interdiction, fog‑of‑war, route planning (Dijkstra), hazards.
-- **Factions** — 8 factions, −1000..+1000 / 9‑tier reputation, hostility/aggro, price modifiers, spillover, conflict.
-- **Missions** — deterministic station boards, 10 mission types (delivery, bounty, mining quota, escort, smuggling, …), objective tracking, and an 8‑beat story spine that teaches the systems.
+- **Living economy** — 66 commodities across a real supply/demand market per station (price‑from‑stock, spreads, price impact, drift, economic events, contraband + fines). Profitable trade routes actually exist.
+- **Progression** — 15 ships (T0–T5), 48 weapons and 164 modules across a 6‑type slot grid, a 35-node tech tree, shipyard + drag‑fit outfitting with live stat deltas.
+- **World** — a sector jump graph, fuel + jump drive, interdiction, fog‑of‑war, route planning (Dijkstra), hazards.
+- **Factions** — 14 factions, −1000..+1000 / 9‑tier reputation, hostility/aggro, price modifiers, spillover, conflict.
+- **Missions** — deterministic station boards, 22 mission types (delivery, bounty, mining quota, escort, smuggling, …), objective tracking, and an 8-beat story spine arranged into four acts that teaches the systems.
 - **Automation (anti‑idle)** — mining drones, hired traders on routes, outposts, fleet orders — passive income that is **capped** below active earnings, with upkeep, loss risk, and offline catch‑up.
 - **Full UI** — flight HUD (vitals, throttle, radar, target panel, cargo/credits, alerts), station hub (market/shipyard/outfitting/missions/services/factions/bar), star map, tech tree, automation panel, pause/settings/save‑load/help/main menu.
 - **Save/load** — versioned saves to localStorage + JSON export/import, autosave, migrations.
@@ -91,17 +91,16 @@ design/               current GDD/build plan plus historical design material
 loop decoupled from rendering. Content is data-driven. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for
 the full contract and [`docs/README.md`](docs/README.md) for task-oriented documentation routing.
 
-Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md). The sole whole-program
-status and pickup surface is [`design/program/README.md`](design/program/README.md);
-[`design/vision/ALPHA_PROGRAM.md`](design/vision/ALPHA_PROGRAM.md) owns Alpha scope/order, while the
-activated spec2/spec3/revamp/depth/graphics plan owns task detail.
+Current design authority lives in [`design/GDD_2_0.md`](design/GDD_2_0.md). The current program is the
+master plan in [`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md); dispatch
+and path ownership are in [`design/program/finish/MASTER_LANES.md`](design/program/finish/MASTER_LANES.md)
+and live outcome state is in
+[`design/program/finish/EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
 
-> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) for engineering invariants, and
-> [`build_map.md`](build_map.md) for program work / "what next" / multi-plan
-> dispatch (it routes into `design/program/` without replacing original plans).
-> `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
-> the design authority. Live status ledgers live under
-> [`design/program/README.md`](design/program/README.md).
+> **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) for engineering invariants, then the
+> master plan and master lanes above for current work. `ARCHITECTURE.md` (repo root) is the technical
+> contract; `design/GDD_2_0.md` is the design authority. Live write claims are in
+> [`design/program/NOW.md`](design/program/NOW.md).
 
 ### Dev helpers
 - `node scripts/check-data.mjs` — verify every data module's exports.
@@ -130,9 +129,10 @@ Desktop packaging is a shell concern only. It must not change gameplay, assets, 
 
 ## Current status and future work
 
-Implementation status changes quickly and is intentionally not duplicated here. The verified done/open split,
-acceptance state, retained future ideas, and exact resume order live in
-[`design/program/`](design/program/README.md).
+Implementation status changes quickly and is intentionally not duplicated here. The verified
+done/open split, acceptance state, retained future ideas, and exact resume order live in
+[`design/program/finish/EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md)
+and [`design/program/NOW.md`](design/program/NOW.md).
 
 ---
 

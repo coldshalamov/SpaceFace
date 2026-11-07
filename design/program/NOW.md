@@ -1,24 +1,25 @@
 <!-- LIFETIME: VOLATILE -->
 # NOW — current shared-checkout mutation claims
 
-The [Finish Program](finish/README.md) governs current work. This records active exact writes,
-not every agent on the machine. Read [integration coverage](finish/INTEGRATION_COVERAGE.md) for outcomes.
+<!--
+refreshed: 2026-11-06
+baseCommit: b5dbfa81d5bcf0132b45671fcb3aa0b2a4218e82
+expiresAfterCommits: 25
+expiresAfterDays: 2
+-->
 
-## Stop record — November5, 14:23 UTC
+The [Finish Program](finish/README.md) governs current work; the
+[master plan](finish/MASTER_PLAN.md) owns the 29 campaigns and
+[master lanes](finish/MASTER_LANES.md) owns dispatch. This board records active exact writes, not
+every agent on the machine. Outcome state is
+[EXECUTION_STATUS_2026-11-06.md](finish/EXECUTION_STATUS_2026-11-06.md).
 
-**Stopped at the owner's explicit request to write a detailed handoff and stop.** Do not resume,
-launch, publish or deploy without a new instruction. Root performance source through45b522 is
-committed. Native workers completed; no next game launched. Assignments below are historical
-for the stopped batch, not active leases. Full state, dirty ownership and subsequent plans:
-[PERFORMANCE_HANDOFF_2026-11-05.md](finish/PERFORMANCE_HANDOFF_2026-11-05.md).
+**Current owner priority:** finish the master plan. Diagnose first, then build; smoothness and
+player-visible outcomes outrank test-only green. Small, barely noticeable quality losses for medium
+or big measured gains are authorized; preserve authored identity and critical gameplay cues.
 
-**Current owner priority, November5:** smoothness first. Small barely noticeable quality losses
-for medium or big measured gains are authorized. Preserve authored identity and critical gameplay
-cues; judge the changed ordinary gameplay picture. Save/Continue and the ore tub are landed and
-out of the critical path unless a new material player failure appears.
-
-**Process protection:** never terminate, interrupt, disable or stop ZCode or any other running
-agent, executor, session or process. Keep Chrome/VLC. Normal cleanup only of proven task-owned game
+**Process protection:** never terminate, interrupt, disable or stop another running agent,
+executor, session or process. Keep Chrome/VLC. Normal cleanup only of proven task-owned game
 contexts/servers. Preserve concurrent edits; no reset/restore/clean/stash or broad staging.
 
 | Work | Owner | Exact write set / state | Next action |
@@ -217,30 +218,14 @@ Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/
 - **Held back, needs a decision:** economy spike slicing is implemented and measured
   (130–150 ms → ~3 ms/call) but changes the 47-A hash, so it needs one versioned reference
   (`save-v24`) before it can ship. `simCoreFlags.economySlicing` is the switch.
-- **Blocker for further measurement, not mine:** the working-tree `src/data/missions.js` is a foreign
-  in-flight rewrite importing `./kesslerScaleWorksite.js` and `./captainStandingOrders.js` (both live
-  in `src/systems/`), so every Node boot and `test/authoritative-manifest.test.mjs` /
-  `test/sim-clock-catchup.test.mjs` fail at import. HEAD's `src/data/missions.js` is a pure-data
-  module; the working-tree copy is the mission-system duplicate. Whoever owns it should finish or
-  revert it.
 - **Lane F:** `src/core/sg02DynamicBodyOwner.js` touched only to add profiler phase marks and the
   telemetry opt-in check; Swarm feel profile values untouched. S1/S7 are landed, so the file is
   claimed here per the collision map.
 
-<!-- Lane 5 WORLD — foreign-refactor defect note, 2026-11-06 ~13:00 UTC -->
-**Defect note (Lane 5):** `src/data/missions.js` was overwritten in the working tree with a copy
-of `src/systems/missions.js` (unclaimed in this file; no owner listed). The copy broke the module
-graph for every consumer of `src/data/missions.js` (all story tests, station screens, game boot):
-(a) 27 `'./X'` imports resolved to `src/data/X` which do not exist, (b) a self-import block asks
-`../data/missions.js` for the pure-data exports (`MISSION_TUNING`, `STORY_BEATS`, `OFFER_MIX`, …)
-that the overwrite removed from the tree. Lane 5 repaired (a) mechanically (23 rewrites to
-`../systems/X`, one `./journeyActs.js` kept, kessler path fixed twice — it reverted once under an
-external editor) and moved its W1 act table to the new dependency-free `src/data/journeyActs.js`
-so both missions files import it directly. Repair of (b) — the missing pure-data definitions — is
-the refactor owner's call: either restore `src/data/missions.js` from HEAD and re-apply the
-Journey framing, or complete the intended merge. Until (b) is fixed, tests importing missions and
-the ordinary boot are down for everyone. Lane 5 holds `data/missions.js` untouched from here and
-waits to run its checks.
+<!-- Resolved 2026-11-06: the duplicate mission system is gone. -->
+**Resolved (controller):** the working-tree `src/data/missions.js` was a 9.6k-line copy of
+`src/systems/missions.js`. The canonical system stays in `systems/`; `data/missions.js` now
+re-exports the pure catalogue in `missionsData.js`. Boot and the mission/journey tests are green.
 
 <!-- Lane 4 SHIP (master plan) - active claims, 2026-11-06 -->
 ## Lane 4 SHIP - master-plan campaigns P1, P2, P4, P3
@@ -263,11 +248,6 @@ tier, intent, previewId). Mounts for those fits are `src/ui/ship/partVisuals.js`
 `{ mounts: [{ id, kind, socket, socketIndex, scale, tint, glow }], sheen }` reading the hull GLB's own
 socket names through `data/modelTruth.js`. One call site in the parts admission path mounts them.
 
-# P0 blocker reported by Lane 4 (not mine to fix)
-
-`src/systems/ships.js` cannot be imported: `Cannot access 'SHIP_BY_ID' before initialization`.
-Reproduce with `node -e "import('./src/systems/ships.js')"`. Cause: a circular import through
-`src/world/tallyThreeIdentity.js`, which evaluates `makeShipEntitySpec(T.assessorShipId)` at module
-top level (commit `3e6223770f3c`, another lane). Every consumer of `systems/ships.js` throws -
-including the Ship Sheet and, by the same chain, game boot and the UI bench. The owning lane needs
-to make that constant lazy (a getter, or a call inside the exported functions).
+<!-- Resolved 2026-11-06: the ships.js TDZ was a stale report. -->
+**Resolved (controller):** `src/systems/ships.js` imports clean; the Ship Sheet, UI bench and boot
+route all load it. The earlier circular-import report no longer reproduces.

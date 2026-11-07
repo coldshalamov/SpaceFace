@@ -6,23 +6,28 @@ missions, upgrade, and build income in a living universe. Its core is a `GameSta
 60 Hz simulation, separate from rendering. Read [`docs/ORIENTATION.md`](docs/ORIENTATION.md) for the
 repo map; [`ARCHITECTURE.md`](ARCHITECTURE.md) is the technical contract.
 
-**Current program:** the Finish Program in [`design/program/finish/README.md`](design/program/finish/README.md).
-Its three lane boards own current assignments, order, path ownership, and finish criteria. Use the
-board matching the task; supporting build-map rows and design documents provide detail. The active
-Finish protocol supersedes conflicting older routing, ownership, provider, review, and capture
-instructions. Historical documents remain useful context only when a current task points to them.
+**Current program:** the master plan in
+[`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md). Its 29 campaigns are
+grouped into seven parallel lanes by
+[`design/program/finish/MASTER_LANES.md`](design/program/finish/MASTER_LANES.md) (dispatch, collision
+map and copy-paste prompts), with live outcome state in
+[`design/program/finish/EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
+The three Finish boards are outcome detail for work the master plan names; they are not a separate
+dispatch surface. The active master-plan protocol supersedes conflicting older routing, ownership,
+provider, review, and capture instructions. Historical documents remain useful context only when a
+current task points to them.
 
 ## Start by task
 
 | Need | Start here |
 |---|---|
-| Active assignment or whole-game finishing | [`design/program/finish/README.md`](design/program/finish/README.md) → the relevant Lane 1, 2, or 3 board |
+| Active campaign, assignment or whole-game finishing | [`MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md) → [`MASTER_LANES.md`](design/program/finish/MASTER_LANES.md) → [`EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md) |
 | Repo overview or module owner | [`docs/ORIENTATION.md`](docs/ORIENTATION.md) → [`docs/MODULE_MAP.md`](docs/MODULE_MAP.md) → nearest nested `AGENTS.md` |
 | Product or system intent | [`design/VISION.md`](design/VISION.md), [`design/GDD_2_0.md`](design/GDD_2_0.md), and the selected spec section |
 | Named campaign, symptom, or special workflow | [`docs/TASK_ROUTER.md`](docs/TASK_ROUTER.md) |
 | Tests and checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md`; then the check relevant to the change |
 | Visual asset or lighting work | [`docs/visual-assets/README.md`](docs/visual-assets/README.md); for Blender/GLB follow the Forge route it names |
-| Current lane claims | `design/program/NOW.md` and `node scripts/check-now-liveness.mjs`; these protect paths, not unrelated work |
+| Current write claims | `design/program/NOW.md` and `node scripts/check-now-liveness.mjs`; these protect paths, not unrelated work |
 
 Read only the relevant sections. Do not sweep design archives, assets, transcripts, or captures for
 an ordinary code task.
