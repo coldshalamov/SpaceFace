@@ -94,3 +94,31 @@ test('the twin rides the boundary admission compile and detaches when it settles
       'twins must not survive into the presented boundary');
   });
 });
+
+// perf lane oc1v26/oc1v27: a pooled member only compiled USE_INSTANCING, so the shared plain
+// forge-v1 variant (Forge_bastion_gunmetal / Forge_ore_barge_paint) linked after lift. Pooled
+// proxies and a pending pool chunk now get one detached direct-mesh twin per pair.
+test('pooled members mount one direct twin per (geometry, material) pair', () => {
+  const geometry = geometryWith();
+  const material = new THREE.MeshStandardMaterial();
+  const root = new THREE.Group();
+  for (let i = 0; i < 2; i++) {
+    const proxy = new THREE.Mesh(geometry, material);
+    proxy.isMesh = false;
+    proxy.userData.spacefaceRenderPackagePooled = true;
+    root.add(proxy);
+  }
+  const chunk = new THREE.InstancedMesh(geometryWith(), material, 4);
+  chunk.userData.spacefacePackageAdmissionPending = true;
+  root.add(chunk);
+  const holder = mountPackagePoolCandidateInstancedTwins(root);
+  const direct = holder.children.filter((c) => c.name === 'SF_PoolMember_DirectTwin');
+  assert.equal(direct.length, 2);
+  for (const twin of direct) {
+    assert.equal(twin.isMesh, true);
+    assert.notEqual(twin.isInstancedMesh, true);
+    assert.equal(twin.material, material);
+  }
+  settlePackagePoolCandidateInstancedTwins(root, holder);
+  assert.equal(holder.parent, null);
+});
