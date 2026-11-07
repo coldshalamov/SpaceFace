@@ -195,13 +195,13 @@ const LINKS = [
     costHintMs: 9000,
     // Envelope cleanRunCountRequired is 5. npm run check:sim:v3 still repeats 20 for the long
     // chain. Five clean runs plus the reload proof are the whole gate inside this 90s wall.
-    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.native-contact.save-v24.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
+    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.native-contact.save-v26.expected.json --hash --repeat 5 --reload-at 60 --flight-system v3',
     why: 'The V3 golden hash. NOTE: sim-v3-compare cannot fail on a stale golden (sf-sim.mjs tolerates expectedHash diffs) — this link is the one that can. Repeat matches the envelope minimum so the wall stays inside 90s.',
   },
   {
     id: 'sim',
     costHintMs: 9000,
-    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.save-v24.expected.json --hash --repeat 5 --reload-at 600',
+    command: 'node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.save-v26.expected.json --hash --repeat 5 --reload-at 600',
     why: 'The legacy golden hash. Same note as sim-v3: the compare links do not gate the goldens, this one does. Repeat matches the envelope minimum.',
   },
   {

@@ -65,8 +65,8 @@ const seed = Number(readOption('--seed') || 47);
 const asJson = argv.includes('--json');
 const keep = argv.includes('--keep');
 const expectedPath = flightSystem === 'v3'
-  ? 'test/47a.telemetry.v3.native-contact.save-v24.expected.json'
-  : 'test/47a.telemetry.save-v24.expected.json';
+  ? 'test/47a.telemetry.v3.native-contact.save-v26.expected.json'
+  : 'test/47a.telemetry.save-v26.expected.json';
 
 // Motion is the thing that must not move silently. Everything else in the snapshot is content:
 // economy curves, mission copy, save version, new data fields. Those legitimately churn.

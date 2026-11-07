@@ -17,7 +17,7 @@ const RELOAD_AFTER_BRANCH_TICK = 36060;
 
 const baseTape = readJson(BASE_TAPE_PATH);
 const scenario = readJson(SCENARIO_PATH);
-const envelope = readJson('test/47a.telemetry.save-v24.expected.json');
+const envelope = readJson('test/47a.telemetry.save-v26.expected.json');
 const branches = scenario.branches || [];
 const tempDir = mkdtempSync(join(tmpdir(), 'spaceface-47a-policy-'));
 const prefixEnvelopePath = join(tempDir, '47a-policy-prefix-envelope.json');
