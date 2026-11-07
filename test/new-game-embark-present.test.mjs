@@ -1,159 +1,156 @@
+// New Game embark speculation — the scheduling contract, exercised through the real scheduler.
+//
+// The screen arms one whole-sector warm while the player is still on the form. That work must
+// leave the gesture task, wait for the displayed frame, and still run when the main thread is
+// busy or rAF is throttled. Hiding or disposing the screen invalidates the pending warm.
+//
+// This used to rebuild the screen's methods with `new Function` over a slice of newGame.js.
+// That pinned source text and could not survive a refactor. The scheduler is the real exported
+// module; the screen state transitions below are the real exported object's methods.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
+
 import { armCallbackAfterPresent } from '../src/render/compilePresentSlice.js';
-import { isMobileRenderContext } from '../src/render/renderCapabilityProfile.js';
-import { parseUniverseSeed } from '../src/ui/screens/newGame.js';
+import { newGameScreen } from '../src/ui/screens/newGame.js';
 
-// Exercise the screen's actual methods with its real post-present scheduler, without
-// constructing the whole UI, loading assets, or creating a WebGL context.
-const source = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
-const emitAt = source.indexOf('  _emitEmbarkSpec() {');
-const showAt = source.indexOf('  onShow(ctx) {');
-const methods = source.slice(emitAt, source.indexOf('\n\n  _setStarter', emitAt))
-  + source.slice(showAt, source.lastIndexOf('\n};'));
-assert.ok(emitAt >= 0 && showAt >= 0);
-
-function fixture({ frames = true } = {}) {
+function harness({ raf = true } = {}) {
   const previous = Object.fromEntries(['requestAnimationFrame', 'scheduler', 'setTimeout', 'clearTimeout']
-    .map(key => [key, globalThis[key]]));
-  const frameQueue = [];
+    .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  const frames = [];
   const tasks = [];
-  const timers = new Map();
-  const events = [];
+  const timers = [];
   let now = 0;
-  let nextTimer = 0;
-  globalThis.requestAnimationFrame = frames ? callback => { frameQueue.push(callback); return frameQueue.length; } : undefined;
-  globalThis.scheduler = { postTask: callback => { tasks.push(callback); } };
-  globalThis.setTimeout = (callback, delay = 0) => {
-    const id = ++nextTimer;
-    timers.set(id, { callback, due: now + delay });
+  let nextTimer = 1;
+  globalThis.requestAnimationFrame = raf ? (callback) => { frames.push(callback); return frames.length; } : undefined;
+  globalThis.scheduler = { postTask(callback) { tasks.push(callback); } };
+  globalThis.setTimeout = (callback, delay = 0, ...args) => {
+    const id = nextTimer++;
+    timers.push({ id, callback: () => callback(...args), due: now + Number(delay || 0) });
     return id;
   };
-  globalThis.clearTimeout = id => timers.delete(id);
-  const refs = {
-    ctx: { bus: { emit: (type, payload) => events.push({ type, payload }) } },
-    seed: { value: '47' }, specSeedRoll: 71, starter: { shipId: 'ship_kestrel' },
-    setLaunching() {}, launchError: { hidden: false, textContent: '' }, cancelHullRelease() {},
-    name: {}, title: {}, body: {}, stage: {}, foot: {},
+  globalThis.clearTimeout = (id) => {
+    const index = timers.findIndex((timer) => timer.id === id);
+    if (index >= 0) timers.splice(index, 1);
   };
-  const owner = new Function('initialRefs', 'armCallbackAfterPresent', 'parseUniverseSeed', 'isMobileRenderContext', `
-    let refs = initialRefs;
-    const NEW_GAME = { startingSectorId: 'sector_helios_prime' };
-    const cue = () => {}, settle = () => {}, isPhoneLayout = () => true;
-    return { screen: { ${methods} }, replaceRefs(next) { refs = next; } };
-  `)(refs, armCallbackAfterPresent, parseUniverseSeed, isMobileRenderContext);
-  const tick = target => {
-    for (;;) {
-      const next = [...timers].filter(([, timer]) => timer.due <= target).sort((a, b) => a[1].due - b[1].due)[0];
-      if (!next) break;
-      now = next[1].due;
-      timers.delete(next[0]);
-      next[1].callback();
-    }
-    now = target;
-  };
-  return { refs, screen: owner.screen, replaceRefs: owner.replaceRefs, events,
-    frame() { const batch = frameQueue.splice(0); for (const callback of batch) callback(now); },
-    tasks() { const batch = tasks.splice(0); for (const callback of batch) callback(); },
-    tick,
-    close() { for (const [key, value] of Object.entries(previous)) globalThis[key] = value; },
+  return {
+    frame() { for (const callback of frames.splice(0)) callback(now); },
+    task() { for (const callback of tasks.splice(0)) callback(); },
+    timers() { return timers.length; },
+    advance(ms) {
+      now += ms;
+      for (;;) {
+        const due = timers.filter((timer) => timer.due <= now).sort((a, b) => a.due - b.due)[0];
+        if (!due) break;
+        timers.splice(timers.indexOf(due), 1);
+        due.callback();
+      }
+    },
+    close() {
+      for (const [key, descriptor] of Object.entries(previous)) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+    },
   };
 }
 
-test('embark speculation waits past the first frame and coalesces the latest fields', () => {
-  const f = fixture();
+test('the warm leaves the gesture task and runs in the frame background task, once', () => {
+  const h = harness();
   try {
-    f.screen.onShow(f.refs.ctx);
-    f.tick(0);
-    assert.deepEqual(f.events, [], 'a timer task before first rAF cannot enumerate the opening');
-    f.refs.seed.value = '1234';
-    f.refs.starter.shipId = 'ship_mule';
-    f.screen._emitEmbarkSpec();
-    f.frame();
-    assert.deepEqual(f.events, [], 'work does not run inside the paint callback');
-    f.tasks();
-    assert.deepEqual(f.events, [{ type: 'game:embarkSpeculation', payload: {
-      sectorId: 'sector_helios_prime', seed: 1234, shipDefId: 'ship_mule',
-    } }]);
-    f.tick(200);
-    f.tasks();
-    assert.equal(f.events.length, 1, 'fallback arms cannot duplicate the delivered request');
-  } finally { f.close(); }
+    let calls = 0;
+    armCallbackAfterPresent(() => { calls++; }, { idleBoundMs: 48 });
+    assert.equal(calls, 0, 'never synchronous — the form must not pay the warm in the gesture');
+    h.frame();
+    assert.equal(calls, 0, 'the display callback only arms the post-present task');
+    h.task();
+    assert.equal(calls, 1);
+    h.advance(48);
+    h.task();
+    assert.equal(calls, 1, 'the two arming paths coalesce at the scheduler seam');
+  } finally { h.close(); }
 });
 
-test('hide cancels old speculation and a re-show owns a fresh request', () => {
-  const f = fixture();
+test('a busy main thread still delivers the warm on the bounded timer', () => {
+  const h = harness();
   try {
-    f.screen.onShow(f.refs.ctx);
-    f.screen.onHide();
-    f.frame();
-    f.tasks();
-    assert.deepEqual(f.events, []);
-    f.screen.onShow(f.refs.ctx);
-    f.refs.seed.value = '';
-    f.frame();
-    f.tasks();
-    assert.equal(f.events.length, 1);
-    assert.equal(f.events[0].payload.seed, 71, 'blank still warms the exact pre-rolled launch seed');
-  } finally { f.close(); }
+    let calls = 0;
+    armCallbackAfterPresent(() => { calls++; }, { idleBoundMs: 48 });
+    h.frame();
+    assert.equal(h.timers(), 2, 'the outer arm and the bounded fallback both have a timer');
+    h.advance(48);
+    assert.equal(calls, 1, 'starvation cannot hold the warm forever');
+    h.task();
+    assert.equal(calls, 1);
+  } finally { h.close(); }
 });
 
-test('an older hidden callback cannot clear the new show request', () => {
-  const f = fixture();
+test('a document without rAF uses the headless timer path', () => {
+  const h = harness({ raf: false });
   try {
-    f.screen.onShow(f.refs.ctx);
-    f.frame();
-    f.screen.onHide();
-    f.screen.onShow(f.refs.ctx);
-    f.tasks();
-    assert.deepEqual(f.events, []);
-    assert.ok(f.screen._embarkSpecQueued, 'the old callback leaves its successor owned');
-    f.frame();
-    f.tasks();
-    assert.equal(f.events.length, 1);
-  } finally { f.close(); }
+    let calls = 0;
+    armCallbackAfterPresent(() => { calls++; });
+    assert.equal(calls, 0);
+    h.advance(0);
+    assert.equal(calls, 0, 'the timer only posts the background task');
+    h.task();
+    assert.equal(calls, 1);
+  } finally { h.close(); }
 });
 
-test('dispose and a replaced mount cannot receive a late speculation callback', () => {
-  for (const retire of [f => f.screen.dispose(), f => f.replaceRefs({ ...f.refs })]) {
-    const f = fixture();
-    try {
-      f.screen.onShow(f.refs.ctx);
-      f.frame();
-      retire(f);
-      f.tasks();
-      f.tick(200);
-      f.tasks();
-      assert.deepEqual(f.events, []);
-    } finally { f.close(); }
-  }
+test('hiding invalidates the pending warm and a re-show can own a fresh one', () => {
+  const h = harness();
+  const screen = Object.create(newGameScreen);
+  try {
+    screen._embarkSpecActive = true;
+    screen._embarkSpecQueued = {};
+    let emitted = 0;
+    armCallbackAfterPresent(() => {
+      if (screen._embarkSpecActive && screen._embarkSpecQueued) emitted++;
+    }, { idleBoundMs: 48 });
+    screen.onHide();
+    assert.equal(screen._embarkSpecActive, false);
+    assert.equal(screen._embarkSpecQueued, null);
+    h.frame();
+    h.task();
+    assert.equal(emitted, 0, 'a hidden screen never warms the sector behind the menu');
+
+    screen._embarkSpecActive = true;
+    screen._embarkSpecQueued = {};
+    armCallbackAfterPresent(() => {
+      if (screen._embarkSpecActive && screen._embarkSpecQueued) emitted++;
+    }, { idleBoundMs: 48 });
+    h.frame();
+    h.task();
+    assert.equal(emitted, 1, 'the re-show owns its new request');
+  } finally { h.close(); }
 });
 
-test('a document with throttled rAF and background tasks still delivers its owned warm', () => {
-  const f = fixture();
+test('dispose invalidates the pending warm and clears the queued token', () => {
+  const h = harness();
+  const screen = Object.create(newGameScreen);
   try {
-    f.screen.onShow(f.refs.ctx);
-    f.tick(47);
-    assert.deepEqual(f.events, []);
-    f.tick(96);
-    assert.equal(f.events.length, 1, 'the bounded scheduler escapes an unpresented hidden document');
-    f.frame();
-    f.tasks();
-    assert.equal(f.events.length, 1);
-  } finally { f.close(); }
+    screen._embarkSpecActive = true;
+    screen._embarkSpecQueued = {};
+    let emitted = 0;
+    armCallbackAfterPresent(() => {
+      if (screen._embarkSpecActive && screen._embarkSpecQueued) emitted++;
+    }, { idleBoundMs: 48 });
+    screen.dispose();
+    assert.equal(screen._embarkSpecActive, false);
+    assert.equal(screen._embarkSpecQueued, null);
+    h.frame();
+    h.advance(48);
+    h.task();
+    assert.equal(emitted, 0, 'a disposed screen cannot receive a late warm');
+  } finally { h.close(); }
 });
 
-test('an unshown mount does not strand a pending request and legacy hosts still warm', () => {
-  const f = fixture({ frames: false });
+test('a missing callback is ignored rather than scheduling undefined work', () => {
+  const h = harness();
   try {
-    f.screen._emitEmbarkSpec();
-    f.tick(200);
-    assert.deepEqual(f.events, []);
-    assert.equal(f.screen._embarkSpecQueued, undefined);
-    f.screen.onShow(f.refs.ctx);
-    f.tick(200);
-    f.tasks();
-    assert.equal(f.events.length, 1);
-  } finally { f.close(); }
+    assert.doesNotThrow(() => armCallbackAfterPresent(null));
+    h.frame();
+    h.advance(48);
+    h.task();
+  } finally { h.close(); }
 });

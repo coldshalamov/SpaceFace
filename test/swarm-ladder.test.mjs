@@ -303,14 +303,16 @@ test('round preview: the plan card names count, roster, newcomer, event and boss
   assert.ok(opener.killTarget > 0);
   assert.ok(opener.concurrent > 0);
   assert.ok(opener.roster.length > 0);
-  const boss = swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED });
-  assert.ok(boss.boss, 'wave ten is the zone boss — the preview names it');
-  const event = swarmRoundPreview({ arenaId: 'helios_core', wave: 5, seed: LADDER_SEED });
+  // S14: the first champion arrives at wave 5, then every tenth after.
+  const boss = swarmRoundPreview({ arenaId: 'helios_core', wave: 5, seed: LADDER_SEED });
+  assert.ok(boss.boss, 'the first champion wave names the boss on the preview');
+  // S14: wave 10 is the authored event slot now that the champion cadence starts at 5.
+  const event = swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED });
   assert.ok(event.event && event.event.name, 'an event wave names its card');
   // Deterministic: same (arena, wave, seed) always draws the same card.
   assert.deepEqual(
-    swarmRoundPreview({ arenaId: 'helios_core', wave: 5, seed: LADDER_SEED }),
-    swarmRoundPreview({ arenaId: 'helios_core', wave: 5, seed: LADDER_SEED }),
+    swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED }),
+    swarmRoundPreview({ arenaId: 'helios_core', wave: 10, seed: LADDER_SEED }),
   );
 });
 

@@ -69,7 +69,9 @@ test('bank rejects invalid geometry, boss/mutator/arena and absent roster withou
   const g = fixture();
   assert.equal(planSwarmBank(g.state, { ...g.state.run, arenaId: 'the_hive' }, 7, plan()), null);
   assert.equal(planSwarmBank(g.state, { ...g.state.run, arenaMutators: ['reef'] }, 7, plan()), null);
-  assert.equal(planSwarmBank(g.state, g.state.run, 10, plan(4242, 10)), null);
+  // S14 moved the first champion to wave 5 (then every tenth), so the boss wave is no
+  // longer wave 10. The bank must still refuse the real champion wave.
+  assert.equal(planSwarmBank(g.state, g.state.run, 5, plan(4242, 5)), null);
   assert.equal(planSwarmBank(g.state, g.state.run, 7, [{ id: 'charger', count: 1 }]), null);
   g.stone.radius = 10;
   assert.equal(planSwarmBank(g.state, g.state.run, 7, plan()), null);

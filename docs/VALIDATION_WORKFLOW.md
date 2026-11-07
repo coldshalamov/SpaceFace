@@ -192,6 +192,42 @@ Use one archetype, one seed, and an explicit affected simulation-time window. A 
 claim covers that opening; the historical three-hour collapse question does not impose a three-hour
 default on it. Never make a fixed multi-session matrix a routine step.
 
+## Test tiers and versioned references
+
+Three plain manifests under `test/tiers/` are the durable answer to "which suite protects the
+game?" `scripts/test-tier.mjs` reads them, validates every path/command before running, prints the
+exact command, supports `--shard=i/N`, `--json` and `--timeout=<seconds>`, and exits non-zero on a
+failure or a drifted entry.
+
+```powershell
+npm run test:fast                 # measured core behaviour; target < 2 min
+npm run test:route                # real boot / input / station screens / Electron units
+npm run test:reference            # determinism, 47-A gates, save schema/fuzz, baseline
+node scripts/test-tier.mjs all --shard=2/3 --json
+```
+
+`fast.txt` is a 36-file core set plus the guards that keep the tier itself honest. A red file is
+not deleted to make the tier green: fix the stale fixture or report the product defect.
+
+Reference goldens are re-recorded only through `scripts/reference.mjs`, never by editing
+`test/47a.*.expected.json`:
+
+```powershell
+npm run ref:list
+npm run ref:record -- --from test/47a.telemetry.save-v23.expected.json `
+  --reason "why this re-record is intentional and reviewed" --ticket Q5
+npm run ref:diff -- --id 47a-save-v23 --to working
+```
+
+`record` requires `--reason` (>= 20 chars) and `--ticket`, runs
+`sf-sim run ... --hash --repeat <cleanRunCountRequired>`, requires the repeated hashes to agree,
+refuses a mismatched seed/tape/scenario, and refuses moved event counts without
+`--events-changed`. It writes `test/references/<id>/v<N>.expected.json` plus a gzipped canonical
+snapshot, appends `history.jsonl` (`at, hash, prevHash, reason, ticket, cleanRuns, delta`) and
+rewrites `index.json`. Old versions are append-only. `diff` reports the hash and field-class delta
+(motion vs economy/physics/content) from the stored snapshots, so a reviewer can see what moved
+before accepting a new version. A failed run writes nothing.
+
 ## Continuous integration: four parallel groups
 
 `.github/workflows/check.yml` runs the repository-wide matrix as **four parallel jobs** instead of

@@ -8,6 +8,12 @@
     "node": ">=22.12.0 <25"
   },
   "scripts": {
+    "test:fast": "node scripts/test-tier.mjs fast",
+    "test:route": "node scripts/test-tier.mjs route",
+    "test:reference": "node scripts/test-tier.mjs reference",
+    "ref:record": "node scripts/reference.mjs record",
+    "ref:diff": "node scripts/reference.mjs diff",
+    "ref:list": "node scripts/reference.mjs list",
     "check:nocturne": "node scripts/check-nocturne.mjs",
     "check:nocturne:authoring": "node scripts/check-nocturne-authoring.mjs",
     "check:nocturne:gameplay": "node scripts/check-nocturne-gameplay.mjs",

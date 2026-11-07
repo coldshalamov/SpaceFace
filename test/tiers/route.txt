@@ -1,0 +1,60 @@
+# Tier: route — real boot, real input, real station screens.
+#
+# The first block is the exact `browser` group from the CI check matrix
+# (`node scripts/check-ci-report.mjs --list-groups`). Those entries are commands because the
+# matrix mixes scripts and large `node --test` batches; they are kept verbatim so the tier
+# answers the same question CI's browser job answers.
+#
+# The second block is the focused boot / route / runtime / Electron / Playwright unit set.
+# The third block names the ordinary player routes that no unit batch can replace.
+# Run it with: npm run test:route -- --shard=1/2
+
+# --- CI browser group (20 commands) ---
+node --test --test-concurrency=2 test/opening-loading-admission.test.mjs test/opening-loading-entry-lifetime.test.mjs test/opening-gpu-admission.test.mjs test/opening-gpu-admission-submit.test.mjs test/opening-first-draw-observation.test.mjs test/sim-worker-local-clock.test.mjs test/sim-lane-stall-confirmation.test.mjs test/sim-lane-dom-interruptions.test.mjs test/continue-gpu-handover.test.mjs test/ui-screen-registration-lifecycle.test.mjs test/sector-prewarm-boundary-generation.test.mjs test/onboarding-roster-warm-scope.test.mjs test/feel-damage-player-involvement.test.mjs test/shipworks-fit-from-hold.test.mjs test/agent-loop.test.mjs test/source-baseline-closure.test.mjs test/source-overlay-server.test.mjs test/load-finalizer-bounded-waits.test.mjs test/weapon-clips.test.mjs test/renderer-owner-lifetime.test.mjs test/probe-main-thread-profile.test.mjs test/presented-canvas-content.test.mjs test/domain-mirror-profile.test.mjs test/domain-market-live-projection.test.mjs test/domain-differ-node-lifecycle.test.mjs test/mission-board-worker-publication.test.mjs test/mission-handoff-diagnostics.test.mjs test/shared-player-store-write-queue.test.mjs test/racing-hud-crucible-gate.test.mjs test/release-soak-evidence-contract.test.mjs test/browser-issues.test.mjs test/flight-footage.test.mjs test/flight-footage-webcodecs.test.mjs test/flight-footage-presented-canvas.test.mjs test/flight-footage-worker-encode.test.mjs test/flight-footage-software-readback.test.mjs test/flight-footage-opening-delay.test.mjs test/flight-footage-viewer-lifecycle.test.mjs test/flight-footage-videoframe.test.mjs test/next-wave-nxi-098.test.mjs test/domain-combat-trace-watermark.test.mjs test/inference-pause-last-hit.test.mjs test/heap-snapshot-capture.test.mjs test/heap-snapshot-stream-loader.test.mjs test/ledger-tape-yield.test.mjs test/activity-runtime.test.mjs test/activity-classification.test.mjs test/rigid-opaque-batch-policy.test.mjs test/rigid-opaque-batch.test.mjs test/authored-live-probe-contract.test.mjs test/playwright-electron-startup-waiters.test.mjs test/tactical-ai-quiet-latch.test.mjs test/worker-api-bridge.test.mjs test/save-shared-continuation.test.mjs test/inf-092-mirror-status.test.mjs test/asteroid-site-drawers.test.mjs test/crucible-run-state.test.mjs test/crucible-results.test.mjs test/career-origin-first-contracts.test.mjs test/compile-present-slice.test.mjs test/save-slot-discovery.test.mjs test/title-continue-failure.test.mjs test/mobile-probe-startup.test.mjs test/render-package-slow-network.test.mjs test/mobile-draw-error-observer.test.mjs test/mobile-camera-witness.test.mjs test/worker-paused-save-completion.test.mjs test/worker-continue-finalizer.test.mjs test/new-game-embark-present.test.mjs test/ui-hot-frame-work.test.mjs test/shared-player-store-capability.test.mjs test/release-publish-retry.test.mjs test/vercel-deployment-branches.test.mjs test/vercel-release-base.test.mjs test/authored-assets-cdp-lifecycle.test.mjs test/bloom-contrast-lut.test.mjs test/ceres-reentry-residency.test.mjs test/player-truth-shader-pose.test.mjs test/player-truth-body-occlusion.test.mjs test/player-truth-fresh-target-chain.test.mjs test/bloom-unready-draw-guard.test.mjs test/planet-detail-library.test.mjs test/player-truth-radar-pursuit.test.mjs test/player-truth-native-steering.test.mjs test/weapon-ribbon-invariants.test.mjs test/rigid-opaque-ashline-retro-cohort.test.mjs test/rigid-motion-batch-ownership.test.mjs test/startup-failure-diagnostics.test.mjs test/opening-final-composition-window.test.mjs test/47a-camera-diagnostic.test.mjs
+node scripts/check-depth-program-k1-ui-runtime.mjs
+npm run check:title-continue-runtime
+node scripts/check-new-game-layout.mjs --headless
+npm run check:confirm-dialog
+npm run check:bar:mission-readiness
+npm run check:station-egress
+npm run check:station-tabs
+node scripts/check-mission-accept-handoff-runtime.mjs
+npm run check:mission-cargo-loading
+npm run check:first-15-runtime
+npm run check:market-first-loop
+node scripts/check-trail-streak-instancing-webgl.mjs
+npm run check:47a:live-cold-open
+node scripts/probe-flight-visual.mjs --clean-runs 5 --strict-warnings --no-write
+npm run check:shader-compile
+npm run check:sector-arrival-admission
+npm run check:assets:live
+node scripts/probe-ship-visual-stability.mjs
+npm run check:lab-chromium-parity
+
+# --- focused boot / route / runtime / Electron / Playwright units ---
+test/check-retail-boot.test.mjs
+test/real-path-boot.test.mjs
+test/boot-startup-failure.test.mjs
+test/loading-boot-resilience.test.mjs
+test/playable-flight-readiness.test.mjs
+test/alpha-live-baseline-route-contract.test.mjs
+test/alpha-live-baseline-electron-contract.test.mjs
+test/playwright-csp-polling.test.mjs
+test/playwright-electron-startup-waiters.test.mjs
+test/h1-electron-e2e.test.mjs
+test/electron-shell-lifecycle.test.mjs
+test/electron-launcher-reliability.test.mjs
+test/electron-security-contract.test.mjs
+test/electron-packaged-startup-contract.test.mjs
+test/startup-route-cancellation.test.mjs
+test/probe-continue-route.test.mjs
+test/world-site-public-route-contract.test.mjs
+test/professional-travel-public-route-contract.test.mjs
+test/m4-living-galaxy-player-route-contract.test.mjs
+test/station-walk-route-coverage.test.mjs
+
+# --- ordinary player routes ---
+# Boot -> New Game -> flight: the six invariants (menu, launch, pilot, hull, world, controls).
+npm run check:playable
+# Station screen walk over the real station module: every destination tab, two viewports.
+node scripts/ui-bench.mjs --shot=station,station-dock,station-market,station-shipworks,station-shipworks-impound,station-shipworks-ransom,station-industry,station-contracts,station-factions,station-bar,station-bar-story-buyer,station-factions-treaty,station-ledger --viewports=960x540,1920x1080 --walk

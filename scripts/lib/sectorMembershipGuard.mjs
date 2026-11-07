@@ -35,7 +35,6 @@ export const SECTOR_MEMBERSHIP_SCAN_DIRS = Object.freeze([
 export const ALLOWED_SECTOR_RESTAMP_FILES = new Map([
   ['src/systems/traffic.js', 'lane assignment, authored/durable cast adoption, helios starters'],
   ['src/systems/factionPresence.js', 'ceres tender adoption re-stamps canonical sector on live entity'],
-  ['src/systems/missions.js', 'mission-target pin stamps sector post-append'],
   ['src/systems/world.js', 'kill-capture durable stamp, _stampHomeSector helper, rematerialize re-bind'],
   ['src/systems/worldSiteRuntime.js', 'site component updateExisting restamps manifest sector'],
   ['src/systems/uniqueWrecks.js', 'authored-wreck bind stamps def.sectorId on live entity'],
@@ -47,13 +46,22 @@ export const ALLOWED_SECTOR_RESTAMP_FILES = new Map([
   ['src/systems/npcJobsRuntime.js', 'occupational scavenger/target adoption stamps ceres sector'],
   ['src/world/worldRecords.js', 'bindEntityToRecord restamps record sector — callers funnel'],
   ['src/systems/lastArgument.js', 'siege-ark bind stamps boss home sector on live entity'],
+  ['src/systems/missionSpawningOps.js', 'mission-target pin stamps home/data sector then funnels'],
+  ['src/systems/scavengerOccupationSwitch.js', 'occupation-switch adoption stamps canonical home sector'],
+  ['src/systems/trafficEscortOps.js', 'manifest fill only; the carrier home sector was stamped at spawn'],
+  ['src/systems/faction_pitborn.js', 'normalizeClaim restamps a claim record (c), not an indexed entity'],
+  ['src/systems/faction_verge.js', 'normalizeListing restamps a listing record (l), not an indexed entity'],
 ]);
 
-// Files whose restamps are funneled by their CALLER rather than in-file — exempt from the
-// in-file syncEntitySectorMembership requirement. bindEntityToRecord keeps its signature;
-// world._rematerializeDurableActor re-keys the lane immediately after calling it.
-export const SECTOR_RESTAMP_CALLER_SYNCED = new Set([
-  'src/world/worldRecords.js',
+// Files whose restamps are funneled by their CALLER, or whose write cannot change the
+// canonical bucket because the indexed home sector is already stamped and synced. The
+// rationale is part of the contract: a new file belongs in the allowlist only with a reason.
+export const SECTOR_RESTAMP_FUNNEL_EXEMPT = new Map([
+  ['src/world/worldRecords.js', 'bindEntityToRecord keeps its signature; world._rematerializeDurableActor re-keys the lane immediately after calling it'],
+  ['src/systems/trafficEscortOps.js', '_assignManifest only fills data.sectorId when null; traffic spawn already stamped homeSectorId and indexed it'],
+  ['src/systems/scavengerOccupationSwitch.js', 'the later data.sectorId write is descriptive; the canonical homeSectorId was stamped and synced earlier in the adoption'],
+  ['src/systems/faction_pitborn.js', 'claim-record normalizer, not an indexed entity'],
+  ['src/systems/faction_verge.js', 'listing-record normalizer, not an indexed entity'],
 ]);
 
 /**
@@ -101,7 +109,7 @@ export function sectorMembershipViolations(root, dirs = SECTOR_MEMBERSHIP_SCAN_D
       continue;
     }
     const text = readFileSync(resolve(root, site.rel), 'utf8');
-    if (!SECTOR_RESTAMP_CALLER_SYNCED.has(site.rel)
+    if (!SECTOR_RESTAMP_FUNNEL_EXEMPT.has(site.rel)
         && !/syncEntitySectorMembership\s*\(/.test(text)) {
       out.push({ ...site, reason: 'allowlisted restamp file lost its syncEntitySectorMembership funnel' });
     }
