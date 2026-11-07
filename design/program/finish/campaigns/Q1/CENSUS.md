@@ -14,7 +14,7 @@ live writer or no player route.
 
 | id | Setting (file:line) | What it gates | Now | Decision | Evidence | Risk | Owner |
 |---|---|---|---|---|---|---|---|
-| Q1-01 | `simCoreFlags.economySlicing`, `src/core/simCoreFlags.js:32` | Economy pass spreads a 130–150 ms spike over ~35 ticks | **off** | **turn on** + `save-v24` | 130–150 ms → ~3 ms/call, `.devshots/sim-step-profile/econ-probe.json`; hash `134e1e7…`→`2198d1e…` | 47-A moves once | E2 |
+| Q1-01 | `simCoreFlags.economySlicing`, `src/core/simCoreFlags.js` | Economy pass spreads a 130–150 ms spike over the fixed tick; per-tick drain + save cursor | **off (held)** | **keep off until clean v26** | Per-fixed-tick drain: `economy` 14.05 → 0.027 ms/call, `economy.drift` 56.41 → 3.82; `.devshots/sim-step-profile/econ-drain-ab.json`; 2100/60 s cadence tests green; v24 active, v25 obsolete | 47-A remains v24 on this dirty tree | E2 |
 | Q1-02 | Electron static headers, `electron/main.cjs:496` + `scripts/lib/gameServer.cjs:390-397` | `crossOriginIsolated` → SAB sim lane in Electron | **on (shared server)** | **verify live** | The shared server always sets COOP `same-origin` + COEP `credentialless` and merges Electron's CSP over them; `main.cjs` passes only CSP, so it adds, not replaces. `simLaneMain.js:317-322` auto-arms when isolated. | Transport fallback only; no determinism change | E5 |
 | Q1-03 | `COMBAT_FLAGS.momentumInherit`, `src/runtime/runtimeProfiles.js:14,78` | Bullets inherit shooter velocity (weighty, aim-untrue) | **off everywhere** | **keep off** | measured aim regression, `src/systems/weapons.js:2663-2674` | Every TTK/lead table invalid | Q4 + FEEL A8 |
 | Q1-04 | `wallClockOfflineProgress`, `src/systems/automation.js:4002` | Offline automation catch-up | **no writer** | **delete** | `rg wallClockOffline` → readers only; `pendingOfflineElapsedSec` also writer-less | Hides a player-facing feature that never was | Q4 |
@@ -43,14 +43,14 @@ live writer or no player route.
 
 ## Top 15 expanded
 
-**Q1-01 — Economy slicing is finished, measured, and switched off.**
-`src/core/simCoreFlags.js:24-32`: *"DEFAULT OFF: measured at 130–150 ms → ~3 ms/call, but the
-per-listing maths read `state.simTime` deep inside demand/conditions, so deferring a row by ticks
-changes the 47-A determinism reference."* `src/systems/economy.js` already runs the resumable
-fixed-quantum pass; `probe-sim-step --ab` measured it. **Decision: turn on.** The only blocker is
-process, not code: generate `save-v24`, keep `test/47a.telemetry.save-v23.expected.json` untouched,
-and bisect the flag against the new reference. Risk: a versioned reference change, no save-schema
-change. Owner E2 (STATUS rows 7 and 41-44 name the same flip).
+**Q1-01 - Economy slicing is finished and verified, but the shipped default stays off until a clean
+reference.** `src/core/simCoreFlags.js`: the pass is resumable and now advances once per fixed tick
+(`partitionUpdateSystems.drainStep`), so a 2 Hz calendar owner cannot outlive its 5 s due period.
+The 2100-tick and 60 s cadence tests are green, `serialize()` snapshots the cursor instead of
+advancing, and a flag-on 47-A run is deterministic/reload-equal (`fb76e5b9…` legacy, `f06c59d5…` v3).
+The shared checkout is red from foreign uncommitted starter-shield and gamepad-latch edits, so the
+v26 reference is withheld; v24 `1fedbd09…` stays active and v25 `080c5bd9…` is the obsolete
+un-drained shape. Owner E2; see `campaigns/E2/STATUS.md` rows 7 and the determinism section.
 
 **Q1-02 - E5's shared-memory lane is open on the web and armed by the shared Electron server.**
 `vercel.json:17-30` now sends `Cross-Origin-Opener-Policy: same-origin` and

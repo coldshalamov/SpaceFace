@@ -14,6 +14,10 @@
 //     the 150-body Crucible round is reported in the campaign STATUS file.
 //   - Sampling: `sampleEvery` strides which ticks are measured so a permanent always-on
 //     deployment can pay 1/N. Quartile statistics are over the measured ticks only.
+//   - Basis labels: per-system `meanMs`/p50/p95/p99/max are per CALL (a 2 Hz calendar owner only
+//     has rows for the ticks it ran); `meanMsPerTick` amortises over measured ticks. The step row
+//     is per TICK. Consumers must not compare a calendar row's per-call mean with a table row's
+//     per-tick mean without using the label.
 //   - Both realms: the worker lane (`createAuthoritativeStepper`), the main-lane registry
 //     (`createSimulation.registry.step`) and Node harnesses share this one implementation.
 //
@@ -251,7 +255,12 @@ export function createSimStepProfiler(options = {}) {
           id: rec.id,
           nested: isNestedPhaseId(rec.id),
           calls: rec.calls,
+          // `meanMs`/percentiles are per CALL (a 2 Hz calendar owner contributes only the ticks
+          // it actually ran); `meanMsPerTick` amortises its total over the measured ticks so a
+          // calendar row can be compared with a table row. Both are labelled, not inferred.
+          basis: 'per-call',
           meanMs: round(meanMs),
+          meanMsPerTick: round(ticksMeasured > 0 ? rec.totalMs / ticksMeasured : 0),
           p50: round(ringPercentile(rec.ring, 0.5)),
           p95: round(ringPercentile(rec.ring, 0.95)),
           p99: round(ringPercentile(rec.ring, 0.99)),
@@ -277,6 +286,7 @@ export function createSimStepProfiler(options = {}) {
         topLevelMeasuredMs: round(topLevelMeasuredMs),
         step: {
           count: stepRing.count,
+          basis: 'per-tick',
           meanMs: round(ringMean(stepRing)),
           p50: round(ringPercentile(stepRing, 0.5)),
           p95: round(ringPercentile(stepRing, 0.95)),

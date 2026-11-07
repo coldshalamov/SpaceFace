@@ -177,8 +177,8 @@ Lane 2 of `finish/MASTER_PLAN.md` is active. Diagnosis memo:
 
 | Work | Owner | Exact write set | Note |
 |---|---|---|---|
-| E3 mode-scoped simulation + simulation LOD | Lane 2 | `src/runtime/authoritativeSystemManifest.js`, `src/core/catchupPolicy.js`, `src/world/activityRuntime.js`, `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`, `finish/campaigns/E3/*` | **COMPLETE** (2026-11-06). 220 systems mapped with 0 violations; pre-partitioned mode queues; unified simulation LOD telemetry. Verification: `finish/campaigns/E3/VERIFY.md`. |
-| E2 the simulation hot path | Lane 2 | worker per-system profiler, batched impact buffer (`physics` / `combat` / `collisionConsequences`), physics shape, entity indices, telemetry off hot path, `finish/campaigns/E2/*` | active next |
+| E3 mode-scoped simulation | Lane 2 | `src/runtime/authoritativeSystemManifest.js`, `src/core/catchupPolicy.js`, `src/world/activityRuntime.js`, `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`, `finish/campaigns/E3/*` | **COMPLETE** (2026-11-06). 220 systems mapped with 0 violations; Flight/Swarm/Yard queues (210/67/210); unknown mode fails closed; dual-mode clock reset fixed; simulation LOD **retracted** (no LOD rate claim). Verification: `finish/campaigns/E3/VERIFY.md`. |
+| E2 the simulation hot path | Lane 2 | worker per-system profiler, batched impact buffer (`physics` / `combat` / `collisionConsequences`), physics shape, entity indices, telemetry off hot path, economy per-fixed-tick slice drain, `finish/campaigns/E2/*` | active; bars **NOT met**; slicing drain green but held off pending a clean v26 |
 | E4 data-oriented core | Lane 2 | SoA entity store + facade migration, snapshot buffer alignment with Lane 1, `finish/campaigns/E4/*` | after E2 |
 
 <!-- Lane 6 LOOK & SOUND (master plan) — active claims, 2026-11-06 -->
@@ -220,11 +220,17 @@ Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/
   exportable), sub-phase timers in `physics`/`sg02`/`economy`, demand-gated physics telemetry, lazy
   SG-02 snapshot, economy cycle-lookup de-dupe, matched A/B measurement switchboard. Numbers and
   evidence: `design/program/finish/campaigns/E2/STATUS.md`.
-- **47-A determinism:** hash byte-identical to `test/47a.telemetry.save-v23.expected.json` with every
-  shipped flag on (bisected per flag).
-- **Held back, needs a decision:** economy spike slicing is implemented and measured
-  (130–150 ms → ~3 ms/call) but changes the 47-A hash, so it needs one versioned reference
-  (`save-v24`) before it can ship. `simCoreFlags.economySlicing` is the switch.
+- **47-A determinism:** v24 `1fedbd09…` (v3 native-contact `015c4c…`) remains the active
+  reference. The shared checkout is currently red from foreign uncommitted changes
+  (`src/data/newGameDefaults.js` starter shield, `src/systems/input.js` gamepad travel latch);
+  no golden was re-recorded to hide it.
+- **Economy spike slicing is implemented with a per-fixed-tick drain but held OFF.**
+  `economySlicing` now advances the pass every fixed tick, carries a due tick instead of clobbering
+  it, counts completed passes only, and snapshots the cursor on save. The 2100-tick and 60 s
+  cadence tests are green; the flag stays off until a clean-tree v26 reference and a fresh
+  profile. v25 `080c5bd9…` is the obsolete un-drained shape.
+- **E3 LOD retracted:** no `state.simLOD` rake and no simulation-LOD rate claim. Activity tier
+  telemetry remains on `state.activityRuntime`.
 - **Lane F:** `src/core/sg02DynamicBodyOwner.js` touched only to add profiler phase marks and the
   telemetry opt-in check; Swarm feel profile values untouched. S1/S7 are landed, so the file is
   claimed here per the collision map.

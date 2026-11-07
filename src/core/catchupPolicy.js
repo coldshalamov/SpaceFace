@@ -30,7 +30,9 @@ export function isCatchupPresentationSkip(state) {
 
 /**
  * Determine the active simulation execution mode from runtime state.
- * Returns SIM_MODE.UNSCOPED for test rigs or uninitialized states.
+ * Returns SIM_MODE.UNSCOPED for test rigs or uninitialized states, and SIM_MODE.UNKNOWN for an
+ * unrecognised explicit label. UNKNOWN has no partition, so it dispatches an empty queue: a typo
+ * or an unadmitted mode must fail closed, never run the whole system set.
  */
 export function resolveActiveSimMode(state) {
   if (!state || typeof state !== 'object') return SIM_MODE.UNSCOPED;
@@ -58,7 +60,12 @@ export function resolveActiveSimMode(state) {
     }
     return SIM_MODE.FLIGHT;
   }
-  return SIM_MODE.UNSCOPED;
+  // Menu/pause/loading are known non-scheduling states; the freeze or the host owns them, and
+  // they keep the historical unscoped behaviour. Anything else is an unknown label.
+  if (state.mode === 'menu' || state.mode === 'paused' || state.mode === 'loading') {
+    return SIM_MODE.UNSCOPED;
+  }
+  return SIM_MODE.UNKNOWN;
 }
 
 /**
@@ -133,6 +140,7 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
   const combat = [];
   const calendar = [];
   const tableCalendar = [];
+  const tickDrains = [];
   const tickQueues = [];
   const catchupTickQueues = [];
   for (let m = 0; m < CALENDAR_CLOCK_PERIOD_TICKS; m++) {
@@ -144,6 +152,7 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     const system = list[i];
     if (!system || typeof system.update !== 'function') continue;
     all.push(system);
+    if (typeof system.drainTick === 'function') tickDrains.push(system);
     const clock = getSystemClock(system.name);
     if (clock === SYSTEM_CLOCK.TABLE) {
       table.push(system);
@@ -162,8 +171,9 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
   }
 
   // Pre-filter partitioned queues per scheduling mode for zero-overhead dispatch during step().
-  // DOCKED and YARD are frozen-world labels, not scheduling scopes: presentationFreeze skips the
-  // full tick while they hold, so they deliberately have no queue here (E3 review F4).
+  // DOCKED is a frozen-world label, not a scheduling scope: presentationFreeze skips the full
+  // tick while it holds, so it deliberately has no queue here (E3 review F4). YARD is a live
+  // working state - the player is towing in the yard - so it gets the flight-equivalent queue.
   const modePartitions = Object.create(null);
   for (const mode of ALL_SIM_MODES) {
     const filterFn = (s) => systemRunsInMode(s.name, mode);
@@ -189,7 +199,9 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     };
   }
 
-  const freshRecord = (baseline, mode) => ({ baseline, stamps: new Map(), seeded: true, mode });
+  const freshRecord = (baseline, mode) => ({
+    baseline, stamps: new Map(), reseed: new Set(), seeded: true, mode,
+  });
   // Calendar membership is fixed at partition time; updateDt is called for every queued
   // system every step, so the non-calendar early-out must not re-derive the clock from
   // the manifest by name on each call.
@@ -205,23 +217,36 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
       clockRecords = new WeakMap();
     }
   }
-  // E3 review F2: a mode change is a clock discontinuity. Calendar owners skipped for the
-  // duration of a Crucible round must not see the whole run as one elapsed dt on resume, or
-  // economy/automation/salvage/routeFollower burst-catch-up for minutes. Called once per
-  // full step by updateQueueForThisStep (so a mode entered and left while no calendar owner
-  // was due still resets), and again as a safety net inside updateDt for direct callers.
+  // E3 review F2: a mode change is a clock discontinuity for owners that do not run in the new
+  // mode. Do not blanket-clear every stamp: a dual-mode calendar owner (buildIdentity,
+  // barkDirector, wingMorale, masslineImpactDamage, save ...) was running in both modes, so its
+  // last stamp is one legitimate interval ago. Owners absent from the new mode get their stamp
+  // dropped and are marked for a fixed-dt reseed when they return.
+  function markReseed(record, previousMode, mode) {
+    if (!record.stamps.size) return;
+    for (const system of [...record.stamps.keys()]) {
+      const ranBefore = systemRunsInMode(system.name, previousMode);
+      const runsNow = systemRunsInMode(system.name, mode);
+      if (ranBefore && runsNow) continue;
+      record.stamps.delete(system);
+      record.reseed.add(system);
+    }
+  }
   function noteStepMode(host, mode) {
     if (!host || typeof host !== 'object') return;
+    const simTime = Number(host.simTime);
     const record = clockRecords.get(host);
     if (!record) {
-      clockRecords.set(host, { baseline: NaN, stamps: new Map(), seeded: false, mode });
+      clockRecords.set(host, {
+        baseline: simTime, stamps: new Map(), reseed: new Set(), seeded: true, mode,
+      });
       return;
     }
     if (record.mode === mode) return;
+    markReseed(record, record.mode, mode);
     record.mode = mode;
-    record.baseline = NaN;
-    record.stamps.clear();
-    record.seeded = false;
+    record.baseline = simTime;
+    record.seeded = true;
   }
   const clockUnsubscribes = [];
   if (bus && typeof bus.on === 'function' && state && typeof state === 'object') {
@@ -238,15 +263,25 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     if (!Number.isFinite(simTime)) return fixedDt;
     let record = clockRecords.get(host);
     if (!record) {
-      record = { baseline: NaN, stamps: new Map(), seeded: false, mode: resolveActiveSimMode(host) };
+      // A record created by a direct caller has no legitimate prior stamp: initialize from now
+      // and return the fixed dt for this first call.
+      record = {
+        baseline: NaN, stamps: new Map(), reseed: new Set(), seeded: false,
+        mode: resolveActiveSimMode(host),
+      };
       clockRecords.set(host, record);
     }
     const mode = resolveActiveSimMode(host);
     if (record.mode !== mode) {
+      markReseed(record, record.mode, mode);
       record.mode = mode;
-      record.baseline = NaN;
-      record.stamps.clear();
-      record.seeded = false;
+      record.baseline = simTime;
+      record.seeded = true;
+    }
+    if (record.reseed.has(system)) {
+      record.reseed.delete(system);
+      record.stamps.set(system, simTime);
+      return fixedDt;
     }
     const stamped = record.stamps.get(system);
     const hasStamp = stamped !== undefined;
@@ -269,20 +304,31 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     combat,
     calendar,
     tableCalendar,
+    tickDrains,
     tickQueues: calendar.length ? tickQueues : null,
     catchupTickQueues: calendar.length ? catchupTickQueues : null,
     modePartitions,
     updateDt,
     noteStepMode,
+    /**
+     * Advance per-tick drain owners once per fixed step. This is the E2 economy-slice invariant:
+     * a resumable pass must not depend on its owner's slower clock (economy is a 2 Hz calendar
+     * owner), or the next due tick can clobber work that has not finished. Hosts call this from
+     * their ordinary fixed-step path, after core.preStep and before the system queue.
+     */
+    drainStep(dt, currentState) {
+      for (const system of tickDrains) system.drainTick(dt, currentState);
+    },
     dispose,
   };
 }
 
 /**
  * Pure queue selection for one step. Policy (E3 review F7): an explicit mode resolves only
- * through its pre-built partition; a mode with no partition — a frozen DOCKED/YARD label or an
- * unrecognised string — runs nothing. `shouldSkipSystemThisStep` applies the same policy (its
- * scope lookup rejects those modes too), so the queue and the per-system skip can never disagree.
+ * through its pre-built partition; a mode with no partition — the frozen DOCKED label, an
+ * UNKNOWN label or an unrecognised string — runs nothing. `shouldSkipSystemThisStep` applies the
+ * same policy (its scope lookup rejects those modes too), so the queue and the per-system skip
+ * can never disagree.
  */
 function selectStepQueue(partitions, state, mode) {
   if (!partitions) return [];
@@ -316,25 +362,10 @@ export function updateQueueForThisStep(partitions, state) {
   if (partitions && typeof partitions.noteStepMode === 'function') {
     partitions.noteStepMode(state, mode);
   }
-
-  if (partitions && state && typeof state === 'object') {
-    const totalCount = partitions.all ? partitions.all.length : 0;
-    const smr = state.simModeRuntime || (state.simModeRuntime = {
-      mode: null,
-      activeCount: 0,
-      totalCount: 0,
-      skippedCount: 0,
-    });
-    smr.mode = mode;
-    smr.activeCount = queue.length;
-    smr.totalCount = totalCount;
-    smr.skippedCount = totalCount - queue.length;
-  }
-
   return queue;
 }
 
-/** Pure derivation for diagnostics — never writes `state.simModeRuntime` (E3 review F7). */
+/** Pure derivation for diagnostics — never writes state (E3 review F7). */
 export function getStepExecutionStats(partitions, state) {
   const mode = resolveActiveSimMode(state);
   const queue = selectStepQueue(partitions, state, mode);

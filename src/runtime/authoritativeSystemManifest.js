@@ -691,9 +691,11 @@ export function validateSystemClockDeclarations(updateIds = PRODUCTION_UPDATE_OR
  * Every id in PRODUCTION_UPDATE_ORDER carries an explicit mode scope declaration.
  * validateSystemModeDeclarations() verifies complete coverage.
  *
- * Only FLIGHT and SWARM are scheduling scopes: they are the two states the ordinary route
- * actually steps. DOCKED and YARD are frozen-world labels — presentationFreeze skips the full
- * tick while either holds, so no mode queue is ever dispatched for them (E3 review F4).
+ * FLIGHT, SWARM and YARD are scheduling scopes. DOCKED is the only frozen-world label:
+ * presentationFreeze owns it, so no queue is dispatched while it holds. A live shipbreaking yard
+ * job is NOT frozen - the player is towing and working there - so YARD gets the flight-equivalent
+ * queue (everything except SWARM-only systems). An unrecognised mode resolves UNKNOWN and
+ * dispatches nothing: unknown input must fail closed, never fall back to the full unscoped set.
  */
 export const SIM_MODE = Object.freeze({
   FLIGHT: 'flight',
@@ -703,21 +705,24 @@ export const SIM_MODE = Object.freeze({
   // ALL_SIM_MODES: a frozen step runs the hidden keepalive services, not a system queue.
   DOCKED: 'docked',
   YARD: 'shipbreakingYard',
+  // Fail-closed label for an unrecognised state.mode. Never in ALL_SIM_MODES, so it has no
+  // pre-built partition and dispatches an empty queue.
+  UNKNOWN: 'unknown',
 });
 
-/** Scopes a queue can be dispatched for. A frozen label (DOCKED/YARD) is not one. */
+/** Scopes a queue can be dispatched for. A frozen label (DOCKED) is not one. */
 export const ALL_SIM_MODES = Object.freeze([
   SIM_MODE.FLIGHT,
   SIM_MODE.SWARM,
+  SIM_MODE.YARD,
 ]);
 
 const MODE_SCOPE_ALWAYS = ALL_SIM_MODES;
-// ADVENTURE and FLIGHT_ONLY both resolve to FLIGHT now that DOCKED/YARD are frozen labels, not
-// scheduling scopes. The names are kept because they document the owner's intent and the two
-// groups will diverge again if a docked step ever ships.
-const MODE_SCOPE_ADVENTURE = Object.freeze([SIM_MODE.FLIGHT]);
-const MODE_SCOPE_FLIGHT_ONLY = Object.freeze([SIM_MODE.FLIGHT]);
-const MODE_SCOPE_COMBAT_FLIGHT = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.SWARM]);
+// The yard is flight-equivalent: adventure owners, flight-only exploration and combat-flight
+// owners all run there. Only SWARM-only systems stay out. DOCKED has no scope at all.
+const MODE_SCOPE_ADVENTURE = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD]);
+const MODE_SCOPE_FLIGHT_ONLY = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD]);
+const MODE_SCOPE_COMBAT_FLIGHT = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.SWARM, SIM_MODE.YARD]);
 const MODE_SCOPE_SWARM_ONLY = Object.freeze([SIM_MODE.SWARM]);
 
 export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
@@ -787,7 +792,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   dyingHull: MODE_SCOPE_COMBAT_FLIGHT,
   wingMorale: MODE_SCOPE_COMBAT_FLIGHT,
 
-  // Open-World Adventure systems (Flight + Docked + Yard, not in Swarm)
+  // Open-World Adventure systems (Flight + Yard, not in Swarm; Docked is frozen)
   nemesis: MODE_SCOPE_ADVENTURE,
   latchNine: MODE_SCOPE_ADVENTURE,
   aftermathWrecks: MODE_SCOPE_ADVENTURE,
@@ -838,7 +843,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   worldPressure: MODE_SCOPE_ADVENTURE,
   lineProgression: MODE_SCOPE_ADVENTURE,
 
-  // Open-World Flight & Yard exploration (Flight + Yard only, not when Docked, not in Swarm)
+  // Open-World Flight & Yard exploration (Flight + Yard, not in Swarm; Docked is frozen)
   flybyFocus: MODE_SCOPE_FLIGHT_ONLY,
   scanner: MODE_SCOPE_FLIGHT_ONLY,
   spectrum: MODE_SCOPE_FLIGHT_ONLY,

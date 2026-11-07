@@ -2,7 +2,7 @@
 
 **Campaign:** E3 — Mode-Scoped Simulation + Simulation LOD
 **Status:** VERIFIED for mode-scoped dispatch; LOD sub-claim retracted
-**Date:** 2026-11-06
+**Date:** 2026-11-06 (second review pass)
 
 ---
 
@@ -10,80 +10,103 @@
 
 ### A. Declarative scheduling modes (`src/runtime/authoritativeSystemManifest.js`)
 
-- `SIM_MODE` keeps `FLIGHT`, `SWARM`, `UNSCOPED`, and the frozen-world labels `DOCKED` / `YARD`.
-- `ALL_SIM_MODES` contains only `FLIGHT` and `SWARM`. DOCKED/YARD are not scheduling scopes: the
-  ordinary route freezes the full tick while docked or in the yard, so no mode queue runs for them.
+- `SIM_MODE` keeps `FLIGHT`, `SWARM`, `UNSCOPED`, the frozen label `DOCKED`, the live `YARD` and
+  the fail-closed `UNKNOWN`.
+- `ALL_SIM_MODES` is `[FLIGHT, SWARM, YARD]`. DOCKED is the only frozen scheduling label: the
+  ordinary route freezes the tick through `presentationFreeze`, so no queue runs for it. YARD is a
+  live working state (the player is towing in the yard), so it deliberately gets the
+  flight-equivalent queue.
 - Every one of the 220 `PRODUCTION_UPDATE_ORDER` ids keeps an explicit declaration. The live split:
 
   | Group | Count |
   |---|---:|
-  | Always run (Flight + Swarm) | 19 |
-  | Flight + Swarm combat | 38 |
-  | Flight adventure | 49 |
-  | Flight open-world only | 104 |
+  | Always run (Flight + Swarm + Yard) | 19 |
+  | Flight + Swarm + Yard combat | 38 |
+  | Flight + Yard adventure | 49 |
+  | Flight + Yard open-world only | 104 |
   | Swarm only | 10 |
 
-  Queue sizes are **210 Flight / 67 Swarm**. The previous report's 28/48/115 buckets were stale;
-  the Line fix (`6dd2ceedceb2`) and the capital-boss scope fix in this pass moved nine systems into
-  the combat bucket. `capitalBossEncounters` now runs in Swarm because `swarmMode` hands the Iron
-  Maw fight to it and `survivalWave` reads the fight record there.
+  Queue sizes are **210 Flight / 67 Swarm / 210 Yard**. The previous report's 28/48/115 buckets
+  were stale; the Line fix (`6dd2ceedceb2`) moved nine systems into the combat bucket.
+  `capitalBossEncounters` runs in Swarm because `swarmMode` hands the Iron Maw fight to it and
+  `survivalWave` reads the fight record there. `lineProgression` is adventure: Flight + Yard, not
+  Swarm.
 - Exported validation and query helpers: `validateSystemModeDeclarations`,
   `getDeclaredSystemModeScope`, `getSystemModeScope`, `systemRunsInMode`.
 
 ### B. Mode-partitioned host scheduling (`src/core/catchupPolicy.js`)
 
-- `resolveActiveSimMode(state)` still resolves the state label (including DOCKED/YARD) so skip
-  decisions can name why a tick is frozen.
-- `partitionUpdateSystems` pre-builds only the two dispatchable queues, preserving exact relative
-  order from the manifest (zero filtering in `step()`).
-- `updateQueueForThisStep` selects the queue and reports `state.simModeRuntime`; `getStepExecutionStats`
-  derives the same numbers without writing state.
-- **Explicit unknown-mode policy:** an unrecognised mode or a frozen DOCKED/YARD label has no
+- `resolveActiveSimMode(state)` resolves the state label (Flight, Swarm, Docked, Yard) and returns
+  `UNKNOWN` for an unrecognised explicit `state.mode`. An unknown label has no partition, so the
+  queue is empty and the per-system skip is true for every id. `mode: 'banana'` is the regression.
+- `partitionUpdateSystems` pre-builds only the dispatchable queues, preserving exact relative
+  order from the manifest (zero filtering in `step()`). It also collects per-fixed-tick drain
+  owners (`drainTick`) for the economy slice; every host calls `drainStep` after `core.preStep`.
+- `updateQueueForThisStep` selects the queue; `getStepExecutionStats` derives the same numbers
+  without writing state. The old write-only `state.simModeRuntime` receipt was removed (review F7).
+- **Explicit unknown-mode policy:** an unrecognised mode or the frozen DOCKED label has no
   partition, so the queue is empty and `shouldSkipSystemThisStep` skips every system. Both sides
-  now agree (review F7).
-- **Clock discontinuity reset:** the partition owns a per-state clock record carrying the resolved
-  mode. When the mode changes, its calendar stamps and baseline are cleared and marked unseeded, so
-  the first resumed calendar call returns the fixed dt. `updateDt` repeats the check as a safety net
-  for direct callers. This removes the post-Crucible burst that previously delivered a five-minute
-  dt to economy/automation/salvage/routeFollower (review F2).
+  agree (review F7).
+- **Clock discontinuity reset, narrowed:** a mode change drops stamps only for owners absent from
+  the new mode. A dual-mode calendar owner (barkDirector/buildIdentity/wingMorale/
+  masslineImpactDamage/save) keeps its real interval; a returning owner is reseeded and gets the
+  fixed dt, never a run-sized burst (review F2).
 
-### C. Profiler preamble (`src/core/simStepProfiler.js`, `src/core/sim.js`, `src/core/authoritativeSimStep.js`)
+### C. Profiler preamble and basis labels (`src/core/simStepProfiler.js`, `src/core/sim.js`, `src/core/authoritativeSimStep.js`)
 
-- The worker stepper now begins the measured tick before `core.preStep` and records
-  `core.preStep`, `input`, and `core.publishInputCommand`; the Node sim host records
-  `core.preStep`. Execution order is unchanged.
-- `core.*` rows are treated as top-level work despite their dotted namespace, so the ranking
-  denominator no longer drops `core.lifetimeSweep`/`core.preStep` (review F6/F7).
-- The per-tick `order` array is reused; heap sampling happens before the retained scratch is
-  touched. Allocation is documented as Node/harness evidence; a worker realm without
-  `performance.memory` reports `allocation: null`.
+- The worker stepper begins the measured tick before `core.preStep` and records
+  `core.preStep`, `input`, `core.publishInputCommand` and `core.tickDrains`; the Node sim host
+  records `core.preStep`/`core.tickDrains`. Execution order is unchanged.
+- Per-system `meanMs`/p50/p95/p99/max are labelled `basis: 'per-call'`; `meanMsPerTick` amortises
+  a calendar owner over measured ticks. The step row is `basis: 'per-tick'`. This stops a 2 Hz
+  calendar row being compared with a 60 Hz table row without saying which basis it is.
 - The **main-lane `registry.js` is still not wired to this profiler**; it keeps its existing
-  `perfRuntime` system timings. The E2 record now states that instead of claiming main-lane
-  coverage.
+  `perfRuntime` system timings.
 
-### D. LOD retracted
+### D. Live YARD scope
+
+- A `shipbreakingYard.activeJobId` resolves to YARD, and YARD includes `input`, `actions`,
+  `physics`, `save`, `tetherGameplay`, `shipbreakingYard`, adventure owners and combat-flight
+  owners. SWARM-only arena systems stay out. The live tow route
+  (`test/pro-experiences-shipbreakingYard.test.mjs`, 29/29) is the proof: the old empty queue made
+  the first tow a no-op.
+
+### E. LOD retracted
 
 `state.simLOD` and `getSimulationLODTelemetry` were removed. The field had no `src/` reader, no
 rate dimension, and was not an optimisation. Activity tier telemetry remains on
 `state.activityRuntime`, whose counts and physics/glass/runway sets have real consumers.
 
+### F. Economy slice drain (E2, shared with this campaign)
+
+The economy is a 2 Hz calendar owner. A many-advance pass could outlive its 5 s due period, and the
+next due tick replaced it. The slice now advances once per fixed tick (`drainStep`), 3 advances per
+phase (9 maximum), carries a due tick that lands mid-pass, emits the receipt on the period
+boundary, counts completed passes only, and snapshots the cursor on save. Proof:
+`test/economy-slice-cadence.test.mjs` (2100 ticks and 60 s) plus the flag-on 47-A run.
+
 ## 2. Test evidence
 
 ### Focused suites
 
-- `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`: **11/11**.
+- `test/finish-e3-mode-scoped-sim-and-lod.test.mjs`: **12/12**.
   - declaration coverage and scheduling-mode set;
-  - `systemRunsInMode` Flight/Swarm/UNSCOPED plus frozen-label rejection;
-  - `resolveActiveSimMode` for flight, swarm, docked, yard;
-  - pre-built queue membership/order;
+  - `systemRunsInMode` Flight/Swarm/Yard/UNSCOPED plus DOCKED/UNKNOWN rejection;
+  - `resolveActiveSimMode` for flight, swarm, docked, yard and `banana`;
+  - pre-built queue membership/order, including the Yard queue and `lineProgression` /
+    `capitalBossEncounters`;
   - telemetry write and pure `getStepExecutionStats`;
   - activityRuntime publishing and absence of `state.simLOD`;
   - dynamic mode switching;
-  - one policy for frozen/unknown modes;
+  - one policy for frozen/unknown modes, with the empty `mode:'banana'` queue and every system
+    skipped;
   - the Line's combat-flight membership in Swarm;
-  - the five-minute Swarm→Flight clock-discontinuity regression.
+  - the five-minute Swarm→Flight clock-discontinuity regression;
+  - the dual-mode calendar interval regression.
 - `test/sim-step-profiler.test.mjs`: **5/5** (ranking, disabled cost, sampling, core top-level rows,
   per-tick row reset).
+- `test/economy-slice-cadence.test.mjs`: **4/4** (2100-tick cadence, 60 s = 12 receipts, no-clobber,
+  serialize no-mutate, cursor resume).
 
 ### Core set
 
@@ -93,7 +116,10 @@ test/activity-classification.test.mjs test/activity-runtime.test.mjs test/rc-456
 test/fb-system-clock-declared.test.mjs test/w2d-manifest-update-coverage.test.mjs
 test/capital-boss-frozen-clock.test.mjs`
 
-→ **119 passed / 0 failed**.
+→ **120 passed / 0 failed**.
+
+The E3 batch also names the live yard route:
+`node --test test/pro-experiences-shipbreakingYard.test.mjs` → **29/29**.
 
 Individual counts: authoritative-manifest 16, sim-clock-catchup 11, calendar-elapsed-time 8,
 activity-classification 12, activity-runtime 32, capital-boss-frozen-clock 8.
@@ -108,24 +134,25 @@ activity-classification 12, activity-runtime 32, capital-boss-frozen-clock 8.
 
 ## 3. Determinism
 
-`node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json
---expect test/47a.telemetry.save-v23.expected.json --hash --repeat 5 --reload-at 600`
+The active reference remains **v24**:
+`1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331` legacy and the v3
+native-contact twin. The current shared checkout is red for a foreign reason
+(`src/data/newGameDefaults.js` starter shield and `src/systems/input.js` gamepad travel-latch are
+uncommitted), and no golden was re-recorded to hide it. v25 `080c5bd9…` is the obsolete un-drained
+slicing shape and is kept as history only; v24/v25 envelopes were not overwritten.
 
-With this commit plus the working tree as it stood at 19:47:
-
-→ `134e1e7f8296ed4c462d620421d8ec7102886ec629a39c9a0cd778a1f260aad5`, byte-identical to
-`test/47a.telemetry.save-v23.expected.json` (`deterministic: true`, exit 0).
-
-Shared-checkout caveat: a concurrent W1 Journey lane then wrote uncommitted
-`src/systems/missions.js` / `missionStoryOps.js` act fields. The same tape now reads
-`1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331`; that drift comes from the
-foreign files, not from this commit. Do not re-record the v23 reference to hide it. Re-run after
-that lane settles or on a clean checkout.
+The economy drain fix is proven behind its flag by `test/economy-slice-cadence.test.mjs`:
+2100 production ticks emit 7 receipts (35 s), 60 s emits 12, drift/slice sub-phases run, no due
+tick is entered while a pass is in flight, and a saved cursor resumes without replay or loss. The
+flag-on 47-A run is deterministic and reload-equal (`fb76e5b9…` legacy / `f06c59d5…` v3), but it
+is not promoted to a reference until a clean tree confirms the delta. Re-enable `economySlicing`
+only with that clean v26 append-only record and a fresh profile.
 
 ## 4. Non-claims
 
-- No docked or yard mode queue is dispatched; the freeze owns those states. The scope declarations
-  for those states were removed rather than left as an unreachable claim.
+- No docked mode queue is dispatched; the freeze owns that state.
 - No simulation-LOD rate change is shipped.
 - No live Swarm worker profile is claimed; only queue membership and the existing Swarm regression
   are proven.
+- The profiler does not cover the main-lane `registry.js` implementation; its numbers come from
+  `perfRuntime`.

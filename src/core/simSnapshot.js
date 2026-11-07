@@ -301,7 +301,8 @@ function snapshotPhysicsRuntime(state) {
   // E2: the physics owner publishes the per-body rows lazily (they are a verification view, not
   // per-tick sim state). Ask the provider when the explicit copy is absent so this snapshot is
   // byte-identical to the one the old per-tick publication produced.
-  let rows = Array.isArray(runtime.sg02Snapshot) ? runtime.sg02Snapshot : null;
+  const published = runtime.sg02Snapshot;
+  let rows = Array.isArray(published) ? published : null;
   if (!rows && typeof runtime.sg02SnapshotProvider === 'function') {
     try { rows = runtime.sg02SnapshotProvider(); } catch (_) { rows = null; }
   }

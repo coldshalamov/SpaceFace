@@ -515,6 +515,10 @@ export function createRigPhysicsAdapter(ctx) {
       const edit = rig.pendingEdit;
       if (edit) {
         const edge = rig.connections.find(e => e.id === edit.edgeId), body = ownedPart(w, rig, edit.bodyId);
+        // A restored pending seed edit is the same shipped reader as a freshly committed one:
+        // re-declare demand before reading, or a demand-driven telemetry owner never publishes
+        // the admission receipt after load.
+        if (edit.seed && body) requestPhysicsTelemetry(body);
         const receipt = edit.seed && body ? readPhysicsTelemetry(body) : null;
         const admitted = edit.seed ? receipt?.dynamic && receipt.bodyHandle >= 0 && physicsBodyNativeReady(body) : edge?.state === 'active';
         if (admitted && alive(body)) {

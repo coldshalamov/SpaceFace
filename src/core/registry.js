@@ -953,6 +953,7 @@ export function createRegistry(ctx) {
             tickBoundary.publishInputCommand(state.input, state.tick,
               typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
           }
+          postInputPartitions.drainStep(dt, state);
           for (const s of updateQueueForThisStep(postInputPartitions, state)) {
             if (countSystems) tier1.countSystemInvocation(s.name);
             s.update(postInputPartitions.updateDt(s, dt, state), state);
@@ -979,6 +980,9 @@ export function createRegistry(ctx) {
         tickBoundary.publishInputCommand(state.input, state.tick,
           typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
       }
+      t = perfNow();
+      try { postInputPartitions.drainStep(dt, state); }
+      finally { perf.recordSystem('core.tickDrains', perfNow() - t); }
       for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();

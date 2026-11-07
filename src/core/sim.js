@@ -211,6 +211,11 @@ export function createSimulation(options = {}) {
             core.preStep(dt, state);
             profiler.record('core.preStep', nowNs() - t0);
           }
+          {
+            const t0 = nowNs();
+            updatePartitions.drainStep(dt, state);
+            profiler.record('core.tickDrains', nowNs() - t0);
+          }
           const queue = updateQueueForThisStep(updatePartitions, state);
           for (const system of queue) {
             const t0 = nowNs();
@@ -230,6 +235,7 @@ export function createSimulation(options = {}) {
             if (countSystems) tier1.countSystemInvocation('core.preStep');
             core.preStep(dt, state);
           }
+          updatePartitions.drainStep(dt, state);
           const queue = updateQueueForThisStep(updatePartitions, state);
           for (const system of queue) {
             if (countSystems) tier1.countSystemInvocation(system.name);

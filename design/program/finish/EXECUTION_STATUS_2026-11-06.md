@@ -27,7 +27,7 @@ the implementation is optimal.
 | E5 shared memory | 1 | Landed (Electron probe open) | partial | gate A |
 | E9 load in seconds | 1 | Diagnosed only | no | implement |
 | E3 mode-scoped sim | 2 | COMPLETE | pending review | gate C |
-| E2 hot path | 2 | Partial; bars NOT met | no | implement |
+| E2 hot path | 2 | Partial; drain shipped, bars NOT met | no | implement |
 | E4 data-oriented core | 2 | Not started | no | implement |
 | E6 residency/pop-in | 3 | Landed; counters 0 | pending review | gate B |
 | E7 renderer rebuild | 3 | Diagnosed only | no | implement |
@@ -88,10 +88,13 @@ the implementation is optimal.
 
 ## Open verification risks
 
-- **47-A hash:** resolved. `sim-golden-diff` proved the delta **content-only** (zero motion, one
-  story flag `journey_act_I_announced`, one `comms:popup`). v24 envelopes are recorded for the legacy
-  and v3 native-contact tapes, the append-only history is under `test/references/47a-save-v23/v2`,
-  and every consumer points at v24. v23 remains for rollback; both v24 tapes pass `--hash --repeat 5`.
+- **47-A hash:** the reference is still v24 (`1fedbd09…`, v3 native-contact `015c4c…`). The
+  economy slicing flag is held OFF: the per-fixed-tick drain and its 2100-tick/60 s cadence tests
+  are green behind the flag, but the shared checkout is currently red from foreign uncommitted
+  changes (`src/data/newGameDefaults.js` starter shield, `src/systems/input.js` gamepad travel
+  latch). A flag-on run is deterministic and reload-equal (`fb76e5b9…` / `f06c59d5…`) but is not
+  promoted to a v26 reference until a clean tree confirms the delta. v25 `080c5bd9…` is the
+  obsolete un-drained shape; its reference metadata now describes the real change.
 - **check:baseline:** 17/17 links green, but the wall exceeded the 90 s budget at 128 s because the
   nested `massline` link ran at 128 s under the fixers' CPU contention. No link failed; re-run on a
   quiet host before treating it as a regression. Do not raise the budget.
@@ -123,7 +126,7 @@ landed for data alone.
 |---|---|---|
 | A | E10 + E1 + E5 | **fix landed** (`bd1b166`), **76/76** E1 cohort at HEAD (77/77 at the fix commit before Q4 removed two legacy tests); browser 1× re-record and E5 live shell receipt still open. Re-review: A1 says code correct but claims must be corrected; A2/A3 pending. |
 | B | E6 | **fix landed** (`84bfa5`..`53312b`), 97/97 + 103/103; single after-run is a measured FAIL (`visibleUnready 3`, `leftUndrawn 5`) on a contaminated tree. Clean-tree re-measure + re-review required. |
-| C | E3 + E2 profiler | **fix landed** (`762eb19` + `3196b76`), 119/119, four gates green, 47-A **v25** content-only for economy slicing. Bars now **p95 13.79 / p99 17.67 / max 28.99** vs 8/12/25. Re-review in flight. |
+| C | E3 + E2 profiler | **fix landed** (`762eb19` + `3196b76` + the economy-drain pass), **120/120** core set, live yard route **29/29**, unknown-mode and dual-mode clock regressions green. 47-A remains **v24** (`1fedbd09…`); the economy drain is verified behind `economySlicing` (2100-tick/60 s cadence) and held OFF until a clean-tree v26. v25 is the obsolete un-drained shape. Bars still **NOT met**; the recent matched A/B was captured on a loaded checkout (51.07 / 113.26 / 142.67 vs 8/12/25). |
 | D | P1 + P2 | **fix landed** (`02b5ff11`), 25/25 focused, New Game tab order PASS, UI imports 55/0. Re-review in flight. |
 | E | X1 + X3 + X4 + X5 | **fix landed** (`4ee6b61` X1, `6db9d84` X3, `d309816` X4/X5); X1 61/61 + 1600×1000 captures, X3 30/30 + capture, X4/X5 48/48. X1 owner approval still open. Re-review in flight. |
 | F | W1 | **fix landed** (`2c5980`), live 18/18, 50/50 focused, real B0 ordering defect fixed. Re-review in flight. |
@@ -138,9 +141,12 @@ landed for data alone.
   contention; no link failed.
 - E1/E10 cohort **76/76 at HEAD** (77/77 at `bd1b166` before Q4 removed two legacy tests), `check:smooth-flight` **48/48**.
 - E6 focused **97/97**, supporting **103/103**.
-- E2/E3 combined **119/119**; `check-sg02-*`, `check-sg06-*`, `check-depth-program-k1` green.
-  900-tick/211-body profile: **mean 8.74 / p95 13.79 / p99 17.67 / max 28.99 ms**; economy slicing on
-  with the content-only v25 reference.
+- E2/E3 combined **120/120**; live yard route **29/29**; `check-sg02-*`, `check-sg06-*`,
+  `check-depth-program-k1` green. The recent matched A/B is `.devshots/sim-step-profile/econ-drain-ab.json`
+  (same-process legacy vs drained slice, flag-on) and was captured on a loaded checkout: optimised
+  **mean 20.89 / p95 51.07 / p99 113.26 / max 142.67 ms**, legacy **46.74 / 147.24 / 308.37 / 652.02 ms**.
+  Economy rows: `economy` 14.05 → 0.027 ms/call, `economy.drift` 56.41 → 3.82 ms/call, 3 completed
+  passes in both arms. Do not cite the old 8.74/13.79 profile: it measured an incomplete pass.
 - Q4 razor: **8 files / 2,458 lines removed**, `check-gameplay-core` green, boot still 18/18.
 - W1 live route **18/18**, focused **50/50**.
 - X3 presenters **30/30**, re-shot capture at HEAD.
@@ -155,8 +161,9 @@ landed for data alone.
   behaviour.
 - `check:ui-budgets` is stale because the P1/X1 CSS work is uncommitted; re-pin with
   `capture:ui-matrix --budgets-out` after the UI batch lands.
-- Performance bars (E2) remain unmet; economy slicing and the E4 core are the next max/p99 and p95
-  levers.
+- Performance bars (E2) remain unmet; the drained economy slice is implemented and held behind
+  its flag, but a clean-tree v26 re-record and a clean max/p99 are still required, as is the E4
+  core.
 
 ## PR queue (triage 2026-11-06)
 

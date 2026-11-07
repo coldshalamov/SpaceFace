@@ -84,6 +84,11 @@ export function createAuthoritativeStepper({
           publishBoundary(tickBoundary);
           profiler.record('core.publishInputCommand', nowNs() - t0);
         }
+        {
+          const t0 = nowNs();
+          postInputPartitions.drainStep(dt, state);
+          profiler.record('core.tickDrains', nowNs() - t0);
+        }
         // Sampled path: one clock pair per executed system. Same queue, same order, same
         // updateDt arguments — profiling must not change what the step computes.
         for (const s of updateQueueForThisStep(postInputPartitions, state)) {
@@ -101,6 +106,7 @@ export function createAuthoritativeStepper({
         if (core && typeof core.preStep === 'function') core.preStep(dt, state);
         if (input && input.update) input.update(dt, state);
         publishBoundary(tickBoundary);
+        postInputPartitions.drainStep(dt, state);
         for (const s of updateQueueForThisStep(postInputPartitions, state)) {
           s.update(postInputPartitions.updateDt(s, dt, state), state);
         }

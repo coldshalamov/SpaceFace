@@ -6,10 +6,11 @@
 // ONE probe process boot the legacy shape, measure it, dispose, boot the optimised shape and
 // measure again — same machine state, same scene, seconds apart.
 //
-// Defaults are the shipped behaviour: every flag ON. A flag is only read at a branch the step
-// already takes (a boolean per body at most), never in a way that changes results. The flags exist
-// for measurement and for a fail-open retreat if a platform misbehaves; they are not a feature
-// system and nothing in the game sets them.
+// Defaults are the shipped behaviour, and each flag below states its own default: not every flag
+// is ON (`telemetryDemand` is deliberately OFF until every shipped reader opts in). A flag is only
+// read at a branch the step already takes (a boolean per body at most), never in a way that changes
+// results. The flags exist for measurement and for a fail-open retreat if a platform misbehaves;
+// they are not a feature system and nothing in the game sets them.
 
 const DEFAULTS = Object.freeze({
   /**
@@ -22,10 +23,11 @@ const DEFAULTS = Object.freeze({
    */
   telemetryDemand: false,
   /**
-   * A due economy pass advances by a fixed quantum per tick instead of one 130 ms step.
-   * DEFAULT ON (2026-11-06): measured 130–150 ms → ~3 ms/call, and `sim-golden-diff` proves the
-   * 47-A delta is content-only (2434 economy fields, zero entity motion). The versioned v25
-   * reference is `test/47a.telemetry.save-v25.expected.json`; v23/v24 remain for rollback.
+   * A due economy pass advances by a fixed quantum per fixed tick instead of one 130 ms step.
+   * HELD OFF (2026-11-06): the per-fixed-tick drain, save cursor and 2100-tick/60 s cadence tests
+   * are green behind this flag, but the shipped 47-A tape is currently contaminated by foreign
+   * working-tree changes, so v26 cannot be recorded honestly. v24 (`1fedbd09…`) stays active;
+   * v25 (`080c5bd9…`) is the obsolete un-drained shape. Flip this on only with a clean v26.
    */
   economySlicing: false,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */

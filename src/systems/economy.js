@@ -132,9 +132,12 @@ const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 // across ~35 ticks, comfortably inside the 300-tick (5 s) period.
 const ECON_SLICE_RECIPES = 2;
 const ECON_SLICE_STATIONS = 1;
-// Number of opportunities a pass gets before its own next due tick (the economy owner runs at 2 Hz
-// and its period is 5 s). The measured quantum is scaled to finish inside this many advances.
-const ECON_SLICE_ADVANCES = 8;
+// Advances each phase gets. Three phases × 3 advances = 9 advances maximum. Even on the owner's
+// own 2 Hz calendar clock (10 advances per 5 s period) that is 4.5 s, inside the period; the
+// production host also advances a pass once per fixed 60 Hz tick through the partition drain
+// (`drainTick`), so a pass completes in ~0.15 s and can never be replaced mid-flight. This is
+// validated by test/economy-slice-cadence.test.mjs against the live recipe/station counts.
+const ECON_SLICE_ADVANCES = 3;
 // A small economy (a lab tape, a single-station scenario) fits its whole pass in one step without
 // being a spike, so it keeps the unsliced path byte-for-byte. That is not special-casing a mode: it
 // is the slice declining to engage when there is nothing to spread, which is also what keeps the
@@ -1944,17 +1947,62 @@ export const economy = {
       pendingRefresh.sliceIndex += 1;
       if (pendingRefresh.sliceIndex >= ECONOMY_SAVE_LOADED_SLICES) this._offlineSummaryRefresh = null;
     }
-    // E2 spikes → slices: a due economy pass advances by a fixed quantum per tick instead of
-    // doing every station and listing in one step. Fixed quantum (not a wall-clock budget) keeps
-    // the completion tick identical on every machine, so the pass stays deterministic.
-    if (this._econPass) this._advanceEconPass(state);
+    // A production host drains the slice once per fixed tick through `drainTick`. If that already
+    // ran this tick, the 2 Hz calendar call must not advance or accumulate a second time.
+    if (this._tickDrainSeen && Number.isInteger(state.tick) && this._lastStepTick === state.tick) return;
+    this._econStep(dt, state);
+  },
+
+  /**
+   * Advance the economy once for `dt` of host time. Used by the ordinary update path and by the
+   * per-fixed-tick drain; `_lastStepTick` makes the two idempotent within one host tick.
+   */
+  _econStep(dt, state) {
     const clock = state.economy.econClock;
+    this._lastStepTick = Number.isInteger(state.tick) ? state.tick : null;
     clock.accumulator += dt;
     // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
     this._eventAccumulator += dt;
-    const econDue = consumePeriodicClock(clock.accumulator, 0, ECON_TICK_S);
-    clock.accumulator = econDue.accumulator;
-    for (let i = 0; i < econDue.steps; i++) this.econTick(ECON_TICK_S, state);
+    // E2 spikes → slices: a due economy pass advances by a fixed quantum per tick instead of
+    // doing every station and listing in one step. Fixed quantum (not a wall-clock budget) keeps
+    // the completion tick identical on every machine, so the pass stays deterministic.
+    if (this._econPass) {
+      this._advanceEconPass(state);
+      // The pass is still in flight. Carry this period's due work in the accumulator instead of
+      // replacing the pass: the next due tick pays it once the current pass finishes.
+      if (this._econPass) return;
+    }
+    // Summing the fixed 60 Hz step leaves 4.999999999999998 at the 300th tick; without a tiny
+    // epsilon the due pass (and its receipt) lands one tick late at every 5 s boundary. Apply the
+    // tolerance only to the sliced shape so the legacy 47-A cadence stays byte-identical.
+    const dueEpsilon = simCoreFlag('economySlicing') ? 1e-9 : 0;
+    const econDue = consumePeriodicClock(clock.accumulator, 0, ECON_TICK_S, { epsilon: dueEpsilon });
+    clock.accumulator = econDue.accumulator < 0 ? 0 : econDue.accumulator;
+    for (let i = 0; i < econDue.steps; i++) {
+      if (this._econPass) {
+        // A due tick that lands while a pass is in flight is queued, never dropped.
+        clock.accumulator += ECON_TICK_S;
+        continue;
+      }
+      this.econTick(ECON_TICK_S, state, { slice: this._tickDrainSeen });
+    }
+  },
+
+  /**
+   * Per-fixed-tick drain hook (partitionUpdateSystems). The economy owner itself is a 2 Hz
+   * calendar system; relying on that cadence alone lets a many-advance pass outlive its 5 s due
+   * period. Advancing once per fixed tick makes the pass complete in ~0.15 s and keeps the
+   * economy:tick cadence exactly one receipt per due period. No-op when slicing is off, so the
+   * legacy 47-A cadence stays byte-identical.
+   */
+  drainTick(dt, state) {
+    if (!simCoreFlag('economySlicing')) {
+      this._tickDrainSeen = false;
+      return;
+    }
+    this._tickDrainSeen = true;
+    if (Number.isInteger(state.tick) && this._lastStepTick === state.tick) return;
+    this._econStep(dt, state);
   },
 
   /**
@@ -1967,6 +2015,18 @@ export const economy = {
    */
   _advanceEconPass(state) {
     const pass = this._econPass;
+    if (!pass) return;
+    pass.lastAdvancedTick = Number.isInteger(state.tick) ? state.tick : null;
+    const eph = getSimStepProfiler();
+    const ephOn = eph.active;
+    const startNs = ephOn ? nowNs() : 0;
+    this._advanceEconPassBody(state);
+    if (ephOn) eph.record('economy.slice', nowNs() - startNs);
+  },
+
+  _advanceEconPassBody(state) {
+    const pass = this._econPass;
+    if (!pass) return;
     if (pass.phase === 'regional') {
       const recipes = REGIONAL_PRESSURE_RECIPES;
       const end = Math.min(recipes.length, pass.index + pass.recipeStep);
@@ -2061,11 +2121,13 @@ export const economy = {
     }
   },
 
-  econTick(tickDt, state) {
+  /**
+   * One due economy tick. Direct callers (unit tests, labs) get the unsliced pass by default;
+   * the production update path passes `{ slice: true }` so the heavy three-phase pass becomes a
+   * resumable slice driven by the per-fixed-tick drain.
+   */
+  econTick(tickDt, state, options = null) {
     const econ = state.economy;
-    const clock = econ.econClock;
-    clock.ticksElapsed++;
-    clock.lastTickT = state.simTime;
     const eph = getSimStepProfiler();
     const ephOn = eph.active;
     let ephT = ephOn ? nowNs() : 0;
@@ -2082,12 +2144,15 @@ export const economy = {
     for (let i = 0; i < eventDue.steps; i++) this.rollSpontaneousEvent(state);
     if (ephOn) { eph.record('economy.events', nowNs() - ephT); ephT = nowNs(); }
 
-    if (simCoreFlag('economySlicing')) {
+    if (options && options.slice === true && simCoreFlag('economySlicing')) {
       const stationIds = Object.keys(econ.markets);
       const units = stationIds.length * 2 + REGIONAL_PRESSURE_RECIPES.length;
       if (units > ECON_SLICE_INLINE_MAX) {
-        // Slice the three heavy passes; `economy:tick` still fires on the due tick when the pass
-        // finishes, and a pass never outlives the 5 s period (see ECON_SLICE_*).
+        // The public receipt fires on the period boundary, before the resumable heavy pass. The
+        // pass finishes inside the same period (9 advances max; ~0.15 s through the per-tick
+        // drain), and `ticksElapsed` counts completed passes. Listeners therefore read the last
+        // completed market state, never a half-applied one, and the 5 s cadence is exact.
+        this._emitEconomyTick(state);
         this._econPass = {
           tickDt,
           minuteShare: Math.max(0, Number(tickDt) || 0) / 60,
@@ -2095,15 +2160,13 @@ export const economy = {
           // it, so a row landing two ticks late computes exactly what the unsliced pass computed.
           simTime: state.simTime,
           stationIds,
-          // The economy owner is a 2 Hz calendar system, so a pass gets ~10 advances inside its
-          // own 5 s period. Size the quantum from the work so the pass always completes before the
-          // next due tick hands over a new one — a pass that outlived its period would be dropped.
           recipeStep: Math.max(ECON_SLICE_RECIPES, Math.ceil(REGIONAL_PRESSURE_RECIPES.length / ECON_SLICE_ADVANCES)),
           stationStep: Math.max(ECON_SLICE_STATIONS, Math.ceil(stationIds.length / ECON_SLICE_ADVANCES)),
           phase: 'regional',
           index: 0,
           touched: new Map(),
           demandProjectionCache: new Map(),
+          lastAdvancedTick: null,
         };
         this._advanceEconPass(state);
         return;
@@ -2164,12 +2227,18 @@ export const economy = {
       }
     }
     if (ephOn) { eph.record('economy.drift', nowNs() - ephT); }
-    this._finishEconTick(state);
+    this._finishEconTick(state, { emit: true });
   },
 
   /** The economy tick's tail: live intel, neighbour pressure, and the public tick receipt. */
-  _finishEconTick(state) {
+  _finishEconTick(state, { emit = false } = {}) {
     const econ = state.economy;
+    // Count completed passes only. A due receipt emitted at the start of a sliced pass must not
+    // inflate this counter, and a carried/dropped due period must never count.
+    if (econ.econClock) {
+      econ.econClock.ticksElapsed = (Number(econ.econClock.ticksElapsed) || 0) + 1;
+      econ.econClock.lastTickT = state.simTime;
+    }
     const eph = getSimStepProfiler();
     const ephOn = eph.active;
     let ephT = ephOn ? nowNs() : 0;
@@ -2186,7 +2255,12 @@ export const economy = {
     // 4) propagate event pressure to neighbour stations (along the sector graph)
     this.propagateEvents(state);
     if (ephOn) { eph.record('economy.propagate', nowNs() - ephT); }
+    if (emit) this._emitEconomyTick(state);
+  },
 
+  /** Publish the due/complete receipt. `ticksElapsed` is the completed-pass count. */
+  _emitEconomyTick(state) {
+    const econ = state.economy;
     this.bus.emit('economy:tick', {
       t: state.simTime,
       ticksElapsed: econ.econClock ? econ.econClock.ticksElapsed : 0,
@@ -6253,6 +6327,8 @@ export const economy = {
 
   newGame() {
     this._econPass = null;
+    this._lastStepTick = null;
+    this._tickDrainSeen = false;
     const state = this.state;
     state.economy.markets = {};
     state.economy.resourceWork = {};
@@ -6301,12 +6377,59 @@ export const economy = {
     if (sec) for (const st of sec.stations || []) this.ensureMarket(st.id, st.type, st.size);
   },
 
+  /** Plain-JSON cursor for an in-flight sliced economy pass (no sim mutation). */
+  _serializeEconPass(pass) {
+    return {
+      tickDt: pass.tickDt,
+      minuteShare: pass.minuteShare,
+      simTime: pass.simTime,
+      stationIds: pass.stationIds.slice(),
+      recipeStep: pass.recipeStep,
+      stationStep: pass.stationStep,
+      phase: pass.phase,
+      index: pass.index,
+      touched: [...pass.touched].map(([stationId, listings]) => [stationId, [...listings]]),
+    };
+  },
+
+  /** Restore the cursor from a save. Malformed rows fail closed to no pass, never a crash. */
+  _restoreEconPass(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const phase = raw.phase === 'regional' || raw.phase === 'industry' || raw.phase === 'drift'
+      ? raw.phase : null;
+    const index = Number(raw.index);
+    const tickDt = Number(raw.tickDt);
+    const recipeStep = Number(raw.recipeStep);
+    const stationStep = Number(raw.stationStep);
+    if (!phase || !Number.isInteger(index) || index < 0
+      || !(tickDt > 0) || !Number.isInteger(recipeStep) || recipeStep < 1
+      || !Number.isInteger(stationStep) || stationStep < 1
+      || !Array.isArray(raw.stationIds) || !Array.isArray(raw.touched)) return null;
+    const stationIds = raw.stationIds.filter((id) => typeof id === 'string');
+    const touched = new Map();
+    for (const row of raw.touched) {
+      if (!Array.isArray(row) || typeof row[0] !== 'string' || !Array.isArray(row[1])) continue;
+      touched.set(row[0], new Set(row[1].filter((id) => typeof id === 'string')));
+    }
+    return {
+      tickDt,
+      minuteShare: Number.isFinite(Number(raw.minuteShare)) ? Number(raw.minuteShare) : tickDt / 60,
+      simTime: Number.isFinite(Number(raw.simTime)) ? Number(raw.simTime) : 0,
+      stationIds,
+      recipeStep,
+      stationStep,
+      phase,
+      index,
+      touched,
+      demandProjectionCache: new Map(),
+      lastAdvancedTick: null,
+    };
+  },
+
   /** Serialize stock, formula state, and bounded player-visible market history. */
   serialize() {
-    // A save must never split the economy slice: an in-flight pass is finished here so the
-    // envelope carries the same state an unsliced tick would have produced, and a load never
-    // silently drops the remainder of a pass.
-    while (this._econPass) this._advanceEconPass(this.state);
+    // A save must not advance the sim or emit economy events. An in-flight slice is captured as a
+    // cursor (phase/index/touched rows) and restored on load; the live pass keeps running here.
     const econ = this.state.economy;
     const salvageIntakeState = ensureSalvageIntakeState(econ);
     const markets = {};
@@ -6343,6 +6466,11 @@ export const economy = {
       nextEventId: this._nextEventId,
       eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
     };
+    // Snapshot, never advance. A pass interrupted by a save resumes at exactly this cursor after
+    // load, so the remainder is neither replayed nor dropped. The per-pass demand memo is a pure
+    // cache over state reads and is rebuilt lazily; only the iteration cursor and the touched
+    // listing rows (which drive pre-drift chart observations) are durable.
+    if (this._econPass) data.econPass = this._serializeEconPass(this._econPass);
     const committedIntents = econ.committedIntents && typeof econ.committedIntents === 'object'
       && !Array.isArray(econ.committedIntents)
       ? econ.committedIntents
@@ -6499,6 +6627,11 @@ export const economy = {
       ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)
       : [];
     econ.econClock = { ...(data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }) };
+    // Resume an interrupted slice at the saved cursor. Restoring is not a step: no phase advances
+    // here, and no economy event is emitted.
+    this._econPass = this._restoreEconPass(data.econPass);
+    this._lastStepTick = null;
+    this._tickDrainSeen = false;
     const rawEconAccum = econ.econClock.accumulator;
     econ.econClock.accumulator = normalizePeriodicAccumulator(rawEconAccum, ECON_TICK_S);
     if (rawEconAccum != null && econ.econClock.accumulator !== rawEconAccum) {
