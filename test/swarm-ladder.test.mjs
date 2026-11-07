@@ -118,7 +118,10 @@ test('zones of ten: index, names, boss wave, and the hardened cycle', () => {
   const pack = swarmZoneFor(1);
   assert.equal(pack.name, 'The Pack');
   assert.equal(pack.startWave, 1);
-  assert.equal(pack.bossWave, 10);
+  // S14 moved the champion to wave 5; the zone's bossWave follows the authored cadence.
+  assert.equal(pack.bossWave, 5);
+  assert.equal(swarmZoneFor(11).bossWave, 15);
+  assert.equal(swarmZoneFor(21).bossWave, 25);
   assert.equal(swarmZoneFor(11).name, 'The Wing');
   assert.equal(swarmZoneFor(21).name, 'The Anvil');
   assert.equal(swarmZoneFor(31).name, 'The Choir');
@@ -154,11 +157,13 @@ test('checkpoints: zone index to start wave, purse sized to a real mid-build', (
 });
 
 test('zones cleared counts a zone only when its boss wave fell inside the clear span', () => {
-  assert.deepEqual(swarmLadderZonesCleared(1, 9), []);
+  assert.deepEqual(swarmLadderZonesCleared(1, 4), []); // before the wave-5 champion
+  assert.deepEqual(swarmLadderZonesCleared(1, 5), [0]);
   assert.deepEqual(swarmLadderZonesCleared(1, 10), [0]);
+  assert.deepEqual(swarmLadderZonesCleared(1, 15), [0, 1]);
   assert.deepEqual(swarmLadderZonesCleared(1, 20), [0, 1]);
-  assert.deepEqual(swarmLadderZonesCleared(1, 15), [0]);
-  assert.deepEqual(swarmLadderZonesCleared(11, 15), []); // died mid-zone: no boss, no zone
+  assert.deepEqual(swarmLadderZonesCleared(11, 14), []); // died before the wave-15 champion
+  assert.deepEqual(swarmLadderZonesCleared(11, 15), [1]);
   assert.deepEqual(swarmLadderZonesCleared(11, 20), [1]);
   assert.deepEqual(swarmLadderZonesCleared(11, 10), []); // cleared nothing from the checkpoint
 });
@@ -259,7 +264,7 @@ test('applySwarmLadderResult: a checkpoint run settles the zone it actually foug
   assert.equal(rec.checkpoint, 2, 'beating The Wing opens The Anvil at Round 21');
   // A mid-zone death pays nothing and loses nothing.
   const third = applySwarmLadderResult(second.ladder, {
-    arenaId: 'helios_core', startWave: 21, lastClearedWave: 25, deepestWave: 26,
+    arenaId: 'helios_core', startWave: 21, lastClearedWave: 24, deepestWave: 26,
     zoneChains: { 2: 50 }, zoneDeaths: { 2: 1 },
   });
   assert.equal(third.delta.newStars, 0);

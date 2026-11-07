@@ -8,10 +8,10 @@
 //     thirty rounds a player meets are learnable. Daily and a typed Custom seed stay as
 //     side doors: a run only settles onto the ladder when its seed IS the arena's seed.
 //
-//   * ZONES — the endless wave count reads as named zones of ten rounds, each ending in
-//     its boss (the boss rotation already rides every tenth wave). Zone 1 The Pack,
-//     Zone 2 The Wing, Zone 3 The Anvil, Zone 4 The Choir — then the cycle repeats under
-//     a hardened numeral (The Pack II, The Wing II, …) so deep runs still name a place.
+//   * ZONES — the endless wave count reads as named zones of ten rounds, each with the
+//     champion on its authored boss wave (the first at wave 5, then every tenth). Zone 1
+//     The Pack, Zone 2 The Wing, Zone 3 The Anvil, Zone 4 The Choir — then the cycle repeats
+//     under a hardened numeral (The Pack II, The Wing II, …) so deep runs still name a place.
 //
 //   * STARS + CHECKPOINTS — a cleared zone boss pays up to three stars (beat it / never
 //     went down inside the zone / hit the zone's chain target) and unlocks a checkpoint
@@ -25,6 +25,8 @@
 // result; this module only ever sees plain facts.
 
 import {
+  SWARM_BOSS_EVERY,
+  SWARM_BOSS_FIRST,
   SWARM_WAVE_MAX,
   swarmPlanBlock,
   swarmRosterFor,
@@ -32,7 +34,7 @@ import {
 import { swarmEventFor } from './swarmEvents.js';
 import { swarmSpecialistBriefForEnemy } from './swarmSpecialists.js';
 
-/** One zone is ten rounds, boss on the tenth — the same cadence the boss rotation ships. */
+/** One zone is ten rounds; the champion rides the authored boss cadence (first at wave 5). */
 export const SWARM_ZONE_LENGTH = 10;
 const SWARM_LAST_CLEARABLE_ZONE = Math.floor(SWARM_WAVE_MAX / SWARM_ZONE_LENGTH) - 1;
 
@@ -66,7 +68,8 @@ export function swarmZoneFor(wave) {
     cycle,
     name: base + romanSuffix(cycle),
     startWave: index * SWARM_ZONE_LENGTH + 1,
-    bossWave: (index + 1) * SWARM_ZONE_LENGTH,
+    // The champion's authored wave in this zone: 5, 15, 25, ... (SWARM_BOSS_FIRST/EVERY).
+    bossWave: SWARM_BOSS_FIRST + index * SWARM_BOSS_EVERY,
   };
 }
 
@@ -250,7 +253,9 @@ export function swarmLadderZonesCleared(startWave, lastClearedWave) {
   const last = Number.isInteger(lastClearedWave) ? lastClearedWave : 0;
   if (last < start) return [];
   const firstZone = swarmZoneIndexFor(start);
-  const lastZone = Math.floor(last / SWARM_ZONE_LENGTH) - 1;
+  // A zone is cleared when its authored champion falls inside the clear span, not when the
+  // tenth round does: the first champion is wave 5, then every tenth.
+  const lastZone = Math.floor((last - SWARM_BOSS_FIRST) / SWARM_BOSS_EVERY);
   const out = [];
   for (let z = firstZone; z <= lastZone; z++) out.push(z);
   return out;
