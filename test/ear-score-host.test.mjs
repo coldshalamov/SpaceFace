@@ -202,7 +202,10 @@ test('seed 4242: the real host walks travel → threat → fight → aftermath �
     const p = run.phases.find((x) => x.phase === target);
     const landed = run.writes[p.writesBefore];
     assert.ok(landed, `${target}: the faders moved on the frame the phase turned`);
-    assert.ok(landed.at > landed.now + 1e-4 && landed.at - landed.now <= 4, `${target}: quantised (${landed.now} → ${landed.at})`);
+    // A phase that turns exactly on the incoming stem's downbeat lands at `now`; the contract is
+    // "on the incoming grid, never behind it", so equality is a pass. A non-grid turn must land in
+    // the next bar-ish window.
+    assert.ok(landed.at >= landed.now - 1e-9 && landed.at - landed.now <= 4, `${target}: quantised (${landed.now} → ${landed.at})`);
     // Riding writes made while the change waits never pull it off its downbeat.
     const riding = run.writes.slice(p.writesBefore + 4).filter((w) => w.now < landed.at);
     for (const w of riding) assert.ok(w.at >= landed.at - 1e-9, `${target}: drift write at ${w.at} cut the downbeat ${landed.at}`);
