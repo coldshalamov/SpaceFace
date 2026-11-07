@@ -42,7 +42,7 @@ the implementation is optimal.
 | W4 characters | 5 | Not started | no | implement |
 | X1 art direction | 6 | Work landed; after re-shot, before unmatched | partial | owner approval in `campaigns/X1/STATUS.md` + E10 delta |
 | X2 asset production | 6 | Gated on X1 | no | implement |
-| X4 sound/music | 6 | Stems landed; 30-event pass open; payload 13.92>12 MiB | partial | gate E + implement |
+| X4 sound/music | 6 | Stems landed; payload fixed 13.92→11.48 MiB; 30-event pass open | partial | gate E + implement |
 | X3 Adventure glass | 6 | Landed; rescue lesson now one sentence; before capture open | partial | matched capture + review |
 | X5 controls/contexts | 6 | Landed; phantom pad row removed; teach-09 16/16 | partial | live contexts + pad |
 | Q1 census | 7 | In flight (census) | survey | finish decisions |
