@@ -182,6 +182,15 @@ ${W} .sx-sw-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240)
 
 /* ---- the stage: the name, the systems called out as words on leaders -------------------------- */
 ${W} .sx-sw__name { color:rgb(248 244 234) !important; }
+/* ui-polish-418: dock rename placeholder readable over lit stage */
+${W} .sx-sw__nameEdit { ${PLAIN} display:block !important; width:min(340px, 100%) !important; margin-top:6px !important; padding:1px 0 5px !important;
+  border-bottom:1px solid rgb(${BONE} / .3) !important; border-radius:0 !important;
+  font-family:var(--dp-face-numeral, "Archivo") !important; font-size:14px !important; color:rgb(248 244 234) !important; caret-color:var(--dp-hand, #f2b950); }
+${W} .sx-sw__nameEdit::placeholder { color:rgb(${BONE} / .72); text-shadow:0 1px 6px rgb(${POOL} / .7); opacity:1; }
+${W} .sx-sw__nameEdit:hover { border-bottom-color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw__nameEdit:is(:focus, :focus-visible) { outline:none !important; border-bottom:2px solid var(--dp-hand, #f2b950) !important; padding-bottom:4px !important;
+  background:linear-gradient(180deg, rgb(242 185 80 / .08), rgb(242 185 80 / 0) 7px) !important; }
+${W} .sx-sw__nameEdit:is(:focus, :focus-visible)::placeholder { color:var(--dp-hand-dim, #8a6b3a); }
 ${W} .sx-sw__condition, ${W} .sx-sw__conditionVerb { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-sw__blurb { color:rgb(${BONE} / .78) !important; }
 ${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
