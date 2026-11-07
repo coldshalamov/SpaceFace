@@ -7,6 +7,7 @@
 // It writes no gameplay state; Codex records are durable before the event fires.
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 import { presentReceipt } from '../core/receiptPresenter.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const QUEUE_MAX = 3;
 const RECEIPT_SPACING_MS = 3500;
@@ -120,7 +121,8 @@ export function createDiscoveryPlate(ctx) {
   return {
     push,
     tick() {
-      if (destroyed || !queue.length || !quietForDiscovery(getState())) return;
+      // Swarm glass (design/program/finish/swarm S2): no codex/discovery plates during a round.
+      if (destroyed || !queue.length || isSwarmGlass(getState()) || !quietForDiscovery(getState())) return;
       const now = performance.now();
       if (now < nextReceiptAt) return;
       const rec = queue[0];

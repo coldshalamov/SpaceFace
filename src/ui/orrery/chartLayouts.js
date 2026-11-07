@@ -203,6 +203,13 @@ ${C} .gm-frame-group .gm-frame-btn::before { ${RESET_PSEUDO} }
 ${C} .gm-frame-group .gm-frame-btn::after { ${RESET_PSEUDO} }
 ${C} .gm-frame-group .gm-frame-btn:not(:disabled):is(:hover, :focus-visible) { outline:none !important; ${SEG()} }
 ${C} .gm-frame-group .gm-frame-btn:disabled { color:rgb(${BONE} / .58) !important; }
+/* Return to ship / Zoom: they are verbs a player presses, but read as two bold headings. A hairline key
+   (STATION_STANDARD §5 secondary) makes them recognisable without adding a loud fill. */
+${C} .gm-frame-group .gm-frame-btn { padding:4px 12px !important; letter-spacing:.06em !important; border:1px solid rgb(${BONE} / .34) !important;
+  border-radius:2px !important; background-color:rgb(${BONE} / .05) !important; }
+${C} .gm-frame-group .gm-frame-btn:not(:disabled):is(:hover, :focus-visible) { border-color:rgb(${BONE} / .75) !important; background-color:rgb(${BONE} / .12) !important; }
+${C} .gm-frame-group .gm-frame-btn:disabled { border-color:rgb(${BONE} / .16) !important; }
+${C} .gm-frame-group { gap:6px 12px !important; }
 /* setting a course is a commit verb in bone at the reading's weight; the Hand lights where you reach it */
 ${C} :is(#gm-set-course-btn, .gm-plot-btn) { ${PLAIN} width:auto !important; min-height:0 !important; padding:6px 0 8px 12px !important; justify-content:flex-start !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;

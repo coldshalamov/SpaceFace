@@ -110,25 +110,25 @@ test('every compositional rotation row names a shipped trick; capital rows name 
     assert.ok(hunterTrickById(boss.trickId), `${boss.trickId} is a real trick id`);
   }
   // The plan carries the row's trick id so the wave owner can stamp it on each champion body.
-  for (const [wave, trickId] of [[40, 'phase-jammer'], [50, 'shield-turtle'], [60, 'sensor-ghost']]) {
+  for (const [wave, trickId] of [[35, 'phase-jammer'], [45, 'shield-turtle'], [55, 'sensor-ghost']]) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
     assert.equal(plan.swarm.bossTrickId, trickId, `wave ${wave}`);
   }
-  // RC-02 — wave 10 is a capital row now: it fields the authored Iron Maw score, no trick.
-  const w10 = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
+  // RC-02 — wave 5 is a capital row now: it fields the authored Iron Maw score, no trick.
+  const w10 = planWave({ seed: SEED, arenaId: ARENA, wave: 5, ruleset: SWARM_RULESET });
   assert.equal(w10.swarm.bossTrickId, null, 'a capital row never carries a hunter trick');
   assert.equal(w10.swarm.bossScoreId, 'capital_boss_hulk');
 });
 
 test('a corsair wing lands three hunters on the crucible contract and all telegraph the jam', () => {
-  const h = boot(40);
-  startWave(h, 40);
+  const h = boot(35);
+  startWave(h, 35);
   const hunters = champions(h);
   assert.equal(hunters.length, 3, 'three raider aces, three hunters');
   for (const e of hunters) {
     assert.equal(e.data.lootTableId, 'corsair_raider');
     assert.equal(e.data.runCohort, SURVIVAL_COHORT_TAG);
-    assert.equal(e.data.bountyHunt.contractId, 'swarm:champion:w40');
+    assert.equal(e.data.bountyHunt.contractId, 'swarm:champion:w35');
     assert.equal(e.data.bountyHunt.trickId, 'phase-jammer');
     assert.equal(e.data.contractTargetId, h.state.playerId,
       'the crucible contract targets the pilot — the hunter pursues them');
@@ -163,8 +163,8 @@ test('a corsair wing lands three hunters on the crucible contract and all telegr
 });
 
 test('a capital champion never enters the hunter path — its score owns the telegraphs', () => {
-  const h = boot(20);
-  startWave(h, 20);
+  const h = boot(15);
+  startWave(h, 15);
   const boss = h.spawned.find((e) => e.data && e.data.missionTag === 'capital_boss');
   assert.ok(boss, 'the Foreman landed');
   assert.equal(boss.data.bountyHunt, undefined, 'no hunter stamp on a score-owned hull');
@@ -174,9 +174,9 @@ test('a capital champion never enters the hunter path — its score owns the tel
 });
 
 test('the swarm stamp is the wave row, not the hull — a non-boss corsair raider stays ordinary', () => {
-  // corsair_raider exists only as the wave-40 champion; fielding the row's trick is decided by
+  // corsair_raider exists only as the wave-35 champion; fielding the row's trick is decided by
   // the PLAN's champion flag, never by the enemy id — the same hull on a contract stays clean.
-  const h = boot(40);
+  const h = boot(35);
   const before = champions(h).length;
   h.bus.emit('run:wavePlanned', {
     wave: 41,

@@ -58,6 +58,7 @@ import { faunaPileFact, faunaSpeciesById, faunaTollFact } from '../data/alienFau
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -1056,6 +1057,16 @@ export function createTargetPanel(ctx) {
 
   function update(options = {}) {
     tickN++;
+    // Swarm glass (design/program/finish/swarm S2 task 4): the dossier card is Adventure
+    // chrome — a live Swarm round never draws it.
+    if (isSwarmGlass(state)) {
+      setPanelDisplay('none');
+      lastTargetId = null;
+      lastEngagedKey = null;
+      lastObjectKey = null;
+      if (detailScan) { detailScan = false; applyDetailState(); }
+      return;
+    }
     const gunRead = engagedContactReadout(state);
     const t = gunRead.subject;
     const tid = gunRead.subjectId;

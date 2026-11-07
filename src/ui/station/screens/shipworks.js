@@ -66,7 +66,6 @@ import {
   sizeFits,
   stationShopOffer,
 } from '../../../systems/ships.js';
-import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
 import { impoundLotBoard } from '../../../systems/impoundLot.js';
 import { historyWearDead } from '../../../systems/historyWear.js';
 import { livingHullTrinkets } from '../../../core/livingHull.js';
@@ -123,6 +122,9 @@ import {
   sanitizePresetSelectionMap,
   applyPresetRejection,
 } from '../../ship/loadoutPresets.js';
+import { shipSheetSentence, shipStatDelta, shipStatSheet } from '../../ship/shipStats.js';
+import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../../ship/shipSheet.js';
+import { partFacts, sortIdsByIntent } from '../../ship/partFacts.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
 import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
 import {
@@ -326,14 +328,6 @@ export function shipworksActionAvailability(state) {
 }
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
-function fittedIdentityLine(def) {
-  if (!def) return '';
-  const parts = [];
-  if (def.size) parts.push(String(def.size));
-  if (def.tier != null) parts.push('T' + def.tier);
-  return parts.join(' · ');
-}
 
 /**
  * FB-058 — a unique module's variantBonuses printed as one "what is different" line: each key
@@ -895,7 +889,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let activePresetRailModel = null;
   let presetSelectionByHull = {};
   let recordOpen = false;
-  let selectedBand = 'handling'; // which of the four foot heroes explains itself beneath
+  let selectedBand = 'capability'; // which of the foot heroes explains itself beneath
   let rangeIntentUnsub = null;
   let appearanceSavedUnsub = null;
   let presetRejectedUnsub = null;
@@ -1592,10 +1586,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const hullName = mode === 'fleet' && ownedShip
       ? hullNameForOwnedShip(ownedShip, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)
       : def.name;
-    // FB-058: the badge is the buildIdentity system's own classifier over this fit — the UI
-    // reads the model, it never reimplements the classification. Fleet hulls only: a catalog
-    // hull with empty fittings has no build to read.
-    const identity = mode === 'fleet' ? classifyBuildIdentity(fittings) : null;
+    // P1 — THE SHIP SHEET. One pure model, read here and nowhere re-derived: the six 1–10 stats,
+    // the build word from their shape, and the engineering block the Details door hides.
+    const sheet = shipStatSheet({ shipId: def.id, fittings, player });
+    // One classifier: the build word is the shape of the six stats, never a second pass over the
+    // module ids (the old classifyBuildIdentity read). A per-run scan badge stays in
+    // systems/buildIdentity.js for the scanner; the ship sheet does not use it.
+    const identity = sheet
+      ? { id: sheet.identity.id, label: sheet.identity.label, summary: sheet.identity.gloss, synergyNotes: [] }
+      : null;
     const variantRows = fittedDefs
       .filter((d) => d && d.variantBonuses)
       .map((d) => ({ id: d.id, name: d.name || d.id, words: variantBonusWords(d.variantBonuses) }));
@@ -1617,6 +1616,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       hullIndex: mode === 'fleet' ? viewIdx : null,
       hullName,
       identity,
+      sheet,
+      sheetSentence: shipSheetSentence(sheet),
       variantRows,
       hullNotes,
     };
@@ -1759,7 +1760,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? `<span class="sx-sw__conditionPct">${escapeHtml(model.condition.percentText)}</span>`
       : '';
     const verb = model.condition ? model.condition.verb : 'DOCKED';
-    const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
+    // P1 — the paragraph is gone. The sheet beside the hull carries the build word and its one
+    // sentence; the engineering reading lives behind its Details door. Keeping both would print
+    // the same sentence twice on one screen.
     // FB-057 — the nameplate is the rename field's home: the resolved hull name stays the
     // display title, and an owned hull carries an inline editor under it. The field only emits
     // ui:setShipName; ships owns the write.
@@ -1775,35 +1778,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
         `</span>` +
       `</div>` +
-      nameInput +
-      `<p class="k-sentence k-sentence--emph sx-sw__blurb">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
+      nameInput;
     dressCrest();
   }
 
-  // The capability band's detail: the chips as static body words (tier-2 carriers keep data-why +
-  // focus); "next" as a 38 % word.
+  // The capability band's detail: what this fit can physically DO, as one wrapping sentence. The
+  // key-word chips this band used to carry clipped their own verbs in the readings column, and they
+  // are the resting reading of the screen — so nothing here is allowed to truncate.
   function renderCapabilityChips(model) {
     if (!model || !model.capability) return '';
-    const chips = model.capability.chips || [];
+    const chips = (model.capability.chips || []).filter((chip) => chip && chip.verb);
     const next = model.capability.next;
-    const chipHtml = chips.map((chip) => {
-      const tone = chip.tone || 'calm';
-      return (
-        `<li><button type="button" ${stationControlAttrs('cap-chip')} class="k-word k-word--body sx-sw-chip sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
-          `<span class="sx-sw-chip__verb">${escapeHtml(chip.verb)}</span>` +
-          (chip.sub ? `<span class="k-word-sub sx-sw-chip__sub">${escapeHtml(chip.sub)}</span>` : '') +
-        `</button></li>`
-      );
-    }).join('');
-    const nextHtml = next
-      ? (
-        `<li><button type="button" ${stationControlAttrs('cap-next')} class="k-word k-word--body k-38 sx-sw-chip sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
-          `<span class="sx-sw-chip__verb">${escapeHtml(next.verb)}</span>` +
-          `<span class="k-word-sub sx-sw-chip__sub">Next</span>` +
-        `</button></li>`
-      )
+    if (!chips.length) return '';
+    const verbs = [];
+    const seen = new Set();
+    for (const chip of chips) {
+      const words = String(chip.verb).trim().replace(/\.$/, '');
+      if (!words || seen.has(words)) continue;
+      seen.add(words);
+      verbs.push(words);
+    }
+    if (!verbs.length) return '';
+    const sentence = `${verbs.slice(0, 3).join('. ')}.`;
+    const nextLine = next && next.verb
+      ? `<p class="k-t-fine k-38 sx-sw-band__meta">Next: ${escapeHtml(String(next.verb).replace(/\.$/, ''))}.</p>`
       : '';
-    return `<ul class="k-words k-words--row sx-sw-chiprow">${chipHtml + nextHtml}</ul>`;
+    return `<p class="k-sentence sx-sw-capabilities">${escapeHtml(sentence)}</p>${nextLine}`;
   }
 
   // Loadout presets as a row of fine words under the bands; the save slot is the last word.
@@ -1997,24 +1997,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return renderCapabilityChips(model);
   }
 
-  function renderApron(model) {
+  function renderApron(model, ghostModel = null) {
     if (!model || !model.def || !model.derived) {
       statsEl.innerHTML = '';
       activePresetRailModel = null;
       return;
     }
+    ensureShipSheetStyles();
     activePresetRailModel = derivePresetRailModel(model);
     if (activePresetRailModel && selectedPresetIdForHull(model.def.id) && !activePresetRailModel.selectedPreset) {
       setSelectedPresetIdForHull(model.def.id, null, { remember: false });
       activePresetRailModel = derivePresetRailModel(model);
     }
-    const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
-    const topSpeed = bars.find((bar) => bar.id === 'topSpeed') || null;
-    const headroom = finite(model.derived.capRegen, 0) - finite(model.derived.continuousDrain, 0);
-    const headroomLabel = headroom < 0
-      ? `Over budget ${plusMinus(headroom, 1)}/s`
-      : `Power ${plusMinus(headroom, 1)}/s`;
-    const powerTone = headroom < 0 ? 'k-hero--bad sx-sw-power__state--foe' : 'k-hero--good sx-sw-power__state--you';
     const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'DOCKED');
     const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
       ? activePresetRailModel.selectedPreset
@@ -2058,25 +2052,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const stowHoldEnabled = holdDeckReady && holdModel.activeUnits > 0;
     const holdWhy = holdDeckReady ? '' : 'Deck transfer needs a shipyard berth';
     statsEl.innerHTML =
+      // P1 — the sheet leads. Six bounded stats and a build word, with the green/red deltas of a
+      // hovered part painted straight onto the rows, and the engineering numbers behind Details.
+      shipSheetHtml(model.sheet, {
+        sentence: model.sheetSentence,
+        delta: ghostModel && ghostModel.sheet && model.sheet
+          ? shipStatDelta(model.sheet, ghostModel.sheet)
+          : null,
+      }) +
       `<div class="sx-sw-bands" role="group" aria-label="Ship bands">` +
-        heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(travelSpeedFor(model.derived)), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
-        heroHtml('power', `${plusMinus(headroom, 1)}/s`, 'power', { tone: powerTone, selected: selectedBand === 'power', why: headroomLabel }) +
-        heroHtml('condition', conditionVerb, 'condition', { selected: selectedBand === 'condition', why: model.condition && model.condition.why }) +
-        heroHtml(
-          'capability',
-          (model.capability && model.capability.lead && model.capability.lead.value) || fmt(model.derived.cargoCap),
-          // the word is one phrase ("A PELICAN"): its spaces do not wrap, or the column orphans
-          // its first word between the hero and the rest of the phrase
-          ((model.capability && model.capability.lead && model.capability.lead.word) || 'hold').replace(/ /g, '\u00a0'),
-          {
-            selected: selectedBand === 'capability',
-            why: (model.capability && model.capability.lead && model.capability.lead.why) || '',
-          },
-        ) +
-        // FB-058 — the build badge stands as a fifth hero on owned hulls.
-        (model.identity
-          ? heroHtml('identity', model.identity.label, 'build', { selected: selectedBand === 'identity', why: model.identity.summary })
-          : '') +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
           `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.hullName || model.def.name}`))}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
@@ -2104,6 +2088,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // sliver of BUILDS at the scroll fold reads as a broken block. They return on close.
       (recordOpen ? '' : renderPresetRail(model, activePresetRailModel)) +
       renderPresetDrawer(activePresetRailModel);
+    bindShipSheet(statsEl.querySelector('[data-sfs]'));
     dressApron();
     paintPendingPresetRejection();
   }
@@ -4313,7 +4298,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
           `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
         // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it
-        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">core · ${fmt(totalDraw)} draw</span></div>` +
+        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">power used · ${fmt(totalDraw)} of ${fmt(def.energyCap || 0)}</span></div>` +
         `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
@@ -4554,7 +4539,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // Retired arsenal (owner 2026-10-22, design/expansion/05_ASSET_ROSTER.md §7.3) is off the buy list;
     // an owned copy still leads the chooser from the hold below.
     const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false && !d.retiredInto);
-    const compat = sameType.filter((d) => fits(slot, d)).sort(byTierThenPrice);
+    // P2 — the catalogue is ordered by WHAT YOU WANT TO DO (fight, survive, move, carry, work,
+    // sneak), then down the Mk ladder, then by name. A slot type is a fitting constraint, not a way
+    // to browse.
+    const compatById = new Map(sameType.map((d) => [d.id, d]));
+    const compat = sortIdsByIntent(sameType.filter((d) => fits(slot, d)).map((d) => d.id))
+      .map((id) => compatById.get(id))
+      .filter(Boolean);
     // PQ-176.02: a weapon of the right size that this hardpoint's class refuses stays on the list,
     // locked, with the sentence. The fit screen refuses an illegal mount in words, not by omission.
     const refused = slot.type === 'weapon'
@@ -4619,7 +4610,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? `Unfit ${headConflict.name} before installing another Massline head.`
           : researchBlock || (budgetBlocker && budgetBlocker.text) || '';
       const countTag = count > 1 ? ` ×${count}` : '';
-      const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      // P2 — the ladder is Mk I/II/III, the intent says what you came looking for, and the
+      // role says what the part is. No bare tier digit and no slot-letter-only line.
+      const facts = partFacts(d.id);
+      const metaFallback = `${escapeHtml(facts ? facts.tier : 'Mk I')} · ${escapeHtml(facts ? facts.intentLabel : '')}`;
       const btn = blocked
         ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
         : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
@@ -4629,7 +4623,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       return (
         `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${iconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(facts ? facts.role : moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             (arsenalSentence(d) ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(arsenalSentence(d))}</span>` : '') +
@@ -4670,7 +4664,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
       const selectedFit = !equipped && !purchase.disabled && !headConflict && !selectedBudgetBlocker;
       const riskChips = moduleRiskChipsHtml(def, fittings, slotIndex, d);
-      const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      // P2 — the ladder is Mk I/II/III, the intent says what you came looking for, and the
+      // role says what the part is. No bare tier digit and no slot-letter-only line.
+      const facts = partFacts(d.id);
+      const metaFallback = `${escapeHtml(facts ? facts.tier : 'Mk I')} · ${escapeHtml(facts ? facts.intentLabel : '')}`;
       const ringNote = mountOutputFactor(d, slot) < 1 ? ` The ring aims it for you at ${ringPct} % output.` : '';
       const actionDetail = equipped ? 'Installed in this slot.'
         : purchase.disabled ? purchase.title
@@ -4701,9 +4698,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equippedIconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(facts ? facts.role : moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
+            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (facts && facts.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(facts.sentence)}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span>` +
             (advice ? `<span class="k-row__sub sx-modrow__role sx-modrow__advice">${escapeHtml(advice)}</span>` : '') + `</span>` +
@@ -4713,11 +4710,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).join('');
     const refusedList = refused.map((d) => {
       const sentence = mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`;
-      const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      // P2 — the ladder is Mk I/II/III, the intent says what you came looking for, and the
+      // role says what the part is. No bare tier digit and no slot-letter-only line.
+      const facts = partFacts(d.id);
+      const metaFallback = `${escapeHtml(facts ? facts.tier : 'Mk I')} · ${escapeHtml(facts ? facts.intentLabel : '')}`;
       return (
         `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(facts ? facts.role : moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
             `${arsenalSentence(d) ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(arsenalSentence(d))}</span>` : ''}` +
             `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
@@ -4991,7 +4991,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       afterFittings: ghost.afterFittings,
       player: ctx.state.player,
     });
-    if (activeBandModel) renderApron(activeBandModel);
+    if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
     if (ghostBandModel) {
       syncGaugeValues(ghostBandModel, { ghost: true });
       syncPowerBand(ghostBandModel);
@@ -5214,7 +5214,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       afterFittings: preset.fittings,
       player: ctx.state.player,
     });
-    if (activeBandModel) renderApron(activeBandModel);
+    if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
     if (ghostBandModel) {
       syncGaugeValues(ghostBandModel, { ghost: true });
       syncPowerBand(ghostBandModel);

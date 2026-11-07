@@ -157,6 +157,13 @@ export const runSession = {
     if (request && typeof request.swarmStake === 'string') {
       next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
     }
+    // S4 one-press Swarm: the quick-start's opt-out of the opening armory rides the begin
+    // request like the stake — schema-free, run-lifelong. The phase machine reads it once at
+    // the opening and enters round 1 in flight; absent means the armory opens as authored.
+    if (isSwarmRuleset(ruleset) && request && request.openArmoryBeforeRound1 === false) {
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      next.telemetry.openArmoryBeforeRound1 = false;
+    }
     if (next.kind === 'survival') {
       this._retireSerial = (this._retireSerial || 0) + 1;
       next.retireToken = this._retireSerial;

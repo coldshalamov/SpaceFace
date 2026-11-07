@@ -28,6 +28,8 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { getSimStepProfiler, nowNs } from '../core/simStepProfiler.js';
+import { simCoreFlag } from '../core/simCoreFlags.js';
 import { stationInfo, toleratesContraband } from '../economy/stationMarketProfile.js';
 export { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
@@ -124,6 +126,20 @@ const SPREAD_BASE = BALANCE.market.spread;
 const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
 const FRONTIER_SPREAD_BONUS = 0.06;
 const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
+// E2 spikes → slices. A due economy pass advances by a FIXED quantum each tick, never a wall-clock
+// budget: the completion tick must be identical on every machine or the pass stops being
+// deterministic. 2 recipes + 1 station per tick turns the measured 130–150 ms step into ~1–3 ms
+// across ~35 ticks, comfortably inside the 300-tick (5 s) period.
+const ECON_SLICE_RECIPES = 2;
+const ECON_SLICE_STATIONS = 1;
+// Number of opportunities a pass gets before its own next due tick (the economy owner runs at 2 Hz
+// and its period is 5 s). The measured quantum is scaled to finish inside this many advances.
+const ECON_SLICE_ADVANCES = 8;
+// A small economy (a lab tape, a single-station scenario) fits its whole pass in one step without
+// being a spike, so it keeps the unsliced path byte-for-byte. That is not special-casing a mode: it
+// is the slice declining to engage when there is nothing to spread, which is also what keeps the
+// 47-A determinism reference identical instead of needing a new version.
+const ECON_SLICE_INLINE_MAX = 40;
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
 const MAX_EVENTS_PER_STATION = 3;
@@ -772,11 +788,16 @@ export function economySpotPriceForRole(def, role, side = 'mid', opts = {}) {
 /** Effective stock drift target = equilibrium * event mods * mild cycle pull.
  *  Cycle motion is applied directly to mid in recomputePrices (charts need it);
  *  stock only soft-tracks so produce/consume roles stay authoritative. */
-function effectiveEq(entry, state, stationId, cmdtyId) {
+function effectiveEq(entry, state, stationId, cmdtyId, knownCycle = undefined) {
   const m = clamp(eventModMult(entry, 'equilibrium'), EQ_MULT_CLAMP[0], EQ_MULT_CLAMP[1]);
-  const cycle = state && state.economy && state.economy.cycles
-    ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
-    : null;
+  // E2: the drift pass already resolved this listing's live cycle a few statements earlier.
+  // Passing it in removes a second `getCycleCore` + map walk per listing per tick with byte-
+  // identical output (the lookup is a pure read of the value the caller just computed).
+  const cycle = knownCycle !== undefined
+    ? knownCycle
+    : (state && state.economy && state.economy.cycles
+      ? getCycleCore(state, stationId, cmdtyId, cycleRngFor(state, stationId, cmdtyId), state.simTime || 0)
+      : null);
   const cf = cycle ? cycleFactorAt(cycle, state.simTime || 0) : 1;
   // Same structural mix the forecast band uses.
   return stockDriftTarget(entry.equilibrium, cf, m);
@@ -1923,6 +1944,10 @@ export const economy = {
       pendingRefresh.sliceIndex += 1;
       if (pendingRefresh.sliceIndex >= ECONOMY_SAVE_LOADED_SLICES) this._offlineSummaryRefresh = null;
     }
+    // E2 spikes → slices: a due economy pass advances by a fixed quantum per tick instead of
+    // doing every station and listing in one step. Fixed quantum (not a wall-clock budget) keeps
+    // the completion tick identical on every machine, so the pass stays deterministic.
+    if (this._econPass) this._advanceEconPass(state);
     const clock = state.economy.econClock;
     clock.accumulator += dt;
     // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
@@ -1932,13 +1957,121 @@ export const economy = {
     for (let i = 0; i < econDue.steps; i++) this.econTick(ECON_TICK_S, state);
   },
 
+  /**
+   * Deterministic economy slice. The 5 s economy tick used to walk every regional recipe, every
+   * station's industry lines and every station×commodity listing in one step: measured 130–150 ms
+   * on this laptop, i.e. the single largest step in the game. Each phase now advances by a fixed
+   * quantum per tick, in the original iteration order, so stock/RNG/history see the identical
+   * sequence — only the tick each row lands on changes (by design, and invisible: nobody reads a
+   * station's price inside the 0.6 s a pass takes).
+   */
+  _advanceEconPass(state) {
+    const pass = this._econPass;
+    if (pass.phase === 'regional') {
+      const recipes = REGIONAL_PRESSURE_RECIPES;
+      const end = Math.min(recipes.length, pass.index + pass.recipeStep);
+      for (; pass.index < end; pass.index++) {
+        const recipe = recipes[pass.index];
+        if (!recipe.stationId || !(recipe.units > 0)) continue;
+        this.applyStockPressure(
+          recipe.stationId,
+          recipe.commodityId,
+          recipe.role === 'consume' ? 'buy' : 'sell',
+          recipe.units * pass.minuteShare,
+          { deferDerivedRefresh: true, touchedListings: pass.touched, asOfSimTime: pass.simTime },
+        );
+      }
+      if (pass.index < recipes.length) return;
+      pass.phase = 'industry';
+      pass.index = 0;
+    }
+    if (pass.phase === 'industry') {
+      const end = Math.min(pass.stationIds.length, pass.index + pass.stationStep);
+      this.applyStationIndustry(pass.tickDt, pass.touched, pass.stationIds.slice(pass.index, end), pass.simTime);
+      pass.index = end;
+      if (pass.index < pass.stationIds.length) return;
+      pass.phase = 'drift';
+      pass.index = 0;
+    }
+    if (pass.phase === 'drift') {
+      const end = Math.min(pass.stationIds.length, pass.index + pass.stationStep);
+      this._driftMarkets(state, pass, pass.index, end);
+      pass.index = end;
+      if (pass.index < pass.stationIds.length) return;
+      this._econPass = null;
+      this._finishEconTick(state);
+    }
+  },
+
+  /** The per-station×commodity drift slice of the economy tick (unmodified body, bounded range). */
+  _driftMarkets(state, pass, fromIndex, toIndex) {
+    const econ = state.economy;
+    const markets = econ.markets;
+    const tickDt = pass.tickDt;
+    const regionalPressureListings = pass.touched;
+    const demandProjectionCache = pass.demandProjectionCache;
+    const asOf = pass.simTime;
+    const eph = getSimStepProfiler();
+    const ephOn = eph.active;
+    let t = ephOn ? nowNs() : 0;
+    let tDemand = 0; let tCycle = 0; let tPrice = 0; let tHistory = 0; let tEq = 0;
+    for (let s = fromIndex; s < toIndex; s++) {
+      const sid = pass.stationIds[s];
+      const market = markets[sid];
+      if (!market) continue;
+      const info = stationInfo(state, sid);
+      const frontier = info ? this.frontierPenalty(info) : 0;
+      for (const cid in market) {
+        const entry = market[cid];
+        const def = commodityDef(state, cid);
+        if (!def) continue;
+        if (ephOn) t = nowNs();
+        this.refreshListingDemand(entry, def, sid, info, demandProjectionCache);
+        if (ephOn) { tDemand += nowNs() - t; t = nowNs(); }
+        const cycle = getCycleCore(state, sid, cid, () => this._rng(), asOf);
+        if (ephOn) { tCycle += nowNs() - t; t = nowNs(); }
+        if (regionalPressureListings && regionalPressureListings.get(sid)?.has(cid)) {
+          this.recomputePrices(entry, def, frontier, cycle, asOf);
+          this.recordPriceHistory(entry, def, cycle, asOf, true);
+        }
+        const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), asOf);
+        if (nextCycle !== cycle) {
+          econ.cycles[sid][cid] = nextCycle;
+        }
+        const liveCycle = econ.cycles[sid][cid] || nextCycle || cycle;
+        if (ephOn) { tCycle += nowNs() - t; t = nowNs(); }
+        const eff = effectiveEq(entry, state, sid, cid, liveCycle);
+        if (ephOn) { tEq += nowNs() - t; t = nowNs(); }
+        const driftMod = eventModMult(entry, 'drift');
+        entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
+        if (ephOn) { t = nowNs(); }
+        this.recomputePrices(entry, def, frontier, liveCycle, asOf);
+        if (ephOn) { tPrice += nowNs() - t; t = nowNs(); }
+        this.recordPriceHistory(entry, def, liveCycle, asOf);
+        if (ephOn) { tHistory += nowNs() - t; }
+      }
+    }
+    if (ephOn) {
+      eph.record('economy.drift', tDemand + tCycle + tEq + tPrice + tHistory);
+      eph.record('economy.drift.demand', tDemand);
+      eph.record('economy.drift.cycle', tCycle);
+      eph.record('economy.drift.eq', tEq);
+      eph.record('economy.drift.price', tPrice);
+      eph.record('economy.drift.history', tHistory);
+    }
+  },
+
   econTick(tickDt, state) {
     const econ = state.economy;
     const clock = econ.econClock;
     clock.ticksElapsed++;
     clock.lastTickT = state.simTime;
+    const eph = getSimStepProfiler();
+    const ephOn = eph.active;
+    let ephT = ephOn ? nowNs() : 0;
     this._sweepStationConditions();
     this._sweepMarketPlay(state);
+    if (ephOn) { eph.record('economy.sweep', nowNs() - ephT); ephT = nowNs(); }
 
     // 1) age / expire eventMods + active events
     this.ageEvents(state);
@@ -1947,7 +2080,44 @@ export const economy = {
     const eventDue = consumePeriodicClock(this._eventAccumulator, 0, EVENT_INTERVAL_S);
     this._eventAccumulator = eventDue.accumulator;
     for (let i = 0; i < eventDue.steps; i++) this.rollSpontaneousEvent(state);
+    if (ephOn) { eph.record('economy.events', nowNs() - ephT); ephT = nowNs(); }
 
+    if (simCoreFlag('economySlicing')) {
+      const stationIds = Object.keys(econ.markets);
+      const units = stationIds.length * 2 + REGIONAL_PRESSURE_RECIPES.length;
+      if (units > ECON_SLICE_INLINE_MAX) {
+        // Slice the three heavy passes; `economy:tick` still fires on the due tick when the pass
+        // finishes, and a pass never outlives the 5 s period (see ECON_SLICE_*).
+        this._econPass = {
+          tickDt,
+          minuteShare: Math.max(0, Number(tickDt) || 0) / 60,
+          // The moment this pass belongs to. Every listing stamped or rolled inside the pass uses
+          // it, so a row landing two ticks late computes exactly what the unsliced pass computed.
+          simTime: state.simTime,
+          stationIds,
+          // The economy owner is a 2 Hz calendar system, so a pass gets ~10 advances inside its
+          // own 5 s period. Size the quantum from the work so the pass always completes before the
+          // next due tick hands over a new one — a pass that outlived its period would be dropped.
+          recipeStep: Math.max(ECON_SLICE_RECIPES, Math.ceil(REGIONAL_PRESSURE_RECIPES.length / ECON_SLICE_ADVANCES)),
+          stationStep: Math.max(ECON_SLICE_STATIONS, Math.ceil(stationIds.length / ECON_SLICE_ADVANCES)),
+          phase: 'regional',
+          index: 0,
+          touched: new Map(),
+          demandProjectionCache: new Map(),
+        };
+        this._advanceEconPass(state);
+        return;
+      }
+    }
+    this._econTickLegacyTail(tickDt, state);
+  },
+
+  /** The unsliced economy tick (pre-E2 shape). Kept for the matched A/B and as the retreat. */
+  _econTickLegacyTail(tickDt, state) {
+    const econ = state.economy;
+    const eph = getSimStepProfiler();
+    const ephOn = eph.active;
+    let ephT = ephOn ? nowNs() : 0;
     // Authored regional production/consumption enters through the existing stock authority.
     // Recipe units are per simulated minute, so the identity pressure stays gentle and bounded.
     const regionalPressureListings = this.applyRegionalSupply(tickDt, { deferDerivedRefresh: true });
@@ -1957,6 +2127,7 @@ export const economy = {
     // price apart. Shares the touched-listings map so each industrial listing gets its pre-drift
     // chart observation exactly like regional pressure does.
     this.applyStationIndustry(tickDt, regionalPressureListings);
+    if (ephOn) { eph.record('economy.pressure', nowNs() - ephT); ephT = nowNs(); }
 
     // 3) drift every station+commodity stock toward effectiveEq, recompute cached prices
     const markets = econ.markets;
@@ -1984,7 +2155,7 @@ export const economy = {
           state.economy.cycles[sid][cid] = nextCycle;
         }
         const liveCycle = state.economy.cycles[sid][cid] || nextCycle || cycle;
-        const eff = effectiveEq(entry, state, sid, cid);
+        const eff = effectiveEq(entry, state, sid, cid, liveCycle);
         const driftMod = eventModMult(entry, 'drift'); // BLOCKADE freezes drift (mult 0.1)
         // Exact recovery: stable for large dt; constant-target split ticks commute.
         entry.stock = recoverStock(entry.stock, eff, tickDt, BALANCE.commodities[cid]?.recoveryHalfLifeS || BALANCE.market.halfLifeS, driftMod);
@@ -1992,7 +2163,17 @@ export const economy = {
         this.recordPriceHistory(entry, def, liveCycle, state.simTime);
       }
     }
+    if (ephOn) { eph.record('economy.drift', nowNs() - ephT); }
+    this._finishEconTick(state);
+  },
 
+  /** The economy tick's tail: live intel, neighbour pressure, and the public tick receipt. */
+  _finishEconTick(state) {
+    const econ = state.economy;
+    const eph = getSimStepProfiler();
+    const ephOn = eph.active;
+    let ephT = ephOn ? nowNs() : 0;
+    const markets = econ.markets;
     // The docked exchange is a live feed. Remote intel remains intentionally stale until revisited —
     // unless a fitted Market Data Uplink streams the whole sector on the same cadence.
     if (this._lastDockedStation && markets[this._lastDockedStation]) {
@@ -2004,8 +2185,12 @@ export const economy = {
 
     // 4) propagate event pressure to neighbour stations (along the sector graph)
     this.propagateEvents(state);
+    if (ephOn) { eph.record('economy.propagate', nowNs() - ephT); }
 
-    this.bus.emit('economy:tick', { t: state.simTime, ticksElapsed: clock.ticksElapsed });
+    this.bus.emit('economy:tick', {
+      t: state.simTime,
+      ticksElapsed: econ.econClock ? econ.econClock.ticksElapsed : 0,
+    });
   },
 
   applyRegionalSupply(tickDt, options = null) {
@@ -2035,7 +2220,7 @@ export const economy = {
    * applyStockPressure, so NPC salvage intake, claims sales, and player trades see the same
    * stock the industry moved. Returns the count of job-lines that ran this tick.
    */
-  applyStationIndustry(tickDt, touchedListings = null) {
+  applyStationIndustry(tickDt, touchedListings = null, onlyStationIds = null, asOfSimTime = null) {
     const minuteShare = Math.max(0, Number(tickDt) || 0) / 60;
     if (!(minuteShare > 0)) return 0;
     const state = this.state;
@@ -2043,7 +2228,8 @@ export const economy = {
     if (!markets) return 0;
     const deferDerivedRefresh = touchedListings instanceof Map;
     let ran = 0;
-    for (const stationId in markets) {
+    const stationIds = onlyStationIds || Object.keys(markets);
+    for (const stationId of stationIds) {
       const info = stationInfo(state, stationId);
       if (!info) continue;
       const jobs = STATION_INDUSTRY_BOOK.get(info.type);
@@ -2074,7 +2260,7 @@ export const economy = {
           * Math.min(INDUSTRY_INPUT_FULL, available) * headroom * bias * minuteShare;
         if (!(runs > 0)) continue;
         const stockOptions = deferDerivedRefresh
-          ? { deferDerivedRefresh: true, touchedListings } : null;
+          ? { deferDerivedRefresh: true, touchedListings, asOfSimTime } : null;
         for (const [cid, qty] of job.inputs) {
           this.applyStockPressure(stationId, cid, 'buy', qty * runs, stockOptions);
         }
@@ -3554,7 +3740,11 @@ export const economy = {
     else entry.stock = entry.stock + qty;
     if (options && options.deferDerivedRefresh === true) {
       // Keep cycle creation and its RNG position identical to the immediate stock-pressure path.
-      getCycleCore(state, stationId, commodityId, () => this._rng(), state.simTime || 0);
+      // A sliced economy pass carries the tick time it belongs to (`asOfSimTime`) so a listing that
+      // lands two ticks late still sees the moment the unsliced pass would have seen — that is what
+      // keeps the slice result-identical instead of merely deterministic.
+      const asOf = Number.isFinite(options.asOfSimTime) ? options.asOfSimTime : (state.simTime || 0);
+      getCycleCore(state, stationId, commodityId, () => this._rng(), asOf);
       if (options.touchedListings instanceof Map) {
         let stationListings = options.touchedListings.get(stationId);
         if (!stationListings) {
@@ -6062,6 +6252,7 @@ export const economy = {
   },
 
   newGame() {
+    this._econPass = null;
     const state = this.state;
     state.economy.markets = {};
     state.economy.resourceWork = {};
@@ -6112,6 +6303,10 @@ export const economy = {
 
   /** Serialize stock, formula state, and bounded player-visible market history. */
   serialize() {
+    // A save must never split the economy slice: an in-flight pass is finished here so the
+    // envelope carries the same state an unsliced tick would have produced, and a load never
+    // silently drops the remainder of a pass.
+    while (this._econPass) this._advanceEconPass(this.state);
     const econ = this.state.economy;
     const salvageIntakeState = ensureSalvageIntakeState(econ);
     const markets = {};
@@ -6203,6 +6398,7 @@ export const economy = {
   },
 
   deserialize(data) {
+    this._econPass = null;
     for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
   },
 
