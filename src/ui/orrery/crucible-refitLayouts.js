@@ -109,6 +109,188 @@ ${RF} > .k-title .sf-cru-preview {
   font:400 13px/1.45 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
   letter-spacing:.01em;
 }
+
+/* —— UI polish: short densify (list-mode hardpoints ∩ tall foot) ——
+   At ≤560 tall the finish foot (Take the win / Keep going + keynotes) stacked to
+   ~169px and left the list stage ~60px with overflow:visible, so open hardpoint
+   rows painted under the opaque curtain (651/700×461 row∩foot mash ~39–42k;
+   801×461 / 960×500 ~43–49k). Compress chrome, turn the stage into a real
+   scrollport, and raise a fade apron so FIT verbs stay clear of the foot. */
+@media (max-height:560px) {
+  ${RF} {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+    gap:8px !important;
+    padding:12px 18px 8px !important;
+    overflow:hidden !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    align-content:stretch !important;
+    box-sizing:border-box !important;
+  }
+  ${RF} > .k-title { margin:0 !important; padding:0 !important; min-width:0 !important; }
+  ${RF} > .k-title .k-t-title, ${RF} > .k-title h1 {
+    font-size:clamp(24px, 5.5vh, 32px) !important; line-height:.92 !important;
+  }
+  ${RF} > .k-title .sf-cru-sub {
+    font-size:12px !important; margin-top:2px !important; line-height:1.3 !important;
+    max-width:52ch !important;
+  }
+  ${RF} > .k-title .sf-cru-preview, ${RF} > .k-title .sf-cru-note {
+    font-size:12px !important; margin-top:2px !important; line-height:1.3 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+    overflow:hidden !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) {
+    position:relative !important; z-index:1 !important;
+    min-height:0 !important; height:auto !important; max-height:100% !important;
+    overflow:hidden !important;
+    display:flex !important; flex-direction:column !important;
+    padding-top:2px !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows {
+    flex:1 1 auto !important; min-height:0 !important; max-height:100% !important;
+    overflow:auto !important; gap:0 !important; padding-bottom:6px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row {
+    padding:6px 0 8px !important; column-gap:12px !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__contrast {
+    font-size:12px !important; line-height:1.3 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+    overflow:hidden !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .orr-hull-fitcount {
+    position:static !important; left:auto !important; right:auto !important; bottom:auto !important;
+    margin:0 0 4px !important; font-size:12px !important;
+  }
+  ${RF} > .k-foot {
+    z-index:8 !important; position:relative !important; isolation:isolate;
+    flex:none !important; grid-row:3 !important;
+    margin:0 !important; padding:6px 0 4px !important;
+    border-top:1px solid rgb(236 230 216 / .16) !important;
+    background:rgb(5 7 10) !important;
+    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
+  }
+  ${RF} > .k-foot::before {
+    content:'' !important; display:block !important; pointer-events:none !important;
+    position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
+    height:22px !important;
+    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
+  }
+  ${RF} .k-foot .k-words {
+    position:relative; z-index:1;
+    flex-wrap:wrap !important; gap:6px 12px !important; align-items:center !important;
+    justify-content:flex-start !important; column-gap:12px !important;
+  }
+  ${RF} .k-foot .k-word {
+    font-size:13px !important; min-height:32px !important; padding:0 10px !important;
+  }
+  ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) {
+    font-size:14px !important; min-height:34px !important; padding:0 12px !important;
+  }
+  ${RF} .k-foot .sf-cru-kbd { margin-left:6px !important; font-size:12px !important; }
+  ${RF} .k-foot .sf-cru-fine, ${RF} .k-foot .sf-cru-keynote {
+    font-size:12px !important; line-height:1.25 !important; max-width:28ch !important;
+    margin:0 !important;
+  }
+}
+/* Very short / narrow-short: compact the verbs without withdrawing their consequences. */
+@media (max-height:500px) {
+  ${RF} > .k-foot { padding:4px 0 2px !important; }
+  ${RF} .k-foot .k-word { min-height:30px !important; font-size:12px !important; }
+  ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) { font-size:13px !important; min-height:32px !important; }
+}
+@media (min-width:641px) and (max-width:820px) and (max-height:560px) {
+  ${RF} .k-foot .k-words { gap:6px 10px !important; }
+  ${RF} .k-foot .k-word { font-size:12px !important; min-height:30px !important; padding:0 8px !important; white-space:nowrap !important; }
+  ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) { font-size:13px !important; }
+}
+/* Phone portrait (390×844): height clears the ≤560 band, but the stacked finish foot
+   still leaves list rows painting under Take the win / Keep going. Same scrollport + curtain. */
+@media (max-width:560px) {
+  ${RF} {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    grid-template-rows:auto minmax(0,1fr) auto !important;
+    gap:8px !important;
+    padding:12px 14px 8px !important;
+    overflow:hidden !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    align-content:stretch !important;
+    box-sizing:border-box !important;
+  }
+  ${RF} > .k-title .k-t-title, ${RF} > .k-title h1 {
+    font-size:clamp(24px, 6vw, 32px) !important; line-height:.92 !important;
+  }
+  ${RF} > .k-title .sf-cru-sub { font-size:12px !important; margin-top:2px !important; }
+  ${RF} > .k-title .sf-cru-preview, ${RF} > .k-title .sf-cru-note {
+    font-size:12px !important; -webkit-line-clamp:2; line-clamp:2;
+    display:-webkit-box !important; -webkit-box-orient:vertical; overflow:hidden !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) {
+    min-height:0 !important; overflow:hidden !important;
+    display:flex !important; flex-direction:column !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows {
+    flex:1 1 auto !important; min-height:0 !important; overflow:auto !important;
+    padding-bottom:6px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+  }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { padding:6px 0 8px !important; }
+  ${RF} > .sf-cru-stage:not(.orr-hull--on) .orr-hull-fitcount {
+    position:static !important; margin:0 0 4px !important; font-size:12px !important;
+  }
+  ${RF} > .k-foot {
+    z-index:8 !important; position:relative !important; isolation:isolate;
+    flex:none !important; grid-row:3 !important;
+    padding:6px 0 4px !important;
+    border-top:1px solid rgb(236 230 216 / .16) !important;
+    background:rgb(5 7 10) !important;
+    box-shadow:0 48px 0 0 rgb(5 7 10), 0 -28px 28px -2px rgb(5 7 10 / .97) !important;
+  }
+  ${RF} > .k-foot::before {
+    content:'' !important; display:block !important; pointer-events:none !important;
+    position:absolute !important; left:0 !important; right:0 !important; bottom:100% !important;
+    height:22px !important;
+    background:linear-gradient(180deg, transparent, rgb(5 7 10)) !important;
+  }
+  ${RF} .k-foot .k-words {
+    flex-wrap:wrap !important; gap:6px 10px !important; justify-content:flex-start !important;
+  }
+  ${RF} .k-foot .k-word { font-size:13px !important; min-height:32px !important; padding:0 10px !important; }
+  ${RF} .k-foot .k-word.k-word--primary:not(.is-lamp) { font-size:14px !important; min-height:34px !important; }
+}
+/* The fine print names what ending, continuing or banking commits. Let each action
+   wrap with its consequence; a bounded footer scrolls when all offers cannot fit. */
+@media (max-height:560px), (max-width:560px) {
+  ${RF} > .k-foot {
+    min-height:0 !important; max-height:45dvh !important;
+    overflow-y:auto !important; overflow-x:hidden !important;
+    scroll-padding-block:8px;
+  }
+  ${RF} .k-foot .k-words {
+    display:grid !important; width:100% !important; min-width:0 !important;
+    grid-template-columns:repeat(auto-fit, minmax(min(16rem, 100%), 1fr)) !important;
+    align-items:start !important;
+  }
+  ${RF} .k-foot .k-words > li { min-width:0 !important; }
+  ${RF} .k-foot .k-word {
+    max-width:100% !important; height:auto !important;
+    white-space:normal !important; overflow-wrap:anywhere;
+  }
+  ${RF} .k-foot .sf-cru-keynote {
+    max-width:none !important; margin:4px 0 0 !important;
+    font-size:12px !important; line-height:1.35 !important;
+    white-space:normal !important; overflow-wrap:anywhere;
+  }
+}
+
 `;
 
 // One more jig layout after the arrival window: the foot's settle transform is done (kit settle
