@@ -15,9 +15,14 @@
 - The rubric is the gate named in `EXECUTION_STATUS_2026-11-06.md` for visible campaign slices.
   Gate E (X1/X3/X4/X5) uses the style bible and audio brief as its taste bars; Gate D uses the P1
   blind comprehension check. A campaign is not "optimal" on a code review alone.
+- **2026-11-07 primary-screen pass:** six headed `ui-bench` captures (Shipworks, flight, market,
+  THE SHIP, Help, Pause). One real defect found and fixed: Shipworks socket 03 printed the raw
+  boolean "true" as the stock drive's name; it now reads "Drive / STOCK · M". Review:
+  [`reviews/2026-11-07-primary-screens.md`](reviews/2026-11-07-primary-screens.md). The required
+  second independent reader is still open.
 
 ## Next
 
-- Apply it to the pending visible slices as their fixers land: E6 pop-in (look check), P1/P2 ship
-  sheet, X1 foundry finish, X3 Adventure glass, X4 stems. Store each pair under the campaign's
+- Apply it to the remaining visible slices as their fixers land: E6 pop-in (look check), X3
+  Adventure glass before/after, X4 stems, X1 foundry finish. Store each pair under the campaign's
   `evidence/` folder.
