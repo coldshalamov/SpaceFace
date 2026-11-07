@@ -338,12 +338,20 @@ ${W} .sx-modrow.is-locked .sx-modrow__name { color:rgb(${BONE} / .6) !important;
 ${W} .sx-modrow.is-eq .sx-modrow__name::after { content:"  fitted"; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px;
   letter-spacing:.2em; text-transform:uppercase; color:rgb(${BONE} / .7); }
 
-/* ---- the circuit: no plate; the core figure, the systems as readings ------------------------- */
-${W} .sx-sw__side { ${PLAIN} position:relative; isolation:isolate; }
-${W} .sx-sw__side::before { content:""; position:absolute; z-index:-1; inset:0; pointer-events:none; background:rgb(7 8 10 / .72);
-  -webkit-mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
-  -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 22%, #000 80%, transparent), linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
-  mask-composite:intersect; }
+/* ---- the circuit: a hairline card; the core figure, the systems as readings ------------------ */
+/* ui-polish-411: dock side wears the same hairline card as dock .sx-sw__stats / flight side
+   (1px bone ~18% / radius 10 / padded). It sits over the stage foot and bay, so the card keeps a
+   settled pool fill under the faint bone wash instead of the masked shade-pool, whose feathered
+   edges let bay glow run through the circuit readings. Densify radius 8→6 on short/narrow,
+   matching .sx-sw__stats. Existing padding stays (PLAIN does not reset it). */
+${W} .sx-sw__side { ${PLAIN} position:relative; isolation:isolate; box-sizing:border-box;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important; }
+${W} .sx-sw__side::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__side { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__side { border-radius:6px; } }
+@media (max-width:820px) { ${W} .sx-sw__side { border-radius:8px; } }
+@media (max-width:760px) { ${W} .sx-sw__side { border-radius:8px; } }
 ${W} .sx-sw-circuit__identity { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${W} .sx-sw-circuit__sub { color:rgb(${BONE} / .55) !important; text-transform:none; letter-spacing:.04em; }
 /* the core borrows the side's padding: the dial's words ride past the drawing, so the box must be
@@ -531,8 +539,8 @@ ${W}.orr-sw--jig .sx-sw-verb[data-fit-action="fit-slot"]:disabled { display:none
 ${W}.sx-sw--buying .sx-sw-verb[data-fit-action="fit-slot"] { display:none !important; }
 /* the hull spec lists one hardpoint per line */
 ${W} .sx-spec > li > .k-row__num { line-height:1.5; }
-/* a deeper pool under the right column, so the engraved words hold against the lit set */
-${W} .sx-sw__side::before { background:rgb(7 8 10 / .84); }
+/* ui-polish-411: shade-pool deepen stands down with the hairline card (kept as a comment marker). */
+${W} .sx-sw__side::before { content:none; display:none; }
 @media (max-height:800px) {
   ${W} .orr-sw-readouts.sx-sw__gauges { grid-template-columns:1fr 1fr 1fr; gap:0 14px !important; margin-top:10px !important; padding-top:8px !important; }
   ${W} .orr-sw-readouts .sx-sw-gauge { padding:2px 0 !important; }
