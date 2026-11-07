@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createVisualFactory, syncSwarmThreatPlate } from '../src/render/visualFactory.js';
+import { ARENA_PALETTE } from '../src/render/arenaFinish.js';
 import { foundryFurnitureProxy, foundryFurnitureShape } from '../src/data/foundryFurniture.js';
 
 function hostile(team, radius) {
@@ -314,6 +315,39 @@ function meshesOf(root) {
   return meshes;
 }
 
+/** Per-triangle paint and facing. Every deck helper paints one flat colour per face. */
+function paintedFaces(geometry) {
+  const pos = geometry.getAttribute('position');
+  const col = geometry.getAttribute('color');
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const ac = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const faces = [];
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i);
+    b.fromBufferAttribute(pos, i + 1);
+    c.fromBufferAttribute(pos, i + 2);
+    normal.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+    const hex = new THREE.Color(col.getX(i), col.getY(i), col.getZ(i)).getHex();
+    const r = (hex >> 16 & 255) / 255;
+    const g = (hex >> 8 & 255) / 255;
+    const bl = (hex & 255) / 255;
+    faces.push({
+      normalY: normal.y,
+      hex,
+      luma: 0.2126 * r + 0.7152 * g + 0.0722 * bl,
+    });
+  }
+  return faces;
+}
+
+function shareOf(faces, predicate) {
+  return faces.filter(predicate).length / Math.max(1, faces.length);
+}
+
 test('a foundry room solid is dark furniture, not a lit station', () => {
   const kinds = {
     // X1: the bank plate is one vertex-coloured steel deck (value lives in the colour
@@ -369,16 +403,51 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
           assert.ok(colors && colors.count > 0, `${kind} carries its value in the colour attribute`);
           // Only the lamp lens bar may read as a bright surface; every other band is paint.
           let brightVertices = 0;
-          const distinct = new Set();
           for (let i = 0; i < colors.count; i++) {
             const peak = Math.max(colors.getX(i), colors.getY(i), colors.getZ(i));
             if (peak > 0.78) brightVertices++;
-            distinct.add(`${colors.getX(i).toFixed(3)}:${colors.getY(i).toFixed(3)}:${colors.getZ(i).toFixed(3)}`);
           }
           assert.ok(brightVertices / colors.count <= 0.15,
             `${kind} deck paint stays below a lit white surface (lens only)`);
           if (kind !== 'plate') {
-            assert.ok(distinct.size >= 3, `${kind} paints the light/mid/dark three-value deck, got ${distinct.size}`);
+            // X1 final review: a whole-geometry distinct count also passed when the gate's visible
+            // side was ONE value and only the caps supplied the third. Assert the share each value
+            // owns on the surfaces the camera can see.
+            const faces = paintedFaces(mesh.geometry);
+            const side = faces.filter((f) => Math.abs(f.normalY) <= 0.55);
+            const top = faces.filter((f) => f.normalY > 0.55);
+            const bottom = faces.filter((f) => f.normalY < -0.55);
+            if (kind === 'gate') {
+              const hexOf = (value) => new THREE.Color(value).getHex();
+              const bands = {
+                light: hexOf(ARENA_PALETTE.light),
+                mid: hexOf(ARENA_PALETTE.mid),
+                dark: hexOf(ARENA_PALETTE.dark),
+              };
+              assert.ok(side.length >= 12, `${kind} has a real side surface`);
+              for (const [name, hex] of Object.entries(bands)) {
+                const share = shareOf(side, (f) => f.hex === hex);
+                assert.ok(share >= 0.2,
+                  `${kind} visible side ${name} band covers ${(share * 100).toFixed(0)}%; all three values must read on the side`);
+              }
+              assert.ok(shareOf(top, (f) => f.hex === bands.light) >= 0.9,
+                `${kind} cap is the light value`);
+              assert.ok(shareOf(bottom, (f) => f.hex === bands.dark) >= 0.9,
+                `${kind} base is the dark value`);
+            } else {
+              // The block/shutter wear the bank deck in one body: the top carries light panels,
+              // mid clamp rails and the dark recessed channel; the sides stay dark mechanical.
+              const band = (f) => (f.luma >= 0.55 ? 'light' : f.luma >= 0.32 ? 'mid' : 'dark');
+              for (const name of ['light', 'mid', 'dark']) {
+                const share = shareOf(top, (f) => band(f) === name);
+                assert.ok(share >= 0.05,
+                  `${kind} top ${name} share is ${(share * 100).toFixed(0)}%; the deck must read all three values`);
+              }
+              assert.ok(shareOf(side, (f) => band(f) === 'dark') >= 0.6,
+                `${kind} side wall is dominated by the dark mechanical value`);
+              assert.ok(shareOf(side, (f) => band(f) === 'light') <= 0.4,
+                `${kind} side wall never turns into a light card; the light chamfer is an edge, not the wall`);
+            }
           }
         } else {
           assert.equal(mat.color.getHex(), expect.color);

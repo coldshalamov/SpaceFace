@@ -29,7 +29,7 @@ import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
 import { isSwarmControls, SWARM_HELP_ROWS } from '../../data/swarmControls.js';
-import { contextHelpRows, inputContextFor } from '../../data/inputContexts.js';
+import { contextActionAllowed, contextHelpRows, contextUiAllowed, inputContextFor } from '../../data/inputContexts.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { injectDeckplate } from '../deckplate/index.js';
@@ -208,6 +208,36 @@ export function gamepadControlRows(map) {
   });
 }
 
+// X5 final review: the short context card dropped refused verbs, but the long reference below it
+// still taught Star-map / Local map / Tech tree / Codex in a fight. The gates own "may this act";
+// the sheet only labels what the gate refuses. A row keeps its label (the echo and pad lookups key
+// off it) and carries the reason as an optional fourth cell.
+const UNAVAILABLE_IN_COMBAT = 'Unavailable in combat';
+const UI_ACTION_BY_ROW = Object.freeze(new Map([
+  ['Star-map', 'starmap'],
+  ['Local system map', 'localmap'],
+  ['Tech tree', 'techTree'],
+  ['Codex', 'codex'],
+  ['Mission log', 'missionLog'],
+  ['Cargo hold', 'cargo'],
+  ['Comms log', 'comms'],
+  ['Pause', 'pause'],
+  ['Help', 'help'],
+  ['Open star-map', 'starmap'],
+  ['Open local map', 'localmap'],
+  ['Open codex', 'codex'],
+  ['Open mission log', 'missionLog'],
+  ['Pause / Help route', 'help'],
+]));
+
+/** Why a long-sheet row is not available where the player is, or null when it is. */
+function unavailableNote(state, label, action) {
+  if (inputContextFor(state) !== 'combat') return null;
+  if (action) return contextActionAllowed(state, action) ? null : UNAVAILABLE_IN_COMBAT;
+  const uiAction = UI_ACTION_BY_ROW.get(label);
+  return uiAction && !contextUiAllowed(state, uiAction) ? UNAVAILABLE_IN_COMBAT : null;
+}
+
 export function controlSections(state) {
   // S5: a live Swarm run's Help is the compact arcade set only — nothing Adventure on the card.
   if (isSwarmControls(state)) {
@@ -319,7 +349,13 @@ export function controlSections(state) {
       : context === 'map' ? 'Map now' : 'Flight now';
   const contextCard = contextHelpRows(state, (action) => resolveActionLabel(state, action, { sep: ' ' }))
     .map(([keys, verb]) => [verb, null, keys]);
-  return [[contextTitle, contextCard], ...sections];
+  // X5 final review: the long reference is checked by the same gates. A refused row says so
+  // instead of teaching a key that does nothing where the player is.
+  const annotated = sections.map(([heading, rows]) => [heading, rows.map((row) => {
+    const note = unavailableNote(state, row[0], row[1]);
+    return note ? [...row, note] : row;
+  })]);
+  return [[contextTitle, contextCard], ...annotated];
 }
 
 function keyLabel(state, action, def) {
@@ -740,11 +776,13 @@ export const helpScreen = {
       sec.dataset.sec = String(si);
       list.appendChild(sec);
       secEls.push(sec);
-      rows.forEach(([label, action, def], ri) => {
+      rows.forEach(([label, action, def, note], ri) => {
         const row = el('li', 'orr-hreg__row');
         const key = `${si}:${ri}`;
         row.dataset.row = key;
-        row.appendChild(el('span', 'orr-hreg__name', label));
+        const name = el('span', 'orr-hreg__name', label);
+        if (note) name.appendChild(el('span', 'orr-hreg__note', ` — ${note}`));
+        row.appendChild(name);
         const bind = keyLabel(state, action, def);
         // both shift keys boost: the ladder draws them as the one key they are
         row.appendChild(keyGlyph(bind === 'L-Shift / R-Shift' ? 'Shift' : bind, { small: true }));

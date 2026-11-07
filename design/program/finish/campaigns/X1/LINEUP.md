@@ -1,9 +1,9 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X1 lineup — the picture that proves the style bible
 
-**Status: re-shot 2026-11-06; turntable and prop close-ups re-shot 2026-11-07; awaiting the
-owner's approval.** Judge against [`STYLE_BIBLE.md`](./STYLE_BIBLE.md). The arena is Ricochet
-Foundry (`helios_core`).
+**Status: re-shot 2026-11-06; turntable, prop close-ups and the gate side re-shot 2026-11-07;
+awaiting the owner's approval.** Judge against [`STYLE_BIBLE.md`](./STYLE_BIBLE.md). The arena is
+Ricochet Foundry (`helios_core`).
 
 ## The pair
 
@@ -11,10 +11,10 @@ Foundry (`helios_core`).
 |---|---|---|---|
 | **Before** | [`lineup/before-foundry.jpg`](./lineup/before-foundry.jpg) | 800×500, HUD on, the 2026-11-05 baseline. The bank slab is not in this frame. | baseline only — **not matched** |
 | **After — wide** | [`lineup/after-foundry-wide-1600.png`](./lineup/after-foundry-wide-1600.png) | 1600×1000, HUD off, gameplay chase camera. The finished foundry plate sits **bottom-centre** (≈21% of frame width) with its light deck, dark channel, hazard dashes and lens bar; the ringed giant reads lit from the upper-left. | captured 2026-11-06 |
-| **After — plate close** | [`lineup/after-plate-close-1600.png`](./lineup/after-plate-close-1600.png) | 1600×1000, HUD off, **isolated capture camera aimed at the plate's own bounding-box centre** (not the shipped photo camera). The plate spans **62.3% of the frame width** (measured from the projected box corners, `CAPTURE.json`), showing the skirt, clamp rails, recessed channel, working-edge safety band and lamp-housing lens. | captured 2026-11-07 |
-| **After — turntable** | [`lineup/turntable-00.png`](./lineup/turntable-00.png) … [`turntable-05.png`](./lineup/turntable-05.png) | 1600×1000, HUD off, six orbit views at 60° steps and +24° elevation, camera aimed at the plate centre. Widths measure 62.0–77.2% (the long-axis views are the wider pair). The plate's top face, clamp rails and channel change with the yaw. | captured 2026-11-07 |
-| **After — edge-on** | [`lineup/turntable-edge.png`](./lineup/turntable-edge.png) | 1600×1000, camera aimed at the plate centre at **+6° elevation** (62.7% width). Thickness, foundation skirt and the dashed working-edge band read edge-on. | captured 2026-11-07 |
-| **After — underside** | [`lineup/turntable-underside.png`](./lineup/turntable-underside.png) | 1600×1000, camera aimed at the plate centre at **−24° elevation** (62.6% width). The bottom face and the skirt's lower band read from below. | captured 2026-11-07 |
+| **After — plate close** | [`lineup/after-plate-close-1600.png`](./lineup/after-plate-close-1600.png) | 1600×1000, HUD off, **isolated capture camera aimed at the plate's own bounding-box centre** (not the shipped photo camera). The visible plate spans **40.9% of the frame width** (AABB 62.6%; both numbers are in `CAPTURE.json`), showing the skirt, clamp rails, recessed channel, working-edge safety band and lamp-housing lens. | captured 2026-11-07 |
+| **After — turntable** | [`lineup/turntable-00.png`](./lineup/turntable-00.png) … [`turntable-05.png`](./lineup/turntable-05.png) | 1600×1000, HUD off, six orbit views at 60° steps and +24° elevation, camera aimed at the plate centre. Visible widths measure **29.0–50.3%** (AABB envelope 62.0–64.3%). The plate's top face, clamp rails and channel change with the yaw. | captured 2026-11-07 |
+| **After — edge-on** | [`lineup/turntable-edge.png`](./lineup/turntable-edge.png) | 1600×1000, camera aimed at the plate centre at **+6° elevation** (44.9% visible width; AABB 65.7%). Thickness, foundation skirt and the dashed working-edge band read edge-on. | captured 2026-11-07 |
+| **After — underside** | [`lineup/turntable-underside.png`](./lineup/turntable-underside.png) | 1600×1000, camera aimed at the plate centre at **−24° elevation** (45.8% visible width; AABB 65.0%). The bottom face and the skirt's lower band read from below. | captured 2026-11-07 |
 
 The earlier turntable claim was false: those six frames moved the **ship** while the chase camera
 kept its yaw, so every frame showed the same top face. They are replaced by the aimed orbit above;
@@ -24,10 +24,16 @@ kept its yaw, so every frame showed the same top face. They are replaced by the 
 
 | Prop | File | Camera / measured width |
 |---|---|---|
-| Gate post | [`lineup/close-gate-1600.png`](./lineup/close-gate-1600.png) | live foundry prop, aimed camera at 35° yaw / 20° elevation; the post is framed vertically, 13.1% of frame width (58% of height). Cap lamp visible; footprint inside the hex proxy. |
-| Furnace | [`lineup/close-furnace-1600.png`](./lineup/close-furnace-1600.png) | **isolated factory render** (the live furnace only materializes on `furnace_active`/`boss` phases); 44.7% width. Brown kiln block with the ember mouth. |
-| Shutter / block | [`lineup/close-shutter-1600.png`](./lineup/close-shutter-1600.png) | **isolated factory render** (the live shutter only materializes on the shutter phases); 53.2% width. Light deck, mid clamp rails, dark channel, hazard dashes and work lamp. |
-| Crate block | [`lineup/close-block-1600.png`](./lineup/close-block-1600.png) | **isolated factory render**; 53.2% width. The same three-value block deck at the crate datum. |
+| Gate post | [`lineup/close-gate-1600.png`](./lineup/close-gate-1600.png) | live foundry prop, aimed camera at 35° yaw / 20° elevation; the **visible post spans 7.6% of frame width** (AABB 13.1%) and 56.1% of height. Light cap, then a light/mid/dark side deck, then the dark base. Cap lamp visible; footprint inside the hex proxy. |
+| Furnace | [`lineup/close-furnace-1600.png`](./lineup/close-furnace-1600.png) | **isolated factory render** (the live furnace only materializes on `furnace_active`/`boss` phases); 40.6% visible width (AABB 44.7%). Brown kiln block with the ember mouth. |
+| Shutter / block | [`lineup/close-shutter-1600.png`](./lineup/close-shutter-1600.png) | **isolated factory render** (the live shutter only materializes on the shutter phases); 51.8% visible width (AABB 52.6%). Light deck, mid clamp rails, dark channel, hazard dashes and work lamp. |
+| Crate block | [`lineup/close-block-1600.png`](./lineup/close-block-1600.png) | **isolated factory render**; 51.6% visible width (AABB 52.4%). The same three-value block deck at the crate datum. |
+
+`CAPTURE.json` stores **both** widths per frame: `aabbWidthPct` is the projected bounding-box
+envelope (the old caption's number) and `visibleWidthPct` is read from the rendered pixels that
+differ from the capture clear. Captions cite the visible silhouette, not the envelope. The earlier
+62.3%/62–77%/13.1% captions were AABB values; the old committed close-up's visible width was 54.4%
+(measured the same way), and the gate's visible width is 7.6%.
 
 The isolated frames are labeled as such in [`CAPTURE.json`](./CAPTURE.json): they render the
 factory's own `buildFoundryToy` output, not a staged gameplay entity. The live gate close-up is the
@@ -71,23 +77,27 @@ to keep the one-specimen batch contract.
 
 ## One sun
 
-The renderer re-aims the play key per sector at the hero's `screenNdc`. Through the 60° chase
-camera (right = −X, up = +Z) that aimed light lands on screen at `(−ndcX, +ndcY)`. Every
-`PROFILE_BY_ID` hero now follows that same aimed direction, computed from its own authored
-`screenNdc`:
+The renderer re-aims the play key per sector at the hero's `screenNdc`. The key is a **position**,
+world `(ndcX·160, 96, −ndcY·160)`, so its screen direction is the projection of that 3D offset
+through the 60° chase camera (right = −X, up = (0, cos60, sin60)). Every `PROFILE_BY_ID` hero
+follows that projected direction within the honest same-side bar:
 
-| Sector | hero `screenNdc` | aimed `lightAngle` | dot vs aimed key |
+| Sector | hero `screenNdc` | aimed `lightAngle` | dot vs projected key |
 |---|---|---|---|
-| Helios | (0.58, 0.32) | 2.638 | 1.000 |
-| Vesta Forge | (0.44, 0.30) | 2.542 (was −0.6) | 1.000 (was −0.999) |
-| Veil Nebula | (−0.48, 0.22) | 0.430 (was −1.4) | 1.000 (was −0.257) |
-| Fringe / Io Reach | (−0.42, 0.28) | 0.588 (was 0.95) | 1.000 |
-| Pallas Drift | (−0.46, 0.30) | 0.578 | 1.000 |
-| Ceres Belt | (−0.44, 0.28) | 0.567 | 1.000 |
+| Helios | (0.58, 0.32) | 2.638 | 0.894 |
+| Vesta Forge | (0.44, 0.30) | 2.542 (was −0.6) | 0.873 (was −0.999) |
+| Veil Nebula | (−0.48, 0.22) | 0.430 (was −1.4) | 0.979 (was −0.257) |
+| Fringe / Io Reach | (−0.42, 0.28) | 0.588 (was 0.95) | 0.899 |
+| Pallas Drift | (−0.46, 0.30) | 0.578 | 0.882 |
+| Ceres Belt | (−0.44, 0.28) | 0.567 | 0.906 |
 
-`test/x1-one-sun.test.mjs` derives the expected angle from `screenNdc` for every profile and pins
-the old Vesta/Veil angles as failures. The old test only modelled Helios's construction key
-`(60,140,40)` and missed the renderer's per-sector re-aim.
+`test/x1-one-sun.test.mjs` projects the actual key (height included) and asserts dot > 0.85 for
+every hero, plus that the projected key has not collapsed back onto the old 2D proxy. The earlier
+`> 0.99` bar was a proxy artefact: it omitted the fixed 96 WU key height. The old Vesta/Veil angles
+still fail (< 0.5).
+
+Only **Helios** has a reviewed sky capture. Vesta and Veil are data-proven by this test, not
+visually proven; their skies were not re-shot.
 
 ## Independent image review (2026-11-06, second pass 2026-11-07)
 
@@ -107,18 +117,25 @@ that were correct:
    to every hero in the second pass (see "One sun").
 5. **The turntable was a drive-by.** The second pass replaced it with an aimed orbit and a true
    edge-on/underside pair (above). The old six frames are gone.
-6. **The close-up caption was 45%; the frame measured 41%.** The new aimed close-up measures
-   **62.3%** and the caption cites the measured number, not an eyeball.
+6. **The close-up caption was 45%; the frame measured 41%.** The aimed close-up now measures
+   **40.9% visible width** (AABB 62.6%). The caption cites the visible number; the AABB envelope is
+   stored separately in `CAPTURE.json` and is not called the picture.
 7. **The gate/block/shutter finish was one flat value.** The second pass gives each a single
-   vertex-coloured three-value body (light/mid/dark) plus the work lamp; the gate lamp footprint is
-   tested against the hex polygon, not just its AABB. Close-ups are in the table above.
+   vertex-coloured three-value body (light/mid/dark) plus the work lamp. The final review found the
+   gate's **visible side** was still one value: every side triangle's centroid sat at ±height/6, so
+   the midpoint rule painted the whole side mid while only the caps supplied the third value. The
+   post now has three height segments and the test asserts the **share** of light/mid/dark on the
+   visible side (≥20% each), not a whole-geometry distinct count. Close-ups are in the table above.
 
 **Still open:** a matched pre-finish "before" at the same camera (the shared checkout cannot be
 reverted safely) and the E10 frame-time delta. The after frames are captured; the A/B is not
-controlled. **Owner approval is still open; nothing here grants it.** The foundry plate's lens bar
-is still painted (the deliberate one-draw batch contract), not a real emissive lamp; the law plate
+controlled. **Owner approval is still open; nothing here grants it.** Only Helios's sky has a
+reviewed capture; Vesta/Veil are data-proven, not visually proven. The foundry plate's lens bar is
+still painted (the deliberate one-draw batch contract), not a real emissive lamp; the law plate
 and the gate/block/shutter carry real lamps. The law plate's 9 draws / 6 materials remain a
-recorded exception to the bible's one-draw-per-material rule, not a measured win.
+recorded exception to the bible's one-draw-per-material rule, not a measured win. The foundry suite
+`test/pq-133-04-foundry.test.mjs` is still **11/13** on two sim/AI cases; that is open sim/AI work,
+not an X1 render defect.
 
 ## What the owner is approving
 

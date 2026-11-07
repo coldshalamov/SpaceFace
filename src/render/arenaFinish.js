@@ -134,21 +134,27 @@ function paintTriangles(geometry, colorFor) {
 }
 
 /**
- * Paint the gate post: a light cap, alternating light/mid upper facets and a dark base. The hex
+ * Paint the gate post: a light cap, a light/mid/dark side deck and a dark base. The hex
  * silhouette and its collision datum are untouched — only the colour attribute is added.
+ *
+ * The side is cut into three HEIGHT SEGMENTS. A one-segment cylinder splits every facet into two
+ * full-height triangles, so both centroids land at ±height/6 and a centroid rule can only paint
+ * one band: the old ±0.18-height thresholds left the whole visible side mid. Three segments give
+ * every band its own triangles; the centroid of a band sits at -height/3, 0 or +height/3, so the
+ * band boundaries at ±height/6 are real edges in the picture.
  */
+const POST_HEIGHT_SEGMENTS = 3;
+
 export function foundryThreeValuePost(radiusTop, radiusBottom, height, radialSegments) {
-  const key = `foundry-three-value-post:${radiusTop}:${radiusBottom}:${height}:${radialSegments}`;
+  const key = `foundry-three-value-post:${radiusTop}:${radiusBottom}:${height}:${radialSegments}:${POST_HEIGHT_SEGMENTS}`;
   const cached = _geometries.get(key);
   if (cached) return cached;
-  const source = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments);
+  const source = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments, POST_HEIGHT_SEGMENTS);
   const geometry = paintTriangles(flatShadedCopy(source), (c, n) => {
     if (n.y > 0.55) return _valueColors.light;   // cap
     if (n.y < -0.55) return _valueColors.dark;   // floor contact
-    const angle = Math.atan2(c.x, c.z);
-    const facet = Math.floor(((angle + Math.PI * 2) % (Math.PI * 2)) / ((Math.PI * 2) / radialSegments));
-    if (c.y > height * 0.18) return facet % 2 === 0 ? _valueColors.light : _valueColors.mid;
-    if (c.y > -height * 0.18) return _valueColors.mid;
+    if (c.y > height / 6) return _valueColors.light;
+    if (c.y > -height / 6) return _valueColors.mid;
     return _valueColors.dark;
   });
   source.dispose();

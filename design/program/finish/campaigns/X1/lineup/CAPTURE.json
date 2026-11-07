@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.x1.lineup.v1",
-  "capturedAt": "2026-11-07T03:50:41.649Z",
+  "capturedAt": "2026-11-07T04:58:39.235Z",
   "viewport": {
     "width": 1600,
     "height": 1000
@@ -16,29 +16,59 @@
   },
   "route": "title -> Swarm -> Ricochet Foundry (data-arena-id helios_core)",
   "hud": "hidden",
+  "measurement": {
+    "aabbWidthPct": "projected bounding-box corners; an envelope, not the picture",
+    "visibleWidthPct": "default-framebuffer pixels differing from the 0x07090c capture clear (visible silhouette)"
+  },
+  "committedWide": {
+    "file": "after-foundry-wide-1600.png",
+    "note": "The existing 2026-11-06 gameplay chase frame is kept: the bank plate is bottom-centre at ~21% width. The capture script also takes a route frame, but this pass did not replace the committed wide.",
+    "camera": "ordinary gameplay chase"
+  },
+  "routeFrame": {
+    "name": "after-foundry-wide-1600.png",
+    "camera": "ordinary gameplay chase",
+    "wideSetup": {
+      "ok": true,
+      "plate": {
+        "x": -1708.0845947265625,
+        "z": -2378.900390625
+      }
+    }
+  },
   "frames": [
     {
       "name": "turntable-00.png",
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 0,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 77.1,
-      "distance": 104,
+      "aabbWidthPct": 64.3,
+      "aabbHeightPct": 34,
+      "visibleWidthPct": 45.9,
+      "visibleHeightPct": 33.7,
+      "visiblePixelPct": 6.69,
+      "distance": 139.1,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1890.4,
-        42.3,
-        -2429.5
+        -1581,
+        56.6,
+        -2378.9
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -46,23 +76,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 60,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 62,
-      "distance": 131.4,
+      "aabbWidthPct": 62,
+      "aabbHeightPct": 51.6,
+      "visibleWidthPct": 29,
+      "visibleHeightPct": 39.1,
+      "visiblePixelPct": 6.47,
+      "distance": 137.6,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1925.4,
-        53.4,
-        -2325.6
+        -1645.2,
+        56,
+        -2270
       ],
+      "render": {
+        "calls": 5,
+        "triangles": 116,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -70,23 +110,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 120,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 62,
-      "distance": 131.4,
+      "aabbWidthPct": 62,
+      "aabbHeightPct": 51.6,
+      "visibleWidthPct": 50.3,
+      "visibleHeightPct": 22.7,
+      "visiblePixelPct": 6.6,
+      "distance": 137.6,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -2045.4,
-        53.4,
-        -2325.6
+        -1770.9,
+        56,
+        -2270
       ],
+      "render": {
+        "calls": 5,
+        "triangles": 116,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -94,23 +144,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 180,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 77.2,
-      "distance": 103.7,
+      "aabbWidthPct": 64.3,
+      "aabbHeightPct": 34,
+      "visibleWidthPct": 45.9,
+      "visibleHeightPct": 33.7,
+      "visiblePixelPct": 6.69,
+      "distance": 139.2,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -2080.2,
-        42.2,
-        -2429.5
+        -1835.2,
+        56.6,
+        -2378.9
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -118,23 +178,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 240,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 62,
-      "distance": 130.7,
+      "aabbWidthPct": 62,
+      "aabbHeightPct": 51.6,
+      "visibleWidthPct": 29.1,
+      "visibleHeightPct": 39.1,
+      "visiblePixelPct": 6.98,
+      "distance": 137.6,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -2045.1,
-        53.1,
-        -2532.9
+        -1770.9,
+        56,
+        -2487.8
       ],
+      "render": {
+        "calls": 55,
+        "triangles": 38976,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -142,23 +212,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 300,
       "cameraElevationDeg": 24,
-      "measuredWidthPct": 62,
-      "distance": 131.2,
+      "aabbWidthPct": 62,
+      "aabbHeightPct": 51.6,
+      "visibleWidthPct": 50.3,
+      "visibleHeightPct": 22.7,
+      "visiblePixelPct": 6.6,
+      "distance": 137.6,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1925.5,
-        53.4,
-        -2533.3
+        -1645.2,
+        56,
+        -2487.8
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -166,23 +246,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 90,
       "cameraElevationDeg": 6,
-      "measuredWidthPct": 62.7,
-      "distance": 141.4,
+      "aabbWidthPct": 65.7,
+      "aabbHeightPct": 12.1,
+      "visibleWidthPct": 44.9,
+      "visibleHeightPct": 12,
+      "visiblePixelPct": 2.98,
+      "distance": 138.7,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1985.4,
-        14.8,
-        -2288.9
+        -1708.1,
+        14.5,
+        -2241
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -190,23 +280,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 90,
       "cameraElevationDeg": -24,
-      "measuredWidthPct": 62.6,
-      "distance": 139.6,
+      "aabbWidthPct": 65,
+      "aabbHeightPct": 36.2,
+      "visibleWidthPct": 45.8,
+      "visibleHeightPct": 35.6,
+      "visiblePixelPct": 6.98,
+      "distance": 136.4,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1985.4,
-        -56.8,
-        -2302
+        -1708.1,
+        -55.5,
+        -2254.3
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -214,23 +314,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 18,
       "cameraElevationDeg": 26,
-      "measuredWidthPct": 62.3,
-      "distance": 112.1,
+      "aabbWidthPct": 62.6,
+      "aabbHeightPct": 51.3,
+      "visibleWidthPct": 40.9,
+      "visibleHeightPct": 43.4,
+      "visiblePixelPct": 7.96,
+      "distance": 132.1,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -1889.6,
-        49.1,
-        -2398.4
+        -1595.1,
+        57.9,
+        -2342.2
       ],
+      "render": {
+        "calls": 1,
+        "triangles": 92,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
-        "x": 101.76,
+        "x": 90.18,
         "y": 4.16,
-        "z": 65.15
+        "z": 93.27
       },
       "propCenter": {
-        "x": -1985.41,
+        "x": -1708.08,
         "y": 0,
-        "z": -2429.51
+        "z": -2378.9
       }
     },
     {
@@ -238,23 +348,33 @@
       "camera": "isolated aimed camera (live prop)",
       "cameraYawDeg": 35,
       "cameraElevationDeg": 20,
-      "measuredWidthPct": 13.1,
+      "aabbWidthPct": 13.1,
+      "aabbHeightPct": 58,
+      "visibleWidthPct": 7.6,
+      "visibleHeightPct": 56.1,
+      "visiblePixelPct": 4.03,
       "distance": 47.3,
       "renderSize": "1600x1000",
       "cameraPos": [
-        -2012.1,
+        -2167.7,
         16.3,
-        -1870.5
+        -2026
       ],
+      "render": {
+        "calls": 22,
+        "triangles": 24867,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
         "x": 5.54,
         "y": 24.3,
         "z": 6.4
       },
       "propCenter": {
-        "x": -2048.49,
+        "x": -2204.06,
         "y": 0.15,
-        "z": -1895.94
+        "z": -2051.51
       }
     },
     {
@@ -262,14 +382,24 @@
       "camera": "isolated prop render (factory buildFoundryToy)",
       "cameraYawDeg": 35,
       "cameraElevationDeg": 20,
-      "measuredWidthPct": 44.7,
-      "distance": 79.9,
+      "aabbWidthPct": 44.7,
+      "aabbHeightPct": 58,
+      "visibleWidthPct": 40.6,
+      "visibleHeightPct": 53,
+      "visiblePixelPct": 16.45,
+      "distance": 80,
       "renderSize": "1600x1000",
       "cameraPos": [
-        61.5,
-        27.3,
-        43.9
+        61.6,
+        27.4,
+        44
       ],
+      "render": {
+        "calls": 2,
+        "triangles": 72,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
         "x": 39.1,
         "y": 24.48,
@@ -286,14 +416,24 @@
       "camera": "isolated prop render (factory buildFoundryToy)",
       "cameraYawDeg": 35,
       "cameraElevationDeg": 20,
-      "measuredWidthPct": 52.6,
-      "distance": 33.4,
+      "aabbWidthPct": 52.6,
+      "aabbHeightPct": 58.7,
+      "visibleWidthPct": 51.8,
+      "visibleHeightPct": 58,
+      "visiblePixelPct": 16.98,
+      "distance": 34.4,
       "renderSize": "1600x1000",
       "cameraPos": [
-        25.7,
-        11.5,
-        18
+        26.5,
+        11.9,
+        18.6
       ],
+      "render": {
+        "calls": 22,
+        "triangles": 24911,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
         "x": 30,
         "y": 6.65,
@@ -310,14 +450,24 @@
       "camera": "isolated prop render (factory buildFoundryToy)",
       "cameraYawDeg": 35,
       "cameraElevationDeg": 20,
-      "measuredWidthPct": 52.4,
-      "distance": 27.5,
+      "aabbWidthPct": 52.4,
+      "aabbHeightPct": 58.7,
+      "visibleWidthPct": 51.6,
+      "visibleHeightPct": 57.8,
+      "visiblePixelPct": 16.86,
+      "distance": 27.6,
       "renderSize": "1600x1000",
       "cameraPos": [
-        21.2,
-        9.5,
-        14.8
+        21.3,
+        9.6,
+        14.9
       ],
+      "render": {
+        "calls": 2,
+        "triangles": 152,
+        "rootVisible": true,
+        "rootParent": "Scene"
+      },
       "propSize": {
         "x": 24,
         "y": 5.37,
@@ -331,10 +481,5 @@
     }
   ],
   "errors": [],
-  "committedWide": {
-    "file": "after-foundry-wide-1600.png",
-    "note": "The existing 2026-11-06 gameplay chase frame is kept: the bank plate is bottom-centre at ~21% width. The capture script also takes a route frame, but this pass did not replace the committed wide.",
-    "camera": "ordinary gameplay chase"
-  },
   "captureCommand": "node scripts/capture-x1-lineup.mjs --out=.devshots/x1-final --wait=15000"
 }

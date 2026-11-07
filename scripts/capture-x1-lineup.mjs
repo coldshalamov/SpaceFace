@@ -10,8 +10,8 @@
 //   node scripts/capture-x1-lineup.mjs [--out=.devshots/x1] [--wait=24000]
 //   SF_GL=d3d11 node scripts/capture-x1-lineup.mjs     # real GPU instead of SwiftShader
 //
-// Writes a manifest with each frame's measured plate/prop width fraction, so captions can cite
-// the real number instead of an eyeballed percentage.
+// Writes a manifest with each frame's projected AABB width AND visible silhouette width, so
+// captions can cite the picture instead of the box corners.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +40,7 @@ const browser = await chromium.launch({
 
 const errors = [];
 const frames = [];
+let routeFrame = null;
 let page = null;
 try {
   page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
@@ -147,7 +148,9 @@ try {
   });
   await page.waitForTimeout(900);
   await page.screenshot({ path: OUT + 'after-foundry-wide-1600.png', timeout: 180000 });
-  frames.push({ name: 'after-foundry-wide-1600.png', camera: 'ordinary gameplay chase', wideSetup });
+  // The committed wide is kept from 2026-11-06; this run's route pose is recorded separately so
+  // the manifest never claims the committed file is the new capture.
+  routeFrame = { name: 'after-foundry-wide-1600.png', camera: 'ordinary gameplay chase', wideSetup };
 
   // Isolated aimed camera. One render per evaluate; the PNG is read back from the live canvas
   // synchronously, so the next rAF cannot overwrite the frame before it is encoded.
@@ -279,7 +282,8 @@ try {
           place(distance);
         }
         const final = measure();
-        const widthPct = final.width;
+        const aabbWidthPct = final.width;
+        const aabbHeightPct = final.height;
         const prevTarget = render.renderer.getRenderTarget();
         const prevClear = new THREE.Color();
         render.renderer.getClearColor(prevClear);
@@ -287,6 +291,40 @@ try {
         render.renderer.setRenderTarget(null);
         render.renderer.setClearColor(0x07090c, 1);
         render.renderer.render(render.scene, cam);
+        // X1 final review: the projected AABB is not the picture. Read the default framebuffer
+        // in the same task as the draw and measure the pixels that differ from the capture clear.
+        // This is the visible silhouette (alpha/depth mask equivalent), not the box corners.
+        const visible = (() => {
+          const gl = render.renderer.getContext();
+          const pixels = new Uint8Array(width * height * 4);
+          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          const clear = [7, 9, 12];
+          let minX = width;
+          let maxX = -1;
+          let minY = height;
+          let maxY = -1;
+          let count = 0;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const i = (y * width + x) * 4;
+              const dr = pixels[i] - clear[0];
+              const dg = pixels[i + 1] - clear[1];
+              const db = pixels[i + 2] - clear[2];
+              if (dr * dr + dg * dg + db * db <= 36) continue;
+              count += 1;
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+          if (!count) return null;
+          return {
+            widthPct: Number((((maxX - minX + 1) / width) * 100).toFixed(1)),
+            heightPct: Number((((maxY - minY + 1) / height) * 100).toFixed(1)),
+            pixelPct: Number(((count / (width * height)) * 100).toFixed(2)),
+          };
+        })();
         const dataUrl = render.renderer.domElement.toDataURL('image/png');
         const drawCalls = render.renderer.info?.render?.calls ?? null;
         const triangles = render.renderer.info?.render?.triangles ?? null;
@@ -300,7 +338,11 @@ try {
           rootParent,
           drawCalls,
           triangles,
-          widthPct: Number(widthPct.toFixed(1)),
+          aabbWidthPct: Number(aabbWidthPct.toFixed(1)),
+          aabbHeightPct: Number(aabbHeightPct.toFixed(1)),
+          visibleWidthPct: visible ? visible.widthPct : null,
+          visibleHeightPct: visible ? visible.heightPct : null,
+          visiblePixelPct: visible ? visible.pixelPct : null,
           distance: Number(distance.toFixed(1)),
           cameraPos: [Number(cam.position.x.toFixed(1)), Number(cam.position.y.toFixed(1)), Number(cam.position.z.toFixed(1))],
           renderSize: `${width}x${height}`,
@@ -329,7 +371,11 @@ try {
         : 'isolated aimed camera (live prop)',
       cameraYawDeg: job.yawDeg,
       cameraElevationDeg: job.elevationDeg,
-      measuredWidthPct: result.widthPct,
+      aabbWidthPct: result.aabbWidthPct,
+      aabbHeightPct: result.aabbHeightPct,
+      visibleWidthPct: result.visibleWidthPct,
+      visibleHeightPct: result.visibleHeightPct,
+      visiblePixelPct: result.visiblePixelPct,
       distance: result.distance,
       renderSize: result.renderSize,
       cameraPos: result.cameraPos,
@@ -376,8 +422,19 @@ try {
     arena,
     route: 'title -> Swarm -> Ricochet Foundry (data-arena-id helios_core)',
     hud: 'hidden',
+    measurement: {
+      aabbWidthPct: 'projected bounding-box corners; an envelope, not the picture',
+      visibleWidthPct: 'default-framebuffer pixels differing from the 0x07090c capture clear (visible silhouette)',
+    },
+    committedWide: {
+      file: 'after-foundry-wide-1600.png',
+      note: 'The existing 2026-11-06 gameplay chase frame is kept: the bank plate is bottom-centre at ~21% width. The capture script also takes a route frame, but this pass did not replace the committed wide.',
+      camera: 'ordinary gameplay chase',
+    },
+    routeFrame,
     frames,
     errors: [...new Set(errors)].slice(0, 20),
+    captureCommand: 'node scripts/capture-x1-lineup.mjs --out=.devshots/x1-final --wait=15000',
   };
   writeFileSync(OUT + 'capture-manifest.json', `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(JSON.stringify(manifest, null, 2));

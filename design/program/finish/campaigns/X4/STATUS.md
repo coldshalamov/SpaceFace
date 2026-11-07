@@ -1,9 +1,10 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X4 — Sound and music: status
 
-**State: the boss stem has an audible body; the authored WAV reference develops, but the heard
-sequencer is still a short loop. The 10-minute listen, the blind naming check and the unresolved
-census rows remain open.** Written 2026-11-06, revised after the second independent X4 review pass.
+**State: the boss stem has an audible body; the authored WAV reference develops, and the heard
+two-bar boss motif now plays its full A–D–A–F# phrase. The 10-minute listen, the blind naming
+check and the unresolved census/payload rows remain open.** Written 2026-11-06, revised after the
+second independent X4 review pass and the final Gate E review.
 
 ## Done
 
@@ -17,12 +18,16 @@ census rows remain open.** Written 2026-11-06, revised after the second independ
   triad), brass (short filtered answer), strings (low pedal). The Warden motif (A D A F#) plays on
   its own two-bar grid. **The heard form is a ~9.6 s loop, not the 16 s WAV development**; scope
   the "develops" claim to the WAV until the sequencer is ported.
-- **Open motif defect (second review):** `_playThemeMotif` skips bar 1 (`bar % everyBars !== 0`),
-  so the heard two-bar boss motif only plays the bar-0 A2/D2 figure and never the F#3 answer. The
-  current test calls `_seqBoss` with `step % 16`, so its two "bars" are both totalBar 0 and cannot
-  see it. Fix: for `phraseBars > 1`, play every bar and use `(bar % phraseBars)` for the step; add
-  a 64-step frequency record (A2/D2/A2/F#3 at steps 0/8/16/24). Not landed in this pass (audio
-  source is outside the X write set); recorded here rather than claiming a developed heard score.
+- **Motif fix (final review):** `_playThemeMotif` now plays EVERY bar of a multi-bar phrase —
+  `phraseBars <= 1` keeps the long-standing every-four-bars hook — and reads the written step on
+  `bar % phraseBars`. The boss's bar-1 F#3 answer sounds. `test/x4-boss-stem.test.mjs` now drives
+  the real 64-step scheduler pass (`macroBar 0`, `bar = floor(step/16)`) and records the motif
+  frequencies: **A2/D2/A2/F#3 at steps 0/8/16/24**, repeated on 32/40/48/56 (110.0 / 73.4 / 110.0 /
+  185.0 Hz). The earlier test called `_seqBoss` with `step % 16`, so both "bars" were totalBar 0 and
+  could not see the skip.
+- Focused checks (final review): `test/x4-boss-stem.test.mjs` **14/14**,
+  `test/x4-audio-census.test.mjs` **1/1**, `test/pq-158-03-themes.test.mjs` **12/12** — **27/27**
+  together. The 64-step motif case is the new frequency proof.
 - Boss arrival mid-fight now moves the E fader: the boss maps to the `combat` music state, so the
   equal-state branch of `_recomputeMusic` was the only place its authored row could land. That
   branch now applies the authored boss row when the boss mixes in (and puts the fight mix back when
@@ -52,11 +57,13 @@ census rows remain open.** Written 2026-11-06, revised after the second independ
   because their 16th patterns and the stunt layer's 59–65 ms double-time contract are written for
   it — a different musical layer, not the station 116/72 drift the review found.
 - Residency: the five 16 s loops are tier 2 and are **no longer force-acquired** at audio-graph
-  build (~5.1 MB encoded, ~10 MB decoded). `acquireThemeStem(samples, state)` fetches one stem when
-  its state is first heard. **Open:** the heard score is `_seq*`, so nothing consumes that lazy
-  fetch today; the 1 MB fetch/decode is dead weight at first state use until a real listening mode
-  consumes it. Do not count it as a shipping win. `_startStem` also copies
-  `scoreDirector.STEM_BPM` inline; it should import the table. Both are recorded, not fixed here.
+  build (~5.1 MB encoded, ~10 MB decoded). **The dead lazy fetch is removed (final review):**
+  `_setMusicState` no longer calls `acquireThemeStem`; the heard score is `_seq*`, so nothing
+  consumed it and the call pulled a ~1 MB loop on first state use. `themeCompose.acquireThemeStem`
+  stays exported for a future listening mode; no runtime path polls it. Do not count either the
+  tier-2 gate or the removed fetch as a shipping win until that mode exists. `_startStem` also
+  copies `scoreDirector.STEM_BPM` inline; it should import the table. Both are recorded, not fixed
+  here.
 
 ### Census and variants
 - The census counted emitters, not cues. The real post-gate tap
@@ -105,5 +112,5 @@ census rows remain open.** Written 2026-11-06, revised after the second independ
 1. Record 10 minutes of the ordinary route (Adventure + one Swarm round + boss), judge against
    `AUDIO_BRIEF.md`, run the blind naming check.
 2. Author bodies (or write the exception) for the 18 open census rows.
-3. Measure the music payload/residency on the E10 dashboard — the tier-2 gate plus first-use
-   acquire should keep the stems out of first load.
+3. Measure the music payload/residency on the E10 dashboard — the tier-2 gate keeps the stems out
+   of first load; the removed dead fetch is not itself a measured residency win.

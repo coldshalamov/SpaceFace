@@ -24,6 +24,7 @@ import {
   acquireThemeStem,
   decodePcmWav,
   motifStepSeconds,
+  noteToHz,
   renderMotifLeadPcm,
   toneEnergy,
 } from '../src/audio/themeCompose.js';
@@ -193,6 +194,43 @@ test('X4 #1 note window: theme_boss.wav opens on A2 and the F# arrives in the se
   console.log(`[x4 boss-window] A2@0.05-0.5=${a2.toFixed(4)} F#3@0.05-0.5=${f3.toFixed(4)} F#3@3.7-4.5=${fLate.toFixed(4)}`);
 });
 
+test('X4 #1 heard motif: a 64-step boss pass plays A2/D2/A2/F#3 on 0/8/16/24', () => {
+  const ctx = fakeCtx();
+  const previous = audio.rt;
+  audio.rt = { ctx, _caches: {}, _scoreIdentity: null };
+  const heard = [];
+  let step = -1;
+  const original = audio._playNote;
+  // The motif is the only boss voice that carries both the space-delay send and the pluck filter.
+  audio._playNote = function (_ctx, freq, _dur, _gain, _wave, _bus, _delay, _t, options = {}) {
+    if (options.pluckFilter === true && options.delayGain === 0.35) heard.push({ step, freq });
+    return null;
+  };
+  try {
+    // The real scheduler's first pass: step 0..63, macroBar 0, so bar === floor(step / 16).
+    for (step = 0; step < 64; step++) {
+      const seq = { step, macroBar: 0 };
+      audio._seqBoss(ctx, 10 + step * 0.15, step, seq, 0.15, 0.6,
+        ctx.createGain(), ctx.createDelay(), ctx.createGain());
+    }
+  } finally {
+    audio._playNote = original;
+    audio.rt = previous;
+  }
+  const hz = (note, oct) => noteToHz(note, oct).toFixed(1);
+  const phrase = [
+    [0, hz('A', 2)],
+    [8, hz('D', 2)],
+    [16, hz('A', 2)],
+    [24, hz('F#', 3)],
+  ];
+  assert.deepEqual(heard.slice(0, 4).map(({ step: s, freq }) => [s, freq.toFixed(1)]), phrase,
+    'the heard first phrase is A2/D2/A2/F#3, not A2/D2 twice');
+  assert.deepEqual(heard.slice(4).map(({ step: s, freq }) => [s, freq.toFixed(1)]),
+    phrase.map(([s, f]) => [s + 32, f]), 'the two-bar phrase repeats on bars 2-3');
+  console.log(`[x4 motif-heard] ${heard.map(({ step: s, freq }) => `${s}:${freq.toFixed(1)}Hz`).join(' ')}`);
+});
+
 // ---- X4 #3: the boss is a different piece ------------------------------------------------
 
 test('X4 #3: the boss is slower than the fight and phrases in two bars with rests', () => {
@@ -227,7 +265,7 @@ test('X4 #5: one tempo per state — the motif reads the MUSIC_STEMS row', () =>
 
 // ---- X4 #3: residency ----------------------------------------------------------------
 
-test('X4 #3: the 16 s stems are tier 2 and are fetched on first use, not at graph build', () => {
+test('X4 #3: the 16 s stems are tier 2; acquireThemeStem fetches one stem on demand', () => {
   for (const state of THEME_STATES) {
     const id = AUTHORED_STEM_SAMPLES[state];
     const row = SAMPLE_MANIFEST.get(id);

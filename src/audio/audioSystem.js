@@ -80,7 +80,7 @@ import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
-import { noteToHz, acquireThemeStem } from './themeCompose.js';
+import { noteToHz } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
 // A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
@@ -7796,13 +7796,12 @@ export const audio = {
 
   _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, busNode, delayNode, vel, wave) {
     if (!motif || !Array.isArray(motif.steps)) return false;
-    // X4 #1 — `bar` is a bar COUNTER and `beat` is the sixteenth inside the current bar. A motif
-    // that spans bars (the boss's two-bar phrase) must be read on its own phrase grid, or its
-    // bar-1 note lands on top of its bar-0 note. One-bar motifs keep the long-standing every-four-
-    // bars hook so the Adventure stems do not turn into a jingle.
+    // X4 final review — `bar` is a bar COUNTER and `beat` is the sixteenth inside the current bar.
+    // A multi-bar motif plays EVERY bar: gating on `bar % phraseBars` skipped bar 1, so the boss's
+    // F#3 answer never sounded and the heard phrase was only A2/D2. One-bar motifs keep the
+    // long-standing every-four-bars hook so the Adventure stems do not turn into a jingle.
     const phraseBars = motifPhraseBars(motif);
-    const everyBars = phraseBars > 1 ? phraseBars : 4;
-    if (bar % everyBars !== 0) return false;
+    if (phraseBars <= 1 && bar % 4 !== 0) return false;
     const stepInPhrase = ((bar % phraseBars) * MOTIF_STEPS_PER_BAR) + beat;
     const stepRow = motif.steps.find((row) => ((Number(row.bar) || 0) * MOTIF_STEPS_PER_BAR + (Number(row.beat) || 0)) === stepInPhrase);
     if (!stepRow) return false;
@@ -8491,8 +8490,9 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
     rt.musicState = stateName;
-    // X4 #3: the authored 16 s reference loop becomes resident when its state is first heard.
-    acquireThemeStem(rt._samples, rt._themeMatrix && rt._themeMatrix.state);
+    // X4 final review: the heard score is synthesized by the `_seq*` sequencers, so the lazy
+    // authored-stem fetch had no consumer and pulled a ~1 MB loop on first state use. Removed
+    // until a real listening mode asks for `theme_stem` residency.
     const frame = rt.bandBed && rt.bandBed.scoreFrame;
     const w = (!instant && scoreStemWeights(frame, rt._themeMatrix))
       || (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))

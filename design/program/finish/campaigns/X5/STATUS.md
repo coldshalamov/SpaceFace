@@ -1,9 +1,10 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X5 — Controls and input contexts: status
 
-**State: the context system is landed, the label/tick split is fixed, and every device path is
-gated; the live per-context Help capture and the physical gamepad check remain.** Revised after the
-second independent X5 review pass on 2026-11-07.
+**State: the context system is landed, the label/tick split is fixed, every device path is gated,
+and the long Help reference now marks the rows a fight refuses; the live per-context Help capture
+and the physical gamepad check remain.** Revised after the second independent X5 review pass and
+the final Gate E review on 2026-11-07.
 
 ## Done
 
@@ -42,6 +43,15 @@ second independent X5 review pass on 2026-11-07.
 - Help cards are **derived**, not hand-copied: rows name either rebindable actions (keys resolved
   live through `resolveActionLabel`) or fixed interface keys (text). A saved rebind moves the card;
   a refused verb is dropped. Flight and combat cards now teach `Tab / Backspace — Target · clear`.
+- **Final review — the long sheet no longer teaches blocked keys.** The short context card was
+  filtered, but the Interface / Gamepad / Touch reference below it still listed Star-map, Local
+  map, Tech tree and Codex in a fight. `controlSections` now annotates every row the live gates
+  refuse with **“Unavailable in combat”** (UI rows by `contextUiAllowed`; flight verbs by
+  `contextActionAllowed`, so a row is marked only where the gate refuses it). Labels are
+  untouched, so the echo and pad lookups still resolve. `test/x5-help-long-sheet.test.mjs` drives
+  a real combat state: the four interface rows and the pad/touch map/codex rows carry the note,
+  mission log/cargo/comms/help stay clean, and the low-hull travel burn is unmarked when the gate
+  admits it. 4/4 pass.
 - **Low-hull flee**: `travelBurn` is admitted in the combat context when `hull / hullMax < 0.25`
   (`LOW_HULL_FRACTION`), and only then does the combat card print the Flee row.
 - **Station undock**: `E Undock` is a UI intent (`contextUiAllowed(station, 'undock')`), explicitly
@@ -50,9 +60,9 @@ second independent X5 review pass on 2026-11-07.
 - `contextPadAllowed` was an unused duplicate of the action gate (the pad calls
   `contextActionAllowed`); it is removed rather than left as a second policy surface.
 - Focused checks: `test/input-contexts.test.mjs` 14/14; `test/swarm-controls.test.mjs` 8/8;
-  `test/input-lifecycle.test.mjs` 12/12; `test/x5-device-gates.test.mjs` 3/3 (37/37 together).
-  The modal-preservation contract still holds: a screen does not flip the context out from under a
-  physically held key.
+  `test/input-lifecycle.test.mjs` 12/12; `test/x5-device-gates.test.mjs` 3/3 (37/37 together);
+  `test/x5-help-long-sheet.test.mjs` **4/4** (41/41 together). The modal-preservation contract
+  still holds: a screen does not flip the context out from under a physically held key.
 
 ## Not done
 
@@ -62,7 +72,9 @@ second independent X5 review pass on 2026-11-07.
 - Gamepad physical check (the code path is the same gate; no controller was attached).
 - `test/help-gamepad-rebind.test.mjs` has one stale expectation (`Brake / reverse` vs the shipped
   `Brake / full stop` label) that fails independently of this pass — it is a pre-existing fixture
-  drift, not an X5 regression.
+  drift, not an X5 regression. `test/teach-09-pad-chord-sheet.test.mjs` pins the same retired
+  `Brake / reverse` label and fails the same way; also pre-existing, not caused by the long-sheet
+  filter.
 
 ## Next
 
