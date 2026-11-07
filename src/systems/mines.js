@@ -243,7 +243,8 @@ export const mines = {
       if (!data.armed) {
         if (now >= (data.armedAt || 0)) {
           data.armed = true;
-          if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId });
+          if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId,
+        pos: { x: mine.pos.x, z: mine.pos.z } });
         } else {
           continue;
         }
@@ -287,7 +288,8 @@ export const mines = {
     if (!data.armed) {
       data.armed = true;
       data.armedAt = now;
-      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, pushed: true });
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, pushed: true,
+        pos: { x: mine.pos.x, z: mine.pos.z } });
     }
     if (this.bus) {
       this.bus.emit('mines:turned', {
@@ -330,7 +332,8 @@ export const mines = {
     if (!data.armed) {
       data.armed = true;
       data.armedAt = now;
-      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true });
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true,
+        pos: { x: mine.pos.x, z: mine.pos.z } });
     }
   },
 

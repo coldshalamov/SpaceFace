@@ -161,7 +161,7 @@ export function wardScreenTarget(state, attacker, target, origin) {
   const kind = origin && origin.kind;
   if (kind !== 'weapon' && kind !== 'action') return null;
   if (origin?.swarmWardRedirected === true) return null;
-  if (!attacker || !target || attacker.id === target.id) return null;
+  if (!attacker || !target || target.alive === false || attacker.id === target.id) return null;
   if (!attacker.pos || !target.pos) return null;
   if (target.type !== 'ship') return null;
   if (enemyTypeId(target) === WARD_ID) return null;
