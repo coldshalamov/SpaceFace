@@ -80,7 +80,8 @@ import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
-import { noteToHz } from './themeCompose.js';
+import { bindIronKrakenAudio } from './ironKrakenAudio.js';
+import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
 // A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
@@ -2676,6 +2677,7 @@ export const audio = {
 
   init(ctx) {
     this.rt?._commissionCueDispose?.();
+    this.rt?._ironKrakenAudioDispose?.();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -3266,6 +3268,7 @@ export const audio = {
     });
     bus.on('audio:cue', (p) => this._onCue(p));
     rt._trailerScoreDispose = bindTrailerScore(this);
+    rt._ironKrakenAudioDispose = bindIronKrakenAudio(this);
     bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
     bus.on('tether:broken', (p) => {
@@ -3561,6 +3564,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._ironKrakenAudioDispose?.();
+    rt._ironKrakenAudioDispose = null;
     rt._commissionCueDispose?.();
     rt._commissionCueDispose = null;
     this._unbindOutputDeviceFollow();

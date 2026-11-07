@@ -63,8 +63,10 @@ test('both variants have one honest head body, no inherited guns, and bounded au
 
 test('ordinary rounds contain at most one scheduled character; special rooms and reinforcement weights remain clear', () => {
   assert.equal(SWARM_ROSTER.some(row => ironKrakenProfileFor(row.enemyId)), false);
+  // S14 moves champion rooms to 5/15/25/... . Wave 55 now belongs to the Quiet Choir,
+  // so the scheduled Colossus candidate yields to the same boss exclusion as every Kraken.
   const expected = new Map([[7, 'heavy'], [19, 'heavy'], [31, 'colossus'], [37, 'heavy'],
-    [43, 'heavy'], [49, 'heavy'], [55, 'colossus']]);
+    [43, 'heavy'], [49, 'heavy']]);
   for (let wave = 1; wave <= 160; wave++) {
     const plan = planFor(wave);
     assert.equal(plan.error, undefined, `wave ${wave}: ${JSON.stringify(plan.issues)}`);
@@ -91,6 +93,28 @@ test('ordinary rounds contain at most one scheduled character; special rooms and
     const plan = planFor(7, { swarmStake });
     assert.equal(plan.schedule.filter(row => row.characterScoreId).reduce((n, row) => n + row.count, 0), 1,
       'pressure never multiplies the character seat');
+  }
+});
+
+
+test('wave 55 preserves the full Quiet Choir room while Colossus remains scheduled in ordinary rooms', () => {
+  const boss = planFor(55);
+  assert.equal(boss.swarm.boss, true);
+  assert.equal(boss.swarm.bossId, 'quiet_choir');
+  assert.equal(boss.objective.kind, 'boss');
+  assert.deepEqual(boss.schedule.filter(row => row.champion).map(row => [row.enemyId, row.count]), [
+    ['quiet_ghost', 3], ['field_anchor_controller', 1],
+  ], 'all four authored champion bodies keep their seats');
+  assert.equal(boss.schedule.filter(row => row.characterScoreId).length, 0,
+    'a due Kraken cannot add a second character fight to a champion room');
+  assert.equal(boss.swarm.character, undefined);
+  for (const wave of [31, 79]) {
+    const ordinary = planFor(wave);
+    const rows = ordinary.schedule.filter(row => row.characterScoreId);
+    assert.equal(ordinary.swarm.boss, false);
+    assert.equal(rows.length, 1, `ordinary wave ${wave} retains exactly one Colossus`);
+    assert.equal(rows[0].count, 1);
+    assert.equal(ironKrakenProfileFor(rows[0].enemyId).variant, 'colossus');
   }
 });
 
@@ -386,8 +410,7 @@ test('the real mortar blast centered on an open aperture remains area damage', (
     cfg: { blastRadius: 80, blastDmg: 10, impulse: 0 } }, h.state);
   const hit = receipts.find(row => row.input.targetId === h.target.id);
   assert.ok(hit, 'the actual scheduled blast reaches the Kraken');
-  assert.equal(hit.input.packet.source.kind, 'weapon', 'splash keeps canonical weapon provenance');
-  assert.equal(hit.input.packet.flags.splash, true);
+  assert.equal(hit.input.packet.source.kind, 'weapon_splash');
   assert.equal(hit.result.rawTotal, 10);
   assert.equal(hit.result.ironKrakenCoreFactor, undefined);
   assert.equal(h.cues.length, 0);

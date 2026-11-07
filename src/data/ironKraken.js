@@ -38,12 +38,12 @@ export const IRON_KRAKEN_ENEMIES = Object.freeze(Object.values(IRON_KRAKEN_PROFI
   aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: p.armReach * 1.2, leashRadius: 2400 },
   // The always-on class rear weak point must not masquerade as the timed front aperture.
   weakPoint: { label: 'MANTLE CORE', arcCenter: 0, arcHalfWidth: 0.8, bonusMult: 1,
-    hint: 'The mantle opens after each attack. Put a direct shot into the red core.' },
+    hint: 'The front aperture opens after each attack. Put a direct shot into the red core.' },
   physicalClass: 'specialist', shipClass: 'capital', rareSpecialist: true,
   telegraph: { bark: 'warn', cue: 'broadside_charge',
-    line: 'Eight arms, one bad temper. Cross the locked jet lane; hit the open mantle after it vents.' },
+    line: 'Eight arms, one bad temper. Cross the locked jet lane; hit the open front core after it vents.' },
   counterHint: 'Dodge the marked arms and locked jet. Fire into the open front core during recovery for 1.8× damage.',
-  behavior: 'recurring mechanical octopus: flank rake, committed siphon jet, gapped ink ring, exposed mantle recovery',
+  behavior: 'recurring mechanical octopus: flank rake, committed siphon jet, gapped ink ring, exposed front-core recovery',
   bountyCr: p.variant === 'colossus' ? 900 : 360,
   loot: { creditsRange: p.variant === 'colossus' ? [160, 240] : [65, 100], drops: [] },
 })));
