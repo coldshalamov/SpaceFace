@@ -453,7 +453,8 @@ test('Mission Log map anchors retain explicit destination/return stations when n
   scaleState.story.campaign47a = createCampaign47aState();
   scaleState.story.campaign47a.stepProgress['1'] = { completed: ['alloy_run'], updatedAtS: 12 };
   const scaleActions = recommendedActions(scaleState, [], null);
-  assert.equal(scaleActions[0].meta, 'Scale 4');
+  assert.match(scaleActions[0].meta, /Scale 4$/,
+    'the beat name survives its W1 act prefix');
   assert.match(scaleActions[0].body, /Scale 4.*8 WU\/s/,
     'the current Scale 4 guidance keeps its actual cargo and speed requirements');
 });
