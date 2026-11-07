@@ -88,19 +88,19 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   // a 2x-DPI panel otherwise shades 4x the pixels; renderer.applyRendererSize), the tight
   // single-level bloom, and the low particle tier (the full sky tier locked an Intel iGPU to a
   // 30 fps frame — spaceBackground._resolveTier). CAS sharpening holds the 0.75 scale crisp.
-  // A same-session sweep showed render p95 is flat across 0.60-0.90 on this game's CPU-bound
-  // submission path, so the 0.75 raster was spending readability for ~0 ms. 0.85 keeps the picture
-  // crisp (CAS sharpens the one intentional scale) while bloom/particles/post still carry the
-  // performance relief.
+  // The owner's panel is DPR 1.25; a sub-native raster plus a 1x pixel-ratio cap presented
+  // 0.53-0.68 physical pixels and read as pixelation on any zoom-out. The frame is
+  // submission-bound (render p95 flat across 0.60-0.90), so this profile now presents native:
+  // renderScale 1.0 and the integrated tier's 1.5 pixel-ratio cap let a 1.25 panel render at 1.25.
   low: Object.freeze({
     id: 'low',
     label: 'High performance',
     adaptiveFloor: 0.5,
-    renderScale: 0.85,
-    pixelRatioCap: 1,
+    renderScale: 1,
+    pixelRatioCap: 2,
     bloom: true,
     bloomStrength: 0.40,
-    bloomLevels: 1,
+    bloomLevels: 2,
     // Sun shadow-maps stay out of High performance/Balanced: at the neighbourhood ortho's texel
     // density they read as crawling clumps, not depth. The High quality tier opts back in.
     shadows: false,
@@ -455,7 +455,7 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
  * zoomed-out flight. The adaptive controller still has real headroom above the 0.85 demo base,
  * but it can no longer soften the game into mush.
  */
-export const COMBINED_READABILITY_FLOOR = 0.7;
+export const COMBINED_READABILITY_FLOOR = 0.9;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
