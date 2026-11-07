@@ -81,6 +81,23 @@ the implementation is optimal.
 - **Duplicate mission system removed** from `src/data/missions.js`; the canonical system remains
   `src/systems/missions.js` and data stays pure in `src/data/missionsData.js`.
 
+## Content queue (special-500, assigned but unlanded)
+
+42 units are `assigned` in `design/program/special-500/BUILD_LEDGER.json`, all with a ratified
+player-visible leg:
+
+- **spectacle (15):** SP3-035, 052, 058, 062, 072, 077, 080, 084, 088, 090, 095, 100, 115, 128 and
+  the Anvil Lighthouse family. Route through the approved spectacle registry and the X1 prop/finish
+  bar; each needs a gameplay-camera capture.
+- **codex (15):** SP1-082, 164; SP2-061, 070, 071, 080, 083, 091, 093, 103, 106, 118, 183; SP3-136,
+  137, 139. Each writes a flag plus a codex page; group them under the W1 act chapters.
+- **counter (12):** SP1-002, 031, 077, 186; SP2-063, 064, 079, 082, 084, 091, 107; SP3-136; SPX-C-06,
+  SP2-191. Each needs a real readout/beat, not a hidden counter.
+
+Land one family at a time after the owning lane's gate closes; every unit needs a focused test, an
+ordinary-route observation, and a ledger status update (`landed` + commit). Do not mark a unit
+landed for data alone.
+
 ## Gates
 
 | Gate | Scope | State |
