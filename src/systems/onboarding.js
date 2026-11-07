@@ -139,6 +139,7 @@ import {
 } from '../onboarding/missingThree.js';
 import {
   STORE_SENTENCE,
+  STORE_FLIGHT_SENTENCE,
   buildFirstHourSentenceEvent,
   freshStoreSentenceState,
   stampStoreClause,
@@ -2999,17 +3000,17 @@ export const onboarding = {
     const atS = this.state.simTime || 0;
     ob.storeSentence.shown = true;
     ob.storeSentence.shownAt = atS;
-    this._sayTutorial(STORE_SENTENCE, { visual: false });
+    this._sayTutorial(STORE_FLIGHT_SENTENCE, { visual: false });
     const voice = this.helpers && this.helpers.voice;
     const said = voice && typeof voice.say === 'function'
       && voice.say({
         channel: 'tutorial',
-        text: STORE_SENTENCE,
+        text: STORE_FLIGHT_SENTENCE,
         kind: 'info',
         ttl: 8,
         id: 'firsthour:sentence',
       });
-    if (!said) this.bus.emit('toast', { text: STORE_SENTENCE, kind: 'info', ttl: 8, id: 'firsthour:sentence' });
+    if (!said) this.bus.emit('toast', { text: STORE_FLIGHT_SENTENCE, kind: 'info', ttl: 8, id: 'firsthour:sentence' });
     this.bus.emit('firsthour:sentence', buildFirstHourSentenceEvent(atS));
   },
 

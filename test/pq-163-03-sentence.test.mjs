@@ -17,6 +17,7 @@ import {
 import {
   STORE_CLAUSES,
   STORE_SENTENCE,
+  STORE_FLIGHT_SENTENCE,
   STORE_SENTENCE_WINDOW_S,
   STORE_CLAUSE_READBACK,
   allStoreClausesPerformedBefore,
@@ -389,6 +390,10 @@ test('store sentence is one exact line and does not import hudAttention', () => 
   assert.equal(STORE_SENTENCE, 'Light ships are ammunition. Swing a rock. Keep the speed.');
   assert.equal(storeSentenceLine(), STORE_SENTENCE);
   assert.equal(STORE_SENTENCE.includes('\n'), false, 'exactly one line');
+  // X3: the in-flight lesson is one sentence; Adventure glass rejects multi-sentence prose.
+  assert.equal(STORE_FLIGHT_SENTENCE, 'Light ships are ammunition.');
+  assert.equal(/[.!?]\s+[A-Z]/.test(STORE_FLIGHT_SENTENCE), false,
+    'the flight line is one sentence the glass can admit');
   assert.deepEqual(STORE_CLAUSES, ['swing', 'ammunition', 'speed']);
   assert.equal(STORE_SENTENCE_WINDOW_S, 600);
   assert.deepEqual(buildFirstHourSentenceEvent(12), {
@@ -429,17 +434,17 @@ test('default New Game shows the sentence once on rescue:started', () => {
     shown: true,
     atS: 10,
   });
-  const said = tutorialLines(h).filter((t) => t === STORE_SENTENCE);
+  const said = tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE);
   assert.equal(said.length, 1, 'tutorial voice speaks the sentence once');
-  const toasts = h.seen.toast.filter((t) => t && t.text === STORE_SENTENCE);
+  const toasts = h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE);
   assert.equal(toasts.length, 1, 'the line is actually shown once');
   assert.equal(toasts[0].id, 'firsthour:sentence');
 
   // Silence: no second display if rescue:started is emitted again.
   h.bus.emit('rescue:started', { type: 'rescue:started', beats: ['swing', 'shove', 'grab'], atS: 11 });
   assert.equal(h.seen.sentence.length, 1);
-  assert.equal(tutorialLines(h).filter((t) => t === STORE_SENTENCE).length, 1);
-  assert.equal(h.seen.toast.filter((t) => t && t.text === STORE_SENTENCE).length, 1);
+  assert.equal(tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE).length, 1);
+  assert.equal(h.seen.toast.filter((t) => t && t.text === STORE_FLIGHT_SENTENCE).length, 1);
 });
 
 test('leftover rescue + boost perform each clause before 600s; sentence stays once', () => {
@@ -461,7 +466,7 @@ test('leftover rescue + boost perform each clause before 600s; sentence stays on
   assert.ok(rec.clauses.ammunition.atS < 600);
   assert.ok(rec.clauses.speed.atS < 600);
   assert.equal(allStoreClausesPerformedBefore(rec, 600), true);
-  assert.equal(tutorialLines(h).filter((t) => t === STORE_SENTENCE).length, 1);
+  assert.equal(tutorialLines(h).filter((t) => t === STORE_FLIGHT_SENTENCE).length, 1);
   assert.equal(h.seen.sentence.length, 1);
   assert.equal(h.seen.sentence.some((e) => e.percent != null || e.rate != null), false,
     'funnel never invents a stranger-playtest percentage');
@@ -499,8 +504,8 @@ test('47-A scenario payload still skips the rail and never shows the sentence', 
   assert.equal(h.state.entityList.length, 1, 'no rescue bodies enter the harness snapshot');
   assert.deepEqual(h.seen.rescue, []);
   assert.deepEqual(h.seen.sentence, []);
-  assert.equal(tutorialLines(h).includes(STORE_SENTENCE), false);
-  assert.equal(h.seen.toast.some((t) => t && t.text === STORE_SENTENCE), false);
+  assert.equal(tutorialLines(h).includes(STORE_FLIGHT_SENTENCE), false);
+  assert.equal(h.seen.toast.some((t) => t && t.text === STORE_FLIGHT_SENTENCE), false);
 });
 
 test('with the live voice arbiter wired, the sentence reaches the floor exactly once', () => {
@@ -509,16 +514,16 @@ test('with the live voice arbiter wired, the sentence reaches the floor exactly 
   launchDefaultRoute(h);
   // say() only ENQUEUES (it returns true on accept, not on display), so the raw-toast fallback is
   // skipped on this route. Nothing is shown until the arbiter promotes the entry to the floor.
-  assert.equal(h.seen.toast.filter((t) => t.text === STORE_SENTENCE && !t._fromVoice).length, 0,
+  assert.equal(h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE && !t._fromVoice).length, 0,
     'the fallback toast must not fire when the arbiter accepted the line');
 
   for (let i = 0; i < 120; i++) h.step();   // 30 s of sim past a ttl-8 line
 
-  const shown = h.seen.surface.filter((s) => s.text === STORE_SENTENCE);
+  const shown = h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE);
   assert.equal(shown.length, 1, 'the sentence takes the one-voice floor exactly once');
   assert.equal(shown[0].id, 'firsthour:sentence');
   assert.equal(shown[0].channel, 'tutorial', 'tutorial channel survives the tutorialProtect policy');
-  const mirrored = h.seen.toast.filter((t) => t.text === STORE_SENTENCE);
+  const mirrored = h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE);
   assert.equal(mirrored.length, 1, 'one visible surface, not two');
   assert.equal(mirrored[0]._fromVoice, true, 'the shown copy is the arbiter mirror');
   assert.ok(h.seen.clear.some((c) => c.id === 'firsthour:sentence'),
@@ -527,6 +532,6 @@ test('with the live voice arbiter wired, the sentence reaches the floor exactly 
   // Silence: a second rescue:started must not re-take the floor.
   h.bus.emit('rescue:started', { type: 'rescue:started', beats: ['swing', 'shove', 'grab'], atS: h.state.simTime });
   for (let i = 0; i < 40; i++) h.step();
-  assert.equal(h.seen.surface.filter((s) => s.text === STORE_SENTENCE).length, 1);
-  assert.equal(h.seen.toast.filter((t) => t.text === STORE_SENTENCE).length, 1);
+  assert.equal(h.seen.surface.filter((s) => s.text === STORE_FLIGHT_SENTENCE).length, 1);
+  assert.equal(h.seen.toast.filter((t) => t.text === STORE_FLIGHT_SENTENCE).length, 1);
 });

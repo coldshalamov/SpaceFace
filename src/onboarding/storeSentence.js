@@ -3,6 +3,11 @@
 
 export const STORE_SENTENCE = 'Light ships are ammunition. Swing a rock. Keep the speed.';
 
+// The in-flight lesson is the store page's hook, not its full three-sentence tagline. Adventure
+// glass admits one actionable sentence; the drill teaches swing/speed by doing. The full line
+// still lives on the store page and in state.onboarding.storeSentence.line.
+export const STORE_FLIGHT_SENTENCE = 'Light ships are ammunition.';
+
 export const STORE_SENTENCE_WINDOW_S = 600;
 
 // Leftover rail already performs these. This leaf only stamps them.
