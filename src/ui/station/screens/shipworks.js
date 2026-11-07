@@ -3057,7 +3057,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       host: jigHost,
       // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
       // (the verbs' band is reserved from the stage's size, so the ring never chases the verbs)
-      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
+      avoid: () => [nameplateCard() || nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
       // Phone landscape (~844×390) still uses the jig; compact columns so labels clear the dial.
       labelWidth: isPhoneLayout() ? 128 : 220,
       gap: isPhoneLayout() ? 16 : 30,
@@ -3360,6 +3360,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     };
   }
 
+  // ui-polish-413: where the layout sheet draws the floating nameplate as a hairline card (a border
+  // on an absolutely seated box hugging the crest), the card's edge is the keep-out, not the ink:
+  // a callout clearing only the ink would land on the hairline. The in-flow phone band is not a card.
+  function nameplateCard() {
+    if (!nameplateEl || !nameplateEl.isConnected || typeof getComputedStyle !== 'function') return null;
+    const cs = getComputedStyle(nameplateEl);
+    if (cs.position !== 'absolute' || !(parseFloat(cs.borderTopWidth) > 0)) return null;
+    const r = nameplateEl.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 ? nameplateEl : null;
+  }
+
   // The nameplate's padded box is far wider than its ink; the zone follows the text extent
   // (per-text-node Range rects -- a whole-contents bounding rect would union the block boxes and
   // be no narrower than the padded box), or a card crossing only padding would be pushed away.
@@ -3395,6 +3406,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : rr;
     }
     if (!ink) return null;
+    const card = nameplateCard();
+    if (card) {
+      const cr = card.getBoundingClientRect();
+      ink = { left: Math.min(ink.left, cr.left), top: Math.min(ink.top, cr.top), right: Math.max(ink.right, cr.right), bottom: Math.max(ink.bottom, cr.bottom) };
+    }
     // When the rename field is focused, grow the keep-out under its ring so a left-column
     // callout (Utility / Drive) cannot sit on the focus box at short mid-width stages.
     let bottom = ink.bottom;

@@ -84,6 +84,7 @@ const STYLE_ID = 'sf-orrery-shipworks';
 const W = 'html body #screens > .sx-berth.orr-station .sx-sw';
 const D = W.replace('html body', 'html:root:not([data-sf-mobile="1"]) body');
 const BONE = '236 230 216';
+const POOL = '7 8 10';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
@@ -235,6 +236,35 @@ ${W} .sx-sw__stats::before { content:none; display:none; }
 @media (max-height:460px) { ${W} .sx-sw__stats { border-radius:8px; padding:8px 10px; } }
 @media (max-height:400px) { ${W} .sx-sw__stats { border-radius:6px; } }
 @media (max-width:650px) { ${W} .sx-sw__stats { padding:14px 16px; } }
+/* ---- the nameplate: a hairline card hugging the hull's word ---------------------------------- */
+/* ui-polish-413: dock nameplate wears the same hairline card as dock .sx-sw__stats and the flight
+   nameplate (ui-polish-408, #922): 1px bone ~18% / radius 10 / padded. It sits over the lit hull
+   stage, so the card keeps a settled pool fill under the faint bone wash. The station.css box ran
+   from the stage top to 45px off its foot with a 420px right keep-out, so the card would have
+   framed half the stage: it now hugs the crest (fit-content, no keep-out, no bottom). The ≤700
+   top band keeps its own full-width geometry and fill and gains the hairline. The hardpoint-card
+   solver kept out the nameplate's INK only, so shipworks.js now keeps out the card's box when it
+   is carded (nameplateCard()). A negative left margin (padding + border) holds the crest on the
+   stage's left line; the top steps 6px (4 short) off the panel rule above it, since the stage
+   clips anything over its top. Densify radius 8→6 and the padding on short / narrow, matching
+   the sibling cards. (The dock .sx-sw__gauges rack is an empty hidden shell in shipworks.js, so
+   there is nothing there to card.) */
+${W} .sx-sw__stage > .sx-sw__nameplate { isolation:isolate; box-sizing:border-box; width:fit-content; height:auto !important; bottom:auto !important; right:auto !important;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:12px 16px 7px !important; margin:6px 0 0 -17px !important; }
+${W} .sx-sw__stage > .sx-sw__nameplate::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:8px; padding:10px 14px 6px !important; margin:6px 0 0 -15px !important; } }
+@media (max-height:400px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__stage > .sx-sw__nameplate { padding:8px 12px 5px !important; margin:4px 0 0 -13px !important; } }
+/* the jig's dense mid-width bands (701-1100 wide, ≤800 tall): the dial sizes itself around the
+   crest, and a card's rename row + padding cost the hull ~40px of its drawing at 960x540, so the
+   crest stands plain there, as before (the keep-out falls back to the ink) */
+@media (min-width:701px) and (max-width:1100px) and (max-height:800px) {
+  ${W} .sx-sw__stage > .sx-sw__nameplate { border:0 !important; background:none !important; padding:0 !important; margin:0 !important; border-radius:0; }
+}
 ${W} .sx-sw-bands { gap:0 clamp(28px, 3vw, 56px) !important; }
 ${W} .sx-sw-hero { ${PLAIN} padding:2px 0 8px !important; min-height:0 !important; text-align:left; }
 ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
