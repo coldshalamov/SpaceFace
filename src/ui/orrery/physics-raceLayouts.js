@@ -177,13 +177,23 @@ html.sf-reduce-motion ${R} .pv-lane .k-row { transition:none !important; }
   ${R} > .pv-hang { display:flex !important; flex-direction:column; gap:26px; height:auto; overflow:visible; align-self:start; }
   ${R} .pv-lane { flex:none; }
   ${R} .pv-lane__scroll { overflow:visible; -webkit-mask-image:none; mask-image:none; flex:0 0 auto; }
-  ${R} > .pv-foot { position:sticky; bottom:0; z-index:2;
-    background-color:rgb(6 8 11 / .98) !important; background-origin:content-box !important;
-    box-shadow:0 40px 0 rgb(6 8 11 / .98), 0 -18px 18px -6px rgb(6 8 11 / .9) !important; }
+  ${R} > .pv-foot { position:sticky; bottom:0; z-index:2; isolation:isolate;
+    background-color:rgb(6 8 11 / .98) !important; background-origin:padding-box !important;
+    background-image:linear-gradient(90deg, rgb(236 230 216 / .3) 0 22px, rgb(236 230 216 / .12) 22px 100%) !important;
+    background-size:100% 1px !important; background-repeat:no-repeat !important; background-position:0 0 !important;
+    box-shadow:0 56px 0 0 rgb(6 8 11 / .98) !important; }
+  /* opaque apron above the band: rungs scrolling under sticky LAUNCH must not stay legible */
+  ${R} > .pv-foot::before {
+    content:"" !important; position:absolute !important; left:0 !important; right:0 !important;
+    bottom:100% !important; height:36px !important; pointer-events:none !important; z-index:0;
+    background:linear-gradient(180deg, rgb(6 8 11 / 0), rgb(6 8 11 / .92) 55%, rgb(6 8 11 / .98)) !important;
+  }
+  ${R} > .pv-foot > * { position:relative; z-index:1; }
   /* the band sits flush on the bottom edge (its own padding carries the frame's foot inset), so
      no rung shows beneath it; a rung the keyboard reaches scrolls clear of the band */
-  ${R} { padding-bottom:0 !important; scroll-padding-bottom:150px; }
-  ${R} > .pv-foot { padding-bottom:clamp(18px, 3.5vh, 40px) !important; box-shadow:0 -18px 18px -6px rgb(6 8 11 / .9) !important; }
+  ${R} { padding-bottom:0 !important; scroll-padding-bottom:170px; }
+  ${R} > .pv-foot { padding-bottom:clamp(18px, 3.5vh, 40px) !important; }
+  ${R} > .pv-hang { padding-bottom:calc(108px + 2.5vh) !important; }
 }
 /* phone: the 120px Back gutter is only needed beside the kicker; the body line, the rung
    readings and the band's status take the full column instead of a 215px strip */
@@ -238,7 +248,56 @@ ${R} .pv-tools > button:is(:hover, :focus-visible)::after { color:rgb(255 253 24
   ${R} .pv-tools > button { padding:5px 12px !important; }
   ${R} .pv-tools > button::after { display:none !important; }
 }
+
+/* ---- short densify (ui-polish-371): curtain + head compress, keep document sticky flow ----
+   The ≤980 sticky band must fully hide rungs behind it (Gate cue / Apex cut were painting
+   through a soft-only shadow). Hang padding lets the last rung scroll clear above LAUNCH.
+   Short crops only compress the head — do not split the two leagues into starved scrollports. */
+@media (max-width: 980px) and (max-height: 560px) {
+  ${R} {
+    padding-top:clamp(14px, 3vh, 26px) !important;
+    padding-bottom:0 !important;
+  }
+  ${R} > .k-title { margin:0 0 8px !important; }
+  ${R} > .k-title > .k-sentence:first-child { margin:0 0 6px !important; }
+  ${R} > .k-title > .k-display { font-size:clamp(26px, 5vw, 40px) !important; margin:0 0 6px !important; }
+  ${R} > .k-title > .k-sentence:last-child {
+    display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    font-size:12.5px !important; line-height:1.35 !important; max-height:2.7em !important;
+  }
+  ${R} > .pv-hang { gap:18px !important; padding-bottom:calc(104px + 2vh) !important; }
+  ${R} .pv-lane__head { margin:0 0 6px !important; padding-bottom:6px !important; }
+  ${R} .pv-lane .k-row { margin-bottom:4px !important; padding-top:6px !important; padding-bottom:6px !important; }
+  ${R} .pv-lane .k-row::before { top:14px !important; }
+  ${R} > .pv-foot { padding-top:10px !important; }
+  ${R} { scroll-padding-bottom:190px; }
+}
+
+/* Desktop short: compress the head and keep lane scroll masked clear of the foot hairline. */
+@media (min-width: 981px) and (max-height: 560px) {
+  ${R} {
+    padding-top:clamp(16px, 3.4vh, 32px) !important;
+    padding-bottom:clamp(12px, 2.4vh, 24px) !important;
+  }
+  ${R} > .k-title { margin:0 0 8px !important; }
+  ${R} > .k-title > .k-display { font-size:clamp(28px, 3.2vw, 44px) !important; margin:0 0 6px !important; }
+  ${R} > .k-title > .k-sentence:last-child {
+    display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    font-size:13px !important; line-height:1.35 !important;
+  }
+  ${R} .pv-lane__head { margin:0 0 6px !important; padding-bottom:6px !important; }
+  ${R} .pv-lane__scroll {
+    /* The final rung must scroll above the 28px fade, including its focus outline. */
+    scroll-padding-bottom:32px;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important;
+  }
+  ${R} .pv-lane .k-rows { padding-bottom:32px !important; }
+  ${R} .pv-lane .k-row { margin-bottom:4px !important; padding-top:6px !important; padding-bottom:6px !important; }
+  ${R} > .pv-foot { margin-top:4px !important; padding-top:10px !important; }
+}
 `;
+
 
 export const PHYSICS_RACE_LAYOUT_CSS = CSS;
 
