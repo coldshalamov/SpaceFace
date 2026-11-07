@@ -223,15 +223,21 @@ export function createSimStepProfiler(options = {}) {
       counters.samplesTaken += tickCalls;
     },
 
-    /** Rolling report. Sorted by total measured time, descending — the ranking the campaign uses. */
+    /** Rolling report. Sorted by total measured time, descending - the ranking the campaign uses. */
     snapshot() {
       const systems = [];
       let totalMeasuredMs = 0;
+      let topLevelMeasuredMs = 0;
       for (const rec of records.values()) {
         const meanMs = ringMean(rec.ring);
         totalMeasuredMs += rec.totalMs;
+        // Sub-phases (`physics.worldStep`, `economy.pressure`) are portions of a parent row, not
+        // peers of it. Counting them in the denominator made one system read as 47% of the step
+        // and invited an agent to optimise the same work three times (E2 review F7).
+        if (!rec.id.includes('.')) topLevelMeasuredMs += rec.totalMs;
         systems.push({
           id: rec.id,
+          nested: rec.id.includes('.'),
           calls: rec.calls,
           meanMs: round(meanMs),
           p50: round(ringPercentile(rec.ring, 0.5)),
@@ -243,7 +249,9 @@ export function createSimStepProfiler(options = {}) {
       }
       systems.sort((a, b) => b.totalMs - a.totalMs || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       for (const row of systems) {
-        row.share = totalMeasuredMs > 0 ? round(row.totalMs / totalMeasuredMs, 4) : 0;
+        // A parent's share is over top-level work only; a sub-phase has no standalone share.
+        row.share = !row.nested && topLevelMeasuredMs > 0
+          ? round(row.totalMs / topLevelMeasuredMs, 4) : 0;
       }
       const allocMean = ringMean(allocRing);
       return {
@@ -253,6 +261,8 @@ export function createSimStepProfiler(options = {}) {
         ticksMeasured,
         skippedTicks,
         systemsMeasured: systems.length,
+        totalMeasuredMs: round(totalMeasuredMs),
+        topLevelMeasuredMs: round(topLevelMeasuredMs),
         step: {
           count: stepRing.count,
           meanMs: round(ringMean(stepRing)),
