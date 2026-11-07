@@ -361,6 +361,7 @@ import {
   detectGpu,
   createAdaptiveResolution,
   shouldSuggestIntegratedPreset,
+  applyQualityPreset,
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   adaptiveFrameBudgetMs,
@@ -11399,9 +11400,28 @@ export const render = {
       }, softwareEmergency.toastDelayMs);
     }
 
-    // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
-    // silent bloom/shadow cuts. One toast per boot when detectGpu reports integrated.
-    if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
+    // Demo/owner policy (2026-11-07): an integrated GPU on the Auto policy starts on the High
+    // performance preset. The owner explicitly chose a stable picture over a spiky 60 on this
+    // hardware; the toast names the change and Settings → Video is one press away. A Manual
+    // preset or any explicit video key is never overridden.
+    const integratedVideo = state.settings && state.settings.video;
+    if (gpu && gpu.tier === 'integrated' && qualityModeForVideo(integratedVideo) === 'auto'
+        && !this._integratedAutoApplied) {
+      this._integratedAutoApplied = true;
+      applyQualityPreset(state.settings, 'low');
+      try { bus.emit('settings:changed', { section: 'video', key: null }); } catch (_) { /* live apply is best-effort */ }
+      scheduleTimeout(() => {
+        try {
+          bus.emit('toast', {
+            text: 'Integrated graphics: High performance preset applied. Settings → Video to change.',
+            kind: 'info',
+            ttl: 10,
+          });
+        } catch (_) { /* toast is best-effort */ }
+      }, 1600);
+    } else if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
+      // The preset is never auto-applied when the player has made a Manual choice; this remains
+      // the suggestion path for an integrated GPU that is already on a Manual picture.
       this._integratedPresetSuggested = true;
       scheduleTimeout(() => {
         try {
@@ -34509,6 +34529,7 @@ function applyRendererSize(renderer, state) {
   // iGPU-bound scene needs fill relief at the raster source. Runtime intent only
   // — never a settings.video write — and any explicit video key flips quality to
   // Manual and restores the player's own resolution choice in the same publish.
+  // The Auto policy also caps presentation at 30 Hz (presentationRunner) so the loop stops\n  // presenting frames it cannot finish; the raster scale keeps the authored 0.9 sharpness.
   const reliefGpu = state.render && state.render.gpu;
   const relief = reliefGpu && reliefGpu.tier === 'integrated'
     && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;
@@ -34522,8 +34543,8 @@ function applyRendererSize(renderer, state) {
   const configuredScale = finiteInRange(vd.renderScale, 0.5, 2, 1);
   // Governor rung 3: a raster FLOOR while the hitch ring reports sustained blocking — a cap,
   // not a multiplier, so it never compounds the integrated relief below the readability floor
-  // (0.9 × 0.8 = 0.72 was player-rejected as too soft). Effective scale is min(configured,
-  // tier relief, hitch floor): integrated 0.9→0.8 under stress, discrete 1.0→0.8.
+  // (0.9 × 0.8 = 0.72 stays above the 0.6 combined floor). Effective scale is min(configured,
+  // tier relief, hitch floor): integrated 0.9→0.72 under stress, discrete 1.0→0.8.
   const hitchCap = finiteInRange(state.render && state.render.hitchReliefScale, 0.5, 1, 1);
   const scale = graphOwnsScale ? 1 : Math.min(relief ? Math.min(configuredScale, INTEGRATED_RELIEF_RASTER_CAP) : configuredScale, hitchCap);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the

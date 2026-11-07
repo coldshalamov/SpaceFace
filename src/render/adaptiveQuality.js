@@ -108,7 +108,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     renderGraph: false,
     engineTrails: true,
     particleQuality: 'low',
-    frameCap: 0,
+    frameCap: 30,
     dynamicResolution: false,
     postFx: true,
     sharpen: true,
@@ -398,6 +398,16 @@ export function shouldSuggestIntegratedPreset(gpu, video = {}) {
   if (!gpu || gpu.tier !== 'integrated') return false;
   const preset = video && video.qualityPreset;
   return preset !== 'integrated';
+}
+
+/**
+ * The presentation cadence the Auto policy applies to an integrated GPU. The authored picture is
+ * unchanged; the cap stops the loop from presenting frames it cannot finish. Manual presets and
+ * explicit frame caps always win.
+ */
+export function autoPresentationCapFor(gpu, video = {}) {
+  if (!gpu || gpu.tier !== 'integrated') return 0;
+  return qualityModeForVideo(video) === 'auto' ? 30 : 0;
 }
 
 // --- Software-renderer emergency profile (the one automatic visual reduction) ------------------
