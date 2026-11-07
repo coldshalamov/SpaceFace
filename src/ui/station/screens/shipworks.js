@@ -3057,7 +3057,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       host: jigHost,
       // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
       // (the verbs' band is reserved from the stage's size, so the ring never chases the verbs)
-      avoid: () => [nameplateCard() || nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
+      // ui-polish-416: the dial sizes off the crest ink, not the hairline card (the card's padding
+      // and rename row would shrink the ring); callouts keep out the card via nameplateInkRect.
+      // The rename row sits left of the middle third, so it only drops the left label column.
+      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__nameEdit'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
       // Phone landscape (~844×390) still uses the jig; compact columns so labels clear the dial.
       labelWidth: isPhoneLayout() ? 128 : 220,
       gap: isPhoneLayout() ? 16 : 30,
