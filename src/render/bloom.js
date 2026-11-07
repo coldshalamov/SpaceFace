@@ -1554,7 +1554,9 @@ function installUnreadyDrawGuard(renderer) {
     if (gated && residency.admitGeometry(object, geometry) === false) {
       // Honest draw-point counter: unlike the hold path it also sees refusals that arrive
       // through a route this manager did not hold (the reason is for probe context).
-      residency.noteRefusedDraw?.(object, 'geometry-not-resident');
+      const reason = (object && object.__sfResidencyRefusalReason) || 'geometry-not-resident';
+      if (object) object.__sfResidencyRefusalReason = null;
+      residency.noteRefusedDraw?.(object, reason);
       return undefined;
     }
     // Recover available mip donors and check live upload safety in one allocation-free
@@ -1626,10 +1628,19 @@ function installUnreadyDrawGuard(renderer) {
         // Every refusal is counted; the eventual fail-open has its own counter.
         const nowMs = guardNow();
         let firstRefusedAt = Number(object.__sfCompileRefusedAt);
-        if (!Number.isFinite(firstRefusedAt) || firstRefusedAt < 0) {
+        // A stale clock from an earlier swap must not make the first refusal of a later one
+        // fail open immediately. Reset per material and after a quiet gap; continuous refusals
+        // keep their original first-refusal deadline so a stuck lane still releases.
+        const lastRefusedAt = Number(object.__sfCompileRefusedLastAt);
+        if (!Number.isFinite(firstRefusedAt) || firstRefusedAt < 0
+            || object.__sfCompileRefusedMaterial !== material
+            || !Number.isFinite(lastRefusedAt)
+            || (nowMs - lastRefusedAt) > COMPILE_REFUSAL_FAIL_OPEN_MS * 4) {
           firstRefusedAt = nowMs;
           object.__sfCompileRefusedAt = firstRefusedAt;
         }
+        object.__sfCompileRefusedMaterial = material;
+        object.__sfCompileRefusedLastAt = nowMs;
         if (nowMs - firstRefusedAt < COMPILE_REFUSAL_FAIL_OPEN_MS) {
           renderer.__sfCompileRefusalCount = (renderer.__sfCompileRefusalCount | 0) + 1;
           if (gated) residency.noteRefusedDraw?.(object, 'program-not-linked');
@@ -1646,10 +1657,14 @@ function installUnreadyDrawGuard(renderer) {
           return undefined;
         }
         object.__sfCompileRefusedAt = -1;
+        object.__sfCompileRefusedLastAt = -1;
+        object.__sfCompileRefusedMaterial = null;
         object.__sfCompileRefusals = 0;
         renderer.__sfCompileFailOpen = (renderer.__sfCompileFailOpen | 0) + 1;
       } else {
         object.__sfCompileRefusedAt = -1;
+        object.__sfCompileRefusedLastAt = -1;
+        object.__sfCompileRefusedMaterial = null;
         object.__sfCompileRefusals = 0;
       }
     }

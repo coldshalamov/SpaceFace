@@ -451,6 +451,7 @@ import {
 } from './entityViewSyncBand.js';
 import { countShadowReceivers, createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
 import {
+  applyBoundMeshVisibility,
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
   isProtectedEntityMesh,
@@ -599,7 +600,13 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
-import { createResidencyManager, RESIDENCY_HELD, RESIDENCY_LOOKAHEAD_S } from './residencyManager.js';
+import {
+  createResidencyManager,
+  geometryGpuResident,
+  invalidateResidencyContextGeneration,
+  RESIDENCY_HELD,
+  RESIDENCY_LOOKAHEAD_S,
+} from './residencyManager.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
@@ -4652,8 +4659,7 @@ export function rootDrawsResidentStandIn(mesh) {
   while (stack.length > 0) {
     const object = stack.pop();
     if (!object || object.visible === false) continue;
-    if (object !== marker && object.geometry && object.geometry.userData
-        && object.geometry.userData.spacefaceGpuResident !== true
+    if (object !== marker && object.geometry && !geometryGpuResident(object.geometry)
         && (object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
     if (object === marker) continue;
     const children = object.children;
@@ -9856,6 +9862,10 @@ export const render = {
         // every hold and stop its timer now; the restore path installs a fresh manager after
         // the whole-scene re-upload stamps the restored resources.
         this._releaseResidencyManager();
+        // Geometry stamps describe the dead context. Bumping the generation invalidates every
+        // one of them, including pooled/off-scene geometry the restore pass never walks; the
+        // driver and real draws stamp the live generation on their next upload.
+        invalidateResidencyContextGeneration();
         dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
@@ -25241,8 +25251,13 @@ export const render = {
       try { manager.drainUploads(); } catch (error) {
         laneWarn(this, 'residencyDrain', '[render] residency drain failed', error);
       }
-      if (manager.pendingCount() > 0) this._scheduleResidencyDrain();
-    }, 200);
+      if (manager.pendingCount() > 0
+          || (typeof manager.hasOutstandingWork === 'function' && manager.hasOutstandingWork())) {
+        this._scheduleResidencyDrain();
+      }
+    }, typeof this._residencyManager?.nextDrainDelayMs === 'function'
+      ? this._residencyManager.nextDrainDelayMs()
+      : 200);
     // A background tab must not keep a timer alive after teardown.
     if (timer && typeof timer.unref === 'function') timer.unref();
     this._residencyDrainTimer = timer;
@@ -25262,8 +25277,9 @@ export const render = {
     const manager = createResidencyManager({
       requestRoots: (roots, urgent) => prepareStartupGeometryResidency(this.renderer, roots, {
         // The drain hands over exactly the drawables stillPending selects. hasUnresidentGeometry
-        // counts count-0 InstancedMesh/drawRange buffers as unready, so the driver must admit
-        // the same empty geometry or a held empty pool can never release.
+        // counts not-yet-ranged (drawRange-0) geometry as unready while treating a capacity-0
+        // InstancedMesh as non-uploadable/resident, so includeEmpty keeps the driver aligned with
+        // the ranged-buffer part of the census.
         includeEmpty: true,
         // Binds already on the glass (or inside the 2 s approach horizon) use the driver's
         // separate urgent chain instead of waiting behind ambient runway work.
@@ -25363,11 +25379,19 @@ export const render = {
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
       : SUBMIT_LANE.OPAQUE;
+    // A protected root is never hidden by the residency lane: tag the subtree before the hold
+    // decision so the manager admits it inline/fail-open instead. Rebind clears a pooled tag.
+    const protectedRoot = entity.id === this.state.playerId
+      || !!(entity.flags && (entity.flags.forceRender === true || entity.flags.neverCull === true));
+    if (protectedRoot) mesh.__sfResidencyProtected = true;
+    else if (mesh.__sfResidencyProtected === true) mesh.__sfResidencyProtected = false;
     // A fresh root whose buffers have never reached the GPU is held before it is ever
     // submitted: the off-screen lane uploads it, then it appears complete. A rebind of a
     // live root is never held here (that would blank a body the player is already watching);
-    // its missing leaves are held individually by the draw guard instead.
-    if (this._residencyManager && !mesh.parent && hasUnresidentGeometry(mesh)) {
+    // its missing leaves are held individually by the draw guard instead. A resident stand-in
+    // is preferred over hiding the on-glass bind it already draws.
+    if (this._residencyManager && !mesh.parent && hasUnresidentGeometry(mesh)
+        && !rootDrawsResidentStandIn(mesh)) {
       // Already on the glass or inside the approach horizon: urgent upload chain. Off-glass
       // binds keep the ambient order (making every bind urgent would re-create the burst).
       const urgent = entityPredictedOnDeadlineGlass(entity, this.state);
@@ -27762,7 +27786,8 @@ export const render = {
             noteLaneFault(this.state, 'authoredMotion');
           }
         }
-        m.visible = old ? old.visible : true;
+        applyBoundMeshVisibility(m, old ? old.visible : true,
+          !!(m.userData && m.userData[RESIDENCY_HELD] === true));
         record.committed = true;
       } catch (error) {
         m.visible = false;
@@ -28328,6 +28353,7 @@ export const render = {
         _protectedRootOptions.forceRender = forceRender;
         _protectedRootOptions.neverCull = neverCull;
         const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
+        if (protectedRoot && mesh.__sfResidencyProtected !== true) mesh.__sfResidencyProtected = true;
         // A protected root keeps its prior visibility when the latest fence has no pose for it.
         // Ordinary stale identities still fail closed and leave the submit list immediately.
         syncResolvingMarker(mesh, this.state);
@@ -28374,7 +28400,7 @@ export const render = {
             && (_submitVisibilityOptions.pipelinesPending === true
                 || _submitVisibilityOptions.geometryPending === true
                 || _submitVisibilityOptions.authoredPending === true)) {
-          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending', true);
+          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending');
         }
         const visibilityChanged = !(!posed && protectedRoot)
           && applyEntityMeshVisibility(mesh, wantsVisible);
@@ -28461,6 +28487,9 @@ export const render = {
         _protectedRootOptions.neverCull = neverCull;
         const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
         let poseApplied = false;
+        // Packed flags can name a protected root the bind-time entity flags did not; latch it
+        // here so the draw guard/manager can never hide it for the rest of this binding.
+        if (protectedRoot && mesh.__sfResidencyProtected !== true) mesh.__sfResidencyProtected = true;
         if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
           | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
           posed = this._applyPresentationPose(slot, mesh, alpha);
@@ -28689,7 +28718,7 @@ export const render = {
             && (_submitVisibilityOptions.pipelinesPending === true
                 || _submitVisibilityOptions.geometryPending === true
                 || _submitVisibilityOptions.authoredPending === true)) {
-          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending', true);
+          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending');
         }
         const visibilityChanged = !(!posed && protectedRoot)
           && applyEntityMeshVisibility(mesh, wantsVisible);

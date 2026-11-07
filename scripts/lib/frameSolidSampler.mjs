@@ -47,6 +47,10 @@ export async function installFrameSolidSampler() {
       ? parts.describeAuthoredUpgradeQueue(scene) : null;
     const rendererData = render.renderer && render.renderer.userData;
     const held = rendererData && rendererData.spacefacePendingPipelineSubjects;
+    // E6 sleep is 2.5 s, so the end-of-run `pending:0` cannot see a mid-route backlog. Sample
+    // the manager's queue/refusal/fail-open counters on the same 250 ms cadence as the lanes.
+    const residencyManager = render.renderer && render.renderer.__sfResidencyManager;
+    const residencyCounters = residencyManager && residencyManager.counters;
     rec.lanes.push({
       t: Math.round(now),
       upgradePending: q ? q.pending | 0 : null,
@@ -56,6 +60,13 @@ export async function installFrameSolidSampler() {
       pipelineHeldRoots: held && typeof held.size === 'number' ? held.size : null,
       residencyPending: typeof render.pendingAuthoredGpuResidency === 'function'
         ? Number(render.pendingAuthoredGpuResidency()) || 0 : null,
+      residencyQueuePending: residencyManager && typeof residencyManager.pendingCount === 'function'
+        ? Number(residencyManager.pendingCount()) || 0 : null,
+      residencyRefusedDraws: residencyCounters ? Number(residencyCounters.refusedDraws) || 0 : null,
+      residencyAdmittedFailOpen: residencyCounters ? Number(residencyCounters.admittedFailOpen) || 0 : null,
+      residencyFailOpen: residencyCounters ? Number(residencyCounters.failOpenReleases) || 0 : null,
+      residencyPresentedRefusedEntities: residencyCounters
+        ? Number(residencyCounters.visibleUnreadyDraws) || 0 : null,
     });
   };
   const appearType = (type) => rec.appear.byType[type]
@@ -561,7 +572,9 @@ export function summarizeFrameSolid(rec, limit = 8) {
 function laneSummary(lanes) {
   const list = Array.isArray(lanes) ? lanes : [];
   const out = { samples: list.length };
-  for (const key of ['upgradePending', 'upgradeInFlight', 'upgradeCompiling', 'pipelineHeldRoots', 'residencyPending']) {
+  for (const key of ['upgradePending', 'upgradeInFlight', 'upgradeCompiling', 'pipelineHeldRoots',
+    'residencyPending', 'residencyQueuePending', 'residencyRefusedDraws',
+    'residencyAdmittedFailOpen', 'residencyFailOpen', 'residencyPresentedRefusedEntities']) {
     const values = list.map((s) => s[key]).filter(Number.isFinite);
     out[key] = values.length
       ? {

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 import {
+  applyBoundMeshVisibility,
   applyEntityMeshVisibility,
   retainShownCameraGlass,
   retainShownSurvivalGlass,
@@ -137,6 +138,29 @@ test('visibility helper only writes when the flag changes', () => {
   assert.equal(mesh.visible, true);
 });
 
+test('a bind commit cannot overwrite a residency hold with the prior visible state', () => {
+  const held = { visible: false, userData: { sfResidencyHeld: true } };
+  assert.equal(applyBoundMeshVisibility(held, true, true), false,
+    'the bind restore is a no-op when the hold already hid the root');
+  assert.equal(held.visible, false, 'the held root stays hidden through the bind commit');
+  const free = { visible: false, userData: {} };
+  assert.equal(applyBoundMeshVisibility(free, true, false), true);
+  assert.equal(free.visible, true, 'an unheld rebound root restores its prior visibility');
+  assert.equal(applyBoundMeshVisibility({ visible: true }, false, false), true);
+});
+
+test('a protected root is never hidden by a residency hold in the submit pass', () => {
+  // The manager refuses to hold protected roots, but a stale hold from before the latch must
+  // not turn into a one-frame hide either: the submit verdict is protected-first.
+  for (const protection of [{ isPlayer: true }, { forceRender: true }, { neverCull: true }]) {
+    assert.equal(shouldSubmitEntityMesh({ ...protection, residencyHeld: true, hidden: true }), true);
+    const mesh = { visible: false, userData: { sfResidencyHeld: true } };
+    assert.equal(applyEntityMeshVisibility(mesh,
+      shouldSubmitEntityMesh({ ...protection, residencyHeld: true })), true);
+    assert.equal(mesh.visible, true, 'the protected root is re-shown (manager clears the hold)');
+  }
+});
+
 test('Adventure retains a shown wreck through a pending admission without revealing an unshown root', () => {
   const shown = { alreadyVisible: true, onFrustum: true, snapshotMissing: false, alive: true };
   const pending = { onLiveGlass: true, pipelinesPending: true, geometryPending: true };
@@ -208,8 +232,14 @@ test('live entity view sync hides off-runway roots through the helper', async ()
     'the hidden-boundary site submits through the same scratch');
   assert.equal((source.match(/applyEntityMeshVisibility\(mesh,\s*wantsVisible\)/g) || []).length, 2,
     'both submit sites hand the helper the same visibility verdict');
-  assert.match(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending', true\)/,
+  assert.match(source, /applyBoundMeshVisibility\(m, old \? old\.visible : true,/,
+    'the appearance bind commit cannot restore visibility over a live residency hold');
+  assert.match(source, /mesh\.__sfResidencyProtected = true/,
+    'the submit pass latches packed-flag protected roots for the manager');
+  assert.match(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending'\)/,
     'a presented root hidden by a pending latch is counted as a draw-point refusal');
+  assert.doesNotMatch(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending', true\)/,
+    'presentation is derived from the drawable, never a caller constant');
   assert.match(source, /this\.state\.mode === 'flight' && retainShownCameraGlass\(\{/);
   assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
     'a retained survival body stays on the live compose path');

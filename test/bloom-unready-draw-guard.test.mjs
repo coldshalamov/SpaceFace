@@ -5,7 +5,7 @@ import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 import { spacefaceSelectedProgramDeferred } from '../vendor/three.module.js';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
-import { createResidencyManager, RESIDENCY_INLINE_UPLOAD_BYTES } from '../src/render/residencyManager.js';
+import { createResidencyManager, RESIDENCY_INLINE_UPLOAD_BYTES, stampGeometryGpuResident, stampInstanceResidency } from '../src/render/residencyManager.js';
 import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
 import {
   createPackageDetachManifest,
@@ -783,6 +783,36 @@ test('a drawable whose program never links fails open at a wall deadline and cou
   }
 });
 
+test('a later material swap starts a fresh compile-refusal episode instead of failing open at once', () => {
+  const { renderer, draws } = rendererHarness();
+  let now = 0;
+  renderer.__sfDrawGuardNow = () => now;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const first = { userData: {} };
+  const later = { userData: {} };
+  const mesh = { isMesh: true };
+  guard.hide(scene);
+  try {
+    now = 0;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, first, mesh, null), undefined);
+    now = 1400;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, first, mesh, null), undefined);
+    // A long quiet gap (the body drew on its proven material) then a new swap.
+    now = 20000;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, later, mesh, null), undefined,
+      'the first refusal of the later material is not an immediate fail-open');
+    assert.equal(renderer.__sfCompileFailOpen | 0, 0);
+    now = 21510;
+    assert.equal(renderer.renderBufferDirect(null, scene, null, later, mesh, null), 'drawn',
+      'continuous refusals of the new material still hit the 1.5 s deadline');
+    assert.equal(renderer.__sfCompileFailOpen, 1);
+    assert.equal(draws.length, 1);
+  } finally {
+    guard.restore();
+  }
+});
+
 test('an already-drawn object keeps its proven material while a new one links', () => {
   const { renderer, draws, compile } = rendererHarness();
   const scene = { traverse() {} };
@@ -832,4 +862,46 @@ test('a refused presented draw reports the honest draw-point residency counter',
   assert.equal(snap.refusedDraws, 1, 'the draw point counts the refusal');
   assert.equal(snap.visibleUnreadyDraws, 1,
     'a previously presented drawable is counted as a blink at the draw point');
+});
+
+test('a real instanced capacity growth is refused by the guard and released by its driver', () => {
+  const { renderer, draws, compile } = rendererHarness();
+  const material = canonStampedMaterial();
+  compile(material, { program: {}, isReady: () => true });
+  const geometry = new THREE.BoxGeometry();
+  stampGeometryGpuResident(geometry);
+  const mesh = new THREE.InstancedMesh(geometry, material, 4);
+  mesh.count = 1;
+  mesh.__sfPresentedOnce = true;
+  stampInstanceResidency(mesh);
+  const batches = [];
+  const manager = createResidencyManager({
+    requestRoots: (roots) => {
+      batches.push(roots.slice());
+      for (const root of roots) stampInstanceResidency(root);
+    },
+  });
+  renderer.__sfResidencyManager = manager;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), 'drawn');
+    // The pool activates by replacing its instance buffer (capacity growth, not count churn).
+    mesh.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(16 * 16), 16);
+    mesh.count = 3;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined,
+      'the grown instance buffer never uploads inside the presented draw');
+    const snap = manager.snapshot();
+    assert.equal(snap.instancedGrowthHolds, 1);
+    assert.equal(snap.refusedByReason.instanced, 1, 'the refusal is named as instanced growth');
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(batches.length, 1);
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), 'drawn');
+    assert.equal(draws.length, 2);
+  } finally {
+    guard.restore();
+    mesh.dispose();
+    geometry.dispose();
+  }
 });

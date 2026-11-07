@@ -17,13 +17,20 @@ import * as THREE from 'three';
 
 import {
   createResidencyManager,
+  geometryGpuResident,
+  instanceResidencyReason,
+  invalidateResidencyContextGeneration,
+  isResidencyProtected,
   residencyGeometryBytes,
+  stampGeometryGpuResident,
+  stampInstanceResidency,
   RESIDENCY_FRAME_UPLOAD_BYTES,
   RESIDENCY_HELD,
   RESIDENCY_INLINE_UPLOAD_BYTES,
 } from '../src/render/residencyManager.js';
 import { hasUnresidentGeometry } from '../src/render/startupGpuResidency.js';
 import { render } from '../src/render/renderer.js';
+import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
 
 function geometryWith(bytes, extra = {}) {
   return {
@@ -222,6 +229,7 @@ test('an on-glass hold jumps ahead of a bind-time hold in the drain queue', () =
   manager.holdRoot(bindRoot, 'bind');
   const glassRoot = drawable();
   manager.holdRoot(glassRoot, 'over-budget');
+  assert.equal(manager.nextDrainDelayMs(), 200, 'the ordinary queue keeps its safety-net cadence');
   assert.equal(manager.drainUploads(1), 1);
   assert.equal(batches.length, 1);
   assert.equal(batches[0][0], glassRoot, 'the drawable the camera is trying to draw goes first');
@@ -471,7 +479,10 @@ test('draw-point refusals count every refused drawable, including previously pre
 
   const snap = manager.snapshot();
   assert.equal(snap.refusedDraws, 3, 'every refused draw is visible at the draw point');
-  assert.equal(snap.visibleUnreadyDraws, 2, 'only the already-presented drawable is a blink');
+  assert.equal(snap.presentedRefusedDraws, 2, 'raw refusals on the presented drawable');
+  assert.equal(snap.visibleUnreadyDraws, 1, 'the already-presented drawable is one deduped blink');
+  assert.equal(snap.presentedRefusedEntities, 1, 'deduped presentation refusals');
+  assert.equal(snap.refusedByReason.geometry, 3, 'every refusal is named by its path');
   assert.equal(snap.visibleUnready, 1, 'the existing hold counter stays for compatibility');
 });
 
@@ -515,4 +526,257 @@ test('cancelRoot releases a pooled mesh hold and queue entry before reuse', () =
   assert.equal(mesh.__sfPresentedOnce, false, 'the next binding is not pre-classified presented');
   assert.equal(mesh.__sfInstanceResidentCount, 0, 'no stale instance proof crosses a pool reuse');
   assert.equal(mesh.userData[RESIDENCY_HELD], false);
+});
+
+test('a protected root is admitted inline, never hidden, and its stale hold is cleared', () => {
+  const batches = [];
+  const manager = createResidencyManager({ requestRoots: (roots) => { batches.push(roots.slice()); } });
+  manager.beginFrame(0);
+  const geometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  const mesh = drawable();
+  // A hold placed before the protection latch was known: the draw must clear it, not hide.
+  mesh.userData[RESIDENCY_HELD] = true;
+  mesh.visible = false;
+  mesh.__sfPresentedOnce = true;
+  mesh.__sfResidencyProtected = true;
+  assert.equal(isResidencyProtected(mesh), true);
+  assert.equal(manager.admitGeometry(mesh, geometry), true, 'a protected draw is never refused');
+  assert.equal(mesh.visible, true, 'the stale hold is released');
+  assert.equal(manager.isHeld(mesh), false);
+  assert.equal(manager.snapshot().admittedProtectedInline, 1);
+  assert.equal(batches.length, 0, 'protected roots never enter the hide/upload queue');
+  // Even an explicit bind hold cannot hide the protected subtree.
+  assert.equal(manager.holdRoot(mesh, 'bind', geometry), false);
+  assert.equal(manager.snapshot().protectedHoldRefusals, 1);
+  assert.equal(mesh.userData[RESIDENCY_HELD], false);
+  // The submit pass is protected-first, so it keeps the root on screen.
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, residencyHeld: true }), true);
+});
+
+test('a redrawn-while-held root cannot renew its hold deadline', () => {
+  let now = 0;
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: () => new Promise(() => {}),
+  });
+  const geometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  const mesh = drawable({ parent: {} });
+  manager.beginFrame(0);
+  assert.equal(manager.admitGeometry(mesh, geometry), false);
+  const firstDeadline = mesh.userData.sfResidencyHoldDeadline;
+  assert.equal(firstDeadline, 2000);
+  now = 1500;
+  manager.beginFrame(1500);
+  assert.equal(manager.admitGeometry(mesh, geometry), false, 'still held while the driver runs');
+  assert.equal(mesh.userData.sfResidencyHoldDeadline, firstDeadline,
+    'a refused redraw must not push the deadline out');
+  now = 2100;
+  manager.beginFrame(2100);
+  assert.equal(mesh.visible, true, 'the fixed deadline releases the body on schedule');
+  assert.equal(manager.snapshot().failOpenReleases, 1);
+  assert.equal(manager.snapshot().admittedFailOpen, 0, 'the release itself is not a draw');
+});
+
+test('a first-time child under a presented hull is a deduped presentation refusal', () => {
+  const manager = createResidencyManager({ requestRoots: () => {} });
+  const hullRoot = new THREE.Group();
+  const hullLeaf = { isMesh: true, parent: hullRoot, visible: true, userData: {} };
+  const turret = { isMesh: true, parent: hullRoot, visible: true, userData: {} };
+  manager.beginFrame(0);
+  const hullGeometry = geometryWith(1024);
+  assert.equal(manager.admitGeometry(hullLeaf, hullGeometry), true);
+  manager.noteDrawn(hullLeaf, hullGeometry);
+  assert.equal(hullRoot.__sfPresentedOnce, true, 'the hull ancestor is marked by its leaf draw');
+  const turretGeometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  assert.equal(manager.admitGeometry(turret, turretGeometry), false, 'the late turret waits');
+  manager.noteRefusedDraw(turret, 'geometry-not-resident');
+  manager.noteRefusedDraw(turret, 'geometry-not-resident');
+  let snap = manager.snapshot();
+  assert.equal(snap.presentedRefusedDraws, 2, 'raw refusals still count per draw');
+  assert.equal(snap.presentedRefusedEntities, 1, 'the missing leaf is one deduped entity');
+  assert.equal(snap.visibleUnreadyDraws, 1);
+  assert.equal(snap.refusedByReason.geometry, 2);
+  // Re-presenting the leaf ends the episode; the next refusal is a new transition.
+  turretGeometry.userData.spacefaceGpuResident = true;
+  manager.releaseRoot(turret);
+  assert.equal(manager.admitGeometry(turret, turretGeometry), true);
+  manager.noteDrawn(turret, turretGeometry);
+  assert.equal(manager.admitGeometry(turret, geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8)), false);
+  manager.noteRefusedDraw(turret, 'geometry-not-resident');
+  snap = manager.snapshot();
+  assert.equal(snap.presentedRefusedEntities, 2, 'a later transition counts again');
+});
+
+test('a real capacity-0 pool is not pending and a forced hold releases without fail-open', () => {
+  const geometry = new THREE.InstancedBufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 0, 1], 3));
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry, material, 0);
+  assert.equal(mesh.instanceMatrix.count, 0, 'the pool really has zero instance capacity');
+  try {
+    assert.equal(hasUnresidentGeometry(mesh), false,
+      'nothing the driver can upload is not a pending drawable');
+    const manager = createResidencyManager({
+      now: () => 0,
+      hasUnresidentGeometry,
+      // The real driver skips a non-uploadable proxy; it stamps no geometry for this pool.
+      requestRoots: () => {},
+    });
+    assert.equal(manager.holdRoot(mesh, 'bind'), true, 'an explicit hold still queues');
+    assert.equal(mesh.visible, false);
+    assert.equal(manager.drainUploads(), 0, 'the census releases it before a batch is formed');
+    assert.equal(mesh.visible, true);
+    assert.equal(manager.snapshot().failOpenReleases, 0, 'the only exit must not be fail-open');
+    assert.equal(manager.pendingCount(), 0);
+  } finally {
+    geometry.dispose();
+    material.dispose();
+  }
+});
+
+test('the instance proof keys on capacity, not live count churn', () => {
+  const geometry = new THREE.BoxGeometry();
+  stampGeometryGpuResident(geometry);
+  const material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry, material, 8);
+  mesh.count = 1;
+  mesh.__sfPresentedOnce = true;
+  stampInstanceResidency(mesh);
+  const batches = [];
+  const manager = createResidencyManager({
+    now: () => 0,
+    requestRoots: (roots) => {
+      batches.push(roots.slice());
+      for (const root of roots) stampInstanceResidency(root);
+    },
+  });
+  try {
+    manager.beginFrame(0);
+    mesh.count = 6;
+    assert.equal(manager.admitGeometry(mesh, geometry), true,
+      'live count growth within the proven capacity needs no upload');
+    assert.equal(manager.snapshot().instancedGrowthHolds, 0);
+    // A dormant pool activates by replacing its instance buffer (the real pool-growth path).
+    mesh.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(16 * 16), 16);
+    mesh.count = 3;
+    assert.equal(instanceResidencyReason(mesh), 'instanced-capacity');
+    assert.equal(manager.admitGeometry(mesh, geometry), false,
+      'a new instance buffer is unready even though the geometry is stamped');
+    assert.equal(mesh.visible, false);
+    assert.equal(manager.snapshot().instancedGrowthHolds, 1);
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(batches.length, 1);
+    assert.equal(mesh.visible, true, 'the driver proof releases the activated pool');
+    assert.equal(manager.isHeld(mesh), false);
+    assert.equal(mesh.__sfInstanceResidentCapacity, 16);
+    // A content rewrite on an already-presented pool is not an admission hold.
+    mesh.instanceMatrix.version += 1;
+    assert.equal(manager.admitGeometry(mesh, geometry), true);
+    manager.noteDrawn(mesh, geometry);
+    assert.equal(manager.snapshot().instanceVersionUploads, 1);
+  } finally {
+    geometry.dispose();
+    material.dispose();
+  }
+});
+
+test('an ambient queued root upgrades to the urgent chain when it reaches the glass', () => {
+  const batches = [];
+  const manager = createResidencyManager({
+    now: () => 0,
+    requestRoots: (roots, urgent) => { batches.push({ roots: roots.slice(), urgent }); },
+  });
+  const ambient = drawable({ parent: {} });
+  const later = drawable({ parent: {} });
+  manager.holdRoot(ambient, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+  manager.holdRoot(later, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+  assert.equal(manager.snapshot().urgentUpgrades, 0);
+  manager.requestUpload(ambient, 'over-budget', true);
+  assert.equal(manager.snapshot().urgentUpgrades, 1, 'queued ambient work is promoted in place');
+  assert.equal(manager.drainUploads(1), 1);
+  assert.equal(batches[0].urgent, true);
+  assert.equal(batches[0].roots[0], ambient);
+});
+
+test('a ghosted in-flight upload stays visible to the drain watchdog', () => {
+  let now = 0;
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: () => new Promise(() => {}),
+  });
+  const mesh = drawable({ parent: {} });
+  manager.holdRoot(mesh, 'geometry', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+  now = 300;
+  assert.equal(manager.drainUploads(), 1);
+  now = 2100;
+  manager.beginFrame(2100);
+  let snap = manager.snapshot();
+  assert.equal(snap.pending, 0, 'the deadline released the held drawable');
+  assert.equal(snap.inFlight, 1, 'the driver promise is still outstanding');
+  assert.equal(snap.ghostedInFlight, 1, 'the ghost is reported, not hidden behind pending=0');
+  assert.equal(manager.hasOutstandingWork(), true);
+  now = 32000;
+  assert.equal(manager.drainUploads(), 0);
+  snap = manager.snapshot();
+  assert.equal(snap.inFlight, 0, 'the next reachable drain abandons the hung driver');
+  assert.equal(snap.ghostedInFlight, 0);
+  assert.equal(manager.hasOutstandingWork(), false);
+});
+
+test('a 150-root burst drains inside the hold deadline with no fail-open', () => {
+  let now = 0;
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: (roots) => {
+      for (const root of roots) stampGeometryGpuResident(root.userData.sfResidencyGeometry);
+    },
+  });
+  for (let i = 0; i < 150; i++) {
+    manager.holdRoot(drawable({ parent: {} }), 'geometry',
+      geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+  }
+  let snap = manager.snapshot();
+  assert.equal(snap.pending, 150, 'the whole burst is held and queued');
+  assert.ok(snap.queued <= 64, 'the capped queue spills the rest to heldUnqueued');
+  assert.equal(manager.nextDrainDelayMs(), 100, 'the renderer timer also runs at the burst cadence');
+  let drains = 0;
+  let maxPending = snap.pending;
+  while (manager.pendingCount() > 0 && drains < 40) {
+    now += 100;
+    if (manager.drainUploads() > 0) drains += 1;
+    maxPending = Math.max(maxPending, manager.pendingCount());
+  }
+  snap = manager.snapshot();
+  assert.ok(drains <= 20, `the burst fits the 2 s deadline (${drains} drains)`);
+  assert.equal(snap.pending, 0, 'every body is released by its deadline');
+  assert.equal(maxPending, 150, 'pending never grows past the burst it was given');
+  assert.equal(snap.admittedFailOpen, 0, 'normal driver resolution needs no bypass');
+  assert.equal(snap.residencyFailOpen, 0, 'normal driver resolution releases no hold early');
+});
+
+test('context loss invalidates a pooled stamp the restore pass never visits', () => {
+  const geometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  stampGeometryGpuResident(geometry);
+  assert.equal(geometryGpuResident(geometry), true);
+  const manager = createResidencyManager({
+    hasUnresidentGeometry,
+    requestRoots: (roots) => {
+      for (const root of roots) stampGeometryGpuResident(root.userData.sfResidencyGeometry);
+    },
+  });
+  const pooled = drawable({ parent: {}, geometry });
+  manager.beginFrame(0);
+  assert.equal(manager.admitGeometry(pooled, geometry), true,
+    'the live generation stamp admits the pooled drawable');
+  // Context loss: the pooled mesh is off-scene, so restore never re-uploads it.
+  invalidateResidencyContextGeneration();
+  assert.equal(geometryGpuResident(geometry), false, 'the old stamp is dead with its context');
+  assert.equal(hasUnresidentGeometry(pooled), true, 'the census stops trusting the stale stamp');
+  manager.beginFrame(0);
+  assert.equal(manager.admitGeometry(pooled, geometry), false,
+    'a rebound pooled drawable waits for the new context upload');
+  assert.equal(manager.drainUploads(), 1);
+  assert.equal(pooled.visible, true, 'the driver re-proofs the geometry on the live context');
+  assert.equal(geometryGpuResident(geometry), true);
+  assert.equal(manager.pendingCount(), 0);
 });

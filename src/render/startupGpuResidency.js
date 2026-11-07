@@ -20,6 +20,12 @@ import {
 import { releaseSharedImageSource } from './imageSourceDedupe.js';
 import { pacedBootShellYield } from '../core/bootShellPacing.js';
 import { compileShadowDepthPipelines, prepareShadowDepthTextureLease } from './shadowDepthAdmission.js';
+import {
+  geometryGpuResident,
+  instanceResidencyReason,
+  stampGeometryGpuResident,
+  stampInstanceResidency,
+} from './residencyManager.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -376,13 +382,16 @@ export function collectUnresidentInstancedDrawables(subjects) {
     if (!root) continue;
     const visit = (object) => {
       if (!object || object.isInstancedMesh !== true || !object.geometry) return;
-      const data = object.geometry.userData;
-      if (data && data.spacefaceGpuResident === true) {
+      // A capacity-0 pool has no instance bytes to upload; the driver's proxy is deliberately
+      // not uploadable. Treat it as resident so it is not re-listed forever (growth is covered
+      // by the manager's capacity proof when the pool activates).
+      if (geometryGpuResident(object.geometry)) {
         // Stamped = proven upload: instanced pools share package leaf geometry and never run a
         // per-subject residency, so retry the mirror release here (idempotent until it lands).
         detachPackageGeometry(object.geometry);
         return;
       }
+      if (!(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return;
       drawables.push(object);
     };
     if (typeof root.traverse === 'function') root.traverse(visit);
@@ -399,11 +408,11 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
   let strideAt = clockNow();
   const visit = (object) => {
     if (!object || object.isInstancedMesh !== true || !object.geometry) return;
-    const data = object.geometry.userData;
-    if (data && data.spacefaceGpuResident === true) {
+    if (geometryGpuResident(object.geometry)) {
       detachPackageGeometry(object.geometry);
       return;
     }
+    if (!(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return;
     drawables.push(object);
   };
   for (const root of subjectRoots(subjects)) {
@@ -444,10 +453,18 @@ export function hasUnresidentGeometry(root) {
     // Match the admission census: hidden authored fallback geometry is never
     // uploaded, while alternate quality geometries can become live on any frame.
     if (!drawableHasWork(object, options)) return false;
-    if (object.geometry.userData?.spacefaceGpuResident !== true) return true;
+    // A capacity-0 InstancedMesh has no instance bytes for the driver proxy to upload
+    // (`uploadable:false`); counting it unready made fail-open the only exit. Growth is
+    // covered by the manager's capacity proof when the pool activates.
+    if (object.isInstancedMesh === true
+        && !(Number(object.instanceMatrix && object.instanceMatrix.count) > 0)) return false;
+    // A capacity/version the instance proof has never covered still uploads at bind even
+    // when the shared vertex geometry is stamped.
+    if (instanceResidencyReason(object)) return true;
+    if (!geometryGpuResident(object.geometry)) return true;
     const tiers = object.userData?.spacefaceQualityTierGeometries;
     return Array.isArray(tiers) && tiers.some((geometry) => geometry
-      && geometry.userData?.spacefaceGpuResident !== true);
+      && !geometryGpuResident(geometry));
   };
   if (typeof root.traverse !== 'function') return unresident(root);
   // traverse() cannot early-exit, so a live consult visited every descendant
@@ -496,7 +513,7 @@ function createGeometryWorkItems(drawables, options = {}) {
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
     // F9 recook must not 1x1 ordinary geos the first cook already stamped.
     if (!ignoreStamps
-        && geometry.userData && geometry.userData.spacefaceGpuResident === true
+        && geometryGpuResident(geometry)
         && !object.isInstancedMesh) {
       // Sealed by an earlier pass: retry the CPU-mirror release (deferred releases are the
       // texture-detach retry semantics applied to geometry).
@@ -528,7 +545,7 @@ function* createGeometryWorkItemsSteps(drawables, options = {}) {
     if (firstGeometryUse) seenGeometries.add(geometry);
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
     if (!ignoreStamps
-        && geometry.userData && geometry.userData.spacefaceGpuResident === true
+        && geometryGpuResident(geometry)
         && !object.isInstancedMesh) {
       detachPackageGeometry(geometry);
       continue;
@@ -967,13 +984,16 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
               if (success) {
                 for (let i = 0; i < batch.work.length; i++) {
                   const item = batch.work[i];
+                  const object = item.object;
+                  // Three uploads instanceMatrix at bind. Prove the capacity/version THIS batch's
+                  // proxy uploaded (not the live draw count) so an activated pool does not hold.
+                  if (object && object.isInstancedMesh === true) stampInstanceResidency(object);
                   if (!proxyEntries[i].uploadable) continue;
                   const geometry = item.geometry;
                   if (geometry) {
-                    const data = geometry.userData || (geometry.userData = {});
-                    data.spacefaceGpuResident = true;
                     // The proxy render proved this context's attribute records. Record it now;
                     // the outer finally releases the CPU lease before detaching the arrays.
+                    stampGeometryGpuResident(geometry);
                     noteGeometryGpuResident(geometry, renderer);
                   }
                 }

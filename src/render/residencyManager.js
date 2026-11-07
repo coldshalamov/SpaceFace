@@ -49,16 +49,119 @@ const RESIDENCY_RETRY_BASE_MS = 250;
 const RESIDENCY_RETRY_MAX_MS = 2000;
 /** One TTL expiry may refresh an attached request; the next expiry fails open. */
 const RESIDENCY_REQUEST_RETRIES = 1;
-/** A held drawable is released this long after its last refusal (liveness backstop). */
+/** A held drawable is released this long after its FIRST hold (never renewed). */
 const RESIDENCY_HOLD_DEADLINE_MS = 2000;
 /** One outstanding drain batch, selected for at most this long / this many roots. */
 const RESIDENCY_DRAIN_BUDGET_MS = 6;
 const RESIDENCY_DRAIN_MAX_ROOTS = 8;
+/** A backlog larger than this drains at the burst cadence and a derived root count. */
+const RESIDENCY_DRAIN_BURST_PENDING = 32;
+const RESIDENCY_DRAIN_BASE_MS = 200;
+const RESIDENCY_DRAIN_BURST_MS = 100;
+const RESIDENCY_DRAIN_MAX_ROOTS_HARD = 32;
 /** A driver promise this old is abandoned so one hang cannot pin the whole queue. */
 const RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS = 30000;
 /** Bounded resident-hold census per presented frame / drain pass. */
 const RESIDENCY_RESIDENT_SWEEP_PER_FRAME = 4;
 const RESIDENCY_RESIDENT_SWEEP_PER_DRAIN = 16;
+
+/**
+ * Context generation of every geometry residency stamp. A WebGL context loss increments it:
+ * stamps written against the dead context keep their flag for diagnostics but no longer satisfy
+ * `admitGeometry`/`hasUnresidentGeometry`, including geometry parked off-scene that the restore
+ * pass never re-uploads. The driver and a real draw stamp the live generation.
+ */
+let residencyContextGeneration = 0;
+
+export function currentResidencyContextGeneration() {
+  return residencyContextGeneration;
+}
+
+export function invalidateResidencyContextGeneration() {
+  residencyContextGeneration += 1;
+  return residencyContextGeneration;
+}
+
+/** Whether this geometry's buffers belong to the CURRENT GL context. */
+export function geometryGpuResident(geometry) {
+  const data = geometry && geometry.userData;
+  if (!data || data.spacefaceGpuResident !== true) return false;
+  const stamped = data.sfGpuResidentGeneration;
+  // Legacy stamps (pre-generation) are only trusted before the first context loss.
+  if (!Number.isFinite(stamped)) return residencyContextGeneration === 0;
+  return stamped === residencyContextGeneration;
+}
+
+/** Record a real upload/draw proof on the current context generation. */
+export function stampGeometryGpuResident(geometry) {
+  if (!geometry) return false;
+  const data = geometry.userData || (geometry.userData = {});
+  data.spacefaceGpuResident = true;
+  data.sfGpuResidentGeneration = residencyContextGeneration;
+  return true;
+}
+
+function instanceCapacity(object) {
+  const matrix = object && object.instanceMatrix;
+  return Math.max(0, Number(matrix && matrix.count) || 0);
+}
+
+/**
+ * Per-instance proof: the instance buffer bytes that reached this context, keyed by its capacity
+ * and attribute version. Count growth WITHIN proven capacity needs no upload; a new/replaced
+ * instance buffer does. `__sfInstanceResidentCount` stays as the legacy alias for the proven
+ * capacity (not the live draw count — comparing live counts held every spawning pool).
+ */
+export function stampInstanceResidency(object) {
+  if (!object || object.isInstancedMesh !== true) return false;
+  const capacity = instanceCapacity(object);
+  const version = Number(object.instanceMatrix && object.instanceMatrix.version) || 0;
+  object.__sfInstanceResidentCount = capacity;
+  object.__sfInstanceResidentCapacity = capacity;
+  object.__sfInstanceResidentVersion = version;
+  return true;
+}
+
+/**
+ * Why an instanced drawable's instance buffer would upload inside this draw, or null when the
+ * proven capacity covers the draw. Version growth on an already-presented pool is a content
+ * update (the owner rewrote matrices), not an admission miss; holding those was the 188-blink
+ * failure. Capacity growth is always unready.
+ */
+export function instanceResidencyReason(object) {
+  if (!object || object.isInstancedMesh !== true || !object.instanceMatrix) return null;
+  const capacity = instanceCapacity(object);
+  const version = Number(object.instanceMatrix.version) || 0;
+  const provenCapacity = Number(object.__sfInstanceResidentCapacity);
+  const provenVersion = Number(object.__sfInstanceResidentVersion);
+  if (!Number.isFinite(provenCapacity)) return capacity > 0 ? 'instanced-capacity' : null;
+  if (capacity > provenCapacity) return 'instanced-capacity';
+  if (Number.isFinite(provenVersion) && version > provenVersion
+      && object.__sfPresentedOnce !== true) return 'instanced-version';
+  return null;
+}
+
+/**
+ * Root protection is a subtree latch: the player, forceRender and neverCull roots are exempt from
+ * residency hiding. They admit inline/fail-open instead, because a protected body may never be
+ * blanked by a measurement lane. Pooled reuse clears the latch at bind/cancel.
+ */
+export function isResidencyProtected(object) {
+  for (let node = object; node; node = node.parent) {
+    if (node.__sfResidencyProtected === true) return true;
+    if (node.userData && node.userData.sfResidencyProtected === true) return true;
+  }
+  return false;
+}
+
+const REFUSAL_REASON_KEY = {
+  'geometry-not-resident': 'geometry',
+  'instanced-growth': 'instanced',
+  'instanced-capacity': 'instanced',
+  'program-not-linked': 'compile',
+  'presented-detach': 'detach',
+  'submit-pending': 'submit',
+};
 
 function attributeByteLength(attribute) {
   const array = attribute && (attribute.array || (attribute.data && attribute.data.array));
@@ -127,12 +230,18 @@ export function createResidencyManager(options = {}) {
   let disposed = false;
   let drainInFlight = false;
   let drainStartedAt = 0;
+  let urgentDrainInFlight = false;
+  let urgentDrainStartedAt = 0;
 
   const counters = {
     frames: 0,
     draws: 0,
     admittedResident: 0,
     admittedInline: 0,
+    /** Protected roots admitted inline/fail-open instead of being hidden. */
+    admittedProtectedInline: 0,
+    /** Attempts to hold a protected root that were refused. */
+    protectedHoldRefusals: 0,
     heldDraws: 0,
     /** Drawables held again after they had already been presented: the blink class. Must be 0. */
     visibleUnready: 0,
@@ -147,12 +256,32 @@ export function createResidencyManager(options = {}) {
     releasedRoots: 0,
     /** Draw-point admission refusals (honest: sees every bypass, unlike heldDraws). */
     refusedDraws: 0,
-    /** Refused draws of a drawable that had already been presented: the blink class. */
+    /** Raw refusals of a drawable (or descendant) that had already been presented. */
+    presentedRefusedDraws: 0,
+    /**
+     * Deduped presentation refusals: one per drawable until it is presented again. This is the
+     * blink-class verdict; raw per-frame refusals are `refusedDraws`/`presentedRefusedDraws`.
+     */
     visibleUnreadyDraws: 0,
     /** Holds released by the bounded retry policy so a body cannot stay invisible. */
     failOpenReleases: 0,
     /** Draws admitted through the one-shot fail-open bypass. */
     admittedFailOpen: 0,
+    /** Refusals named by their actual path so 900 counter reads cannot hide a compile detach. */
+    refusedByReason: {
+      geometry: 0,
+      instanced: 0,
+      compile: 0,
+      detach: 0,
+      submit: 0,
+      other: 0,
+    },
+    /** Holds caused by a grown/replaced instance buffer. */
+    instancedGrowthHolds: 0,
+    /** Presented instance draws that rewrote already-proven matrices (content, not admission). */
+    instanceVersionUploads: 0,
+    /** Ambient queued roots promoted to the urgent chain before their drain turn. */
+    urgentUpgrades: 0,
     /** Requests that reached the TTL; every one retries or releases, never strands. */
     expiredRequests: 0,
     expiredRetries: 0,
@@ -222,18 +351,39 @@ export function createResidencyManager(options = {}) {
       object.__sfResidencyFailOpen = false;
       if (object.userData) object.userData.sfResidencyFailOpen = false;
       object.__sfResidencyPendingGeometry = geometry;
-      if (object.isInstancedMesh === true) {
-        object.__sfInstanceResidentCount = Number(object.count) || 0;
-      }
       counters.admittedFailOpen += 1;
       return true;
     }
     // BatchedMesh owns its own draw list and residency; never second-guess it here.
     if (object.isBatchedMesh === true) return true;
-    const data = geometry.userData;
-    if (data && data.spacefaceGpuResident === true) {
+    // The player, forceRender and neverCull roots are never hidden by this lane. They upload
+    // inline/fail-open instead, and a stale hold (from before the latch was known) is cleared.
+    const protectedDrawable = isResidencyProtected(object);
+    if (geometryGpuResident(geometry)) {
+      // Three uploads instanceMatrix at bind. A capacity that grew beyond the proven upload
+      // is unready even when the shared vertex geometry is stamped. Protected roots skip the
+      // hold: a protected body is never blanked by the measurement lane.
+      if (!protectedDrawable) {
+        const instanceReason = instanceResidencyReason(object);
+        if (instanceReason) {
+          object.__sfResidencyRefusalReason = instanceReason;
+          counters.instancedGrowthHolds += 1;
+          counters.heldDraws += 1;
+          holdRoot(rootOf(object), instanceReason, geometry, true);
+          return false;
+        }
+      } else if (isHeld(object)) {
+        releaseRoot(object);
+      }
       counters.admittedResident += 1;
       raiseHeldRoot(object);
+      return true;
+    }
+    if (protectedDrawable) {
+      // Admit inline rather than hide: protected roots must never be blanked by residency.
+      if (isHeld(object)) releaseRoot(object);
+      object.__sfResidencyPendingGeometry = geometry;
+      counters.admittedProtectedInline += 1;
       return true;
     }
     const bytes = residencyGeometryBytes(geometry);
@@ -247,8 +397,17 @@ export function createResidencyManager(options = {}) {
       return true;
     }
     counters.heldDraws += 1;
+    object.__sfResidencyRefusalReason = 'geometry-not-resident';
     holdRoot(rootOf(object), 'over-budget', geometry);
     return false;
+  }
+
+  /** Mark this drawable and every ancestor as presented (bounded walk; stops at a marked node). */
+  function markPresented(object) {
+    for (let node = object; node; node = node.parent) {
+      if (node.__sfPresentedOnce === true) break;
+      node.__sfPresentedOnce = true;
+    }
   }
 
   /** After a successful draw: the buffers are on the GPU, so record the proof. */
@@ -266,31 +425,41 @@ export function createResidencyManager(options = {}) {
       // Charge the inline wallet only for the draw that actually happened.
       frameUploadBytes += residencyGeometryBytes(geometry);
     }
-    if (object.__sfPresentedOnce !== true) object.__sfPresentedOnce = true;
+    // A new presentation ends the current refusal episode: a later refusal is a new blink.
+    markPresented(object);
+    if (object.__sfPresentedRefusalCounted === true) object.__sfPresentedRefusalCounted = false;
     if (object.isInstancedMesh === true) {
-      const count = Number(object.count) || 0;
-      const proven = Number(object.__sfInstanceResidentCount);
-      object.__sfInstanceResidentCount = Number.isFinite(proven) ? Math.max(proven, count) : count;
+      const version = Number(object.instanceMatrix && object.instanceMatrix.version) || 0;
+      const proven = Number(object.__sfInstanceResidentVersion);
+      if (Number.isFinite(proven) && version > proven) counters.instanceVersionUploads += 1;
+      stampInstanceResidency(object);
     }
-    const data = geometry.userData || (geometry.userData = {});
-    if (data.spacefaceGpuResident === true) return false;
+    if (geometryGpuResident(geometry)) return false;
     // Only a geometry this manager allowed inline may be stamped by its own draw; a
     // draw that reached the guard through an exempt route still uploaded, so the stamp
     // remains honest either way.
-    data.spacefaceGpuResident = true;
+    stampGeometryGpuResident(geometry);
     return true;
   }
 
   /**
-   * Honest draw-point counter for a refused presentation. `visibleUnready` only sees the
-   * hold path; this sees every `admitGeometry === false` (BatchedMesh/exact-target/compile
-   * bypasses never reach it), so a refusal on an already-presented drawable is named here.
+   * Honest draw-point counter for a refused presentation. `presented` is derived from the drawable
+   * itself (`__sfPresentedOnce`, including an ancestor) — never a caller constant. Raw refusals are
+   * counted per draw and per path; `visibleUnreadyDraws`/`presentedRefusedEntities` are deduped per
+   * drawable until it is presented again.
    */
-  function noteRefusedDraw(object, reason = 'geometry-not-resident', presented = false) {
+  function noteRefusedDraw(object, reason = 'geometry-not-resident') {
     if (disposed || !object) return false;
-    void reason;
     counters.refusedDraws += 1;
-    if (presented === true || wasEverPresented(object)) counters.visibleUnreadyDraws += 1;
+    const key = REFUSAL_REASON_KEY[reason] || 'other';
+    counters.refusedByReason[key] = (counters.refusedByReason[key] || 0) + 1;
+    if (wasEverPresented(object)) {
+      counters.presentedRefusedDraws += 1;
+      if (object.__sfPresentedRefusalCounted !== true) {
+        object.__sfPresentedRefusalCounted = true;
+        counters.visibleUnreadyDraws += 1;
+      }
+    }
     // The draw was refused after its inline grant but before it uploaded: refund the
     // admission so the frame wallet is not spent on a draw that never happened.
     if (object.__sfResidencyPendingGeometry) {
@@ -374,13 +543,20 @@ export function createResidencyManager(options = {}) {
   /** Hold one drawable invisible until its geometry is resident, and queue the upload. */
   function holdRoot(root, reason = 'geometry', geometry = null, urgent = false) {
     if (disposed || !root || !root.userData) return false;
+    // A protected root (player/forceRender/neverCull) is never hidden by this lane. A stale
+    // hold from before the latch was known is cleared; the next draw admits it inline.
+    if (isResidencyProtected(root)) {
+      counters.protectedHoldRefusals += 1;
+      if (isHeld(root)) releaseRoot(root);
+      return false;
+    }
     const data = root.userData;
     const wasPresented = wasEverPresented(root);
     if (data[RESIDENCY_HELD] === true) {
       // Already held: the hold is the state, but a dropped request (upload error, full
-      // queue, TTL expiry) must not strand it invisible. The next refused draw re-queues,
-      // and each refusal renews the bounded deadline without resetting its attempt budget.
-      data.sfResidencyHoldDeadline = clock() + RESIDENCY_HOLD_DEADLINE_MS;
+      // queue, TTL expiry) must not strand it invisible. The next refused draw re-queues.
+      // The deadline is stamped ONCE at the first hold and never renewed: renewal let a
+      // redrawn protected/on-glass root ride the watchdog until the driver finished.
       requestUpload(root, reason, urgent || wasPresented || reason === 'over-budget');
       return false;
     }
@@ -400,8 +576,12 @@ export function createResidencyManager(options = {}) {
     // of forcing a hidden child on screen.
     data.sfResidencyPriorVisible = root.visible !== false;
     if (wasPresented) {
-      // It had already been on screen and is now unready again: the blink/pop class.
-      counters.visibleUnready += 1;
+      // It had already been on screen and is now unready again: the blink/pop class. Counted
+      // once per hold episode, not once per refused frame.
+      if (data.sfResidencyVisibleUnreadyCounted !== true) {
+        data.sfResidencyVisibleUnreadyCounted = true;
+        counters.visibleUnready += 1;
+      }
     } else {
       // Held before its first presentation — the residency lane got there first.
       counters.preAdmittedHolds += 1;
@@ -462,8 +642,17 @@ export function createResidencyManager(options = {}) {
     root.__sfPresentedOnce = false;
     root.__sfPresentedMaterial = null;
     root.__sfInstanceResidentCount = 0;
+    root.__sfInstanceResidentCapacity = 0;
+    root.__sfInstanceResidentVersion = 0;
     root.__sfResidencyFailOpen = false;
     root.__sfResidencyPendingGeometry = null;
+    root.__sfResidencyRefusalReason = null;
+    root.__sfPresentedRefusalCounted = false;
+    root.__sfResidencyProtected = false;
+    if (root.userData) {
+      root.userData.sfResidencyVisibleUnreadyCounted = false;
+      root.userData.sfResidencyProtected = false;
+    }
     return held;
   }
 
@@ -479,9 +668,23 @@ export function createResidencyManager(options = {}) {
 
   function requestUpload(root, reason = 'geometry', urgent = false) {
     if (disposed || !root) return false;
-    if (pendingSet.has(root) || inFlight.has(root)) return false;
     const data = root.userData || (root.userData = {});
-    data.sfResidencyUrgent = urgent === true;
+    // Urgency is a property of the root, not of the request that happened to create it.
+    // An ambient hold that comes onto the glass must upgrade before the dedupe return.
+    const upgrade = urgent === true && data.sfResidencyUrgent !== true;
+    if (urgent === true) data.sfResidencyUrgent = true;
+    else if (data.sfResidencyUrgent === undefined) data.sfResidencyUrgent = false;
+    if (pendingSet.has(root) || inFlight.has(root)) {
+      if (upgrade && pendingSet.has(root) && !inFlight.has(root)) {
+        const index = pendingRoots.indexOf(root);
+        if (index > 0) {
+          pendingRoots.splice(index, 1);
+          pendingRoots.unshift(root);
+        }
+        counters.urgentUpgrades += 1;
+      }
+      return false;
+    }
     if (pendingRoots.length >= RESIDENCY_MAX_PENDING) {
       // The queue is the safety net, not the state: keep the hold and remember it so the
       // next drain with free space re-admits it. Never drop the only path to visibility.
@@ -500,7 +703,7 @@ export function createResidencyManager(options = {}) {
     pendingSet.add(root);
     // A drawable the camera is already trying to draw jumps the queue: its absence is on
     // screen, unlike the runway/backlog roots that were requested while still off-glass.
-    if (urgent) pendingRoots.unshift(root);
+    if (data.sfResidencyUrgent === true) pendingRoots.unshift(root);
     else pendingRoots.push(root);
     counters.uploadRequests += 1;
     if (onRequest) {
@@ -523,6 +726,22 @@ export function createResidencyManager(options = {}) {
     return count;
   }
 
+  /** In-flight uploads that no longer hold a drawable (a released/given-up request). */
+  function ghostedInFlightCount() {
+    let count = 0;
+    for (const root of inFlight) if (!isHeld(root)) count += 1;
+    return count;
+  }
+
+  /**
+   * Whether the manager still owes upload work even if no drawable is held (a ghosted in-flight
+   * promise waiting for the watchdog). The renderer drain timer must keep running until this is
+   * false, or the watchdog is unreachable and a ghost pins the queue after the last hold.
+   */
+  function hasOutstandingWork() {
+    return pendingRoots.length > 0 || heldUnqueued.size > 0 || inFlight.size > 0;
+  }
+
   /** Whether the root still has unuploaded geometry (nil driver treats every hold as pending). */
   function stillPending(root) {
     if (!root) return false;
@@ -532,8 +751,9 @@ export function createResidencyManager(options = {}) {
     if (hasUnresident) {
       try { return hasUnresident(root) === true; } catch (_) { return true; }
     }
+    if (instanceResidencyReason(root)) return true;
     const geometry = (root.userData && root.userData.sfResidencyGeometry) || root.geometry;
-    if (geometry) return geometry.userData?.spacefaceGpuResident !== true;
+    if (geometry) return !geometryGpuResident(geometry);
     return isHeld(root);
   }
 
@@ -592,8 +812,8 @@ export function createResidencyManager(options = {}) {
     }
     if (root && root.isInstancedMesh === true) {
       // The batch uploaded this object's instance attributes: pin the proof before the
-      // growth latch is consulted again.
-      root.__sfInstanceResidentCount = Number(root.count) || 0;
+      // growth latch is consulted again. Capacity (not live count) is what the buffer covers.
+      stampInstanceResidency(root);
     }
     if (stillPending(root)) {
       // The driver prepared a batch, but this root still holds unuploaded geometry
@@ -704,26 +924,89 @@ export function createResidencyManager(options = {}) {
     return null;
   }
 
+  /** Whether any due-or-backing-off pending root is on the urgent chain. */
+  function hasUrgentPending() {
+    for (let i = 0; i < pendingRoots.length; i++) {
+      const root = pendingRoots[i];
+      if (root && root.userData && root.userData.sfResidencyUrgent === true) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Roots one drain must take to prove every hold inside its 2 s deadline. The old fixed
+   * 8 roots / 200 ms = 40 roots/s could not serve a 150-body burst; the count now derives from
+   * the queue depth and the cadence the deadline forces.
+   */
+  function drainSelectionLimit(maxRoots, pending) {
+    if (maxRoots > 0) return maxRoots | 0;
+    if (pending <= RESIDENCY_DRAIN_MAX_ROOTS) return RESIDENCY_DRAIN_MAX_ROOTS;
+    const cadence = pending > RESIDENCY_DRAIN_BURST_PENDING
+      ? RESIDENCY_DRAIN_BURST_MS : RESIDENCY_DRAIN_BASE_MS;
+    const drainsLeft = Math.max(1, Math.floor(RESIDENCY_HOLD_DEADLINE_MS / cadence) - 1);
+    return Math.min(RESIDENCY_DRAIN_MAX_ROOTS_HARD,
+      Math.max(RESIDENCY_DRAIN_MAX_ROOTS, Math.ceil(pending / drainsLeft)));
+  }
+
+  /**
+   * The queue is a safety net at 5 Hz, but a backlog or a hold nearing its non-renewable
+   * deadline must drain at 10 Hz. Slowing to 5 Hz at the tail of a burst would push the last
+   * bodies past the same 2 s deadline that shaped the burst cadence.
+   */
+  function drainCadence(now, pending) {
+    if (pending > RESIDENCY_DRAIN_BURST_PENDING) return RESIDENCY_DRAIN_BURST_MS;
+    let soonest = Infinity;
+    for (const root of heldRoots) {
+      if (!isHeld(root)) continue;
+      const deadline = Number(root.userData && root.userData.sfResidencyHoldDeadline);
+      if (Number.isFinite(deadline) && deadline < soonest) soonest = deadline;
+    }
+    if (Number.isFinite(soonest)
+        && (soonest - now) <= (RESIDENCY_HOLD_DEADLINE_MS / 2)) return RESIDENCY_DRAIN_BURST_MS;
+    return RESIDENCY_DRAIN_BASE_MS;
+  }
+
+  /**
+   * Delay before the renderer should call the next drain. A backlog or a hold near its fixed
+   * deadline asks for 100 ms; the ordinary queue keeps the 200 ms safety-net cadence. Without
+   * this the drain's 10 Hz burst cadence could never be reached: the renderer timer is the only
+   * caller.
+   */
+  function nextDrainDelayMs() {
+    return drainCadence(clock(), pendingCount());
+  }
+
+  function abandonHungDrain() {
+    // One hung driver promise must not pin the queue or hold bodies forever. The hold
+    // deadline already frees the roots; drop the ghost in-flight membership too.
+    for (const root of Array.from(inFlight)) {
+      inFlight.delete(root);
+      if (isHeld(root)) failOpenRoot(root);
+      else releaseRoot(root);
+    }
+  }
+
   /**
    * Drain the upload queue through the off-screen residency driver. Called from a bounded
-   * background task, never inside a presented frame. Single-flight: one outstanding batch is
-   * coalesced with later requests; selection is time-budgeted rather than a fixed root count.
+   * background task, never inside a presented frame. One ambient batch and one urgent batch may
+   * be in flight together (the driver serializes the actual GL submission); selection is
+   * time-budgeted and sized from the queue depth so a burst meets the hold deadline.
    */
   function drainUploads(maxRoots = 0) {
     if (disposed || !requestRoots) return 0;
     const now = clock();
-    // 4 Hz ceiling: the queue is a safety net, not a per-frame cost.
-    if (now - lastDrainAt < 200) return 0;
-    if (drainInFlight) {
-      if ((now - drainStartedAt) < RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS) return 0;
-      // One hung driver promise must not pin the queue or hold bodies forever. The hold
-      // deadline already frees the roots; drop the ghost in-flight membership too.
-      for (const root of Array.from(inFlight)) {
-        inFlight.delete(root);
-        if (isHeld(root)) failOpenRoot(root);
-        else releaseRoot(root);
-      }
+    const pending = pendingCount();
+    // A backlog drains at the burst cadence; a hold nearing its fixed deadline also does.
+    const cadence = drainCadence(now, pending);
+    if (now - lastDrainAt < cadence) return 0;
+    if (drainInFlight && (now - drainStartedAt) >= RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS) {
+      abandonHungDrain();
       drainInFlight = false;
+    }
+    if (urgentDrainInFlight
+        && (now - urgentDrainStartedAt) >= RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS) {
+      abandonHungDrain();
+      urgentDrainInFlight = false;
     }
     expireHoldDeadlines(now);
     sweepResidentHolds(RESIDENCY_RESIDENT_SWEEP_PER_DRAIN);
@@ -731,8 +1014,14 @@ export function createResidencyManager(options = {}) {
     admitHeldUnqueued();
     lastDrainAt = now;
     if (pendingRoots.length === 0) return 0;
+    // Urgent work owns a separate in-flight slot: an ambient batch that is already uploading
+    // must not make an on-glass body wait for its settle.
+    const desiredUrgent = hasUrgentPending();
+    const singleFlight = maxRoots > 0;
+    if (desiredUrgent ? urgentDrainInFlight : drainInFlight) return 0;
+    if (singleFlight && (drainInFlight || urgentDrainInFlight)) return 0;
     const batch = [];
-    const limit = maxRoots > 0 ? (maxRoots | 0) : RESIDENCY_DRAIN_MAX_ROOTS;
+    const limit = drainSelectionLimit(maxRoots, pending);
     const selectStartedAt = clock();
     let batchUrgent = null;
     for (let i = 0; i < limit; i++) {
@@ -741,9 +1030,8 @@ export function createResidencyManager(options = {}) {
       if (!root) break;
       const urgent = !!(root.userData && root.userData.sfResidencyUrgent === true);
       if (batchUrgent === null) batchUrgent = urgent;
-      else if (urgent !== batchUrgent) {
-        // Never upgrade an ambient batch or downgrade the urgent chain; put it back and
-        // let the next drain take it under its own urgency.
+      if (urgent !== batchUrgent || urgent !== desiredUrgent) {
+        // Never mix the chains: put it back and let the matching slot take it.
         pendingRoots.unshift(root);
         break;
       }
@@ -757,16 +1045,23 @@ export function createResidencyManager(options = {}) {
     }
     if (batch.length === 0) return 0;
     const startedAt = clock();
-    drainInFlight = true;
-    drainStartedAt = startedAt;
+    const urgentBatch = batchUrgent === true;
+    if (urgentBatch) {
+      urgentDrainInFlight = true;
+      urgentDrainStartedAt = startedAt;
+    } else {
+      drainInFlight = true;
+      drainStartedAt = startedAt;
+    }
     const settleBatch = (error) => {
       for (const root of batch) settleRoot(root, startedAt, error);
-      drainInFlight = false;
+      if (urgentBatch) urgentDrainInFlight = false;
+      else drainInFlight = false;
       admitHeldUnqueued();
     };
     let result;
     try {
-      result = requestRoots(batch, batchUrgent === true);
+      result = requestRoots(batch, urgentBatch);
     } catch (error) {
       settleBatch(error);
       return batch.length;
@@ -799,6 +1094,7 @@ export function createResidencyManager(options = {}) {
     heldOrder.length = 0;
     heldSweepCursor = 0;
     drainInFlight = false;
+    urgentDrainInFlight = false;
     refreshDelayPercentiles();
     return true;
   }
@@ -810,11 +1106,20 @@ export function createResidencyManager(options = {}) {
       draws: counters.draws,
       admittedResident: counters.admittedResident,
       admittedInline: counters.admittedInline,
+      admittedProtectedInline: counters.admittedProtectedInline,
+      protectedHoldRefusals: counters.protectedHoldRefusals,
       heldDraws: counters.heldDraws,
       visibleUnready: counters.visibleUnready,
       preAdmittedHolds: counters.preAdmittedHolds,
       refusedDraws: counters.refusedDraws,
+      presentedRefusedDraws: counters.presentedRefusedDraws,
       visibleUnreadyDraws: counters.visibleUnreadyDraws,
+      /** Deduped presentation refusals; explicit name for the unit the gate measures. */
+      presentedRefusedEntities: counters.visibleUnreadyDraws,
+      refusedByReason: { ...counters.refusedByReason },
+      instancedGrowthHolds: counters.instancedGrowthHolds,
+      instanceVersionUploads: counters.instanceVersionUploads,
+      urgentUpgrades: counters.urgentUpgrades,
       failOpenReleases: counters.failOpenReleases,
       /** Explicit alias for the liveness verdict named in the E6 review. */
       residencyFailOpen: counters.failOpenReleases,
@@ -830,6 +1135,9 @@ export function createResidencyManager(options = {}) {
       heldRoots: counters.heldRoots,
       releasedRoots: counters.releasedRoots,
       pending: pendingCount(),
+      queued: pendingRoots.length,
+      inFlight: inFlight.size,
+      ghostedInFlight: ghostedInFlightCount(),
       heldUnqueued: heldUnqueued.size,
       disposed,
       firstResidentDelaySamples: counters.delaySamples,
@@ -851,6 +1159,8 @@ export function createResidencyManager(options = {}) {
     requestUpload,
     isHeld,
     pendingCount,
+    hasOutstandingWork,
+    nextDrainDelayMs,
     drainUploads,
     dispose,
     snapshot,

@@ -841,15 +841,30 @@ try {
   if (residency && residency.manager) {
     const r = residency.manager;
     console.log(`  residency: draws=${r.draws} resident=${r.admittedResident} inline=${r.admittedInline}`
-      + ` heldDraws=${r.heldDraws} preAdmittedHolds=${r.preAdmittedHolds}`
+      + ` protectedInline=${r.admittedProtectedInline} heldDraws=${r.heldDraws}`
+      + ` preAdmittedHolds=${r.preAdmittedHolds}`
       + ` visibleUnready=${r.visibleUnready} refused=${r.refusedDraws}`
-      + ` visibleUnreadyDraws=${r.visibleUnreadyDraws} released=${r.releasedRoots}`
+      + ` presentedRefused=${r.presentedRefusedDraws}`
+      + ` visibleUnreadyDraws=${r.visibleUnreadyDraws}`
+      + ` presentedRefusedEntities=${r.presentedRefusedEntities}`
+      + ` refusedByReason=${JSON.stringify(r.refusedByReason || {})}`
+      + ` instancedGrowthHolds=${r.instancedGrowthHolds}`
+      + ` released=${r.releasedRoots}`
       + ` failOpenReleases=${r.failOpenReleases} admittedFailOpen=${r.admittedFailOpen}`
       + ` delayP95=${r.firstResidentDelayP95Ms}ms uploadMs=${r.uploadMsTotal}`
-      + ` pending=${r.pending} compileRefusals=${residency.compileRefusals}`
+      + ` pending=${r.pending} queued=${r.queued} inFlight=${r.inFlight}`
+      + ` ghostedInFlight=${r.ghostedInFlight} compileRefusals=${residency.compileRefusals}`
       + ` compileFailOpen=${residency.compileFailOpen}`);
   } else {
     console.log('  residency: NOT MEASURED (manager absent)');
+  }
+  if (summary && summary.lanes) {
+    const lanes = summary.lanes;
+    console.log(`  lanes (250 ms): samples=${lanes.samples}`
+      + ` residencyQueuePending=${JSON.stringify(lanes.residencyQueuePending)}`
+      + ` residencyAdmittedFailOpen=${JSON.stringify(lanes.residencyAdmittedFailOpen)}`
+      + ` residencyFailOpen=${JSON.stringify(lanes.residencyFailOpen)}`
+      + ` residencyPresentedRefusedEntities=${JSON.stringify(lanes.residencyPresentedRefusedEntities)}`);
   }
   for (const e of flightLinkEvents.slice(0, 40)) {
     console.log(`    link frame=${e.frame} subject=${e.subject} program=${e.program || e.name || '?'}`
@@ -909,25 +924,45 @@ try {
   }
 
   // E6 verdict: a solid frame is also a blink-free, link-free, fully-drawn frame, and the
-  // residency lane must have no pending work at the end of the route. These are measured
-  // values (null fails): the probe reports a real FAIL rather than silently skipping them.
+  // residency lane must have no pending work, no fail-open draw and no presented refusal at
+  // the end of the route. These are measured values (null fails): the probe reports a real
+  // FAIL rather than silently skipping them, and every failing clause is named below.
   const residencyManager = residency && residency.manager;
-  const pass = !!(summary && summary.frames > 0)
-    && summary.blinks === 0
-    && summary.rootSwaps === 0
-    && summary.regressions === 0
-    && summary.stuckMissing === 0
-    && summary.stationNoCollider === 0
-    && metrics.inFrameShaderLinks === 0
-    && metrics.leftUndrawn === 0
-    && !!residencyManager
-    && residencyManager.visibleUnready === 0
-    && residencyManager.pending === 0;
+  const gate = {
+    frames: !!(summary && summary.frames > 0),
+    blinks: !!summary && summary.blinks === 0,
+    rootSwaps: !!summary && summary.rootSwaps === 0,
+    regressions: !!summary && summary.regressions === 0,
+    stuckMissing: !!summary && summary.stuckMissing === 0,
+    stationNoCollider: !!summary && summary.stationNoCollider === 0,
+    inFrameShaderLinks: metrics.inFrameShaderLinks === 0,
+    leftUndrawn: metrics.leftUndrawn === 0,
+    residencyManager: !!residencyManager,
+    visibleUnready: !!residencyManager && residencyManager.visibleUnready === 0,
+    visibleUnreadyDraws: !!residencyManager && residencyManager.visibleUnreadyDraws === 0,
+    presentedRefusedEntities: !!residencyManager && residencyManager.presentedRefusedEntities === 0,
+    admittedFailOpen: !!residencyManager && residencyManager.admittedFailOpen === 0,
+    residencyFailOpen: !!residencyManager && residencyManager.residencyFailOpen === 0,
+    inFlight: !!residencyManager && residencyManager.inFlight === 0,
+    ghostedInFlight: !!residencyManager && residencyManager.ghostedInFlight === 0,
+    pending: !!residencyManager && residencyManager.pending === 0,
+  };
+  const failedClauses = Object.entries(gate).filter(([, ok]) => ok !== true).map(([key]) => key);
+  const pass = failedClauses.length === 0;
   console.log(`  E6 verdict inputs: inFrameShaderLinks=${metrics.inFrameShaderLinks}`
     + ` leftUndrawn=${metrics.leftUndrawn}`
+    + ` blinks=${summary ? summary.blinks : 'n/a'}`
+    + ` regressions=${summary ? summary.regressions : 'n/a'}`
+    + ` stuckMissing=${summary ? summary.stuckMissing : 'n/a'}`
     + ` visibleUnready=${residencyManager ? residencyManager.visibleUnready : 'n/a'}`
     + ` visibleUnreadyDraws=${residencyManager ? residencyManager.visibleUnreadyDraws : 'n/a'}`
+    + ` presentedRefusedEntities=${residencyManager ? residencyManager.presentedRefusedEntities : 'n/a'}`
+    + ` admittedFailOpen=${residencyManager ? residencyManager.admittedFailOpen : 'n/a'}`
+    + ` residencyFailOpen=${residencyManager ? residencyManager.residencyFailOpen : 'n/a'}`
+    + ` inFlight=${residencyManager ? residencyManager.inFlight : 'n/a'}`
+    + ` ghostedInFlight=${residencyManager ? residencyManager.ghostedInFlight : 'n/a'}`
     + ` pending=${residencyManager ? residencyManager.pending : 'n/a'}`);
+  if (!pass) console.log(`  E6 failing clauses: ${failedClauses.join(', ')}`);
   dumpErrors();
   console.log(pass ? 'RESULT: PASS' : 'RESULT: FAIL');
   if (COMPARE_PATH) console.log(comparePass ? 'COMPARE: PASS' : 'COMPARE: FAIL');

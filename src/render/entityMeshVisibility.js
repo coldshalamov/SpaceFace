@@ -18,6 +18,9 @@ export function shouldSubmitEntityMesh(options = {}) {
   // into a gameplay-visible disappearance.
   const protectedRoot = isProtectedEntityMesh(options);
   if (options.snapshotMissing === true && !protectedRoot) return false;
+  // A protected root is never hidden: the residency manager refuses to hold it and clears any
+  // stale hold on its next draw (admit-inline/fail-open). So the protected verdict wins here,
+  // and the submit pass never re-hides the player for a measurement lane.
   if (protectedRoot) return true;
   // Held by the residency manager until its geometry is on the GPU. The root never enters
   // the submit list early, so "visible" always means "has resident data to draw".
@@ -96,4 +99,16 @@ export function applyEntityMeshVisibility(mesh, submit) {
   if (mesh.visible === next) return false;
   mesh.visible = next;
   return true;
+}
+
+/**
+ * Restore a freshly bound root's prior visibility without overwriting a residency hold. The bind
+ * commit used to write `visible = true` over the hold flag, so the next submit pass re-showed an
+ * unready root for a frame (the bind-then-submit blink). The submit pass remains the only place a
+ * normal visibility verdict is written; this helper only refuses to clear a live hold.
+ */
+export function applyBoundMeshVisibility(mesh, priorVisible, residencyHeld = false) {
+  if (!mesh) return false;
+  if (residencyHeld === true) return applyEntityMeshVisibility(mesh, false);
+  return applyEntityMeshVisibility(mesh, priorVisible !== false);
 }
