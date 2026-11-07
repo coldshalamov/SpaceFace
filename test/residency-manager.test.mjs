@@ -505,31 +505,3 @@ test('cancelRoot releases a pooled mesh hold and queue entry before reuse', () =
   assert.equal(mesh.__sfInstanceResidentCount, 0, 'no stale instance proof crosses a pool reuse');
   assert.equal(mesh.userData[RESIDENCY_HELD], false);
 });
-
-test('instance-count growth waits for an off-screen batch and releases on its proof', () => {
-  const geometry = new THREE.BoxGeometry();
-  geometry.userData.spacefaceGpuResident = true;
-  const material = new THREE.MeshBasicMaterial();
-  const mesh = new THREE.InstancedMesh(geometry, material, 4);
-  mesh.count = 1;
-  mesh.__sfInstanceResidentCount = 1;
-  const manager = createResidencyManager({
-    now: () => 0,
-    requestRoots: (roots) => {
-      for (const root of roots) root.__sfInstanceResidentCount = Number(root.count) || 0;
-    },
-  });
-  manager.beginFrame(0);
-  try {
-    mesh.count = 3;
-    assert.equal(manager.admitGeometry(mesh, geometry), false, 'count growth above the proof is unready');
-    assert.equal(mesh.visible, false);
-    assert.equal(manager.drainUploads(), 1);
-    assert.equal(mesh.visible, true, 'the instance batch proves the new count');
-    assert.equal(mesh.__sfInstanceResidentCount, 3);
-    assert.equal(manager.pendingCount(), 0);
-  } finally {
-    geometry.dispose();
-    material.dispose();
-  }
-});

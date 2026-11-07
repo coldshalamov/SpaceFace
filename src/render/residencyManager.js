@@ -223,17 +223,6 @@ export function createResidencyManager(options = {}) {
     }
     // BatchedMesh owns its own draw list and residency; never second-guess it here.
     if (object.isBatchedMesh === true) return true;
-    // Instance proof: a count above the last proven draw means instance attributes changed
-    // shape since the proof. Geometry residency alone cannot answer for it.
-    if (object.isInstancedMesh === true) {
-      const count = Number(object.count) || 0;
-      const proven = Number(object.__sfInstanceResidentCount);
-      if (Number.isFinite(proven) && count > proven) {
-        counters.heldDraws += 1;
-        holdRoot(rootOf(object), 'instance-growth', geometry);
-        return false;
-      }
-    }
     const data = geometry.userData;
     if (data && data.spacefaceGpuResident === true) {
       counters.admittedResident += 1;
@@ -362,15 +351,6 @@ export function createResidencyManager(options = {}) {
       if (!isHeld(root)) {
         untrackHold(root);
         continue;
-      }
-      if (root.isInstancedMesh === true) {
-        const count = Number(root.count) || 0;
-        const proven = Number(root.__sfInstanceResidentCount);
-        if (Number.isFinite(proven) && count > proven) {
-          // Geometry residency alone does not prove the grown instance attributes.
-          heldSweepCursor = (heldSweepCursor + 1) % heldOrder.length;
-          continue;
-        }
       }
       let pending = true;
       try { pending = hasUnresident(root) === true; } catch (_) { pending = true; }
@@ -536,13 +516,6 @@ export function createResidencyManager(options = {}) {
     // The manager only queues roots it holds. An external release (unbind, dispose,
     // fail-open) ends the request even if the geometry is still unstamped.
     if (!isHeld(root)) return false;
-    // Instance proof is object-local: a count above the last proven draw needs the instance
-    // attributes uploaded even when the shared base geometry is already resident.
-    if (root.isInstancedMesh === true) {
-      const count = Number(root.count) || 0;
-      const proven = Number(root.__sfInstanceResidentCount);
-      if (Number.isFinite(proven) && count > proven) return true;
-    }
     if (hasUnresident) {
       try { return hasUnresident(root) === true; } catch (_) { return true; }
     }
