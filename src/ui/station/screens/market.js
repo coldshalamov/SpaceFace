@@ -474,7 +474,7 @@ function holdArcHtml(used, cap) {
         + `<path d="${fill}" fill="none" stroke="rgb(248 244 234)" stroke-width="2.5" stroke-linecap="round"/>`
       : '')
     + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
-    + `</svg><span class="orr-mkt-holdarc__t">Hold<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
+    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
 }
 
 /**

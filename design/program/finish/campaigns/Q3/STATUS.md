@@ -20,8 +20,9 @@
   boolean "true" as the stock drive's name, and THE SHIP's over-hull callout still said "Drive
   OPEN / M" while the table/count said stock/fitted. Both now read "Drive / STOCK · M". Review:
   [`reviews/2026-11-07-primary-screens.md`](reviews/2026-11-07-primary-screens.md). The independent
-  second reader has signed that review; remaining notes are copy/fold nits (market "Hold after",
-  flight top-speed wording, Shipworks stat scroll), not blocking contradictions.
+  second reader has signed that review; remaining notes are copy/fold nits (flight top-speed
+  wording, Shipworks stat scroll), not blocking contradictions. The market's projected hold arc now
+  reads "Hold after".
 
 ## Next
 
