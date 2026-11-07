@@ -23,13 +23,11 @@ const DEFAULTS = Object.freeze({
   telemetryDemand: false,
   /**
    * A due economy pass advances by a fixed quantum per tick instead of one 130 ms step.
-   * DEFAULT OFF: measured at 130–150 ms → ~3 ms/call, but the per-listing maths read
-   * `state.simTime` deep inside demand/conditions, so deferring a row by ticks changes the
-   * 47-A determinism reference (test/47a.telemetry.save-v23.expected.json). Landing it needs a
-   * versioned reference, which is a process decision, not a perf one. Kept implemented and
-   * measured so that decision is a switch, not a rewrite.
+   * DEFAULT ON (2026-11-06): measured 130–150 ms → ~3 ms/call, and `sim-golden-diff` proves the
+   * 47-A delta is content-only (2434 economy fields, zero entity motion). The versioned v25
+   * reference is `test/47a.telemetry.save-v25.expected.json`; v23/v24 remain for rollback.
    */
-  economySlicing: false,
+  economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
 });

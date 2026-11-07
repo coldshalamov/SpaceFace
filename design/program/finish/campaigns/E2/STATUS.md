@@ -12,7 +12,7 @@ Lane 2 (SIM CORE). Updated 2026-11-06.
 | 4 | **Physics telemetry is demand-driven behind a flag, shipped OFF** — the filter is implemented and three owners opt in (the Crucible room's jammed-shutter rule, the Kilnback capital's completion rule, the rig workshop's new-keel seed receipt). It defaults OFF because other shipped readers (buoy service, SG-02/SG-06 checks) still read the receipt without opting in; turning it on removes a player feature. The flag stays for a later pull-based migration, not as a claimed default win. | `src/core/physicsAuthority.js`, `src/core/sg02DynamicBodyOwner.js`, `src/core/simCoreFlags.js`, `src/systems/survivalArena.js`, `src/systems/runawayKilnRuntime.js`, `src/features/rigWorkshop/physics.js` | 47-A hash unchanged (see below); demand-off restores all five review-gate checks |
 | 5 | **The quantized per-body SG-02 snapshot is lazy** — it is a checkpoint view (`snapshotSimState`), not per-tick sim state. The physics owner installs a lazy `physicsRuntime.sg02Snapshot` accessor (non-enumerable) backed by the same provider, so checks and probes that dereference the field still get the rows at the moment they ask, with no per-tick build. A host that explicitly opts in still gets a plain published array. | `src/core/physics.js`, `src/core/simSnapshot.js` | 47-A hash unchanged; `check-sg02-authority` reads the accessor |
 | 6 | **Economy tick instrumented and de-duplicated** — one redundant `getCycleCore` + map walk per listing per economy tick removed by passing the live cycle the drift loop already resolved. | `src/systems/economy.js` | 47-A hash unchanged |
-| 7 | **Economy spike slicing** — implemented (fixed-quantum resumable pass, deterministic, save-safe) and measured: the 130–150 ms economy step becomes ~3 ms spread over ~35 ticks. **Held off by default** — see the blocker. | `src/systems/economy.js`, `src/core/simCoreFlags.js` | `.devshots/sim-step-profile/econ-probe.json` |
+| 7 | **Economy spike slicing** - implemented (fixed-quantum resumable pass, deterministic, save-safe) and measured: the 130-150 ms economy step becomes ~3 ms spread over ~35 ticks. **Default ON (2026-11-06)** after `sim-golden-diff` proved the 47-A delta content-only (2434 economy fields, zero entity motion); the versioned v25 reference is committed and v23/v24 remain for rollback. | `src/systems/economy.js`, `src/core/simCoreFlags.js`, `test/47a.telemetry.save-v25.expected.json` | `.devshots/sim-step-profile/econ-slice-on.json` |
 | 8 | **Measurement switchboard** `simCoreFlags` — every optimisation can be turned off at boot so one process can run legacy and sim-core back to back on the same machine state. | `src/core/simCoreFlags.js` | `--ab` output below |
 
 ## Baseline (before any optimisation)
@@ -36,22 +36,18 @@ as the run's raw record — the normalised series is what `probe-step-acceptance
 1. **The bars are still NOT MET.** The last matched in-process comparison
    (`.devshots/sim-step-profile/review-ab.json`, 211 bodies, 900 ticks, 256 sampled steps:
    legacy vs optimised in the same process seconds apart) gives the optimised shape
-   **p95 24.16 ms / p99 48.85 ms / max 50.66 ms** against the **8 / 12 / 25 ms** bars.
-   Mean 14.03 ms. `physics` 4.77 → 4.17 and `tacticalAI` 2.09 → 2.01 are not enough; the
-   economy spike and the remaining physics glue are still the drivers. The review captured that
-   ranking **before** the profiler preamble fix (review F6): `core.preStep`, `input` and the
-   input-command publish are now recorded, so the next profile will show ~2 ms/tick that the
-   quoted per-system shares understated. The step timings above are unaffected by measuring the
-   preamble.
+   **p95 13.79 ms / p99 17.67 ms / max 28.99 ms** against the **8 / 12 / 25 ms** bars.
+   Mean 8.74 ms with economy slicing on (the prior shape was 14.03 ms). The remaining tail is
+   physics glue (~2.7 mean / 4.7 p95) and tacticalAI (~1.2 mean / 2.35 p95); economy is no longer
+   the spike. The profiler preamble fix now records core.preStep/input, so the ranking is honest.
 2. **The profiler is complete for the worker/Node lane, not for the main-lane registry.**
    `registry.js` never imported `simStepProfiler`; its per-system numbers come from
    `perfRuntime.recordSystem`. Wiring it would be a separate change and is not claimed here.
-3. **Economy slicing needs a versioned 47-A reference.** Deferring a listing by ticks changes
-   `state.simTime` reads inside demand/station-condition maths, so the 47-A determinism hash moves
-   (`134e1e7…` → `2198d1e…`). `test/47a.telemetry.save-v23.expected.json` is the only file pinning
-   it. The slice is implemented, deterministic, measured (130–150 ms → ~3 ms/call) and switched off
-   behind `simCoreFlags.economySlicing`. **It remains off in this pass**; it is the next max/p99
-   lever, not a default.
+3. **Economy slicing is ON with a versioned reference.** The 130-150 ms spike is now ~3 ms/call,
+   spread over ~35 ticks. `sim-golden-diff --ref d309816` proves the 47-A delta is content-only:
+   2434 economy fields, zero entity motion. v25 is committed (`test/47a.telemetry.save-v25.expected.json`
+   and the v3 native-contact twin); v23/v24 stay for rollback. This is the max/p99 lever, not a
+   claim that the p95 bar is met.
 4. **Working-tree note.** `src/data/missions.js` has another lane's uncommitted edit in this shared
    checkout. The manifest/clock/activity suites named above still pass with it (119/119), so it did
    not affect this pass; the file was left untouched.

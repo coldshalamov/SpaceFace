@@ -1,0 +1,42 @@
+{
+  "schema": "spaceface.referenceIndex.v1",
+  "id": "47a-save-v24",
+  "envelope": "test/47a.telemetry.save-v24.expected.json",
+  "createdAt": "2026-11-07T01:33:05.127Z",
+  "updatedAt": "2026-11-07T01:33:05.127Z",
+  "versions": [
+    {
+      "version": 1,
+      "file": "v1.expected.json",
+      "snapshotFile": "v1.snapshot.json.gz",
+      "hash": "080c5bd945763d9deba2a569e801b5c32af22be6fdf7fc59dd851f5f9973dd92",
+      "at": "2026-11-07T01:33:05.127Z",
+      "reason": "E2 economy slicing on: 2434 economy fields move, zero entity motion fields; sim-golden-diff CONTENT_ONLY",
+      "ticket": "E2-ECON-SLICING",
+      "cleanRuns": 5,
+      "ticks": 720,
+      "reloadAt": 600,
+      "seed": 47,
+      "inputTape": "test/47a.inputs.json",
+      "scenarioContract": "src/data/scenarios/47a.scenario.json",
+      "gitHead": "d309816f23cf065f105d3dc411490a3ef1f1355b",
+      "dirty": true,
+      "delta": {
+        "baseline": true,
+        "hashChanged": false,
+        "previousHash": null,
+        "newHash": "080c5bd945763d9deba2a569e801b5c32af22be6fdf7fc59dd851f5f9973dd92",
+        "changed": 0,
+        "added": 0,
+        "removed": 0,
+        "totalDiffs": 0,
+        "fieldClasses": {},
+        "motionCount": 0,
+        "motionDiffs": [],
+        "sample": [],
+        "traceChanged": {}
+      }
+    }
+  ],
+  "latest": 1
+}
