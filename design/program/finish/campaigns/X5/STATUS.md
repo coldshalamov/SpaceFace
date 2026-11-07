@@ -1,8 +1,9 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X5 — Controls and input contexts: status
 
-**State: the context system is landed, the label/tick split is fixed, and the live per-context route
-check remains.** Revised after the independent X5 review pass on 2026-11-06.
+**State: the context system is landed, the label/tick split is fixed, and every device path is
+gated; the live per-context Help capture and the physical gamepad check remain.** Revised after the
+second independent X5 review pass on 2026-11-07.
 
 ## Done
 
@@ -18,6 +19,19 @@ check remains.** Revised after the independent X5 review pass on 2026-11-06.
   gates in `_held`, `_heldExcept`, `_padEdge`, `_padHeld`.
 - `src/ui/input.js` — every instrument key now asks `contextUiAllowed` before it acts, so a fight
   cannot open the chart, tech tree or codex. Station and map screens keep every interface verb.
+- **Every device path asks the same gate (second review):** the gamepad View/Guide map+codex
+  presses and the touch Local/Star map buttons now route through `contextUiAllowed` too. A fight
+  can no longer open the chart or codex on a controller or the touch overlay. `Tab`/`Backspace`
+  are documented as the deliberate exemption: they are selection-only (cycle/clear the UI-owned
+  target), never open or leave a surface, so a docked pilot and map reader keep them.
+- **Pad travel burn uses the key's rule (second review):** the pad branch in
+  `src/systems/input.js` now asks `contextActionAllowed(state, 'travelBurn')` as well as the
+  lifecycle quarantine. A healthy targeted fight cannot arm the long burn from L3; a pilot under
+  25% hull can flee on the pad exactly as on the keyboard.
+- `test/x5-device-gates.test.mjs` (new) drives the real `createUiInput` router with a fake pad and
+  touch overlay, and the real `input.update` with a fake pad: pad View/Guide and touch
+  Local/Star are refused in a fight, pause still opens, and L3 is refused healthy / admitted at
+  10% hull. 3/3 pass.
 - **Map context is reachable in live play**: `mapAuthority.setMapOpen` is the writer,
   `openGalaxyMap` sets it on push, `galaxyMapScreen.onShow`/`onHide` set and clear it, and
   `inputContextFor` also reads the top of `state.ui.screenStack` (`galaxyMap`/`localmap`/`starmap`).
@@ -36,8 +50,9 @@ check remains.** Revised after the independent X5 review pass on 2026-11-06.
 - `contextPadAllowed` was an unused duplicate of the action gate (the pad calls
   `contextActionAllowed`); it is removed rather than left as a second policy surface.
 - Focused checks: `test/input-contexts.test.mjs` 14/14; `test/swarm-controls.test.mjs` 8/8;
-  `test/input-lifecycle.test.mjs` 12/12 (the modal-preservation contract still holds: a screen does
-  not flip the context out from under a physically held key).
+  `test/input-lifecycle.test.mjs` 12/12; `test/x5-device-gates.test.mjs` 3/3 (37/37 together).
+  The modal-preservation contract still holds: a screen does not flip the context out from under a
+  physically held key.
 
 ## Not done
 

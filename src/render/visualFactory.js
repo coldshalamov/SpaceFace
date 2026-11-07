@@ -34,7 +34,7 @@ import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
-import { addWorkLamp, machinedBoxGeometry } from './arenaFinish.js';
+import { addWorkLamp, foundryThreeValuePost, machinedBoxGeometry, arenaMaterials } from './arenaFinish.js';
 import { buildMorrowVisual } from './characters/morrowModel.js';
 import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
@@ -2935,17 +2935,23 @@ function buildFoundryToy(e) {
   const kind = (e.data && e.data.roomKind) || 'plate';
   const furniture = foundryFurnitureShape(e);
   const g = new THREE.Group();
+  // X1 third review: gate, block and shutter carry a three-value deck in ONE body mesh. The
+  // bank plate keeps its bespoke vertex-coloured slab; the furnace keeps its ember mouth and
+  // stays a two-solid (body + mouth). None of them gains a third solid.
+  const threeValue = kind !== 'plate' && kind !== 'furnace';
   const mat = kind === 'plate'
     ? getMaterial('foundrytoy:bank-steel', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0xffffff, vertexColors: true, roughness: 0.72, metalness: 0.38,
     }), SHARED_MATERIAL_ROLE.STATION))
-    : getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
-      roughness: 0.94,
-      metalness: 0.06,
-      emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
-      emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
-    }), SHARED_MATERIAL_ROLE.STATION));
+    : threeValue
+      ? arenaMaterials().threeValue
+      : getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+        color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
+        roughness: 0.94,
+        metalness: 0.06,
+        emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
+        emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
+      }), SHARED_MATERIAL_ROLE.STATION));
   let body;
   if (kind === 'plate') {
     const shape = foundryPlateShape(e);
@@ -2953,8 +2959,11 @@ function buildFoundryToy(e) {
     body.scale.set(shape.halfWidth, shape.halfHeight, shape.halfDepth);
   } else if (kind === 'gate') {
     const shape = furniture.body;
-    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(
-      shape.radiusTop, shape.radiusBottom, shape.height, shape.radialSegments)), mat);
+    body = new THREE.Mesh(getGeometry(
+      `foundry:post:${shape.radiusTop}:${shape.radiusBottom}:${shape.height}:${shape.radialSegments}`,
+      () => foundryThreeValuePost(
+        shape.radiusTop, shape.radiusBottom, shape.height, shape.radialSegments),
+    ), mat);
   } else if (kind === 'furnace') {
     const shape = furniture.body;
     body = new THREE.Mesh(getGeometry('foundry:kiln', () => machinedBoxGeometry()), mat);
@@ -2962,8 +2971,12 @@ function buildFoundryToy(e) {
     body.scale.multiplyScalar(furniture?.scale || R);
   } else {
     const shape = furniture?.body || { width: 1.5, height: 0.32, depth: 0.42 };
-    body = new THREE.Mesh(getGeometry('foundry:block', () => machinedBoxGeometry()), mat);
-    body.scale.set(shape.width, shape.height, shape.depth);
+    // The shutter/block wears the bank deck itself: the same vertex-coloured light deck, mid
+    // clamp rails and dark recessed channel, scaled onto the block's collision datum.
+    body = new THREE.Mesh(getGeometry('foundry:three-value-block', createFoundryBankSurface), mat);
+    // The bank surface spans ±1 in every axis; the proxy stores full width/height/depth, so the
+    // mesh scale is the HALF extent times the furniture scale.
+    body.scale.set(shape.width * 0.5, shape.height * 0.5, shape.depth * 0.5);
     body.scale.multiplyScalar(furniture?.scale || R);
   }
   if (kind === 'gate') body.scale.setScalar(furniture?.scale || R);
@@ -2978,22 +2991,25 @@ function buildFoundryToy(e) {
   if (kind === 'plate') {
     // no extra draw: the deck's value structure lives in the shared surface's colour attribute
   } else if (kind === 'gate') {
-    // The lamp sits on the post's face, inside the authored hex footprint (radius 0.2 × scale)
-    // and below the post cap, so the picture never outgrows the contact proxy.
+    // The work lamp is mounted on the post's top cap, so its whole footprint stays inside the
+    // authored hex contact polygon while the lit bar still reads from the chase camera. The old
+    // face-mounted 2.4-wide lamp put 4 of its 8 footprint corners outside the hex at radius 16.
+    const topY = (furniture?.body?.height || 1.5) * 0.5 * (furniture?.scale || R);
     addWorkLamp(g, {
-      width: 2.4, height: 1.1, depth: 0.8,
-      y: (furniture?.body?.height || 1.5) * 0.5 * (furniture?.scale || R) * 0.72,
-      z: (furniture?.body?.radiusBottom || 0.2) * (furniture?.scale || R) * 0.82,
+      width: 1.6, height: 0.4, depth: 0.9,
+      y: topY + 0.1, z: 0,
     });
   } else if (kind === 'furnace') {
     // The ember mouth below is the furnace's lit point; a second lamp would push the
     // furnace past the two-solid foundry-furniture cap.
   } else {
-    // Shutter / block: the lamp rides the body face, never above the solid's top.
-    const halfHeight = (furniture?.body?.height || 0.32) * (furniture?.scale || R) * 0.5;
+    // Shutter / block: the work lamp rides the top deck, proud of the surface, never buried in
+    // the body or above the solid's silhouette. The bank deck's painted lens bar is a value
+    // detail; this is the one real emitter.
+    const topY = (furniture?.body?.height || 0.32) * 0.5 * (furniture?.scale || R);
     addWorkLamp(g, {
-      width: 2, height: 0.8, depth: 1,
-      y: Math.max(0.3, halfHeight * 0.55),
+      width: 2, height: 0.3, depth: 0.9,
+      y: topY + 0.1,
     });
   }
   if (kind === 'furnace') {

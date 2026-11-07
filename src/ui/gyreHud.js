@@ -107,15 +107,27 @@ export const gyreHud = {
     const dom = this._ensureDom();
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
-    // X3 Adventure glass: the pill is mass/count/strain telemetry. The Gyre still works and
-    // its audio/world feedback still reads; the words stay behind the details surfaces.
-    if (isAdventureFlight(state)) { this._hide(dom); return; }
+    // X3 Adventure glass: the Gyre still works and its audio/world feedback still reads. The
+    // mass/count/strain pill is telemetry, so Adventure gets a plain two-verb instrument
+    // (HOLD / LAUNCH) with the fuse and ball TTL — the state a pilot must act on — and no
+    // mass, member count, tonnage, strain or DMG words.
+    const adventure = isAdventureFlight(state);
     const g = state.gyreSnare || null;
-    const { text, cls, strain, fuse, mass, row } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
-    if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const { text, cls, strain, fuse, mass, row } = adventure
+      ? this._resolveAdventure(g, now)
+      : this._resolve(g, now);
+    if (!text) { this._hide(dom); return; }
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
     if (!seat.visible) { this._hide(dom); return; }
+    if (adventure) {
+      // No absorb counter on the plain instrument; keep the gulp ledger current so returning
+      // to a telemetry surface does not fire a stale pop.
+      this._lastAbsorbs = g && Number.isFinite(g.absorbs) ? g.absorbs : 0;
+      this._apply(dom, text, cls, 0, fuse, 0, row);
+      this._applyLaneSeat(dom.pill, seat.bottom);
+      return;
+    }
     // The counter gulps too: maw/lumps/glints/audio/pad all celebrate a meal but
     // the ×N·Mt read used to swap silently — a ~150 ms scale-pop on each absorb.
     const ab = g && Number.isFinite(g.absorbs) ? g.absorbs : 0;
@@ -137,6 +149,31 @@ export const gyreHud = {
     dom.pill.classList.toggle('gyre-eat', eating);
     if (eating) dom.pill.style.setProperty('--gyre-eat-scale', (this._eatScale || 1.1).toFixed(3));
     this._applyLaneSeat(dom.pill, seat.bottom);
+  },
+
+  /**
+   * X3: the Adventure instrument. Two verbs, plus the two countdowns a pilot acts on. No mass,
+   * member count, tonnage, strain or DMG — those stay on the details surfaces, not the glass.
+   */
+  _resolveAdventure(g, now) {
+    if (!g) { this._lastHudPhase = null; return { text: '', cls: '' }; }
+    this._lastHudPhase = g.phase;
+    const bttl = g.ballTtlLeftS || 0;
+    const ballTxt = bttl > 0 && bttl < GYRE_SNARE.ballTtlWarnS
+      ? ` · BALL ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(bttl)))}s` : '';
+    const fuseS = g.fuseS || 0;
+    const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
+      ? ` · FUSE ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
+    if (g.phase === 'launching') {
+      return { text: `LAUNCH${fuseTxt}${ballTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'adventure-launch' };
+    }
+    if (g.phase === 'holding' || g.phase === 'beaming') {
+      return { text: `HOLD${fuseTxt}${ballTxt}`, cls: 'gyre-holding', fuse: fuseS, row: 'adventure-hold' };
+    }
+    if (g.launchedId != null || (Array.isArray(g.balls) && g.balls.length) || (g.liveBalls || 0) > 0) {
+      return { text: `LAUNCH${ballTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'adventure-launch' };
+    }
+    return { text: '', cls: '' };
   },
 
   _resolve(g, now) {

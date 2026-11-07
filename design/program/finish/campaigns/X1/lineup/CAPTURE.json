@@ -1,0 +1,340 @@
+{
+  "schema": "spaceface.x1.lineup.v1",
+  "capturedAt": "2026-11-07T03:50:41.649Z",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "arena": {
+    "arenaId": "helios_core",
+    "wave": 1,
+    "sector": "sector_helios_prime",
+    "foundry": {
+      "plate": 3,
+      "gate": 2
+    }
+  },
+  "route": "title -> Swarm -> Ricochet Foundry (data-arena-id helios_core)",
+  "hud": "hidden",
+  "frames": [
+    {
+      "name": "turntable-00.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 0,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 77.1,
+      "distance": 104,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1890.4,
+        42.3,
+        -2429.5
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-01.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 60,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 62,
+      "distance": 131.4,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1925.4,
+        53.4,
+        -2325.6
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-02.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 120,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 62,
+      "distance": 131.4,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -2045.4,
+        53.4,
+        -2325.6
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-03.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 180,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 77.2,
+      "distance": 103.7,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -2080.2,
+        42.2,
+        -2429.5
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-04.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 240,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 62,
+      "distance": 130.7,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -2045.1,
+        53.1,
+        -2532.9
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-05.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 300,
+      "cameraElevationDeg": 24,
+      "measuredWidthPct": 62,
+      "distance": 131.2,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1925.5,
+        53.4,
+        -2533.3
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-edge.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 90,
+      "cameraElevationDeg": 6,
+      "measuredWidthPct": 62.7,
+      "distance": 141.4,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1985.4,
+        14.8,
+        -2288.9
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "turntable-underside.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 90,
+      "cameraElevationDeg": -24,
+      "measuredWidthPct": 62.6,
+      "distance": 139.6,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1985.4,
+        -56.8,
+        -2302
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "after-plate-close-1600.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 18,
+      "cameraElevationDeg": 26,
+      "measuredWidthPct": 62.3,
+      "distance": 112.1,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -1889.6,
+        49.1,
+        -2398.4
+      ],
+      "propSize": {
+        "x": 101.76,
+        "y": 4.16,
+        "z": 65.15
+      },
+      "propCenter": {
+        "x": -1985.41,
+        "y": 0,
+        "z": -2429.51
+      }
+    },
+    {
+      "name": "close-gate-1600.png",
+      "camera": "isolated aimed camera (live prop)",
+      "cameraYawDeg": 35,
+      "cameraElevationDeg": 20,
+      "measuredWidthPct": 13.1,
+      "distance": 47.3,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        -2012.1,
+        16.3,
+        -1870.5
+      ],
+      "propSize": {
+        "x": 5.54,
+        "y": 24.3,
+        "z": 6.4
+      },
+      "propCenter": {
+        "x": -2048.49,
+        "y": 0.15,
+        "z": -1895.94
+      }
+    },
+    {
+      "name": "close-furnace-1600.png",
+      "camera": "isolated prop render (factory buildFoundryToy)",
+      "cameraYawDeg": 35,
+      "cameraElevationDeg": 20,
+      "measuredWidthPct": 44.7,
+      "distance": 79.9,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        61.5,
+        27.3,
+        43.9
+      ],
+      "propSize": {
+        "x": 39.1,
+        "y": 24.48,
+        "z": 34
+      },
+      "propCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0.85
+      }
+    },
+    {
+      "name": "close-shutter-1600.png",
+      "camera": "isolated prop render (factory buildFoundryToy)",
+      "cameraYawDeg": 35,
+      "cameraElevationDeg": 20,
+      "measuredWidthPct": 52.6,
+      "distance": 33.4,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        25.7,
+        11.5,
+        18
+      ],
+      "propSize": {
+        "x": 30,
+        "y": 6.65,
+        "z": 8.4
+      },
+      "propCenter": {
+        "x": 0,
+        "y": 0.13,
+        "z": 0
+      }
+    },
+    {
+      "name": "close-block-1600.png",
+      "camera": "isolated prop render (factory buildFoundryToy)",
+      "cameraYawDeg": 35,
+      "cameraElevationDeg": 20,
+      "measuredWidthPct": 52.4,
+      "distance": 27.5,
+      "renderSize": "1600x1000",
+      "cameraPos": [
+        21.2,
+        9.5,
+        14.8
+      ],
+      "propSize": {
+        "x": 24,
+        "y": 5.37,
+        "z": 6.72
+      },
+      "propCenter": {
+        "x": 0,
+        "y": 0.13,
+        "z": 0
+      }
+    }
+  ],
+  "errors": [],
+  "committedWide": {
+    "file": "after-foundry-wide-1600.png",
+    "note": "The existing 2026-11-06 gameplay chase frame is kept: the bank plate is bottom-centre at ~21% width. The capture script also takes a route frame, but this pass did not replace the committed wide.",
+    "camera": "ordinary gameplay chase"
+  },
+  "captureCommand": "node scripts/capture-x1-lineup.mjs --out=.devshots/x1-final --wait=15000"
+}

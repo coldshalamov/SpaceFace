@@ -25,57 +25,88 @@ owner writes approval into this file (see "Owner approval" below).
   Box3 is exactly the collision datum (x ±48, y ±2.08, z ±16.9); the old skirt/clamp/housing/lamp
   meshes that protruded 1.25 WU above / 0.55 WU below the solid are gone. The batch plan is one
   specimen again, and the one geometry stays under its 100-triangle cap (92 tris).
-- **Third review fix — furniture never outgrows its proxy:** the gate lamp moved onto the post's
-  face (inside the hex footprint, below the cap), the shutter/block lamp rides the body face, and
-  the furnace keeps the ember mouth as its only lit point so the two-solid cap holds. Red proof:
-  `test/foundry-furniture-contact.test.mjs`.
+- **Third review fix — furniture never outgrows its proxy:** the gate lamp rides the post cap,
+  inside the hex footprint; the shutter/block lamp rides the top deck; and the furnace keeps the
+  ember mouth as its only lit point so the two-solid cap holds. Red proof:
+  `test/foundry-furniture-contact.test.mjs`; the hex-polygon lamp check is in
+  `test/swarm-overhaul-foundry-read.test.mjs`.
+- **Fourth review fix — gate/block/shutter carry the three-value deck:** each body is ONE
+  vertex-coloured mesh (light top/panels, mid mechanical side/clamp rails, dark channel/foundation)
+  plus the existing work lamp. The block/shutter use the bank deck surface scaled onto their
+  collision datum; the gate post uses banded cap/facets/base. Still 1 body + 1 lamp = 2 solids.
+  `test/swarm-overhaul-foundry-read.test.mjs` asserts ≥3 distinct values and the polygon-contained
+  cap lamp; no third solid is added.
 - **Law bank plate (first review fix):** `buildBankPlate` is now a leaned deck — light face, dark
   recessed channel, two mid clamp rails that overhang the ends, one working-edge hazard band,
   top-edge lamp housing with a lit lamp, and the foundation skirt. The lamp moved from the base
   (where it never read) to the top edge.
-- **One sun:** Helios `signatureHero.lightAngle` is now `2.55` rad, matching the play key
-  `(60,140,40)` projected through the 60° chase camera (upper-left). New focused check:
-  `test/x1-one-sun.test.mjs`.
-- **Focused checks (real counts, 2026-11-06):**
+- **One sun (second review):** every `PROFILE_BY_ID` sky hero now folds to the renderer's *aimed*
+  key, derived from its own `screenNdc` through the 60° chase camera: Helios 2.638, Vesta 2.542
+  (was −0.6, dot −0.999), Veil 0.430 (was −1.4, dot −0.257), Fringe 0.588, Pallas 0.578, Ceres
+  0.567. `test/x1-one-sun.test.mjs` iterates every profile hero and pins the old Vesta/Veil angles
+  as failures; the old test only modelled the construction key and Helios.
+- **Focused checks (real counts, 2026-11-07):**
   - `node --test test/foundry-bank-surface.test.mjs test/foundry-plate-contract.test.mjs
     test/swarm-overhaul-foundry-read.test.mjs test/foundry-environment.test.mjs
-    test/pq133-08-law-dressing.test.mjs test/pq133-09-cryo-storm-dressing.test.mjs`
-    — **54/54 pass, 0 fail**.
-  - Adding `test/x1-one-sun.test.mjs` and `test/foundry-furniture-contact.test.mjs`
-    — **61/61 pass, 0 fail**.
+    test/pq133-08-law-dressing.test.mjs test/pq133-09-cryo-storm-dressing.test.mjs
+    test/x1-one-sun.test.mjs test/foundry-furniture-contact.test.mjs
+    test/sector-visual-profiles.test.mjs`
+    — **75/75 pass, 0 fail**.
   - `node --test test/x1-one-sun.test.mjs test/sector-visual-profiles.test.mjs`
-    — **15/15 pass, 0 fail**.
+    — every profile hero is covered; 2/2 one-sun cases pass.
   - The earlier "TDZ import failure" note is stale: it does not reproduce. Both law-dressing files
     import and pass.
-  - Unrelated red on this shared tree: `test/pq-133-04-foundry.test.mjs` 11/13 (Mirrorjaw doctrine
-    resolves `interceptor_flyby` instead of `brawler_commit`, and a 100k Pulse hit leaves a hull
-    alive). That is sim/AI, not this render change; no X1 path is imported by those two tests.
+  - Unrelated red on this shared tree (open, not X1): `test/pq-133-04-foundry.test.mjs` is **11/13**.
+    The two failures are `Mirrorjaw materializes with real weapons and dies to Pulse hits through
+    combat exactly once` (AI doctrine resolves `interceptor_flyby`, expected `brawler_commit`) and
+    `ten wave schedules materialize under the unchanged cap and cleanup waits for real combat
+    deaths` (the cleanup assertion at line 245). No X1 render path is imported by either test. The
+    foundry suite is **not green**; record these as open sim/AI defects, do not claim it.
 
 ## Draw cost (measured, not assumed)
 
 - Foundry bank plate: **1 draw** (one mesh, one shared vertex-coloured material, no geometry
   groups). The batch specimen stays one group.
+- Foundry gate/block/shutter: **2 draws each** (one vertex-coloured body + one work lamp). No third
+  solid; the two-solid cap is unchanged.
 - Law bank plate: **9 draws** (face, dark channel, hue seam, two clamp rails, hazard band, lamp
   housing, lamp, foundation skirt). The law rooms already carried 5 hazard bands + 5 lamps from the
   first pass.
 - The earlier "≤ 2 draws per arena prop" claim is **withdrawn**: it was never measured per prop.
   The E10 frame-time delta for these draws is **not measured**; measure it on the owner's laptop
   before X2 mass production.
+- **Open:** the foundry plate's lens is painted to preserve the one-draw/one-specimen batch
+  contract. A real emissive plate lamp (a second draw) is not landed; the law plate and the
+  gate/block/shutter carry real lamps. The law plate's 9 draws / 6 materials are a recorded
+  exception to the bible's one-draw-per-material rule.
 
-## Captures — re-shot 2026-11-06
+## Captures — re-shot 2026-11-06, turntable/props 2026-11-07
 
 The old set was not proof: `before-foundry.jpg` is 800×500 with HUD and no bank plate, the after
-frames are 729×536 with no HUD, and `after-plate-close.png` is not a close-up. Re-shot on this
-machine at 1600×1000 through the ordinary title → Swarm → Ricochet Foundry route:
+frames are 729×536 with no HUD, and `after-plate-close.png` is not a close-up. The current set is
+1600×1000 through the ordinary title → Swarm → Ricochet Foundry route:
 
-- `lineup/after-foundry-wide-1600.png` — HUD off, gameplay chase camera, plate mid-frame.
-- `lineup/after-plate-close-1600.png` — HUD off, shipped **photo camera** at zoom 150; the plate
-  spans ≈45% of frame width and the deck, skirt, clamp rails, channel, safety band and lens read.
-- `lineup/turntable-00..05.png` — six views over 1.5 s while the chase camera orbits the plate.
+- `lineup/after-foundry-wide-1600.png` — HUD off, gameplay chase camera. The plate is
+  **bottom-centre at ≈21% width**, not mid-frame; that caption is corrected here. This is the
+  2026-11-06 frame, kept because the new route pose framed the plate at the top edge.
+- `lineup/after-plate-close-1600.png` — HUD off, an **isolated capture camera aimed at the plate's
+  bounding-box centre**. The plate spans **62.3%** of frame width (measured from projected box
+  corners; `lineup/CAPTURE.json`), not the old claimed 45%/41%.
+- `lineup/turntable-00..05.png` — six orbit views at 60° steps, +24° elevation, camera aimed at the
+  plate centre. Widths 62.0–77.2% (the long-axis views are the wider pair). This is a real
+  turntable; the old "turntable" moved the ship under a fixed-yaw chase camera and showed the same
+  top face six times.
+- `lineup/turntable-edge.png` (62.7%, +6° elevation) and `lineup/turntable-underside.png` (62.6%,
+  −24°) — the edge-on thickness/skirt and the underside, which the chase camera cannot show.
+- `lineup/close-gate-1600.png` — live gate prop, aimed camera; framed vertically, 13.1% width.
+- `lineup/close-furnace-1600.png`, `close-shutter-1600.png`, `close-block-1600.png` — **isolated
+  factory renders** of `buildFoundryToy`, because the live furnace/shutter only materialize on
+  their authored wave phases. 44.7% / 53.2% / 53.2% width. They are labeled as isolated in
+  `CAPTURE.json`; they are not player-route frames.
 
 **Still unmatched:** the before frame needs the pre-finish build; this shared checkout cannot be
 reverted safely. The after frames are real captures; the pair is not a controlled A/B. The E10
-delta is still unmeasured.
+delta is still unmeasured. Owner approval remains open.
 
 ## Published
 

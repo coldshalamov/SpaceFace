@@ -81,7 +81,17 @@ test('furniture proxies match the actual renderer bounds and preserve materializ
     assert.equal(entity.physicsBody.revision, 0);
     assert.equal(entity.data.surfaceMaterial, toy.material);
     assert.equal(surfaceResponseFor(entity.data.surfaceMaterial), toy.kind === 'furnace' ? 'absorb' : 'none');
-    const box = new THREE.Box3().setFromObject(factory.build(entity));
+    const visual = factory.build(entity);
+    visual.updateWorldMatrix(true, true);
+    // Measure the BODY against the contact manifest. The work lamp is a small fitting on top of
+    // the body (and is polygon-tested separately in swarm-overhaul-foundry-read); including it in
+    // the body AABB would make the vertical assertion about the lamp, not the solid.
+    const box = new THREE.Box3();
+    visual.traverse((node) => {
+      if (!node.isMesh) return;
+      if (node.material && node.material.name === 'sf-arena-lamp') return;
+      box.expandByObject(node);
+    });
     const points = manifest.compactHull || manifest.primitives.flatMap(p => [
       { x: p.x - p.hx, z: p.z - p.hz }, { x: p.x + p.hx, z: p.z + p.hz },
     ]);

@@ -783,6 +783,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       case 'F1': case 'h': case 'H':
         if (!contextUiAllowed(state, 'help')) return;
         ev.preventDefault(); screenManager.pushScreen('help'); return;
+      // Target/clear are selection-only, deliberately exempt from contextUiAllowed: they never
+      // open a surface or leave the current one, they only move or clear the UI-owned target
+      // (see src/ui/AGENTS.md). A docked pilot and a map reader keep that local selection act.
       case 'Tab':
         ev.preventDefault();
         if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -1364,6 +1367,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       bus.emit('toast', { text: 'No dock prompt active', kind: 'info', ttl: 2 });
       return false;
     }
+    // Every device path asks the SAME interface gate as the keyboard: a touch fight cannot
+    // open the chart or the codex through the overlay's own buttons.
+    if (!contextUiAllowed(state, action)) return false;
     if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
     // Touch Local / Star keep product labels on the overlay but open the unified map with focus.
     if (action === 'localmap') { openMapFromTouch(MAP_FOCUS.LOCAL); return true; }
@@ -1541,11 +1547,11 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
         screenManager.pushScreen('pause');
         bus.emit('audio:cue', { id: 'ui_open' });
       }
-      if (gp.actions.map && gp.actions.map.pressed) {
+      if (gp.actions.map && gp.actions.map.pressed && contextUiAllowed(state, 'map')) {
         openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'gamepad' });
         bus.emit('audio:cue', { id: 'ui_open' });
       }
-      if (gp.actions.codex && gp.actions.codex.pressed) {
+      if (gp.actions.codex && gp.actions.codex.pressed && contextUiAllowed(state, 'codex')) {
         screenManager.pushScreen('codex');
       }
       if (gp.actions.cycleTarget && gp.actions.cycleTarget.pressed) {

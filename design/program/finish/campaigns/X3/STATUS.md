@@ -18,24 +18,32 @@
   and `orrery/hudAdapter.js` + `orrery/flightCluster.js` (the rail is icons + key caps in every
   flight context; the tether beam and strain dial stay, the payload’s `Body · on the line`,
   tonnage and `STRAIN` words are gated on Adventure flight).
-- `gyreHud.js` gates its mass/count/strain pill on `isAdventureFlight`; `comms.js` gates the
-  left-edge prose feed; `discoveryPlate.js` tags its receipt `source/channel: 'discovery'` so the
-  Adventure receipt lane refuses it.
+- `gyreHud.js` replaces its hidden telemetry pill in Adventure with a plain instrument: `HOLD`
+  or `LAUNCH` plus the fuse and ball-TTL countdowns, and no mass/count/tonnage/strain/DMG words.
+  The strain and mass bars stay off; the fuse bar stays. A live Swarm run keeps the full telemetry
+  pill (pinned by `test/x3-adventure-presenters.test.mjs`).
+- `attentionGlass.js` now uses `inputContexts.isMapContext` for the map-screen exclusion instead of
+  its own duplicate predicate, so `ui.mapOpen`, `mode: 'map'`, `ui.screen` and the screen stack
+  resolve the same surface for the glass and the input context.
+- `comms.js` gates the left-edge prose feed; `discoveryPlate.js` tags its receipt
+  `source/channel: 'discovery'` so the Adventure receipt lane refuses it.
 - `bandHud.js`: `BAND  OFF` → `RADIO  OFF`; `CENSUS n/m` → `FOUND n/m`.
 - Removed the unused `ADVENTURE_CALLOUT_WORDS` / `ADVENTURE_TRANSIENT_MAX` constants; the receipt
   lane’s `RECEIPT_MAX = 2` already sits inside S2’s three-line budget.
-- Focused checks at HEAD: `test/adventure-glass.test.mjs` 7/7, `test/swarm-glass.test.mjs` 9/9,
-  `test/fb-stunts-named-in-adventure.test.mjs` 3/3, `test/glass-474-494.test.mjs` 4/4,
-  `test/x3-adventure-presenters.test.mjs` 7/7 (drives the real Gyre, Cluster, massline verdict,
-  acquisition bracket, discovery and comms presenters), plus `charon-supply-approach` 14/14,
-  `discovery-plate` 3/3 and `cv-throw-1-release-verdict` 5/5.
+- Focused checks at HEAD (second review): `test/adventure-glass.test.mjs` 7/7,
+  `test/swarm-glass.test.mjs` 9/9, `test/fb-stunts-named-in-adventure.test.mjs` 3/3,
+  `test/glass-474-494.test.mjs` 4/4, `test/x3-adventure-presenters.test.mjs` **9/9** (drives the
+  real Gyre HOLD/LAUNCH instrument, Cluster, massline verdict, acquisition bracket, discovery and
+  comms presenters), plus `charon-supply-approach` 14/14, `discovery-plate` 3/3 and
+  `cv-throw-1-release-verdict` 5/5.
 - Live capture from the current working tree: `.devshots/x3-after-review/flight_z144.png` and
   `flight_z58.png`
   (1600×1000, `node scripts/flight-look.mjs --hud --out=.devshots/x3-after-review`). The frame
   shows `RADIO  OFF`, the plain `TOO HEAVY` bracket, icon-only rail sockets with key caps, and no
   `GYRE`/`STRAIN`/payload-tonnage, left-edge comms feed or `CLEAN · KEPT` sentence. The onboarding
   store sentence still draws once (W5-owned; see below). The previous `.devshots/x3-after` predates
-  the presenter fixes and is not evidence for them.
+  the presenter fixes and is not evidence for them. **This is a real frame, not a matched
+  before/after; the before is still missing, so the capture is explicitly unproven as a pair.**
 
 ## Not done
 
@@ -43,8 +51,11 @@
   Swarm frame with the same jargon, not the Adventure frame.
 - One independent image review of the Adventure glass before/after.
 - The onboarding store sentence (`Light ships are ammunition. Swing a rock. Keep the speed.`) still
-  speaks over rescue flight through the voice path, not the receipt lane. W5 owns the first hour;
-  the finding is filed in `design/program/NOW.md` rather than editing the onboarding owner.
+  draws over rescue flight through the **voice** path, not the receipt lane. It is the exact
+  multi-sentence prose case `attentionGlass` names; `comms.js` cannot stop a toast. W5 owns the
+  first hour, so the finding stays filed in `design/program/NOW.md` (the X3 line is re-confirmed
+  below). **This is still on the glass and X3 acceptance remains open for it** — routing it is an
+  onboarding-owner change, not a second receipt filter.
 - Unrelated suites currently red in this shared checkout and not caused by this pass:
   `test/pq-146-03-stunt-callout.test.mjs` (physics-log lines are multi-word and the Adventure gate
   drops them; the S2 gate already did), `test/swarm-feedback-priority.test.mjs`,

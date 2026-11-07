@@ -1,17 +1,38 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X1 lineup — the picture that proves the style bible
 
-**Status: re-shot 2026-11-06; awaiting the owner's approval.** Judge against
-[`STYLE_BIBLE.md`](./STYLE_BIBLE.md). The arena is Ricochet Foundry (`helios_core`).
+**Status: re-shot 2026-11-06; turntable and prop close-ups re-shot 2026-11-07; awaiting the
+owner's approval.** Judge against [`STYLE_BIBLE.md`](./STYLE_BIBLE.md). The arena is Ricochet
+Foundry (`helios_core`).
 
 ## The pair
 
 | Frame | File | What it shows | Verdict |
 |---|---|---|---|
 | **Before** | [`lineup/before-foundry.jpg`](./lineup/before-foundry.jpg) | 800×500, HUD on, the 2026-11-05 baseline. The bank slab is not in this frame. | baseline only — **not matched** |
-| **After — wide** | [`lineup/after-foundry-wide-1600.png`](./lineup/after-foundry-wide-1600.png) | 1600×1000, HUD off, gameplay chase camera. The finished foundry plate sits bottom-centre (≈21% width) with its light deck, dark channel, hazard dashes and lens bar; the ringed giant reads lit from the upper-left. | captured 2026-11-06 |
-| **After — plate close** | [`lineup/after-plate-close-1600.png`](./lineup/after-plate-close-1600.png) | 1600×1000, HUD off, shipped photo camera at zoom 150. The plate spans **≈45% of the frame width** and shows the skirt, clamp rails, recessed channel, working-edge safety band and lamp-housing lens. | captured 2026-11-06 |
-| **After — turntable** | [`lineup/turntable-00.png`](./lineup/turntable-00.png) … [`turntable-05.png`](./lineup/turntable-05.png) | 1600×1000, HUD off, six views over 1.5 s while the chase camera orbits the plate. Thickness and skirt read on the edge-on frames. | captured 2026-11-06 |
+| **After — wide** | [`lineup/after-foundry-wide-1600.png`](./lineup/after-foundry-wide-1600.png) | 1600×1000, HUD off, gameplay chase camera. The finished foundry plate sits **bottom-centre** (≈21% of frame width) with its light deck, dark channel, hazard dashes and lens bar; the ringed giant reads lit from the upper-left. | captured 2026-11-06 |
+| **After — plate close** | [`lineup/after-plate-close-1600.png`](./lineup/after-plate-close-1600.png) | 1600×1000, HUD off, **isolated capture camera aimed at the plate's own bounding-box centre** (not the shipped photo camera). The plate spans **62.3% of the frame width** (measured from the projected box corners, `CAPTURE.json`), showing the skirt, clamp rails, recessed channel, working-edge safety band and lamp-housing lens. | captured 2026-11-07 |
+| **After — turntable** | [`lineup/turntable-00.png`](./lineup/turntable-00.png) … [`turntable-05.png`](./lineup/turntable-05.png) | 1600×1000, HUD off, six orbit views at 60° steps and +24° elevation, camera aimed at the plate centre. Widths measure 62.0–77.2% (the long-axis views are the wider pair). The plate's top face, clamp rails and channel change with the yaw. | captured 2026-11-07 |
+| **After — edge-on** | [`lineup/turntable-edge.png`](./lineup/turntable-edge.png) | 1600×1000, camera aimed at the plate centre at **+6° elevation** (62.7% width). Thickness, foundation skirt and the dashed working-edge band read edge-on. | captured 2026-11-07 |
+| **After — underside** | [`lineup/turntable-underside.png`](./lineup/turntable-underside.png) | 1600×1000, camera aimed at the plate centre at **−24° elevation** (62.6% width). The bottom face and the skirt's lower band read from below. | captured 2026-11-07 |
+
+The earlier turntable claim was false: those six frames moved the **ship** while the chase camera
+kept its yaw, so every frame showed the same top face. They are replaced by the aimed orbit above;
+`turntable-edge.png` / `turntable-underside.png` are the frames a chase camera can never produce.
+
+## Prop close-ups (second review)
+
+| Prop | File | Camera / measured width |
+|---|---|---|
+| Gate post | [`lineup/close-gate-1600.png`](./lineup/close-gate-1600.png) | live foundry prop, aimed camera at 35° yaw / 20° elevation; the post is framed vertically, 13.1% of frame width (58% of height). Cap lamp visible; footprint inside the hex proxy. |
+| Furnace | [`lineup/close-furnace-1600.png`](./lineup/close-furnace-1600.png) | **isolated factory render** (the live furnace only materializes on `furnace_active`/`boss` phases); 44.7% width. Brown kiln block with the ember mouth. |
+| Shutter / block | [`lineup/close-shutter-1600.png`](./lineup/close-shutter-1600.png) | **isolated factory render** (the live shutter only materializes on the shutter phases); 53.2% width. Light deck, mid clamp rails, dark channel, hazard dashes and work lamp. |
+| Crate block | [`lineup/close-block-1600.png`](./lineup/close-block-1600.png) | **isolated factory render**; 53.2% width. The same three-value block deck at the crate datum. |
+
+The isolated frames are labeled as such in [`CAPTURE.json`](./CAPTURE.json): they render the
+factory's own `buildFoundryToy` output, not a staged gameplay entity. The live gate close-up is the
+ordinary room prop. The furnace/shutter/block close-ups are still real evidence of the shipped
+finish, but they are not player-route frames.
 
 Legacy frames kept for the record, **not proof**: `after-foundry-wide.png` (729×536, no HUD),
 `after-lineup-plate-ship-sky.png` (729×536 Swarm frame) and `after-plate-close.png` (mislabelled —
@@ -50,14 +71,28 @@ to keep the one-specimen batch contract.
 
 ## One sun
 
-The Helios giant's authored terminator is now `lightAngle: 2.55` (upper-left), matching the play key
-`(60, 140, 40)` through the 60° chase camera. `test/x1-one-sun.test.mjs` pins the agreement; the old
-`-0.72` would fail it.
+The renderer re-aims the play key per sector at the hero's `screenNdc`. Through the 60° chase
+camera (right = −X, up = +Z) that aimed light lands on screen at `(−ndcX, +ndcY)`. Every
+`PROFILE_BY_ID` hero now follows that same aimed direction, computed from its own authored
+`screenNdc`:
 
-## Independent image review (2026-11-06)
+| Sector | hero `screenNdc` | aimed `lightAngle` | dot vs aimed key |
+|---|---|---|---|
+| Helios | (0.58, 0.32) | 2.638 | 1.000 |
+| Vesta Forge | (0.44, 0.30) | 2.542 (was −0.6) | 1.000 (was −0.999) |
+| Veil Nebula | (−0.48, 0.22) | 0.430 (was −1.4) | 1.000 (was −0.257) |
+| Fringe / Io Reach | (−0.42, 0.28) | 0.588 (was 0.95) | 1.000 |
+| Pallas Drift | (−0.46, 0.30) | 0.578 | 1.000 |
+| Ceres Belt | (−0.44, 0.28) | 0.567 | 1.000 |
 
-Two independent image reviews (three review passes total) rejected the first capture on defects that
-were correct:
+`test/x1-one-sun.test.mjs` derives the expected angle from `screenNdc` for every profile and pins
+the old Vesta/Veil angles as failures. The old test only modelled Helios's construction key
+`(60,140,40)` and missed the renderer's per-sector re-aim.
+
+## Independent image review (2026-11-06, second pass 2026-11-07)
+
+Two independent image reviews (three review passes total) rejected the first capture on defects
+that were correct:
 
 1. **Capture was not at the stated camera.** 729×536 from the running shared checkout, ship ~35 px.
    The style bible's 144 WU bar is the Adventure chase camera; the Swarm frame is the wider S6
@@ -68,11 +103,22 @@ were correct:
 3. **The foundry plate outgrew its solid.** Skirt/clamp/housing/lamp protruded 1.25 WU above and
    0.55 WU below the collision slab. Fixed by merging the trim into the single vertex-coloured
    surface; `test/foundry-plate-contract.test.mjs` now measures the picture at the datum.
-4. **The Helios terminator contradicted the play key.** Fixed at the authored data.
+4. **The Helios terminator contradicted the play key.** Fixed at the authored data — and extended
+   to every hero in the second pass (see "One sun").
+5. **The turntable was a drive-by.** The second pass replaced it with an aimed orbit and a true
+   edge-on/underside pair (above). The old six frames are gone.
+6. **The close-up caption was 45%; the frame measured 41%.** The new aimed close-up measures
+   **62.3%** and the caption cites the measured number, not an eyeball.
+7. **The gate/block/shutter finish was one flat value.** The second pass gives each a single
+   vertex-coloured three-value body (light/mid/dark) plus the work lamp; the gate lamp footprint is
+   tested against the hex polygon, not just its AABB. Close-ups are in the table above.
 
 **Still open:** a matched pre-finish "before" at the same camera (the shared checkout cannot be
 reverted safely) and the E10 frame-time delta. The after frames are captured; the A/B is not
-controlled.
+controlled. **Owner approval is still open; nothing here grants it.** The foundry plate's lens bar
+is still painted (the deliberate one-draw batch contract), not a real emissive lamp; the law plate
+and the gate/block/shutter carry real lamps. The law plate's 9 draws / 6 materials remain a
+recorded exception to the bible's one-draw-per-material rule, not a measured win.
 
 ## What the owner is approving
 

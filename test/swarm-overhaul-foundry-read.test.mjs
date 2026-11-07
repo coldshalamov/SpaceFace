@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createVisualFactory, syncSwarmThreatPlate } from '../src/render/visualFactory.js';
+import { foundryFurnitureProxy, foundryFurnitureShape } from '../src/data/foundryFurniture.js';
 
 function hostile(team, radius) {
   return { id: `ship-${team}`, type: 'ship', team, radius, alive: true };
@@ -317,11 +318,12 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
   const kinds = {
     // X1: the bank plate is one vertex-coloured steel deck (value lives in the colour
     // attribute, not the base colour); the animated/solid furniture is a machined box or
-    // cylinder with one small work lamp at most, never a lit station.
-    plate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true },
-    gate: { color: 0x2c2926, geo: 'CylinderGeometry' },
+    // cylinder with one small work lamp at most, never a lit station. Gate/block/shutter carry
+    // the same three-value deck in their one body mesh (X1 third review).
+    plate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.72, metalness: 0.38 },
+    gate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.82, metalness: 0.18 },
     furnace: { color: 0x3a2418, geo: 'ExtrudeGeometry' },
-    crate: { color: 0x2c2926, geo: 'ExtrudeGeometry' },
+    crate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true, roughness: 0.82, metalness: 0.18 },
   };
   for (const [kind, expect] of Object.entries(kinds)) {
     const root = foundry(kind);
@@ -333,6 +335,7 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
     let sawBody = false;
     let sawMouth = false;
     let lamps = 0;
+    let lampMesh = null;
     for (const mesh of meshes) {
       assert.equal(mesh.isSprite, undefined);
       assert.equal(mesh.isPoints, undefined);
@@ -348,6 +351,7 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
       // X1 §3.4: a working prop may carry one real lamp; it is not the body's value.
       if (mat.name === 'sf-arena-lamp') {
         lamps += 1;
+        lampMesh = mesh;
         assert.notEqual(mat.emissive.getHex(), 0, `${kind} lamp is a real emitter`);
         continue;
       }
@@ -359,18 +363,23 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
           // White base colour is the vertex-colour carrier; the authored deck paint must
           // still stay below a lit white surface.
           assert.equal(mat.vertexColors, true);
-          assert.equal(mat.roughness, 0.72);
-          assert.equal(mat.metalness, 0.38);
+          assert.equal(mat.roughness, expect.roughness);
+          assert.equal(mat.metalness, expect.metalness);
           const colors = mesh.geometry.getAttribute('color');
           assert.ok(colors && colors.count > 0, `${kind} carries its value in the colour attribute`);
           // Only the lamp lens bar may read as a bright surface; every other band is paint.
           let brightVertices = 0;
+          const distinct = new Set();
           for (let i = 0; i < colors.count; i++) {
             const peak = Math.max(colors.getX(i), colors.getY(i), colors.getZ(i));
             if (peak > 0.78) brightVertices++;
+            distinct.add(`${colors.getX(i).toFixed(3)}:${colors.getY(i).toFixed(3)}:${colors.getZ(i).toFixed(3)}`);
           }
           assert.ok(brightVertices / colors.count <= 0.15,
             `${kind} deck paint stays below a lit white surface (lens only)`);
+          if (kind !== 'plate') {
+            assert.ok(distinct.size >= 3, `${kind} paints the light/mid/dark three-value deck, got ${distinct.size}`);
+          }
         } else {
           assert.equal(mat.color.getHex(), expect.color);
           assert.equal(mat.roughness, 0.94);
@@ -390,5 +399,48 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
     assert.ok(lamps <= 1, `${kind} carries at most one work lamp`);
     assert.equal(sawBody, true, `${kind} has a matte body`);
     assert.equal(sawMouth, kind === 'furnace');
+    if (kind === 'gate' || kind === 'crate') {
+      assert.ok(lampMesh, `${kind} has a real work lamp`);
+      const bodyMesh = meshes.find((m) => m.material.name !== 'sf-arena-lamp');
+      const bodyBox = new THREE.Box3().setFromObject(bodyMesh);
+      const lampBox = new THREE.Box3().setFromObject(lampMesh);
+      assert.ok(lampBox.max.y > bodyBox.max.y + 0.05,
+        `${kind} lamp must read above the deck, not be buried in the body`);
+    }
   }
+});
+
+test('the gate lamp sits inside the hex contact polygon, not merely inside its AABB', () => {
+  const radius = 16;
+  const entity = {
+    id: 'survival-room-gate', type: 'station', radius,
+    data: { roomOwner: 'survival-arena', roomKind: 'gate' },
+  };
+  const root = createVisualFactory().build(entity);
+  const proxy = foundryFurnitureProxy(entity);
+  assert.equal(proxy?.id, 'foundry:furniture-gate');
+  const lamp = root.getObjectByName('sf-arena-lamp');
+  assert.ok(lamp, 'the gate carries its work lamp');
+  root.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(lamp);
+  const hull = proxy.compactHull.map((p) => ({ x: p.x * radius, z: p.z * radius }));
+  const inside = (x, z) => {
+    let hit = false;
+    for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+      const a = hull[i], b = hull[j];
+      if ((a.z > z) !== (b.z > z)
+        && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) hit = !hit;
+    }
+    return hit;
+  };
+  for (const [x, z] of [
+    [box.min.x, box.min.z], [box.min.x, box.max.z],
+    [box.max.x, box.min.z], [box.max.x, box.max.z],
+  ]) {
+    assert.ok(inside(x, z), `gate lamp corner ${x.toFixed(2)},${z.toFixed(2)} leaves the hex`);
+  }
+  const shape = foundryFurnitureShape(entity);
+  // The cap lamp may sit slightly proud of the top face; the contact contract is the planar hex.
+  assert.ok(box.max.y <= shape.body.height * shape.scale / 2 + 0.35,
+    'gate lamp housing stays on the post cap, not floating above it');
 });

@@ -2289,8 +2289,11 @@ export const input = {
     acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
       this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'));
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
-    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
+    // press MEANS in each state (arm a spool, cancel a spool, disengage a burn). The pad press
+    // asks the SAME context allowance as the key: a healthy fight cannot arm the long burn, and
+    // a pilot under the low-hull line can flee on either device.
     const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected()
+      && contextActionAllowed(state, 'travelBurn')
       && this._gamepadLifecycleActionAllowed('travelBurn')
       && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;

@@ -97,11 +97,12 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
           kind: 'planet', type: 'gas', ring: true, frac: 0.32,
           offset: [0.18, 0.16],
           screenNdc: [0.58, 0.32],
-          // One sun: the play key is the DirectionalLight at (60, 140, 40). Through the 60°
-          // chase camera (screen right = -X, screen up = +Z) that key reads upper-left, so the
-          // painted terminator must too: atan2(40, -60) ≈ 2.55 rad. The old -0.72 lit the
-          // giant from the right and broke the one-sun rule in the X1 proof frame.
-          lightAngle: 2.55, ringTilt: 0.16,
+          // One sun: renderer._aimKeyLightAtSignatureHero places the key on this hero's authored
+          // screen side (world x = +ndcX, world z = -ndcY). The 60° chase camera's real screen basis
+          // is right = -X, up = +Z, so the key lands on screen (-ndcX, +ndcY) and the painted
+          // terminator must follow that same aimed direction: atan2(ndcY, -ndcX) ≈ 2.64 rad.
+          // test/x1-one-sun.test.mjs computes this from screenNdc for every PROFILE_BY_ID hero.
+          lightAngle: 2.638, ringTilt: 0.16,
         },
       },
     },
@@ -231,7 +232,8 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
           kind: 'planet', type: 'rocky', ring: false, frac: 0.13,
           offset: [-0.28, 0.16],
           screenNdc: [-0.42, 0.28],
-          lightAngle: 0.95, ringTilt: 0,
+          // Aimed key: atan2(0.28, 0.42) — the sun sits on the same screen side as this body.
+          lightAngle: 0.588, ringTilt: 0,
         },
       },
     },
@@ -275,7 +277,8 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         signatureHero: {
           kind: 'planet', type: 'ice', ring: true, frac: 0.13,
           offset: [-0.18, 0.28], screenNdc: [-0.48, 0.22],
-          lightAngle: -1.4, ringTilt: -0.4,
+          // Aimed key: atan2(0.22, 0.48); the old -1.4 read as a lower/opposite sun.
+          lightAngle: 0.430, ringTilt: -0.4,
         },
       },
     },
@@ -393,7 +396,8 @@ const PER_SECTOR_RIGS = Object.freeze({
       signatureHero: {
         kind: 'planet', type: 'rocky', ring: false, frac: 0.12,
         offset: [0.3, 0.2], screenNdc: [0.44, 0.30],
-        lightAngle: -0.6, ringTilt: 0,
+        // Aimed key: atan2(0.30, -0.44). The old -0.6 was the opposite limb (-0.999 dot).
+        lightAngle: 2.542, ringTilt: 0,
       },
     } },
   // Pallas Drift runs cold: blue-white key, minimal bounce — an ice body hangs over the drift.
@@ -404,7 +408,8 @@ const PER_SECTOR_RIGS = Object.freeze({
       signatureHero: {
         kind: 'planet', type: 'ice', ring: false, frac: 0.12,
         offset: [-0.3, 0.2], screenNdc: [-0.46, 0.30],
-        lightAngle: 0.7, ringTilt: 0,
+        // Aimed key: atan2(0.30, 0.46) — same side as the body's screenNdc.
+        lightAngle: 0.578, ringTilt: 0,
       },
     } },
   // Sker Haven: sodium yard light over the throne works — amber key. The Throne itself is the
@@ -423,7 +428,8 @@ const PER_SECTOR_RIGS = Object.freeze({
       signatureHero: {
         kind: 'planet', type: 'rocky', ring: false, frac: 0.11,
         offset: [-0.28, 0.18], screenNdc: [-0.44, 0.28],
-        lightAngle: 0.8, ringTilt: 0,
+        // Aimed key: atan2(0.28, 0.44) — the sun sits on the body's own screen side.
+        lightAngle: 0.567, ringTilt: 0,
       },
     } },
 });

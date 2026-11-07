@@ -16,6 +16,7 @@
 // Pure. No DOM, no state writes.
 
 import { isSwarmGlass, swarmCalloutText } from './swarmGlass.js';
+import { isMapContext } from '../data/inputContexts.js';
 
 // The transient stack is the receipt lane's own `RECEIPT_MAX` (2), which already sits inside
 // S2's three-line budget; there is no second Adventure constant to keep in sync.
@@ -47,24 +48,14 @@ export function receiptSource(kind, channel) {
   return MECHANICAL_KINDS.has(k) ? 'system' : k;
 }
 
-function mapScreenOpen(state) {
-  const ui = state && state.ui;
-  if (!ui) return false;
-  // X5's map context predicate; the map owns the screen, so the flight glass abstains.
-  if (ui.mapOpen === true || ui.screen === 'map') return true;
-  const stack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
-  return stack.some((screen) => {
-    const id = typeof screen === 'string' ? screen : (screen && (screen.id || screen.screenId));
-    return id === 'map' || id === 'galaxyMap' || id === 'localmap' || id === 'starmap';
-  });
-}
-
 export function isAdventureFlight(state) {
   if (!state || state.mode !== 'flight') return false;
   if (isSwarmGlass(state)) return false;
   if (state.ui && state.ui.docked === true) return false;
   // A chart overlay keeps mode 'flight' underneath; it is a map screen, not the flight glass.
-  if (mapScreenOpen(state)) return false;
+  // One predicate with inputContexts: ui.mapOpen, mode 'map', ui.screen and the screen stack all
+  // resolve the same surface, so the glass and the input context cannot disagree.
+  if (isMapContext(state)) return false;
   return true;
 }
 

@@ -79,7 +79,11 @@ synthesized voice or a parameter, and no `play()` call is their owner.
 - **1569 WAVs** in `assets/audio/` across 15 families (samples + voices + music).
 - Runtime music is **synthesized** (`_seqCalm`/`_seqTense`/`_seqCombat`/`_seqDocked`/`_seqBoss`); the
   five WAVs are the authored reference loops, fetched tier-2 on first use, and the evidence the
-  stranger-hum and note-window tests read.
+  stranger-hum and note-window tests read. **The heard `_seq*` forms are short loops; the heard
+  boss is ~9.6 s, not the 16 s WAV development.** Do not cite the WAV's four-pass form as the
+  heard score.
+- **Open (not raised):** 18 of the 30 census rows still have one body, and the encoded sample
+  library is **13.92 MiB across 157 samples** against its **12 MiB** ceiling.
 
 ## Next X4 pass (not landed)
 

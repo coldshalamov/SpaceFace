@@ -193,12 +193,13 @@ Lane 6 of `finish/MASTER_PLAN.md` is active. Diagnosis memos: `finish/campaigns/
 |---|---|---|---|
 | W1 implementation | Lane 5 | `src/data/missions.js` (JOURNEY_ACTS table + storyBeatTitle act prefix), `src/systems/missions.js` (act-turn toast prefix, journeyAct import), `src/ui/station/stationMissionModel.js` (story-first recommendation), `src/systems/stationContacts.js` (March reconciliation listener + handler), `finish/campaigns/W1/*` | Single writers preserved: spine/waypoints untouched. Heist re-posting re-scoped: scenes are Tethys-physical — correction recorded in JOURNEY.md; facility variants are W2 work. |
 
-<!-- X3 finding handed to W5, 2026-11-06: the onboarding store sentence is the exact
-     multi-sentence prose case X3's Adventure glass rejects. `src/onboarding/storeSentence.js`
-     still speaks "Light ships are ammunition. Swing a rock. Keep the speed." over rescue-start
-     flight (via `systems/onboarding.js` `_showStoreSentenceOnce` → voice, not the receipt lane).
-     W5 owns the first hour: either route the line through the glass policy or shorten the
-     objective-card copy to <=3 words. Do not add another receipt filter for it. -->
+<!-- X3 finding handed to W5, 2026-11-06; re-confirmed by the second review 2026-11-07: the
+     onboarding store sentence is the exact multi-sentence prose case X3's Adventure glass rejects.
+     `src/onboarding/storeSentence.js` still speaks "Light ships are ammunition. Swing a rock. Keep
+     the speed." over rescue-start flight (via `systems/onboarding.js` `_showStoreSentenceOnce` →
+     voice, not the receipt lane). W5 owns the first hour: either route the line through the glass
+     policy (`attentionAdmits`) or shorten the objective-card copy to <=3 words. `comms.js` cannot
+     stop a toast, so this remains open on the glass; do not add another receipt filter for it. -->
 
 <!-- Lane 3 RENDERER (master plan) - E6 landed, E7 diagnosed, 2026-11-06 -->
 ## Lane 3 RENDERER - master-plan campaign E6 (landed) / E7 (diagnosed)

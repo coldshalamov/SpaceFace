@@ -1,9 +1,9 @@
 <!-- LIFETIME: CAMPAIGN -->
 # X4 — Sound and music: status
 
-**State: the boss stem has an audible body and the loop develops; the 10-minute listen, the blind
-naming check and the unresolved census rows remain open.** Written 2026-11-06, revised after the
-independent X4 review pass.
+**State: the boss stem has an audible body; the authored WAV reference develops, but the heard
+sequencer is still a short loop. The 10-minute listen, the blind naming check and the unresolved
+census rows remain open.** Written 2026-11-06, revised after the second independent X4 review pass.
 
 ## Done
 
@@ -15,7 +15,14 @@ independent X4 review pass.
 - `_seqBoss` is a different piece, not the fight louder: 100 BPM (combat 130), a two-bar Am/Dm
   phrase, half-time kick, long bass, and the layer set `stem_e` advertises — choir (slow-attack
   triad), brass (short filtered answer), strings (low pedal). The Warden motif (A D A F#) plays on
-  its own two-bar grid.
+  its own two-bar grid. **The heard form is a ~9.6 s loop, not the 16 s WAV development**; scope
+  the "develops" claim to the WAV until the sequencer is ported.
+- **Open motif defect (second review):** `_playThemeMotif` skips bar 1 (`bar % everyBars !== 0`),
+  so the heard two-bar boss motif only plays the bar-0 A2/D2 figure and never the F#3 answer. The
+  current test calls `_seqBoss` with `step % 16`, so its two "bars" are both totalBar 0 and cannot
+  see it. Fix: for `phraseBars > 1`, play every bar and use `(bar % phraseBars)` for the step; add
+  a 64-step frequency record (A2/D2/A2/F#3 at steps 0/8/16/24). Not landed in this pass (audio
+  source is outside the X write set); recorded here rather than claiming a developed heard score.
 - Boss arrival mid-fight now moves the E fader: the boss maps to the `combat` music state, so the
   equal-state branch of `_recomputeMusic` was the only place its authored row could land. That
   branch now applies the authored boss row when the boss mixes in (and puts the fight mix back when
@@ -31,10 +38,11 @@ independent X4 review pass.
   sixteen steps — the review's `bar * 4` would have moved the boss's bar-1 note by one beat.
   Measured on `theme_boss.wav`: A2 energy **0.1825** vs F#3 **0.0018** in 0.05–0.5 s, and F#3
   **0.2119** vs A2 **0.0379** in 3.7–4.5 s. The F# is the second bar's answer, not the opening.
-- The 16 s loop develops instead of tiling: four passes (A written, B the same line walked
-  backwards with a fill, A with a fill and a held fifth, C from the second degree with the pad on
-  the fourth), each a phrase long. Measured autocorrelation of `theme_travel.wav` at 4.00 s fell
-  from **0.976 to 0.055**; no stem exceeds **0.19** at 2/3/4 s.
+- The 16 s **WAV reference** develops instead of tiling: four passes (A written, B the same line
+  walked backwards with a fill, A with a fill and a held fifth, C from the second degree with the
+  pad on the fourth), each a phrase long. Measured autocorrelation of `theme_travel.wav` at 4.00 s
+  fell from **0.976 to 0.055**; no WAV exceeds **0.19** at 2/3/4 s. This is a claim about the
+  authored WAV reference, not the heard `_seq*` runtime, which remains a short loop.
   `node assets/audio/generate-themes.mjs` → `15 authored themes, 6251 KiB total`;
   `--check` reports byte-identical.
 - The boss tempo is 100 (was 132) with a two-bar phrase and rests; station is 72. The **authored
@@ -45,7 +53,10 @@ independent X4 review pass.
   it — a different musical layer, not the station 116/72 drift the review found.
 - Residency: the five 16 s loops are tier 2 and are **no longer force-acquired** at audio-graph
   build (~5.1 MB encoded, ~10 MB decoded). `acquireThemeStem(samples, state)` fetches one stem when
-  its state is first heard.
+  its state is first heard. **Open:** the heard score is `_seq*`, so nothing consumes that lazy
+  fetch today; the 1 MB fetch/decode is dead weight at first state use until a real listening mode
+  consumes it. Do not count it as a shipping win. `_startStem` also copies
+  `scoreDirector.STEM_BPM` inline; it should import the table. Both are recorded, not fixed here.
 
 ### Census and variants
 - The census counted emitters, not cues. The real post-gate tap
@@ -62,15 +73,18 @@ independent X4 review pass.
 
 - **The 10-minute ordinary-route recording and the blind naming check** are not recorded. This is
   the X4 acceptance step; the shared tree's boot was intermittent.
-- **18 of the 30 census rows still have one body**: `physics:impact` severities, `projectile:hit`,
-  `combat:damage`, `projectile:nearMiss`, `combat:tumbled`, `combat:statusApplied`, the massline
-  verbs, `loot:drop`, the run awards, `mining:tick`, `asteroid:chunked`, cargo pickup/jettison,
-  dock/undock and mission accept/complete. They are named in `AUDIO_CENSUS.md`; only the 19 rows
-  that actually reach a `play()` call have the rotation.
+- **18 of the 30 census rows still have one body** (open, not raised): `physics:impact` severities,
+  `projectile:hit`, `combat:damage`, `projectile:nearMiss`, `combat:tumbled`,
+  `combat:statusApplied`, the massline verbs, `loot:drop`, the run awards, `mining:tick`,
+  `asteroid:chunked`, cargo pickup/jettison, dock/undock and mission accept/complete. They are named
+  in `AUDIO_CENSUS.md`; only the 19 rows that actually reach a `play()` call have the rotation.
+  The **sample library is 13.92 MiB across 157 samples against a 12 MiB payload ceiling** — also
+  open; the ceiling is not being raised silently. The five 16 s stems are 5.12 MiB of it.
 - **The runtime score is synthesized, not the WAVs.** The five 16 s files are the authored
   reference loops (tier 2, test evidence, the listening/motif source); the heard stems come from
   `_seq*` sequencers and the motif data. The earlier "five authored stems are the heard score"
-  claim was wrong and is retracted here.
+  claim was wrong and is retracted here. **The heard `_seq*` forms are short loops (~9.6 s for the
+  boss); the 16 s development claim belongs to the WAV, not the heard score.**
 - No live listening pass against `AUDIO_BRIEF.md` yet.
 
 ## Known red in the shared tree (not this pass's contract)
