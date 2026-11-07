@@ -23,7 +23,7 @@ the implementation is optimal.
 | Campaign | Lane | Claimed | Verified here | Next action |
 |---|---|---|---|---|
 | E10 frame truth | 1 | DONE | pending review | gate A |
-| E1 playout buffer | 1 | Verify MET | pending review | gate A |
+| E1 playout buffer | 1 | Implementation landed; **Verify NOT met** (1× browser re-record + new-servo after-video open) | fix landed `bd1b166` | gate A re-review |
 | E5 shared memory | 1 | Landed (Electron probe open) | partial | gate A |
 | E9 load in seconds | 1 | Diagnosed only | no | implement |
 | E3 mode-scoped sim | 2 | COMPLETE | pending review | gate C |
@@ -121,7 +121,7 @@ landed for data alone.
 
 | Gate | Scope | State |
 |---|---|---|
-| A | E10 + E1 + E5 | **fix landed** (`bd1b166`), 77/77 E1 cohort; browser 1x re-record and E5 live shell receipt still open. Re-review required. |
+| A | E10 + E1 + E5 | **fix landed** (`bd1b166`), **76/76** E1 cohort at HEAD (77/77 at the fix commit before Q4 removed two legacy tests); browser 1× re-record and E5 live shell receipt still open. Re-review: A1 says code correct but claims must be corrected; A2/A3 pending. |
 | B | E6 | **fix landed** (`84bfa5`..`53312b`), 97/97 + 103/103; single after-run is a measured FAIL (`visibleUnready 3`, `leftUndrawn 5`) on a contaminated tree. Clean-tree re-measure + re-review required. |
 | C | E3 + E2 profiler | **fix landed** (`762eb19` + `3196b76`), 119/119, four gates green, 47-A **v25** content-only for economy slicing. Bars now **p95 13.79 / p99 17.67 / max 28.99** vs 8/12/25. Re-review in flight. |
 | D | P1 + P2 | **fix landed** (`02b5ff11`), 25/25 focused, New Game tab order PASS, UI imports 55/0. Re-review in flight. |
@@ -136,7 +136,7 @@ landed for data alone.
 - `npm run test:fast`: **39/39 in ~53 s**.
 - `check:baseline`: **17/17 links green**, wall 128 s over the 90 s budget only under fixer CPU
   contention; no link failed.
-- E1/E10 cohort **77/77**, `check:smooth-flight` **48/48**.
+- E1/E10 cohort **76/76 at HEAD** (77/77 at `bd1b166` before Q4 removed two legacy tests), `check:smooth-flight` **48/48**.
 - E6 focused **97/97**, supporting **103/103**.
 - E2/E3 combined **119/119**; `check-sg02-*`, `check-sg06-*`, `check-depth-program-k1` green.
   900-tick/211-body profile: **mean 8.74 / p95 13.79 / p99 17.67 / max 28.99 ms**; economy slicing on
