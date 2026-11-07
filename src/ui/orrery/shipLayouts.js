@@ -79,9 +79,21 @@ ${W} .sx-sw-row .k-row__sub { ${LABEL} font-size:12px !important; letter-spacing
 ${W} .sx-sw-row .sx-sw-row__flag { ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; background:none !important; border:0 !important; }
 
 /* ---- the nameplate: the hull's word in the display role, the rename field a lit rule ----------- */
-${W} .sx-sw__nameplate { isolation:isolate; }
-${W} .sx-sw__nameplate::before { content:""; position:absolute; z-index:-1; inset:-20px -34px -16px -24px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(${POOL} / .72), rgb(${POOL} / .48) 60%, rgb(${POOL} / 0)); }
+/* ui-polish-408: nameplate wears the same hairline card as .sx-sw__stats / .sx-sw__side (1px bone
+   ~18% / radius 10 / padded). It sits over the hull stage, so the card keeps a settled pool fill
+   under the faint bone wash instead of the unbound shade-pool, whose feathered edges let forge
+   glow run through the crest. Densify radius 8→6 on short/narrow, matching the sibling cards. */
+${W} .sx-sw__nameplate { isolation:isolate; box-sizing:border-box; width:fit-content; max-width:100%;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:14px 18px 16px !important; }
+${W} .sx-sw__nameplate::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__nameplate { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__nameplate { padding:10px 14px 12px !important; } }
+@media (max-width:560px) { ${W} .sx-sw__nameplate { padding:12px 14px 14px !important; } }
 ${W} .sx-sw__name { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800 !important;
   font-weight:800 !important; font-size:clamp(30px, min(2.7vw, 4.8vh), 46px) !important; line-height:1 !important; letter-spacing:.005em !important;
   color:${INK} !important; text-shadow:0 1px 12px rgb(${POOL} / .6) !important; }
@@ -136,7 +148,7 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__main { display:flex !important; flex-direction:column !important; gap:8px !important;
     min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${W} .sx-sw__main > .sx-sw__nameplate { position:relative !important; inset:auto !important; flex:none !important;
-    width:100% !important; max-width:none !important; padding:0 !important; }
+    width:fit-content !important; max-width:100% !important; /* hairline card hugs crest; keep base padding */ }
   ${W} .sx-sw__main > .sx-sw__nameplate .sx-sw__blurb { max-width:100% !important; font-size:14px !important;
     line-height:1.4 !important; max-height:none !important; overflow:visible !important; }
   ${W} .sx-sw__main > .sx-sw__stage { flex:0 0 320px !important; height:320px !important;
