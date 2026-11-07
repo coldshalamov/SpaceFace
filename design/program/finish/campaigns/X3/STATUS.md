@@ -26,9 +26,9 @@
   lane’s `RECEIPT_MAX = 2` already sits inside S2’s three-line budget.
 - Focused checks at HEAD: `test/adventure-glass.test.mjs` 7/7, `test/swarm-glass.test.mjs` 9/9,
   `test/fb-stunts-named-in-adventure.test.mjs` 3/3, `test/glass-474-494.test.mjs` 4/4,
-  `test/x3-adventure-presenters.test.mjs` 6/6 (drives the real Gyre, Cluster, massline, discovery
-  and comms presenters), plus `charon-supply-approach` 14/14, `discovery-plate` 3/3 and
-  `cv-throw-1-release-verdict` 5/5.
+  `test/x3-adventure-presenters.test.mjs` 7/7 (drives the real Gyre, Cluster, massline verdict,
+  acquisition bracket, discovery and comms presenters), plus `charon-supply-approach` 14/14,
+  `discovery-plate` 3/3 and `cv-throw-1-release-verdict` 5/5.
 - Live capture from the current working tree: `.devshots/x3-after-review/flight_z144.png` and
   `flight_z58.png`
   (1600×1000, `node scripts/flight-look.mjs --hud --out=.devshots/x3-after-review`). The frame
