@@ -96,13 +96,33 @@ ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none
    Requires opened under the Back footer. The costs stand side by side as words and figures, the
    arrangement the short frames already use (the "% held" line says what the gauge draws), so the
    unlock list and Requires sit higher on the first paint. */
+/* ui-polish-419: after 232 the Unlocks art rows still left "No prerequisites." under the sticky
+   Back foot at 390×844 (REQUIRES heading visible, sentence clipped). Compress unlock art + dossier
+   chrome and pad the side past the foot so Requires clears on first paint — same densify as 367
+   gave mid-short desktop (≥761 × ≤640). */
 @media (max-width:560px) and (min-height:601px) {
-  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:16px; row-gap:0; margin:4px 0 8px !important; }
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:16px; row-gap:0; margin:4px 0 6px !important; }
   ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
   ${T} .con-cost__gauge { display:none; }
   ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
-  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost dd { font-size:22px; margin-top:1px; }
   ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+  ${T} > .con-side { padding-bottom:72px; scroll-padding-bottom:72px; }
+  ${T} .con-dossier { gap:4px; }
+  ${T} .con-dossier__kicker { font-size:12px; letter-spacing:.18em; }
+  ${T} .con-dossier__name { font-size:22px; line-height:1.05; }
+  ${T} .con-dossier__state { font-size:13.5px; line-height:1.25; }
+  ${T} .con-actions { margin:4px 0 2px; }
+  ${T} .con-actions .orr-lampkey { min-height:36px !important; }
+  ${T} .con-caps { margin:2px 0 0; font-size:12px; letter-spacing:.16em; }
+  ${T} .con-rows { margin:0 !important; }
+  ${T} .con-row { padding:1px 0; }
+  ${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:40px minmax(0, 1fr) auto; }
+  ${T} .con-rows:has(.con-row__img) .con-row__art { width:40px; height:26px; }
+  ${T} .con-row__art .con-row__img { width:24px; height:34px; }
+  ${T} .con-row__name { font-size:13px; line-height:1.2; }
+  ${T} .con-row__sub { font-size:12px; letter-spacing:.12em; }
+  ${T} .con-sentence { font-size:12.5px; line-height:1.3; }
 }
 /* ui-polish-367: mid-short desktop (761+ × ≤640, e.g. 960×540) — after the side-by-side costs
    of ui-polish-231 the Unlocks art rows and Requires still ran ~68px past the side scrollport,
