@@ -111,8 +111,16 @@ activity-classification 12, activity-runtime 32, capital-boss-frozen-clock 8.
 `node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json
 --expect test/47a.telemetry.save-v23.expected.json --hash --repeat 5 --reload-at 600`
 
+With this commit plus the working tree as it stood at 19:47:
+
 → `134e1e7f8296ed4c462d620421d8ec7102886ec629a39c9a0cd778a1f260aad5`, byte-identical to
 `test/47a.telemetry.save-v23.expected.json` (`deterministic: true`, exit 0).
+
+Shared-checkout caveat: a concurrent W1 Journey lane then wrote uncommitted
+`src/systems/missions.js` / `missionStoryOps.js` act fields. The same tape now reads
+`1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331`; that drift comes from the
+foreign files, not from this commit. Do not re-record the v23 reference to hide it. Re-run after
+that lane settles or on a clean checkout.
 
 ## 4. Non-claims
 

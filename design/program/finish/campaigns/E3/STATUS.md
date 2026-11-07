@@ -59,7 +59,11 @@ not made here. A Crucible worker profile is the next evidence step if that claim
 - `test/sim-step-profiler.test.mjs`: **5/5**.
 - Core clock/manifest/activity set (see `VERIFY.md`): **119/119** across 11 files.
 - `test/activity-runtime.test.mjs`: **32/32**; `test/activity-classification.test.mjs`: **12/12**.
-- 47-A determinism hash unchanged: `134e1e7f8296ed4c462d620421d8ec7102886ec629a39c9a0cd778a1f260aad5`.
+- 47-A at 19:47 (this commit plus the then-current tree): expected hash
+  `134e1e7f8296ed4c462d620421d8ec7102886ec629a39c9a0cd778a1f260aad5`, `deterministic: true`.
+  A concurrent W1 Journey lane then wrote uncommitted `missions.js`/`missionStoryOps.js` act
+  fields; the tape now drifts to `1fedbd09…` from those foreign files, not this commit. See
+  `VERIFY.md` §3.
 
 ## Write claim
 

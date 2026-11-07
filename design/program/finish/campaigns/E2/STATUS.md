@@ -64,6 +64,14 @@ as the run's raw record — the normalised series is what `probe-step-acceptance
 `lazySg02Snapshot` on and the `effectiveEq` de-duplication on. Each of those was bisected
 individually against the reference: all three are hash-neutral, as designed.
 
+Shared-checkout caveat (2026-11-06 19:47–19:50): the passing run was taken with this sim-core
+commit plus the then-current working tree. A concurrent W1 Journey lane then wrote uncommitted
+changes to `src/systems/missions.js` and `src/systems/missionStoryOps.js` (act labels/fields on
+`state.missions`). Those foreign files are not in this commit, and the same tape now reads
+`1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331`. The determinism gate is red
+because of that uncommitted foreign work, not a sim-core change; do not edit the v23 reference to
+hide it. Re-run the tape after the mission lane settles or on a clean checkout.
+
 ## Next
 
 1. Flip `economySlicing` on and generate the versioned 47-A reference (`save-v24`), leaving v23 in
@@ -86,6 +94,7 @@ individually against the reference: all three are hash-neutral, as designed.
 - `src/systems/survivalArena.js` in the working tree carries another lane's S9 crush/slam work; the
   E2 commit deliberately contains only this campaign's two hunks in that file (import + telemetry
   opt-in). Do not sweep the file.
-- The 47-A hash was re-verified in this pass with the working tree as it stands (including the
-  telemetry-off default and the lazy snapshot accessor): exact expected hash, `deterministic: true`,
-  exit 0.
+- The 47-A hash was re-verified in this pass at 19:47 with the sim-core commit plus the then-current
+  working tree: exact expected hash, `deterministic: true`, exit 0. A concurrent W1 Journey lane
+  then wrote uncommitted `src/systems/missions.js` / `missionStoryOps.js` act fields; the same tape
+  now reads `1fedbd09…`. That drift is foreign to this commit; do not edit the v23 reference.
