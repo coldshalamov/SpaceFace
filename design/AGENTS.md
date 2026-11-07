@@ -1,17 +1,20 @@
 <!-- LIFETIME: STABLE -->
 # design/ agent orientation
 
-Do not read this directory wholesale. Start at `design/program/README.md` for current position and at
-`design/PLAN_REGISTRY.md` to select the smallest relevant plan family.
+Do not read this directory wholesale. Start at `program/finish/MASTER_PLAN.md` for the current
+campaigns and `program/finish/MASTER_LANES.md` for dispatch; use `design/PLAN_REGISTRY.md` to select
+the smallest relevant plan family. `program/NOW.md` records only live write claims.
 
 ## Authority
 
 1. Root `ARCHITECTURE.md` — technical contract.
 2. `VISION.md` — the owner's statement of the fantasy and UVP; wins on product emphasis.
 3. `GDD_2_0.md` — product pillars and intended experience.
-4. `program/` — verified status, admitted work, acceptance, integration, retained backlog.
-5. The specific activated plan/spec — task detail.
-6. Current code, checks, and player-route evidence — implementation truth.
+4. `program/finish/MASTER_PLAN.md` — current campaigns, order and finish criteria.
+5. `program/finish/MASTER_LANES.md` — current lane dispatch and path-collision map.
+6. `program/finish/EXECUTION_STATUS_2026-11-06.md` — live claimed/verified/next state.
+7. The specific activated plan/spec — task detail.
+8. Current code, checks, and player-route evidence — implementation truth.
 
 Archived documents, handoffs, reviews, worker packets, transcripts, and tool plans are history, not
 current authority. Superseded ADRs and retired plan suites live in git history — retrieve by commit,

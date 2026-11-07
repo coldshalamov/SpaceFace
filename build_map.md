@@ -1,9 +1,17 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Build Map
 
-> **Dispatch moved (owner, 2026-10-28):** the Finish Program in
-> [`design/program/finish/`](design/program/finish/README.md) is where agents get their job. Its three
-> lane boards name the open rows below; the rows here remain the detailed spec for those names.
+> **Dispatch is closed (owner, 2026-11-06).** The current program is the master plan in
+> [`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md); lane dispatch and
+> path collisions are in [`MASTER_LANES.md`](design/program/finish/MASTER_LANES.md), and live outcome
+> state is in [`EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
+> The rows below are **specification and history**, not a queue. Do not run `program-dispatch --next`
+> or start a row here as a new assignment.
+
+> **Earlier routing (owner, 2026-10-28):** the Finish Program in
+> [`design/program/finish/`](design/program/finish/README.md) is the outcome detail for the work the
+> master plan names. Its three boards name the open rows below; the rows here remain the detailed
+> spec for those names.
 
 <!-- strategic-chaos-foundations:start -->
 The owner-directed [Strategic Chaos program](design/program/strategic-chaos/README.md)

@@ -1,11 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace Performance Audit & Enhancement Playbook
 
+> **Precedence (owner, 2026-11-05/06):** the current Finish Program rulings authorize measured,
+> documented quality-tier sacrifices when a within-session A/B shows the frame win and a look check
+> still reads as SpaceFace (`design/program/finish/README.md` §2.1 and
+> `SMOOTH_PROGRAM_2026-11-05.md`). The same-picture rule below applies to optimizations that do not
+> intentionally change quality; it is not a blanket ban on the auto-selected quality tier.
+
 Current execution: [real-game campaign](../design/archive/perf/PERF_2026_10_14.md).
-The thresholds below are diagnostic prompts. Lowering default resolution, texture fidelity,
-bloom, shadows, particles or population is not an optimization accepted by the current
-same-picture contract. Separate callback cadence, world submission and simulation; an
-overlay's FPS panel alone cannot rule out a frozen world.
+The thresholds below are diagnostic prompts. For an optimization that does not intentionally change
+quality, lowering default resolution, texture fidelity, bloom, shadows, particles or population is
+not an accepted win. Separate callback cadence, world submission and simulation; an overlay's FPS
+panel alone cannot rule out a frozen world.
 
 Comprehensive operational guide and tooling reference for auditing, diagnosing, and enhancing runtime performance across SpaceFace using **Spector.js**, **stats-gl**, **Three.js `renderer.info`**, **MemLab**, and **`gltf-transform inspect`**.
 

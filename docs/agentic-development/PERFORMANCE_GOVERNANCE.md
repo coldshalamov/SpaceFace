@@ -1,6 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # Performance Governance for Agentic Development
 
+> **Precedence (owner, 2026-11-05/06):** the current Finish Program rulings authorize measured,
+> documented quality-tier sacrifices when a within-session A/B shows the frame win and a look check
+> still reads as SpaceFace (`design/program/finish/README.md` §2.1 and
+> `SMOOTH_PROGRAM_2026-11-05.md`). The same-picture law below governs optimizations that do **not**
+> intentionally change quality; it is not a blanket ban on the auto-selected quality tier.
+
 Performance in SpaceFace is a product property: the same authored game must remain responsive and smooth. This document gives the Central Brain a way to manage performance work without turning every optimization idea into an active project or accepting quality cuts as wins.
 
 It complements `design/archive/perf/PERF_BUDGET.md`, `design/archive/perf/PERF_OPTION_SPACE.md`, the PQ-129 evidence history and runtime-witness tooling. Those remain authoritative for their exact scopes.

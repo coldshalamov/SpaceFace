@@ -225,8 +225,17 @@ function frame(now):
 
 ### 2.3 `stepSim(dt)` — THE UNIFIED SIM UPDATE ORDER (authoritative)
 **Source of truth:** `src/runtime/authoritativeSystemManifest.js`
-(`PRODUCTION_INIT_ORDER` / `PRODUCTION_UPDATE_ORDER`). Generated navigation:
-`docs/SYSTEM_REGISTRY.md`. Do not re-list the full order here — it drifts.
+(`PRODUCTION_INIT_ORDER` / `PRODUCTION_UPDATE_ORDER`, plus `SYSTEM_MODE_DECLARATIONS`).
+Generated navigation: `docs/SYSTEM_REGISTRY.md`. Do not re-list the full order here — it drifts.
+
+**Mode-scoped execution.** Each system declares the simulation modes it runs in
+(`flight`, `swarm`, `docked`, `yard` or all). `src/core/catchupPolicy.js` builds one update queue
+per declared mode at boot; production dispatches the queue for the resolved mode instead of walking
+all 200+ systems every tick. A system that a mode does not declare is skipped, not guarded inside
+its own body. The mode is resolved from live state (`state.run.kind === 'survival'` for a Crucible
+run, `state.ui.docked` for a frozen dock, otherwise flight); unknown/test hosts run unscoped and
+keep the full order. The per-system profiler (`src/core/simStepProfiler.js`) reports the actual
+executed set and its cost.
 
 Conceptual spine (illustrative, not the live roster):
 input → AI → flight → weapons → physics (integrate/hash/collide) → combat →
@@ -795,6 +804,11 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 ---
 
 ## 6. THE COMPLETE FILE MANIFEST
+
+> **Path index, not a completeness claim.** This table is a curated map of the major owners; it can
+> lag a refactor. The live module index is [`docs/MODULE_MAP.md`](docs/MODULE_MAP.md) and
+> [`docs/SYSTEM_REGISTRY.md`](docs/SYSTEM_REGISTRY.md); when this table and the live tree disagree,
+> the live tree and the generated indexes win. Do not add a file here merely to claim completeness.
 
 > All paths relative to project root. One responsibility per file; modular so agents implement in parallel. Coordinate plane is **XZ, +Y up** (stated authoritatively in §0.1).
 

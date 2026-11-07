@@ -1,13 +1,14 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace program control surface
 
-> **Front door moved (owner, 2026-10-28):** the [Finish Program](./finish/README.md) is where an
-> agent gets its job — three lane boards, three ordered packet lists. The control surface below
-> stays for mutation windows (`NOW.md`), the queue index and retained detail.
+> **Current front door (owner, 2026-11-06):** the [master plan](./finish/MASTER_PLAN.md) owns the 29
+> campaigns, [master lanes](./finish/MASTER_LANES.md) owns dispatch and path collisions, and
+> [execution status](./finish/EXECUTION_STATUS_2026-11-06.md) is the live outcome matrix. This
+> directory remains the mutation window (`NOW.md`), the queue/plan-family index, and retained
+> detail. The rows below are reference; they do not dispatch work.
 
-This directory is the only whole-program status and acceptance surface. It separates short live
-mutation windows, machine-indexed work, executable packets, and retained evidence so an agent can
-orient without ingesting the repository's history.
+This directory keeps short live mutation windows, machine-indexed work, executable packets, and
+retained evidence so an agent can orient without ingesting the repository's history.
 
 ## Read by need
 
