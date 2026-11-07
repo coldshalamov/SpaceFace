@@ -305,7 +305,7 @@ test('survivalResults is inert outside a live survival run, and New Game forgets
   assert.equal(survivalResults.lastResult(), null);
 });
 
-test('the results grid states outcome, depth, kills, score, salvage, level and seed', () => {
+test('the results grid states outcome, depth, kills, score, run purse, level and seed', () => {
   const rows = resultRows({
     outcome: 'defeat', deepestWave: 6, wave: 6, kills: 31, score: 1240,
     credits: 88, level: 4, xp: 640, seed: 4242,
@@ -314,7 +314,8 @@ test('the results grid states outcome, depth, kills, score, salvage, level and s
   assert.equal(map.get('Outcome'), 'Lost');
   assert.equal(map.get('Reached'), 'Wave 6 of 30');
   assert.equal(map.get('Kills'), '31');
-  assert.equal(map.get('Salvage'), '88 cr');
+  // "Run purse" is the shipped label: credits are the run's stake, not salvage you towed home.
+  assert.equal(map.get('Run purse'), '88 cr');
   assert.equal(map.get('Seed'), '4242');
   assert.equal(new Map(resultRows({ outcome: 'victory', deepestWave: 10 })).get('Outcome'), 'Survived');
   assert.deepEqual(resultRows(null), []);
