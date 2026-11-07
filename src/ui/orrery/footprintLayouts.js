@@ -3,9 +3,11 @@
 // left, filling the stage's height; beside it the reading of the traced source — what it is, its chain
 // unfolded as a beam of its receipts (act, incident, standing, consequence); beside the dial a reading
 // column holds that scroll (the beam), then the verbs that answer it (the one Lamp Key and words, each with
-// what it costs), then the record — verbs sit outside the scroll so its foot-fold cannot cover them. No boxes: the column stands in a pool
-// of shade, the beam is a band of light with a core, the verbs are words. It overrides the kit's footprint
-// board (styles/ui.css fp-*) and the Deckplate printed keys from here, scoped to the screen.
+// what it costs), then the record — verbs sit outside the scroll so its foot-fold cannot cover them. The
+// reading column wears a promise-scale hairline card (ui-polish-395): 1px bone ~18% / radius 10 / faint
+// fill — was an unbound Newgrounds plate over the soft pool. The beam stays a band of light with a core;
+// the verbs stay words. Overrides the kit's footprint board (styles/ui.css fp-*) and the Deckplate
+// printed keys from here, scoped to the screen.
 import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-footprint';
@@ -34,9 +36,16 @@ ${S} > .k-stage.fp-stage { grid-area:stage; display:grid !important; grid-templa
   column-gap:clamp(20px, 2.6vw, 60px) !important; row-gap:0 !important; min-height:0 !important; position:relative; }
 ${S} .fp-dialhost { grid-column:1; grid-row:1; position:relative; min-width:0; min-height:0; }
 /* the dial's neighbour: scrolling reading, then the verbs, then the record — verbs stay clear of the fold */
-${S} .fp-reading { grid-column:2; grid-row:1; position:relative; min-width:0; min-height:0; max-width:calc(680px * var(--fp-s, 1)); display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px); max-height:100%; }
+/* ui-polish-395: .fp-reading wears 1px bone ~18% / radius 10 / faint fill; densify 8→6.
+   Was unbound Newgrounds plate over the soft pool (no border / no radius / no fill). */
+${S} .fp-reading { grid-column:2; grid-row:1; position:relative; min-width:0; min-height:0; max-width:calc(680px * var(--fp-s, 1)); display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px); max-height:100%;
+  box-sizing:border-box; padding:16px 18px 14px; border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+@media (max-height:820px) { ${S} .fp-reading { border-radius:8px; } }
+@media (max-height:460px) { ${S} .fp-reading { border-radius:8px; } }
+@media (max-height:400px) { ${S} .fp-reading { border-radius:6px; } }
+@media (max-width:760px) { ${S} .fp-reading { border-radius:8px; } }
 ${S} .fp-read { position:relative; flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column; gap:clamp(12px, 2.1vh, 26px);
-  overflow:hidden auto; scrollbar-width:none; padding:2px 10px 8px 10px; box-sizing:border-box; }
+  overflow:hidden auto; scrollbar-width:none; padding:2px 4px 8px 2px; box-sizing:border-box; }
 ${S} .fp-read::-webkit-scrollbar { display:none; }
 /* the column scrolls as one: nothing in it shrinks to fit */
 ${S} .fp-read > * { flex:none !important; }
@@ -197,11 +206,11 @@ ${S} :focus-visible { outline:none !important; }
    of a thin stack and the column's fold falls lower; the at-rest drag hint steps aside where the tokens sit on it */
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
   ${S} > .k-stage.fp-stage { column-gap:16px !important; }
-  ${S} .fp-reading { gap:8px; }
+  ${S} .fp-reading { gap:8px; padding:12px 12px 10px; }
   /* the beam keeps a real share of the column; verbs densify instead of eating the stage */
-  ${S} .fp-read { gap:8px; padding-right:4px; flex:1 1 auto !important; min-height:38% !important; }
-  ${S} .fp-answer { padding-right:4px !important; flex:0 0 auto !important; }
-  ${S} .fp-drawer { padding-right:4px !important; }
+  ${S} .fp-read { gap:8px; padding-right:2px; flex:1 1 auto !important; min-height:38% !important; }
+  ${S} .fp-answer { padding-right:2px !important; flex:0 0 auto !important; }
+  ${S} .fp-drawer { padding-right:2px !important; }
   ${S} .fp-trace__crest { width:36px; height:36px; }
   ${S} .fp-trace__top { gap:12px; }
   ${S} .fp-trace__names { gap:3px; }
@@ -230,7 +239,8 @@ ${S} :focus-visible { outline:none !important; }
   ${S} > .k-stage.fp-stage::after { display:none; }
   ${S} .fp-dialhost { flex:none; align-self:center; width:min(calc(100% + var(--k-margin, 14px) * 2), 520px, max(30vh, 260px)) !important;
     max-width:100%; height:auto !important; aspect-ratio:1 / 1; margin:0; max-height:max(30vh, 260px) !important; }
-  ${S} .fp-reading { flex:1 1 auto !important; min-height:0 !important; max-width:none; max-height:none; gap:4px !important; overflow:hidden !important; }
+  ${S} .fp-reading { flex:1 1 auto !important; min-height:0 !important; max-width:none; max-height:none; gap:4px !important; overflow:hidden !important;
+    padding:12px 12px 10px !important; }
   ${S} .fp-read { flex:1 1 auto !important; min-height:0 !important; max-width:none; overflow:hidden auto !important;
     padding:0 0 8px !important; gap:8px; -webkit-mask-image:none; mask-image:none; }
   ${S} .fp-read[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important;
@@ -268,7 +278,8 @@ ${S} :focus-visible { outline:none !important; }
   ${S} { grid-template-rows:auto auto !important; overflow:hidden auto !important; padding-bottom:calc(var(--k-margin) * .55) !important; }
   ${S} > .k-stage.fp-stage { flex:none !important; min-height:auto !important; overflow:visible !important; }
   ${S} .fp-dialhost { width:min(calc(100% + var(--k-margin, 14px) * 2), 520px) !important; max-height:none !important; }
-  ${S} .fp-reading { flex:none !important; min-height:auto !important; max-height:none !important; overflow:visible !important; }
+  ${S} .fp-reading { flex:none !important; min-height:auto !important; max-height:none !important; overflow:visible !important;
+    padding:12px 12px 10px !important; }
   ${S} .fp-read { flex:none !important; min-height:0 !important; overflow:visible !important; padding:0 !important; -webkit-mask-image:none !important; mask-image:none !important; }
   ${S} .fp-answer, ${S} .fp-drawer { flex:none !important; }
   ${S} .fp-drawer { max-height:none !important; overflow:visible !important; scrollbar-width:auto; }
