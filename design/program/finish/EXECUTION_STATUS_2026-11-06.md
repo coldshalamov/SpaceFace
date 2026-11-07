@@ -70,12 +70,21 @@ the implementation is optimal.
 - **UI budgets re-pinned** with the canonical headed 1920×1080 shoot; `check:ui:budgets` passes
   (30 measured surfaces + 10 named gaps).
 - **Verification on the published tree:** `test:fast` 39/39, `check:playable` 18/18,
-  `check:baseline` 17/17, type floor, UI a11y, WCAG contrast, entity links, UI imports 55/0.
+  `check:baseline` 17/17 (54.8 s), type floor, UI a11y, WCAG contrast, entity links, UI imports 55/0.
   The route tier was run; its browser commands hit the 120 s cap on a loaded host, so only the
-  individual re-runs are evidence (below).
+  individual re-runs are evidence: first-15, station-tabs, mission-accept-handoff,
+  market-first-loop and new-game-layout all pass singly.
 - **Q3 primary-screen pass:** six headed captures reviewed; Shipworks socket 03 printed the raw
   boolean "true" for the stock drive and now reads "Drive / STOCK · M" (`3de6121`). Review:
   `campaigns/Q3/reviews/2026-11-07-primary-screens.md`.
+- **E1 moving capture (still not met):** with a held throttle and `simGap=400@2500@3500`, the fence
+  cuts 28 frames over 2× / 84.5 WU / 3.08 s held pose to 4 / 21.2 WU / 0 holds. The four residual
+  frames are abrupt sim decelerations (157→5.6 and 25→6.1 WU/s) while the presented pose still
+  carries 70–82 WU/s; they are not gap holds. The raw current-speed bar is the open question.
+- **X4 payload is fixed:** the five 16 s stems are canonical 16 kHz mono PCM; the library is
+  **11.48 MiB** under the 12 MiB ceiling, and `pq-158-00/03` + `x4-boss-stem` pass 38/38.
+- **X3/X5:** the rescue lesson is one sentence; the pad table matches the declared actions and the
+  stale brake labels are fixed (`teach-09` 16/16).
 
 ## Known reds on this host (2026-11-07)
 
