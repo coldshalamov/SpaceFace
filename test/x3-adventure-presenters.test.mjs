@@ -264,19 +264,40 @@ test('Adventure flight: the release verdict is one plain word, not a telemetry s
     assert.doesNotMatch(preview.textContent, /KEPT|84|·/);
     // Outside Adventure the authored grade + measured cause still reads in full.
     assert.equal(releaseVerdictCopy({ classification: 'clean', ride: { keptFraction: 0.84 } }), 'CLEAN · KEPT 84%');
+  } finally {
+    hud.destroy();
+    MASSLINE2_FLAGS.enabled = previousEnabled;
+    t.restore();
+  }
+});
 
-    // The acquisition bracket says a plain verdict too — never "MASS 2000 · WON'T BUDGE".
-    state.masslineReleaseVerdict = null;
-    const heavy = {
-      id: 77, alive: true, type: 'asteroid', pos: { x: 120, z: 60 }, vel: { x: 0, z: 0 },
-      radius: 12, mass: 2000, physicsBody: { mass: 2000 }, data: {},
-    };
-    state.entities.set(heavy.id, heavy);
-    state.masslineAcquisition = { id: 'acq-1', selected: { targetId: heavy.id, status: 'ready' } };
+test('Adventure flight: the acquisition bracket says a plain verdict, not mass telemetry', () => {
+  const t = installDom();
+  const previousEnabled = MASSLINE2_FLAGS.enabled;
+  MASSLINE2_FLAGS.enabled = true;
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    rot: 0, radius: 8, mass: 200, data: { combat: {}, weapons: [] },
+  };
+  const heavy = {
+    id: 77, alive: true, type: 'asteroid', pos: { x: 120, z: 60 }, vel: { x: 0, z: 0 },
+    radius: 12, mass: 2000, physicsBody: { mass: 2000 }, data: {},
+  };
+  const state = adventure({
+    player: { tether: { active: false } },
+    entities: new Map([[player.id, player], [heavy.id, heavy]]),
+    massline2: {},
+    masslineAcquisition: { id: 'acq-1', selected: { targetId: heavy.id, status: 'ready' } },
+  });
+  const bus = createBus();
+  const hud = Object.assign({}, masslineHud);
+  try {
+    hud.init({ state, bus, helpers: { worldToScreen: (p) => ({ x: p.x + 300, y: p.z + 200, onScreen: true }) } });
     hud.update(1 / 60, state);
     const bracket = findAll(t.doc.getElementById('sf-ml2'), (n) => n.classList && n.classList.contains('ml2-preview'))[0];
-    assert.equal(bracket.textContent, 'TOO HEAVY');
-    assert.doesNotMatch(bracket.textContent, /MASS|BUDGE/);
+    assert.ok(bracket);
+    assert.equal(bracket.textContent, 'TOO HEAVY', 'the bracket answers the swing question in plain words');
+    assert.doesNotMatch(bracket.textContent, /MASS|BUDGE|2000/);
   } finally {
     hud.destroy();
     MASSLINE2_FLAGS.enabled = previousEnabled;
