@@ -666,6 +666,17 @@ export function addSalvage(state, commodityId, qty) {
   return accepted;
 }
 
+/** Quote legal scrap using the same active commodity registry and rounding as dock cash-in. */
+export function salvageScrapValue(state, commodityId, qty) {
+  const def = defOf(state, commodityId);
+  const units = finiteWholePickupAmount(qty);
+  const price = Number(def?.basePrice);
+  if (!def || (def.legality && def.legality !== 'legal') || units <= 0
+      || !Number.isFinite(price) || price <= 0) return 0;
+  const value = Math.floor(units * price * SALVAGE_BAY.saleRate);
+  return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
 /** Empty the bay and say what it was worth at the scrap rate. Returns { units, credits, lots } or null when empty. */
 export function cashInSalvage(state, { includeIllicit = false } = {}) {
   const bay = state && state.player && state.player.salvageBay;
@@ -878,7 +889,7 @@ export const cargo = {
           emitChanged(state, cargo);
           return;
         }
-        const combatLoot = combatFlag('salvageBay') && pickup && pickup.data
+        const combatLoot = combatFlag('salvageBay', state.runtime?.features) && pickup && pickup.data
           && pickup.data.combatLoot === true && pickup.data.wallet !== 'run';
         const accepted = combatLoot ? addSalvage(state, commodityId, qty) : addCargo(state, commodityId, qty, source);
         payload.acceptedAmount = accepted;
@@ -1324,7 +1335,9 @@ export const cargo = {
    * payload entities, so the beat resolves in the world whether or not the player reacts.
    */
   _cashInSalvage(payload = {}) {
-    if (!combatFlag('salvageBay')) return;
+    // Admission and dock settlement must read the same runtime profile. Process-global
+    // compatibility flags may belong to another concurrently hosted simulation.
+    if (!combatFlag('salvageBay', this.state.runtime?.features)) return;
     const sale = cashInSalvage(this.state, { includeIllicit: salvageBaySaleAllowsIllicit(this.state, payload.stationId) });
     const remaining = Object.entries(this.state.player.salvageBay?.items || {});
     const restricted = remaining.reduce((sum, [id, qty]) => sum + (defOf(this.state, id)?.legality && defOf(this.state, id).legality !== 'legal' ? Math.max(0, Number(qty) || 0) : 0), 0);
