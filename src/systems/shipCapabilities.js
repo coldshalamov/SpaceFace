@@ -638,8 +638,9 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
       ? `Your line is rated for ${round(towMassT, 1)} t, so the ${towHull.name} (${round(towHull.mass, 0)} t) `
         + 'is the heaviest hull on the roster it can take under way. Everything you carry pulls that rating down.'
       : coversRoster
-        ? `Your line is rated for ${round(towMassT, 1)} t — past ${towPick.heaviest ? `the ${towPick.heaviest.name} at ${round(towPick.heaviest.mass, 0)} t` : 'every hull on the roster'}, `
-          + 'the heaviest hull on the roster. Everything you carry pulls that rating down.'
+        ? `Your line is rated for ${round(towMassT, 1)} t — past `
+          + `${towPick.heaviest ? `${towPick.heaviest.name} at ${round(towPick.heaviest.mass, 0)} t` : 'the heaviest hull on the roster'}. `
+          + 'Everything you carry pulls that rating down.'
         : !rated
           ? `This hull publishes no Line rating (${round(finite(derived.dryMass, 0), 0)} t dry against the drive's force), so it rams instead of towing.`
           : noRosterHull
