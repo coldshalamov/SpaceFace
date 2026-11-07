@@ -4,7 +4,7 @@ import { collectCameraWitness } from '../render/cameraWitness.js';
 // order never changes while the game runs: a loop that simulates first on some frames and draws
 // first on others shows the world at a moment it has already shown, then leaps.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
-import { ensureFrameTruth, frameTruthRequestedByParam } from './frameTruth.js';
+import { ensureFrameTruth, frameTruthRequestedByParam, resolveSimGapSchedule, createSimGapGate } from './frameTruth.js';
 import { getLatestSnapshotFence } from '../render/snapshotFence.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import {
@@ -347,6 +347,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
+    // E1 gap harness (?simGap=): presented frames whose completed packs were withheld.
+    simGapHeldFrames: 0,
+    simGapApplications: 0,
     // Callbacks that arrived as a hitch and resumed the world two ticks on instead of replaying it.
     hitchCappedFrameCount: 0,
     // Presents that showed the same simulated moment as the present before them while time was
@@ -403,16 +406,39 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // E10 frame truth: one always-on recorder fed once per presented frame below, plus the
   // dev overlay (?frameTruth=1 or Ctrl+Alt+F) and the JSON trace export (Ctrl+Alt+J).
   const frameTruth = ensureFrameTruth(state);
+  // The recorder's hotkey export reads the live fence; registering the provider here keeps
+  // `trace.fence` populated without importing a render module into frameTruth.
+  frameTruth.fenceProvider = getLatestSnapshotFence;
   if (frameTruthRequestedByParam(typeof globalThis.location !== 'undefined'
     ? globalThis.location.search : '')) {
     frameTruth.setOverlayVisible(true);
   }
   // Name the active stall script in the trace so before/after exports self-identify.
   try {
-    const stallParam = new URLSearchParams(typeof globalThis.location !== 'undefined'
-      ? globalThis.location.search : '').get('simStall');
+    const search = typeof globalThis.location !== 'undefined'
+      ? globalThis.location.search : '';
+    const stallParam = new URLSearchParams(search).get('simStall');
     if (stallParam) frameTruth.note = `simStall=${stallParam}`;
+    const gapParam = new URLSearchParams(search).get('simGap');
+    if (gapParam) {
+      frameTruth.note = `${frameTruth.note ? `${frameTruth.note} ` : ''}simGap=${gapParam}`;
+    }
   } catch (_) { /* note is cosmetic */ }
+  // E1 diagnostic gap harness: withhold COMPLETED PACKS (not worker steps) for the requested
+  // wall time. ?simGap=400 → one 400 ms gap at 2 s; ?simGap=400@2000@5000 repeats.
+  let simGapGate = null;
+  try {
+    const search = typeof globalThis.location !== 'undefined'
+      ? globalThis.location.search : '';
+    const schedule = resolveSimGapSchedule(search);
+    if (schedule) {
+      if (schedule.warning) console.warn(`[loop] ${schedule.warning}`);
+      if (schedule.ms > 0) {
+        simGapGate = createSimGapGate(schedule, nowMs());
+        frameTruth.noteEvent('simGap', { ms: schedule.ms, atMs: schedule.atMs, periodMs: schedule.periodMs });
+      }
+    }
+  } catch (_) { /* the harness is optional */ }
   // E5 probe: every trace export carries the sim-lane transport state (lane, SAB journal,
   // worker clock) next to crossOriginIsolated/sharedArrayBuffer, so "the SAB lane active"
   // is citable from the same evidence.
@@ -1126,7 +1152,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt) {
-    const completedTickCount = simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
+    // E1 gap harness: while the wall gate is open, completed packs stay in the runner's
+    // completed ring and the fence keeps extrapolating. The worker keeps stepping; only
+    // presentation consumption is withheld, so the gap is independent of the work budget.
+    const simGapHeld = simGapGate ? simGapGate.shouldHold(nowMs()) : false;
+    if (simGapHeld) diagnostics.simGapHeldFrames++;
+    const completedTickCount = simGapHeld
+      ? 0
+      : simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
+    if (simGapGate && simGapGate.applications > diagnostics.simGapApplications) {
+      diagnostics.simGapApplications = simGapGate.applications;
+    }
     if (completedTickCount > 0) hasCompletedTick = true;
     diagnostics.completedTicksConsumed += completedTickCount;
     if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
@@ -1266,6 +1302,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     let renderedSnapshot = false;
     let frameDt = restoring ? 0 : (now - last) / 1000;
     if (!Number.isFinite(frameDt) || frameDt < 0) frameDt = 0;
+    // Raw rAF delta before the loop's safety clamp. The frame-truth FPS/hitch summary must
+    // read the true interval: a 2.6 s callback clamped to 0.25 s reported 4 fps as 4 fps
+    // forever and could never show the hitch that actually happened.
+    const rawFrameDt = frameDt;
     if (frameDt > 0.25) frameDt = 0.25;
     last = now;
     // Declared at frame scope so the finally's frame-truth ingest can read the present cost
@@ -1534,6 +1574,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           // The pose the player SAW is the fence's presented bracket, not the mirrored row
           // (which updates at reply rate). The hold/jump metric must measure the picture.
           let presentedPoseRow = playerRow;
+          let poseSource = 'mirrored';
           if (fence && typeof fence.presentedRowPose === 'function' && playerRow) {
             const presented = fence.presentedRowPose(state.playerId, frameTruthPoseScratch);
             if (presented) {
@@ -1543,10 +1584,21 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
               frameTruthPoseScratchProxy.vz = Number.isFinite(playerRow.vz) ? playerRow.vz
                 : (playerRow.vel && Number.isFinite(playerRow.vel.z) ? playerRow.vel.z : 0);
               presentedPoseRow = frameTruthPoseScratchProxy;
+              poseSource = 'presented';
             }
           }
+          const renderResidency = renderInfo && renderInfo.residency
+            ? renderInfo.residency
+            : (state.render && state.render.residency) || null;
+          const popIn = renderResidency && Number.isFinite(renderResidency.visibleUnready)
+            ? renderResidency.visibleUnready : 0;
+          const clockOwner = typeof simulationRunner.clockOwner === 'string'
+            ? simulationRunner.clockOwner : 'main';
+          const lane = clockOwner === 'worker-local' || clockOwner === 'worker-pump'
+            ? 'worker' : 'main';
           frameTruth.ingestFrame({
             frameDtMs: frameDt * 1000,
+            rawFrameDtMs: rawFrameDt * 1000,
             callbackMs: measureNow() - callbackStart,
             presentMs: presentationMs,
             steps: diagnostics.stepsThisFrame,
@@ -1557,13 +1609,24 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
             workerStepsMs: laneSample ? laneSample.workerStepsMs : null,
             workerPackMs: laneSample ? laneSample.workerPackMs : null,
             applyMs: laneSample ? laneSample.applyMs : null,
+            stallMs: laneSample ? laneSample.stallMs : null,
             playoutDelayMs: playout ? playout.delayMs : null,
             extrapolateMs: playout ? playout.extrapolateMs : null,
             bufferDepthPacks: playout ? playout.bufferDepthPacks : null,
+            playbackRate: playout ? playout.playbackRate : (Number(state.timeScale) || 0),
+            timeScale: Number(state.timeScale) || 0,
+            poseEpoch: playout ? playout.poseEpoch : null,
+            poseSource,
             playerRow: presentedPoseRow,
             drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
             trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,
             heapMB,
+            popIn,
+            lane,
+            transport: clockOwner,
+            mode: state.mode,
+            sector: state.world && state.world.currentSectorId != null
+              ? String(state.world.currentSectorId) : null,
           });
         }
         // In the same `finally` as recordFrameCallback so a frame that threw still closes its

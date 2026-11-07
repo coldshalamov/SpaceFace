@@ -1005,3 +1005,52 @@ test('terminal close inside a restoring render cannot resume destroyed audio own
   assert.equal(controller.getLifecycleState(), 'restoring');
   assert.equal(raf.count(), 0);
 });
+
+test('the simGap harness withholds completed packs for the requested wall time', () => {
+  const raf = createRaf();
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  let clockMs = 0;
+  let consumes = 0;
+  const runner = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    advance() { return { steps: 1, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { consumes++; return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  const registry = { renderUpdate() {}, get() { return null; } };
+  const previousLocation = globalThis.location;
+  globalThis.location = { search: '?simGap=400@0' };
+  const controller = startLoop(state, registry, {
+    simulationRunner: runner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => clockMs,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  try {
+    clockMs = 1000;
+    raf.flushOne(1000);
+    clockMs = 1200;
+    raf.flushOne(1200);
+    assert.equal(consumes, 0,
+      'completed packs are withheld while the gap gate is open, independent of worker work');
+    assert.ok(controller.getDiagnostics().simGapHeldFrames >= 1);
+    clockMs = 1400;
+    raf.flushOne(1400);
+    assert.equal(consumes, 1, 'the runner consumes the held pack once the gap elapses');
+    assert.equal(controller.getDiagnostics().simGapApplications, 1);
+  } finally {
+    controller.destroy();
+    if (previousLocation === undefined) delete globalThis.location;
+    else globalThis.location = previousLocation;
+  }
+});

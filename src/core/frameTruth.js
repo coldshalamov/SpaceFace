@@ -1,17 +1,21 @@
-// E10 — Frame-truth recorder: one always-on, allocation-free ingest of the numbers every
+// E10 — Frame-truth recorder: one always-on, small-allocation ingest of the numbers every
 // performance campaign cites, one dev overlay, one JSON trace export. This module owns
 // NOTHING authoritative: it reads the probes that already exist (presentationRunner frame
 // timings, sim-lane reply work, the snapshot fence's presented clock, the mirrored player
 // row) and records them in preallocated typed rings so a live session can always answer
-// "where did the frame go, and what did the ship do".
+// "where did the frame go, and what did the ship do". The per-frame path reuses one value
+// object; only trace export and rare timeline events allocate.
 
 const RING_FRAMES = 1800;          // ~30 s at 60 Hz
 const RING_REPLIES = 2048;         // 2–10 Hz replies → 3–6 minutes of arrivals
 const OVERLAY_UPDATE_MS = 100;
+const TIMELINE_EVENTS_MAX = 64;
 
 const FRAME_FIELDS = Object.freeze([
-  'wallMs',          // ms since recorder start
-  'frameDtMs',       // rAF delta
+  'wallMs',          // ms since recorder start (monotonic)
+  'wallEpochMs',     // Date.now()-correlated wall clock for log correlation
+  'frameDtMs',       // rAF delta, clamped by the loop (0.25 s)
+  'rawFrameDtMs',    // rAF delta BEFORE the loop's 0.25 s clamp — FPS/hitch truth
   'callbackMs',      // whole rAF callback JS time
   'presentMs',       // registry.renderUpdate (render JS) time
   'steps',           // sim steps this frame
@@ -24,19 +28,28 @@ const FRAME_FIELDS = Object.freeze([
   'applyMs',         // main-thread apply cost of the newest reply
   'playoutDelayMs',  // presented clock behind the newest pack (fence)
   'extrapolateMs',   // presented clock past the newest pack (fence)
-  'bufferDepthPacks',// history packs between the presented bracket and the newest
+  'bufferDepthPacks',// bracket depth: commits between the presented bracket and the newest
+  'playbackRate',    // measured sim-seconds per presented wall second
+  'timeScale',       // game time scale at present
+  'poseEpoch',       // fence pose epoch of the presented sample
   'playerX',         // presented-or-mirrored player pose
   'playerZ',
-  'playerSpeed',
+  'playerSpeed',     // authoritative body speed (wu/s)
+  'presentedSpeed',  // measured presented-pose speed (wu/s)
   'poseJumpWu',      // per-frame presented pose delta (0 when the pose repeats)
+  'jumpBarWu',       // 2 * bodySpeed * playbackRate * timeScale * dt — the presented-rate bar
+  'jumpRatio',       // poseJumpWu / jumpBarWu
   'heldPoseFrames',  // consecutive repeat-pose frames while speed > HELD_SPEED (1 during a streak)
   'drawCalls',
   'trianglesK',
   'heapMB',
+  'allocBytesPerSec',
+  'popIn',           // visible-unready drawables (residency), 0 when the probe is absent
 ]);
 
 const REPLY_FIELDS = Object.freeze([
   'wallMs', 'workMs', 'stepsMs', 'packMs', 'applyMs', 'steps', 'journalRecords', 'events',
+  'stallMs',
 ]);
 
 const HELD_SPEED = 5;              // wu/s — below this a still pose is not a freeze
@@ -117,17 +130,18 @@ function overlayText(recorder) {
   const cb = ringStats(recorder.frames, 'callbackMs', 600);
   const present = ringStats(recorder.frames, 'presentMs', 600);
   const jump = ringStats(recorder.frames, 'poseJumpWu', 600);
+  const ratio = ringStats(recorder.frames, 'jumpRatio', 600);
   const interval = ringStats(recorder.replyIntervals, 'ms', 120);
-  const fps = f.frameDtMs > 0 ? 1000 / f.frameDtMs : 0;
+  const fps = f.rawFrameDtMs > 0 ? 1000 / f.rawFrameDtMs : 0;
   const replyHz = interval.mean > 0 ? 1000 / interval.mean : 0;
   return [
     'FRAME TRUTH  (Ctrl+Alt+F hide · Ctrl+Alt+J export)',
-    `fps ${fmt(fps, 0)}  dt ${fmt(f.frameDtMs)}ms  cb p50/p95 ${fmt(cb.p50)}/${fmt(cb.p95)}ms  present p50/p95 ${fmt(present.p50)}/${fmt(present.p95)}ms`,
+    `fps ${fmt(fps, 0)}  raw ${fmt(f.rawFrameDtMs)}ms  cb p50/p95 ${fmt(cb.p50)}/${fmt(cb.p95)}ms  present p50/p95 ${fmt(present.p50)}/${fmt(present.p95)}ms`,
     `worker replies ${fmt(replyHz, 1)}/Hz  age ${fmt(f.replyAgeMs, 0)}ms  work p50/p95/max ${fmt(work.p50)}/${fmt(work.p95)}/${fmt(work.max)}ms`,
     `apply ${fmt(f.applyMs)}ms  steps ${fmt(f.steps, 0)}  sim ${fmt(f.simTimeS, 2)}s tick ${fmt(f.tick, 0)}`,
-    `playout delay ${fmt(f.playoutDelayMs)}ms  extrapolating ${fmt(f.extrapolateMs)}ms  depth ${fmt(f.bufferDepthPacks, 0)} packs`,
-    `player ${fmt(f.playerX, 1)},${fmt(f.playerZ, 1)} @ ${fmt(f.playerSpeed, 1)}wu/s  jumps ${fmt(jump.n, 0)}/600f max ${fmt(jump.max, 2)}wu  held ${fmt(recorder.heldStreak, 0)}f`,
-    `draws ${fmt(f.drawCalls, 0)}  tris ${fmt(f.trianglesK, 0)}k  heap ${fmt(f.heapMB, 0)}MB`,
+    `playout delay ${fmt(f.playoutDelayMs)}ms  extrapolating ${fmt(f.extrapolateMs)}ms  depth ${fmt(f.bufferDepthPacks, 0)} packs  rate ${fmt(f.playbackRate, 2)}x`,
+    `player ${fmt(f.playerX, 1)},${fmt(f.playerZ, 1)} @ ${fmt(f.playerSpeed, 1)}wu/s  drawn ${fmt(f.presentedSpeed, 1)}wu/s  jumps ${fmt(jump.n, 0)}/600f max ${fmt(jump.max, 2)}wu  ratio ${fmt(ratio.max, 2)}  held ${fmt(recorder.heldStreak, 0)}f`,
+    `draws ${fmt(f.drawCalls, 0)}  tris ${fmt(f.trianglesK, 0)}k  heap ${fmt(f.heapMB, 0)}MB  alloc ${fmt(f.allocBytesPerSec / 1024, 0)}KB/s  popIn ${fmt(f.popIn, 0)}`,
     recorder.note,
   ].filter(Boolean).join('\n');
 }
@@ -143,7 +157,15 @@ function installHotkeys(recorder) {
       recorder.setOverlayVisible(!recorder.overlayVisible);
     } else if (key === 'j') {
       event.preventDefault();
-      void recorder.exportJSON();
+      // The hotkey export carries the live fence AND the perf report regardless of how the
+      // recorder was minted, so `trace.fence` is never null and per-system attribution rides
+      // the same evidence export.
+      const extra = {};
+      try {
+        const report = recorder.state?.perfRuntime?.getReport?.();
+        if (report && typeof report === 'object') extra.perf = report;
+      } catch (_) { /* perf attribution is optional */ }
+      void recorder.exportJSON({ fence: recorder.fenceProvider?.() ?? null, extra });
     }
   }, { capture: true });
 }
@@ -166,6 +188,82 @@ function download(name, text) {
   }
 }
 
+function readLocation() {
+  try {
+    if (typeof globalThis.location === 'undefined') return null;
+    return {
+      href: typeof globalThis.location.href === 'string' ? globalThis.location.href : null,
+      search: typeof globalThis.location.search === 'string' ? globalThis.location.search : null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Parse the presentation-side completed-pack gap harness:
+ *   ?simGap=<ms>[@<atMs>[@<periodMs>]]
+ * The gate withholds COMPLETED PACKS from the fence for <ms> of wall time, starting at
+ * <atMs> (default 2000 ms after the runner starts) and optionally repeating every
+ * <periodMs>. It is independent of the worker's step budget: the worker keeps simulating and
+ * completing ticks; presentation simply does not consume them until the hold ends. That is
+ * the honest reproduction of a 400 ms gap in the pack stream — the thing the playout buffer
+ * exists to hide. Test/diagnostic only; absent = no gate.
+ */
+export function resolveSimGapSchedule(search) {
+  let params = null;
+  try {
+    params = new URLSearchParams(search || '');
+  } catch (_) {
+    return null;
+  }
+  const raw = params.get('simGap');
+  if (raw == null || raw === '') return null;
+  const [msRaw, atRaw, periodRaw] = raw.split('@');
+  const ms = Number(msRaw);
+  if (!Number.isFinite(ms) || ms <= 0 || ms > 5000) {
+    return { ms: 0, atMs: 0, periodMs: 0, raw, warning: `simGap='${raw}' ignored (ms must be 1..5000)` };
+  }
+  const at = atRaw == null ? 2000 : Number(atRaw);
+  const period = periodRaw == null ? 0 : Number(periodRaw);
+  return {
+    ms,
+    atMs: Number.isFinite(at) && at >= 0 ? at : 2000,
+    periodMs: Number.isFinite(period) && period > 0 ? period : 0,
+    raw,
+    warning: null,
+  };
+}
+
+/** The wall-clock gate for one parsed simGap schedule. */
+export function createSimGapGate(schedule, startMs = nowMs()) {
+  const ms = schedule && Number.isFinite(schedule.ms) ? schedule.ms : 0;
+  const period = schedule && Number.isFinite(schedule.periodMs) ? schedule.periodMs : 0;
+  let nextAtMs = startMs + (schedule && Number.isFinite(schedule.atMs) ? schedule.atMs : 0);
+  let holdUntilMs = -Infinity;
+  let heldFrames = 0;
+  let applications = 0;
+  let holding = false;
+  return {
+    get ms() { return ms; },
+    get heldFrames() { return heldFrames; },
+    get applications() { return applications; },
+    get holding() { return holding; },
+    /** True while completed packs must be withheld. Call once per presented frame. */
+    shouldHold(now) {
+      const at = Number.isFinite(now) ? now : 0;
+      if (ms > 0 && at >= nextAtMs) {
+        holdUntilMs = at + ms;
+        applications++;
+        nextAtMs = period > 0 ? nextAtMs + period : Infinity;
+      }
+      holding = ms > 0 && at < holdUntilMs;
+      if (holding) heldFrames++;
+      return holding;
+    },
+  };
+}
+
 export function ensureFrameTruth(state) {
   if (state && state.frameTruth && state.frameTruth.__frameTruthV1) return state.frameTruth;
   if (!state || typeof state !== 'object') throw new TypeError('ensureFrameTruth requires state');
@@ -173,10 +271,16 @@ export function ensureFrameTruth(state) {
   const recorder = {
     __frameTruthV1: true,
     startedAtMs: nowMs(),
+    // Wall-clock epoch, so an exported trace correlates with the log lines that cite it.
+    // The old trace only carried a performance.now() stamp (which reads as 1970 when
+    // interpreted as an epoch).
+    startedAtEpochMs: Date.now(),
     frames: makeRing(RING_FRAMES, FRAME_FIELDS),
     replies: makeRing(RING_REPLIES, REPLY_FIELDS),
     replyIntervals: makeRing(RING_REPLIES, ['ms']),
     lastFrame: {},
+    // One reusable value object: one small allocation at mint, none per presented frame.
+    frameValues: {},
     lastReplyWallMs: -1,
     heldStreak: 0,
     overlayVisible: false,
@@ -187,8 +291,31 @@ export function ensureFrameTruth(state) {
     // Export-time extras (E5 probe): providers push () => ({...}) objects folded into
     // every trace — the sim-lane/SAB state rides the same evidence as the frame data.
     extraProviders: [],
+    // The live fence is registered by presentationRunner; the hotkey export reads it.
+    fenceProvider: null,
     lastPlayerX: NaN,
     lastPlayerZ: NaN,
+    lastHeapMB: 0,
+    lastHeapAtMs: 0,
+    lastAllocBytesPerSec: 0,
+    lastPoseEpoch: null,
+    lastPoseSource: null,
+    lastLane: null,
+    lastTransport: null,
+    timeline: [],
+    state,
+  };
+
+  recorder.noteEvent = (kind, detail) => {
+    if (!kind) return;
+    const event = {
+      wallMs: Math.max(0, nowMs() - recorder.startedAtMs),
+      wallEpochMs: recorder.startedAtEpochMs + Math.max(0, nowMs() - recorder.startedAtMs),
+      kind,
+    };
+    if (detail && typeof detail === 'object') Object.assign(event, detail);
+    if (recorder.timeline.length >= TIMELINE_EVENTS_MAX) recorder.timeline.shift();
+    recorder.timeline.push(event);
   };
 
   recorder.setOverlayVisible = (visible) => {
@@ -223,6 +350,7 @@ export function ensureFrameTruth(state) {
       steps: sample.steps,
       journalRecords: sample.journalRecords,
       events: sample.events,
+      stallMs: sample.stallMs,
     });
   };
 
@@ -237,77 +365,167 @@ export function ensureFrameTruth(state) {
     const speed = playerRow
       ? Math.hypot(Number(playerRow.vx) || 0, Number(playerRow.vz) || 0)
       : 0;
+    const poseFinite = Number.isFinite(px) && Number.isFinite(pz);
+    const hasPreviousPose = Number.isFinite(recorder.lastPlayerX)
+      && Number.isFinite(recorder.lastPlayerZ);
     let jump = 0;
-    if (Number.isFinite(px) && Number.isFinite(recorder.lastPlayerX)) {
+    if (poseFinite && hasPreviousPose) {
       jump = Math.hypot(px - recorder.lastPlayerX, pz - recorder.lastPlayerZ);
     }
     // The E1 verify metric's raw material: a pose that repeats while the body's own
-    // velocity is non-zero is the hold-then-jump signature, counted per frame.
+    // velocity is non-zero is the hold-then-jump signature, counted per frame. The first
+    // frame has no previous pose and can never be a held frame; a pose that goes
+    // non-finite, or a body at/below the speed threshold, ends the streak.
     let heldFrame = 0;
-    if (Number.isFinite(px) && speed > HELD_SPEED && jump <= HELD_EPSILON_WU) {
+    if (!poseFinite || !hasPreviousPose || !(speed > HELD_SPEED)) {
+      recorder.heldStreak = 0;
+    } else if (jump <= HELD_EPSILON_WU) {
       recorder.heldStreak++;
       heldFrame = 1;
-    } else if (jump > HELD_EPSILON_WU) {
+    } else {
       recorder.heldStreak = 0;
     }
-    recorder.lastPlayerX = px;
-    recorder.lastPlayerZ = pz;
-    const values = {
-      wallMs: now - recorder.startedAtMs,
-      frameDtMs: sample.frameDtMs,
-      callbackMs: sample.callbackMs,
-      presentMs: sample.presentMs,
-      steps: sample.steps,
-      simTimeS: sample.simTimeS,
-      tick: sample.tick,
-      replyAgeMs: sample.replyAgeMs,
-      workerWorkMs: sample.workerWorkMs,
-      workerStepsMs: sample.workerStepsMs,
-      workerPackMs: sample.workerPackMs,
-      applyMs: sample.applyMs,
-      playoutDelayMs: sample.playoutDelayMs,
-      extrapolateMs: sample.extrapolateMs,
-      bufferDepthPacks: sample.bufferDepthPacks,
-      playerX: px,
-      playerZ: pz,
-      playerSpeed: speed,
-      poseJumpWu: jump,
-      heldPoseFrames: heldFrame,
-      drawCalls: sample.drawCalls,
-      trianglesK: sample.trianglesK,
-      heapMB: sample.heapMB,
-    };
+    recorder.lastPlayerX = poseFinite ? px : NaN;
+    recorder.lastPlayerZ = poseFinite ? pz : NaN;
+
+    const rawDtMs = Number.isFinite(sample.rawFrameDtMs)
+      ? sample.rawFrameDtMs : sample.frameDtMs;
+    const frameDtMs = Number.isFinite(sample.frameDtMs) ? sample.frameDtMs : rawDtMs;
+    const dtS = Number.isFinite(rawDtMs) && rawDtMs > 0 ? rawDtMs / 1000 : 0;
+    const playbackRate = Number.isFinite(sample.playbackRate) ? sample.playbackRate : 1;
+    const timeScale = Number.isFinite(sample.timeScale) ? sample.timeScale : 1;
+    const presentedSpeed = dtS > 0 ? jump / dtS
+      : (Number.isFinite(sample.presentedSpeed) ? sample.presentedSpeed : 0);
+    // The E1 jump bar is measured against the PRESENTED rate, not the authoritative body
+    // speed: at 0.05x sim / 12 fps the old 2*speed*dt bar was ~10x too lenient.
+    const jumpBarWu = 2 * speed * playbackRate * timeScale * dtS;
+    const jumpRatio = jumpBarWu > 0 ? jump / jumpBarWu : 0;
+
+    // 1 Hz heap sample carried across frames (the probe is not read every frame).
+    let heapMB = Number.isFinite(sample.heapMB) ? sample.heapMB : recorder.lastHeapMB;
+    if (Number.isFinite(sample.heapMB)) {
+      const at = Number.isFinite(sample.wallMs) ? sample.wallMs : now;
+      if (recorder.lastHeapAtMs > 0 && at > recorder.lastHeapAtMs && sample.heapMB > 0) {
+        const deltaBytes = (sample.heapMB - recorder.lastHeapMB) * 1048576;
+        const seconds = (at - recorder.lastHeapAtMs) / 1000;
+        recorder.lastAllocBytesPerSec = deltaBytes > 0 && seconds > 0
+          ? deltaBytes / seconds : 0;
+      }
+      recorder.lastHeapMB = sample.heapMB;
+      recorder.lastHeapAtMs = at;
+      heapMB = sample.heapMB;
+    }
+    const allocBytesPerSec = Number.isFinite(sample.allocBytesPerSec)
+      ? sample.allocBytesPerSec : recorder.lastAllocBytesPerSec;
+
+    const poseEpoch = Number.isFinite(sample.poseEpoch) ? sample.poseEpoch : null;
+    if (poseEpoch !== recorder.lastPoseEpoch) {
+      recorder.noteEvent('poseEpoch', { from: recorder.lastPoseEpoch, to: poseEpoch });
+      recorder.lastPoseEpoch = poseEpoch;
+    }
+    if (typeof sample.poseSource === 'string') recorder.lastPoseSource = sample.poseSource;
+    const lane = typeof sample.lane === 'string' ? sample.lane : recorder.lastLane;
+    if (lane !== recorder.lastLane) {
+      recorder.noteEvent('lane', { from: recorder.lastLane, to: lane });
+      recorder.lastLane = lane;
+    }
+    const transport = typeof sample.transport === 'string'
+      ? sample.transport : recorder.lastTransport;
+    if (transport !== recorder.lastTransport) {
+      recorder.noteEvent('transport', { from: recorder.lastTransport, to: transport });
+      recorder.lastTransport = transport;
+    }
+
+    const values = recorder.frameValues;
+    values.wallMs = now - recorder.startedAtMs;
+    values.wallEpochMs = recorder.startedAtEpochMs + Math.max(0, now - recorder.startedAtMs);
+    values.frameDtMs = frameDtMs;
+    values.rawFrameDtMs = Number.isFinite(rawDtMs) ? rawDtMs : frameDtMs;
+    values.callbackMs = sample.callbackMs;
+    values.presentMs = sample.presentMs;
+    values.steps = sample.steps;
+    values.simTimeS = sample.simTimeS;
+    values.tick = sample.tick;
+    values.replyAgeMs = sample.replyAgeMs;
+    values.workerWorkMs = sample.workerWorkMs;
+    values.workerStepsMs = sample.workerStepsMs;
+    values.workerPackMs = sample.workerPackMs;
+    values.applyMs = sample.applyMs;
+    values.playoutDelayMs = sample.playoutDelayMs;
+    values.extrapolateMs = sample.extrapolateMs;
+    values.bufferDepthPacks = sample.bufferDepthPacks;
+    values.playbackRate = playbackRate;
+    values.timeScale = timeScale;
+    values.poseEpoch = poseEpoch == null ? 0 : poseEpoch;
+    values.playerX = poseFinite ? px : 0;
+    values.playerZ = poseFinite ? pz : 0;
+    values.playerSpeed = speed;
+    values.presentedSpeed = presentedSpeed;
+    values.poseJumpWu = jump;
+    values.jumpBarWu = jumpBarWu;
+    values.jumpRatio = jumpRatio;
+    values.heldPoseFrames = heldFrame;
+    values.drawCalls = sample.drawCalls;
+    values.trianglesK = sample.trianglesK;
+    values.heapMB = heapMB;
+    values.allocBytesPerSec = allocBytesPerSec;
+    values.popIn = sample.popIn;
     ringPush(recorder.frames, values);
     recorder.lastFrame = values;
   };
 
-  recorder.snapshotSummary = () => ({
-    fps: recorder.lastFrame.frameDtMs > 0 ? 1000 / recorder.lastFrame.frameDtMs : 0,
-    // Worker cost stats are per-reply distributions (the 2–10 Hz authoritative chain),
-    // not per-frame last values.
-    workerWork: ringStats(recorder.replies, 'workMs'),
-    workerSteps: ringStats(recorder.replies, 'stepsMs'),
-    workerApply: ringStats(recorder.replies, 'applyMs'),
-    replyInterval: ringStats(recorder.replyIntervals, 'ms'),
-    frameCallback: ringStats(recorder.frames, 'callbackMs'),
-    present: ringStats(recorder.frames, 'presentMs'),
-    poseJump: ringStats(recorder.frames, 'poseJumpWu'),
-    heldPoseStreak: recorder.heldStreak,
-    heapMB: {
-      start: ringToArray(recorder.frames, 'heapMB')[0] || 0,
-      end: recorder.lastFrame.heapMB || 0,
-    },
-  });
+  recorder.snapshotSummary = () => {
+    const raw = ringStats(recorder.frames, 'rawFrameDtMs');
+    const frameWall = ringToArray(recorder.frames, 'wallMs');
+    const wallSpanMs = frameWall.length > 1 ? frameWall[frameWall.length - 1] - frameWall[0] : 0;
+    let heapStart = 0;
+    for (const value of ringToArray(recorder.frames, 'heapMB')) {
+      if (value > 0) { heapStart = value; break; }
+    }
+    return {
+      // `fps` is the last frame's instantaneous value; `meanFps` is the ring mean from RAW
+      // frame deltas (the loop's 0.25 s clamp would otherwise hide multi-second hitches).
+      fps: recorder.lastFrame.rawFrameDtMs > 0 ? 1000 / recorder.lastFrame.rawFrameDtMs : 0,
+      meanFps: raw.mean > 0 ? 1000 / raw.mean : 0,
+      frameWallSpanMs: wallSpanMs,
+      rawFrame: raw,
+      workerWork: ringStats(recorder.replies, 'workMs'),
+      workerSteps: ringStats(recorder.replies, 'stepsMs'),
+      workerApply: ringStats(recorder.replies, 'applyMs'),
+      replyStall: ringStats(recorder.replies, 'stallMs'),
+      replyInterval: ringStats(recorder.replyIntervals, 'ms'),
+      frameCallback: ringStats(recorder.frames, 'callbackMs'),
+      present: ringStats(recorder.frames, 'presentMs'),
+      poseJump: ringStats(recorder.frames, 'poseJumpWu'),
+      jumpRatio: ringStats(recorder.frames, 'jumpRatio'),
+      heapMB: {
+        start: heapStart,
+        end: recorder.lastFrame.heapMB || 0,
+      },
+      allocBytesPerSec: recorder.lastAllocBytesPerSec,
+      heldPoseStreak: recorder.heldStreak,
+    };
+  };
 
   recorder.exportJSON = (options = {}) => {
-    const fence = typeof options.fence !== 'undefined' ? options.fence : null;
+    const fence = typeof options.fence !== 'undefined'
+      ? options.fence
+      : (recorder.fenceProvider ? recorder.fenceProvider() : null);
     const columns = {};
     for (const field of FRAME_FIELDS) columns[field] = ringToArray(recorder.frames, field);
     const trace = {
       schema: 'spaceface.frameTruth.v1',
+      // Wall-clock epoch fields, so an export correlates with logs and with the video take.
+      startedAtEpochMs: recorder.startedAtEpochMs,
+      exportedAtEpochMs: Date.now(),
       startedAtWallMs: recorder.startedAtMs,
       exportedAtWallMs: nowMs(),
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      location: readLocation(),
+      note: recorder.note,
+      build: typeof options.build === 'string' ? options.build
+        : (typeof globalThis !== 'undefined' && typeof globalThis.__SF_BUILD__ === 'string'
+          ? globalThis.__SF_BUILD__ : null),
       crossOriginIsolated: typeof globalThis !== 'undefined'
         ? globalThis.crossOriginIsolated === true : false,
       sharedArrayBuffer: typeof SharedArrayBuffer === 'function',
@@ -323,12 +541,25 @@ export function ensureFrameTruth(state) {
         steps: ringToArray(recorder.replies, 'steps'),
         journalRecords: ringToArray(recorder.replies, 'journalRecords'),
         events: ringToArray(recorder.replies, 'events'),
+        stallMs: ringToArray(recorder.replies, 'stallMs'),
         intervalMs: ringToArray(recorder.replyIntervals, 'ms'),
       },
+      events: recorder.timeline.slice(),
       summary: recorder.snapshotSummary(),
       fence: fence && typeof fence.getPlayoutDiagnostics === 'function'
         ? fence.getPlayoutDiagnostics() : null,
     };
+    const last = recorder.lastFrame;
+    trace.playbackRate = Number.isFinite(last.playbackRate) ? last.playbackRate : null;
+    trace.timeScale = Number.isFinite(last.timeScale) ? last.timeScale : null;
+    trace.poseEpoch = Number.isFinite(last.poseEpoch) ? last.poseEpoch : null;
+    trace.poseSource = typeof options.poseSource === 'string' ? options.poseSource
+      : recorder.lastPoseSource;
+    trace.mode = recorder.state && typeof recorder.state.mode === 'string'
+      ? recorder.state.mode : null;
+    trace.sector = recorder.state && recorder.state.world
+      && recorder.state.world.currentSectorId != null
+      ? String(recorder.state.world.currentSectorId) : null;
     if (typeof options.extra === 'object' && options.extra) Object.assign(trace, options.extra);
     for (const provider of recorder.extraProviders) {
       try {
@@ -336,9 +567,17 @@ export function ensureFrameTruth(state) {
         if (extra && typeof extra === 'object') Object.assign(trace, extra);
       } catch (_) { /* a broken probe never blocks the export */ }
     }
+    const simLane = trace.simLane && typeof trace.simLane === 'object' ? trace.simLane : null;
+    trace.lane = typeof options.lane === 'string' ? options.lane
+      : (simLane && typeof simLane.lane === 'string' ? simLane.lane : recorder.lastLane);
+    trace.transport = typeof options.transport === 'string' ? options.transport
+      : (simLane && (typeof simLane.clockOwner === 'string' || typeof simLane.workerClockMode === 'string')
+        ? (simLane.clockOwner || simLane.workerClockMode) : recorder.lastTransport);
     const text = JSON.stringify(trace);
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    download(`frame-truth-${stamp}.json`, text);
+    if (options.download !== false) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      download(`frame-truth-${stamp}.json`, text);
+    }
     return trace;
   };
 

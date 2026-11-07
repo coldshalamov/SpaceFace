@@ -79,3 +79,126 @@ test('E1 stall harness flag: cycle parsed, bounded, invalid entries warned', asy
   const long = resolveSimLaneFlags(`?simStall=${Array.from({ length: 40 }, (_, i) => i % 200).join(',')}`);
   assert.equal(long.simStall.length, 16);
 });
+
+test('frame truth measures the presented rate, carries 1 Hz probes and classifies the first frame', async () => {
+  const { ensureFrameTruth } = await import('../src/core/frameTruth.js');
+  const recorder = ensureFrameTruth({ mode: 'flight', world: { currentSectorId: 'ceres' } });
+
+  // First frame: speed is high but there is no previous pose. It must not be a held frame
+  // and the streak must stay zero (the old ingest counted the first sample as held).
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, simTimeS: 0, tick: 0,
+    playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
+  });
+  assert.equal(recorder.lastFrame.heldPoseFrames, 0, 'no previous pose cannot be a held frame');
+  assert.equal(recorder.heldStreak, 0);
+
+  // A repeat pose at speed is held; dropping below the speed threshold resets the streak.
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, simTimeS: 1 / 60, tick: 1,
+    playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
+  });
+  assert.equal(recorder.lastFrame.heldPoseFrames, 1);
+  assert.equal(recorder.heldStreak, 1);
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, simTimeS: 2 / 60, tick: 2,
+    playerRow: { pos: { x: 0, z: 0 }, vx: 2, vz: 0 },
+  });
+  assert.equal(recorder.heldStreak, 0, 'below the speed threshold a still pose is not a freeze');
+
+  // The jump bar uses the PRESENTED rate: 100 wu/s body at 0.1x playback is 10 wu/s drawn.
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, playbackRate: 0.1, timeScale: 1,
+    playerRow: { pos: { x: 1, z: 0 }, vx: 100, vz: 0 },
+  });
+  const frame = recorder.lastFrame;
+  assert.ok(Math.abs(frame.presentedSpeed - (1 / (16.7 / 1000))) < 1e-6,
+    `presented speed is measured from the drawn pose: ${frame.presentedSpeed}`);
+  const expectedBar = 2 * 100 * 0.1 * (16.7 / 1000);
+  assert.ok(Math.abs(frame.jumpBarWu - expectedBar) < 1e-9,
+    `jump bar is 2*speed*playbackRate*dt: ${frame.jumpBarWu} vs ${expectedBar}`);
+  assert.ok(Math.abs(frame.jumpRatio - 1 / expectedBar) < 1e-9,
+    `jump ratio uses the presented bar: ${frame.jumpRatio}`);
+
+  // A raw 2.6 s rAF gap is clamped by the loop, but the FPS summary must still report it.
+  recorder.ingestFrame({ frameDtMs: 250, rawFrameDtMs: 2600, playerRow: null });
+  const summary = recorder.exportJSON({ download: false }).summary;
+  assert.ok(summary.rawFrame.max >= 2600, 'the raw frame delta survives the loop clamp');
+  assert.ok(summary.fps < 1, `the last-frame FPS uses the raw delta: ${summary.fps}`);
+
+  // 1 Hz heap samples are carried across the frames that do not sample it.
+  recorder.ingestFrame({ frameDtMs: 16.7, rawFrameDtMs: 16.7, heapMB: 120, playerRow: null });
+  recorder.ingestFrame({ frameDtMs: 16.7, rawFrameDtMs: 16.7, heapMB: null, playerRow: null });
+  assert.equal(recorder.lastFrame.heapMB, 120, 'the last heap sample carries to the next frame');
+  assert.ok(recorder.exportJSON({ download: false }).summary.heapMB.start > 0,
+    'the heap start is the first nonzero sample');
+});
+
+test('frame truth export carries provenance, timeline events and the live fence', async () => {
+  const { ensureFrameTruth } = await import('../src/core/frameTruth.js');
+  const state = { mode: 'flight', world: { currentSectorId: 'helios' } };
+  const recorder = ensureFrameTruth(state);
+  const fakeFence = { getPlayoutDiagnostics: () => ({ leadMs: 42, poseEpoch: 9 }) };
+  recorder.fenceProvider = () => fakeFence;
+  recorder.note = 'simStall=60,60,60,400 simGap=400@0';
+  recorder.noteEvent('poseEpoch', { from: 0, to: 9 });
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, playbackRate: 0.5, timeScale: 1,
+    poseEpoch: 9, poseSource: 'presented',
+    playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
+  });
+  const trace = recorder.exportJSON({ download: false });
+  assert.ok(trace.startedAtEpochMs > 1_000_000_000_000, 'the start carries a real wall-clock epoch');
+  assert.ok(trace.exportedAtEpochMs >= trace.startedAtEpochMs);
+  assert.equal(trace.note, 'simStall=60,60,60,400 simGap=400@0');
+  assert.equal(trace.mode, 'flight');
+  assert.equal(trace.sector, 'helios');
+  assert.deepEqual(trace.fence, { leadMs: 42, poseEpoch: 9 },
+    'the hotkey/default export reads the live fence diagnostics');
+  assert.equal(trace.playbackRate, 0.5);
+  assert.equal(trace.timeScale, 1);
+  assert.equal(trace.poseEpoch, 9);
+  assert.equal(trace.poseSource, 'presented');
+  assert.ok(trace.events.some((event) => event.kind === 'poseEpoch'
+    && event.from === 0 && event.to === 9), 'the timeline carries the epoch change');
+  for (const field of ['rawFrameDtMs', 'wallEpochMs', 'playbackRate', 'timeScale',
+    'presentedSpeed', 'jumpBarWu', 'jumpRatio', 'allocBytesPerSec', 'popIn', 'poseEpoch']) {
+    assert.ok(Object.hasOwn(trace.columns, field), `column ${field} exists`);
+  }
+  // No document in Node: {download:false} must bypass the download path without throwing.
+  assert.doesNotThrow(() => recorder.exportJSON({ download: false }));
+});
+
+test('frame truth records injected worker stalls on the reply row', async () => {
+  const { ensureFrameTruth } = await import('../src/core/frameTruth.js');
+  const recorder = ensureFrameTruth({});
+  recorder.noteWorkerReply({ wallMs: 100, workMs: 8, stallMs: 400, steps: 1 });
+  recorder.noteWorkerReply({ wallMs: 900, workMs: 9, stallMs: 0, steps: 1 });
+  const trace = recorder.exportJSON({ download: false });
+  assert.deepEqual(trace.replies.stallMs, [400, 0],
+    'the injected stall rides the reply row instead of being folded into step work');
+  assert.equal(trace.summary.replyStall.max, 400);
+});
+
+test('E1 simGap harness withholds completed packs on a wall-clock schedule', async () => {
+  const { resolveSimGapSchedule, createSimGapGate } = await import('../src/core/frameTruth.js');
+  const schedule = resolveSimGapSchedule('?simGap=400@2000');
+  assert.equal(schedule.ms, 400);
+  assert.equal(schedule.atMs, 2000);
+  const gate = createSimGapGate(schedule, 0);
+  assert.equal(gate.shouldHold(1000), false, 'not before the scheduled start');
+  assert.equal(gate.shouldHold(2000), true, 'the hold starts on the scheduled frame');
+  assert.equal(gate.shouldHold(2399), true);
+  assert.equal(gate.shouldHold(2400), false, 'the hold ends after the requested wall time');
+  assert.equal(gate.applications, 1);
+  assert.equal(gate.heldFrames, 2);
+  // Periodic schedule.
+  const periodic = createSimGapGate(resolveSimGapSchedule('?simGap=100@0@500'), 0);
+  assert.equal(periodic.shouldHold(0), true);
+  assert.equal(periodic.shouldHold(100), false);
+  assert.equal(periodic.shouldHold(500), true);
+  assert.equal(periodic.shouldHold(600), false);
+  // Invalid values are warned, never silently used.
+  assert.match(resolveSimGapSchedule('?simGap=99999').warning, /ignored/);
+  assert.equal(resolveSimGapSchedule('?simLane=worker'), null);
+});

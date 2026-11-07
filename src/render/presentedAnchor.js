@@ -1,28 +1,45 @@
 // Present an entity's anchor at the moment the drawn hull shows, not at the live sim tick.
 //
-// The renderer draws every hull from the snapshot fence at rendered time = latest.simTime +
-// accumulator − fixedDt: exactly one tick behind the newest completed simulation state, swept
-// across the prev→curr span by the render alpha (accumulator/fixedDt). Any presentation that
-// anchors to the RAW entity.pos instead — tether cable endpoints, trail nozzles without an
-// authored socket — sits up to one full tick of travel ahead of the hull it belongs to, and
-// because alpha sweeps 0→1 every tick that offset is a sawtooth: the anchor visibly detaches,
-// stabs through the hull, and snaps back, 60 times a second at speed. Blending prevPos→pos with
-// the same render alpha lands on the same rendered moment as the fence (the two formulas are
-// identical when the pack span is one tick), so the anchor stays welded to the hull it draws.
+// The renderer draws every hull from the snapshot fence's PRESENTED bracket (E1 playout:
+// newest − adaptive delay, 33–100 ms). Any presentation that anchors to the RAW entity.pos
+// instead — tether cable endpoints, trail nozzles without an authored socket, mining beams,
+// status VFX — sits ahead of the hull by that entire reserve, so the cable visibly detaches
+// and the VFX hits a target the hull has not reached yet. The fence's presentedPose is the
+// ONE pose service for both the mesh and its anchors.
 //
-// Entities without a continuous prev→curr span — freshly spawned, teleported, or static rocks
-// whose prevPos is never snapshotted — present at the live sim pose via the guards below. That is
-// the same continuity contract the chase-camera fallback uses (400 WU cap, alpha < 1).
+// Fallback (no fence, or the entity is not in the presented pack): blend the entity's
+// prevPos→pos span with the render alpha. That was the pre-playout contract and is still the
+// correct answer when there is no presented sample to read.
+
+import { getLatestSnapshotFence } from './snapshotFence.js';
 
 // Same continuity cap as camera.js's resolvePlayerAnchorLocal fallback.
 const MAX_CONTINUITY_SPAN_WU = 400;
 
+// Reused scratch for the fence read (one anchor at a time; never retained).
+const _fencePoseScratch = { x: 0, y: 0, z: 0, rot: 0, valid: false };
+
+function fencePresentedPose(entity) {
+  if (!entity || !Number.isSafeInteger(entity.id)) return null;
+  const fence = getLatestSnapshotFence();
+  if (!fence || typeof fence.presentedPose !== 'function') return null;
+  const pose = fence.presentedPose(entity.id, _fencePoseScratch);
+  return pose && pose.valid === true ? pose : null;
+}
+
 /**
- * Blend the entity's prevPos→pos span with the render alpha so the anchor lands on the moment the
- * hull was drawn. out must be caller-owned ({x, z}); it is always written (falling back to the
- * live pos) so a call can never read a stale scratch.
+ * The entity's anchor at the drawn moment. Reads the fence's presented pose (position + the
+ * same heading the hull uses); falls back to the newest-tick prevPos→pos blend only when no
+ * presented sample exists. out must be caller-owned ({x, z}); it is always written so a call
+ * can never read a stale scratch.
  */
 export function presentedAnchorXZ(entity, alpha, out) {
+  const presented = fencePresentedPose(entity);
+  if (presented) {
+    out.x = presented.x;
+    out.z = presented.z;
+    return out;
+  }
   const pos = entity && entity.pos;
   const x = Number.isFinite(pos && pos.x) ? pos.x : 0;
   const z = Number.isFinite(pos && pos.z) ? pos.z : 0;
@@ -40,10 +57,12 @@ export function presentedAnchorXZ(entity, alpha, out) {
 }
 
 /**
- * The entity's heading at the drawn moment, shortest-path blended across the prevRot→rot tick
- * span. Falls back to the live rot without a continuous span (sentinel prevRot, sub-frame spawn).
+ * The entity's heading at the drawn moment. The fence's presented heading is the one the
+ * hull actually drew; the prevRot→rot shortest-path blend is the no-fence fallback.
  */
 export function presentedAnchorRot(entity, alpha) {
+  const presented = fencePresentedPose(entity);
+  if (presented) return presented.rot;
   const rot = entity && Number.isFinite(entity.rot) ? entity.rot : 0;
   if (!Number.isFinite(alpha) || alpha >= 1) return rot;
   const prevRot = entity && Number.isFinite(entity.prevRot) ? entity.prevRot : rot;

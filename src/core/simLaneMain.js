@@ -1037,6 +1037,11 @@ export function createSimLaneRuntime({
     // Keep the worker's own completed-boundary costs beside its liveness counters. Main-thread
     // frame timings cannot distinguish a slow authoritative step from a slow mirror/pack.
     const cost = (value) => Number.isFinite(value) && value >= 0 ? value : null;
+    const stallTotalMs = msg.clockDiagnostics && Number.isFinite(msg.clockDiagnostics.stallTotalMs)
+      ? msg.clockDiagnostics.stallTotalMs : null;
+    const previousStallTotalMs = workerLastReplyWork
+      && Number.isFinite(workerLastReplyWork.stallTotalMs)
+      ? workerLastReplyWork.stallTotalMs : 0;
     workerLastReplyWork = {
       workMs: cost(msg.workMs),
       drainMs: cost(msg.drainMs),
@@ -1045,6 +1050,8 @@ export function createSimLaneRuntime({
       packMs: cost(msg.packMs),
       domainDiffMs: cost(msg.domainDiffMs),
       boundaryMs: cost(msg.boundaryMs),
+      stallMs: stallTotalMs == null ? null : Math.max(0, stallTotalMs - previousStallTotalMs),
+      stallTotalMs,
       journalRecords: Number.isSafeInteger(msg.pack?.count) ? msg.pack.count : 0,
       stepsExecuted: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
       stepsRequested: Number.isSafeInteger(msg.stepsRequested) ? msg.stepsRequested : null,
@@ -1662,6 +1669,7 @@ export function createSimLaneRuntime({
           steps: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
           journalRecords: work.journalRecords,
           events: work.events,
+          stallMs: work.stallMs,
         });
       }
     }
@@ -2282,6 +2290,7 @@ export function createSimLaneRuntime({
         workerStepsMs: workerLastReplyWork ? workerLastReplyWork.stepsMs : null,
         workerPackMs: workerLastReplyWork ? workerLastReplyWork.packMs : null,
         applyMs: workerApplyMs,
+        stallMs: workerLastReplyWork ? workerLastReplyWork.stallMs : null,
         replyAgeMs: lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
       };
     },

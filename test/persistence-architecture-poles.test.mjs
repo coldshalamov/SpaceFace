@@ -33,6 +33,7 @@ import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packEntityIntoSnapshot,
+  SNAPSHOT_FENCE_BUFFERS,
 } from '../src/render/snapshotFence.js';
 import { isSimulationWorkerEnabled, createCommandRing } from '../src/core/simWorkerProtocol.js';
 import { stepAbstractRecords } from '../src/core/simWorkerHost.js';
@@ -156,13 +157,15 @@ test('snapshot fence publishes a complete packed frame the present path can read
   assert.equal(latest.columns.entityId[0], 1);
   assert.equal(latest.columns.position[0], 3);
   const firstIndex = latest.indexByEntityId;
-  for (let tick = 0; tick < 3; tick++) {
+  // The playout ring is SNAPSHOT_FENCE_BUFFERS deep (18), not a triple buffer: a slot is
+  // reused only after one full ring rotation. Derive the loop from the exported depth.
+  for (let tick = 0; tick < SNAPSHOT_FENCE_BUFFERS; tick++) {
     const next = fence.beginPack(1, 13 + tick);
     packEntityIntoSnapshot(next, { id: 10 + tick, alive: true, pos: { x: tick, y: 0, z: 0 } });
     fence.commit();
   }
   assert.equal(fence.latestSnapshot().indexByEntityId, firstIndex,
-    'triple-buffer slots retain their index map/facade across publications');
+    'a ring slot retains its index map/facade across one full rotation');
 });
 
 test('snapshot fence columns and indices survive capacity growth without facade replacement', () => {
@@ -183,15 +186,16 @@ test('snapshot fence columns and indices survive capacity growth without facade 
   const first = fence.latestSnapshot();
   const firstColumns = first.columns;
   const firstIndices = first.indexByEntityId;
-  publish([2]);
-  publish([3]);
+  // Fill the rest of the playout ring so the growth pack returns to the first slot. The
+  // facade object must survive both rotation and the typed-array replacement on growth.
+  for (let i = 0; i < SNAPSHOT_FENCE_BUFFERS - 1; i++) publish([2 + i]);
   publish([10, 11, 12, 13, 14]);
 
   const grown = fence.latestSnapshot();
   assert.equal(grown.columns, firstColumns,
-    'the reused triple-buffer slot keeps one columns facade');
+    'the reused ring slot keeps one columns facade');
   assert.equal(grown.indexByEntityId, firstIndices,
-    'the reused triple-buffer slot keeps one entity index facade');
+    'the reused ring slot keeps one entity index facade');
   assert.equal(grown.columns.entityId[4], 14);
   assert.equal(grown.columns.position[12], 28,
     'the facade follows the replacement typed array after growth');
