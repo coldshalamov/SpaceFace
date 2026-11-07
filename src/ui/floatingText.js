@@ -110,7 +110,11 @@ export function commsToastSpec(payload = {}) {
   if (COMMS_SELF_TOASTED_KINDS.has(payload.kind) || payload.kind === 'special500') return null;
   const from = String(payload.from || payload.sender || payload.speaker || '').trim().toUpperCase();
   const text = (from ? from + ': ' : '') + payload.text.trim();
-  return { text: text.length > 140 ? text.slice(0, 137) + '...' : text, kind: 'info', ttl: COMMS_TOAST_TTL };
+  // Carry the originating channel so the receipt lane can classify a mechanical world event
+  // (cargo spill, salvage, machine) instead of demoting every log line to generic 'info'.
+  const mechanical = ['cargo', 'salvage', 'machine', 'ecology'].includes(String(payload.kind || ''));
+  return { text: text.length > 140 ? text.slice(0, 137) + '...' : text, kind: 'info', ttl: COMMS_TOAST_TTL,
+    channel: mechanical ? 'system' : (payload.kind || payload.channel || '') };
 }
 
 export function bindCommsLogToasts(bus) {

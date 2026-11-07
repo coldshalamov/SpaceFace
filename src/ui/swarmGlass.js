@@ -4,7 +4,7 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 
 export const SWARM_CALLOUT_MAX = 3;
 export const SWARM_CALLOUT_WORDS = 3;
-const FIGHT_SOURCES = new Set(['swarm-callout', 'boss', 'danger', 'round']);
+const FIGHT_SOURCES = new Set(['swarm-callout', 'boss', 'danger', 'round', 'system', 'warn']);
 const JARGON = /\b(snag|messy|window|logged|mass|tonn|winch|strain|payload|ride|budge|shunted)\b|\d+\s*t\b/i;
 const BARE_NUMBER = /(^|\s)\d{2,}(\s|$)/;
 

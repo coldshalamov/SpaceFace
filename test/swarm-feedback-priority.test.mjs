@@ -50,14 +50,15 @@ test('Swarm keeps one physical cause while accounting events do not crowd it', (
   owner.destroy();
 });
 
-test('world accounting receipts remain in the flight register outside Swarm', () => {
+test('world accounting receipts stay in the details register, not the Adventure flight glass', () => {
   for (const run of [null, { kind: 'survival', phase: 'active', ruleset: 'classic' }]) {
     const { bus, owner } = mount(run);
     bus.emit('aftermathWreck:recorded', run ? {} : { source: 'player:death', playerWreck: true });
     bus.emit('lossLedger:recorded', run ? {} : { source: 'player:death', assetId: 1 });
     owner.update(0);
-    assert.match(calloutTextFor(owner.root), /WRECK RECORDED/);
-    assert.match(calloutTextFor(owner.root), /LOSS RECORDED/);
+    // X3 Adventure glass: the declarative register is details/backlog copy, not a flight
+    // callout. The owner still records the receipt; it simply does not draw over the action.
+    assert.equal(calloutTextFor(owner.root), '', 'world accounting does not draw over Adventure flight');
     owner.destroy();
   }
 });

@@ -573,33 +573,42 @@ test('worker event bursts coalesce callout layout reads to one pre-paint seat', 
   assert.equal(cancelReads, 1, 'teardown cancels a pending presentation-only seat callback');
 });
 
-test('physics log callouts ignore room-wide impacts that do not involve the player', () => {
+test('the physics LOG register stays in details on the Adventure glass; a plain stunt still speaks', () => {
   const doc = fakeDocument();
   const bus = fakeBus();
-  // The LOG register is Adventure glass (swarm S2 silences it in a live Swarm round).
+  // X3 Adventure glass retired the declarative LOG register from the flight picture. The
+  // register still owns the facts; it is a details/backlog surface, not a callout. A plain
+  // stunt name is still a fight receipt and must draw.
   const owner = createStuntCallout({ state: calloutState(createComboState(), { run: { kind: 'adventure' } }), bus, doc });
   bus.emit('physics:impact', { aId: 21, bId: 22, playerInvolved: false, impulse: 90 });
   assert.equal(owner.update(0), false, 'an unrelated NPC collision does not wake the player feed');
   assert.equal(calloutTextFor(owner.root), '');
 
   bus.emit('physics:impact', { aId: 1, bId: 22, playerInvolved: true, impulse: 90 });
-  assert.equal(owner.update(1), true, 'the same qualifying impact still reaches the player');
-  assert.match(calloutTextFor(owner.root), /IMPACT LOGGED — 90/);
+  assert.equal(owner.update(1), false, 'the jargon register does not draw over the Adventure glass');
+  assert.equal(calloutTextFor(owner.root), '');
 
   bus.emit('physics:impact', { aId: 22, bId: 23, playerInvolved: false, causalActorId: 1, impulse: 120 });
   owner.update(2);
-  assert.match(calloutTextFor(owner.root), /IMPACT LOGGED — 120/,
-    'the player-caused environmental impact is still a valid receipt when the player body was not a contact');
+  assert.equal(calloutTextFor(owner.root), '', 'a player-caused impact is still a details fact, not a callout');
+
+  bus.emit('stunt:trickDetected', trickFor());
+  assert.equal(owner.update(3), true, 'the plain stunt lane still speaks');
+  assert.match(calloutTextFor(owner.root), /Wrecking Ball/);
   owner.destroy();
 });
 
 
-test('physics register only narrates lien clamps and filings on the player ship', () => {
-  const doc=fakeDocument(),bus=fakeBus(),owner=createStuntCallout({state:calloutState(createComboState(),{run:{kind:'adventure'}}),bus,doc});
-  bus.emit('vael:lienClamped',{hostId:24,anchorId:30});
-  bus.emit('helix:lienStuck',{shipId:25,droneId:31});
-  assert.equal(owner.update(0),false);assert.equal(calloutTextFor(owner.root),'');
-  bus.emit('vael:lienClamped',{hostId:1,anchorId:30});
-  assert.equal(owner.update(1),true);assert.notEqual(calloutTextFor(owner.root),'');
+test('the physics register does not narrate sector-wide lien bookkeeping on the flight glass', () => {
+  const doc = fakeDocument(), bus = fakeBus(), owner = createStuntCallout({
+    state: calloutState(createComboState(), { run: { kind: 'adventure' } }), bus, doc,
+  });
+  bus.emit('vael:lienClamped', { hostId: 24, anchorId: 30 });
+  bus.emit('helix:lienStuck', { shipId: 25, droneId: 31 });
+  assert.equal(owner.update(0), false);
+  assert.equal(calloutTextFor(owner.root), '');
+  bus.emit('vael:lienClamped', { hostId: 1, anchorId: 30 });
+  assert.equal(owner.update(1), false, 'the lien register is details copy, not a flight callout');
+  assert.equal(calloutTextFor(owner.root), '');
   owner.destroy();
 });
