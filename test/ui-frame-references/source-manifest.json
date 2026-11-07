@@ -155,7 +155,7 @@
   "src/ui/orrery/chartLabels.js": "037bc9f0b6150cf85c161bb14a9e5b97c12628ea3477134ee21d55585c2d7bba",
   "src/ui/orrery/chartLayouts.js": "3fb10e12d5c6f2c81fd1e260b3a899c7ba562fba899b7e3cbe7dc87c37729d1b",
   "src/ui/orrery/chartWorld.js": "5a47947cb755185002d714cdb915866118249e9db445b133ae5f55445d1ad502",
-  "src/ui/orrery/codexLayouts.js": "9db683bf6620de144c4e1c6985adb676ebe04886a4f0a4621393b9f6dc30472a",
+  "src/ui/orrery/codexLayouts.js": "bd8ec8986b34f3224701ec229c7e62cda40f4b7050f22c38c177e6d98ee605b1",
   "src/ui/orrery/commsLayouts.js": "076fb329f47adcdbd14d7b3bf90d6c15e7c01f7e238924cd0cd63e2053aed21c",
   "src/ui/orrery/consoleStandard.js": "86a3aef4feff612c625375617086660ee3bfc6a3f0345a30374a1b96bac2c79a",
   "src/ui/orrery/constellation.js": "ecd18042350f781bc79a6a7d146ca7985bf6a8a7400ac6128922de12f5710b56",
