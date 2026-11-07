@@ -363,7 +363,25 @@ export function createIndustryScreen(ctx) {
       footRo = new ResizeObserver(() => seatFoot());
       for (const el of fab.querySelectorAll(':scope > .sx-fab-head__cat, :scope > .sx-fab-head__name, :scope > .sx-fab-head__desc')) footRo.observe(el);
     }
-    chain = createChainBeam(host, { onLayout: (g) => { lastG = g; seatFoot(); } });
+    // Short desktop readings have content-driven rows around the drawing. Move the
+    // chain's existing nodes, so its label lifecycle, live quantity and delegated
+    // remedy actions keep one owner. A redraw removes them through clearLabels;
+    // leaving the compact CSS band therefore restores the ordinary instrument.
+    const seatReadings = () => {
+      const style = typeof globalThis.getComputedStyle === 'function' ? globalThis.getComputedStyle(fab) : null;
+      if (style?.getPropertyValue?.('--orr-ind-flow-readings')?.trim() !== '1') return;
+      const reason = host.querySelector('.orr-chain__label:has(> .orr-chain__reason)');
+      const output = host.querySelector('.orr-chain__label.is-below');
+      if (reason) {
+        reason.classList.add('sx-fab-chain-reason');
+        fab.insertBefore(reason, host);
+      }
+      if (output) {
+        output.classList.add('sx-fab-chain-output');
+        fab.insertBefore(output, host.nextSibling);
+      }
+    };
+    chain = createChainBeam(host, { onLayout: (g) => { lastG = g; seatReadings(); seatFoot(); } });
     chain.set({
       inputs: Object.keys(bp.inputs || {}).map((id) => {
         const have = Math.floor(freeQty(state, id));

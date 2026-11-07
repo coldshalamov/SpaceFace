@@ -888,6 +888,11 @@ ${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
 }
 
 /* ================================ ROUND 3: INDUSTRY ========================================= */
+/* At the 651px edge the split-work column leaves the chain at 319px, below its authored
+   minimum. Bound this tab's gutter by the shared rhythm so the stage retains drawable width. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+  ${T} .sx-ind { column-gap:calc(var(--dp-rhythm) - 2px) !important; }
+}
 /* the chain is the reading: the needs ledger under it says nothing the drawing does not, so it yields while the chain stands */
 ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-inputs, ${T} .sx-fab:has(.orr-chain:not(.is-off)) .sx-fab-col-k { display:none !important; }
 ${T} .sx-ind-row__tier { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
@@ -2360,6 +2365,43 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
 @media (min-width:651px) and (max-width:900px) and (min-height:641px) and (max-height:800px) {
   ${D} .orr-ind-chain { height:264px !important; min-height:0 !important; }
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+}
+/* At 700×461 the variable-height remedy was pinned over the output node and
+   the translated product reading ran into the stage fade. Let those existing DOM
+   readings reserve their own rows around the drawing; the stage remains the one
+   detail scroller, with its terminal action above the 20px fold at maximum scroll. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) {
+  ${D} .sx-ind__stage { padding-bottom:24px !important; scroll-padding-block:12px 24px; }
+  ${D} .sx-fab { --orr-ind-flow-readings:1; display:flex !important; flex-direction:column; gap:0;
+    height:auto !important; min-height:100%; min-width:0; box-sizing:border-box; padding-bottom:0 !important; }
+  ${D} .sx-fab > .orr-ind-chain { flex:none; margin:12px 0 !important; }
+  ${D} .sx-fab > :is(.sx-fab-chain-reason, .sx-fab-chain-output) {
+    position:static !important; inset:auto !important; transform:none !important; flex:none;
+    width:auto !important; max-width:100% !important; min-width:0; align-self:stretch;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important;
+  }
+  ${D} .sx-fab > .sx-fab-chain-reason { align-items:flex-start; gap:4px; margin:8px 0 0 !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__reason { font-size:17px !important; line-height:1.2 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__verb { max-width:100%; margin:0 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__blocknote { font-size:12px !important; line-height:1.3 !important; white-space:normal !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout { min-height:28px !important; max-width:100% !important;
+    margin:6px 0 0 !important; padding:4px 8px !important; box-sizing:border-box;
+    font-size:12px !important; line-height:1.3 !important; white-space:normal !important; text-align:left !important; }
+  ${D} .sx-fab-chain-reason .orr-chain__wayout:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important; }
+  ${D} .sx-fab > .sx-fab-chain-output { flex-direction:row; align-items:baseline; gap:12px; margin:0 !important; }
+  ${D} .sx-fab-chain-output .orr-chain__qty { font-size:30px !important; line-height:1 !important; text-align:left !important; }
+  ${D} .sx-fab-chain-output .orr-chain__unit { min-width:0; font-size:12px !important; line-height:1.3 !important;
+    white-space:normal !important; overflow-wrap:anywhere !important; text-align:left !important; }
+  ${D} .sx-fab > .sx-fab-foot { position:static !important; inset:auto !important; transform:none !important;
+    align-self:stretch; margin:12px 0 0 !important; }
+}
+/* Taller narrow windows retain the reason above the process ring. */
+@media (min-width:651px) and (max-width:800px) and (min-height:641px) and (max-height:800px) {
+  ${D} .orr-ind-chain { height:296px !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { top:4px !important; width:min(320px, calc(100% - 40px)) !important; max-width:none !important; transform:translateX(-50%) !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count, .orr-chain__verb, .orr-chain__verb > *) { max-width:100% !important; box-sizing:border-box; white-space:normal !important; overflow-wrap:anywhere !important; }
 }
 /* Missions on short desktops: the tracked job is the one row the player chose, so it keeps its height and
    the board window above (which already scrolls and snaps to a whole row) is the part that yields. */

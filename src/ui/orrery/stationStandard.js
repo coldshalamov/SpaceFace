@@ -421,8 +421,8 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;
-    grid-template-columns:minmax(0,170fr) minmax(0,95fr) minmax(0,90fr) minmax(0,120fr) minmax(0,118fr) !important;
-    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 10px !important; margin:0 !important; padding:5px 10px 6px !important;
+    grid-template-columns:minmax(0,150fr) minmax(0,108fr) minmax(0,102fr) minmax(0,110fr) minmax(0,130fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:3px 8px !important; margin:0 !important; padding:5px 10px 6px !important;
     width:auto !important; max-width:none !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; max-width:100% !important; box-sizing:border-box !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
@@ -430,9 +430,22 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
-  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important; justify-content:flex-start !important;
-    margin:3px 0 0 !important; gap:3px !important; }
-  ${P} .sxb-crown .sxb-vital__acts > button { min-height:22px !important; padding:1px 5px !important; }
+  /* Put the figure under its label in the three tight cells. The dial remains the upper reading;
+     the label and numeric value now receive independent intrinsic lines instead of hiding ink. */
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__label {
+    font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    max-width:100% !important; overflow:visible !important; text-overflow:unset !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value {
+    position:static !important; inset:auto !important; width:max-content !important; max-width:100% !important;
+    display:inline-flex !important; flex-direction:row !important; align-items:baseline !important; gap:2px !important;
+    margin:2px 0 0 !important; white-space:nowrap !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value,
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vnum,
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold, .sxb-vital--muni) .sxb-vital__value .orr-vden { font-size:12px !important; }
+  ${P} .sxb-crown .sxb-vital__acts { flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important; justify-content:flex-start !important;
+    max-width:100% !important; margin:3px 0 0 !important; gap:3px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:22px !important; padding:1px 5px !important;
+    max-width:100% !important; box-sizing:border-box !important; flex-wrap:wrap !important; white-space:normal !important; }
   ${P} .sxb-crown .sxb-vital--note, ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { text-align:left !important; align-items:flex-start !important; }
   ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { margin:0 !important; white-space:nowrap !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; margin:0 !important; padding:0 !important; }
