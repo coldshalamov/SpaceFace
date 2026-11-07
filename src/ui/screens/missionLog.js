@@ -51,7 +51,7 @@ import {
   missionUpfrontCost,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
-import { resolveContract47aRecoveryTarget } from '../navigationWaypoint.js';
+import { resolveContract47aRecoveryTarget, resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
 import {
   buildMissionLogCareerChip,
@@ -582,40 +582,36 @@ export function missionMapAction(state, mission, isTracked) {
       pos: savedFix, source: 'missionLog', selectionTarget: '47a-recovery-fix',
       title: 'Open the recovery site on Local Map' });
   }
-  const hasLocalFix = !!(wp && wp.pos);
-  // The owner waypoint is the actual 47-A recovery site until its sample flag changes. Keep this
-  // exact opening contract's Local Map selection on that live fix; ordinary jobs and malformed
-  // fixes retain their existing explicit destination-station selection.
-  const b0RecoveryFix = !!contract47aReadout(mission)
-    && mission.params && mission.params.sampleRecovered === false
-    && wp && wp.pos
-    && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)
-    && targetSectorId === currentSectorId;
-  if (hasLocalFix || sameSector || !targetSectorId) {
-    return mapHandoffAction({
-      focus: MAP_FOCUS.LOCAL,
-      label: 'LOCAL MAP',
-      title: 'Open Local Map',
-      body: 'Show the live objective marker and nearby contacts.',
-      missionId: mission.id,
-      sectorId: targetSectorId,
-      stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
-      pos: wp && wp.pos ? wp.pos : null,
-      source: 'missionLog',
+  const resolvedPos = wp ? resolveWaypointPresentationPosition(state, wp) : null;
+  const hasLocalFix = !!(resolvedPos && Number.isFinite(resolvedPos.x) && Number.isFinite(resolvedPos.z));
+  const targetBearing = !!(wp && wp.targetEntityId != null && hasLocalFix);
+  const explicitStation = !!(wp && Object.prototype.hasOwnProperty.call(wp, 'stationId'));
+  // A target/search fix is deliberately stationless; a return leg can name a different berth.
+  // Preserve that current owner decision instead of reinstating the contract's old destination.
+  const waypointOwnsDestination = targetBearing || explicitStation;
+  const stationId = recovery ? null : waypointOwnsDestination
+    ? (wp.stationId || null) : (mission.destStationId || null);
+  const suppressMissionFallback = !recovery && waypointOwnsDestination && !stationId;
+  const b0RecoveryFix = recovery && sameSector && hasLocalFix;
+  const handoff = (focus, label, title, body, pos) => {
+    const action = mapHandoffAction({
+      focus, label, title, body,
+      missionId: suppressMissionFallback ? null : mission.id,
+      sectorId: targetSectorId, stationId, pos, source: 'missionLog',
       selectionTarget: b0RecoveryFix ? 'active-waypoint' : null,
     });
+    // The map resolver also infers a receiving station from missionId. Suppress only that
+    // selection fallback; the active mission, visible pin and navigation owner are untouched.
+    if (suppressMissionFallback) action.suppressMissionId = true;
+    return action;
+  };
+  if (hasLocalFix || sameSector || !targetSectorId) {
+    return handoff(MAP_FOCUS.LOCAL, 'LOCAL MAP', 'Open Local Map',
+      'Show the live objective marker and nearby contacts.',
+      hasLocalFix ? { x: resolvedPos.x, z: resolvedPos.z } : null);
   }
-  return mapHandoffAction({
-    focus: MAP_FOCUS.GALAXY,
-    label: 'STAR MAP',
-    title: 'Open Star Map',
-    body: 'Plot or review the jump route to this objective.',
-    missionId: mission.id,
-    sectorId: targetSectorId,
-    stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
-    pos: null,
-    source: 'missionLog',
-  });
+  return handoff(MAP_FOCUS.GALAXY, 'STAR MAP', 'Open Star Map',
+    'Plot or review the jump route to this objective.', null);
 }
 
 function tradeRouteWaypoint(state) {
@@ -1038,8 +1034,11 @@ export function mapOpenIntentFromButton(btn) {
     || btn.getAttribute('data-screen-id')
     || MAP_FOCUS.SYSTEM;
   let pos = null;
-  const px = Number(btn.getAttribute('data-map-pos-x'));
-  const pz = Number(btn.getAttribute('data-map-pos-z'));
+  const rawX = btn.getAttribute('data-map-pos-x'), rawZ = btn.getAttribute('data-map-pos-z');
+  const hasCoordinatePair = typeof rawX === 'string' && rawX.trim() !== ''
+    && typeof rawZ === 'string' && rawZ.trim() !== '';
+  const px = hasCoordinatePair ? Number(rawX) : NaN;
+  const pz = hasCoordinatePair ? Number(rawZ) : NaN;
   if (Number.isFinite(px) && Number.isFinite(pz)) pos = { x: px, z: pz };
   return {
     focus,
@@ -1075,7 +1074,8 @@ export function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
     + (mapAction.selectionTarget ? ' data-map-selection-target="' + escapeHtml(mapAction.selectionTarget) + '"' : '')
-    + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
+    + (mapAction.suppressMissionId ? ''
+      : ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"');
 }
 
 /**
