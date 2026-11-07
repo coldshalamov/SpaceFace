@@ -27,7 +27,7 @@ function hail(state, choice = 'route', repairResult = null) {
   const offer = lanternWardHailOffer(state, { entity: nessa, targetId: nessa.id }, 'request', 100);
   return { offer, response: lanternWardHailResponse(state, offer, choice, repairResult) };
 }
-const ward = changes => ({ version: 1, phase: 'blocked', blocked: true, lampMissing: false,
+const ward = changes => ({ version: 1, initialized: true, phase: 'blocked', blocked: true, lampMissing: false,
   cradleAway: false, objects: { lamp: { lost: false }, cradle: { lost: false } }, history: {}, ...changes });
 
 test('main and actual domain projection provide actionable state-specific hail guidance', () => {
@@ -48,13 +48,13 @@ test('main and actual domain projection provide actionable state-specific hail g
     const a = hail(main), b = hail(projected);
     assert.deepEqual(b, a, expected);
     assert.match(a.offer.lines[1], /\S/);
-    for (const pattern of patterns) assert.match(a.response.lines[0], pattern, expected);
+    for (const pattern of patterns) assert.match(a.response.lines.join(' '), pattern, expected);
     if (expected === 'repair') {
       assert.ok(a.offer.actions.some(action => action.id === LANTERN_WARD_REPAIR_ACTION));
       assert.match(a.offer.lines[1], /contacts/i);
       assert.match(a.offer.lines[1], /remember/i);
     } else assert.ok(!a.offer.actions.some(action => action.id === LANTERN_WARD_REPAIR_ACTION));
-    if (expected === 'missingLamp') assert.doesNotMatch(a.response.lines[0], /find|cradle.*missing/i);
+    if (expected === 'missingLamp') assert.doesNotMatch(a.response.lines.join(' '), /find|cradle.*missing/i);
     if (expected === 'revisitIgnored') assert.doesNotMatch(a.offer.lines[1], /crew|cleared/i);
   }
 });
@@ -90,4 +90,37 @@ test('blocked introduction distinguishes the family seat and dark memorial; repa
   assert.match(missingCargo.response.lines[0], /electronics/i);
   const notAttended = hail(state, LANTERN_WARD_REPAIR_ACTION, { ok: false, reason: 'attended_lamp_required' });
   assert.match(notAttended.response.lines[0], /lamp/i); assert.match(notAttended.response.lines[0], /match speed/i);
+});
+
+
+test('actual worker mirror preserves current handoff, recovery and connection progress without private journals', () => {
+  for (const [phase, changes, pattern] of [
+    ['transit', {}, /in transit/],
+    ['recovering', {}, /recovering the loaded cradle/],
+    ['interrupted', {}, /handoff interrupted/],
+    ['brace', { cradleAway: true }, /handoff pending/],
+    ['connect', { workS: 9, cradleAway: true }, /50%/],
+    ['installed', { needsReinstall: true }, /circuit interrupted/],
+    ['installed', { objects: { lamp: { lost: true } } }, /Original family lamp lost/],
+    ['installed', { objects: { receiver: { lost: true } } }, /receiving cup lost/],
+  ]) {
+    const state = source(ward({ phase, blocked: false, ...changes,
+      firstCompletionReceipt: { secret: 'private-owner-receipt' }, privateWorkJournal: 'owner-only' }));
+    const projected = mirror(state), a = hail(state), b = hail(projected);
+    assert.deepEqual(b, a, phase);
+    assert.match(a.offer.lines.at(-1), pattern);
+    assert.equal(projected.npcJobs.lanternWard.firstCompletionReceipt, undefined);
+    assert.equal(projected.npcJobs.lanternWard.privateWorkJournal, undefined);
+    if (phase === 'brace' || phase === 'connect') assert.doesNotMatch(a.offer.lines[1], /cradle is away/i);
+  }
+});
+
+test('worker briefing clamps malformed progress and preserves the work owner reset after Continue', () => {
+  for (const [workS, expected] of [[9, /50%/], [0, /0%/], [-4, /0%/], [Infinity, /0%/], [90, /100%/]]) {
+    const state = source(ward({ phase: 'connect', workS, blocked: false }));
+    const projected = mirror(state);
+    assert.deepEqual(hail(projected), hail(state));
+    assert.match(hail(projected).offer.lines.at(-1), expected);
+    assert.ok(projected.npcJobs.lanternWard.workS >= 0 && projected.npcJobs.lanternWard.workS <= 18);
+  }
 });

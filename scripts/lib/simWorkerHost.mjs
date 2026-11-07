@@ -1853,7 +1853,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!json) return { ok: false, reason: 'import-empty' };
         // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
         // drain before publishing a verdict; a nested Promise cannot cross postMessage.
-        const result = await s.importString(json, (args && args.slot) || 'quick');
+        // An omitted destination belongs to the canonical owner's first-empty-slot policy.
+        const result = await s.importString(json, args && args.slot);
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
       }],

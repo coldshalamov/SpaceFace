@@ -119,9 +119,10 @@ export function selectLanternWardDialogue(status, { speaker = 'nessa', revisit =
   const returnVisit = revisit === true;
   let key = 'neutral';
   if (s.missingLamp === true) key = 'missingLamp';
+  else if (s.missingReceiver === true) key = 'unavailable';
   else if (s.damaged === true || s.phase === 'damaged') key = 'repair';
   else if (s.phase === 'displaced') key = 'displaced';
-  else if (s.cradleMissing === true && !s.installed) key = 'shortage';
+  else if (s.cradleMissing === true && !s.installed && !['brace', 'connect'].includes(s.phase)) key = 'shortage';
   else if (s.phase === 'missing') key = 'unavailable';
   else if (s.injured === true || s.tugDamaged === true || s.phase === 'injured') key = 'injury';
   else if (recovered) key = returnVisit ? 'revisitRecovery' : 'recovery';

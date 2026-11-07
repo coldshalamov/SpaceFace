@@ -133,17 +133,17 @@ export function createLaneSystemFacade(ctx) {
           deleteSlot: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
           // File import: the File lives main-side (DOM), the envelope load is
           // sim-owned. Reads the file here, then routes through saveImport.
-          importFile: (file, cb) => {
+          importFile: (file, cb, slot) => {
             const finish = (ok) => { try { if (cb) cb(!!ok); } catch (_) {} };
             if (!file || typeof FileReader === 'undefined') { finish(false); return; }
             const reader = new FileReader();
             reader.onload = () => {
               try {
-                Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: 'quick' }))
-                  // The outer acknowledgement only confirms RPC delivery. Preserve the
-                  // settled save owner's refusal, including the older boolean result shape.
-                  .then((ack) => finish(ack && ack.ok !== false
-                    && ack.result !== false && ack.result?.ok !== false))
+                Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: slot === undefined ? null : slot }))
+                  // Transport success alone is not a completed restore. Accept the canonical
+                  // settled verdict or an explicit legacy boolean owner result, never a bare ack.
+                  .then((ack) => finish(ack?.ok === true
+                    && (ack.result === true || ack.result?.ok === true)))
                   .catch(() => finish(false));
               } catch (_) { finish(false); }
             };
