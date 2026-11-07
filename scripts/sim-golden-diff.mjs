@@ -214,7 +214,7 @@ function exportRefTree(commitish, dir) {
   mkdirSync(tree, { recursive: true });
   // `git archive` is read-only: no checkout, no index write, no branch operation. Safe to run while
   // other agents hold the working tree. Only the paths sf-sim actually needs are exported.
-  const archive = execFileSync('git', ['archive', commitish, 'src', 'scripts', 'test', 'package.json'], {
+  const archive = execFileSync('git', ['archive', commitish, 'src', 'scripts', 'test', 'vendor', 'package.json'], {
     cwd: ROOT,
     maxBuffer: 1 << 29,
   });
